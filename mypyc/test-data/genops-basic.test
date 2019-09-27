@@ -1588,11 +1588,11 @@ def g(a):
     r4 :: str
     r5, r6 :: None
 L0:
-    r0 = unicode_3 :: static  ('a')
+    r0 = unicode_4 :: static  ('a')
     r1 = 0
     r2 = a.f(r1, r0)
     r3 = 1
-    r4 = unicode_4 :: static  ('b')
+    r4 = unicode_5 :: static  ('b')
     r5 = a.f(r3, r4)
     r6 = None
     return r6
@@ -1828,7 +1828,7 @@ L1:
 L2:
     if is_error(z) goto L3 else goto L4
 L3:
-    r1 = unicode_3 :: static  ('test')
+    r1 = unicode_4 :: static  ('test')
     z = r1
 L4:
     r2 = None

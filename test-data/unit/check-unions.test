@@ -302,9 +302,9 @@ reveal_type(u('', 1, 1))  # N: Revealed type is 'Union[builtins.int*, builtins.s
 from typing import Union
 class A: pass
 def f(x: Union[int, str, A]):
-    x + object() # E: Unsupported operand types for + ("int" and "object") \
+    x + object() # E: Unsupported left operand type for + ("A") \
+                 # E: Unsupported operand types for + ("int" and "object") \
                  # E: Unsupported operand types for + ("str" and "object") \
-                 # E: Unsupported left operand type for + ("A") \
                  # N: Left operand is of type "Union[int, str, A]"
 
 [case testNarrowingDownNamedTupleUnion]

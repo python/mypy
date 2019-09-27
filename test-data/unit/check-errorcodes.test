@@ -319,6 +319,7 @@ class B(A):
 
 a: A
 a.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
 [case testErrorCodeMissingTypeArg]
 # flags: --disallow-any-generics
 from typing import List, TypeVar
@@ -453,7 +454,8 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-x  # E: Cannot determine type of 'x'  [has-type]
+y = x  # E: Cannot determine type of 'x'  [has-type]
+reveal_type(y)  # N: Revealed type is 'Any'
 x = None
 
 [case testErrorCodeRedundantCast]
@@ -601,6 +603,18 @@ def f(): pass
 
 def g() -> int:
     return f()  # E: Returning Any from function declared to return "int"  [no-any-return]
+
+[case testErrorCodeFormatCall]
+'{:d}'.format('no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")  [str-format]
+'{!x}'.format('Hm...')  # E: Invalid conversion type "x", must be one of "r", "s" or "a"  [str-format]
+'}{'.format()  # E: Invalid conversion specifier in format string: unexpected }  [str-format]
+
+'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
+'%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
+
+'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
+[builtins fixtures/primitives.pyi]
 
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]

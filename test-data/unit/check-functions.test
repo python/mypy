@@ -2333,6 +2333,10 @@ foo(y=2)  # E: Missing positional arguments
 def f(a, b, c, d=None) -> None: pass
 f(1, 2, d=3) # E: Missing positional argument "c" in call to "f"
 
+[case testMissingArgumentErrorMoreThanOneOptional]
+def f(a: int, b=None, c=None) -> None: pass
+f(b=4) # E: Missing positional argument "a" in call to "f"
+
 [case testMissingArgumentsError]
 def f(a, b, c, d=None) -> None: pass
 f(1, d=3) # E: Missing positional arguments "b", "c" in call to "f"

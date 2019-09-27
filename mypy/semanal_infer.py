@@ -4,8 +4,9 @@ from typing import Optional
 
 from mypy.nodes import Expression, Decorator, CallExpr, FuncDef, RefExpr, Var, ARG_POS
 from mypy.types import (
-    Type, CallableType, AnyType, TypeOfAny, TypeVarType, function_type, ProperType, get_proper_type
+    Type, CallableType, AnyType, TypeOfAny, TypeVarType, ProperType, get_proper_type
 )
+from mypy.typeops import function_type
 from mypy.typevars import has_no_typevars
 from mypy.semanal_shared import SemanticAnalyzerInterface
 

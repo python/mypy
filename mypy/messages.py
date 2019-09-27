@@ -324,8 +324,14 @@ class MessageBuilder:
                   code=codes.NO_UNTYPED_CALL)
         return AnyType(TypeOfAny.from_error)
 
-    def incompatible_argument(self, n: int, m: int, callee: CallableType, arg_type: Type,
-                              arg_kind: int, context: Context) -> Optional[ErrorCode]:
+    def incompatible_argument(self,
+                              n: int,
+                              m: int,
+                              callee: CallableType,
+                              arg_type: Type,
+                              arg_kind: int,
+                              context: Context,
+                              outer_context: Context) -> Optional[ErrorCode]:
         """Report an error about an incompatible argument type.
 
         The argument type is arg_type, argument number is n and the
@@ -456,8 +462,8 @@ class MessageBuilder:
             # For function calls with keyword arguments, display the argument name rather than the
             # number.
             arg_label = str(n)
-            if isinstance(context, CallExpr) and len(context.arg_names) >= n:
-                arg_name = context.arg_names[n - 1]
+            if isinstance(outer_context, CallExpr) and len(outer_context.arg_names) >= n:
+                arg_name = outer_context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
 
@@ -501,7 +507,8 @@ class MessageBuilder:
             self.report_protocol_problems(original_caller_type, callee_type, context, code=code)
         if (isinstance(callee_type, CallableType) and
                 isinstance(original_caller_type, Instance)):
-            call = find_member('__call__', original_caller_type, original_caller_type)
+            call = find_member('__call__', original_caller_type, original_caller_type,
+                               is_operator=True)
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
 
@@ -516,7 +523,7 @@ class MessageBuilder:
         if (argument_names is not None and not all(k is None for k in argument_names)
                 and len(argument_names) >= 1):
             num_positional_args = sum(k is None for k in argument_names)
-            arguments_left = callee.arg_names[num_positional_args:]
+            arguments_left = callee.arg_names[num_positional_args:callee.min_args]
             diff = [k for k in arguments_left if k not in argument_names]
             if len(diff) == 1:
                 msg = 'Missing positional argument'
@@ -772,25 +779,33 @@ class MessageBuilder:
         self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
-        self.fail('Not enough arguments for format string', context)
+        self.fail('Not enough arguments for format string', context,
+                  code=codes.STRING_FORMATTING)
 
     def too_many_string_formatting_arguments(self, context: Context) -> None:
-        self.fail('Not all arguments converted during string formatting', context)
+        self.fail('Not all arguments converted during string formatting', context,
+                  code=codes.STRING_FORMATTING)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character \'%s\'' % placeholder, context)
+        self.fail('Unsupported format character \'%s\'' % placeholder, context,
+                  code=codes.STRING_FORMATTING)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
-        self.fail('String interpolation contains both stars and mapping keys', context)
+        self.fail('String interpolation contains both stars and mapping keys', context,
+                  code=codes.STRING_FORMATTING)
 
-    def requires_int_or_char(self, context: Context) -> None:
-        self.fail('%c requires int or char', context)
+    def requires_int_or_char(self, context: Context,
+                             format_call: bool = False) -> None:
+        self.fail('"{}c" requires int or char'.format(':' if format_call else '%'),
+                  context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key \'%s\' not found in mapping' % key, context)
+        self.fail('Key \'%s\' not found in mapping' % key, context,
+                  code=codes.STRING_FORMATTING)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
-        self.fail('String interpolation mixes specifier with and without mapping keys', context)
+        self.fail('String interpolation mixes specifier with and without mapping keys', context,
+                  code=codes.STRING_FORMATTING)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail("Cannot determine type of '%s'" % name, context, code=codes.HAS_TYPE)
@@ -1117,7 +1132,7 @@ class MessageBuilder:
 
     def cannot_use_function_with_type(
             self, method_name: str, type_name: str, context: Context) -> None:
-        self.fail("Cannot use {}() with a {} type".format(method_name, type_name), context)
+        self.fail("Cannot use {}() with {} type".format(method_name, type_name), context)
 
     def report_non_method_protocol(self, tp: TypeInfo, members: List[str],
                                    context: Context) -> None:

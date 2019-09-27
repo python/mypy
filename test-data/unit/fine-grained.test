@@ -81,6 +81,24 @@ class A:
 ==
 main:4: error: Too few arguments for "g" of "A"
 
+[case testReprocessMethodShowSource]
+# flags: --pretty --show-error-codes
+import m
+class B:
+    def f(self, a: m.A) -> None:
+        a.g() # E
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: A) -> None: pass
+[out]
+==
+main:5: error: Too few arguments for "g" of "A"  [call-arg]
+            a.g() # E
+            ^
+
 [case testFunctionMissingModuleAttribute]
 import m
 def h() -> None:
@@ -2574,11 +2592,11 @@ class Wrapper:
 [out]
 main:3: note: Revealed type is 'builtins.int'
 ==
-main:3: note: Revealed type is 'Any'
 main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
 main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
 main:3: note:     def foo(cls: Wrapper, x: str) -> str
+main:3: note: Revealed type is 'Any'
 
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic
@@ -4556,9 +4574,9 @@ main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; e
 [case testPerFileStrictOptionalModule]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-a.*]
+\[mypy-a.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -4586,9 +4604,9 @@ a.py:4: error: Incompatible types in assignment (expression has type "Optional[i
 [case testPerFileStrictOptionalModuleOnly]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-a.*]
+\[mypy-a.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -4632,9 +4650,9 @@ a.py:3: error: Incompatible types in assignment (expression has type "Optional[i
 [case testPerFileStrictOptionalFunction]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-b.*]
+\[mypy-b.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -4668,9 +4686,9 @@ b.py:4: error: Argument 1 to "h" has incompatible type "Optional[int]"; expected
 [case testPerFileStrictOptionalMethod]
 import a
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-b.*]
+\[mypy-b.*]
 strict_optional = True
 [file a.py]
 from typing import Optional
@@ -7687,8 +7705,8 @@ def f() -> str: return '0'
 
 [case testRefreshIgnoreErrors1]
 [file mypy.ini]
-[[mypy]
-[[mypy-b]
+\[mypy]
+\[mypy-b]
 ignore_errors = True
 [file a.py]
 y = '1'
@@ -7704,8 +7722,8 @@ def fu() -> None:
 
 [case testRefreshIgnoreErrors2]
 [file mypy.ini]
-[[mypy]
-[[mypy-b]
+\[mypy]
+\[mypy-b]
 ignore_errors = True
 [file b.py]
 def fu() -> int:
@@ -7720,9 +7738,9 @@ def fu() -> int:
 
 [case testRefreshOptions]
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_any_generics = True
-[[mypy-b]
+\[mypy-b]
 disallow_any_generics = False
 [file a.py]
 y = '1'
@@ -9182,5 +9200,27 @@ from a import A, x
 class A: # type: ignore
     pass
 
+[out]
+==
+
+[case testAddAttributeThroughNewBaseClass]
+import a
+
+[file a.py]
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+[file a.py.2]
+from b import B
+
+class C(B):
+    def __init__(self) -> None:
+        self.x = 0
+
+[file b.py.2]
+class B:
+    def __init__(self) -> None:
+        self.x = 0
 [out]
 ==

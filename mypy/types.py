@@ -1,5 +1,6 @@
 """Classes for representing mypy types."""
 
+import copy
 import sys
 from abc import abstractmethod
 from collections import OrderedDict
@@ -16,8 +17,7 @@ from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
     FuncDef,
 )
-from mypy.sharedparse import argument_elide_name
-from mypy.util import IdMapper, replace_object_state
+from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
 
 
@@ -1658,10 +1658,12 @@ class UnionType(ProperType):
 
     @overload
     @staticmethod
-    def make_union(items: List[ProperType], line: int = -1, column: int = -1) -> ProperType: ...
+    def make_union(items: Sequence[ProperType],
+                   line: int = -1, column: int = -1) -> ProperType: ...
+
     @overload
     @staticmethod
-    def make_union(items: List[Type], line: int = -1, column: int = -1) -> Type: ...
+    def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type: ...
 
     @staticmethod
     def make_union(items: Sequence[Type], line: int = -1, column: int = -1) -> Type:
@@ -2077,51 +2079,7 @@ def copy_type(t: TP) -> TP:
     """
     Build a copy of the type; used to mutate the copy with truthiness information
     """
-    # We'd like to just do a copy.copy(), but mypyc types aren't
-    # pickleable so we hack around it by manually creating a new type
-    # and copying everything in with replace_object_state.
-    typ = type(t)
-    nt = typ.__new__(typ)
-    replace_object_state(nt, t, copy_dict=True)
-    return nt
-
-
-def function_type(func: mypy.nodes.FuncBase, fallback: Instance) -> FunctionLike:
-    if func.type:
-        assert isinstance(func.type, FunctionLike)
-        return func.type
-    else:
-        # Implicit type signature with dynamic types.
-        if isinstance(func, mypy.nodes.FuncItem):
-            return callable_type(func, fallback)
-        else:
-            # Broken overloads can have self.type set to None.
-            # TODO: should we instead always set the type in semantic analyzer?
-            assert isinstance(func, mypy.nodes.OverloadedFuncDef)
-            any_type = AnyType(TypeOfAny.from_error)
-            dummy = CallableType([any_type, any_type],
-                                 [ARG_STAR, ARG_STAR2],
-                                 [None, None], any_type,
-                                 fallback,
-                                 line=func.line, is_ellipsis_args=True)
-            # Return an Overloaded, because some callers may expect that
-            # an OverloadedFuncDef has an Overloaded type.
-            return Overloaded([dummy])
-
-
-def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
-                  ret_type: Optional[Type] = None) -> CallableType:
-    return CallableType(
-        [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names),
-        fdef.arg_kinds,
-        [None if argument_elide_name(n) else n for n in fdef.arg_names],
-        ret_type or AnyType(TypeOfAny.unannotated),
-        fallback,
-        name=fdef.name(),
-        line=fdef.line,
-        column=fdef.column,
-        implicit=True,
-    )
+    return copy.copy(t)
 
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],

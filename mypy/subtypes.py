@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, c
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType, function_type,
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type
@@ -229,7 +229,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return is_named_instance(item, 'builtins.object')
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
-            call = find_member('__call__', left, left)
+            call = find_member('__call__', left, left, is_operator=True)
             if call:
                 return self._is_subtype(call, right)
             return False
@@ -258,7 +258,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if right.type.is_protocol and right.type.protocol_members == ['__call__']:
                 # OK, a callable can implement a protocol with a single `__call__` member.
                 # TODO: we should probably explicitly exclude self-types in this case.
-                call = find_member('__call__', right, left)
+                call = find_member('__call__', right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
@@ -345,7 +345,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if right.type.is_protocol and right.type.protocol_members == ['__call__']:
                 # same as for CallableType
-                call = find_member('__call__', right, left)
+                call = find_member('__call__', right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
@@ -521,7 +521,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
     return True
 
 
-def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
+def find_member(name: str,
+                itype: Instance,
+                subtype: Type,
+                is_operator: bool = False) -> Optional[Type]:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
     Fin the member type after applying type arguments from 'itype', and binding
@@ -549,7 +552,8 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
             v = v.var
         if isinstance(v, Var):
             return find_node_type(v, itype, subtype)
-        if not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
+        if (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
+                not is_operator):
             for method_name in ('__getattribute__', '__getattr__'):
                 # Normally, mypy assumes that instances that define __getattr__ have all
                 # attributes with the corresponding return type. If this will produce
@@ -612,8 +616,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     from mypy.typeops import bind_self
 
     if isinstance(node, FuncBase):
-        typ = function_type(node,
-                            fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
+        typ = mypy.typeops.function_type(
+            node, fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
     else:
         typ = node.type
     typ = get_proper_type(typ)
@@ -1167,7 +1171,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         if isinstance(right, CallableType):
-            call = find_member('__call__', left, left)
+            call = find_member('__call__', left, left, is_operator=True)
             if call:
                 return self._is_proper_subtype(call, right)
             return False

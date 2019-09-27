@@ -26,7 +26,7 @@ from mypy.nodes import (
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
-)
+    ARG_NAMED)
 from mypy import nodes
 from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
@@ -34,7 +34,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    function_type, is_named_instance, union_items, TypeQuery, LiteralType,
+    is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type
 )
@@ -50,7 +50,7 @@ from mypy.checkmember import (
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound,
-    true_only, false_only,
+    true_only, false_only, function_type,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -94,7 +94,6 @@ DeferredNode = NamedTuple(
     'DeferredNode',
     [
         ('node', DeferredNodeType),
-        ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
     ])
@@ -105,7 +104,6 @@ FineGrainedDeferredNode = NamedTuple(
     'FineGrainedDeferredNode',
     [
         ('node', FineGrainedDeferredNodeType),
-        ('context_type_name', Optional[str]),
         ('active_typeinfo', Optional[TypeInfo]),
     ])
 
@@ -329,7 +327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert not self.deferred_nodes
             self.deferred_nodes = []
             done = set()  # type: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]]
-            for node, type_name, active_typeinfo in todo:
+            for node, active_typeinfo in todo:
                 if node in done:
                     continue
                 # This is useful for debugging:
@@ -371,14 +369,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             enclosing_class: for methods, the class where the method is defined
         NOTE: this can't handle nested functions/methods.
         """
-        if self.errors.type_name:
-            type_name = self.errors.type_name[-1]
-        else:
-            type_name = None
         # We don't freeze the entire scope since only top-level functions and methods
         # can be deferred. Only module/class level scope information is needed.
         # Module-level scope information is preserved in the TypeChecker instance.
-        self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
+        self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_non_lambda_function()
@@ -540,6 +534,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         continue
                 else:
                     impl = impl_type
+
+                # Prevent extra noise from inconsistent use of @classmethod by copying
+                # the first arg from the method being checked against.
+                if sig1.arg_types and defn.info:
+                    impl = impl.copy_modified(arg_types=[sig1.arg_types[0]] + impl.arg_types[1:])
 
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(impl, sig1,
@@ -1460,14 +1459,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(defn, (FuncDef, OverloadedFuncDef)):
                 typ = self.function_type(defn)  # type: Type
                 override_class_or_static = defn.is_class or defn.is_static
+                override_class = defn.is_class
             else:
                 assert defn.var.is_ready
                 assert defn.var.type is not None
                 typ = defn.var.type
                 override_class_or_static = defn.func.is_class or defn.func.is_static
+                override_class = defn.func.is_class
             typ = get_proper_type(typ)
             if isinstance(typ, FunctionLike) and not is_static(context):
-                typ = bind_self(typ, self.scope.active_self_type())
+                typ = bind_self(typ, self.scope.active_self_type(),
+                                is_classmethod=override_class)
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = get_proper_type(base_attr.type)
@@ -1530,7 +1532,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         if (isinstance(sym.node, (FuncDef, OverloadedFuncDef, Decorator))
                 and not is_static(sym.node)):
-            bound = bind_self(typ, self.scope.active_self_type())
+            if isinstance(sym.node, Decorator):
+                is_class_method = sym.node.func.is_class
+            else:
+                is_class_method = sym.node.is_class
+            bound = bind_self(typ, self.scope.active_self_type(), is_class_method)
         else:
             bound = typ
         return cast(FunctionLike, map_type_from_supertype(bound, sub_info, super_info))
@@ -1669,6 +1675,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
             self.binder = old_binder
+            self.check_init_subclass(defn)
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
@@ -1683,7 +1690,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         continue
 
                     dec = self.expr_checker.accept(decorator)
-                    temp = self.temp_node(sig)
+                    temp = self.temp_node(sig, context=decorator)
                     fullname = None
                     if isinstance(decorator, RefExpr):
                         fullname = decorator.fullname
@@ -1697,6 +1704,50 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+
+    def check_init_subclass(self, defn: ClassDef) -> None:
+        """Check that keywords in a class definition are valid arguments for __init_subclass__().
+
+        In this example:
+            1   class Base:
+            2       def __init_subclass__(cls, thing: int):
+            3           pass
+            4   class Child(Base, thing=5):
+            5       def __init_subclass__(cls):
+            6           pass
+            7   Child()
+
+        Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here.
+        Child.__init_subclass__ is never called.
+        """
+        # At runtime, only Base.__init_subclass__ will be called, so
+        # we skip the current class itself.
+        for base in defn.info.mro[1:]:
+            if '__init_subclass__' not in base.names:
+                continue
+            name_expr = NameExpr(defn.name)
+            name_expr.node = base
+            callee = MemberExpr(name_expr, '__init_subclass__')
+            args = list(defn.keywords.values())
+            arg_names = list(defn.keywords.keys())  # type: List[Optional[str]]
+            # 'metaclass' keyword is consumed by the rest of the type machinery,
+            # and is never passed to __init_subclass__ implementations
+            if 'metaclass' in arg_names:
+                idx = arg_names.index('metaclass')
+                arg_names.pop(idx)
+                args.pop(idx)
+            arg_kinds = [ARG_NAMED] * len(args)
+            call_expr = CallExpr(callee, args, arg_kinds, arg_names)
+            call_expr.line = defn.line
+            call_expr.column = defn.column
+            call_expr.end_line = defn.end_line
+            self.expr_checker.accept(call_expr,
+                                     allow_none_return=True,
+                                     always_allow_any=True)
+            # We are only interested in the first Base having __init_subclass__
+            # all other bases have already been checked.
+            break
+        return
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
@@ -2796,15 +2847,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For this we use the rvalue as type context.
         self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), rvalue],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
+            dunder_set_type,
+            [TempNode(instance_type, context=context), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context)
         self.msg.enable_errors()
 
         # And now we type check the call second time, to show errors related
         # to wrong arguments count, etc.
         self.expr_checker.check_call(
-            dunder_set_type, [TempNode(instance_type), TempNode(AnyType(TypeOfAny.special_form))],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
+            dunder_set_type,
+            [TempNode(instance_type, context=context),
+             TempNode(AnyType(TypeOfAny.special_form), context=context)],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context)
 
         # should be handled by get_method above
         assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
@@ -3307,7 +3363,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig)
+            temp = self.temp_node(sig, context=e)
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
@@ -3802,12 +3858,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
             self.msg.report_protocol_problems(subtype, supertype, context, code=code)
         if isinstance(supertype, CallableType) and isinstance(subtype, Instance):
-            call = find_member('__call__', subtype, subtype)
+            call = find_member('__call__', subtype, subtype, is_operator=True)
             if call:
                 self.msg.note_call(subtype, call, context, code=code)
         if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
             if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
-                call = find_member('__call__', supertype, subtype)
+                call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
                 self.msg.note_call(supertype, call, context, code=code)
         return False
@@ -3928,7 +3984,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types.append(PartialTypeScope({}, is_function, is_local))
         yield
 
-        permissive = (self.options.allow_untyped_globals and not is_local)
+        # Don't complain about not being able to infer partials if it is
+        # at the toplevel (with allow_untyped_globals) or if it is in an
+        # untyped function being checked with check_untyped_defs.
+        permissive = (self.options.allow_untyped_globals and not is_local) or (
+            self.options.check_untyped_defs
+            and self.dynamic_funcs
+            and self.dynamic_funcs[-1]
+        )
 
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:
@@ -4041,10 +4104,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def temp_node(self, t: Type, context: Optional[Context] = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""
-        temp = TempNode(t)
-        if context:
-            temp.set_line(context.get_line())
-        return temp
+        return TempNode(t, context=context)
 
     def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
@@ -4069,13 +4129,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # in case there is no explicit base class.
             return item_type
         # Try also structural typing.
-        iter_type = get_proper_type(find_member('__iter__', instance, instance))
+        iter_type = get_proper_type(find_member('__iter__', instance, instance, is_operator=True))
         if iter_type and isinstance(iter_type, CallableType):
             ret_type = get_proper_type(iter_type.ret_type)
             if isinstance(ret_type, Instance):
                 iterator = map_instance_to_supertype(ret_type,
                                                      self.lookup_typeinfo('typing.Iterator'))
-            item_type = iterator.args[0]
+                item_type = iterator.args[0]
         return item_type
 
     def function_type(self, func: FuncBase) -> FunctionLike:
