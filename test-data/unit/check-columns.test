@@ -10,8 +10,8 @@ main:2:5: error: invalid syntax
 import typing
 def f() -> 'A':
     def g() -> 'B':
-        return A() # E:9: Incompatible return value type (got "A", expected "B")
-    return B() # E:5: Incompatible return value type (got "B", expected "A")
+        return A() # E:16: Incompatible return value type (got "A", expected "B")
+    return B() # E:12: Incompatible return value type (got "B", expected "A")
 class A: pass
 class B: pass
 
@@ -133,9 +133,11 @@ def foobar(): pass
 
 [builtins fixtures/module.pyi]
 
-[case testColumnUnexpectedKeywordArg]
+[case testColumnUnexpectedOrMissingKeywordArg]
 def f(): pass
 (f(x=1)) # E:2: Unexpected keyword argument "x" for "f"
+def g(*, x: int) -> None: pass
+(g())  # E:2: Missing named argument "x" for "g"
 
 [case testColumnDefinedHere]
 class A: pass
@@ -202,6 +204,14 @@ def g(x):
 def f(x, y): pass
 (f()) # E:2: Too few arguments for "f"
 (f(y=1)) # E:2: Missing positional argument "x" in call to "f"
+
+[case testColumnTooFewSuperArgs_python2]
+class A:
+    def f(self):
+        pass
+class B(A):
+    def f(self):   # type: () -> None
+        super().f()  # E:9: Too few arguments for "super"
 
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict

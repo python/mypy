@@ -3002,7 +3002,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         subtype=typ,
                         supertype_label='expected',
                         supertype=return_type,
-                        context=s,
+                        context=s.expr,
                         msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
                         code=codes.RETURN_VALUE)
             else:
