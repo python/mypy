@@ -926,7 +926,7 @@ class MessageBuilder:
                   'of signature {}'.format(index), context)
 
     def warn_both_operands_are_from_unions(self, context: Context) -> None:
-        self.note('Both left and right operands are unions', context)
+        self.note('Both left and right operands are unions', context, code=codes.OPERATOR)
 
     def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
         self.note('{} operand is of type {}'.format(side, format_type(original)), context)
