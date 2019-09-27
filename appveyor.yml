@@ -20,7 +20,7 @@ install:
 build: off
 
 test_script:
-    - ps: "If ($env:APPVEYOR_REPO_TAG -Match \"false\") { Set-Alias -Name python3 -Value \"$env:PYTHON\\python.exe\"; python3 -m pip install -r mypy-requirements.txt; $env:MYPYC_OPT_LEVEL=\"0\"; $env:CL="/w"; python3 setup.py --use-mypyc build_ext --inplace }"
+    - ps: "If ($env:APPVEYOR_REPO_TAG -Match \"false\") { Set-Alias -Name python3 -Value \"$env:PYTHON\\python.exe\"; python3 -m pip install -r mypy-requirements.txt; $env:MYPYC_OPT_LEVEL=\"0\"; $env:CL=\"/w\"; python3 setup.py --use-mypyc build_ext --inplace }"
     - "%PYTHON%\\python.exe -m tox -e py37 %EXTRA_ARGS%"
 
 skip_commits:
