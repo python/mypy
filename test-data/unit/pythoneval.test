@@ -772,14 +772,20 @@ n = 4
 t = ('',) * n
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
 t = n * ('',)
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
