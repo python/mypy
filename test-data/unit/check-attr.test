@@ -1169,3 +1169,27 @@ C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib
 [builtins fixtures/bool.pyi]
+
+[case testAttrsDefaultsMroOtherFile]
+import a
+
+[file a.py]
+import attr
+from b import A1, A2
+
+@attr.s
+class Asdf(A1, A2):  # E: Non-default attributes not allowed after default attributes.
+    pass
+
+[file b.py]
+import attr
+
+@attr.s
+class A1:
+    a: str = attr.ib('test')
+
+@attr.s
+class A2:
+    b: int = attr.ib()
+
+[builtins fixtures/list.pyi]
