@@ -127,7 +127,8 @@ RICHCOMPARE_OPS = {
 
 def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]:
     """Generates a wrapper for richcompare dunder methods."""
-    matches = [name for name in RICHCOMPARE_OPS if cl.has_method(name)]
+    # Sort for determinism on Python 3.5
+    matches = sorted([name for name in RICHCOMPARE_OPS if cl.has_method(name)])
     if not matches:
         return None
 

@@ -361,7 +361,7 @@ class Mapper:
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
         self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
         # Maps integer, float, and unicode literals to a static name
-        self.literals = {}  # type: LiteralsMap
+        self.literals = OrderedDict()  # type: LiteralsMap
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
@@ -1873,7 +1873,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             env_for_func = self.fn_info.callable_class
 
         if self.fn_info.fitem in self.free_variables:
-            for var in self.free_variables[self.fn_info.fitem]:
+            # Sort the variables to keep things deterministic
+            for var in sorted(self.free_variables[self.fn_info.fitem], key=lambda x: x.name()):
                 if isinstance(var, Var):
                     rtype = self.type_to_rtype(var.type)
                     self.add_var_to_env_class(var, rtype, env_for_func, reassign=False)

@@ -69,7 +69,8 @@ SIDE_TABLES = [
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
-    for name, (slot, generator) in table.items():
+    # Sort for determinism on Python 3.5
+    for name, (slot, generator) in sorted(table.items()):
         method = cl.get_method(name)
         if method:
             fields[slot] = generator(cl, method, emitter)

@@ -27,9 +27,9 @@ class PreBuildVisitor(TraverserVisitor):
         self.prop_setters = set()  # type: Set[FuncDef]
         # A map from any function that contains nested functions to
         # a set of all the functions that are nested within it.
-        self.encapsulating_funcs = dict()  # type: Dict[FuncItem, Set[FuncItem]]
+        self.encapsulating_funcs = {}  # type: Dict[FuncItem, List[FuncItem]]
         # A map from a nested func to it's parent/encapsulating func.
-        self.nested_funcs = dict()  # type: Dict[FuncItem, FuncItem]
+        self.nested_funcs = {}  # type: Dict[FuncItem, FuncItem]
         self.funcs_to_decorators = {}  # type: Dict[FuncDef, List[Expression]]
 
     def add_free_variable(self, symbol: SymbolNode) -> None:
@@ -57,7 +57,7 @@ class PreBuildVisitor(TraverserVisitor):
         # being a nested function.
         if self.funcs:
             # Add the new func to the set of nested funcs within the func at top of the func stack.
-            self.encapsulating_funcs.setdefault(self.funcs[-1], set()).add(func)
+            self.encapsulating_funcs.setdefault(self.funcs[-1], []).append(func)
             # Add the func at top of the func stack as the parent of new func.
             self.nested_funcs[func] = self.funcs[-1]
 
