@@ -315,7 +315,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
 
         # If the issue comes from merging different classes, report it
         # at the class definition point.
-        context = attribute.context if i > len(super_attrs) else ctx.cls
+        context = attribute.context if i >= len(super_attrs) else ctx.cls
 
         if not attribute.has_default and last_default:
             ctx.api.fail(
