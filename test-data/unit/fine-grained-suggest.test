@@ -139,6 +139,20 @@ def foo():
 () -> foo.N
 ==
 
+[case testSuggestInferTypedDict]
+# suggest: foo.foo
+[file foo.py]
+from typing_extensions import TypedDict
+TD = TypedDict('TD', {'x': int})
+def foo():
+    return bar()
+
+def bar() -> TD: ...
+[builtins fixtures/dict.pyi]
+[out]
+() -> foo.TD
+==
+
 [case testSuggestReexportNaming]
 # suggest: foo.foo
 [file foo.py]
