@@ -304,7 +304,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     last_default = False
     last_kw_only = False
 
-    for attribute in attributes:
+    for i, attribute in enumerate(attributes):
         if not attribute.init:
             continue
 
@@ -313,14 +313,18 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
             last_kw_only = True
             continue
 
+        # If the issue comes from merging different classes, report it
+        # at the class definition point.
+        context = attribute.context if i >= len(super_attrs) else ctx.cls
+
         if not attribute.has_default and last_default:
             ctx.api.fail(
                 "Non-default attributes not allowed after default attributes.",
-                attribute.context)
+                context)
         if last_kw_only:
             ctx.api.fail(
                 "Non keyword-only attributes are not allowed after a keyword-only attribute.",
-                attribute.context
+                context
             )
         last_default |= attribute.has_default
 
