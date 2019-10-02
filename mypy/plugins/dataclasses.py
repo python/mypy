@@ -1,7 +1,5 @@
 """Plugin that provides support for dataclasses."""
 
-from collections import OrderedDict
-
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
