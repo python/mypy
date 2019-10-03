@@ -176,6 +176,62 @@ class Attribute:
         )
 
 
+def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> Tuple[bool, bool]:
+    """
+    Validate the combination of *cmp*, *eq*, and *order*. Derive the effective
+    values of eq and order.
+    """
+    cmp = _get_decorator_optional_bool_argument(ctx, 'cmp')
+    eq = _get_decorator_optional_bool_argument(ctx, 'eq')
+    order = _get_decorator_optional_bool_argument(ctx, 'order')
+
+    if cmp is not None and any((eq is not None, order is not None)):
+        ctx.api.fail("Don't mix `cmp` with `eq' and `order`", ctx.reason)
+
+    # cmp takes precedence due to bw-compatibility.
+    if cmp is not None:
+        ctx.api.fail("cmp is deprecated, use eq and order", ctx.reason)
+        return cmp, cmp
+
+    # If left None, equality is on and ordering mirrors equality.
+    if eq is None:
+        eq = True
+
+    if order is None:
+        order = eq
+
+    if eq is False and order is True:
+        ctx.api.fail("eq must be True if order is True", ctx.reason)
+
+    return eq, order
+
+
+def _get_decorator_optional_bool_argument(
+    ctx: 'mypy.plugin.ClassDefContext',
+    name: str,
+    default: Optional[bool] = None,
+) -> Optional[bool]:
+    """Return the Optional[bool] argument for the decorator.
+
+    This handles both @decorator(...) and @decorator.
+    """
+    if isinstance(ctx.reason, CallExpr):
+        attr_value = _get_argument(ctx.reason, name)
+        if attr_value:
+            if isinstance(attr_value, NameExpr):
+                if attr_value.fullname == 'builtins.True':
+                    return True
+                if attr_value.fullname == 'builtins.False':
+                    return False
+                if attr_value.fullname == 'builtins.None':
+                    return None
+            ctx.api.fail('"{}" argument must be True or False.'.format(name), ctx.reason)
+            return default
+        return default
+    else:
+        return default
+
+
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: bool = False) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
@@ -193,7 +249,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx)
-    cmp = _get_decorator_bool_argument(ctx, 'cmp', True)
+    eq, order = _determine_eq_order(ctx)
+
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
 
@@ -231,8 +288,10 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     adder = MethodAdder(ctx)
     if init:
         _add_init(ctx, attributes, adder)
-    if cmp:
-        _add_cmp(ctx, adder)
+    if eq:
+        _add_eq(ctx, adder)
+    if order:
+        _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
 
@@ -529,8 +588,8 @@ def _parse_assignments(
     return lvalues, rvalues
 
 
-def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
-    """Generate all the cmp methods for this class."""
+def _add_eq(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
+    """Generate __eq__ and __ne__ for this class."""
     # For __ne__ and __eq__ the type is:
     #     def __ne__(self, other: object) -> bool
     bool_type = ctx.api.named_type('__builtins__.bool')
@@ -538,7 +597,13 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     args = [Argument(Var('other', object_type), object_type, None, ARG_POS)]
     for method in ['__ne__', '__eq__']:
         adder.add_method(method, args, bool_type)
-    # For the rest we use:
+
+
+def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
+    """Generate all the ordering methods for this class."""
+    bool_type = ctx.api.named_type('__builtins__.bool')
+    object_type = ctx.api.named_type('__builtins__.object')
+    # Make the types be:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.

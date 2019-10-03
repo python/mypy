@@ -214,9 +214,9 @@ A(1) != 1
 1 != A(1)
 [builtins fixtures/attr.pyi]
 
-[case testAttrsCmpFalse]
+[case testAttrsEqFalse]
 from attr import attrib, attrs
-@attrs(auto_attribs=True, cmp=False)
+@attrs(auto_attribs=True, eq=False)
 class A:
     a: int
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> __main__.A'
@@ -244,6 +244,57 @@ A(1) != 1
 1 == A(1)
 1 != A(1)
 [builtins fixtures/attr.pyi]
+
+[case testAttrsOrderFalse]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, order=False)
+class A:
+    a: int
+reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> __main__.A'
+reveal_type(A.__eq__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
+reveal_type(A.__ne__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
+
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
+A(1) <= A(2)  # E: Unsupported left operand type for <= ("A")
+A(1) > A(2)  # E: Unsupported left operand type for > ("A")
+A(1) >= A(2)  # E: Unsupported left operand type for >= ("A")
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported left operand type for < ("A")
+A(1) <= 1  # E: Unsupported left operand type for <= ("A")
+A(1) > 1  # E: Unsupported left operand type for > ("A")
+A(1) >= 1  # E: Unsupported left operand type for >= ("A")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported left operand type for < ("int")
+1 <= A(1)  # E: Unsupported left operand type for <= ("int")
+1 > A(1)  # E: Unsupported left operand type for > ("int")
+1 >= A(1)  # E: Unsupported left operand type for >= ("int")
+1 == A(1)
+1 != A(1)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsCmpEqOrderValues]
+from attr import attrib, attrs
+@attrs(cmp=True)  # E: cmp is deprecated, use eq and order
+class DeprecatedTrue:
+   ...
+
+@attrs(cmp=False)  # E: cmp is deprecated, use eq and order
+class DeprecatedFalse:
+   ...
+
+@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`  # E: cmp is deprecated, use eq and order
+class Mixed:
+   ...
+
+@attrs(order=True, eq=False)  # E: eq must be True if order is True
+class Confused:
+   ...
+[builtins fixtures/attr.pyi]
+
 
 [case testAttrsInheritance]
 import attr
