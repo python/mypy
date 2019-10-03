@@ -596,8 +596,8 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 The type of class objects
 *************************
 
-(Freely after `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.)
+(Freely after :pep:`PEP 484: The type of class objects
+<484#the-type-of-class-objects>`.)
 
 Sometimes you want to talk about class objects that inherit from a
 given class.  This can be spelled as ``Type[C]`` where ``C`` is a
@@ -675,8 +675,8 @@ Now mypy will infer the correct type of the result when we call
    compatible with the constructor of ``C``.  If ``C`` is a type
    variable, its upper bound must be a class object.
 
-For more details about ``Type[]`` see `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.
+For more details about ``Type[]`` see :pep:`PEP 484: The type of
+class objects <484#the-type-of-class-objects>`.
 
 .. _text-and-anystr:
 

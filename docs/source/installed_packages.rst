@@ -3,12 +3,12 @@
 Using installed packages
 ========================
 
-`PEP 561 <https://www.python.org/dev/peps/pep-0561/>`__ specifies how to mark
-a package as supporting type checking. Below is a summary of how to create
-PEP 561 compatible packages and have mypy use them in type checking.
+:pep:`561` specifies how to mark a package as supporting type checking.
+Below is a summary of how to create :pep:`561` compatible packages and have
+mypy use them in type checking.
 
-Using PEP 561 compatible packages with mypy
-*******************************************
+Using :pep:`561` compatible packages with mypy
+**********************************************
 
 Generally, you do not need to do anything to use installed packages that
 support typing for the Python executable used to run mypy. Note that most
@@ -30,17 +30,16 @@ imports and custom import hooks.
 If you do not want to use typed packages, use the ``--no-site-packages`` flag
 to disable searching.
 
-Note that stub-only packages (defined in
-`PEP 561 <https://www.python.org/dev/peps/pep-0561/#stub-only-packages>`__)
-cannot be used with ``MYPYPATH``. If you want mypy to find the package, it must
-be installed. For a package ``foo``, the name of the stub-only package
-(``foo-stubs``) is not a legal package name, so mypy will not find it, unless
-it is installed.
+Note that stub-only packages (defined in :pep:`PEP 561: Stub-only Packages
+<561#stub-only-packages>`) cannot be used with ``MYPYPATH``. If you want mypy
+to find the package, it must be installed. For a package ``foo``, the name of
+the stub-only package (``foo-stubs``) is not a legal package name, so mypy
+will not find it, unless it is installed.
 
-Making PEP 561 compatible packages
-**********************************
+Making :pep:`561` compatible packages
+*************************************
 
-PEP 561 notes three main ways to distribute type information. The first is a
+:pep:`561` notes three main ways to distribute type information. The first is a
 package that has only inline type annotations in the code itself. The second is
 a package that ships :ref:`stub files <stub-files>` with type information
 alongside the runtime code. The third method, also known as a "stub only

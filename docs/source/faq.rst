@@ -88,8 +88,8 @@ the scope of the mypy project.
 How do I type check my Python 2 code?
 *************************************
 
-You can use a `comment-based function annotation syntax
-<https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code>`_
+You can use a :pep:`comment-based function annotation syntax
+<484#suggested-syntax-for-python-2-7-and-straddling-code>`
 and use the ``--py2`` command-line option to type check your Python 2 code.
 You'll also need to install ``typing`` for Python 2 via ``pip install typing``.
 
@@ -131,8 +131,7 @@ may be more flexible if it is typed with protocols. Also, using protocol types
 removes the necessity to explicitly declare implementations of ABCs.
 As a rule of thumb, we recommend using nominal classes where possible, and
 protocols where necessary. For more details about protocol types and structural
-subtyping see :ref:`protocol-types` and
-`PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_.
+subtyping see :ref:`protocol-types` and :pep:`544`.
 
 I like Python and I have no need for static typing
 **************************************************
@@ -165,7 +164,7 @@ monkey patching of methods.
 How is mypy different from Cython?
 **********************************
 
-`Cython <http://cython.org/>`_ is a variant of Python that supports
+`Cython :doc:<cython:index>` is a variant of Python that supports
 compilation to CPython C modules. It can give major speedups to
 certain classes of programs compared to CPython, and it provides
 static typing (though this is different from mypy). Mypy differs in

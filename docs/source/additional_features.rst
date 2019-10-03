@@ -9,9 +9,10 @@ of the previous sections.
 Dataclasses
 ***********
 
-In Python 3.7, a new ``dataclasses`` module has been added to the standard library.
+In Python 3.7, a new :py:mod:`dataclasses` module has been added to the standard library.
 This module allows defining and customizing simple boilerplate-free classes.
-They can be defined using the ``@dataclasses.dataclass`` decorator:
+They can be defined using the :py:func:`@dataclasses.dataclass
+<python:dataclasses.dataclass>` decorator:
 
 .. code-block:: python
 
@@ -65,8 +66,8 @@ class can be used:
 
     val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
 
-For more information see `official docs <https://docs.python.org/3/library/dataclasses.html>`_
-and `PEP 557 <https://www.python.org/dev/peps/pep-0557/>`_.
+For more information see :doc:`official docs <python:library/dataclasses>`
+and :pep:`557`.
 
 Caveats/Known Issues
 ====================
@@ -110,7 +111,7 @@ do **not** work:
 The attrs package
 *****************
 
-`attrs <http://www.attrs.org/en/stable>`_ is a package that lets you define
+:doc:`attrs <attrs:index>` is a package that lets you define
 classes without writing boilerplate code. Mypy can detect uses of the
 package and will generate the necessary method definitions for decorated
 classes using the type annotations it finds.
@@ -176,7 +177,7 @@ Caveats/Known Issues
   will complain about not understanding the argument and the type annotation in
   ``__init__`` will be replaced by ``Any``.
 
-* `Validator decorators <http://www.attrs.org/en/stable/examples.html#validators>`_
+* :ref:`Validator decorators <attrs:examples_validators>`
   and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
   are not type-checked against the attribute they are setting/validating.
 
