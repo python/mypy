@@ -23,8 +23,9 @@ import sys
 import os.path
 import hashlib
 import time
+import re
 
-from typing import List, Tuple, Any, Optional, Dict, Union, cast
+from typing import List, Tuple, Any, Optional, Dict, Union, Set, cast
 MYPY = False
 if MYPY:
     from typing import NoReturn
@@ -207,6 +208,7 @@ def generate_c(sources: List[BuildSource], options: Options,
 def build_using_shared_lib(sources: List[BuildSource],
                            lib_name: str,
                            cfiles: List[str],
+                           deps: List[str],
                            build_dir: str,
                            extra_compile_args: List[str],
                            ) -> List[Extension]:
@@ -225,6 +227,7 @@ def build_using_shared_lib(sources: List[BuildSource],
         lib_name,
         sources=cfiles,
         include_dirs=[include_dir()],
+        depends=deps,
         extra_compile_args=extra_compile_args,
     )]
 
@@ -308,6 +311,19 @@ def construct_groups(
     return groups
 
 
+def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
+    """Find all the headers used by a group of cfiles.
+
+    We do this by just regexping the source, which is a bit simpler than
+    properly plumbing the data through.
+    """
+    headers = set()  # type: Set[str]
+    for _, contents in cfiles:
+        headers.update(re.findall(r'#include "(.*)"', contents))
+
+    return sorted(headers)
+
+
 def mypycify(
     paths: List[str],
     mypy_options: Optional[List[str]] = None,
@@ -370,14 +386,17 @@ def mypycify(
         group_cfiles = skip_cgen_input
 
     # Write out the generated C and collect the files for each group
-    group_cfilenames = []  # type: List[List[str]]
+    group_cfilenames = []  # type: List[Tuple[List[str], List[str]]]
     for cfiles in group_cfiles:
-        group_cfilenames.append([])
+        cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(build_dir, cfile)
             write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == '.c':
-                group_cfilenames[-1].append(cfile)
+                cfilenames.append(cfile)
+
+        deps = [os.path.join(build_dir, dep) for dep in get_header_deps(cfiles)]
+        group_cfilenames.append((cfilenames, deps))
 
     cflags = []  # type: List[str]
     if compiler.compiler_type == 'unix':
@@ -416,11 +435,11 @@ def mypycify(
         shared_cfilenames.append(rt_file)
 
     extensions = []
-    for (group_sources, lib_name), cfilenames in zip(groups, group_cfilenames):
+    for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
         if use_shared_lib:
             assert lib_name
             extensions.extend(build_using_shared_lib(
-                group_sources, lib_name, cfilenames + shared_cfilenames, build_dir, cflags))
+                group_sources, lib_name, cfilenames + shared_cfilenames, deps, build_dir, cflags))
         else:
             extensions.extend(build_single_module(
                 group_sources, cfilenames + shared_cfilenames, cflags))
