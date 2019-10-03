@@ -3097,31 +3097,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = get_proper_type(self.expr_checker.accept(e))
-        if isinstance(typ, TypeType):
-            if isinstance(typ.item, AnyType):
-                return
-            typ = typ.item
-        if isinstance(typ, FunctionLike):
-            if typ.is_type_obj():
-                # Cases like "raise/from ExceptionClass".
-                typeinfo = typ.type_object()
-                base = self.lookup_typeinfo('builtins.BaseException')
-                if base in typeinfo.mro or typeinfo.fallback_to_any:
-                    # Good!
-                    return
-                # Else fall back to the checks below (which will fail).
-        if isinstance(typ, TupleType) and self.options.python_version[0] == 2:
+        exc_type = self.named_type('builtins.BaseException')
+        expected_type = UnionType([exc_type, TypeType(exc_type)])
+        if optional:
+            expected_type.items.append(NoneType())
+        if self.options.python_version[0] == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             # TODO: Also check tuple item types.
-            if len(typ.items) in (2, 3):
-                return
-        if isinstance(typ, Instance) and typ.type.fallback_to_any:
-            # OK!
-            return
-        expected_type = self.named_type('builtins.BaseException')  # type: Type
-        if optional:
-            expected_type = UnionType([expected_type, NoneType()])
+            any_type = AnyType(TypeOfAny.implementation_artifact)
+            tuple_type = self.named_type('builtins.tuple')
+            expected_type.items.append(TupleType([any_type, any_type], tuple_type))
+            expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
         self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
 
     def visit_try_stmt(self, s: TryStmt) -> None:
