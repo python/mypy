@@ -1005,7 +1005,7 @@ B(1, 2) < B(1, 2)
 [file b.py]
 from a import A
 import attr
-@attr.s(cmp=False)
+@attr.s(eq=False)
 class B(A):
     b = attr.ib()   # type: int
 [file a.py]
@@ -1016,7 +1016,7 @@ class A:
 
 [file a.py.2]
 import attr
-@attr.s(cmp=False, init=False)
+@attr.s(eq=False, init=False)
 class A:
     a = attr.ib()   # type: int
 [builtins fixtures/list.pyi]

@@ -2937,7 +2937,7 @@ class Frozen:
 @attr.s(init=False)
 class NoInit:
     x: int = attr.ib()
-@attr.s(cmp=False)
+@attr.s(eq=False)
 class NoCmp:
     x: int = attr.ib()
 
