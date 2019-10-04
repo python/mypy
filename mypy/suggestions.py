@@ -33,6 +33,7 @@ from mypy.types import (
     TypeVarType, FunctionLike,
     TypeStrVisitor, TypeTranslator,
     is_optional, remove_optional, ProperType, get_proper_type,
+    TypedDictType
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -710,6 +711,9 @@ class TypeFormatter(TypeStrVisitor):
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> str:
+        return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> str:
         if len(t.items) == 2 and is_optional(t):

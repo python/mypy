@@ -175,6 +175,7 @@ class Server:
 
         self.fscache = FileSystemCache()
 
+        options.raise_exceptions = True
         options.incremental = True
         options.fine_grained_incremental = True
         options.show_traceback = True

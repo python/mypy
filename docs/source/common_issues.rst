@@ -438,8 +438,7 @@ to have Python 2.7 installed to perform this check.
 
 To target a different operating system, use the ``--platform PLATFORM`` flag.
 For example, to verify your code typechecks if it were run in Windows, pass
-in ``--platform win32``. See the documentation for
-`sys.platform <https://docs.python.org/3/library/sys.html#sys.platform>`_
+in ``--platform win32``. See the documentation for :py:data:`sys.platform`
 for examples of valid platform parameters.
 
 .. _reveal-type:

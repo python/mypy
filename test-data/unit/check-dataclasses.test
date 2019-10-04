@@ -746,3 +746,64 @@ class C(B):
 
 a = C(None, 'abc')
 [builtins fixtures/bool.pyi]
+
+[case testDataclassesDefaultsIncremental]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+from dataclasses import dataclass
+from b import Person
+
+@dataclass
+class Asdf(Person):
+    c: str = 'test'
+
+[file a.py.2]
+from dataclasses import dataclass
+from b import Person
+
+@dataclass
+class Asdf(Person):
+    c: str = 'test'
+
+# asdf
+
+[file b.py]
+from dataclasses import dataclass
+
+@dataclass
+class Person:
+    b: int
+    a: str = 'test'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDefaultsMroOtherFile]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+from dataclasses import dataclass
+from b import A1, A2
+
+@dataclass
+class Asdf(A1, A2):  # E: Attributes without a default cannot follow attributes with one
+    pass
+
+[file b.py]
+from dataclasses import dataclass
+
+# a bunch of blank lines to make sure the error doesn't accidentally line up...
+
+
+
+@dataclass
+class A1:
+    a: int
+
+@dataclass
+class A2:
+    b: str = 'test'
+
+[builtins fixtures/list.pyi]

@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 2)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 language represents various common types in Python 2.
 
 .. note::

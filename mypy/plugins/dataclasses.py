@@ -1,7 +1,5 @@
 """Plugin that provides support for dataclasses."""
 
-from collections import OrderedDict
-
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
@@ -181,7 +179,7 @@ class DataclassTransformer:
         self.reset_init_only_vars(info, attributes)
 
         info.metadata['dataclass'] = {
-            'attributes': OrderedDict((attr.name, attr.serialize()) for attr in attributes),
+            'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
         }
 
@@ -296,7 +294,8 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname()))
 
-            for name, data in info.metadata['dataclass']['attributes'].items():
+            for data in info.metadata['dataclass']['attributes']:
+                name = data['name']  # type: str
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data)
                     if attr.is_init_var and isinstance(init_method, FuncDef):
@@ -329,9 +328,13 @@ class DataclassTransformer:
             # doesn't have a default after one that does have one,
             # then that's an error.
             if found_default and attr.is_in_init and not attr.has_default:
+                # If the issue comes from merging different classes, report it
+                # at the class definition point.
+                context = (Context(line=attr.line, column=attr.column) if attr in attrs
+                           else ctx.cls)
                 ctx.api.fail(
                     'Attributes without a default cannot follow attributes with one',
-                    Context(line=attr.line, column=attr.column),
+                    context,
                 )
 
             found_default = found_default or (attr.has_default and attr.is_in_init)

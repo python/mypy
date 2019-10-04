@@ -6,7 +6,7 @@ Type checking Python 2 code
 For code that needs to be Python 2.7 compatible, function type
 annotations are given in comments, since the function annotation
 syntax was introduced in Python 3. The comment-based syntax is
-specified in `PEP 484 <https://www.python.org/dev/peps/pep-0484>`_.
+specified in :pep:`484`.
 
 Run mypy in Python 2 mode by using the ``--py2`` option::
 
@@ -66,7 +66,7 @@ overly long type comments and it's often tricky to see which argument
 type corresponds to which argument. The alternative, multi-line
 annotation syntax makes long annotations easier to read and write.
 
-Here is an example (from PEP 484):
+Here is an example (from :pep:`484`):
 
 .. code-block:: python
 

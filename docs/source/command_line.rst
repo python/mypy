@@ -78,7 +78,7 @@ imports.
 
 ``--namespace-packages``
     This flag enables import discovery to use namespace packages (see
-    `PEP 420`_).  In particular, this allows discovery of imported
+    :pep:`420`).  In particular, this allows discovery of imported
     packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
     file.
 
@@ -127,23 +127,23 @@ imports.
     see :ref:`Following imports <follow-imports>`.
 
 ``--python-executable EXECUTABLE``
-    This flag will have mypy collect type information from `PEP 561`_
+    This flag will have mypy collect type information from :pep:`561`
     compliant packages installed for the Python executable ``EXECUTABLE``.
-    If not provided, mypy will use PEP 561 compliant packages installed for
+    If not provided, mypy will use :pep:`561` compliant packages installed for
     the Python executable running mypy.
 
-    See :ref:`installed-packages` for more on making PEP 561 compliant packages.
+    See :ref:`installed-packages` for more on making :pep:`561` compliant packages.
 
 ``--no-site-packages``
-    This flag will disable searching for `PEP 561`_ compliant packages. This
+    This flag will disable searching for :pep:`561` compliant packages. This
     will also disable searching for a usable Python executable.
 
     Use this  flag if mypy cannot find a Python executable for the version of
-    Python being checked, and you don't need to use PEP 561 typed packages.
+    Python being checked, and you don't need to use :pep:`561` typed packages.
     Otherwise, use ``--python-executable``.
 
 ``--no-silence-site-packages``
-    By default, mypy will suppress any error messages generated within PEP 561
+    By default, mypy will suppress any error messages generated within :pep:`561`
     compliant packages. Adding this flag will disable this behavior.
 
 
@@ -165,7 +165,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
     ``--py2`` flags are aliases for ``--python-version 2.7``.
 
     This flag will attempt to find a Python executable of the corresponding
-    version to search for `PEP 561`_ compliant packages. If you'd like to
+    version to search for :pep:`561` compliant packages. If you'd like to
     disable this, use the ``--no-site-packages`` flag (see
     :ref:`import-discovery` for more details).
 
@@ -178,7 +178,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
     default to using whatever operating system you are currently using.
 
     The ``PLATFORM`` parameter may be any string supported by
-    `sys.platform <https://docs.python.org/3/library/sys.html#sys.platform>`_.
+    :py:data:`sys.platform`.
 
 .. _always-true:
 
@@ -679,9 +679,5 @@ Miscellaneous
     (The default ``__main__`` is technically more correct, but if you
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
-
-.. _PEP 420: https://www.python.org/dev/peps/pep-0420/
-
-.. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 
 .. _lxml: https://pypi.org/project/lxml/
