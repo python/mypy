@@ -395,25 +395,25 @@ def __top_level__():
     r81 :: bool
     r82 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
     r4 = import r3 :: str
-    builtins.module = r4 :: static
+    builtins = r4 :: module
 L2:
-    r5 = typing.module :: static
+    r5 = typing :: module
     r6 = builtins.None :: object
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
     r9 = import r8 :: str
-    typing.module = r9 :: static
+    typing = r9 :: module
 L4:
-    r10 = typing.module :: static
+    r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('TypeVar')
     r13 = getattr r10, r12
@@ -423,16 +423,16 @@ L4:
     r17 = getattr r10, r16
     r18 = unicode_3 :: static  ('Generic')
     r19 = r11.__setitem__(r18, r17) :: dict
-    r20 = mypy_extensions.module :: static
+    r20 = mypy_extensions :: module
     r21 = builtins.None :: object
     r22 = r20 is not r21
     if r22 goto L6 else goto L5 :: bool
 L5:
     r23 = unicode_4 :: static  ('mypy_extensions')
     r24 = import r23 :: str
-    mypy_extensions.module = r24 :: static
+    mypy_extensions = r24 :: module
 L6:
-    r25 = mypy_extensions.module :: static
+    r25 = mypy_extensions :: module
     r26 = __main__.globals :: static
     r27 = unicode_5 :: static  ('trait')
     r28 = getattr r25, r27

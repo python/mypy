@@ -1,13 +1,15 @@
 """Code generation for native function bodies."""
 
 
-from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX
+from mypyc.common import (
+    REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
+)
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, RType, RTuple, MethodCall, PrimitiveOp,
-    EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE,
+    EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, FuncDecl, ClassIR,
     FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
@@ -255,6 +257,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
+        NAMESPACE_MODULE: MODULE_PREFIX,
     }  # type: Final
 
     def visit_load_static(self, op: LoadStatic) -> None:

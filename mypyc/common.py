@@ -8,6 +8,7 @@ DUNDER_PREFIX = 'CPyDunder_'  # type: Final # Wrappers for exposing dunder metho
 REG_PREFIX = 'cpy_r_'  # type: Final # Registers
 STATIC_PREFIX = 'CPyStatic_'  # type: Final # Static variables (for literals etc.)
 TYPE_PREFIX = 'CPyType_'  # type: Final # Type object struct
+MODULE_PREFIX = 'CPyModule_'  # type: Final # Cached modules
 ATTR_PREFIX = '_'  # type: Final # Attributes
 
 ENV_ATTR_NAME = '__mypyc_env__'  # type: Final

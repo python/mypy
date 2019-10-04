@@ -1115,6 +1115,7 @@ class SetAttr(RegisterOp):
 
 NAMESPACE_STATIC = 'static'  # type: Final # Default name space for statics, variables
 NAMESPACE_TYPE = 'type'  # type: Final # Static namespace for pointers to native type objects
+NAMESPACE_MODULE = 'module'  # type: Final # Namespace for modules
 
 
 class LoadStatic(RegisterOp):
