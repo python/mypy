@@ -16,7 +16,8 @@ static type of the value expression:
 
 Type inference is not used in dynamically typed functions (those
 without a function type annotation) — every local variable type defaults
-to ``Any`` in such functions. ``Any`` is discussed later in more detail.
+to :py:data:`~typing.Any` in such functions. ``Any``
+is discussed later in more detail.
 
 .. _explicit-var-types:
 
@@ -32,9 +33,9 @@ variable type annotation:
 
    x: Union[int, str] = 1
 
-Without the type annotation, the type of ``x`` would be just ``int``. We
+Without the type annotation, the type of ``x`` would be just :py:class:`int`. We
 use an annotation to give it a more general type ``Union[int, str]`` (this
-type means that the value can be either an ``int`` or a ``str``).
+type means that the value can be either an ``int`` or a :py:class:`str`).
 Mypy checks that the type of the initializer is compatible with the
 declared type. The following example is not valid, since the initializer is
 a floating point number, and this is incompatible with the declared
@@ -65,7 +66,8 @@ possible with the comment syntax:
 
    The best way to think about this is that the type annotation sets the
    type of the variable, not the type of the expression. To force the
-   type of an expression you can use ``cast(<type>, <expression>)``.
+   type of an expression you can use :py:func:`cast(\<type\>, \<expression\>)
+   <typing.cast>`.
 
 Explicit types for collections
 ******************************
@@ -114,8 +116,9 @@ assignment could result in non-int values stored in a list of ``int``:
        l.append('x')
        print(k[-1])  # Ouch; a string in List[int]
 
-Other container types like ``Dict`` and ``Set`` behave similarly. We
-will discuss how you can work around this in :ref:`variance`.
+Other container types like :py:class:`~typing.Dict` and
+:py:class:`~typing.Set` behave similarly. We will discuss how you can
+work around this in :ref:`variance`.
 
 You can still run the above program; it prints ``x``. This illustrates
 the fact that static types are used during type checking, but they do

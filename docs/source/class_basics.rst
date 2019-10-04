@@ -1,9 +1,10 @@
 Class basics
 ============
 
+
 This section will help get you started annotating your
-classes. Built-in classes such as ``int`` also follow these same
-rules.
+classes. Built-in classes such as :py:class:`int` also
+follow these same rules.
 
 Instance and class attributes
 *****************************
@@ -24,8 +25,8 @@ initialized within the class. Mypy infers the types of attributes:
    a.y = 3  # Error: 'A' has no attribute 'y'
 
 This is a bit like each class having an implicitly defined
-``__slots__`` attribute. This is only enforced during type
-checking and not when your program is running.
+:py:data:`__slots__ <object.__slots__>` attribute. This is only
+enforced during type checking and not when your program is running.
 
 You can declare types of variables in the class body explicitly using
 a type annotation:
@@ -40,7 +41,7 @@ a type annotation:
 
 As in Python generally, a variable defined in the class body can be used
 as a class or an instance variable. (As discussed in the next section, you
-can override this with a ``ClassVar`` annotation.)
+can override this with a :py:data:`~typing.ClassVar` annotation.)
 
 Type comments work as well, if you need to support Python versions earlier
 than 3.6:
@@ -78,15 +79,15 @@ to it explicitly using ``self``:
            a = self
            a.x = 1      # Error: 'x' not defined
 
-Annotating `__init__` methods
-*****************************
+Annotating ``__init__`` methods
+*******************************
 
-The ``__init__`` method is somewhat special -- it doesn't return a
-value.  This is best expressed as ``-> None``.  However, since many feel
-this is redundant, it is allowed to omit the return type declaration
-on ``__init__`` methods **if at least one argument is annotated**.  For
-example, in the following classes ``__init__`` is considered fully
-annotated:
+The :py:meth:`__init__ <object.__init__>` method is somewhat special --
+it doesn't return a value.  This is best expressed as ``-> None``.
+However, since many feel this is redundant, it is allowed to omit
+the return type declaration on ``__init__`` methods **if at least
+one argument is annotated**.  For example, in the following classes
+``__init__`` is considered fully annotated:
 
 .. code-block:: python
 
@@ -111,8 +112,9 @@ annotation, it is considered an untyped method:
 Class attribute annotations
 ***************************
 
-You can use a ``ClassVar[t]`` annotation to explicitly declare that a
-particular attribute should not be set on instances:
+You can use a :py:data:`ClassVar[t] <typing.ClassVar>` annotation
+to explicitly declare that a particular attribute should not be set
+on instances:
 
 .. code-block:: python
 
@@ -149,9 +151,9 @@ being used as an instance variable, as discussed previously:
   a.x = 1  # Also OK
 
 Note that ``ClassVar`` is not a class, and you can't use it with
-``isinstance()`` or ``issubclass()``. It does not change Python
-runtime behavior -- it's only for type checkers such as mypy (and
-also helpful for human readers).
+:py:func:`isinstance` or :py:func:`issubclass`.
+It does not change Python runtime behavior -- it's only for
+type checkers such as mypy (and also helpful for human readers).
 
 You can also omit the square brackets and the variable type in
 a ``ClassVar`` annotation, but this might not do what you'd expect:
@@ -161,14 +163,15 @@ a ``ClassVar`` annotation, but this might not do what you'd expect:
    class A:
        y: ClassVar = 0  # Type implicitly Any!
 
-In this case the type of the attribute will be implicitly ``Any``.
+In this case the type of the attribute will be implicitly
+:py:data:`~typing.Any`.
 This behavior will change in the future, since it's surprising.
 
 .. note::
-   A ``ClassVar`` type parameter cannot include type variables:
-   ``ClassVar[T]`` and ``ClassVar[List[T]]``
-   are both invalid if ``T`` is a type variable (see :ref:`generic-classes`
-   for more about type variables).
+   A :py:data:`~typing.ClassVar` type parameter cannot include
+   type variables: ``ClassVar[T]`` and ``ClassVar[List[T]]``
+   are both invalid if ``T`` is a type variable (see
+   :ref:`generic-classes` for more about type variables).
 
 Overriding statically typed methods
 ***********************************
@@ -235,8 +238,9 @@ Abstract base classes and multiple inheritance
 Mypy supports Python abstract base classes (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by any *concrete* (non-abstract) subclass. You can define abstract base
-classes using the ``abc.ABCMeta`` metaclass and the ``abc.abstractmethod``
-function decorator. Example:
+classes using the :py:class:`abc.ABCMeta` metaclass and the
+:py:func:`@abc.abstractmethod <abc.abstractmethod>` function decorator.
+Example:
 
 .. code-block:: python
 
@@ -263,12 +267,12 @@ function decorator. Example:
 
 .. note::
 
-   In Python 2.7 you have to use ``@abc.abstractproperty`` to define
-   an abstract property.
+   In Python 2.7 you have to use :py:func:`@abc.abstractproperty
+   <abc.abstractproperty>` to define an abstract property.
 
 Note that mypy performs checking for unimplemented abstract methods
-even if you omit the ``ABCMeta`` metaclass. This can be useful if the
-metaclass would cause runtime metaclass conflicts.
+even if you omit the :py:class:`~abc.ABCMeta` metaclass. This can be
+useful if the metaclass would cause runtime metaclass conflicts.
 
 Since you can't create instances of ABCs, they are most commonly used in
 type annotations. For example, this method accepts arbitrary iterables

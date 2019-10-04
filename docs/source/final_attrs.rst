@@ -15,14 +15,15 @@ They is no runtime enforcement by the Python runtime.
 
 .. note::
 
-   These are experimental features. They might change in later
-   versions of mypy. The *final* qualifiers are available through the
-   ``typing_extensions`` package on PyPI.
+   The :py:data:`~typing.Final` qualifiers are available through the
+   ``typing_extensions`` package on PyPI for Python 2.7 and 3.4-3.7.
+   Starting with Python 3.8, they are included in the :py:mod:`typing`
+   module.
 
 Final names
 -----------
 
-You can use the ``typing_extensions.Final`` qualifier to indicate that
+You can use the :py:data:`~typing.Final` qualifier to indicate that
 a name or attribute should not be reassigned, redefined, or
 overridden.  This is often useful for module and class level constants
 as a way to prevent unintended modification.  Mypy will prevent
@@ -30,7 +31,7 @@ further assignments to final names in type-checked code:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    RATE: Final = 3000
 
@@ -45,7 +46,7 @@ from being overridden in a subclass:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    class Window:
        BORDER_WIDTH: Final = 2.5
@@ -54,14 +55,14 @@ from being overridden in a subclass:
    class ListView(Window):
        BORDER_WIDTH = 3  # Error: can't override a final attribute
 
-You can use ``@property`` to make an attribute read-only, but unlike ``Final``,
+You can use :py:class:`@property <property>` to make an attribute read-only, but unlike ``Final``,
 it doesn't work with module attributes, and it doesn't prevent overriding in
 subclasses.
 
 Syntax variants
 ***************
 
-You can use ``Final`` in one of these forms:
+You can use :py:data:`~typing.Final` in one of these forms:
 
 * You can provide an explicit type using the syntax ``Final[<type>]``. Example:
 
@@ -75,7 +76,7 @@ You can use ``Final`` in one of these forms:
 
      ID: Final = 1
 
-  Here mypy will infer type ``int`` for ``ID``. Note that unlike for
+  Here mypy will infer type :py:class:`int` for ``ID``. Note that unlike for
   generic classes this is *not* the same as ``Final[Any]``.
 
 * In class bodies and stub files you can omit the right hand side and just write
@@ -83,11 +84,11 @@ You can use ``Final`` in one of these forms:
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in
-  ``__init__`` methods, so that the final instance attribute is
-  assigned only once when an instance is created.
+  :py:meth:`__init__ <object.__init__>` methods, so that the final instance
+  attribute is assigned only once when an instance is created.
 
-Details of using Final
-**********************
+Details of using :py:data:`~typing.Final`
+*****************************************
 
 These are the two main rules for defining a final name:
 
@@ -98,8 +99,8 @@ These are the two main rules for defining a final name:
 * There must be *exactly one* assignment to a final name.
 
 A final attribute declared in a class body without an initializer must
-be initialized in the ``__init__`` method (you can skip the
-initializer in stub files):
+be initialized in the :py:meth:`__init__ <object.__init__>` method
+(you can skip the initializer in stub files):
 
 .. code-block:: python
 
@@ -110,9 +111,10 @@ initializer in stub files):
        def __init__(self) -> None:
            self.x = 1  # Good
 
-``Final`` can only be used as the outermost type in assignments or variable
-annotations. Using it in any other position is an error. In particular,
-``Final`` can't be used in annotations for function arguments:
+:py:data:`~typing.Final` can only be used as the outermost type in
+assignments or variable annotations. Using it in any other position
+is an error. In particular, ``Final`` can't be used in annotations
+for function arguments:
 
 .. code-block:: python
 
@@ -121,7 +123,7 @@ annotations. Using it in any other position is an error. In particular,
    def fun(x: Final[List[int]]) ->  None:  # Error!
        ...
 
-``Final`` and ``ClassVar`` should not be used together. Mypy will infer
+``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer
 the scope of a final declaration automatically depending on whether it was
 initialized in the class body or in ``__init__``.
 
@@ -155,12 +157,12 @@ Final methods
 -------------
 
 Like with attributes, sometimes it is useful to protect a method from
-overriding. You can use the ``typing_extensions.final``
-decorator for this purpose:
+overriding. You can use the :py:func:`@final <typing.final>` decorator
+for this purpose:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    class Base:
        @final
@@ -193,12 +195,12 @@ to make it final (or on the first overload in stubs):
 Final classes
 -------------
 
-You can apply the ``typing_extensions.final`` decorator to a class to indicate
-to mypy that it should not be subclassed:
+You can apply the :py:func:`@final <typing.final>` decorator to a class
+to indicate to mypy that it should not be subclassed:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    @final
    class Leaf:

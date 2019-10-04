@@ -103,7 +103,7 @@ Python code -- for example, when writing methods in
 
 The recommended style is to use ellipses to do so, just like in
 stub files. It is also considered stylistically acceptable to
-throw a ``NotImplementedError`` in cases where the user of the
+throw a :py:exc:`NotImplementedError` in cases where the user of the
 code may accidentally call functions with no actual logic.
 
 You can also elide default arguments as long as the function body
@@ -114,8 +114,7 @@ For example:
 
 .. code-block:: python
 
-    from typing import List
-    from typing_extensions import Protocol
+    from typing import List, Protocol
 
     class Resource(Protocol):
         def ok_1(self, foo: List[str] = ...) -> None: ...
@@ -138,4 +137,3 @@ For example:
     it is not possible to elide default arguments in Python 2 code.
     You can still elide function bodies in Python 2 by using either
     the ``pass`` statement or by throwing a ``NotImplementedError``.
-

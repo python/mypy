@@ -9,14 +9,15 @@ Integrating mypy into another Python application
 ************************************************
 
 It is possible to integrate mypy into another Python 3 application by
-importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``List[str]``, containing
-what normally would have been the command line arguments to mypy.
+importing ``mypy.api`` and calling the ``run`` function with a parameter
+of type ``List[str]``, containing what normally would have been
+the command line arguments to mypy.
 
 Function ``run`` returns a ``Tuple[str, str, int]``, namely
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
-is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
-normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy normally
-returns to the operating system.
+is what mypy normally writes to :py:data:`sys.stdout`, ``<error_report>`` is what mypy
+normally writes to :py:data:`sys.stderr` and ``exit_status`` is the exit status mypy
+normally returns to the operating system.
 
 A trivial example of using the api is the following
 
@@ -98,7 +99,7 @@ High-level overview
 *******************
 
 Every entry point function should accept a single string argument
-that is a full mypy version and return a subclass of ``mypy.plugins.Plugin``:
+that is a full mypy version and return a subclass of ``mypy.plugin.Plugin``:
 
 .. code-block:: python
 
@@ -138,7 +139,7 @@ of plugin hook results.
 Current list of plugin hooks
 ****************************
 
-**get_type_analyze_hook()** customizes behaviour of the type analyzer.
+``get_type_analyze_hook()`` customizes behaviour of the type analyzer.
 For example, :pep:`484` doesn't support defining variadic generic types:
 
 .. code-block:: python
@@ -151,10 +152,10 @@ For example, :pep:`484` doesn't support defining variadic generic types:
 When analyzing this code, mypy will call ``get_type_analyze_hook("lib.Vector")``,
 so the plugin can return some valid type for each variable.
 
-**get_function_hook()** is used to adjust the return type of a function call.
+``get_function_hook()`` is used to adjust the return type of a function call.
 This is a good choice if the return type of some function depends on *values*
 of some arguments that can't be expressed using literal types (for example
-a function may return an ``int`` for positive arguments and a ``float`` for
+a function may return an :py:class:`int` for positive arguments and a :py:class:`float` for
 negative arguments). This hook will be also called for instantiation of classes.
 For example:
 
@@ -170,12 +171,12 @@ For example:
        ...
        yield timer()
 
-**get_method_hook()** is the same as ``get_function_hook()`` but for methods
+``get_method_hook()`` is the same as ``get_function_hook()`` but for methods
 instead of module level functions.
 
-**get_method_signature_hook()** is used to adjust the signature of a method.
-This includes special Python methods except ``__init__()`` and ``__new__()``.
-For example in this code:
+``get_method_signature_hook()`` is used to adjust the signature of a method.
+This includes special Python methods except :py:meth:`~object.__init__` and
+:py:meth:`~object.__new__`. For example in this code:
 
 .. code-block:: python
 
@@ -185,15 +186,15 @@ For example in this code:
    x[0] = 42
 
 mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
-so that the plugin can mimic the ``ctypes`` auto-convert behavior.
+so that the plugin can mimic the :py:mod:`ctypes` auto-convert behavior.
 
-**get_attribute_hook** overrides instance member field lookups and property
+``get_attribute_hook()`` overrides instance member field lookups and property
 access (not assignments, and not method calls). This hook is only called for
-fields which already exist on the class. *Exception:* if ``__getattr__`` or
-``__getattribute__`` is a method on the class, the hook is called for all
-fields which do not refer to methods.
+fields which already exist on the class. *Exception:* if :py:meth:`__getattr__
+<object.__getattr__>` or :py:meth:`__getattribute__ <object.__getattribute__>`
+is a method on the class, the hook is called for all fields which do not refer to methods.
 
-**get_class_decorator_hook()** can be used to update class definition for
+``get_class_decorator_hook()`` can be used to update class definition for
 given class decorators. For example, you can add some attributes to the class
 to match runtime behaviour:
 
@@ -208,11 +209,11 @@ to match runtime behaviour:
    var = UserDefined
    var.customized  # mypy can understand this using a plugin
 
-**get_metaclass_hook()** is similar to above, but for metaclasses.
+``get_metaclass_hook()`` is similar to above, but for metaclasses.
 
-**get_base_class_hook()** is similar to above, but for base classes.
+``get_base_class_hook()`` is similar to above, but for base classes.
 
-**get_dynamic_class_hook()** can be used to allow dynamic class definitions
+``get_dynamic_class_hook()`` can be used to allow dynamic class definitions
 in mypy. This plugin hook is called for every assignment to a simple name
 where right hand side is a function call:
 
@@ -228,10 +229,10 @@ place it into a relevant symbol table. (Instances of this class represent
 classes in mypy and hold essential information such as qualified name,
 method resolution order, etc.)
 
-**get_customize_class_mro_hook()** can be used to modify class MRO (for example
+``get_customize_class_mro_hook()`` can be used to modify class MRO (for example
 insert some entries there) before the class body is analyzed.
 
-**get_additional_deps()** can be used to add new dependencies for a
+``get_additional_deps()`` can be used to add new dependencies for a
 module. It is called before semantic analysis. For example, this can
 be used if a library has dependencies that are dynamically loaded
 based on configuration information.

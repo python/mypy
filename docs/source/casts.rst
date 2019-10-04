@@ -6,8 +6,8 @@ Casts and type assertions
 Mypy supports type casts that are usually used to coerce a statically
 typed value to a subtype. Unlike languages such as Java or C#,
 however, mypy casts are only used as hints for the type checker, and they
-don't perform a runtime type check. Use the function ``cast`` to perform a
-cast:
+don't perform a runtime type check. Use the function :py:func:`~typing.cast`
+to perform a cast:
 
 .. code-block:: python
 
@@ -34,8 +34,8 @@ quite understand what is going on.
           assert isinstance(o, int)
           print(o + 5)  # OK: type of 'o' is 'int' here
 
-You don't need a cast for expressions with type ``Any``, or when
-assigning to a variable with type ``Any``, as was explained earlier.
+You don't need a cast for expressions with type :py:data:`~typing.Any`,
+or when assigning to a variable with type ``Any``, as was explained earlier.
 You can also use ``Any`` as the cast target type -- this lets you perform
 any operations on the result. For example:
 

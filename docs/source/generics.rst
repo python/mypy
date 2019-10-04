@@ -13,8 +13,9 @@ Defining generic classes
 
 The built-in collection classes are generic classes. Generic types
 have one or more type parameters, which can be arbitrary types. For
-example, ``Dict[int, str]`` has the type parameters ``int`` and
-``str``, and ``List[int]`` has a type parameter ``int``.
+example, :py:class:`Dict[int, str] <typing.Dict>` has the type parameters
+:py:class:`int` and :py:class:`str`, and :py:class:`List[int] <typing.List>`
+has a type parameter ``int``.
 
 Programs can also define new generic classes. Here is a very simple
 generic class that represents a stack:
@@ -88,9 +89,10 @@ __main__.Stack[int]
 >>> print(Stack[int]().__class__)
 __main__.Stack
 
-Note that built-in types ``list``, ``dict`` and so on do not support
-indexing in Python. This is why we have the aliases ``List``, ``Dict``
-and so on in the ``typing`` module. Indexing these aliases gives
+Note that built-in types :py:class:`list`, :py:class:`dict` and so on
+do not support indexing in Python. This is why we have the aliases
+:py:class:`~typing.List`, :py:class:`~typing.Dict`
+and so on in the :py:mod:`typing` module. Indexing these aliases gives
 you a class that directly inherits from the target class in Python:
 
 >>> from typing import List
@@ -111,7 +113,7 @@ operator.
 Defining sub-classes of generic classes
 ***************************************
 
-User-defined generic classes and generic classes defined in ``typing``
+User-defined generic classes and generic classes defined in :py:mod:`typing`
 can be used as base classes for another classes, both generic and
 non-generic. For example:
 
@@ -148,13 +150,14 @@ non-generic. For example:
 
 .. note::
 
-    You have to add an explicit ``Mapping`` base class
+    You have to add an explicit :py:class:`~typing.Mapping` base class
     if you want mypy to consider a user-defined class as a mapping (and
-    ``Sequence`` for sequences, etc.). This is because mypy doesn't use
-    *structural subtyping* for these ABCs, unlike simpler protocols
-    like ``Iterable``, which use :ref:`structural subtyping <protocol-types>`.
+    :py:class:`~typing.Sequence` for sequences, etc.). This is because
+    mypy doesn't use *structural subtyping* for these ABCs, unlike simpler
+    protocols like :py:class:`~typing.Iterable`, which use
+    :ref:`structural subtyping <protocol-types>`.
 
-``Generic[...]`` can be omitted from bases if there are
+:py:class:`Generic[...] <typing.Generic>` can be omitted from bases if there are
 other base classes that include type variables, such as ``Mapping[KT, VT]``
 in the above example. If you include ``Generic[...]`` in bases, then
 it should list all type variables present in other bases (or more,
@@ -276,7 +279,7 @@ In this way, for example, you can typecheck chaining of setter methods:
 Without using generic ``self``, the last two lines could not be type-checked properly.
 
 Other uses are factory methods, such as copy and deserialization.
-For class methods, you can also define generic ``cls``, using ``Type[T]``:
+For class methods, you can also define generic ``cls``, using :py:class:`Type[T] <typing.Type>`:
 
 .. code-block:: python
 
@@ -306,7 +309,7 @@ In the latter case, you must implement this method in all future subclasses.
 Note also that mypy cannot always verify that the implementation of a copy
 or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
-possibly by making use of the ``Any`` type.
+possibly by making use of the :py:data:`~typing.Any` type.
 
 .. _variance-of-generics:
 
@@ -328,13 +331,13 @@ a subtype of ``A``, these are defined as follows:
 
 Let us illustrate this by few simple examples:
 
-* ``Union`` is covariant in all variables: ``Union[Cat, int]`` is a subtype
-  of ``Union[Animal, int]``,
+* :py:data:`~typing.Union` is covariant in all variables:
+  ``Union[Cat, int]`` is a subtype of ``Union[Animal, int]``,
   ``Union[Dog, int]`` is also a subtype of ``Union[Animal, int]``, etc.
-  Most immutable containers such as ``Sequence`` and ``FrozenSet`` are also
-  covariant.
-* ``Callable`` is an example of type that behaves contravariant in types of
-  arguments, namely ``Callable[[Employee], int]`` is a subtype of
+  Most immutable containers such as :py:class:`~typing.Sequence` and
+  :py:class:`~typing.FrozenSet` are also covariant.
+* :py:data:`~typing.Callable` is an example of type that behaves contravariant
+  in types of arguments, namely ``Callable[[Employee], int]`` is a subtype of
   ``Callable[[Manager], int]``. To understand this, consider a function:
 
   .. code-block:: python
@@ -345,7 +348,7 @@ Let us illustrate this by few simple examples:
   This function needs a callable that can calculate a salary for managers, and
   if we give it a callable that can calculate a salary for an arbitrary
   employee, it's still safe.
-* ``List`` is an invariant generic type. Naively, one would think
+* :py:class:`~typing.List` is an invariant generic type. Naively, one would think
   that it is covariant, but let us consider this code:
 
   .. code-block:: python
@@ -364,8 +367,8 @@ Let us illustrate this by few simple examples:
      add_one(my_things)     # This may appear safe, but...
      my_things[0].rotate()  # ...this will fail
 
-  Another example of invariant type is ``Dict``. Most mutable containers
-  are invariant.
+  Another example of invariant type is :py:class:`~typing.Dict`.
+  Most mutable containers are invariant.
 
 By default, mypy assumes that all user-defined generics are invariant.
 To declare a given generic class as covariant or contravariant use
@@ -398,7 +401,7 @@ Type variables with value restriction
 By default, a type variable can be replaced with any type. However, sometimes
 it's useful to have a type variable that can only have some specific types
 as its value. A typical example is a type variable that can only have values
-``str`` and ``bytes``:
+:py:class:`str` and :py:class:`bytes`:
 
 .. code-block:: python
 
@@ -406,8 +409,8 @@ as its value. A typical example is a type variable that can only have values
 
    AnyStr = TypeVar('AnyStr', str, bytes)
 
-This is actually such a common type variable that ``AnyStr`` is
-defined in ``typing`` and we don't need to define it ourselves.
+This is actually such a common type variable that :py:data:`~typing.AnyStr`
+is defined in :py:mod:`typing` and we don't need to define it ourselves.
 
 We can use ``AnyStr`` to define a function that can concatenate
 two strings or bytes objects, but it can't be called with other
@@ -462,9 +465,9 @@ this is correct for ``concat``, since ``concat`` actually returns a
     >>> print(type(ss))
     <class 'str'>
 
-You can also use a ``TypeVar`` with a restricted set of possible
+You can also use a :py:class:`~typing.TypeVar` with a restricted set of possible
 values when defining a generic class. For example, mypy uses the type
-``typing.Pattern[AnyStr]`` for the return value of ``re.compile``,
+:py:class:`Pattern[AnyStr] <typing.Pattern>` for the return value of :py:func:`re.compile`,
 since regular expressions can be based on a string or a bytes pattern.
 
 .. _type-variable-upper-bound:
@@ -475,7 +478,7 @@ Type variables with upper bounds
 A type variable can also be restricted to having values that are
 subtypes of a specific type. This type is called the upper bound of
 the type variable, and is specified with the ``bound=...`` keyword
-argument to ``TypeVar``.
+argument to :py:class:`~typing.TypeVar`.
 
 .. code-block:: python
 
@@ -557,7 +560,7 @@ non-function (e.g. ``my_decorator(1)``) will be rejected.
 
 Also note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
-problem. This is also the reason for the ``cast()`` call in the
+problem. This is also the reason for the :py:func:`~typing.cast` call in the
 ``return`` statement in ``my_decorator()``. See :ref:`casts`.
 
 Generic protocols
@@ -565,13 +568,13 @@ Generic protocols
 
 Mypy supports generic protocols (see also :ref:`protocol-types`). Several
 :ref:`predefined protocols <predefined_protocols>` are generic, such as
-``Iterable[T]``, and you can define additional generic protocols. Generic
-protocols mostly follow the normal rules for generic classes. Example:
+:py:class:`Iterable[T] <typing.Iterable>`, and you can define additional
+generic protocols. Generic protocols mostly follow the normal rules for
+generic classes. Example:
 
 .. code-block:: python
 
-   from typing import TypeVar
-   from typing_extensions import Protocol
+   from typing import TypeVar, Protocol
 
    T = TypeVar('T')
 
@@ -604,8 +607,7 @@ variable is invariant:
 
 .. code-block:: python
 
-   from typing import TypeVar
-   from typing_extensions import Protocol
+   from typing import TypeVar, Protocol
 
    T = TypeVar('T')
 
@@ -616,8 +618,7 @@ This example correctly uses a covariant type variable:
 
 .. code-block:: python
 
-   from typing import TypeVar
-   from typing_extensions import Protocol
+   from typing import TypeVar, Protocol
 
    T_co = TypeVar('T_co', covariant=True)
 
@@ -662,8 +663,8 @@ Type aliases can be generic. In this case they can be used in two ways:
 Subscripted aliases are equivalent to original types with substituted type
 variables, so the number of type arguments must match the number of free type variables
 in the generic type alias. Unsubscripted aliases are treated as original types with free
-variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
-<484#type-aliases>`):
+variables replaced with ``Any``. Examples (following :pep:`PEP 484:
+Type aliases <484#type-aliases>`):
 
 .. code-block:: python
 

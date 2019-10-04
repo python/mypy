@@ -15,7 +15,7 @@ Run mypy in Python 2 mode by using the ``--py2`` option::
 To run your program, you must have the ``typing`` module in your
 Python 2 module search path. Use ``pip install typing`` to install the
 module. This also works for Python 3 versions prior to 3.5 that don't
-include ``typing`` in the standard library.
+include :py:mod:`typing` in the standard library.
 
 The example below illustrates the Python 2 function type annotation
 syntax. This syntax is also valid in Python 3 mode:
@@ -45,11 +45,11 @@ It's worth going through these details carefully to avoid surprises:
   annotation syntax described below). Again, the above example
   illustrates this.
 
-- Things like ``Any`` must be imported from ``typing``, even if they
+- Things like :py:data:`~typing.Any` must be imported from ``typing``, even if they
   are only used in comments.
 
-- In Python 2 mode ``str`` is implicitly promoted to ``unicode``, similar
-  to how ``int`` is compatible with ``float``. This is unlike ``bytes`` and
+- In Python 2 mode :py:class:`str` is implicitly promoted to ``unicode``, similar
+  to how :py:class:`int` is compatible with :py:class:`float`. This is unlike :py:class:`bytes` and
   ``str`` in Python 3, which are incompatible. ``bytes`` in Python 2 is
   equivalent to ``str``. (This might change in the future.)
 

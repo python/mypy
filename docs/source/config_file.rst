@@ -113,7 +113,7 @@ options will:
     (This is equivalent to using the ``--python-version 2.7`` or ``--2`` flag).
 
 2.  Report an error whenever a function returns a value that is inferred
-    to have type ``Any``.
+    to have type :py:data:`~typing.Any`.
 
 3.  Report any config options that are unused by mypy. (This will help us catch typos
     when making changes to our config file).
@@ -189,7 +189,7 @@ See below for a list of import discovery options that may be used
 
     Used in conjunction with ``follow_imports=skip``, this can be used
     to suppress the import of a module from ``typeshed``, replacing it
-    with `Any`.
+    with ``Any``.
 
     Used in conjunction with ``follow_imports=error``, this can be used
     to make any use of a particular ``typeshed`` module an error.
@@ -254,8 +254,8 @@ For more information, see the :ref:`None and optional handling <none-and-optiona
 section of the command line docs.
 
 ``no_implicit_optional`` (bool, default False)
-    Changes the treatment of arguments with a default value of None by not implicitly
-    making their type Optional.
+    Changes the treatment of arguments with a default value of ``None`` by not implicitly
+    making their type :py:data:`~typing.Optional`.
 
 ``strict_optional`` (bool, default True)
     Enables or disables strict Optional checks. If False, mypy treats ``None``
@@ -377,10 +377,12 @@ a list of import discovery options that may be used
     User home directory and environment variables will be expanded.
 
 ``files`` (string)
-    A comma-separated list of paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing using :doc:`library/glob`, where ``*`` (e.g. ``*.py``) matches
-    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
-    the current one. User home directory and environment variables will be expanded.
+    A comma-separated list of paths which should be checked by mypy if none
+    are given on the command line. Supports recursive file globbing using
+    :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches files in
+    the current directory and ``**/`` (e.g. ``**/*.py``) matches files
+    in any directories below the current one. User home directory and
+    environment variables will be expanded.
 
 
 Platform configuration
@@ -399,7 +401,7 @@ section of the command line docs.
     Specifies the OS platform for the target program, for example
     ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
     The default is the current platform as revealed by Python's
-    ``sys.platform`` variable.
+    :py:data:`sys.platform` variable.
 
 
 Incremental mode
@@ -462,7 +464,7 @@ section of the command line docs.
     Shows traceback on fatal error.
 
 ``custom_typing_module`` (string)
-    Specifies a custom module to use as a substitute for the ``typing`` module.
+    Specifies a custom module to use as a substitute for the :py:mod:`typing` module.
 
 ``custom_typeshed_dir`` (string)
     Specifies an alternative directory to look for stubs instead of the

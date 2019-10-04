@@ -39,7 +39,7 @@ target module can be found):
     # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
     from os import non_existent
 
-A reference to a missing attribute is given the ``Any`` type. In the
+A reference to a missing attribute is given the :py:data:`~typing.Any` type. In the
 above example, the type of ``non_existent`` will be ``Any``, which can
 be important if you silence the error.
 
@@ -83,7 +83,7 @@ definition in an active scope, such as an assignment, function
 definition or an import. This can catch missing definitions, missing
 imports, and typos.
 
-This example accidentally calls ``sort()`` instead of ``sorted()``:
+This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
 .. code-block:: python
 
@@ -181,7 +181,7 @@ This example incorrectly uses the function ``log`` as a type:
        for x in objs:
            f(x)
 
-You can use ``Callable`` as the type for callable objects:
+You can use :py:data:`~typing.Callable` as the type for callable objects:
 
 .. code-block:: python
 
@@ -415,17 +415,18 @@ Example:
     # Error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
     d: Dict[str, int] = {'key': 'value'}
 
-Check TypedDict items [typeddict-item]
---------------------------------------
+Check ``TypedDict`` items [typeddict-item]
+------------------------------------------
 
-When constructing a TypedDict object, mypy checks that each key and value is compatible
-with the TypedDict type that is inferred from the surrounding context.
+When constructing a :py:class:`~typing.TypedDict` object, mypy checks that
+each key and value is compatible with the ``TypedDict`` type that is inferred
+from the surrounding context.
 
 Example:
 
 .. code-block:: python
 
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class Point(TypedDict):
         x: int
@@ -569,10 +570,10 @@ Example:
     # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
     t = Thing()
 
-Check the target of NewType [valid-newtype]
--------------------------------------------
+Check the target of ``NewType`` [valid-newtype]
+-----------------------------------------------
 
-The target of a ``NewType`` definition must be a class type. It can't
+The target of a :py:func:`NewType <typing.NewType>` definition must be a class type. It can't
 be a union type, ``Any``, or various other special types.
 
 You can also get this error if the target has been imported from a

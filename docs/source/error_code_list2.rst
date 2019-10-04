@@ -19,9 +19,10 @@ Check that type arguments exist [type-arg]
 ------------------------------------------
 
 If you use ``--disallow-any-generics``, mypy requires that each generic
-type has values for each type argument. For example, the types ``List`` or
-``dict`` would be rejected. You should instead use types like ``List[int]`` or
-``Dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
+type has values for each type argument. For example, the types
+:py:class:`~typing.List` or :py:class:`~typing.Dict` would be rejected.
+You should instead use types like ``List[int]`` or ``Dict[str, int]``.
+Any omitted generic type arguments get implicit :py:data:`~typing.Any`
 values. The type ``List`` is equivalent to ``List[Any]``, and so on.
 
 Example:
@@ -135,8 +136,8 @@ Example:
         ...
 
 
-Check that function does not return Any value [no-any-return]
--------------------------------------------------------------
+Check that function does not return ``Any`` value [no-any-return]
+-----------------------------------------------------------------
 
 If you use ``--warn-return-any``, mypy generates an error if you return a
 value with an ``Any`` type in a function that is annotated to return a
@@ -155,8 +156,8 @@ Example:
         # Error: Returning Any from function declared to return "str"  [no-any-return]
         return fields(x)[0]
 
-Check that types have no Any components due to missing imports [no-any-unimported]
-----------------------------------------------------------------------------------
+Check that types have no ``Any`` components due to missing imports [no-any-unimported]
+--------------------------------------------------------------------------------------
 
 If you use ``--disallow-any-unimported``, mypy generates an error if a component of
 a type becomes ``Any`` because mypy couldn't resolve an import. These "stealth"

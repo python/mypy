@@ -46,7 +46,7 @@ Stubgen can generate this stub file based on the above file:
    def create_empty() -> Window: ...
 
 Stubgen generates *draft* stubs. The auto-generated stub files often
-require some manual updates, and most types will default to ``Any``.
+require some manual updates, and most types will default to :py:data:`~typing.Any`.
 The stubs will be much more useful if you add more precise type annotations,
 at least for the most commonly used functionality.
 
@@ -125,7 +125,7 @@ alter the default behavior:
     useful if semantic analysis causes a critical mypy error.
 
 ``--doc-dir PATH``
-    Try to infer better signatures by parsing .rst documentation in ``PATH``.
+    Try to infer better signatures by parsing ``.rst`` documentation in ``PATH``.
     This may result in better stubs, but currently it only works for C extension
     modules.
 

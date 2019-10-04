@@ -10,10 +10,10 @@ inherits class ``C``, it's also a subtype of ``C``, and instances of
 ``D`` can be used when ``C`` instances are expected. This form of
 subtyping is used by default in mypy, since it's easy to understand
 and produces clear and concise error messages, and since it matches
-how the native ``isinstance()`` check works -- based on class
-hierarchy. *Structural* subtyping can also be useful. Class ``D`` is
-a structural subtype of class ``C`` if the former has all attributes
-and methods of the latter, and with compatible types.
+how the native :py:func:`isinstance <isinstance>` check works --
+based on class hierarchy. *Structural* subtyping can also be useful.
+Class ``D`` is a structural subtype of class ``C`` if the former has
+all attributes and methods of the latter, and with compatible types.
 
 Structural subtyping can be seen as a static equivalent of duck
 typing, which is well known to Python programmers. Mypy provides
@@ -26,11 +26,14 @@ and structural subtyping in Python.
 Predefined protocols
 ********************
 
-The ``typing`` module defines various protocol classes that correspond
-to common Python protocols, such as ``Iterable[T]``.  If a class
-defines a suitable ``__iter__`` method, mypy understands that it
-implements the iterable protocol and is compatible with ``Iterable[T]``.
-For example, ``IntList`` below is iterable, over ``int`` values:
+The :py:mod:`typing` module defines various protocol classes that
+correspond to common Python protocols, such as
+:py:class:`Iterable[T] <typing.Iterable>`.
+If a class defines a suitable :py:meth:`__iter__ <object.__iter__>`
+method, mypy understands that it implements the iterable protocol
+and is compatible with ``Iterable[T]``.
+For example, ``IntList`` below is iterable, over :py:class:`int`
+values:
 
 .. code-block:: python
 
@@ -66,18 +69,18 @@ Iteration protocols
 The iteration protocols are useful in many contexts. For example, they allow
 iteration of objects in for loops.
 
-``Iterable[T]``
----------------
+:py:class:`Iterable[T] <typing.Iterable>`
+-----------------------------------------
 
 The :ref:`example above <predefined_protocols>` has a simple implementation of an
-``__iter__`` method.
+:py:meth:`__iter__ <object.__iter__>` method.
 
 .. code-block:: python
 
    def __iter__(self) -> Iterator[T]
 
-``Iterator[T]``
----------------
+:py:class:`Iterator[T] <typing.Iterator>`
+-----------------------------------------
 
 .. code-block:: python
 
@@ -88,20 +91,20 @@ Collection protocols
 ....................
 
 Many of these are implemented by built-in container types such as
-``list`` and ``dict``, and these are also useful for user-defined
-collection objects.
+:py:class:`list` and :py:class:`dict`, and these are also useful
+for user-defined collection objects.
 
-``Sized``
----------
+:py:class:`~typing.Sized`
+-------------------------
 
-This is a type for objects that support ``len(x)``.
+This is a type for objects that support :py:func:`len(x) <len>`.
 
 .. code-block:: python
 
    def __len__(self) -> int
 
-``Container[T]``
-----------------
+:py:class:`Container[T] <typing.Container>`
+-------------------------------------------
 
 This is a type for objects that support the ``in`` operator.
 
@@ -109,8 +112,8 @@ This is a type for objects that support the ``in`` operator.
 
    def __contains__(self, x: object) -> bool
 
-``Collection[T]``
------------------
+:py:class:`Collection[T] <typing.Collection>`
+---------------------------------------------
 
 .. code-block:: python
 
@@ -124,29 +127,29 @@ One-off protocols
 These protocols are typically only useful with a single standard
 library function or class.
 
-``Reversible[T]``
------------------
+:py:class:`Reversible[T] <typing.Reversible>`
+---------------------------------------------
 
-This is a type for objects that support ``reversed(x)``.
+This is a type for objects that support :py:func:`reversed(x) <reversed>`.
 
 .. code-block:: python
 
    def __reversed__(self) -> Iterator[T]
 
-``SupportsAbs[T]``
-------------------
+:py:class:`SupportsAbs[T] <typing.SupportsAbs>`
+-----------------------------------------------
 
-This is a type for objects that support ``abs(x)``. ``T`` is the type of
-value returned by ``abs(x)``.
+This is a type for objects that support :py:func:`abs(x) <abs>`.
+``T`` is the type of value returned by ``abs(x)``.
 
 .. code-block:: python
 
    def __abs__(self) -> T
 
-``SupportsBytes``
------------------
+:py:class:`~typing.SupportsBytes`
+---------------------------------
 
-This is a type for objects that support ``bytes(x)``.
+This is a type for objects that support :py:class:`bytes(x) <bytes>`.
 
 .. code-block:: python
 
@@ -154,40 +157,40 @@ This is a type for objects that support ``bytes(x)``.
 
 .. _supports-int-etc:
 
-``SupportsComplex``
--------------------
+:py:class:`~typing.SupportsComplex`
+-----------------------------------
 
-This is a type for objects that support ``complex(x)``. Note that no arithmetic operations
-are supported.
+This is a type for objects that support :py:class:`complex(x) <complex>`.
+Note that no arithmetic operations are supported.
 
 .. code-block:: python
 
    def __complex__(self) -> complex
 
-``SupportsFloat``
------------------
+:py:class:`~typing.SupportsFloat`
+---------------------------------
 
-This is a type for objects that support ``float(x)``. Note that no arithmetic operations
-are supported.
+This is a type for objects that support :py:class:`float(x) <float>`.
+Note that no arithmetic operations are supported.
 
 .. code-block:: python
 
    def __float__(self) -> float
 
-``SupportsInt``
----------------
+:py:class:`~typing.SupportsInt`
+-------------------------------
 
-This is a type for objects that support ``int(x)``.  Note that no arithmetic operations
-are supported.
+This is a type for objects that support :py:class:`int(x) <int>`.
+Note that no arithmetic operations are supported.
 
 .. code-block:: python
 
    def __int__(self) -> int
 
-``SupportsRound[T]``
---------------------
+:py:class:`SupportsRound[T] <typing.SupportsRound>`
+---------------------------------------------------
 
-This is a type for objects that support ``round(x)``.
+This is a type for objects that support :py:func:`round(x) <round>`.
 
 .. code-block:: python
 
@@ -199,22 +202,22 @@ Async protocols
 These protocols can be useful in async code. See :ref:`async-and-await`
 for more information.
 
-``Awaitable[T]``
-----------------
+:py:class:`Awaitable[T] <typing.Awaitable>`
+-------------------------------------------
 
 .. code-block:: python
 
    def __await__(self) -> Generator[Any, None, T]
 
-``AsyncIterable[T]``
---------------------
+:py:class:`AsyncIterable[T] <typing.AsyncIterable>`
+---------------------------------------------------
 
 .. code-block:: python
 
    def __aiter__(self) -> AsyncIterator[T]
 
-``AsyncIterator[T]``
---------------------
+:py:class:`AsyncIterator[T] <typing.AsyncIterator>`
+---------------------------------------------------
 
 .. code-block:: python
 
@@ -228,8 +231,8 @@ There are two protocols for context managers -- one for regular context
 managers and one for async ones. These allow defining objects that can
 be used in ``with`` and ``async with`` statements.
 
-``ContextManager[T]``
----------------------
+:py:class:`ContextManager[T] <typing.ContextManager>`
+-----------------------------------------------------
 
 .. code-block:: python
 
@@ -239,8 +242,8 @@ be used in ``with`` and ``async with`` statements.
                 exc_value: Optional[BaseException],
                 traceback: Optional[TracebackType]) -> Optional[bool]
 
-``AsyncContextManager[T]``
---------------------------
+:py:class:`AsyncContextManager[T] <typing.AsyncContextManager>`
+---------------------------------------------------------------
 
 .. code-block:: python
 
@@ -253,13 +256,12 @@ be used in ``with`` and ``async with`` statements.
 Simple user-defined protocols
 *****************************
 
-You can define your own protocol class by inheriting the special ``Protocol``
-class:
+You can define your own protocol class by inheriting the special
+:py:class:`~typing.Protocol` class:
 
 .. code-block:: python
 
-   from typing import Iterable
-   from typing_extensions import Protocol
+   from typing import Iterable, Protocol
 
    class SupportsClose(Protocol):
        def close(self) -> None:
@@ -278,14 +280,14 @@ class:
    close_all([Resource(), open('some/file')])  # Okay!
 
 ``Resource`` is a subtype of the ``SupportsClose`` protocol since it defines
-a compatible ``close`` method. Regular file objects returned by ``open()`` are
+a compatible ``close`` method. Regular file objects returned by :py:func:`open` are
 similarly compatible with the protocol, as they support ``close()``.
 
 .. note::
 
    The ``Protocol`` base class is provided in the ``typing_extensions``
-   package for Python 2.7 and 3.4-3.7. Starting with Python 3.8, ``Protocol``
-   is included in the ``typing`` module.
+   package for Python 2.7 and 3.4-3.7. Starting with Python 3.8,
+   :py:class:`~typing.Protocol` is included in the :py:mod:`typing` module.
 
 Defining subprotocols and subclassing protocols
 ***********************************************
@@ -317,8 +319,8 @@ and merged using multiple inheritance. Example:
 Note that inheriting from an existing protocol does not automatically
 turn the subclass into a protocol -- it just creates a regular
 (non-protocol) class or ABC that implements the given protocol (or
-protocols). The ``Protocol`` base class must always be explicitly
-present if you are defining a protocol:
+protocols). The :py:class:`~typing.Protocol` base class must always
+be explicitly present if you are defining a protocol:
 
 .. code-block:: python
 
@@ -356,8 +358,7 @@ such as trees and linked lists:
 
 .. code-block:: python
 
-   from typing import TypeVar, Optional
-   from typing_extensions import Protocol
+   from typing import TypeVar, Optional, Protocol
 
    class TreeLike(Protocol):
        value: int
@@ -376,16 +377,16 @@ such as trees and linked lists:
 
    root: TreeLike = SimpleTree(0)  # OK
 
-Using ``isinstance()`` with protocols
-*************************************
+Using :py:func:`isinstance` with protocols
+******************************************
 
-You can use a protocol class with ``isinstance()`` if you decorate it
-with the ``@runtime_checkable`` class decorator. The decorator adds
-support for basic runtime structural checks:
+You can use a protocol class with :py:func:`isinstance` if you decorate it
+with the :py:func:`@runtime_checkable <typing.runtime_checkable>` class
+decorator. The decorator adds support for basic runtime structural checks:
 
 .. code-block:: python
 
-   from typing_extensions import Protocol, runtime_checkable
+   from typing import Protocol, runtime_checkable
 
    @runtime_checkable
    class Portable(Protocol):
@@ -399,11 +400,11 @@ support for basic runtime structural checks:
    if isinstance(mug, Portable):
       use(mug.handles)  # Works statically and at runtime
 
-``isinstance()`` also works with the :ref:`predefined protocols <predefined_protocols>`
-in ``typing`` such as ``Iterable``.
+``isinstance`` also works with the :ref:`predefined protocols <predefined_protocols>`
+in :py:mod:`typing` such as :py:class:`~typing.Iterable`.
 
 .. note::
-   ``isinstance()`` with protocols is not completely safe at runtime.
+   :py:func:`isinstance` with protocols is not completely safe at runtime.
    For example, signatures of methods are not checked. The runtime
    implementation only checks that all protocol members are defined.
 
@@ -413,14 +414,14 @@ Callback protocols
 ******************
 
 Protocols can be used to define flexible callback types that are hard
-(or even impossible) to express using the ``Callable[...]`` syntax, such as variadic,
-overloaded, and complex generic callbacks. They are defined with a special ``__call__``
-member:
+(or even impossible) to express using the :py:data:`Callable[...]
+<typing.Callable>` syntax, such as variadic, overloaded, and complex
+generic callbacks. They are defined with a special :py:meth:`__call__
+<object.__call__>` member:
 
 .. code-block:: python
 
-   from typing import Optional, Iterable, List
-   from typing_extensions import Protocol
+   from typing import Optional, Iterable, List, Protocol
 
    class Combiner(Protocol):
        def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> List[bytes]: ...
@@ -444,8 +445,7 @@ a double underscore prefix is used. For example:
 
 .. code-block:: python
 
-   from typing import Callable, TypeVar
-   from typing_extensions import Protocol
+   from typing import Callable, Protocol, TypeVar
 
    T = TypeVar('T')
 

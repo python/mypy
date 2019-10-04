@@ -2,11 +2,11 @@ Duck type compatibility
 -----------------------
 
 In Python, certain types are compatible even though they aren't subclasses of
-each other. For example, ``int`` objects are valid whenever ``float`` objects
+each other. For example, :py:class:`int` objects are valid whenever :py:class:`float` objects
 are expected. Mypy supports this idiom via *duck type compatibility*. This is
 supported for a small set of built-in types:
 
-* ``int`` is duck type compatible with ``float`` and ``complex``.
+* ``int`` is duck type compatible with ``float`` and :py:class:`complex`.
 * ``float`` is duck type compatible with ``complex``.
 * In Python 2, ``str`` is duck type compatible with ``unicode``.
 
@@ -36,7 +36,7 @@ functions expect concrete instances of ``float`` (or ``int``).
    often *not valid* when a unicode string is expected. The mypy type
    system does not consider a string with non-ASCII values as a
    separate type so some programs with this kind of error will
-   silently pass type checking. In Python 3 ``str`` and ``bytes`` are
+   silently pass type checking. In Python 3 :py:class:`str` and :py:class:`bytes` are
    separate, unrelated types and this kind of error is easy to
    detect. This a good reason for preferring Python 3 over Python 2!
 

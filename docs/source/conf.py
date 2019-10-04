@@ -268,7 +268,7 @@ texinfo_documents = [
 rst_prolog = '.. |...| unicode:: U+2026   .. ellipsis\n'
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
+    'python': ('https://docs.python.org/3.8', None),
     'six': ('https://six.readthedocs.io', None),
     'attrs': ('http://www.attrs.org/en/stable', None),
     'cython': ('http://docs.cython.org/en/latest', None),
