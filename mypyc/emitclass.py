@@ -198,7 +198,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
         emit_line()
         generate_native_getters_and_setters(cl, emitter)
-        vtable_name = generate_vtables(cl, vtable_name, emitter)
+        vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter)
         emit_line()
     if needs_getseters:
         generate_getseter_declarations(cl, emitter)
@@ -222,7 +222,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         t=emitter.type_struct_name(cl)))
 
     emitter.emit_line()
-    generate_trait_vtable_setup(cl, vtable_setup_name, vtable_name, emitter)
     if generate_full:
         generate_setup_for_class(cl, setup_name, defaults_fn, vtable_name, emitter)
         emitter.emit_line()
@@ -307,23 +306,50 @@ def generate_native_getters_and_setters(cl: ClassIR,
 
 
 def generate_vtables(base: ClassIR,
+                     vtable_setup_name: str,
                      vtable_name: str,
                      emitter: Emitter) -> str:
-    """Emit the vtables for a class.
+    """Emit the vtables and vtable setup functions for a class.
 
     This includes both the primary vtable and any trait implementation vtables.
 
+    To account for both dynamic loading and dynamic class creation,
+    vtables are populated dynamically at class creation time, so we
+    emit empty array definitions to store the vtables and a function to
+    populate them.
+
     Returns the expression to use to refer to the vtable, which might be
-    different than the name, if there are trait vtables."""
+    different than the name, if there are trait vtables.
+    """
+
+    def trait_vtable_name(trait: ClassIR) -> str:
+        return '{}_{}_trait_vtable'.format(
+            base.name_prefix(emitter.names), trait.name_prefix(emitter.names))
+
+    # Emit array definitions with enough space for all the entries
+    emitter.emit_line('static CPyVTableItem {}[{}];'.format(
+        vtable_name,
+        max(1, len(base.vtable_entries) + 2 * len(base.trait_vtables))))
+    for trait, vtable in base.trait_vtables.items():
+        emitter.emit_line('static CPyVTableItem {}[{}];'.format(
+            trait_vtable_name(trait),
+            max(1, len(vtable))))
+
+    # Emit vtable setup function
+    emitter.emit_line('static bool')
+    emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, vtable_setup_name))
+    emitter.emit_line('{')
 
     subtables = []
     for trait, vtable in base.trait_vtables.items():
-        name = '{}_{}_trait_vtable'.format(
-            base.name_prefix(emitter.names), trait.name_prefix(emitter.names))
+        name = trait_vtable_name(trait)
         generate_vtable(vtable, name, emitter, [])
         subtables.append((trait, name))
 
     generate_vtable(base.vtable_entries, vtable_name, emitter, subtables)
+
+    emitter.emit_line('return 1;')
+    emitter.emit_line('}')
 
     return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 2)
 
@@ -332,14 +358,11 @@ def generate_vtable(entries: VTableEntries,
                     vtable_name: str,
                     emitter: Emitter,
                     subtables: List[Tuple[ClassIR, str]]) -> None:
-    emitter.emit_line('static CPyVTableItem {}[] = {{'.format(vtable_name))
+    emitter.emit_line('CPyVTableItem {}_scratch[] = {{'.format(vtable_name))
     if subtables:
         emitter.emit_line('/* Array of trait vtables */')
         for trait, table in subtables:
-            # N.B: C only lets us store constant values. We do a nasty hack of
-            # storing a pointer to the location, which we will then dynamically
-            # patch up on module load in CPy_FixupTraitVtable.
-            emitter.emit_line('(CPyVTableItem)&{}, (CPyVTableItem){},'.format(
+            emitter.emit_line('(CPyVTableItem){}, (CPyVTableItem){},'.format(
                 emitter.type_struct_name(trait), table))
         emitter.emit_line('/* Start of real vtable */')
 
@@ -355,24 +378,7 @@ def generate_vtable(entries: VTableEntries,
     if not entries:
         emitter.emit_line('NULL')
     emitter.emit_line('};')
-
-
-def generate_trait_vtable_setup(cl: ClassIR,
-                                vtable_setup_name: str,
-                                vtable_name: str,
-                                emitter: Emitter) -> None:
-    """Generate a native function that fixes up the trait vtables of a class.
-
-    This needs to be called before a class is used.
-    """
-    emitter.emit_line('static bool')
-    emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, vtable_setup_name))
-    emitter.emit_line('{')
-    if cl.trait_vtables and not cl.is_trait:
-        emitter.emit_lines('CPy_FixupTraitVtable({}_vtable, {});'.format(
-            cl.name_prefix(emitter.names), len(cl.trait_vtables)))
-    emitter.emit_line('return 1;')
-    emitter.emit_line('}')
+    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(name=vtable_name))
 
 
 def generate_setup_for_class(cl: ClassIR,
