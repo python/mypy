@@ -116,12 +116,10 @@ strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
 
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
-def build_ir(modules: List[MypyFile],
-             graph: Graph,
-             types: Dict[Expression, Type],
-             options: CompilerOptions,
-             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
-    result = []
+def build_type_map(modules: List[MypyFile],
+                   graph: Graph,
+                   types: Dict[Expression, Type],
+                   errors: Errors) -> 'Mapper':
     mapper = Mapper()
 
     # Collect all classes defined in the compilation unit.
@@ -147,6 +145,18 @@ def build_ir(modules: List[MypyFile],
                 prepare_class_def(module.path, module.fullname(), cdef, errors, mapper)
             else:
                 prepare_non_ext_class_def(module.path, module.fullname(), cdef, errors, mapper)
+
+    return mapper
+
+
+@strict_optional_dec  # Turn on strict optional for any type manipulations we do
+def build_ir(modules: List[MypyFile],
+             graph: Graph,
+             types: Dict[Expression, Type],
+             mapper: 'Mapper',
+             options: CompilerOptions,
+             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
+    result = []
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that

@@ -174,6 +174,7 @@ class TestRun(MypycDataSuite):
                     result,
                     module_names=module_names,
                     shared_lib_name=lib_name,
+                    mapper=emitmodule.prepare_groups(result, module_names, compiler_options, errors),
                     compiler_options=compiler_options,
                     errors=errors,
                 )

@@ -107,6 +107,7 @@ def build_ir_for_single_file(input_lines: List[str],
     errors = Errors()
     _, modules = genops.build_ir(
         [result.files['__main__']], result.graph, result.types,
+        genops.build_type_map([result.files['__main__']], result.graph, result.types, errors),
         compiler_options, errors)
     assert errors.num_errors == 0
 

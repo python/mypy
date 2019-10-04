@@ -42,16 +42,24 @@ def parse_and_typecheck(sources: List[BuildSource], options: Options,
     return result
 
 
+def prepare_groups(result: BuildResult,
+                   module_names: List[str],
+                   compiler_options: CompilerOptions,
+                   errors: Errors) -> genops.Mapper:
+    file_nodes = [result.files[name] for name in module_names]
+    return genops.build_type_map(file_nodes, result.graph, result.types, errors)
+
+
 def compile_modules_to_c(result: BuildResult, module_names: List[str],
                          shared_lib_name: Optional[str],
+                         mapper: genops.Mapper,
                          compiler_options: CompilerOptions,
                          errors: Errors,
                          ops: Optional[List[str]] = None) -> List[Tuple[str, str]]:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
-
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
-    literals, modules = genops.build_ir(file_nodes, result.graph, result.types,
+    literals, modules = genops.build_ir(file_nodes, result.graph, result.types, mapper,
                                         compiler_options, errors)
     if errors.num_errors > 0:
         return []
