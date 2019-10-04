@@ -662,8 +662,8 @@ Type aliases can be generic. In this case they can be used in two ways:
 Subscripted aliases are equivalent to original types with substituted type
 variables, so the number of type arguments must match the number of free type variables
 in the generic type alias. Unsubscripted aliases are treated as original types with free
-variables replaced with ``Any``. Examples (following `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#type-aliases>`_):
+variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
+<484#type-aliases>`):
 
 .. code-block:: python
 

@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 3)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 annotation notation represents various common types in Python 3.
 
 .. note::
@@ -18,9 +17,8 @@ annotation notation represents various common types in Python 3.
 Variables
 *********
 
-Python 3.6 introduced a syntax for annotating variables in
-`PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_ and
-we use it in most examples.
+Python 3.6 introduced a syntax for annotating variables in :pep:`526`
+and we use it in most examples.
 
 .. code-block:: python
 

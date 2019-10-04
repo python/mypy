@@ -18,9 +18,8 @@ and methods of the latter, and with compatible types.
 Structural subtyping can be seen as a static equivalent of duck
 typing, which is well known to Python programmers. Mypy provides
 support for structural subtyping via protocol classes described
-below.  See `PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_ for
-the detailed specification of protocols and structural subtyping in
-Python.
+below.  See :pep:`544` for the detailed specification of protocols
+and structural subtyping in Python.
 
 .. _predefined_protocols:
 
@@ -344,8 +343,7 @@ implementation is actually compatible with the protocol.
 
 .. note::
 
-   You can use Python 3.6 variable annotations (`PEP 526
-   <https://www.python.org/dev/peps/pep-0526/>`_)
+   You can use Python 3.6 variable annotations (:pep:`526`)
    to declare protocol attributes.  On Python 2.7 and earlier Python 3
    versions you can use type comments and properties.
 
