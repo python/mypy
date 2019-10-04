@@ -597,7 +597,7 @@ L1:
     r3 = bool r2 :: object
     if r3 goto L3 else goto L2 :: bool
 L2:
-    r4 = builtins.module :: static
+    r4 = builtins :: module
     r5 = unicode_3 :: static  ('AssertionError')
     r6 = getattr r4, r5
     r7 = py_call(r6, s)
@@ -987,4 +987,3 @@ L6:
 L7:
     r19 = None
     return r19
-

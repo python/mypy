@@ -8,7 +8,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypyc import genops
-from mypyc.common import PREFIX, TOP_LEVEL_NAME, INT_PREFIX
+from mypyc.common import PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
@@ -145,7 +145,7 @@ class ModuleGenerator:
             self.declare_internal_globals(module_name, emitter)
             self.declare_imports(module.imports, emitter)
             # Finals must be last (types can depend on declared above)
-            self.define_finals(module.final_names, emitter)
+            self.define_finals(module_name, module.final_names, emitter)
 
             for cl in module.classes:
                 if cl.is_ext_class:
@@ -192,7 +192,7 @@ class ModuleGenerator:
                 declarations.emit_lines(*declaration.decl)
 
         for module_name, module in self.modules:
-            self.declare_finals(module.final_names, declarations)
+            self.declare_finals(module_name, module.final_names, declarations)
             for cl in module.classes:
                 generate_class_type_decl(cl, emitter, declarations)
             for fn in module.functions:
@@ -456,7 +456,7 @@ class ModuleGenerator:
         self.declare_global('PyObject *', static_name)
 
     def module_internal_static_name(self, module_name: str, emitter: Emitter) -> str:
-        return emitter.static_name('module_internal', module_name)
+        return emitter.static_name(module_name + '_internal', None, prefix=MODULE_PREFIX)
 
     def declare_module(self, module_name: str, emitter: Emitter) -> None:
         # We declare two globals for each module:
@@ -465,7 +465,7 @@ class ModuleGenerator:
         # by other modules to refer to it.
         internal_static_name = self.module_internal_static_name(module_name, emitter)
         self.declare_global('CPyModule *', internal_static_name, initializer='NULL')
-        static_name = emitter.static_name('module', module_name)
+        static_name = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         self.declare_global('CPyModule *', static_name)
         self.simple_inits.append((static_name, 'Py_None'))
 
@@ -473,14 +473,16 @@ class ModuleGenerator:
         for imp in imps:
             self.declare_module(imp, emitter)
 
-    def declare_finals(self, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
+    def declare_finals(
+            self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
         for name, typ in final_names:
-            static_name = emitter.static_name(name, 'final')
+            static_name = emitter.static_name(name, module)
             emitter.emit_line('extern {}{};'.format(emitter.ctype_spaced(typ), static_name))
 
-    def define_finals(self, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
+    def define_finals(
+            self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
         for name, typ in final_names:
-            static_name = emitter.static_name(name, 'final')
+            static_name = emitter.static_name(name, module)
             # Here we rely on the fact that undefined value and error value are always the same
             if isinstance(typ, RTuple):
                 # We need to inline because initializer must be static
