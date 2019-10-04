@@ -37,8 +37,6 @@ from mypy.nodes import (
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, is_class_var, op_methods
 )
-import mypy.nodes
-import mypy.errors
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
     TypeType, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
@@ -99,6 +97,7 @@ from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
+from mypyc.errors import Errors
 
 GenFunc = Callable[[], None]
 DictEntry = Tuple[Optional[Value], Value]
@@ -106,25 +105,6 @@ DictEntry = Tuple[Optional[Value], Value]
 
 class UnsupportedException(Exception):
     pass
-
-
-class Errors:
-    def __init__(self) -> None:
-        self.num_errors = 0
-        self.num_warnings = 0
-        self._errors = mypy.errors.Errors()
-
-    def error(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='error', file=path)
-        self.num_errors += 1
-
-    def warning(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='warning', file=path)
-        self.num_warnings += 1
-
-    def flush_errors(self) -> None:
-        for error in self._errors.new_messages():
-            print(error)
 
 
 # The stubs for callable contextmanagers are busted so cast it to the
@@ -137,10 +117,10 @@ strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
 def build_ir(modules: List[MypyFile],
              graph: Graph,
              types: Dict[Expression, Type],
-             options: CompilerOptions) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
+             options: CompilerOptions,
+             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
     result = []
     mapper = Mapper()
-    errors = Errors()
 
     # Collect all classes defined in the compilation unit.
     classes = []
@@ -205,9 +185,7 @@ def build_ir(modules: List[MypyFile],
         if cir.is_ext_class:
             compute_vtable(cir)
 
-    errors.flush_errors()
-
-    return mapper.literals, result, errors.num_errors
+    return mapper.literals, result
 
 
 def is_extension_class(cdef: ClassDef) -> bool:

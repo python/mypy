@@ -17,6 +17,7 @@ from mypy.options import Options
 
 from mypyc import emitmodule
 from mypyc.options import CompilerOptions
+from mypyc.errors import Errors
 from mypyc.build import shared_lib_name
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
@@ -167,11 +168,18 @@ class TestRun(MypycDataSuite):
                     sources=sources,
                     options=options,
                     alt_lib_path='.')
+                errors = Errors()
+                compiler_options = CompilerOptions(multi_file=self.multi_file)
                 cfiles = emitmodule.compile_modules_to_c(
                     result,
                     module_names=module_names,
                     shared_lib_name=lib_name,
-                    compiler_options=CompilerOptions(multi_file=self.multi_file))
+                    compiler_options=compiler_options,
+                    errors=errors,
+                )
+                if errors.num_errors:
+                    errors.flush_errors()
+                    assert False, "Compile error"
             except CompileError as e:
                 for line in e.messages:
                     print(line)
