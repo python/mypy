@@ -24,7 +24,7 @@ import os.path
 import hashlib
 import time
 
-from typing import List, Tuple, Any, Optional, Dict, cast
+from typing import List, Tuple, Any, Optional, Dict, Union, cast
 MYPY = False
 if MYPY:
     from typing import NoReturn
@@ -199,7 +199,8 @@ def generate_c(sources: List[BuildSource], options: Options,
         ctext.append(emitmodule.compile_modules_to_c(result, module_names, shared_lib_name,
                                                      mapper,
                                                      compiler_options=compiler_options,
-                                                     errors=errors, ops=ops))
+                                                     errors=errors, ops=ops,
+                                                     groups=groups))
     if errors.num_errors:
         errors.flush_errors()
         sys.exit(1)
@@ -293,7 +294,9 @@ def mypycify(paths: List[str],
              multi_file: bool = False,
              skip_cgen: bool = False,
              verbose: bool = False,
-             strip_asserts: bool = False) -> List[Extension]:
+             strip_asserts: bool = False,
+             separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
+) -> List[Extension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
@@ -332,12 +335,23 @@ def mypycify(paths: List[str],
     # around with making the single module code handle packages.)
     use_shared_lib = len(sources) > 1 or any('.' in x.module for x in sources)
 
-    source_groups = [sources]
+    if separate is True:
+        groups = [([source], None) for source in sources]  # type: List[Tuple[List[BuildSource], Optional[str]]]
+    elif isinstance(separate, list):
+        groups = []
+        for files, name in separate:
+            groups.append((
+                [src for src in sources if src.path in files],
+                name))
+    else:
+        groups = [(sources, None)]
 
+    # Generate missing names
     groups = [
         (group,
-         shared_lib_name([source.module for source in group]) if use_shared_lib else None)
-        for group in source_groups]
+         name or (
+             shared_lib_name([source.module for source in group]) if use_shared_lib else None))
+        for group, name in groups]
 
     # We let the test harness make us skip doing the full compilation
     # so that it can do a corner-cutting version without full stubs.

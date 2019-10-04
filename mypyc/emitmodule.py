@@ -8,7 +8,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypyc import genops
-from mypyc.common import PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX
+from mypyc.common import PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, lib_suffix
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
@@ -55,7 +55,9 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
                          mapper: genops.Mapper,
                          compiler_options: CompilerOptions,
                          errors: Errors,
-                         ops: Optional[List[str]] = None) -> List[Tuple[str, str]]:
+                         ops: Optional[List[str]] = None,
+                         groups: Optional[List[Tuple[List[BuildSource], Optional[str]]]] = None,
+) -> List[Tuple[str, str]]:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
@@ -84,7 +86,14 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
+    group_map = {}
+    if groups:
+        for group, lib_name in groups:
+            for source in group:
+                group_map[source.module] = lib_name
+
     generator = ModuleGenerator(literals, modules, source_paths, shared_lib_name,
+                                group_map,
                                 compiler_options.multi_file)
     return generator.generate_c_for_modules()
 
@@ -127,11 +136,12 @@ class ModuleGenerator:
                  modules: List[Tuple[str, ModuleIR]],
                  source_paths: Dict[str, str],
                  shared_lib_name: Optional[str],
+                 group_map: Dict[str, Optional[str]],
                  multi_file: bool) -> None:
         self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
-        self.context = EmitterContext([name for name, _ in modules])
+        self.context = EmitterContext([name for name, _ in modules], group_map, shared_lib_name)
         self.names = self.context.names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
@@ -142,7 +152,7 @@ class ModuleGenerator:
 
     @property
     def lib_suffix(self) -> str:
-        return '' if self.shared_lib_name is None else self.shared_lib_name[5:]
+        return lib_suffix(self.shared_lib_name)
 
     def generate_c_for_modules(self) -> List[Tuple[str, str]]:
         file_contents = []
@@ -196,14 +206,14 @@ class ModuleGenerator:
         # (which are shared between shared libraries via dynamic
         # linking tables and not accessed directly.)
         ext_declarations = Emitter(self.context)
-        ext_declarations.emit_line('#ifndef MYPYC_NATIVE_H')
-        ext_declarations.emit_line('#define MYPYC_NATIVE_H')
+        ext_declarations.emit_line('#ifndef MYPYC_NATIVE{}_H'.format(self.lib_suffix))
+        ext_declarations.emit_line('#define MYPYC_NATIVE{}_H'.format(self.lib_suffix))
         ext_declarations.emit_line('#include <Python.h>')
         ext_declarations.emit_line('#include <CPy.h>')
 
         declarations = Emitter(self.context)
-        declarations.emit_line('#ifndef MYPYC_NATIVE_INTERNAL_H')
-        declarations.emit_line('#define MYPYC_NATIVE_INTERNAL_H')
+        declarations.emit_line('#ifndef MYPYC_NATIVE_INTERNAL{}_H'.format(self.lib_suffix))
+        declarations.emit_line('#define MYPYC_NATIVE_INTERNAL{}_H'.format(self.lib_suffix))
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
         declarations.emit_line('#include "__native{}.h"'.format(self.lib_suffix))
@@ -217,6 +227,13 @@ class ModuleGenerator:
                 generate_class_type_decl(cl, emitter, ext_declarations, declarations)
             for fn in module.functions:
                 generate_function_declaration(fn, declarations)
+
+        for lib in sorted(self.context.library_deps):
+            suffix = lib_suffix(lib)
+            declarations.emit_lines(
+                '#include "__native{}.h"'.format(suffix),
+                'struct linking_table{} exports{};'.format(suffix, suffix)
+            )
 
         sorted_decls = self.toposort_declarations()
 
@@ -293,7 +310,11 @@ class ModuleGenerator:
              .format(self.shared_lib_name)),
             'int res;',
             'PyObject *capsule;',
-            'PyObject *module = PyModule_Create(&def);',
+            'static PyObject *module;',
+            'if (module) {',
+            'return module;',
+            '}',
+            'module = PyModule_Create(&def);',
             'if (!module) {',
             'goto fail;',
             '}',
@@ -328,6 +349,18 @@ class ModuleGenerator:
                 'if (res < 0) {',
                 'goto fail;',
                 '}',
+                '',
+            )
+
+        for lib in sorted(self.context.library_deps):
+            suffix = lib_suffix(lib)
+            emitter.emit_lines(
+                'struct linking_table{} *pexports{} = PyCapsule_Import("{}.exports", 0);'.format(
+                    suffix, suffix, lib),
+                'if (!pexports{}) {{'.format(suffix),
+                'goto fail;',
+                '}',
+                'memcpy(&exports{name}, pexports{name}, sizeof(exports{name}));'.format(name=suffix),
                 '',
             )
 

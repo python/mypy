@@ -66,14 +66,20 @@ SIDE_TABLES = [
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]
 
+# Slots that need to always be filled in because they don't get
+# inherited right.
+ALWAYS_FILL = {
+    '__hash__',
+}
+
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items()):
-        method = cl.get_method(name)
-        if method:
-            fields[slot] = generator(cl, method, emitter)
+        method_cls = cl.get_method_and_class(name)
+        if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
+            fields[slot] = generator(cl, method_cls[0], emitter)
 
     return fields
 
@@ -390,12 +396,16 @@ def generate_vtable(entries: VTableEntries,
 
     for entry in entries:
         if isinstance(entry, VTableMethod):
-            emitter.emit_line('(CPyVTableItem){}{},'.format(NATIVE_PREFIX,
-                                                            entry.method.cname(emitter.names)))
+            emitter.emit_line('(CPyVTableItem){}{}{},'.format(
+                emitter.get_lib_prefix(entry.method.decl),
+                NATIVE_PREFIX,
+                entry.method.cname(emitter.names)))
         else:
             cl, attr, is_setter = entry
             namer = native_setter_name if is_setter else native_getter_name
-            emitter.emit_line('(CPyVTableItem){},'.format(namer(cl, attr, emitter.names)))
+            emitter.emit_line('(CPyVTableItem){}{},'.format(
+                emitter.get_lib_prefix(cl),
+                namer(cl, attr, emitter.names)))
     # msvc doesn't allow empty arrays; maybe allowing them at all is an extension?
     if not entries:
         emitter.emit_line('NULL')
@@ -451,8 +461,8 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('    return NULL;')
     args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
-        emitter.emit_line('char res = {}{}({});'.format(
-            NATIVE_PREFIX, init_fn.cname(emitter.names), args))
+        emitter.emit_line('char res = {}{}{}({});'.format(
+            emitter.get_lib_prefix(init_fn.decl), NATIVE_PREFIX, init_fn.cname(emitter.names), args))
         emitter.emit_line('if (res == 2) {')
         emitter.emit_line('Py_DECREF(self);')
         emitter.emit_line('return NULL;')
