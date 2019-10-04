@@ -201,6 +201,7 @@ that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
+   from types import MappingProxyType
    from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set
 
    # Use Iterable for generic iterables (anything usable in "for"),
@@ -216,13 +217,15 @@ that are common in idiomatic Python are standardized.
    def f(my_dict: Mapping[int, str]) -> List[int]:
        return list(my_dict.keys())
 
-   f({3: 'yes', 4: 'no'})
+   f({3: 'yes', 4: 'no'})  # Ok
+   f(MappingProxyType({3: 'yes', 4: 'no'}))  # Ok
 
    def f(my_mapping: MutableMapping[int, str]) -> Set[str]:
        my_mapping[5] = 'maybe'
        return set(my_mapping.values())
 
-   f({3: 'yes', 4: 'no'})
+   f({3: 'yes', 4: 'no'})  # Ok
+   f(MappingProxyType({3: 'yes', 4: 'no'}))  # This will fail (as it's not mutable)
 
 
 Classes
