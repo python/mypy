@@ -152,7 +152,11 @@ class Emitter:
         return '{}{}'.format(NATIVE_PREFIX, fn.cname(self.names))
 
     def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
-        result = ['struct {} {{'.format(rtuple.struct_name)]
+        result = [
+            '#ifndef MYPYC_DECLARED_{}'.format(rtuple.struct_name),
+            '#define MYPYC_DECLARED_{}'.format(rtuple.struct_name),
+            'typedef struct {} {{'.format(rtuple.struct_name),
+        ]
         if len(rtuple.types) == 0:  # empty tuple
             # Empty tuples contain a flag so that they can still indicate
             # error values.
@@ -162,7 +166,11 @@ class Emitter:
             for typ in rtuple.types:
                 result.append('{}f{};'.format(self.ctype_spaced(typ), i))
                 i += 1
-        result.append('};')
+        result.append('}} {};'.format(rtuple.struct_name))
+        values = self.tuple_undefined_value_helper(rtuple)
+        result.append('static {} {} = {{ {} }};'.format(
+            self.ctype(rtuple), self.tuple_undefined_value(rtuple), ''.join(values)))
+        result.append('#endif')
         result.append('')
 
         return result
@@ -183,17 +191,7 @@ class Emitter:
                 tuple_expr_in_c, compare, c_type_compare_val(item_type))
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
-        context = self.context
-        id = rtuple.unique_id
-        name = 'tuple_undefined_' + id
-        if name not in context.declarations:
-            values = self.tuple_undefined_value_helper(rtuple)
-            var = 'struct {} {}'.format(rtuple.struct_name, name)
-            decl = '{};'.format(var)
-            init = '{} = {{ {} }};'.format(var, ''.join(values))
-            context.declarations[name] = HeaderDeclaration(
-                set([rtuple.struct_name]), [decl], [init])
-        return name
+        return 'tuple_undefined_' + rtuple.unique_id
 
     def tuple_undefined_value_helper(self, rtuple: RTuple) -> List[str]:
         res = []
