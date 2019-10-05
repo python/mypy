@@ -184,7 +184,7 @@ class TestRun(MypycDataSuite):
 
             setup_file = os.path.abspath(os.path.join(workdir, 'setup.py'))
             # We pass the C file information to the build script via setup.py unfortunately
-            with open(setup_file, 'w') as f:
+            with open(setup_file, 'w', encoding='utf-8') as f:
                 f.write(setup_format.format(module_paths, self.separate, cfiles))
 
             if not run_setup(setup_file, ['build_ext', '--inplace']):
