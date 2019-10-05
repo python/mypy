@@ -89,6 +89,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         if obvious_result != result:
             out.append('== Return code: {}'.format(result))
         expected_out = testcase.output if step == 1 else testcase.output2[step]
+        # Strip "tmp/" out of the test so that # E: works...
+        expected_out = [s.replace("tmp" + os.sep, "") for s in expected_out]
         assert_string_arrays_equal(expected_out, out,
                                    'Invalid output ({}, line {}){}'.format(
                                        testcase.file, testcase.line,

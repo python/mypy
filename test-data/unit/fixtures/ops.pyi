@@ -1,4 +1,4 @@
-from typing import overload, Any, Generic, Sequence, Tuple, TypeVar
+from typing import overload, Any, Generic, Sequence, Tuple, TypeVar, Optional
 
 Tco = TypeVar('Tco', covariant=True)
 
@@ -46,7 +46,7 @@ class int:
     def __rtruediv__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
     def __floordiv__(self, x: 'int') -> 'int': pass
-    def __pow__(self, x: 'int') -> Any: pass
+    def __pow__(self, x: 'int', __modulo: Optional[int] = ...) -> Any: pass
     def __pos__(self) -> 'int': pass
     def __neg__(self) -> 'int': pass
     def __eq__(self, x: object) -> bool: pass
