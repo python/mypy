@@ -1,5 +1,6 @@
 import re
 import sys
+import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
@@ -154,7 +155,10 @@ def parse(source: Union[str, bytes],
         else:
             assert options.python_version[0] >= 3
             feature_version = options.python_version[1]
-        ast = ast3_parse(source, fnam, 'exec', feature_version=feature_version)
+        # Disable deprecation warnings about \u
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            ast = ast3_parse(source, fnam, 'exec', feature_version=feature_version)
 
         tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
