@@ -75,7 +75,7 @@ A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 # flags: --disallow-untyped-defs
 import attr
 @attr.s
-class A:  # E: Function is missing a type annotation for one or more arguments
+class A:
     a = attr.ib()  # E: Need type annotation for 'a'
     _b = attr.ib()  # E: Need type annotation for '_b'
     c = attr.ib(18)  # E: Need type annotation for 'c'
@@ -1121,7 +1121,7 @@ reveal_type(B)  # N: Revealed type is 'def (x: __main__.C) -> __main__.B'
 import attr
 
 @attr.s
-class B:  # E: Function is missing a type annotation for one or more arguments
+class B:
     x = attr.ib()  # E: Need type annotation for 'x'
 
 reveal_type(B)  # N: Revealed type is 'def (x: Any) -> __main__.B'
