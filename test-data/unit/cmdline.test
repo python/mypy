@@ -578,6 +578,25 @@ python_version = 3.4
 python_version = 3.6
 [out]
 
+-- This should be a dumping ground for tests of plugins that are sensitive to
+-- typeshed changes.
+[case testTypeshedSensitivePlugins]
+# cmd: mypy int_pow.py
+
+[file int_pow.py]
+a = 1
+b = a + 2
+reveal_type(a**0) # N: Revealed type is 'builtins.int'
+reveal_type(a**1) # N: Revealed type is 'builtins.int'
+reveal_type(a**2) # N: Revealed type is 'builtins.int'
+reveal_type(a**-0) # N: Revealed type is 'builtins.int'
+reveal_type(a**-1) # N: Revealed type is 'builtins.float'
+reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
+reveal_type(a**b) # N: Revealed type is 'Any'
+reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
+reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
+a.__pow__() # E: Too few arguments for "__pow__" of "int"
+
 [case testDisallowAnyUnimported]
 # cmd: mypy main.py
 [file mypy.ini]
