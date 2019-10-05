@@ -1109,3 +1109,47 @@ e.y = 20
 assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
 e2 = pickle.loads(pickle.dumps(e))
 assert e is not e2 and e.x == e2.x and e.y == e2.y
+
+
+[case testInterpretedParentInit]
+from interp import C
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def dec(x: T) -> T:
+    return x
+
+@dec
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class B(A):
+    s = 'test'
+
+def b(x: int) -> B: return B(x)
+
+class D(C):
+    s = 'test'
+
+def d(x: int) -> D: return D(x)
+
+
+[file interp.py]
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file driver.py]
+from native import b, d, B, D
+
+def test(f, v):
+    x = f(v)
+    assert x.x == v
+    assert x.s == 'test'
+
+test(b, 20)
+test(d, 30)
+test(B, -1)
+test(D, -2)

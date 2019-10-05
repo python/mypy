@@ -557,6 +557,19 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     init_node = cdef.info['__init__'].node
     if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
         init_sig = mapper.fdef_to_sig(init_node)
+
+        defining_ir = mapper.type_to_ir.get(init_node.info)
+        # If there is a nontrivial __init__ that wasn't defined in an
+        # extension class, we need to make the constructor take *args,
+        # **kwargs so it can call tp_init.
+        if ((defining_ir is None or not defining_ir.is_ext_class)
+                and init_node.info.fullname() != 'builtins.object'):
+            init_sig = FuncSignature(
+                [init_sig.args[0],
+                 RuntimeArg("args", tuple_rprimitive, ARG_STAR),
+                 RuntimeArg("kwargs", dict_rprimitive, ARG_STAR2)],
+                init_sig.ret_type)
+
         ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
         mapper.func_to_decl[cdef.info] = ir.ctor

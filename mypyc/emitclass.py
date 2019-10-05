@@ -427,14 +427,27 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('PyObject *self = {}();'.format(setup_name))
     emitter.emit_line('if (self == NULL)')
     emitter.emit_line('    return NULL;')
+    args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
-        args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
         emitter.emit_line('char res = {}{}({});'.format(
             NATIVE_PREFIX, init_fn.cname(emitter.names), args))
         emitter.emit_line('if (res == 2) {')
         emitter.emit_line('Py_DECREF(self);')
         emitter.emit_line('return NULL;')
         emitter.emit_line('}')
+
+    # If there is a nontrivial ctor that we didn't define, invoke it via tp_init
+    elif len(fn.sig.args) > 1:
+        emitter.emit_line(
+            'int res = {}->tp_init({});'.format(
+                emitter.type_struct_name(cl),
+                args))
+
+        emitter.emit_line('if (res < 0) {')
+        emitter.emit_line('Py_DECREF(self);')
+        emitter.emit_line('return NULL;')
+        emitter.emit_line('}')
+
     emitter.emit_line('return self;')
     emitter.emit_line('}')
 
