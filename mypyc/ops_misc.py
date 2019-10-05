@@ -423,3 +423,10 @@ pytype_from_template_op = custom_op(
     format_str='{dest} = pytype_from_template({comma_args})',
     emit=simple_emit(
         '{dest} = CPyType_FromTemplate((PyTypeObject *){args[0]}, {args[1]}, {args[2]});'))
+
+dataclass_sleight_of_hand = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    format_str='{dest} = dataclass_sleight_of_hand({comma_args})',
+    emit=call_emit('CPyDataclass_SleightOfHand'))

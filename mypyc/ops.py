@@ -1745,6 +1745,9 @@ class ClassIR:
         self.is_generated = is_generated
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
+        # An augmented class has additional methods separate from what mypyc generates.
+        # Right now the only one is dataclasses.
+        self.is_augmented = False
         self.inherits_python = False
         self.has_dict = False
         # If this a subclass of some built-in python class, the name
@@ -1895,6 +1898,7 @@ class ClassIR:
             'is_ext_class': self.is_ext_class,
             'is_abstract': self.is_abstract,
             'is_generated': self.is_generated,
+            'is_augmented': self.is_augmented,
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
             'builtin_base': self.builtin_base,
@@ -1940,6 +1944,7 @@ class ClassIR:
         ir.is_generated = data['is_generated']
         ir.is_abstract = data['is_abstract']
         ir.is_ext_class = data['is_ext_class']
+        ir.is_augmented = data['is_augmented']
         ir.inherits_python = data['inherits_python']
         ir.has_dict = data['has_dict']
         ir.builtin_base = data['builtin_base']
