@@ -314,6 +314,7 @@ class ModuleGenerator:
             'PyObject *capsule;',
             'static PyObject *module;',
             'if (module) {',
+            'Py_INCREF(module);',
             'return module;',
             '}',
             'module = PyModule_Create(&def);',
