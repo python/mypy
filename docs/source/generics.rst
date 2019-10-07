@@ -122,7 +122,7 @@ non-generic. For example:
    KT = TypeVar('KT')
    VT = TypeVar('VT')
 
-   class MyMap(Mapping[KT, VT]]):  # This is a generic subclass of Mapping
+   class MyMap(Mapping[KT, VT]):  # This is a generic subclass of Mapping
        def __getitem__(self, k: KT) -> VT:
            ...  # Implementations omitted
        def __iter__(self) -> Iterator[KT]:
@@ -447,7 +447,7 @@ subtype of ``str``:
 
     class S(str): pass
 
-    ss = concat(S('foo'), S('bar')))
+    ss = concat(S('foo'), S('bar'))
 
 You may expect that the type of ``ss`` is ``S``, but the type is
 actually ``str``: a subtype gets promoted to one of the valid values

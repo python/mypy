@@ -179,12 +179,12 @@ Any)`` function signature. Example:
 
    from typing import Callable
 
-    def arbitrary_call(f: Callable[..., int]) -> int:
-        return f('x') + f(y=2)  # OK
+   def arbitrary_call(f: Callable[..., int]) -> int:
+       return f('x') + f(y=2)  # OK
 
-    arbitrary_call(ord)   # No static error, but fails at runtime
-    arbitrary_call(open)  # Error: does not return an int
-    arbitrary_call(1)     # Error: 'int' is not callable
+   arbitrary_call(ord)   # No static error, but fails at runtime
+   arbitrary_call(open)  # Error: does not return an int
+   arbitrary_call(1)     # Error: 'int' is not callable
 
 In situations where more precise or complex types of callbacks are
 necessary one can use flexible :ref:`callback protocols <callback_protocols>`.
@@ -484,7 +484,7 @@ defined. Thus this code does not work as expected:
 .. code-block:: python
 
    def f(x: A) -> None:  # Error: Name A not defined
-       ....
+       ...
 
    class A:
        ...
