@@ -37,6 +37,7 @@ from mypy.build import BuildSource
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
+from mypyc.common import shared_lib_name
 
 from mypyc import emitmodule
 
@@ -113,6 +114,7 @@ shim_template = """\
 PyMODINIT_FUNC
 PyInit_{modname}(void)
 {{
+    if (!PyImport_ImportModule("{libname}")) return NULL;
     void *init_func = PyCapsule_Import("{libname}.init_{full_modname}", 0);
     if (!init_func) {{
         return NULL;
@@ -127,7 +129,7 @@ PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}
 
 
 def generate_c_extension_shim(
-        full_module_name: str, module_name: str, dirname: str, libname: str) -> str:
+        full_module_name: str, module_name: str, dirname: str, group_name: str) -> str:
     """Create a C extension shim with a passthrough PyInit function.
 
     Arguments:
@@ -142,17 +144,17 @@ def generate_c_extension_shim(
     write_file(
         cpath,
         shim_template.format(modname=module_name,
-                             libname=libname,
+                             libname=shared_lib_name(group_name),
                              full_modname=exported_name(full_module_name)))
 
     return cpath
 
 
-def shared_lib_name(modules: List[str]) -> str:
-    """Produce a probably unique name for a library from a list of module names."""
+def group_name(modules: List[str]) -> str:
+    """Produce a probably unique name for a group from a list of module names."""
     h = hashlib.sha1()
     h.update(','.join(modules).encode())
-    return 'mypyc_%s' % h.hexdigest()[:20]
+    return h.hexdigest()[:20]
 
 
 def include_dir() -> str:
@@ -211,7 +213,7 @@ def generate_c(sources: List[BuildSource],
 
 
 def build_using_shared_lib(sources: List[BuildSource],
-                           lib_name: str,
+                           group_name: str,
                            cfiles: List[str],
                            deps: List[str],
                            build_dir: str,
@@ -229,7 +231,7 @@ def build_using_shared_lib(sources: List[BuildSource],
     Capsules stored in module attributes.
     """
     extensions = [Extension(
-        lib_name,
+        shared_lib_name(group_name),
         sources=cfiles,
         include_dirs=[include_dir()],
         depends=deps,
@@ -238,7 +240,7 @@ def build_using_shared_lib(sources: List[BuildSource],
 
     for source in sources:
         module_name = source.module.split('.')[-1]
-        shim_file = generate_c_extension_shim(source.module, module_name, build_dir, lib_name)
+        shim_file = generate_c_extension_shim(source.module, module_name, build_dir, group_name)
 
         # We include the __init__ in the "module name" we stick in the Extension,
         # since this seems to be needed for it to end up in the right place.
@@ -323,7 +325,7 @@ def construct_groups(
     # Generate missing names
     for i, (group, name) in enumerate(groups):
         if use_shared_lib and not name:
-            name = shared_lib_name([source.module for source in group])
+            name = group_name([source.module for source in group])
         groups[i] = (group, name)
 
     return groups

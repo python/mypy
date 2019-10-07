@@ -6,7 +6,6 @@ from typing import List, Set, Dict, Optional, Callable, Union
 from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
-    lib_suffix,
 )
 from mypyc.ops import (
     Environment, BasicBlock, Value, RType, RTuple, RInstance,
@@ -56,12 +55,13 @@ class EmitterContext:
 
     def __init__(self, module_names: List[str],
                  group_map: Optional[Dict[str, Optional[str]]] = None,
-                 shared_lib_name: Optional[str] = None) -> None:
+                 group_name: Optional[str] = None) -> None:
         self.temp_counter = 0
         self.names = NameGenerator(module_names, is_separate=group_map is not None)
         self.group_map = group_map or {}
-        self.shared_lib_name = shared_lib_name
-        self.library_deps = set()  # type: Set[str]
+        self.group_name = group_name
+        # Groups that this group depends on
+        self.group_deps = set()  # type: Set[str]
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -148,10 +148,10 @@ class Emitter:
         export table.
         """
         groups = self.context.group_map
-        target_name = groups.get(module_name)
-        if target_name and target_name != self.context.shared_lib_name:
-            self.context.library_deps.add(target_name)
-            return '{}exports{}.'.format(lib_suffix(target_name))
+        target_group_name = groups.get(module_name)
+        if target_group_name and target_group_name != self.context.group_name:
+            self.context.group_deps.add(target_group_name)
+            return 'exports_{}.'.format(target_group_name)
         else:
             return ''
 

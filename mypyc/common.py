@@ -33,5 +33,5 @@ def decorator_helper_name(func_name: str) -> str:
     return '__mypyc_{}_decorator_helper__'.format(func_name)
 
 
-def lib_suffix(shared_lib_name: Optional[str]) -> str:
-    return '' if shared_lib_name is None else shared_lib_name[5:]
+def shared_lib_name(group_name: str) -> str:
+    return 'mypyc_{}'.format(group_name)

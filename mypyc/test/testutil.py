@@ -105,7 +105,7 @@ def build_ir_for_single_file(input_lines: List[str],
         raise CompileError(result.errors)
 
     errors = Errors()
-    _, modules = genops.build_ir(
+    modules = genops.build_ir(
         [result.files['__main__']], result.graph, result.types,
         genops.Mapper({'__main__': None}),
         compiler_options, errors)

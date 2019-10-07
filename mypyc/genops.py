@@ -164,7 +164,7 @@ def build_ir(modules: List[MypyFile],
              types: Dict[Expression, Type],
              mapper: 'Mapper',
              options: CompilerOptions,
-             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
+             errors: Errors) -> List[Tuple[str, ModuleIR]]:
 
     build_type_map(mapper, modules, graph, types, errors)
 
@@ -198,7 +198,7 @@ def build_ir(modules: List[MypyFile],
         if cir.is_ext_class:
             compute_vtable(cir)
 
-    return mapper.literals, result
+    return result
 
 
 def is_extension_class(cdef: ClassDef) -> bool:
@@ -345,15 +345,20 @@ def compute_vtable(cls: ClassIR) -> None:
 class Mapper:
     """Keep track of mappings from mypy concepts to IR concepts.
 
-    This state is shared across all modules being compiled.
+    This state is shared across all modules being compiled in all
+    compilation groups.
     """
 
     def __init__(self, group_map: Dict[str, Optional[str]]) -> None:
         self.group_map = group_map
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
         self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
-        # Maps integer, float, and unicode literals to a static name
-        self.literals = {v: OrderedDict() for v in group_map.values()}  # type: LiteralsMap
+        # LiteralsMap maps literal values to a static name. Each
+        # compilation group has its own LiteralsMap. (Since they can't
+        # share literals.)
+        self.literals = {
+            v: OrderedDict() for v in group_map.values()
+        }  # type: Dict[Optional[str], LiteralsMap]
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
