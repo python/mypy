@@ -88,13 +88,11 @@ calls since the arguments have invalid types:
    greeting(b'Alice')  # Argument 1 to "greeting" has incompatible type "bytes"; expected "str"
 
 Note that this is all still valid Python 3 code! The function annotation syntax
-shown above was added to Python `as a part of Python 3.0 <pep3107_>`_.
+shown above was added to Python :pep:`as a part of Python 3.0 <3107>`.
 
 If you are trying to type check Python 2 code, you can add type hints
 using a comment-based syntax instead of the Python 3 annotation syntax.
 See our section on :ref:`typing Python 2 code <python2>` for more details.
-
-.. _pep3107: https://www.python.org/dev/peps/pep-3107/
 
 Being able to pick whether you want a function to be dynamically or statically
 typed can be very helpful. For example, if you are migrating an existing
@@ -286,7 +284,7 @@ for example, when assigning an empty dictionary to some global value:
 You can teach mypy what type ``my_global_dict`` is meant to have by giving it
 a type hint. For example, if you knew this variable is supposed to be a dict
 of ints to floats, you could annotate it using either variable annotations
-(introduced in Python 3.6 by `PEP 526 <pep526_>`_) or using a comment-based
+(introduced in Python 3.6 by :pep:`526`) or using a comment-based
 syntax like so:
 
 .. code-block:: python
@@ -296,9 +294,6 @@ syntax like so:
 
    # If you want compatibility with older versions of Python
    my_global_dict = {}  # type: Dict[int, float]
-
-.. _pep526: https://www.python.org/dev/peps/pep-0526/
-
 
 .. _stubs-intro:
 

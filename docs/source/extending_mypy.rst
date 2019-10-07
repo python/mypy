@@ -43,12 +43,12 @@ Extending mypy using plugins
 Python is a highly dynamic language and has extensive metaprogramming
 capabilities. Many popular libraries use these to create APIs that may
 be more flexible and/or natural for humans, but are hard to express using
-static types. Extending the PEP 484 type system to accommodate all existing
+static types. Extending the :pep:`484` type system to accommodate all existing
 dynamic patterns is impractical and often just impossible.
 
 Mypy supports a plugin system that lets you customize the way mypy type checks
 code. This can be useful if you want to extend mypy so it can type check code
-that uses a library that is difficult to express using just PEP 484 types.
+that uses a library that is difficult to express using just :pep:`484` types.
 
 The plugin system is focused on improving mypy's understanding
 of *semantics* of third party frameworks. There is currently no way to define
@@ -139,7 +139,7 @@ Current list of plugin hooks
 ****************************
 
 **get_type_analyze_hook()** customizes behaviour of the type analyzer.
-For example, PEP 484 doesn't support defining variadic generic types:
+For example, :pep:`484` doesn't support defining variadic generic types:
 
 .. code-block:: python
 

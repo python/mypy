@@ -19,7 +19,7 @@ def g():
     r12 :: None
 L0:
 L1:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('object')
     r2 = getattr r0, r1
     r3 = py_call(r2)
@@ -27,7 +27,7 @@ L1:
 L2: (handler for L1)
     r4 = error_catch
     r5 = unicode_2 :: static  ('weeee')
-    r6 = builtins.module :: static
+    r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
@@ -71,7 +71,7 @@ L0:
 L1:
     if b goto L2 else goto L3 :: bool
 L2:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('object')
     r2 = getattr r0, r1
     r3 = py_call(r2)
@@ -84,7 +84,7 @@ L4:
 L5: (handler for L1, L2, L3, L4)
     r6 = error_catch
     r7 = unicode_3 :: static  ('weeee')
-    r8 = builtins.module :: static
+    r8 = builtins :: module
     r9 = unicode_4 :: static  ('print')
     r10 = getattr r8, r9
     r11 = py_call(r10, r7)
@@ -143,20 +143,20 @@ def g():
 L0:
 L1:
     r0 = unicode_1 :: static  ('a')
-    r1 = builtins.module :: static
+    r1 = builtins :: module
     r2 = unicode_2 :: static  ('print')
     r3 = getattr r1, r2
     r4 = py_call(r3, r0)
     r5 = unbox(None, r4)
 L2:
-    r6 = builtins.module :: static
+    r6 = builtins :: module
     r7 = unicode_3 :: static  ('object')
     r8 = getattr r6, r7
     r9 = py_call(r8)
     goto L8
 L3: (handler for L2)
     r10 = error_catch
-    r11 = builtins.module :: static
+    r11 = builtins :: module
     r12 = unicode_4 :: static  ('AttributeError')
     r13 = getattr r11, r12
     r14 = exc_matches r13
@@ -165,7 +165,7 @@ L4:
     r15 = get_exc_value
     e = r15
     r16 = unicode_5 :: static  ('b')
-    r17 = builtins.module :: static
+    r17 = builtins :: module
     r18 = unicode_2 :: static  ('print')
     r19 = getattr r17, r18
     r20 = py_call(r19, r16, e)
@@ -186,7 +186,7 @@ L8:
 L9: (handler for L1, L6, L7, L8)
     r24 = error_catch
     r25 = unicode_6 :: static  ('weeee')
-    r26 = builtins.module :: static
+    r26 = builtins :: module
     r27 = unicode_2 :: static  ('print')
     r28 = getattr r26, r27
     r29 = py_call(r28, r25)
@@ -238,28 +238,28 @@ L1:
     goto L9
 L2: (handler for L1)
     r0 = error_catch
-    r1 = builtins.module :: static
+    r1 = builtins :: module
     r2 = unicode_1 :: static  ('KeyError')
     r3 = getattr r1, r2
     r4 = exc_matches r3
     if r4 goto L3 else goto L4 :: bool
 L3:
     r5 = unicode_2 :: static  ('weeee')
-    r6 = builtins.module :: static
+    r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
     r10 = unbox(None, r9)
     goto L7
 L4:
-    r11 = builtins.module :: static
+    r11 = builtins :: module
     r12 = unicode_4 :: static  ('IndexError')
     r13 = getattr r11, r12
     r14 = exc_matches r13
     if r14 goto L5 else goto L6 :: bool
 L5:
     r15 = unicode_5 :: static  ('yo')
-    r16 = builtins.module :: static
+    r16 = builtins :: module
     r17 = unicode_3 :: static  ('print')
     r18 = getattr r16, r17
     r19 = py_call(r18, r15)
@@ -307,7 +307,7 @@ L1:
     if b goto L2 else goto L3 :: bool
 L2:
     r0 = unicode_1 :: static  ('hi')
-    r1 = builtins.module :: static
+    r1 = builtins :: module
     r2 = unicode_2 :: static  ('Exception')
     r3 = getattr r1, r2
     r4 = py_call(r3, r0)
@@ -324,7 +324,7 @@ L6: (handler for L1, L2, L3)
     r6 = r8
 L7:
     r9 = unicode_3 :: static  ('finally')
-    r10 = builtins.module :: static
+    r10 = builtins :: module
     r11 = unicode_4 :: static  ('print')
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)
@@ -388,7 +388,7 @@ L1:
 L2:
     y = r6
     r9 = unicode_5 :: static  ('hello')
-    r10 = builtins.module :: static
+    r10 = builtins :: module
     r11 = unicode_6 :: static  ('print')
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)

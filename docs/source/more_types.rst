@@ -217,8 +217,7 @@ we pass in. It also does not prohibit a caller from passing in the wrong
 number of ints: mypy would treat calls like ``mouse_event(1, 2, 20)`` as being
 valid, for example.
 
-We can do better by using `overloading
-<https://www.python.org/dev/peps/pep-0484/#function-method-overloading>`_
+We can do better by using :pep:`overloading <484#function-method-overloading>`
 which lets us give the same function multiple type annotations (signatures)
 to more accurately describe the function's behavior:
 
@@ -569,7 +568,7 @@ Typing async/await
 
 Mypy supports the ability to type coroutines that use the ``async/await``
 syntax introduced in Python 3.5. For more information regarding coroutines and
-this new syntax, see `PEP 492 <https://www.python.org/dev/peps/pep-0492/>`_.
+this new syntax, see :pep:`492`.
 
 Functions defined using ``async def`` are typed just like normal functions.
 The return type annotation should be the same as the type of the value you

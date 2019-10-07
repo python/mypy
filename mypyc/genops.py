@@ -37,8 +37,6 @@ from mypy.nodes import (
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, is_class_var, op_methods
 )
-import mypy.nodes
-import mypy.errors
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
     TypeType, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
@@ -48,6 +46,7 @@ from mypy.types import (
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.state import strict_optional_set
+from mypy.util import split_target
 
 from mypyc.common import (
     ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, TEMP_ATTR_NAME, LAMBDA_NAME,
@@ -66,7 +65,8 @@ from mypyc.ops import (
     exc_rtuple,
     PrimitiveOp, ControlOp, OpDescription, RegisterOp,
     is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
-    NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
+    NAMESPACE_TYPE, NAMESPACE_MODULE,
+    RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
     FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
     RUnion, is_optional_type, optional_value_type, all_concrete_classes
 )
@@ -99,6 +99,7 @@ from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
+from mypyc.errors import Errors
 
 GenFunc = Callable[[], None]
 DictEntry = Tuple[Optional[Value], Value]
@@ -106,25 +107,6 @@ DictEntry = Tuple[Optional[Value], Value]
 
 class UnsupportedException(Exception):
     pass
-
-
-class Errors:
-    def __init__(self) -> None:
-        self.num_errors = 0
-        self.num_warnings = 0
-        self._errors = mypy.errors.Errors()
-
-    def error(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='error', file=path)
-        self.num_errors += 1
-
-    def warning(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='warning', file=path)
-        self.num_warnings += 1
-
-    def flush_errors(self) -> None:
-        for error in self._errors.new_messages():
-            print(error)
 
 
 # The stubs for callable contextmanagers are busted so cast it to the
@@ -137,10 +119,10 @@ strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
 def build_ir(modules: List[MypyFile],
              graph: Graph,
              types: Dict[Expression, Type],
-             options: CompilerOptions) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]], int]:
+             options: CompilerOptions,
+             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
     result = []
     mapper = Mapper()
-    errors = Errors()
 
     # Collect all classes defined in the compilation unit.
     classes = []
@@ -205,9 +187,7 @@ def build_ir(modules: List[MypyFile],
         if cir.is_ext_class:
             compute_vtable(cir)
 
-    errors.flush_errors()
-
-    return mapper.literals, result, errors.num_errors
+    return mapper.literals, result
 
 
 def is_extension_class(cdef: ClassDef) -> bool:
@@ -1387,7 +1367,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for lval in attrs_to_cache:
             assert isinstance(lval, NameExpr)
             rval = self.py_get_attr(typ, lval.name, cdef.line)
-            self.init_final_static(lval, rval, cdef.fullname)
+            self.init_final_static(lval, rval, cdef.name)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         ir = self.mapper.type_to_ir[cdef.info]
@@ -1451,7 +1431,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.primitive_op(
                     py_setattr_op, [typ, self.load_static_unicode(lvalue.name), value], stmt.line)
                 if self.non_function_scope() and stmt.is_final_def:
-                    self.init_final_static(lvalue, value, cdef.fullname)
+                    self.init_final_static(lvalue, value, cdef.name)
             elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
                 # Docstring. Ignore
                 pass
@@ -1503,10 +1483,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         tp = self.primitive_op(pytype_from_template_op,
                                [template, tp_bases, modname], cdef.line)
         # Immediately fix up the trait vtables, before doing anything with the class.
-        self.add(Call(
-            FuncDecl(cdef.name + '_trait_vtable_setup',
-                     None, self.module_name,
-                     FuncSignature([], bool_rprimitive)), [], -1))
+        ir = self.mapper.type_to_ir[cdef.info]
+        if not ir.is_trait and not ir.builtin_base:
+            self.add(Call(
+                FuncDecl(cdef.name + '_trait_vtable_setup',
+                         None, self.module_name,
+                         FuncSignature([], bool_rprimitive)), [], -1))
         # Populate a '__mypyc_attrs__' field containing the list of attrs
         self.primitive_op(py_setattr_op, [
             tp, self.load_static_unicode('__mypyc_attrs__'),
@@ -1525,13 +1507,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.imports[id] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        first_load = self.add(LoadStatic(object_rprimitive, 'module', id))
+        first_load = self.load_module(id)
         comparison = self.binary_op(first_load, self.none_object(), 'is not', line)
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)
         value = self.primitive_op(import_op, [self.load_static_unicode(id)], line)
-        self.add(InitStatic(value, 'module', id))
+        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
     def visit_import(self, node: Import) -> None:
@@ -1577,7 +1559,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
         self.gen_import(id, node.line)
-        module = self.add(LoadStatic(object_rprimitive, 'module', id))
+        module = self.load_module(id)
 
         # Copy everything into our module's dict.
         # Note that we miscompile import from inside of functions here,
@@ -1730,7 +1712,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                     env.lookup(arg.variable).type, arg.line)
                 if not fn_info.is_nested:
                     name = fitem.fullname() + '.' + arg.variable.name()
-                    self.add(InitStatic(value, name, 'final'))
+                    self.add(InitStatic(value, name, self.module_name))
                 else:
                     assert func_reg is not None
                     self.add(SetAttr(func_reg, arg.variable.name(), value, arg.line))
@@ -1758,7 +1740,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     elif not self.fn_info.is_nested:
                         name = fitem.fullname() + '.' + arg.variable.name()
                         self.final_names.append((name, target.type))
-                        return self.add(LoadStatic(target.type, name, 'final'))
+                        return self.add(LoadStatic(target.type, name, self.module_name))
                     else:
                         name = arg.variable.name()
                         self.fn_info.callable_class.ir.attributes[name] = target.type
@@ -2042,19 +2024,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         assert isinstance(lvalue.node, Var)
         if lvalue.node.final_value is None:
             if class_name is None:
-                name = lvalue.fullname
+                name = lvalue.name
             else:
                 name = '{}.{}'.format(class_name, lvalue.name)
             assert name is not None, "Full name not set for variable"
             self.final_names.append((name, rvalue_reg.type))
-            self.add(InitStatic(rvalue_reg, name, 'final'))
+            self.add(InitStatic(rvalue_reg, name, self.module_name))
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:
         if error_name is None:
             error_name = fullname
         ok_block, error_block = BasicBlock(), BasicBlock()
-        value = self.add(LoadStatic(typ, fullname, 'final', line=line))
+        split_name = split_target(self.graph, fullname)
+        assert split_name is not None
+        value = self.add(LoadStatic(typ, split_name[1], split_name[0], line=line))
         self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
         self.activate_block(error_block)
         self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
@@ -5237,7 +5221,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
     def load_module(self, name: str) -> Value:
-        return self.add(LoadStatic(object_rprimitive, 'module', name))
+        return self.add(LoadStatic(object_rprimitive, name, namespace=NAMESPACE_MODULE))
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition('.')

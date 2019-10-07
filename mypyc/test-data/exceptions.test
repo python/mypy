@@ -194,7 +194,7 @@ def g():
     r12, r13 :: None
 L0:
 L1:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('object')
     r2 = getattr r0, r1
     if is_error(r2) goto L3 (error at g:3) else goto L2
@@ -205,7 +205,7 @@ L2:
 L3:
     r4 = error_catch
     r5 = unicode_2 :: static  ('weeee')
-    r6 = builtins.module :: static
+    r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     if is_error(r8) goto L7 (error at g:5) else goto L4
@@ -266,7 +266,7 @@ def a():
     r20 :: str
 L0:
 L1:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
     if is_error(r2) goto L6 (error at a:3) else goto L2
@@ -293,7 +293,7 @@ L6:
     r7 = r11
 L7:
     r12 = unicode_3 :: static  ('goodbye!')
-    r13 = builtins.module :: static
+    r13 = builtins :: module
     r14 = unicode_1 :: static  ('print')
     r15 = getattr r13, r14
     if is_error(r15) goto L15 (error at a:6) else goto L8
@@ -500,7 +500,7 @@ L2:
     r3 = !r2
     if r3 goto L12 else goto L1 :: bool
 L3:
-    r4 = builtins.module :: static
+    r4 = builtins :: module
     r5 = unicode_3 :: static  ('print')
     r6 = getattr r4, r5
     if is_error(r6) goto L13 (error at f:7) else goto L4

@@ -530,7 +530,7 @@ L1:
     goto L10
 L2:
     r1 = error_catch
-    r2 = builtins.module :: static
+    r2 = builtins :: module
     r3 = unicode_1 :: static  ('Exception')
     r4 = getattr r2, r3
     if is_error(r4) goto L8 (error at lol:4) else goto L3

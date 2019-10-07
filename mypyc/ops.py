@@ -248,7 +248,7 @@ class RTuple(RType):
         self.unique_id = self.accept(TupleNameVisitor())
         # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
         self.struct_name = 'tuple_{}'.format(self.unique_id)
-        self._ctype = 'struct {}'.format(self.struct_name)
+        self._ctype = '{}'.format(self.struct_name)
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rtuple(self)
@@ -1115,6 +1115,7 @@ class SetAttr(RegisterOp):
 
 NAMESPACE_STATIC = 'static'  # type: Final # Default name space for statics, variables
 NAMESPACE_TYPE = 'type'  # type: Final # Static namespace for pointers to native type objects
+NAMESPACE_MODULE = 'module'  # type: Final # Namespace for modules
 
 
 class LoadStatic(RegisterOp):

@@ -3,9 +3,9 @@
 Metaclasses
 ===========
 
-A `metaclass <https://docs.python.org/3/reference/datamodel.html#metaclasses>`_
-is a class that describes the construction and behavior of other classes,
-similarly to how classes describe the construction and behavior of objects.
+A :ref:`metaclass <python:metaclasses>` is a class that describes
+the construction and behavior of other classes, similarly to how classes
+describe the construction and behavior of objects.
 The default metaclass is ``type``, but it's possible to use other metaclasses.
 Metaclasses allows one to create "a different kind of class", such as Enums,
 NamedTuples and singletons.
@@ -32,8 +32,8 @@ In Python 2, the syntax for defining a metaclass is different:
     class A(object):
         __metaclass__ = M
 
-Mypy also supports using the `six <https://pythonhosted.org/six/#six.with_metaclass>`_
-library to define metaclass in a portable way:
+Mypy also supports using :py:func:`six.with_metaclass`
+to define metaclass in a portable way:
 
 .. code-block:: python
 

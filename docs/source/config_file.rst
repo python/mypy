@@ -29,10 +29,9 @@ Config file format
 ******************
 
 The configuration file format is the usual
-`ini file <https://docs.python.org/3.6/library/configparser.html>`_
-format.  It should contain section names in square brackets and flag
-settings of the form `NAME = VALUE`.  Comments start with ``#``
-characters.
+:doc:`ini file <python:library/configparser>` format. It should contain
+section names in square brackets and flag settings of the form
+`NAME = VALUE`. Comments start with ``#`` characters.
 
 - A section named ``[mypy]`` must be present.  This specifies
   the global flags. The ``setup.cfg`` file is an exception to this.
@@ -357,7 +356,7 @@ a list of import discovery options that may be used
 :ref:`both per-module and globally <config-file-import-discovery-per-module>`.
 
 ``namespace_packages`` (bool, default False)
-    Enables PEP 420 style namespace packages.  See :ref:`the
+    Enables :pep:`420` style namespace packages.  See :ref:`the
     corresponding flag <import-discovery>` for more information.
 
 ``python_executable`` (string)
@@ -367,7 +366,7 @@ a list of import discovery options that may be used
     the executable used to run mypy.
 
 ``no_silence_site_packages`` (bool, default False)
-    Enables reporting error messages generated within PEP 561 compliant packages.
+    Enables reporting error messages generated within :pep:`561` compliant packages.
     Those error messages are suppressed by default, since you are usually
     not able to control errors in 3rd party code.
 
@@ -379,9 +378,8 @@ a list of import discovery options that may be used
 
 ``files`` (string)
     A comma-separated list of paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing using
-    [the glob library](https://docs.python.org/3/library/glob.html), where `*` (e.g. `*.py`) matches
-    files in the current directory and `**/` (e.g. `**/*.py`) matches files in any directories below
+    line. Supports recursive file globbing using :doc:`library/glob`, where ``*`` (e.g. ``*.py``) matches
+    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
     the current one. User home directory and environment variables will be expanded.
 
 
