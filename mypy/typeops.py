@@ -10,10 +10,12 @@ from typing import cast, Optional, List, Sequence, Set
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
     TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, NoneType,
-    AnyType, TypeOfAny, TypeType, ProperType, get_proper_type, get_proper_types, copy_type
+    AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
+    copy_type
 )
 from mypy.nodes import (
-    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2,
+    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2, Expression,
+    StrExpr
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
@@ -417,3 +419,38 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         column=fdef.column,
         implicit=True,
     )
+
+
+def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]:
+    """If the given expression or type corresponds to a string literal
+    or a union of string literals, returns a list of the underlying strings.
+    Otherwise, returns None.
+
+    Specifically, this function is guaranteed to return a list with
+    one or more strings if one one the following is true:
+
+    1. 'expr' is a StrExpr
+    2. 'typ' is a LiteralType containing a string
+    3. 'typ' is a UnionType containing only LiteralType of strings
+    """
+    typ = get_proper_type(typ)
+
+    if isinstance(expr, StrExpr):
+        return [expr.value]
+
+    if isinstance(typ, Instance) and typ.last_known_value is not None:
+        possible_literals = [typ.last_known_value]  # type: List[Type]
+    elif isinstance(typ, UnionType):
+        possible_literals = list(typ.items)
+    else:
+        possible_literals = [typ]
+
+    strings = []
+    for lit in get_proper_types(possible_literals):
+        if isinstance(lit, LiteralType) and lit.fallback.type.fullname() == 'builtins.str':
+            val = lit.value
+            assert isinstance(val, str)
+            strings.append(val)
+        else:
+            return None
+    return strings

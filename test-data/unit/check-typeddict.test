@@ -1883,3 +1883,25 @@ assert isinstance(u2, Mapping)
 reveal_type(u2)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testTypedDictLiteralTypeKeyInCreation]
+from typing import TypedDict, Final, Literal
+
+class Value(TypedDict):
+    num: int
+
+num: Final = 'num'
+v: Value = {num: 5}
+v = {num: ''}  # E: Incompatible types (expression has type "str", TypedDict item "num" has type "int")
+
+bad: Final = 2
+v = {bad: 3}  # E: Expected TypedDict key to be string literal
+union: Literal['num', 'foo']
+v = {union: 2} # E: Expected TypedDict key to be string literal
+num2: Literal['num']
+v = {num2: 2}
+bad2: Literal['bad']
+v = {bad2: 2}  # E: Extra key 'bad' for TypedDict "Value"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

@@ -59,7 +59,7 @@ from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
-    function_type, callable_type,
+    function_type, callable_type, try_getting_str_literals
 )
 import mypy.errorcodes as codes
 
@@ -493,11 +493,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         item_names = []  # List[str]
         for item_name_expr, item_arg in kwargs.items:
-            if not isinstance(item_name_expr, StrExpr):
+            literal_value = None
+            if item_name_expr:
+                key_type = self.accept(item_name_expr)
+                values = try_getting_str_literals(item_name_expr, key_type)
+                if values and len(values) == 1:
+                    literal_value = values[0]
+            if literal_value is None:
                 key_context = item_name_expr or item_arg
-                self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
+                self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
+                              key_context)
                 return AnyType(TypeOfAny.from_error)
-            item_names.append(item_name_expr.value)
+            else:
+                item_names.append(literal_value)
 
         return self.check_typeddict_call_with_kwargs(
             callee, OrderedDict(zip(item_names, item_args)), context)
