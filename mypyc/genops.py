@@ -1009,11 +1009,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.callable_class_names = set()  # type: Set[str]
         self.options = options
 
-        # This instance of NonExtClassInfo keeps track of information needed to construct
-        # a non-extension class. Its' value is None if the current class being visited
-        # is an extension class.
-        self.non_ext_info = None  # type: Optional[NonExtClassInfo]
-
         # These variables keep track of the number of lambdas, implicit indices, and implicit
         # iterators instantiated so we avoid name conflicts. The indices and iterators are
         # instantiated from for-loops.
@@ -1143,7 +1138,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 class_ir.glue_methods[(cls, name)] = f
                 self.functions.append(f)
 
-    def handle_non_ext_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
+    def handle_non_ext_method(
+            self, non_ext: NonExtClassInfo, cdef: ClassDef, fdef: FuncDef) -> None:
         # Perform the function of visit_method for methods inside non-extension classes.
         name = fdef.name()
         func_ir, func_reg = self.gen_func_item(fdef, name, self.mapper.fdef_to_sig(fdef), cdef)
@@ -1168,14 +1164,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             stat_meth = self.load_module_attr_by_fullname('builtins.staticmethod', fdef.line)
             func_reg = self.py_call(stat_meth, [func_reg], fdef.line)
 
-        self.add_to_non_ext_dict(name, func_reg, fdef.line)
+        self.add_to_non_ext_dict(non_ext, name, func_reg, fdef.line)
 
-    def visit_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
-        class_ir = self.mapper.type_to_ir[cdef.info]
-        if class_ir.is_ext_class:
-            self.handle_ext_method(cdef, fdef)
+    def visit_method(
+            self, cdef: ClassDef, non_ext: Optional[NonExtClassInfo], fdef: FuncDef) -> None:
+        if non_ext:
+            self.handle_non_ext_method(non_ext, cdef, fdef)
         else:
-            self.handle_non_ext_method(cdef, fdef)
+            self.handle_ext_method(cdef, fdef)
 
     def is_constant(self, e: Expression) -> bool:
         """Check whether we allow an expression to appear as a default value.
@@ -1253,27 +1249,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.functions.append(ir)
         cls.methods[ir.name] = ir
 
-    def load_non_ext_class(self, ir: ClassIR, line: int) -> Value:
-        assert self.non_ext_info is not None
-
+    def load_non_ext_class(self, ir: ClassIR, non_ext: NonExtClassInfo, line: int) -> Value:
         cls_name = self.load_static_unicode(ir.name)
 
         # Add __annotations__ to the class dict.
         self.primitive_op(dict_set_item_op,
-                          [self.non_ext_info.dict, self.load_static_unicode('__annotations__'),
-                           self.non_ext_info.anns], -1)
+                          [non_ext.dict, self.load_static_unicode('__annotations__'),
+                           non_ext.anns], -1)
 
         # We add a __doc__ attribute so if the non-extension class is decorated with the
         # dataclass decorator, dataclass will not try to look for __text_signature__.
         # https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L957
         filler_doc_str = 'filler docstring for classes decorated with dataclass'
-        self.add_to_non_ext_dict('__doc__', self.load_static_unicode(filler_doc_str), line)
-        self.add_to_non_ext_dict('__module__', self.load_static_unicode(self.module_name), line)
+        self.add_to_non_ext_dict(
+            non_ext, '__doc__', self.load_static_unicode(filler_doc_str), line)
+        self.add_to_non_ext_dict(
+            non_ext, '__module__', self.load_static_unicode(self.module_name), line)
         metaclass = self.primitive_op(type_object_op, [], line)
-        metaclass = self.primitive_op(py_calc_meta_op, [metaclass, self.non_ext_info.bases], line)
+        metaclass = self.primitive_op(py_calc_meta_op, [metaclass, non_ext.bases], line)
 
         class_type_obj = self.py_call(metaclass,
-                                      [cls_name, self.non_ext_info.bases, self.non_ext_info.dict],
+                                      [cls_name, non_ext.bases, non_ext.dict],
                                       line)
         return class_type_obj
 
@@ -1309,13 +1305,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             bases.append(base)
         return self.primitive_op(new_tuple_op, bases, cdef.line)
 
-    def add_to_non_ext_dict(self, key: str, val: Value, line: int) -> None:
+    def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
+                            key: str, val: Value, line: int) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
-        assert self.non_ext_info is not None
         key_unicode = self.load_static_unicode(key)
-        self.primitive_op(dict_set_item_op, [self.non_ext_info.dict, key_unicode, val], line)
+        self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
-    def add_non_ext_class_attr(self, lvalue: NameExpr,
+    def add_non_ext_class_attr(self, non_ext: NonExtClassInfo, lvalue: NameExpr,
                                stmt: AssignmentStmt, cdef: ClassDef,
                                attr_to_cache: List[Lvalue]) -> None:
         """
@@ -1326,16 +1322,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # We populate __annotations__ because dataclasses uses it to determine
         # which attributes to compute on.
         # TODO: Maybe generate more precise types for annotations
-        assert self.non_ext_info is not None
         key = self.load_static_unicode(lvalue.name)
         typ = self.primitive_op(type_object_op, [], stmt.line)
-        self.primitive_op(dict_set_item_op, [self.non_ext_info.anns, key, typ], stmt.line)
+        self.primitive_op(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
         # Only add the attribute to the __dict__ if the assignment is of the form:
         # x: type = value (don't add attributes of the form 'x: type' to the __dict__).
         if not isinstance(stmt.rvalue, TempNode):
             rvalue = self.accept(stmt.rvalue)
-            self.add_to_non_ext_dict(lvalue.name, rvalue, stmt.line)
+            self.add_to_non_ext_dict(non_ext, lvalue.name, rvalue, stmt.line)
             # We cache enum attributes to speed up enum attribute lookup since they
             # are final.
             if cdef.info.bases and cdef.info.bases[0].type.fullname() == 'enum.Enum':
@@ -1390,6 +1385,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if ir.is_ext_class:
             # If the class is not decorated, generate an extension class for it.
             self.allocate_class(cdef)
+            non_ext = None  # type: Optional[NonExtClassInfo]
         else:
             non_ext_bases = self.populate_non_ext_bases(cdef)
             non_ext_dict = self.setup_non_ext_dict(cdef, non_ext_bases)
@@ -1397,7 +1393,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # because dataclasses uses it to determine which attributes to compute on.
             # TODO: Maybe generate more precise types for annotations
             non_ext_anns = self.primitive_op(new_dict_op, [], cdef.line)
-            self.non_ext_info = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns)
+            non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns)
 
             attrs_to_cache = []  # type: List[Lvalue]
 
@@ -1410,13 +1406,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                stmt.line)
                 for item in stmt.items:
                     with self.catch_errors(stmt.line):
-                        self.visit_method(cdef, get_func_def(item))
+                        self.visit_method(cdef, non_ext, get_func_def(item))
             elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
                 if cdef.info.names[stmt.name()].plugin_generated and not ir.is_ext_class:
                     # Ignore plugin generated methods when creating non-extension classes
                     continue
                 with self.catch_errors(stmt.line):
-                    self.visit_method(cdef, get_func_def(stmt))
+                    self.visit_method(cdef, non_ext, get_func_def(stmt))
             elif isinstance(stmt, PassStmt):
                 continue
             elif isinstance(stmt, AssignmentStmt):
@@ -1430,8 +1426,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     self.error("Only assignment to variables is supported in class bodies",
                                stmt.line)
                     continue
-                if not ir.is_ext_class:
-                    self.add_non_ext_class_attr(lvalue, stmt, cdef, attrs_to_cache)
+                if non_ext:
+                    self.add_non_ext_class_attr(
+                        non_ext, lvalue, stmt, cdef, attrs_to_cache)
                     continue
                 # Variable declaration with no body
                 if isinstance(stmt.rvalue, TempNode):
@@ -1451,12 +1448,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             else:
                 self.error("Unsupported statement in class body", stmt.line)
 
-        if ir.is_ext_class:
+        if not non_ext:  # That is, an extension class
             self.generate_attr_defaults(cdef)
             self.create_ne_from_eq(cdef)
         else:
             # Dynamically create the class via the type constructor
-            non_ext_class = self.load_non_ext_class(ir, cdef.line)
+            non_ext_class = self.load_non_ext_class(ir, non_ext, cdef.line)
             non_ext_class = self.load_decorated_class(cdef, non_ext_class)
 
             # Save the decorated class
