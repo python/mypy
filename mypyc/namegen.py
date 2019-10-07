@@ -33,16 +33,19 @@ class NameGenerator:
     The generated should be internal to a build and thus the mapping is
     arbitrary. Just generating names '1', '2', ... would be correct,
     though not very usable.
+
+    FIXME: Currently when performing seperate compilation we just
+    totally give up on shortening names.
     """
 
     def __init__(self, module_names: List[str],
                  *, is_separate: bool) -> None:
-        """Initialize with names of all modules in the compilation unit.
+        """Initialize with names of all modules in the compilation group.
 
         The names of modules are used to shorten names referring to
-        modules in the compilation unit, for convenience. Arbitary module
+        modules in the compilation group, for convenience. Arbitary module
         names are supported for generated names, but modules not in the
-        compilation unit will use long names.
+        compilation group will use long names.
         """
         module_names = module_names or []
         self.module_map = make_module_translation_map(module_names, is_separate)

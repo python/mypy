@@ -120,7 +120,7 @@ def build_type_map(mapper: 'Mapper',
                    graph: Graph,
                    types: Dict[Expression, Type],
                    errors: Errors) -> None:
-    # Collect all classes defined in the compilation unit.
+    # Collect all classes defined in everything we are compiling
     classes = []
     for module in modules:
         module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
@@ -345,7 +345,7 @@ def compute_vtable(cls: ClassIR) -> None:
 class Mapper:
     """Keep track of mappings from mypy concepts to IR concepts.
 
-    This state is shared across all modules in a compilation unit.
+    This state is shared across all modules being compiled.
     """
 
     def __init__(self, group_map: Dict[str, Optional[str]]) -> None:

@@ -160,11 +160,16 @@ def include_dir() -> str:
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'lib-rt')
 
 
-def generate_c(sources: List[BuildSource], options: Options,
-               groups: List[Tuple[List[BuildSource], Optional[str]]],
+def generate_c(sources: List[BuildSource],
+               options: Options,
+               groups: emitmodule.Groups,
                compiler_options: Optional[CompilerOptions] = None
                ) -> Tuple[List[List[Tuple[str, str]]], str]:
     """Drive the actual core compilation step.
+
+    The groups argument describes how modules are assigned to C
+    extension modules. See the comments on the Groups type in
+    mypyc.emitmodule for details.
 
     Returns the C source code and (for debugging) the pretty printed IR.
     """
@@ -287,11 +292,21 @@ def construct_groups(
     sources: List[BuildSource],
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]],
     use_shared_lib: bool,
-) -> List[Tuple[List[BuildSource], Optional[str]]]:
+) -> emitmodule.Groups:
+    """Compute Groups given the input source list and separate configs.
+
+    separate is the user-specified configuration for how to assign
+    modules to compilation groups (see mypycify docstring for details).
+
+    This takes that and expands it into our internal representation of
+    group configuration, documented in mypyc.emitmodule's definition
+    of Group.
+    """
+
     if separate is True:
         groups = [
             ([source], None) for source in sources
-        ]  # type: List[Tuple[List[BuildSource], Optional[str]]]
+        ]  # type: emitmodule.Groups
     elif isinstance(separate, list):
         groups = []
         used_sources = set()
@@ -306,11 +321,10 @@ def construct_groups(
         groups = [(sources, None)]
 
     # Generate missing names
-    groups = [
-        (group,
-         name or (
-             shared_lib_name([source.module for source in group]) if use_shared_lib else None))
-        for group, name in groups]
+    for i, (group, name) in enumerate(groups):
+        if use_shared_lib and not name:
+            name = shared_lib_name([source.module for source in group])
+        groups[i] = (group, name)
 
     return groups
 
@@ -320,6 +334,9 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
 
     We do this by just regexping the source, which is a bit simpler than
     properly plumbing the data through.
+
+    Arguments:
+      * cfiles: A list of (file name, file contents) pairs.
     """
     headers = set()  # type: Set[str]
     for _, contents in cfiles:
@@ -331,12 +348,13 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
 def mypycify(
     paths: List[str],
     mypy_options: Optional[List[str]] = None,
-    opt_level: str = '3',
-    multi_file: bool = False,
-    skip_cgen_input: Optional[Any] = None,
+    *,
     verbose: bool = False,
+    opt_level: str = '3',
     strip_asserts: bool = False,
+    multi_file: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
+    skip_cgen_input: Optional[Any] = None
 ) -> List[Extension]:
     """Main entry point to building using mypyc.
 
@@ -347,7 +365,21 @@ def mypycify(
       * paths: A list of file paths to build. It may contain globs.
       * mypy_options: Optionally, a list of command line flags to pass to mypy.
                       (This can also contain additional files, for compatibility reasons.)
+      * verbose: Should mypyc be more verbose. Defaults to false.
+
       * opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
+      * strip_asserts: Should asserts be stripped from the generated code.
+
+      * multi_file: Should each Python module be compiled into its own C source file.
+                    This can reduce compile time and memory requirements at the likely
+                    cost of runtime performance of compiled code. Defaults to false.
+      * separate: Should compiled modules be placed in separate extension modules.
+                  If False, all modules are placed in a single shared library.
+                  If True, every module is placed in its own library.
+                  Otherwise separate should be a list of
+                  (file name list, optional shared library name) pairs specifying
+                  groups of files that should be placed in the same shared library
+                  (while all other modules will be placed in its own library).
     """
 
     setup_mypycify_vars()

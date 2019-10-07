@@ -24,6 +24,24 @@ from mypyc.namegen import exported_name
 from mypyc.errors import Errors
 
 
+# All of the modules being compiled are divided into "groups". A group
+# is a set of modules that are placed into the same shared library.
+# Two common configurations are that every module is placed in a group
+# by itself (fully separate compilation) and that every module is
+# placed in the same group (fully whole-program compilation), but we
+# support finer-grained control of the group as well.
+#
+# A group is represented as a list of BuildSources containing all of
+# its modules along with the name of the group. (Which will be None
+# only if we are compiling a single file and not using shared
+# libraries).
+Group = Tuple[List[BuildSource], Optional[str]]
+Groups = List[Group]
+
+# A list of (file name, file contents) pairs.
+FileContents = List[Tuple[str, str]]
+
+
 class MarkedDeclaration:
     """Add a mark, useful for topological sort."""
     def __init__(self, declaration: HeaderDeclaration, mark: bool) -> None:
@@ -46,10 +64,20 @@ def compile_modules_to_c(
     result: BuildResult,
     compiler_options: CompilerOptions,
     errors: Errors,
-    groups: List[Tuple[List[BuildSource], Optional[str]]],
+    groups: Groups,
     ops: Optional[List[str]] = None,
-) -> List[List[Tuple[str, str]]]:
-    """Compile Python module(s) to C that can be used from Python C extension modules."""
+) -> List[FileContents]:
+    """Compile Python module(s) to C that can be used from Python C extension modules.
+
+    Arguments:
+      * result: The BuildResult from the mypy front-end
+      * compiler_options: The compilation options
+      * errors: Where to report any errors encountered
+      * groups: The groups that we are compiling. See documentation of Groups type above.
+      * ops: Optionally, where to dump stringified ops for debugging.
+
+    Returns a list containing the generated files for each group.
+    """
     module_names = [source.module for group_sources, _ in groups for source in group_sources]
     file_nodes = [result.files[name] for name in module_names]
 
@@ -84,11 +112,13 @@ def compile_modules_to_c(
             for fn in module.functions:
                 ops.extend(format_func(fn))
                 ops.append('')
-    # Generate C code.
+
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
 
-    # Generate all the groups
+    # Generate C code for each compilation group. Each group will be
+    # compiled into a separate extension module, so we produce
+    # a separate group of C source for each of them.
     ctext = []
     module_dict = dict(modules)
     for group_sources, shared_lib_name in groups:
@@ -125,6 +155,7 @@ def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
 
 
 def pointerize(s: str, name: str) -> str:
+    """Given C type and a variable name, return a declaration of a pointer to it."""
     # This doesn't work in general but does work for all our types...
     if '(' in s:
         return s.replace(name, '(*{})'.format(name))
@@ -300,9 +331,13 @@ class ModuleGenerator:
 
         A shared library contains all of the actual code for a set of modules.
 
-        The init function is responsible for creating Capsules that wrap
-        pointers to the initialization function of all the real init functions
-        for modules in this shared library.
+        The init function is responsible for creating Capsules that
+        wrap pointers to the initialization function of all the real
+        init functions for modules in this shared library as well as
+        the linking table containing all of the exported functions and
+        values from all the modules.
+
+        These capsules are stored in attributes of the shared library.
         """
         emitter.emit_line()
         emitter.emit_lines(

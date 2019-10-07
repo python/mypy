@@ -52,7 +52,7 @@ class HeaderDeclaration:
 
 
 class EmitterContext:
-    """Shared emitter state for an entire compilation unit."""
+    """Shared emitter state for a compilation group."""
 
     def __init__(self, module_names: List[str],
                  group_map: Optional[Dict[str, Optional[str]]] = None,
@@ -136,27 +136,29 @@ class Emitter:
         self.context.temp_counter += 1
         return '__LL%d' % self.context.temp_counter
 
-    def get_lib_prefix(self, obj: Union[str, ClassIR, FuncDecl],
-                       *,
-                       is_variable: bool = False) -> str:
-        """Get the library prefix for an object.
+    def get_module_lib_prefix(self, module_name: str) -> str:
+        """Get the library prefix for a module.
 
         The prefix should be prepended to the object name whenever
-        accessing it.
+        accessing an object from this module.
 
-        If the object lives in the current shared library, there is
-        no prefix.  But if it lives in a different library, we need to
-        access it indirectly via an export table.
+        If the module lives is in the current compilation group, there is
+        no prefix.  But if it lives in a different group (and hence a separate
+        extension module), we need to access objects from it indirectly via an
+        export table.
         """
-        module_name = obj if isinstance(obj, str) else obj.module_name
         groups = self.context.group_map
         target_name = groups.get(module_name)
         if target_name and target_name != self.context.shared_lib_name:
             self.context.library_deps.add(target_name)
-            star_maybe = '*' if is_variable else ''
-            return '{}exports{}.'.format(star_maybe, lib_suffix(target_name))
+            return '{}exports{}.'.format(lib_suffix(target_name))
         else:
             return ''
+
+    def get_lib_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
+        """Get the library prefix for an object."""
+        # See docs above
+        return self.get_module_lib_prefix(obj.module_name)
 
     def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
@@ -166,11 +168,12 @@ class Emitter:
 
         The caller should ensure that the (id, module) pair cannot
         overlap with other calls to this method within a compilation
-        unit.
+        group.
         """
-        lib_prefix = '' if not module else self.get_lib_prefix(module, is_variable=True)
+        lib_prefix = '' if not module else self.get_module_lib_prefix(module)
+        star_maybe = '*' if lib_prefix else ''
         suffix = self.names.private_name(module or '', id)
-        return '{}{}{}'.format(lib_prefix, prefix, suffix)
+        return '{}{}{}{}'.format(star_maybe, lib_prefix, prefix, suffix)
 
     def type_struct_name(self, cl: ClassIR) -> str:
         return self.static_name(cl.name, cl.module_name, prefix=TYPE_PREFIX)
