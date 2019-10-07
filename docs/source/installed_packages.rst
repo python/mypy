@@ -49,7 +49,7 @@ stub files.
 If you would like to publish a library package to a package repository (e.g.
 PyPI) for either internal or external use in type checking, packages that
 supply type information via type comments or annotations in the code should put
-a ``py.typed`` in their package directory. For example, with a directory
+a ``py.typed`` file in their package directory. For example, with a directory
 structure as follows
 
 .. code-block:: text
