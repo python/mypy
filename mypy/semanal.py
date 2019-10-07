@@ -1109,7 +1109,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
         else:
-            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
+            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
+                defn, self.is_stub_file)
         if is_named_tuple:
             if info is None:
                 self.mark_incomplete(defn.name, defn)
