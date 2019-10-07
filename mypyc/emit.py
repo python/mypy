@@ -20,13 +20,30 @@ from mypyc.sametype import is_same_type
 
 
 class HeaderDeclaration:
+    """A representation of a declaration in C.
+
+    This is used to generate declarations in header files and
+    (optionally) definitions in source files.
+
+    Attributes:
+      decl: C source code for the declaration.
+      defn: Optionally, C source code for a definition.
+      dependencies: The names of any objects that must be declared prior.
+      is_type: Whether the declaration is of a C type. (C types will be declared in
+               external header files and not marked 'extern'.)
+    """
+
     def __init__(self,
-                 dependencies: Set[str], decl: List[str], defn: Optional[List[str]],
-                 needs_extern: bool = False) -> None:
-        self.dependencies = dependencies
-        self.decl = decl
+                 decl: Union[str, List[str]],
+                 defn: Optional[List[str]] = None,
+                 *,
+                 dependencies: Optional[Set[str]] = None,
+                 is_type: bool = False
+                 ) -> None:
+        self.decl = [decl] if isinstance(decl, str) else decl
         self.defn = defn
-        self.needs_extern = needs_extern
+        self.dependencies = dependencies or set()
+        self.is_type = is_type
 
 
 class EmitterContext:
@@ -220,9 +237,9 @@ class Emitter:
                     dependencies.add(typ.struct_name)
 
             self.context.declarations[tuple_type.struct_name] = HeaderDeclaration(
-                dependencies,
                 self.tuple_c_declaration(tuple_type),
-                None,
+                dependencies=dependencies,
+                is_type=True,
             )
 
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:

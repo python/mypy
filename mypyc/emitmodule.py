@@ -82,9 +82,11 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
-    emitter.emit_line('{};'.format(native_function_header(fn.decl, emitter)))
+    emitter.context.declarations[emitter.native_function_name(fn.decl)] = HeaderDeclaration(
+        '{};'.format(native_function_header(fn.decl, emitter)))
     if fn.name != TOP_LEVEL_NAME:
-        emitter.emit_line('{};'.format(wrapper_function_header(fn, emitter.names)))
+        emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+            '{};'.format(wrapper_function_header(fn, emitter.names)))
 
 
 def encode_as_c_string(s: str) -> Tuple[str, int]:
@@ -127,6 +129,7 @@ class ModuleGenerator:
 
         base_emitter = Emitter(self.context)
         base_emitter.emit_line('#include "__native.h"')
+        base_emitter.emit_line('#include "__native_internal.h"')
         emitter = base_emitter
 
         for (_, literal), identifier in self.literals.items():
@@ -140,6 +143,7 @@ class ModuleGenerator:
             if multi_file:
                 emitter = Emitter(self.context)
                 emitter.emit_line('#include "__native.h"')
+                emitter.emit_line('#include "__native_internal.h"')
 
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
@@ -166,6 +170,33 @@ class ModuleGenerator:
                 name = ('__native_{}.c'.format(emitter.names.private_name(module_name)))
                 file_contents.append((name, ''.join(emitter.fragments)))
 
+        # The external header file contains type declarations while
+        # the internal contains declarations of functions and objects
+        # (which are shared between shared libraries via dynamic
+        # linking tables and not accessed directly.)
+        ext_declarations = Emitter(self.context)
+        ext_declarations.emit_line('#ifndef MYPYC_NATIVE_H')
+        ext_declarations.emit_line('#define MYPYC_NATIVE_H')
+        ext_declarations.emit_line('#include <Python.h>')
+        ext_declarations.emit_line('#include <CPy.h>')
+
+        declarations = Emitter(self.context)
+        declarations.emit_line('#ifndef MYPYC_NATIVE_INTERNAL_H')
+        declarations.emit_line('#define MYPYC_NATIVE_INTERNAL_H')
+        declarations.emit_line('#include <Python.h>')
+        declarations.emit_line('#include <CPy.h>')
+        declarations.emit_line('#include "__native.h"')
+        declarations.emit_line()
+        declarations.emit_line('int CPyGlobalsInit(void);')
+        declarations.emit_line()
+
+        for module_name, module in self.modules:
+            self.declare_finals(module_name, module.final_names, declarations)
+            for cl in module.classes:
+                generate_class_type_decl(cl, emitter, ext_declarations, declarations)
+            for fn in module.functions:
+                generate_function_declaration(fn, declarations)
+
         sorted_decls = self.toposort_declarations()
 
         emitter = base_emitter
@@ -176,33 +207,25 @@ class ModuleGenerator:
 
         emitter.emit_line()
 
-        declarations = Emitter(self.context)
-        declarations.emit_line('#include <Python.h>')
-        declarations.emit_line('#include <CPy.h>')
-        declarations.emit_line()
-        declarations.emit_line('int CPyGlobalsInit(void);')
-        declarations.emit_line()
-
         for declaration in sorted_decls:
-            if declaration.needs_extern:
-                declarations.emit_lines(
+            decls = ext_declarations if declaration.is_type else declarations
+            if not declaration.is_type:
+                decls.emit_lines(
                     'extern {}'.format(declaration.decl[0]), *declaration.decl[1:])
                 emitter.emit_lines(*declaration.decl)
             else:
-                declarations.emit_lines(*declaration.decl)
-
-        for module_name, module in self.modules:
-            self.declare_finals(module_name, module.final_names, declarations)
-            for cl in module.classes:
-                generate_class_type_decl(cl, emitter, declarations)
-            for fn in module.functions:
-                generate_function_declaration(fn, declarations)
+                decls.emit_lines(*declaration.decl)
 
         if self.shared_lib_name:
             self.generate_shared_lib_init(emitter)
 
+        ext_declarations.emit_line('#endif')
+        declarations.emit_line('#endif')
+
         return file_contents + [('__native.c', ''.join(emitter.fragments)),
-                                ('__native.h', ''.join(declarations.fragments))]
+                                ('__native_internal.h', ''.join(declarations.fragments)),
+                                ('__native.h', ''.join(ext_declarations.fragments)),
+                                ]
 
     def generate_shared_lib_init(self, emitter: Emitter) -> None:
         """Generate the init function for a shared library.
@@ -438,6 +461,7 @@ class ModuleGenerator:
         return result
 
     def declare_global(self, type_spaced: str, name: str,
+                       *,
                        initializer: Optional[str] = None) -> None:
         if not initializer:
             defn = None
@@ -445,10 +469,8 @@ class ModuleGenerator:
             defn = ['{}{} = {};'.format(type_spaced, name, initializer)]
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
-                set(),
-                ['{}{};'.format(type_spaced, name)],
-                defn,
-                needs_extern=True,
+                '{}{};'.format(type_spaced, name),
+                defn=defn,
             )
 
     def declare_internal_globals(self, module_name: str, emitter: Emitter) -> None:
