@@ -37,7 +37,7 @@ For example, ``IntList`` below is iterable, over ``int`` values:
    from typing import Iterator, Iterable, Optional
 
    class IntList:
-       def __init__(self, value: int, next: Optional[IntList]) -> None:
+       def __init__(self, value: int, next: Optional['IntList']) -> None:
            self.value = value
            self.next = next
 

@@ -80,7 +80,7 @@ certain values from base class instances. Example:
     class UserId(int):
         pass
 
-    get_by_user_id(user_id: UserId):
+    def get_by_user_id(user_id: UserId):
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
