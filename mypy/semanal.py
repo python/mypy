@@ -616,7 +616,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Only non-static methods are special.
         functype = func.type
         if not func.is_static:
-            if func.name() == '__init_subclass__':
+            if func.name() in ['__init_subclass__', '__class_getitem__']:
                 func.is_class = True
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)

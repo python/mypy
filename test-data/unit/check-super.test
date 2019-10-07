@@ -256,8 +256,17 @@ def g(b: B) -> None:
 class A:
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-[builtins fixtures/__init_subclass__.pyi]
+[builtins fixtures/implicit_class_method.pyi]
 
+[case testSuperClassGetItem]
+from typing import TypeVar, Type, Any
+
+T = TypeVar("T", bound="A")
+
+class A:
+    def __class_getitem__(cls: Type[T], item: Any) -> None:
+        super(A, cls).__class_getitem__(item)
+[builtins fixtures/implicit_class_method.pyi]
 
 -- Invalid uses of super()
 -- -----------------------
