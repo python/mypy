@@ -139,7 +139,8 @@ If you're using ``auto_attribs=True`` you must use variable annotations.
         two: int = 7
         three: int = attr.ib(8)
 
-Typeshed has a couple of "white lie" annotations to make type checking easier. :py:func:`attr.ib` and :py:class:`attr.Factory` actually return objects, but the
+Typeshed has a couple of "white lie" annotations to make type checking
+easier. :py:func:`attr.ib` and :py:class:`attr.Factory` actually return objects, but the
 annotation says these return the types that they expect to be assigned to.
 That enables this to work:
 
