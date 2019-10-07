@@ -559,7 +559,7 @@ class Argument(Node):
                  end_line: Optional[int] = None) -> None:
         super().set_line(target, column, end_line)
 
-        if self.initializer:
+        if self.initializer and self.initializer.line < 0:
             self.initializer.set_line(self.line, self.column, self.end_line)
 
         self.variable.set_line(self.line, self.column, self.end_line)
