@@ -457,6 +457,8 @@ Java, where the return type would be ``S``. The way mypy implements
 this is correct for ``concat``, since ``concat`` actually returns a
 ``str`` instance in the above example:
 
+.. code-block:: python
+
     >>> print(type(ss))
     <class 'str'>
 
