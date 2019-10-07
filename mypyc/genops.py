@@ -1167,10 +1167,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add_to_non_ext_dict(non_ext, name, func_reg, fdef.line)
 
     def visit_method(
-            self,
-            class_ir: ClassIR, cdef: ClassDef, non_ext: Optional[NonExtClassInfo], fdef: FuncDef
-    ) -> None:
-        class_ir = self.mapper.type_to_ir[cdef.info]
+            self, cdef: ClassDef, non_ext: Optional[NonExtClassInfo], fdef: FuncDef) -> None:
         if non_ext:
             self.handle_non_ext_method(non_ext, cdef, fdef)
         else:
@@ -1409,13 +1406,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                stmt.line)
                 for item in stmt.items:
                     with self.catch_errors(stmt.line):
-                        self.visit_method(ir, cdef, non_ext, get_func_def(item))
+                        self.visit_method(cdef, non_ext, get_func_def(item))
             elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
                 if cdef.info.names[stmt.name()].plugin_generated and not ir.is_ext_class:
                     # Ignore plugin generated methods when creating non-extension classes
                     continue
                 with self.catch_errors(stmt.line):
-                    self.visit_method(ir, cdef, non_ext, get_func_def(stmt))
+                    self.visit_method(cdef, non_ext, get_func_def(stmt))
             elif isinstance(stmt, PassStmt):
                 continue
             elif isinstance(stmt, AssignmentStmt):
