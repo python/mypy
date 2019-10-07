@@ -85,7 +85,7 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     emitter.context.declarations[emitter.native_function_name(fn.decl)] = HeaderDeclaration(
         '{};'.format(native_function_header(fn.decl, emitter)))
     if fn.name != TOP_LEVEL_NAME:
-        emitter.context.declarations[PREFIX+fn.cname(emitter.names)] = HeaderDeclaration(
+        emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
             '{};'.format(wrapper_function_header(fn, emitter.names)))
 
 

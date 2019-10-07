@@ -29,7 +29,8 @@ class HeaderDeclaration:
       decl: C source code for the declaration.
       defn: Optionally, C source code for a definition.
       dependencies: The names of any objects that must be declared prior.
-      is_type: Whether the declaration is of a type.
+      is_type: Whether the declaration is of a C type. (C types will be declared in
+               external header files and not marked 'extern'.)
     """
 
     def __init__(self,
