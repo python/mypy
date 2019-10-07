@@ -189,7 +189,7 @@ See below for a list of import discovery options that may be used
 
     Used in conjunction with ``follow_imports=skip``, this can be used
     to suppress the import of a module from ``typeshed``, replacing it
-    with `Any`.
+    with ``Any``.
 
     Used in conjunction with ``follow_imports=error``, this can be used
     to make any use of a particular ``typeshed`` module an error.
