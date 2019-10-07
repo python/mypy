@@ -255,7 +255,7 @@ class GroupGenerator:
         # The external header file contains type declarations while
         # the internal contains declarations of functions and objects
         # (which are shared between shared libraries via dynamic
-        # linking tables and not accessed directly.)
+        # exports tables and not accessed directly.)
         ext_declarations = Emitter(self.context)
         ext_declarations.emit_line('#ifndef MYPYC_NATIVE{}_H'.format(self.group_suffix))
         ext_declarations.emit_line('#define MYPYC_NATIVE{}_H'.format(self.group_suffix))
@@ -282,7 +282,7 @@ class GroupGenerator:
         for lib in sorted(self.context.group_deps):
             declarations.emit_lines(
                 '#include "__native_{}.h"'.format(lib),
-                'struct linking_table_{} exports_{};'.format(lib, lib)
+                'struct export_table_{} exports_{};'.format(lib, lib)
             )
 
         sorted_decls = self.toposort_declarations()
@@ -305,7 +305,7 @@ class GroupGenerator:
                 decls.emit_lines(*declaration.decl)
 
         if self.group_name:
-            self.generate_linking_struct(ext_declarations, emitter)
+            self.generate_export_table(ext_declarations, emitter)
 
             self.generate_shared_lib_init(emitter)
 
@@ -320,12 +320,35 @@ class GroupGenerator:
                                  ''.join(ext_declarations.fragments)),
                                 ]
 
-    def generate_linking_struct(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
+    def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
+        """Generate the declaration and definition of the group's export struct.
+
+        To avoid needing to deal with deeply platform specific issues
+        involving dynamic library linking (and some possibly
+        insurmountable issues involving cyclic dependencies), compiled
+        code accesses functions and data in other compilation groups
+        via an explicit "export struct".
+
+        Each group declares a struct type that contains a pointer to
+        every function and static variable it exports. It then
+        populates this struct and stores a pointer to it in a capsule
+        stored as an attribute named 'exports' on the group's shared
+        library's python module.
+
+        On load, a group's init function will import all of its
+        dependencies' exports tables using the capsule mechanism and
+        copy the contents into a local copy of the table (to eliminate
+        the need for a pointer indirection when accessing it).
+
+        Then, all calls to functions in another group and accesses to statics
+        from another group are done indirectly via the export table.
+        """
+
         decls = decl_emitter.context.declarations
 
         decl_emitter.emit_lines(
             '',
-            'struct linking_table{} {{'.format(self.group_suffix),
+            'struct export_table{} {{'.format(self.group_suffix),
         )
         for name, decl in decls.items():
             if decl.needs_export:
@@ -335,7 +358,7 @@ class GroupGenerator:
 
         code_emitter.emit_lines(
             '',
-            'static struct linking_table{} exports = {{'.format(self.group_suffix),
+            'static struct export_table{} exports = {{'.format(self.group_suffix),
         )
         for name, decl in decls.items():
             if decl.needs_export:
@@ -352,7 +375,7 @@ class GroupGenerator:
         The init function is responsible for creating Capsules that
         wrap pointers to the initialization function of all the real
         init functions for modules in this shared library as well as
-        the linking table containing all of the exported functions and
+        the export table containing all of the exported functions and
         values from all the modules.
 
         These capsules are stored in attributes of the shared library.
@@ -413,8 +436,8 @@ class GroupGenerator:
         for group in sorted(self.context.group_deps):
             emitter.emit_lines(
                 'struct export_table_{} *pexports_{} = PyCapsule_Import("{}.exports", 0);'.format(
-                    lib, lib, lib),
-                'if (!pexports_{}) {{'.format(lib),
+                    group, group, shared_lib_name(group)),
+                'if (!pexports_{}) {{'.format(group),
                 'goto fail;',
                 '}',
                 'memcpy(&exports_{group}, pexports_{group}, sizeof(exports_{group}));'.format(
