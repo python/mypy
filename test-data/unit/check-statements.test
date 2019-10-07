@@ -1445,7 +1445,6 @@ with A(), B(), B() as p, A(), A():  # type: str
 
 [case testWithStmtBoolExitReturnWithResultFalse]
 from typing import Optional
-from typing_extensions import Literal
 
 class InvalidReturn1:
     def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
@@ -1461,6 +1460,18 @@ class InvalidReturn2:
             return False
         else:
             return False
+
+class InvalidReturn3:
+    def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
+# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
+        def nested() -> bool:
+            return True
+        return False
+[builtins fixtures/bool.pyi]
+
+[case testWithStmtBoolExitReturnOkay]
+from typing_extensions import Literal
 
 class GoodReturn1:
     def __exit__(self, x, y, z) -> bool:
