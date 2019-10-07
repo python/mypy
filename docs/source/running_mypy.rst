@@ -15,7 +15,7 @@ and recommendations on how to handle any issues you may encounter
 along the way.
 
 If you are interested in learning about how to configure the
-actual way mypy type checks your code, see our 
+actual way mypy type checks your code, see our
 :ref:`command-line` guide.
 
 
@@ -51,7 +51,7 @@ different ways.
 
     Mypy will use an algorithm very similar to the one Python uses to
     find where modules and imports are located on the file system.
-    For more details, see :ref:`finding-imports`. 
+    For more details, see :ref:`finding-imports`.
 
 3.  Third, you can use the ``-p`` (long form: ``--package``) flag to
     specify a package to be (recursively) type checked. This flag
@@ -97,7 +97,7 @@ you can use this instead::
 
 This file can technically also contain any command line flag, not
 just file paths. However, if you want to configure many different
-flags, the recommended approach is to use a 
+flags, the recommended approach is to use a
 :ref:`configuration file <config-file>` instead.
 
 
@@ -105,8 +105,8 @@ flags, the recommended approach is to use a
 How mypy handles imports
 ************************
 
-When mypy encounters an ``import`` statement, it will first 
-:ref:`attempt to locate <finding-imports>` that module 
+When mypy encounters an ``import`` statement, it will first
+:ref:`attempt to locate <finding-imports>` that module
 or type stubs for that module in the file system. Mypy will then
 type check the imported module. There are three different outcomes
 of this process:
@@ -173,9 +173,9 @@ are trying to use has done neither of these things. In that case, you can try:
 
 2.  :ref:`Writing your own stub files <stub-files>` containing type hints for
     the library. You can point mypy at your type hints either by passing
-    them in via the command line, by adding the location to the 
-    `MYPYPATH` environment variable, or by using the  ``mypy_path`` 
-    :ref:`config file option <config-file-import-discovery-global>`. 
+    them in via the command line, by adding the location to the
+    ``MYPYPATH`` environment variable, or by using the  ``mypy_path``
+    :ref:`config file option <config-file-import-discovery-global>`.
 
     Note that if you decide to write your own stub files, they don't need
     to be complete! A good strategy is to add stubs for just the parts
@@ -188,7 +188,7 @@ are trying to use has done neither of these things. In that case, you can try:
 If the module is a third party library, but you cannot find any existing
 type hints nor have time to write your own, you can *silence* the errors:
 
-1.  To silence a *single* missing import error, add a `# type: ignore` at the end of the
+1.  To silence a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
 2.  To silence *all* missing import imports errors from a single library, add
@@ -233,7 +233,7 @@ If the module is a part of the standard library, try:
     errors. After upgrading, we recommend running mypy using the
     ``--warn-unused-ignores`` flag to help you find any ``# type: ignore``
     annotations you no longer need.
-     
+
 .. _follow-imports:
 
 Following imports
@@ -243,7 +243,7 @@ Mypy is designed to :ref:`doggedly follow all imports <finding-imports>`,
 even if the imported module is not a file you explicitly wanted mypy to check.
 
 For example, suppose we have two modules ``mycode.foo`` and ``mycode.bar``:
-the former has type hints and the latter does not. We run 
+the former has type hints and the latter does not. We run
 ``mypy -m mycode.foo`` and mypy discovers that ``mycode.foo`` imports
 ``mycode.bar``.
 
@@ -251,7 +251,7 @@ How do we want mypy to type check ``mycode.bar``? We can configure the
 desired behavior by using the ``--follow-imports`` flag. This flag
 accepts one of four string values:
 
--   ``normal`` (the default) follows all imports normally and 
+-   ``normal`` (the default) follows all imports normally and
     type checks all top level code (as well as the bodies of all
     functions and methods with at least one type annotation in
     the signature).
@@ -330,12 +330,12 @@ to modules to type check.
 One more thing about checking modules and packages: if the directory
 *containing* a module or package specified on the command line has an
 ``__init__.py[i]`` file, mypy assigns these an absolute module name by
-crawling up the path until no ``__init__.py[i]`` file is found. 
+crawling up the path until no ``__init__.py[i]`` file is found.
 
 For example, suppose we run the command ``mypy foo/bar/baz.py`` where
 ``foo/bar/__init__.py`` exists but ``foo/__init__.py`` does not.  Then
 the module name assumed is ``bar.baz`` and the directory ``foo`` is
-added to mypy's module search path. 
+added to mypy's module search path.
 
 On the other hand, if ``foo/bar/__init__.py`` did not exist, ``foo/bar``
 would be added to the module search path instead, and the module name

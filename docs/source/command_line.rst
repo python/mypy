@@ -285,7 +285,7 @@ definitions or calls.
 None and Optional handling
 **************************
 
-The following flags adjust how mypy handles values of type `None`.
+The following flags adjust how mypy handles values of type ``None``.
 For more details, see :ref:`no_strict_optional`.
 
 .. _no-implicit-optional:
