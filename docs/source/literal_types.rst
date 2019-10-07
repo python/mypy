@@ -67,7 +67,7 @@ So, ``Literal[-3, b"foo", True]`` is equivalent to
 more complex types involving literals a little more convenient.
 
 Literal types may also contain ``None``. Mypy will treat ``Literal[None]`` as being
-equivalent to just ``None``. This means that ``Literal[4, None]``, 
+equivalent to just ``None``. This means that ``Literal[4, None]``,
 ``Union[Literal[4], None]``, and ``Optional[Literal[4]]`` are all equivalent.
 
 Literals may also contain aliases to other literal types. For example, the
@@ -85,7 +85,7 @@ following program is legal:
     paint("turquoise")  # Does not type check
 
 Literals may not contain any other kind of type or expression. This means doing
-``Literal[my_instance]``, ``Literal[Any]``, ``Literal[3.14]``, or 
+``Literal[my_instance]``, ``Literal[Any]``, ``Literal[3.14]``, or
 ``Literal[{"foo": 2, "bar": 5}]`` are all illegal.
 
 Future versions of mypy may relax some of these restrictions. For example, we

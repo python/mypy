@@ -165,7 +165,7 @@ The typing module
 
 So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
-such as "a list of strings" or "an iterable of ints"? 
+such as "a list of strings" or "an iterable of ints"?
 
 You can find many of these more complex static types inside of the ``typing``
 module. For example, to indicate that some function can accept a list of
@@ -181,7 +181,7 @@ strings, use the ``List`` type from the ``typing`` module:
 
    names = ["Alice", "Bob", "Charlie"]
    ages = [10, 20, 30]
-   
+
    greet_all(names)   # Ok!
    greet_all(ages)    # Error due to incompatible types
 
@@ -234,12 +234,12 @@ to help function signatures look a little cleaner:
        return 'Hello, ' + name
 
 The ``typing`` module contains many other useful types. You can find a
-quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>` 
+quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>`
 and a more detailed overview (including information on how to make your own
 generic types or your own type aliases) by looking through the
 :ref:`type system reference <overview-type-system-reference>`.
 
-One final note: when adding types, the convention is to import types 
+One final note: when adding types, the convention is to import types
 using the form ``from typing import Iterable`` (as opposed to doing
 just ``import typing`` or ``import typing as t`` or ``from typing import *``).
 
@@ -252,7 +252,7 @@ Local type inference
 
 Once you have added type hints to a function (i.e. made it statically typed),
 mypy will automatically type check that function's body. While doing so,
-mypy will try and *infer* as many details as possible. 
+mypy will try and *infer* as many details as possible.
 
 We saw an example of this in the ``normalize_id`` function above -- mypy understands
 basic ``isinstance`` checks and so can infer that the ``user_id`` variable was of
