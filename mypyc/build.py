@@ -294,10 +294,14 @@ def construct_groups(
         ]  # type: List[Tuple[List[BuildSource], Optional[str]]]
     elif isinstance(separate, list):
         groups = []
+        used_sources = set()
         for files, name in separate:
-            groups.append((
-                [src for src in sources if src.path in files],
-                name))
+            group_sources = [src for src in sources if src.path in files]
+            groups.append((group_sources, name))
+            used_sources.update(group_sources)
+        unused_sources = [src for src in sources if src not in used_sources]
+        if unused_sources:
+            groups.extend([([source], None) for source in unused_sources])
     else:
         groups = [(sources, None)]
 
