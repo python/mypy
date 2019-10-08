@@ -1106,14 +1106,15 @@ class MessageBuilder:
 
     def incorrect__exit__return(self, context: Context) -> None:
         self.fail(
-            '"bool" is invalid as return type for "__exit__" that always returns False', context)
+            '"bool" is invalid as return type for "__exit__" that always returns False', context,
+                code=codes.EXIT_RETURN)
         self.note(
             'Use "typing_extensions.Literal[False]" as the return type or change it to "None"',
-            context)
+            context, code=codes.EXIT_RETURN)
         self.note(
             'If return type of "__exit__" implies that it may return True, '
             'the context manager may swallow exceptions',
-            context)
+            context, code=codes.EXIT_RETURN)
 
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         typ = get_proper_type(typ)

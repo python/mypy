@@ -695,3 +695,11 @@ x = y  # type: int  # type: ignored [foo]
 [out]
 main:1: error: syntax error in type comment 'int'  [syntax]
 main:2: error: syntax error in type comment 'int'  [syntax]
+
+[case testErrorCode__exit__Return]
+class InvalidReturn:
+    def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False  [exit-return] \
+# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
+        return False
+[builtins fixtures/bool.pyi]
