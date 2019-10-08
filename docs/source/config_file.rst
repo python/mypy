@@ -419,7 +419,7 @@ section of the command line docs.
     variable.
 
     Note that the cache is only read when incremental mode is enabled
-    but is always written to, unless the value is set to ``/dev/nul``
+    but is always written to, unless the value is set to ``/dev/null``
     (UNIX) or ``nul`` (Windows).
 
 ``skip_version_check`` (bool, default False)
