@@ -351,6 +351,7 @@ from typing import (
     Any, Tuple, List, Sequence, Callable, Mapping, cast, Set, Dict, IO,
     TextIO, AnyStr
 )
+from typing_extensions import Literal
 from types import TracebackType
 
 # Exception classes used by this module.
@@ -775,7 +776,7 @@ class Popen(object):
         return self
 
     def __exit__(self, type: type, value: BaseException,
-                 traceback: TracebackType) -> bool:
+                 traceback: TracebackType) -> Literal[False]:
         if self.stdout:
             self.stdout.close()
         if self.stderr:
