@@ -1686,6 +1686,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         returns = all_return_statements(defn)
+        if not returns:
+            return
+
         if all(isinstance(ret.expr, NameExpr) and ret.expr.fullname == 'builtins.False'
                for ret in returns):
             self.msg.incorrect__exit__return(defn)

@@ -1517,6 +1517,23 @@ class LiteralReturn:
 [builtins fixtures/bool.pyi]
 
 
+[case testWithStmtBoolExitReturnInStub]
+import stub
+
+[file stub.pyi]
+from typing import Optional
+
+class C1:
+    def __exit__(self, x, y, z) -> bool: ...
+
+class C2:
+    def __exit__(self, x, y, z) -> bool: pass
+
+class C3:
+    def __exit__(self, x, y, z) -> Optional[bool]: pass
+[builtins fixtures/bool.pyi]
+
+
 -- Chained assignment
 -- ------------------
 
