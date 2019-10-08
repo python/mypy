@@ -1107,7 +1107,7 @@ class MessageBuilder:
     def incorrect__exit__return(self, context: Context) -> None:
         self.fail(
             '"bool" is invalid as return type for "__exit__" that always returns False', context,
-                code=codes.EXIT_RETURN)
+            code=codes.EXIT_RETURN)
         self.note(
             'Use "typing_extensions.Literal[False]" as the return type or change it to "None"',
             context, code=codes.EXIT_RETURN)
