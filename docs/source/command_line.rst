@@ -129,17 +129,17 @@ imports.
 ``--python-executable EXECUTABLE``
     This flag will have mypy collect type information from :pep:`561`
     compliant packages installed for the Python executable ``EXECUTABLE``.
-    If not provided, mypy will use :pep:`561` compliant packages installed for
+    If not provided, mypy will use PEP 561 compliant packages installed for
     the Python executable running mypy.
 
-    See :ref:`installed-packages` for more on making :pep:`561` compliant packages.
+    See :ref:`installed-packages` for more on making PEP 561 compliant packages.
 
 ``--no-site-packages``
     This flag will disable searching for :pep:`561` compliant packages. This
     will also disable searching for a usable Python executable.
 
     Use this  flag if mypy cannot find a Python executable for the version of
-    Python being checked, and you don't need to use :pep:`561` typed packages.
+    Python being checked, and you don't need to use PEP 561 typed packages.
     Otherwise, use ``--python-executable``.
 
 ``--no-silence-site-packages``
@@ -213,7 +213,7 @@ The following options are available:
     This flag disallows all expressions in the module that have type ``Any``.
     If an expression of type ``Any`` appears anywhere in the module
     mypy will output an error unless the expression is immediately
-    used as an argument to ``cast`` or assigned to a variable with an
+    used as an argument to :py:func:`~typing.cast` or assigned to a variable with an
     explicit type annotation.
 
     In addition, declaring a variable of type ``Any``
@@ -230,9 +230,9 @@ The following options are available:
 
 ``--disallow-any-generics``
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as ``list`` and
-    ``dict``) become disallowed as you should use their aliases from the typing
-    module (such as ``List[int]`` and ``Dict[str, str]``).
+    type parameters. Moreover, built-in collections (such as :py:class:`list` and
+    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
+    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
 
 ``--disallow-subclassing-any``
     This flag reports an error whenever a class subclasses a value of
@@ -292,7 +292,7 @@ For more details, see :ref:`no_strict_optional`.
 
 ``--no-implicit-optional``
     This flag causes mypy to stop treating arguments with a ``None``
-    default value as having an implicit ``Optional[...]`` type.
+    default value as having an implicit :py:data:`~typing.Optional` type.
 
     For example, by default mypy will assume that the ``x`` parameter
     is of type ``Optional[int]`` in the code snippet below since
@@ -312,7 +312,7 @@ For more details, see :ref:`no_strict_optional`.
             print(x)
 
 ``--no-strict-optional``
-    This flag disables strict checking of ``Optional[...]``
+    This flag disables strict checking of :py:data:`~typing.Optional`
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- they are valid
     everywhere. See :ref:`no_strict_optional` for more about this feature.
@@ -362,7 +362,7 @@ potentially problematic or redundant in some way.
 
 ``--warn-return-any``
     This flag causes mypy to generate a warning when returning a value
-    with type ``Any`` from a function declared with a non- ``Any`` return type.
+    with type ``Any`` from a function declared with a non-``Any`` return type.
 
 ``--warn-unreachable``
     This flag will make mypy report an error whenever it encounters
@@ -387,7 +387,7 @@ potentially problematic or redundant in some way.
     unreachable" warning will be silenced in exactly two cases:
 
     1.  When the unreachable statement is a ``raise`` statement, is an
-        ``assert False`` statement, or calls a function that has the ``NoReturn``
+        ``assert False`` statement, or calls a function that has the :py:data:`~typing.NoReturn`
         return type hint. In other words, when the unreachable statement
         throws an error or terminates the program in some way.
     2.  When the unreachable statement was *intentionally* marked as unreachable
@@ -578,7 +578,7 @@ in developing or debugging mypy internals.
 
 ``--custom-typing MODULE``
     This flag lets you use a custom module as a substitute for the
-    ``typing`` module.
+    :py:mod:`typing` module.
 
 ``--custom-typeshed-dir DIR``
     This flag specifies the directory where mypy looks for typeshed
@@ -673,10 +673,10 @@ Miscellaneous
     This flag will give command line arguments that appear to be
     scripts (i.e. files whose name does not end in ``.py``)
     a module name derived from the script name rather than the fixed
-    name ``__main__``.
+    name :py:mod:`__main__`.
 
     This lets you check more than one script in a single mypy invocation.
-    (The default ``__main__`` is technically more correct, but if you
+    (The default :py:mod:`__main__` is technically more correct, but if you
     have many scripts that import a large package, the behavior enabled
     by this flag is often more convenient.)
 

@@ -26,7 +26,7 @@ They can be defined using the :py:func:`@dataclasses.dataclass
     test = Application("Testing...")  # OK
     bad = Application("Testing...", "with plugin")  # Error: List[str] expected
 
-Mypy will detect special methods (such as ``__lt__``) depending on the flags used to
+Mypy will detect special methods (such as :py:meth:`__lt__ <object.__lt__>`) depending on the flags used to
 define dataclasses. For example:
 
 .. code-block:: python
@@ -72,10 +72,10 @@ and :pep:`557`.
 Caveats/Known Issues
 ====================
 
-Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
+Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace` and :py:func:`~dataclasses.asdict`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
-Mypy does not yet recognize aliases of ``dataclasses.dataclass``, and will
+Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
 probably never recognize dynamically computed decorators. The following examples
 do **not** work:
 
@@ -140,7 +140,7 @@ If you're using ``auto_attribs=True`` you must use variable annotations.
         three: int = attr.ib(8)
 
 Typeshed has a couple of "white lie" annotations to make type checking
-easier. ``attr.ib`` and ``attr.Factory`` actually return objects, but the
+easier. :py:func:`attr.ib` and :py:class:`attr.Factory` actually return objects, but the
 annotation says these return the types that they expect to be assigned to.
 That enables this to work:
 
@@ -175,7 +175,7 @@ Caveats/Known Issues
 
 * Currently, ``converter`` only supports named functions.  If mypy finds something else it
   will complain about not understanding the argument and the type annotation in
-  ``__init__`` will be replaced by ``Any``.
+  :py:meth:`__init__ <object.__init__>` will be replaced by ``Any``.
 
 * :ref:`Validator decorators <attrs:examples_validators>`
   and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
@@ -348,16 +348,16 @@ Extended Callable types
    This feature is deprecated.  You can use
    :ref:`callback protocols <callback_protocols>` as a replacement.
 
-As an experimental mypy extension, you can specify ``Callable`` types
+As an experimental mypy extension, you can specify :py:data:`~typing.Callable` types
 that support keyword arguments, optional arguments, and more.  When
-you specify the arguments of a Callable, you can choose to supply just
+you specify the arguments of a :py:data:`~typing.Callable`, you can choose to supply just
 the type of a nameless positional argument, or an "argument specifier"
 representing a more complicated form of argument.  This allows one to
 more closely emulate the full range of possibilities given by the
 ``def`` statement in Python.
 
 As an example, here's a complicated function definition and the
-corresponding ``Callable``:
+corresponding :py:data:`~typing.Callable`:
 
 .. code-block:: python
 
@@ -434,7 +434,7 @@ purpose:
 In all cases, the ``type`` argument defaults to ``Any``, and if the
 ``name`` argument is omitted the argument has no name (the name is
 required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
-``Callable`` such as
+:py:data:`~typing.Callable` such as
 
 .. code-block:: python
 
@@ -446,7 +446,7 @@ is equivalent to the following:
 
    MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
 
-A ``Callable`` with unspecified argument types, such as
+A :py:data:`~typing.Callable` with unspecified argument types, such as
 
 .. code-block:: python
 
