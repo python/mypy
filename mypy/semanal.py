@@ -578,7 +578,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if isinstance(parent.type.ret_type, UnboundType):
             assert isinstance(func.type.ret_type, UnboundType)
             vals = cast(Iterable[Instance], base_0.args)  # type: Iterable[Instance]
-            names_to_types: Mapping[str, Instance] = dict(zip(base_1.type_vars, vals))
+            names_to_types = dict(zip(base_1.type_vars, vals))  # type: Mapping[str, Instance]
             func.type.ret_type = substitute_unbounds(func.type.ret_type, names_to_types)
         else:
             func.type.ret_type = parent.type.ret_type
