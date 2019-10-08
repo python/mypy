@@ -6031,7 +6031,7 @@ class A:
     def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
         pass
 
-reveal_type(A())  # N: Revealed type is 'builtins.int'
+reveal_type(A())  # N: Revealed type is '__main__.A'
 
 [case testNewReturnType4]
 from typing import TypeVar, Type
@@ -6098,6 +6098,16 @@ TX = TypeVar('TX', bound='X')
 class X:
     def __new__(cls, x: TX) -> TX:  # E: "__new__" must return a class instance (got "TX")
         pass
+
+[case testNewReturnType9]
+class A:
+    def __new__(cls) -> A:
+        pass
+
+class B(A):
+    pass
+
+reveal_type(B())  # N: Revealed type is '__main__.B'
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any

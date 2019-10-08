@@ -77,11 +77,20 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
+    from mypy.subtypes import is_subtype
+
     init_ret_type = get_proper_type(init_type.ret_type)
-    if is_new and isinstance(init_ret_type, (Instance, TupleType)):
-        ret_type = init_type.ret_type  # type: Type
+    default_ret_type = fill_typevars(info)
+    if (
+        is_new
+        and isinstance(init_ret_type, (Instance, TupleType))
+        # Only use the return type from __new__ if it is actually returning
+        # a subtype of what we would return otherwise.
+        and is_subtype(init_ret_type, default_ret_type, ignore_type_params=True)
+    ):
+        ret_type = init_ret_type  # type: Type
     else:
-        ret_type = fill_typevars(info)
+        ret_type = default_ret_type
 
     callable_type = init_type.copy_modified(
         ret_type=ret_type, fallback=type_type, name=None, variables=variables,
