@@ -148,7 +148,8 @@ being used as an instance variable, as discussed previously:
   a = A()
   a.x = 1  # Also OK
 
-Note that :py:data:`~typing.ClassVar` is not a class, and you can't use it with :py:func:`isinstance` or :py:func:`issubclass`. It does not change Python
+Note that :py:data:`~typing.ClassVar` is not a class, and you can't use it with
+:py:func:`isinstance` or :py:func:`issubclass`. It does not change Python
 runtime behavior -- it's only for type checkers such as mypy (and
 also helpful for human readers).
 
