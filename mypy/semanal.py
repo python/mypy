@@ -50,8 +50,8 @@ Some important properties:
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
-)
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable, Mapping)
+
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -75,7 +75,7 @@ from mypy.nodes import (
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-)
+    ARG_OPT)
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
@@ -637,7 +637,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_func_def(self, defn: FuncDef) -> None:
         self.statement = defn
-
+        if not defn.unanalyzed_type and self.options.inherit_signatures and self.type:
+            self.inherit_signature(self.type, defn)
         # Visit default values because they may contain assignment expressions.
         for arg in defn.arguments:
             if arg.initializer:
