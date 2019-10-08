@@ -90,7 +90,7 @@ else:
 
 [case testMultiModuleImportClass]
 from typing import cast
-from other import C
+from other import C, a_global
 
 class D(C):
     def __init__(self, x: int) -> None:
@@ -100,21 +100,32 @@ def f(c: C) -> int:
     d = D(3)
     o: object = c
     c = cast(C, o)
-    return c.x + c.f() + d.x + d.f() + 1
+    return a_global + c.x + c.f() + d.x + d.f() + 1
 [file other.py]
+from typing_extensions import Final
+a_global: Final = int('5')
+
 class C:
     x: int
 
     def __init__(self, x: int) -> None:
         self.x = x
 
+    def __hash__(self) -> int:
+        return self.x
+
+    def __str__(self) -> str:
+        return str(self.x)
+
     def f(self) -> int:
         return 2
 [file driver.py]
-from native import f
+from native import f, D
 from other import C
 c = C(4)
-assert f(c) == 4 + 2 + 3 + 2 + 1
+assert f(c) == 5 + 4 + 2 + 3 + 2 + 1
+assert str(D(10)) == '10'
+assert hash(10) == 10
 try:
     f(1)
 except TypeError:
