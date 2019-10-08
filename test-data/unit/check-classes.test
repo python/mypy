@@ -6224,9 +6224,96 @@ reveal_type(Foo().x)  # N: Revealed type is 'Union[Any, None]'
 reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
 
-[case testSignatureInheritance]
-# flags: --inherit-signatures --check-untyped-defs
+[case testSignatureInheritanceAcceptsNarrowParam]
+# flags: --inherit-signatures
+from typing import Any
 class Base:
-    def foo(self, a: float) -> float: return 2.0
-class BadChild1(Base):
-    def foo(self, a): return ""  # E: Incompatible return value type (got "str", expected "float")
+    def foo(self, x:int, y:Any) -> int: return 5
+class Child(Base):
+    def foo(self,x:int, y:str): return 0
+[builtins fixtures/primitives.pyi]
+
+[case testSignatureInheritanceAcceptsNarrowReturn]
+# flags: --inherit-signatures
+class ReturnBase: pass
+class ReturnChild(ReturnBase): pass
+class Base:
+    def foo(self) -> ReturnBase: return ReturnBase()
+class Child(Base):
+    def foo(self): return ReturnChild()
+[builtins fixtures/primitives.pyi]
+
+[case testSignatureInheritanceDifferentNbArgs]
+# flags: --inherit-signatures
+class Base:
+    def foo(self, x:int) -> int: return 5
+class Child(Base):
+    def foo(self, x, y): return 0  # E: Signature of "foo" incompatible with supertype "Base"
+class Child2(Base):
+    def foo(self): return 0  # E: Signature of "foo" incompatible with supertype "Base"
+[builtins fixtures/primitives.pyi]
+
+[case testSigatureInheritanceDoesntCrashWithDecorator]
+# flags: --inherit-signatures
+def decor(f):
+    def inner(*args,**kwargs):
+        return f(*args,**kwargs)
+    return inner
+class Base:
+    @decor
+    def foo(self, x:int) -> int: return 5
+class Child(Base):
+    @decor
+    def foo(self, x): return "5"  # E: Incompatible return value type (got "str", expected "int")
+[builtins fixtures/dict.pyi]
+
+[case testSignatureInheritanceAcceptsNarrowUnannotatedParam]
+# flags: --inherit-signatures
+class A:pass
+class B(A):pass
+class Base():
+    def foo(self, x:A) -> int: return 5
+class Child(Base):
+    def foo(self, x): return 0
+Child().foo(B())
+[builtins fixtures/primitives.pyi]
+
+[case testSignatureInheritanceRejectsTooWideParam]
+# flags: --inherit-signatures
+class A:pass
+class B(A):pass
+class Base():
+    def foo(self, x:B) -> int: return 5
+class Child(Base):
+    def foo(self, x): return 0
+Child().foo(A())  # E: Argument 1 to "foo" of "Child" has incompatible type "A"; expected "B"
+[builtins fixtures/primitives.pyi]
+
+[case testSignatureInheritanceAcceptsOptionalArgInChild]
+# flags: --inherit-signatures
+class A:pass
+class Base():
+    def foo(self, x:A, y:int) -> int: return 5
+class Child(Base):
+    def foo(self, x, y=42, z=""):
+        reveal_type(x)  # N: Revealed type is '__main__.A'
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+        reveal_type(z)  # N: Revealed type is 'Any'
+        return 0
+
+[case testSignatureInheritanceGenerics]
+# flags: --inherit-signatures
+from typing import TypeVar, Dict, Tuple
+KT = TypeVar('KT')
+VT = TypeVar('VT')
+class MyDict(Dict[KT, VT]):
+    def return_KT(self) -> KT: pass
+    def return_VT(self) -> VT: pass
+    def return_VT_wrong(self) -> VT: pass
+    def return_Tuple(self)->Tuple[VT,KT]:pass
+class StrDict(MyDict[str, int]):
+    def return_KT(self,*args,**kwargs): return "5"
+    def return_VT(self, *args,**kwargs): return 5
+    def return_VT_wrong(self,*args,**kwargs): return ""  # E: Incompatible return value type (got "str", expected "int")
+    def return_Tuple(self,*args,**kwargs): return ("", 5)  # E: Incompatible return value type (got "Tuple[str, int]", expected "Tuple[int, str]")
+[builtins fixtures/dict.pyi]
