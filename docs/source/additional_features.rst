@@ -75,7 +75,7 @@ Caveats/Known Issues
 Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace` and :py:func:`~dataclasses.asdict`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
-Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass`, and will
+Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
 probably never recognize dynamically computed decorators. The following examples
 do **not** work:
 

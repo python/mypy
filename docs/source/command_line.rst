@@ -292,7 +292,7 @@ For more details, see :ref:`no_strict_optional`.
 
 ``--no-implicit-optional``
     This flag causes mypy to stop treating arguments with a ``None``
-    default value as having an implicit :py:data:`Optional[...] <typing.Optional>` type.
+    default value as having an implicit :py:data:`~typing.Optional` type.
 
     For example, by default mypy will assume that the ``x`` parameter
     is of type ``Optional[int]`` in the code snippet below since
@@ -312,7 +312,7 @@ For more details, see :ref:`no_strict_optional`.
             print(x)
 
 ``--no-strict-optional``
-    This flag disables strict checking of :py:data:`Optional[...] <typing.Optional>`
+    This flag disables strict checking of :py:data:`~typing.Optional`
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- they are valid
     everywhere. See :ref:`no_strict_optional` for more about this feature.
