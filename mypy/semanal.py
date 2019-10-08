@@ -87,8 +87,8 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types
-)
+    get_proper_type, get_proper_types,
+    TypeList)
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -158,6 +158,45 @@ CORE_BUILTIN_CLASSES = ['object', 'bool', 'function']  # type: Final
 
 # Used for tracking incomplete references
 Tag = int
+
+
+def substitute_unbounds(t: UnboundType, names_to_types: Mapping[str, Instance]) -> ProperType:
+    """Replaces all type vars types with whatever ProperTypes given.
+
+    Used with --inherit-signatures option
+    Example, if we have:
+        class A(Generic[T,U]):
+            def foo(self) -> U:pass
+            def bar(self,*args)->Callable[[U],T]:pass
+        class B(A[int,str]):
+            def foo(self):pass
+            def bar(self,*args):pass
+
+    Then class B will be transformed to:
+         class B(A[int,str]):
+            def foo(self) -> str:pass
+            def bar(self,*args)->Callable[[str],int]:pass
+    """
+    workcopy = t.args.copy()
+    new_args: List[Type] = []
+    while workcopy:
+        curr = workcopy.pop(0)  # order is important, so keep it
+        if isinstance(curr, TypeList):
+            items: List[Type] = []
+            for item in curr.items:
+                assert isinstance(item, UnboundType)
+                ret = substitute_unbounds(item, names_to_types)
+                items.append(ret)
+            curr.items = items
+            new_args.append(curr)
+        elif isinstance(curr, UnboundType):
+            ret = substitute_unbounds(curr, names_to_types)
+            new_args.append(ret)
+        else:
+            raise AssertionError(type(curr))
+    ret_type = names_to_types.get(t.name, t)
+    ret_type.args = new_args
+    return ret_type
 
 
 class SemanticAnalyzer(NodeVisitor[None],
@@ -476,6 +515,74 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # it cannot be public.
                 else:
                     g.module_public = False
+
+    def inherit_signature(self, cls_info: TypeInfo, func: FuncDef) -> None:
+        """Copy type annotations from parent definition, if we can find it."""
+        parent, base_1 = None, None
+        base_0 = cls_info.bases[0]
+        for base_1 in cls_info.mro[1:]:
+            if func.name() in base_1.names:
+                parent = base_1.names[func.name()].node
+                if isinstance(parent, Decorator):
+                    parent = parent.func
+                break
+        if not parent:
+            return None
+        assert base_1 is not None
+        assert isinstance(parent, FuncDef), "got %s" % type(parent)
+        pnb_args, cnb_args = len(parent.arg_kinds), len(func.arg_kinds)
+        if cnb_args < pnb_args:
+            self.fail("Signature of \"%s\" incompatible with supertype \"%s\"" %
+                      (func.name(), base_1.name()), func, code=None)
+            return None
+        fail = False
+
+        # check that child has a compatible signature
+        # for each parent's positional arg, we have (positional or optional)
+        for i, arg_kind in enumerate(parent.arg_kinds):
+            if func.arg_names[i] != parent.arg_names[i]:
+                fail = True
+                break
+            if arg_kind == ARG_POS:
+                if func.arg_kinds[i] not in (ARG_POS, ARG_OPT):
+                    fail = True
+                    break
+            elif arg_kind == ARG_OPT:
+                if func.arg_kinds[i] != ARG_OPT:
+                    fail = True
+                    break
+            else:
+                if func.arg_kinds[i] != parent.arg_kinds[i]:
+                    fail = True
+                    break
+        if fail:
+            self.fail("Signature of \"%s\" incompatible with supertype \"%s\"" %
+                      (func.name(), base_1.name()), func, code=None)
+            return None
+
+        # copy parent's arg to child, mark as "Any" for all extra args
+        assert isinstance(parent.type, CallableType)
+        arg_kinds, arg_names, arg_types = [], [], []
+        for i in range(0, cnb_args):
+            arg_kinds.append(func.arg_kinds[i])
+            arg_names.append(func.arg_names[i])
+            if i < pnb_args:
+                arg_types.append(parent.type.arg_types[i])
+            else:
+                arg_types.append(AnyType(TypeOfAny.unannotated, None, None))
+        callable_type = CallableType(arg_types, arg_kinds, arg_names,
+                                    parent.type.ret_type,
+                                    parent.type.fallback)
+        func.unanalyzed_type = callable_type
+        func.type = callable_type
+        if isinstance(parent.type.ret_type, UnboundType):
+            assert isinstance(func.type.ret_type, UnboundType)
+            vals: Iterable[Instance] = cast(Iterable[Instance], base_0.args)
+            names_to_types: Mapping[str, Instance] = dict(zip(base_1.type_vars, vals))
+            func.type.ret_type = substitute_unbounds(func.type.ret_type, names_to_types)
+        else:
+            func.type.ret_type = parent.type.ret_type
+        return None
 
     @contextmanager
     def file_context(self,
