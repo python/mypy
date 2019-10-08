@@ -178,11 +178,11 @@ def substitute_unbounds(t: UnboundType, names_to_types: Mapping[str, Instance]) 
             def bar(self,*args)->Callable[[str],int]:pass
     """
     workcopy = t.args.copy()
-    new_args: List[Type] = []
+    new_args = []  # type: List[Type]
     while workcopy:
         curr = workcopy.pop(0)  # order is important, so keep it
         if isinstance(curr, TypeList):
-            items: List[Type] = []
+            items = []  # type:  List[Type]
             for item in curr.items:
                 assert isinstance(item, UnboundType)
                 ret = substitute_unbounds(item, names_to_types)
