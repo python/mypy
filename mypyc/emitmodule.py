@@ -23,7 +23,7 @@ from mypyc.options import CompilerOptions
 from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
-from mypyc.namegen import exported_name
+from mypyc.namegen import NameGenerator, exported_name
 from mypyc.errors import Errors
 
 
@@ -79,7 +79,14 @@ def compile_modules_to_c(
     groups: Groups,
     ops: Optional[List[str]] = None,
 ) -> List[FileContents]:
-    """Compile Python module(s) to C that can be used from Python C extension modules.
+    """Compile Python module(s) to the source of Python C extension modules.
+
+    This generates the source code for the "shared library" module
+    for each group. The shim modules are generated in mypyc.build.
+    Each shared library module provides, for each module in its group,
+    a PyCapsule containing an initialization function.
+    Additionally, it provides a capsule containing an export table of
+    pointers to all of the group's functions and static variables.
 
     Arguments:
         result: The BuildResult from the mypy front-end
@@ -128,6 +135,8 @@ def compile_modules_to_c(
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
 
+    names = NameGenerator([[source.module for source in sources] for sources, _ in groups])
+
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module, so we produce
     # a separate group of C source for each of them.
@@ -137,7 +146,8 @@ def compile_modules_to_c(
         modules = [(source.module, module_dict[source.module]) for source in group_sources]
         literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            literals, modules, source_paths, group_name, group_map, compiler_options.multi_file
+            literals, modules, source_paths, group_name, group_map, names,
+            compiler_options.multi_file
         )
         ctext.append(generator.generate_c_for_modules())
     return ctext
@@ -183,6 +193,7 @@ class GroupGenerator:
                  source_paths: Dict[str, str],
                  group_name: Optional[str],
                  group_map: Dict[str, Optional[str]],
+                 names: NameGenerator,
                  multi_file: bool) -> None:
         """Generator for C source for a compilation group.
 
@@ -195,14 +206,15 @@ class GroupGenerator:
             source_paths: Map from module names to source file paths
             group_name: The name of the group (or None if this is single-module compilation)
             group_map: A map of modules to their group names
+            names: The name generator for the compilation
             multi_file: Whether to put each module in its own source file regardless
                         of group structure.
         """
         self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
-        self.context = EmitterContext([name for name, _ in modules], group_map, group_name)
-        self.names = self.context.names
+        self.context = EmitterContext(names, group_name, group_map)
+        self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
         self.simple_inits = []  # type: List[Tuple[str, str]]

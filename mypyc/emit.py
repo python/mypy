@@ -53,13 +53,22 @@ class HeaderDeclaration:
 class EmitterContext:
     """Shared emitter state for a compilation group."""
 
-    def __init__(self, module_names: List[str],
+    def __init__(self,
+                 names: NameGenerator,
+                 group_name: Optional[str] = None,
                  group_map: Optional[Dict[str, Optional[str]]] = None,
-                 group_name: Optional[str] = None) -> None:
+                 ) -> None:
+        """Setup shared emitter state.
+
+        Args:
+            names: The name generator to use
+            group_map: Map from module names to group name
+            group_name: Current group name
+        """
         self.temp_counter = 0
-        self.names = NameGenerator(module_names, is_separate=group_map is not None)
-        self.group_map = group_map or {}
+        self.names = names
         self.group_name = group_name
+        self.group_map = group_map or {}
         # Groups that this group depends on
         self.group_deps = set()  # type: Set[str]
 

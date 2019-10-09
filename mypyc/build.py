@@ -138,7 +138,7 @@ def generate_c_extension_shim(
         dir_name: the directory to place source code
         group_name: the name of the group
     """
-    cname = '%s.c' % full_module_name.replace('.', '___')  # XXX
+    cname = '%s.c' % exported_name(full_module_name)
     cpath = os.path.join(dir_name, cname)
 
     write_file(
@@ -152,6 +152,9 @@ def generate_c_extension_shim(
 
 def group_name(modules: List[str]) -> str:
     """Produce a probably unique name for a group from a list of module names."""
+    if len(modules) == 1:
+        return exported_name(modules[0])
+
     h = hashlib.sha1()
     h.update(','.join(modules).encode())
     return h.hexdigest()[:20]

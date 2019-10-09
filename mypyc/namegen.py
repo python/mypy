@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set, Optional
+from typing import List, Dict, Tuple, Set, Optional, Iterable
 
 
 class NameGenerator:
@@ -33,22 +33,19 @@ class NameGenerator:
     The generated should be internal to a build and thus the mapping is
     arbitrary. Just generating names '1', '2', ... would be correct,
     though not very usable.
-
-    FIXME: Currently when performing seperate compilation we just
-    totally give up on shortening names.
     """
 
-    def __init__(self, module_names: List[str],
-                 *, is_separate: bool) -> None:
-        """Initialize with names of all modules in the compilation group.
+    def __init__(self, groups: Iterable[List[str]]) -> None:
+        """Initialize with a list of modules in each compilation group.
 
         The names of modules are used to shorten names referring to
-        modules in the compilation group, for convenience. Arbitary module
-        names are supported for generated names, but modules not in the
-        compilation group will use long names.
+        modules, for convenience. Arbitary module
+        names are supported for generated names, but uncompiled modules
+        will use long names.
         """
-        module_names = module_names or []
-        self.module_map = make_module_translation_map(module_names, is_separate)
+        self.module_map = {}  # type: Dict[str, str]
+        for names in groups:
+            self.module_map.update(make_module_translation_map(names))
         self.translations = {}  # type: Dict[Tuple[str, str], str]
         self.used_names = set()  # type: Set[str]
 
@@ -92,14 +89,14 @@ def exported_name(fullname: str) -> str:
     return fullname.replace('___', '___3_').replace('.', '___')
 
 
-def make_module_translation_map(names: List[str], is_separate: bool = False) -> Dict[str, str]:
+def make_module_translation_map(names: List[str]) -> Dict[str, str]:
     num_instances = {}  # type: Dict[str, int]
     for name in names:
-        for suffix in candidate_suffixes(name, is_separate):
+        for suffix in candidate_suffixes(name):
             num_instances[suffix] = num_instances.get(suffix, 0) + 1
     result = {}
     for name in names:
-        for suffix in candidate_suffixes(name, is_separate):
+        for suffix in candidate_suffixes(name):
             if num_instances[suffix] == 1:
                 result[name] = suffix
                 break
@@ -108,9 +105,9 @@ def make_module_translation_map(names: List[str], is_separate: bool = False) -> 
     return result
 
 
-def candidate_suffixes(fullname: str, is_separate: bool = False) -> List[str]:
+def candidate_suffixes(fullname: str) -> List[str]:
     components = fullname.split('.')
     result = ['']
     for i in range(len(components)):
         result.append('.'.join(components[-i - 1:]) + '.')
-    return result if not is_separate else [result[-1]]
+    return result
