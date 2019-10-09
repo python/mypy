@@ -568,7 +568,8 @@ class FancyFormatter:
     def fit_in_terminal(self, messages: List[str],
                         fixed_terminal_width: Optional[int] = None) -> List[str]:
         """Improve readability by wrapping error messages and trimming source code."""
-        width = fixed_terminal_width or get_terminal_width()
+        width = (fixed_terminal_width or int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
+                 get_terminal_width())
         new_messages = messages.copy()
         for i, error in enumerate(messages):
             if ': error:' in error:

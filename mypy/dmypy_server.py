@@ -265,8 +265,6 @@ class Server:
                 # Only the above commands use some error formatting.
                 del data['is_tty']
                 del data['terminal_width']
-            elif int(os.getenv('MYPY_FORCE_COLOR', '0')):
-                data['is_tty'] = True
             return method(self, **data)
 
     # Command functions (run in the server via RPC).

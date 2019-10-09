@@ -468,8 +468,9 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     args['command'] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.
-    args['is_tty'] = sys.stdout.isatty()
-    args['terminal_width'] = get_terminal_width()
+    args['is_tty'] = sys.stdout.isatty() or int(os.getenv('MYPY_FORCE_COLOR', '0')) > 0
+    args['terminal_width'] = (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
+                              get_terminal_width())
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:
