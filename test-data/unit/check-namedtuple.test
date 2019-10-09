@@ -853,3 +853,10 @@ b = (1, 2)
 if not b:
     ''()  # E: "str" not callable
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAtRunTime]
+from typing import NamedTuple
+
+class A:
+    def __init__(self) -> None:
+        self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: NamedTuple type as an attribute is not supported
