@@ -6319,3 +6319,10 @@ class Foo:
 reveal_type(Foo().x)  # N: Revealed type is 'Union[Any, None]'
 reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
+
+[case testCheckUntypedDefsSelf3]
+# flags: --check-untyped-defs
+
+class Foo:
+    def bad():  # E: Method must have at least one argument
+        self.x = 0  # E: Name 'self' is not defined
