@@ -14,8 +14,8 @@ what normally would have been the command line arguments to mypy.
 
 Function ``run`` returns a ``Tuple[str, str, int]``, namely
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
-is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
-normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy normally
+is what mypy normally writes to :py:data:`sys.stdout`, ``<error_report>`` is what mypy
+normally writes to :py:data:`sys.stderr` and ``exit_status`` is the exit status mypy normally
 returns to the operating system.
 
 A trivial example of using the api is the following
@@ -98,7 +98,7 @@ High-level overview
 *******************
 
 Every entry point function should accept a single string argument
-that is a full mypy version and return a subclass of ``mypy.plugins.Plugin``:
+that is a full mypy version and return a subclass of ``mypy.plugin.Plugin``:
 
 .. code-block:: python
 
@@ -174,7 +174,7 @@ For example:
 instead of module level functions.
 
 **get_method_signature_hook()** is used to adjust the signature of a method.
-This includes special Python methods except ``__init__()`` and ``__new__()``.
+This includes special Python methods except :py:meth:`~object.__init__` and :py:meth:`~object.__new__`.
 For example in this code:
 
 .. code-block:: python
@@ -185,12 +185,12 @@ For example in this code:
    x[0] = 42
 
 mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
-so that the plugin can mimic the ``ctypes`` auto-convert behavior.
+so that the plugin can mimic the :py:mod:`ctypes` auto-convert behavior.
 
-**get_attribute_hook** overrides instance member field lookups and property
+**get_attribute_hook()** overrides instance member field lookups and property
 access (not assignments, and not method calls). This hook is only called for
-fields which already exist on the class. *Exception:* if ``__getattr__`` or
-``__getattribute__`` is a method on the class, the hook is called for all
+fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <object.__getattr__>` or
+:py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.
 
 **get_class_decorator_hook()** can be used to update class definition for
