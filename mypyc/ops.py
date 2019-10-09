@@ -1416,11 +1416,12 @@ class FuncDecl:
             else:
                 self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
 
+    @property
+    def shortname(self) -> str:
+        return self.class_name + '.' + self.name if self.class_name else self.name
+
     def cname(self, names: NameGenerator) -> str:
-        name = self.name
-        if self.class_name:
-            name += '_' + self.class_name
-        return names.private_name(self.module_name, name)
+        return names.private_name(self.module_name, self.shortname)
 
 
 class FuncIR:
