@@ -200,14 +200,14 @@ class SymbolNode(Node):
 
     __slots__ = ()
 
-    # TODO do not use methods for these
-
+    @property
     @abstractmethod
     def name(self) -> str: pass
 
     # fullname can often be None even though the type system
     # disagrees. We mark this with Bogus to let mypyc know not to
     # worry about it.
+    @property
     @abstractmethod
     def fullname(self) -> Bogus[str]: pass
 
@@ -282,9 +282,11 @@ class MypyFile(SymbolNode):
         """
         return local_definitions(self.names, self.fullname())
 
+    @property
     def name(self) -> str:
         return '' if not self._fullname else self._fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -399,9 +401,11 @@ class ImportedName(SymbolNode):
         super().__init__()
         self.target_fullname = target_fullname
 
+    @property
     def name(self) -> str:
         return self.target_fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> str:
         return self.target_fullname
 
@@ -463,9 +467,11 @@ class FuncBase(Node):
         # TODO: Type should be Optional[str]
         self._fullname = cast(Bogus[str], None)
 
+    @property
     @abstractmethod
     def name(self) -> str: pass
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -496,6 +502,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
+    @property
     def name(self) -> str:
         if self.items:
             return self.items[0].name()
@@ -661,6 +668,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
+    @property
     def name(self) -> str:
         return self._name
 
@@ -734,9 +742,11 @@ class Decorator(SymbolNode, Statement):
         self.var = var
         self.is_overload = False
 
+    @property
     def name(self) -> str:
         return self.func.name()
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self.func.fullname()
 
@@ -852,9 +862,11 @@ class Var(SymbolNode):
         # If True, this is an implicit Var created due to module-level __getattr__.
         self.from_module_getattr = False
 
+    @property
     def name(self) -> str:
         return self._name
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -1818,6 +1830,7 @@ class SuperExpr(Expression):
 class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
 
+    @property
     def name(self) -> str:
         return '<lambda>'
 
@@ -2059,9 +2072,11 @@ class TypeVarExpr(SymbolNode, Expression):
         self.upper_bound = upper_bound
         self.variance = variance
 
+    @property
     def name(self) -> str:
         return self._name
 
+    @property
     def fullname(self) -> str:
         return self._fullname
 
@@ -2388,10 +2403,12 @@ class TypeInfo(SymbolNode):
             for vd in self.defn.type_vars:
                 self.type_vars.append(vd.fullname)
 
+    @property
     def name(self) -> str:
         """Short name."""
         return self.defn.name
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -2738,9 +2755,11 @@ class TypeAlias(SymbolNode):
         self.normalized = normalized
         super().__init__(line, column)
 
+    @property
     def name(self) -> str:
         return self._fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> str:
         return self._fullname
 
@@ -2829,9 +2848,11 @@ class PlaceholderNode(SymbolNode):
         self.becomes_typeinfo = becomes_typeinfo
         self.line = line
 
+    @property
     def name(self) -> str:
         return self._fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> str:
         return self._fullname
 
