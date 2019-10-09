@@ -171,6 +171,8 @@ class Emitter:
         group.
         """
         lib_prefix = '' if not module else self.get_module_lib_prefix(module)
+        # If we are accessing static via the export table, we need to dereference
+        # the pointer also.
         star_maybe = '*' if lib_prefix else ''
         suffix = self.names.private_name(module or '', id)
         return '{}{}{}{}'.format(star_maybe, lib_prefix, prefix, suffix)

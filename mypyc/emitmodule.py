@@ -34,10 +34,19 @@ from mypyc.errors import Errors
 # placed in the same group (fully whole-program compilation), but we
 # support finer-grained control of the group as well.
 #
+# In fully whole-program compilation, we will generate N+1 extension
+# modules: one shim per module and one shared library containing all
+# the actual code.
+# In fully separate compilation, we (unfortunately) will generate 2*N
+# extension modules: one shim per module and also one library containg
+# each module's actual code. (This might be fixable in the future,
+# but allows a clean separation between setup of the export tables
+# (see generate_export_table) and running module top levels.)
+#
 # A group is represented as a list of BuildSources containing all of
-# its modules along with the name of the group. (Which will be None
-# only if we are compiling a single file and not using shared
-# libraries).
+# its modules along with the name of the group. (Which can be None
+# only if we are compiling only a single group with a single file in it
+# and not using shared libraries).
 Group = Tuple[List[BuildSource], Optional[str]]
 Groups = List[Group]
 

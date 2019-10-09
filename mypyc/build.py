@@ -129,17 +129,17 @@ PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}
 
 
 def generate_c_extension_shim(
-        full_module_name: str, module_name: str, dirname: str, group_name: str) -> str:
+        full_module_name: str, module_name: str, dir_name: str, group_name: str) -> str:
     """Create a C extension shim with a passthrough PyInit function.
 
     Arguments:
       * full_module_name: the dotted full module name
       * module_name: the final component of the module name
-      * dirname: the directory to place source code
-      * libname: the name of the module where the code actually lives
+      * dir_name: the directory to place source code
+      * group_name: the name of the group
     """
     cname = '%s.c' % full_module_name.replace('.', '___')  # XXX
-    cpath = os.path.join(dirname, cname)
+    cpath = os.path.join(dir_name, cname)
 
     write_file(
         cpath,
