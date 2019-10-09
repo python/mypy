@@ -190,7 +190,6 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> Tuple[bool, bool]
 
     # cmp takes precedence due to bw-compatibility.
     if cmp is not None:
-        ctx.api.fail("cmp is deprecated, use eq and order", ctx.reason)
         return cmp, cmp
 
     # If left None, equality is on and ordering mirrors equality.
