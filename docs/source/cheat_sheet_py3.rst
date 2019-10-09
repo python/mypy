@@ -212,12 +212,13 @@ that are common in idiomatic Python are standardized.
    # Mapping describes a dict-like object (with "__getitem__") that we won't
    # mutate, and MutableMapping one (with "__setitem__") that we might
    def f(my_dict: Mapping[int, str]) -> List[int]:
+       my_mapping[5] = 'maybe'  # if we try this, mypy will throw an error...
        return list(my_dict.keys())
 
    f({3: 'yes', 4: 'no'})
 
    def f(my_mapping: MutableMapping[int, str]) -> Set[str]:
-       my_mapping[5] = 'maybe'
+       my_mapping[5] = 'maybe'  # ...but mypy is OK with this.
        return set(my_mapping.values())
 
    f({3: 'yes', 4: 'no'})
