@@ -76,7 +76,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy.typeops import tuple_fallback
 from mypy import state, errorcodes as codes
-from mypy.traverser import has_return_statement
+from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode
 
 T = TypeVar('T')
@@ -790,6 +790,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         self.dynamic_funcs.pop()
         self.current_node_deferred = False
+
+        if name == '__exit__':
+            self.check__exit__return_type(defn)
 
     @contextmanager
     def enter_attribute_inference_context(self) -> Iterator[None]:
@@ -1666,6 +1669,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if op_method_wider_note:
                 self.note("Overloaded operator methods can't have wider argument types"
                           " in overrides", node, code=codes.OVERRIDE)
+
+    def check__exit__return_type(self, defn: FuncItem) -> None:
+        """Generate error if the return type of __exit__ is problematic.
+
+        If __exit__ always returns False but the return type is declared
+        as bool, mypy thinks that a with statement may "swallow"
+        exceptions even though this is not the case, resulting in
+        invalid reachability inference.
+        """
+        if not defn.type or not isinstance(defn.type, CallableType):
+            return
+
+        ret_type = get_proper_type(defn.type.ret_type)
+        if not has_bool_item(ret_type):
+            return
+
+        returns = all_return_statements(defn)
+        if not returns:
+            return
+
+        if all(isinstance(ret.expr, NameExpr) and ret.expr.fullname == 'builtins.False'
+               for ret in returns):
+            self.msg.incorrect__exit__return(defn)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
@@ -4793,3 +4819,13 @@ def coerce_to_literal(typ: Type) -> ProperType:
         return typ.last_known_value
     else:
         return typ
+
+
+def has_bool_item(typ: ProperType) -> bool:
+    """Return True if type is 'bool' or a union with a 'bool' item."""
+    if is_named_instance(typ, 'builtins.bool'):
+        return True
+    if isinstance(typ, UnionType):
+        return any(is_named_instance(item, 'builtins.bool')
+                   for item in typ.items)
+    return False

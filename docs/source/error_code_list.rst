@@ -593,6 +593,63 @@ To work around the issue, you can either give mypy access to the sources
 for ``acme`` or create a stub file for the module.  See :ref:`ignore-missing-imports`
 for more information.
 
+Check the return type of __exit__ [exit-return]
+-----------------------------------------------
+
+If mypy can determine that ``__exit__`` always returns ``False``, mypy
+checks that the return type is *not* ``bool``.  The boolean value of
+the return type affects which lines mypy thinks are reachable after a
+``with`` statement, since any ``__exit__`` method that can return
+``True`` may swallow exceptions. An imprecise return type can result
+in mysterious errors reported near ``with`` statements.
+
+To fix this, use either ``typing_extensions.Literal[False]`` or
+``None`` as the return type. Returning ``None`` is equivalent to
+returning ``False`` in this context, since both are treated as false
+values.
+
+Example:
+
+.. code-block:: python
+
+   class MyContext:
+       ...
+       def __exit__(self, exc, value, tb) -> bool:  # Error
+           print('exit')
+           return False
+
+This produces the following output from mypy:
+
+.. code-block:: text
+
+   example.py:3: error: "bool" is invalid as return type for "__exit__" that always returns False
+   example.py:3: note: Use "typing_extensions.Literal[False]" as the return type or change it to
+       "None"
+   example.py:3: note: If return type of "__exit__" implies that it may return True, the context
+       manager may swallow exceptions
+
+You can use ``Literal[False]`` to fix the error:
+
+.. code-block:: python
+
+   from typing_extensions import Literal
+
+   class MyContext:
+       ...
+       def __exit__(self, exc, value, tb) -> Literal[False]:  # OK
+           print('exit')
+           return False
+
+You can also use ``None``:
+
+.. code-block:: python
+
+   class MyContext:
+       ...
+       def __exit__(self, exc, value, tb) -> None:  # Also OK
+           print('exit')
+
+
 Report syntax errors [syntax]
 -----------------------------
 

@@ -1,5 +1,7 @@
 """Generic node traverser visitor"""
 
+from typing import List
+
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
@@ -10,7 +12,7 @@ from mypy.nodes import (
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE,
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
 )
 
 
@@ -309,3 +311,24 @@ def has_return_statement(fdef: FuncBase) -> bool:
     seeker = ReturnSeeker()
     fdef.accept(seeker)
     return seeker.found
+
+
+class ReturnCollector(TraverserVisitor):
+    def __init__(self) -> None:
+        self.return_statements = []  # type: List[ReturnStmt]
+        self.inside_func = False
+
+    def visit_func_def(self, defn: FuncDef) -> None:
+        if not self.inside_func:
+            self.inside_func = True
+            super().visit_func_def(defn)
+            self.inside_func = False
+
+    def visit_return_stmt(self, stmt: ReturnStmt) -> None:
+        self.return_statements.append(stmt)
+
+
+def all_return_statements(node: Node) -> List[ReturnStmt]:
+    v = ReturnCollector()
+    node.accept(v)
+    return v.return_statements

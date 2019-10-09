@@ -83,8 +83,10 @@ STRING_FORMATTING = ErrorCode(
 STR_BYTES_PY3 = ErrorCode(
     'str-bytes-safe', "Warn about dangerous coercions related to bytes and string types",
     'General')  # type: Final
+EXIT_RETURN = ErrorCode(
+    'exit-return', "Warn about too general return type for '__exit__'", 'General')  # type: Final
 
-# These error codes aren't enable by default.
+# These error codes aren't enabled by default.
 NO_UNTYPED_DEF = ErrorCode(
     'no-untyped-def', "Check that every function has an annotation", 'General')  # type: Final
 NO_UNTYPED_CALL = ErrorCode(

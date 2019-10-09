@@ -169,9 +169,8 @@ class IPCClient(IPCBase):
                  exc_ty: 'Optional[Type[BaseException]]' = None,
                  exc_val: Optional[BaseException] = None,
                  exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
+                 ) -> None:
         self.close()
-        return False
 
 
 class IPCServer(IPCBase):
@@ -246,7 +245,7 @@ class IPCServer(IPCBase):
                  exc_ty: 'Optional[Type[BaseException]]' = None,
                  exc_val: Optional[BaseException] = None,
                  exc_tb: Optional[TracebackType] = None,
-                 ) -> bool:
+                 ) -> None:
         if sys.platform == 'win32':
             try:
                 # Wait for the client to finish reading the last write before disconnecting
@@ -257,7 +256,6 @@ class IPCServer(IPCBase):
                 DisconnectNamedPipe(self.connection)
         else:
             self.close()
-        return False
 
     def cleanup(self) -> None:
         if sys.platform == 'win32':
