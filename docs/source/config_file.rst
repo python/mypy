@@ -254,8 +254,8 @@ For more information, see the :ref:`None and optional handling <none-and-optiona
 section of the command line docs.
 
 ``no_implicit_optional`` (bool, default False)
-    Changes the treatment of arguments with a default value of None by not implicitly
-    making their type Optional.
+    Changes the treatment of arguments with a default value of ``None`` by not implicitly
+    making their type :py:data:`~typing.Optional`.
 
 ``strict_optional`` (bool, default True)
     Enables or disables strict Optional checks. If False, mypy treats ``None``
@@ -377,8 +377,9 @@ a list of import discovery options that may be used
     User home directory and environment variables will be expanded.
 
 ``files`` (string)
+
     A comma-separated list of paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing using :doc:`library/glob`, where ``*`` (e.g. ``*.py``) matches
+    line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
     files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
     the current one. User home directory and environment variables will be expanded.
 
@@ -399,7 +400,7 @@ section of the command line docs.
     Specifies the OS platform for the target program, for example
     ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
     The default is the current platform as revealed by Python's
-    ``sys.platform`` variable.
+    :py:data:`sys.platform` variable.
 
 
 Incremental mode
@@ -418,7 +419,7 @@ section of the command line docs.
     variable.
 
     Note that the cache is only read when incremental mode is enabled
-    but is always written to, unless the value is set to ``/dev/nul``
+    but is always written to, unless the value is set to ``/dev/null``
     (UNIX) or ``nul`` (Windows).
 
 ``skip_version_check`` (bool, default False)
@@ -462,7 +463,7 @@ section of the command line docs.
     Shows traceback on fatal error.
 
 ``custom_typing_module`` (string)
-    Specifies a custom module to use as a substitute for the ``typing`` module.
+    Specifies a custom module to use as a substitute for the :py:mod:`typing` module.
 
 ``custom_typeshed_dir`` (string)
     Specifies an alternative directory to look for stubs instead of the

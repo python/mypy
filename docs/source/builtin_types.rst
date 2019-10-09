@@ -23,7 +23,7 @@ Type                   Description
 ====================== ===============================
 
 The type ``Any`` and type constructors such as ``List``, ``Dict``,
-``Iterable`` and ``Sequence`` are defined in the ``typing`` module.
+``Iterable`` and ``Sequence`` are defined in the :py:mod:`typing` module.
 
 The type ``Dict`` is a *generic* class, signified by type arguments within
 ``[...]``. For example, ``Dict[int, str]`` is a dictionary from integers to
@@ -35,6 +35,6 @@ strings and ``Dict[Any, Any]`` is a dictionary of dynamically typed
 correspond to Python protocols. For example, a ``str`` object or a
 ``List[str]`` object is valid
 when ``Iterable[str]`` or ``Sequence[str]`` is expected. Note that even though
-they are similar to abstract base classes defined in ``collections.abc``
+they are similar to abstract base classes defined in :py:mod:`collections.abc`
 (formerly ``collections``), they are not identical, since the built-in
 collection type objects do not support indexing.
