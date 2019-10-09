@@ -400,7 +400,7 @@ def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
 def callable_type(fdef: FuncItem, fallback: Instance,
                   ret_type: Optional[Type] = None) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
-    if fdef.info and not fdef.is_static:
+    if fdef.info and not fdef.is_static and fdef.arg_names:
         self_type = fill_typevars(fdef.info)  # type: Type
         if fdef.is_class or fdef.name() == '__new__':
             self_type = TypeType.make_normalized(self_type)
