@@ -133,10 +133,10 @@ def generate_c_extension_shim(
     """Create a C extension shim with a passthrough PyInit function.
 
     Arguments:
-      * full_module_name: the dotted full module name
-      * module_name: the final component of the module name
-      * dir_name: the directory to place source code
-      * group_name: the name of the group
+        full_module_name: the dotted full module name
+        module_name: the final component of the module name
+        dir_name: the directory to place source code
+        group_name: the name of the group
     """
     cname = '%s.c' % full_module_name.replace('.', '___')  # XXX
     cpath = os.path.join(dir_name, cname)
@@ -338,7 +338,7 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
     properly plumbing the data through.
 
     Arguments:
-      * cfiles: A list of (file name, file contents) pairs.
+        cfiles: A list of (file name, file contents) pairs.
     """
     headers = set()  # type: Set[str]
     for _, contents in cfiles:
@@ -364,18 +364,18 @@ def mypycify(
     ext_modules parameter to setup.
 
     Arguments:
-      * paths: A list of file paths to build. It may contain globs.
-      * mypy_options: Optionally, a list of command line flags to pass to mypy.
+        paths: A list of file paths to build. It may contain globs.
+        mypy_options: Optionally, a list of command line flags to pass to mypy.
                       (This can also contain additional files, for compatibility reasons.)
-      * verbose: Should mypyc be more verbose. Defaults to false.
+        verbose: Should mypyc be more verbose. Defaults to false.
 
-      * opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
-      * strip_asserts: Should asserts be stripped from the generated code.
+        opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
+        strip_asserts: Should asserts be stripped from the generated code.
 
-      * multi_file: Should each Python module be compiled into its own C source file.
+        multi_file: Should each Python module be compiled into its own C source file.
                     This can reduce compile time and memory requirements at the likely
                     cost of runtime performance of compiled code. Defaults to false.
-      * separate: Should compiled modules be placed in separate extension modules.
+        separate: Should compiled modules be placed in separate extension modules.
                   If False, all modules are placed in a single shared library.
                   If True, every module is placed in its own library.
                   Otherwise separate should be a list of

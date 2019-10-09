@@ -82,11 +82,11 @@ def compile_modules_to_c(
     """Compile Python module(s) to C that can be used from Python C extension modules.
 
     Arguments:
-      * result: The BuildResult from the mypy front-end
-      * compiler_options: The compilation options
-      * errors: Where to report any errors encountered
-      * groups: The groups that we are compiling. See documentation of Groups type above.
-      * ops: Optionally, where to dump stringified ops for debugging.
+        result: The BuildResult from the mypy front-end
+        compiler_options: The compilation options
+        errors: Where to report any errors encountered
+        groups: The groups that we are compiling. See documentation of Groups type above.
+        ops: Optionally, where to dump stringified ops for debugging.
 
     Returns a list containing the generated files for each group.
     """
@@ -190,12 +190,12 @@ class GroupGenerator:
         properly plumbing the data through.
 
         Arguments:
-          * literals: The literals declared in this group
-          * modules: (name, ir) pairs for each module in the group
-          * source_paths: Map from module names to source file paths
-          * group_name: The name of the group (or None if this is single-module compilation)
-          * group_map: A map of modules to their group names
-          * multi_file: Whether to put each module in its own source file regardless
+            literals: The literals declared in this group
+            modules: (name, ir) pairs for each module in the group
+            source_paths: Map from module names to source file paths
+            group_name: The name of the group (or None if this is single-module compilation)
+            group_map: A map of modules to their group names
+            multi_file: Whether to put each module in its own source file regardless
                         of group structure.
         """
         self.literals = literals
