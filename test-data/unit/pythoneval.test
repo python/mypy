@@ -299,6 +299,32 @@ _testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.Bi
 _testOpenReturnTypeInferenceSpecialCases.py:3: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:5: note: Revealed type is 'typing.IO[Any]'
 
+[case testPathOpenReturnTypeInference]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open())
+reveal_type(p.open('r'))
+reveal_type(p.open('rb'))
+mode = 'rb'
+reveal_type(p.open(mode))
+[out]
+_program.py:3: note: Revealed type is 'typing.TextIO'
+_program.py:4: note: Revealed type is 'typing.TextIO'
+_program.py:5: note: Revealed type is 'typing.BinaryIO'
+_program.py:7: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInferenceSpecialCases]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open(mode='rb', errors='replace'))
+reveal_type(p.open(errors='replace', mode='rb'))
+mode = 'rb'
+reveal_type(p.open(mode=mode, errors='replace'))
+[out]
+_program.py:3: note: Revealed type is 'typing.BinaryIO'
+_program.py:4: note: Revealed type is 'typing.BinaryIO'
+_program.py:6: note: Revealed type is 'typing.IO[Any]'
+
 [case testGenericPatterns]
 from typing import Pattern
 import re
