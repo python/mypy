@@ -474,15 +474,15 @@ class B:
 
 a, b, c, bo = None, None, None, None # type: (A, B, C, bool)
 bo = a == a  # E: Unsupported operand types for == ("A" and "A")
-bo = a != a  # E: Argument 1 to "__cmp__" of "A" has incompatible type "A"; expected "B"
+bo = a != a  # E: Unsupported operand types for comparison ("A" and "A")
 bo = a < b
 bo = a > b
 bo = b <= b
 bo = b <= c
-bo = b >= c  # E: Argument 1 to "__cmp__" of "B" has incompatible type "C"; expected "B"
+bo = b >= c  # E: Unsupported operand types for comparison ("C" and "B")
 bo = a >= b
 bo = c >= b
-bo = c <= b  # E: Argument 1 to "__cmp__" of "C" has incompatible type "B"; expected "A"
+bo = c <= b  # E: Unsupported operand types for comparison ("B" and "C")
 bo = a == c
 bo = b == c  # E: Unsupported operand types for == ("C" and "B")
 
@@ -509,6 +509,11 @@ class C:
       pass
 
 [builtins_py2 fixtures/bool_py2.pyi]
+
+[case testDiv_python2]
+10 / 'no'  # E: Unsupported operand types for / ("int" and "str")
+'no' / 10  # E: Unsupported operand types for / ("str" and "int")
+[builtins_py2 fixtures/ops.pyi]
 
 [case cmpIgnoredPy3]
 

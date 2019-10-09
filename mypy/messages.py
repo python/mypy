@@ -27,7 +27,8 @@ from mypy.types import (
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
+    TypeInfo, Context, MypyFile, op_methods, op_methods_to_symbols,
+    FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr
@@ -353,7 +354,7 @@ class MessageBuilder:
             else:
                 base = extract_type(name)
 
-            for op, method in op_methods.items():
+            for method, op in op_methods_to_symbols.items():
                 for variant in method, '__r' + method[2:]:
                     # FIX: do not rely on textual formatting
                     if name.startswith('"{}" of'.format(variant)):
@@ -365,6 +366,11 @@ class MessageBuilder:
                             self.unsupported_operand_types(op, base, arg_type,
                                                            context, code=codes.OPERATOR)
                         return codes.OPERATOR
+
+            if name.startswith('"__cmp__" of'):
+                self.unsupported_operand_types("comparison", arg_type, base,
+                                               context, code=codes.OPERATOR)
+                return codes.INDEX
 
             if name.startswith('"__getitem__" of'):
                 self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context,
