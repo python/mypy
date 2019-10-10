@@ -733,3 +733,38 @@ func('test')
 [out]
 (str) -> int
 ==
+
+[case testSuggestUseFixmeBasic]
+# suggest: --use-fixme=UNKNOWN foo.foo
+# suggest: --use-fixme=UNKNOWN foo.bar
+[file foo.py]
+
+def foo():
+    return g()
+
+def bar(x):
+    return None
+
+def g(): ...
+x = bar(g())
+[out]
+() -> UNKNOWN
+(UNKNOWN) -> None
+==
+
+[case testSuggestUseFixmeNoNested]
+# suggest: --use-fixme=UNKNOWN foo.foo
+[file foo.py]
+from typing import List, Any
+
+def foo(x, y):
+    return x, y
+
+def f() -> List[Any]: ...
+def g(): ...
+
+z = foo(f(), g())
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
+==
