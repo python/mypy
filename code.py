@@ -1,0 +1,6 @@
+print("d",end = ' ')
+print("c")
+print("g","f","g",sep = '#')
+print("b",sep = '*',end = ' ')
+print("a",end = '\n')
+print("b","c",sep ='*',end=' ')
