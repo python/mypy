@@ -4345,6 +4345,9 @@ class C:
     def foo(self) -> None:
         def bar(self) -> None:
             pass
+
+def C___foo() -> None: pass
+
 class D:
     def foo(self) -> None:
         def bar(self) -> None:
