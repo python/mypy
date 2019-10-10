@@ -255,3 +255,28 @@ from foo import foo
 def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
+
+[case testDaemonSuggestErrorsShown]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check foo.py
+$ dmypy suggest tmp/foo.py:1
+() -> int
+$ {python} -c "import shutil; shutil.copy('foo.py.2', 'foo.py')"
+$ dmypy suggest tmp/foo.py:4
+Error while processing foo:
+foo.py:3: error: Unsupported operand types for + ("int" and "str")
+== Return code: 2
+[file foo.py]
+def foo():
+    return 0
+foo() + 'no'
+def bar():
+    return None
+[file foo.py.2]
+def foo() -> int:
+    return 0
+foo() + 'no'
+def bar():
+    return None
+[out]
