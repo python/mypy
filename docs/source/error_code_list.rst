@@ -415,8 +415,8 @@ Example:
     # Error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
     d: Dict[str, int] = {'key': 'value'}
 
-Check ``TypedDict`` items [typeddict-item]
-------------------------------------------
+Check TypedDict items [typeddict-item]
+--------------------------------------
 
 When constructing a ``TypedDict`` object, mypy checks that each key and value is compatible
 with the ``TypedDict`` type that is inferred from the surrounding context.
@@ -568,8 +568,8 @@ Example:
     # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
     t = Thing()
 
-Check the target of ``NewType`` [valid-newtype]
------------------------------------------------
+Check the target of NewType [valid-newtype]
+-------------------------------------------
 
 The target of a :py:func:`NewType <typing.NewType>` definition must be a class type. It can't
 be a union type, ``Any``, or various other special types.
@@ -592,8 +592,8 @@ To work around the issue, you can either give mypy access to the sources
 for ``acme`` or create a stub file for the module.  See :ref:`ignore-missing-imports`
 for more information.
 
-Check the return type of ``__exit__`` [exit-return]
----------------------------------------------------
+Check the return type of __exit__ [exit-return]
+-----------------------------------------------
 
 If mypy can determine that :py:meth:`__exit__ <object.__exit__>` always returns ``False``, mypy
 checks that the return type is *not* ``bool``.  The boolean value of

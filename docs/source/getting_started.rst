@@ -160,8 +160,8 @@ Arguments with default values can be annotated like so:
        for key, value in kwargs:
            print(key, value)
 
-The ``typing`` module
-*********************
+The typing module
+*****************
 
 So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,

@@ -376,8 +376,8 @@ such as trees and linked lists:
 
    root: TreeLike = SimpleTree(0)  # OK
 
-Using ``isinstance()`` with protocols
-*************************************
+Using isinstance() with protocols
+*********************************
 
 You can use a protocol class with ``isinstance()`` if you decorate it
 with the ``@runtime_checkable`` class decorator. The decorator adds

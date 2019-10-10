@@ -135,8 +135,8 @@ Example:
         ...
 
 
-Check that function does not return ``Any`` value [no-any-return]
------------------------------------------------------------------
+Check that function does not return Any value [no-any-return]
+-------------------------------------------------------------
 
 If you use ``--warn-return-any``, mypy generates an error if you return a
 value with an ``Any`` type in a function that is annotated to return a
@@ -155,8 +155,8 @@ Example:
         # Error: Returning Any from function declared to return "str"  [no-any-return]
         return fields(x)[0]
 
-Check that types have no ``Any`` components due to missing imports [no-any-unimported]
---------------------------------------------------------------------------------------
+Check that types have no Any components due to missing imports [no-any-unimported]
+----------------------------------------------------------------------------------
 
 If you use ``--disallow-any-unimported``, mypy generates an error if a component of
 a type becomes ``Any`` because mypy couldn't resolve an import. These "stealth"
