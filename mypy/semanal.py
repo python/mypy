@@ -75,7 +75,7 @@ from mypy.nodes import (
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-)
+    implicit_class_attrs)
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
@@ -384,7 +384,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         self.recurse_into_functions = False
-        self.add_implicit_module_attrs(file_node)
+        self.add_implicit_attrs(file_node)
         for d in file_node.defs:
             self.accept(d)
         if file_node.fullname() == 'typing':
@@ -393,9 +393,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.export_map[self.cur_mod_id] = self.all_exports
         self.all_exports = []
 
-    def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
-        """Manually add implicit definitions of module '__name__' etc."""
-        for name, t in implicit_module_attrs.items():
+    def add_implicit_attrs(self, file_node: MypyFile) -> None:
+        """Manually add implicit definitions of module and class '__name__' etc."""
+        implicit_attrs = {**implicit_module_attrs, **implicit_class_attrs}
+        for name, t in implicit_attrs.items():
             # unicode docstrings should be accepted in Python 2
             if name == '__doc__':
                 if self.options.python_version >= (3, 0):

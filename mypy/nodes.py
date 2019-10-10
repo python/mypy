@@ -101,6 +101,8 @@ implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__file__': '__builtins__.str',
                          '__package__': '__builtins__.str'}  # type: Final
 
+implicit_class_attrs = {'__qualname__': '__builtins__.str'}
+
 
 # These aliases exist because built-in class objects are not subscriptable.
 # For example `list[int]` fails at runtime. Instead List[int] should be used.
@@ -3034,12 +3036,13 @@ class SymbolTable(Dict[str, SymbolTableNode]):
 
     def __str__(self) -> str:
         a = []  # type: List[str]
+        implicit_attrs = {**implicit_module_attrs, **implicit_class_attrs}
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
                 if (value.fullname != 'builtins' and
                         (value.fullname or '').split('.')[-1] not in
-                        implicit_module_attrs):
+                        implicit_attrs):
                     a.append('  ' + str(key) + ' : ' + str(value))
             else:
                 a.append('  <invalid item>')
