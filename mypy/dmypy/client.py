@@ -114,6 +114,8 @@ p.add_argument('--try-text', action='store_true',
                help="Try using unicode wherever str is inferred")
 p.add_argument('--callsites', action='store_true',
                help="Find callsites instead of suggesting a type")
+p.add_argument('--use-fixme', metavar='NAME', type=str,
+               help="A dummy name to use instead of Any for types that can't be inferred")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -367,7 +369,8 @@ def do_suggest(args: argparse.Namespace) -> None:
     """
     response = request(args.status_file, 'suggest', function=args.function,
                        json=args.json, callsites=args.callsites, no_errors=args.no_errors,
-                       no_any=args.no_any, flex_any=args.flex_any, try_text=args.try_text)
+                       no_any=args.no_any, flex_any=args.flex_any, try_text=args.try_text,
+                       use_fixme=args.use_fixme)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

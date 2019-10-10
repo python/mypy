@@ -160,7 +160,8 @@ class SuggestionEngine:
                  no_errors: bool = False,
                  no_any: bool = False,
                  try_text: bool = False,
-                 flex_any: Optional[float] = None) -> None:
+                 flex_any: Optional[float] = None,
+                 use_fixme: Optional[str] = None) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
@@ -175,6 +176,7 @@ class SuggestionEngine:
             self.flex_any = 1.0
 
         self.max_guesses = 16
+        self.use_fixme = use_fixme
 
     def suggest(self, function: str) -> str:
         """Suggest an inferred type for function."""
@@ -592,6 +594,8 @@ class SuggestionEngine:
         )
 
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
+        if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
+            return self.use_fixme
         return typ.accept(TypeFormatter(cur_module, self.graph))
 
     def score_type(self, t: Type, arg_pos: bool) -> int:
