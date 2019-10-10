@@ -4,7 +4,7 @@ Getting started
 ===============
 
 This chapter introduces some core concepts of mypy, including function
-annotations, the ``typing`` module, library stubs, and more.
+annotations, the :py:mod:`typing` module, library stubs, and more.
 
 Be sure to read this chapter carefully, as the rest of the documentation
 may not make much sense otherwise.
@@ -167,9 +167,9 @@ So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
 such as "a list of strings" or "an iterable of ints"?
 
-You can find many of these more complex static types inside of the ``typing``
+You can find many of these more complex static types inside of the :py:mod:`typing`
 module. For example, to indicate that some function can accept a list of
-strings, use the ``List`` type from the ``typing`` module:
+strings, use the :py:class:`~typing.List` type:
 
 .. code-block:: python
 
@@ -185,8 +185,8 @@ strings, use the ``List`` type from the ``typing`` module:
    greet_all(names)   # Ok!
    greet_all(ages)    # Error due to incompatible types
 
-The ``List`` type is an example of something called a *generic type*: it can
-accept one or more *type parameters*. In this case, we *parameterized* ``List``
+The :py:class:`~typing.List` type is an example of something called a *generic type*: it can
+accept one or more *type parameters*. In this case, we *parameterized* :py:class:`~typing.List`
 by writing ``List[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
@@ -194,7 +194,7 @@ In this particular case, the type signature is perhaps a little too rigid.
 After all, there's no reason why this function must accept *specifically* a list --
 it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
 
-You can express this idea using the ``Iterable`` type instead of ``List``:
+You can express this idea using the :py:class:`~typing.Iterable` type instead of :py:class:`~typing.List`:
 
 .. code-block:: python
 
@@ -205,7 +205,7 @@ You can express this idea using the ``Iterable`` type instead of ``List``:
            print('Hello ' + name)
 
 As another example, suppose you want to write a function that can accept *either*
-ints or strings, but no other types. You can express this using the ``Union`` type:
+ints or strings, but no other types. You can express this using the :py:data:`~typing.Union` type:
 
 .. code-block:: python
 
@@ -217,8 +217,8 @@ ints or strings, but no other types. You can express this using the ``Union`` ty
        else:
            return user_id
 
-Similarly, suppose that you want the function to accept only strings or None. You can
-again use ``Union`` and use ``Union[str, None]`` -- or alternatively, use the type
+Similarly, suppose that you want the function to accept only strings or ``None``. You can
+again use :py:data:`~typing.Union` and use ``Union[str, None]`` -- or alternatively, use the type
 ``Optional[str]``. These two types are identical and interchangeable: ``Optional[str]``
 is just a shorthand or *alias* for ``Union[str, None]``. It exists mostly as a convenience
 to help function signatures look a little cleaner:
@@ -233,7 +233,7 @@ to help function signatures look a little cleaner:
            name = 'stranger'
        return 'Hello, ' + name
 
-The ``typing`` module contains many other useful types. You can find a
+The :py:mod:`typing` module contains many other useful types. You can find a
 quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>`
 and a more detailed overview (including information on how to make your own
 generic types or your own type aliases) by looking through the
@@ -243,8 +243,8 @@ One final note: when adding types, the convention is to import types
 using the form ``from typing import Iterable`` (as opposed to doing
 just ``import typing`` or ``import typing as t`` or ``from typing import *``).
 
-For brevity, we often omit these ``typing`` imports in code examples, but
-mypy will give an error if you use types such as ``Iterable``
+For brevity, we often omit these :py:mod:`typing` imports in code examples, but
+mypy will give an error if you use types such as :py:class:`~typing.Iterable`
 without first importing them.
 
 Local type inference
@@ -255,7 +255,7 @@ mypy will automatically type check that function's body. While doing so,
 mypy will try and *infer* as many details as possible.
 
 We saw an example of this in the ``normalize_id`` function above -- mypy understands
-basic ``isinstance`` checks and so can infer that the ``user_id`` variable was of
+basic :py:func:`isinstance <isinstance>` checks and so can infer that the ``user_id`` variable was of
 type ``int`` in the if-branch and of type ``str`` in the else-branch. Similarly, mypy
 was able to understand that ``name`` could not possibly be ``None`` in the ``greeting``
 function above, based both on the ``name is None`` check and the variable assignment
@@ -315,7 +315,7 @@ For example, consider this code:
   x = chr(4)
 
 Without a library stub, mypy would have no way of inferring the type of ``x``
-and checking that the argument to ``chr`` has a valid type.
+and checking that the argument to :py:func:`chr` has a valid type.
 
 Mypy complains if it can't find a stub (or a real module) for a
 library module that you import. Some modules ship with stubs that mypy

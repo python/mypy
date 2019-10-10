@@ -110,17 +110,16 @@ Structural subtyping can be thought of as "static duck typing".
 Some argue that structural subtyping is better suited for languages with duck
 typing such as Python. Mypy however primarily uses nominal subtyping,
 leaving structural subtyping mostly opt-in (except for built-in protocols
-such as ``Iterable`` that always support structural subtyping). Here are some
+such as :py:class:`~typing.Iterable` that always support structural subtyping). Here are some
 reasons why:
 
 1. It is easy to generate short and informative error messages when
    using a nominal type system. This is especially important when
    using type inference.
 
-2. Python provides built-in support for nominal ``isinstance()`` tests and
+2. Python provides built-in support for nominal :py:func:`isinstance` tests and
    they are widely used in programs. Only limited support for structural
-   ``isinstance()`` is available, and it's less type safe than
-   nominal type tests.
+   :py:func:`isinstance` is available, and it's less type safe than nominal type tests.
 
 3. Many programmers are already familiar with static, nominal subtyping and it
    has been successfully used in languages such as Java, C++ and
@@ -164,7 +163,7 @@ monkey patching of methods.
 How is mypy different from Cython?
 **********************************
 
-`Cython :doc:<cython:index>` is a variant of Python that supports
+:doc:`Cython <cython:index>` is a variant of Python that supports
 compilation to CPython C modules. It can give major speedups to
 certain classes of programs compared to CPython, and it provides
 static typing (though this is different from mypy). Mypy differs in

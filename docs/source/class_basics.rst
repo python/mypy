@@ -78,8 +78,8 @@ to it explicitly using ``self``:
            a = self
            a.x = 1      # Error: 'x' not defined
 
-Annotating ``__init__`` methods
-*******************************
+Annotating __init__ methods
+***************************
 
 The :py:meth:`__init__ <object.__init__>` method is somewhat special -- it doesn't return a
 value.  This is best expressed as ``-> None``.  However, since many feel

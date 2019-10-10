@@ -54,7 +54,7 @@ from being overridden in a subclass:
    class ListView(Window):
        BORDER_WIDTH = 3  # Error: can't override a final attribute
 
-You can use ``@property`` to make an attribute read-only, but unlike ``Final``,
+You can use :py:class:`@property <property>` to make an attribute read-only, but unlike ``Final``,
 it doesn't work with module attributes, and it doesn't prevent overriding in
 subclasses.
 
@@ -83,11 +83,11 @@ You can use ``Final`` in one of these forms:
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in
-  ``__init__`` methods, so that the final instance attribute is
+  :py:meth:`__init__ <object.__init__>` methods, so that the final instance attribute is
   assigned only once when an instance is created.
 
-Details of using Final
-**********************
+Details of using ``Final``
+**************************
 
 These are the two main rules for defining a final name:
 
@@ -98,7 +98,7 @@ These are the two main rules for defining a final name:
 * There must be *exactly one* assignment to a final name.
 
 A final attribute declared in a class body without an initializer must
-be initialized in the ``__init__`` method (you can skip the
+be initialized in the :py:meth:`__init__ <object.__init__>` method (you can skip the
 initializer in stub files):
 
 .. code-block:: python
@@ -121,9 +121,9 @@ annotations. Using it in any other position is an error. In particular,
    def fun(x: Final[List[int]]) ->  None:  # Error!
        ...
 
-``Final`` and ``ClassVar`` should not be used together. Mypy will infer
+``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer
 the scope of a final declaration automatically depending on whether it was
-initialized in the class body or in ``__init__``.
+initialized in the class body or in :py:meth:`__init__ <object.__init__>`.
 
 A final attribute can't be overridden by a subclass (even with another
 explicit final declaration). Note however that a final attribute can
