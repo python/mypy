@@ -145,8 +145,8 @@ class Emitter:
         self.context.temp_counter += 1
         return '__LL%d' % self.context.temp_counter
 
-    def get_module_lib_prefix(self, module_name: str) -> str:
-        """Get the library prefix for a module.
+    def get_module_group_prefix(self, module_name: str) -> str:
+        """Get the group prefix for a module (relative to the current group).
 
         The prefix should be prepended to the object name whenever
         accessing an object from this module.
@@ -155,6 +155,13 @@ class Emitter:
         no prefix.  But if it lives in a different group (and hence a separate
         extension module), we need to access objects from it indirectly via an
         export table.
+
+        For example, for code in group `a` to call a function `bar` in group `b`,
+        it would need to do `exports_b.CPyDef_bar(...)`, while code that is
+        also in group `b` can simply do `CPyDef_bar(...)`.
+
+        Thus the prefix for a module in group `b` is 'exports_b.' if the current
+        group is *not* b and just '' if it is.
         """
         groups = self.context.group_map
         target_group_name = groups.get(module_name)
@@ -164,10 +171,10 @@ class Emitter:
         else:
             return ''
 
-    def get_lib_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
-        """Get the library prefix for an object."""
+    def get_group_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
+        """Get the group prefix for an object."""
         # See docs above
-        return self.get_module_lib_prefix(obj.module_name)
+        return self.get_module_group_prefix(obj.module_name)
 
     def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
@@ -179,7 +186,7 @@ class Emitter:
         overlap with other calls to this method within a compilation
         group.
         """
-        lib_prefix = '' if not module else self.get_module_lib_prefix(module)
+        lib_prefix = '' if not module else self.get_module_group_prefix(module)
         # If we are accessing static via the export table, we need to dereference
         # the pointer also.
         star_maybe = '*' if lib_prefix else ''

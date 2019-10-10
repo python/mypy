@@ -176,7 +176,7 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         name=name
     ))
     emitter.emit_line('{}retval = {}{}{}(self);'.format(emitter.ctype_spaced(fn.ret_type),
-                                                        emitter.get_lib_prefix(fn.decl),
+                                                        emitter.get_group_prefix(fn.decl),
                                                         NATIVE_PREFIX,
                                                         fn.cname(emitter.names)))
     emitter.emit_error_check('retval', fn.ret_type, 'return -1;')

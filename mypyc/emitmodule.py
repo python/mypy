@@ -363,6 +363,26 @@ class GroupGenerator:
 
         Then, all calls to functions in another group and accesses to statics
         from another group are done indirectly via the export table.
+
+        For example, a group containing a module b, where b contains a class B
+        and a function bar, would declare an export table like:
+            struct export_table_b {
+                PyTypeObject **CPyType_B;
+                PyObject *(*CPyDef_B)(CPyTagged cpy_r_x);
+                CPyTagged (*CPyDef_B___foo)(PyObject *cpy_r_self, CPyTagged cpy_r_y);
+                tuple_T2OI (*CPyDef_bar)(PyObject *cpy_r_x);
+                char (*CPyDef___top_level__)(void);
+            };
+        that would be initialized with:
+            static struct export_table_b exports = {
+                &CPyType_B,
+                &CPyDef_B,
+                &CPyDef_B___foo,
+                &CPyDef_bar,
+                &CPyDef___top_level__,
+            };
+        To call `b.foo`, then, a function in another group would do
+        `exports_b.CPyDef_bar(...)`.
         """
 
         decls = decl_emitter.context.declarations

@@ -397,14 +397,14 @@ def generate_vtable(entries: VTableEntries,
     for entry in entries:
         if isinstance(entry, VTableMethod):
             emitter.emit_line('(CPyVTableItem){}{}{},'.format(
-                emitter.get_lib_prefix(entry.method.decl),
+                emitter.get_group_prefix(entry.method.decl),
                 NATIVE_PREFIX,
                 entry.method.cname(emitter.names)))
         else:
             cl, attr, is_setter = entry
             namer = native_setter_name if is_setter else native_getter_name
             emitter.emit_line('(CPyVTableItem){}{},'.format(
-                emitter.get_lib_prefix(cl),
+                emitter.get_group_prefix(cl),
                 namer(cl, attr, emitter.names)))
     # msvc doesn't allow empty arrays; maybe allowing them at all is an extension?
     if not entries:
@@ -462,7 +462,7 @@ def generate_constructor_for_class(cl: ClassIR,
     args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
         emitter.emit_line('char res = {}{}{}({});'.format(
-            emitter.get_lib_prefix(init_fn.decl),
+            emitter.get_group_prefix(init_fn.decl),
             NATIVE_PREFIX, init_fn.cname(emitter.names), args))
         emitter.emit_line('if (res == 2) {')
         emitter.emit_line('Py_DECREF(self);')
