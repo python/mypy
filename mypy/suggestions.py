@@ -535,6 +535,7 @@ class SuggestionEngine:
         assert state.path is not None
         res = self.fgmanager.update([(state.id, state.path)], [])
         if check_errors and res:
+            # TODO: apply color and formatting to error messages?
             raise SuggestionFailure("Error while trying to load %s:\n" % state.id + '\n'.join(res))
         return res
 
