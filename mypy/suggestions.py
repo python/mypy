@@ -594,7 +594,7 @@ class SuggestionEngine:
         )
 
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
-        if self.use_fixme and isinstance(typ, AnyType):
+        if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
             return self.use_fixme
         return typ.accept(TypeFormatter(cur_module, self.graph))
 
