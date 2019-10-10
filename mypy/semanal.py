@@ -2120,7 +2120,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Check if s defines a namedtuple."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
             return True  # This is a valid and analyzed named tuple definition, nothing to do here.
-        if len(s.lvalues) != 1 or type(s.lvalues[0]) not in [NameExpr, MemberExpr]:
+        if len(s.lvalues) != 1 or not (isinstance(s.lvalues[0], NameExpr) or
+                                       isinstance(s.lvalues[0], MemberExpr)):
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
