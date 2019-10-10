@@ -264,7 +264,7 @@ $ dmypy suggest tmp/foo.py:1
 () -> int
 $ {python} -c "import shutil; shutil.copy('foo.py.2', 'foo.py')"
 $ dmypy suggest tmp/foo.py:4
-Error while trying to load foo:
+Error while processing foo:
 foo.py:3: error: Unsupported operand types for + ("int" and "str")
 == Return code: 2
 [file foo.py]

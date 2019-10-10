@@ -536,7 +536,7 @@ class SuggestionEngine:
         res = self.fgmanager.update([(state.id, state.path)], [])
         if check_errors and res:
             # TODO: apply color and formatting to error messages?
-            raise SuggestionFailure("Error while trying to load %s:\n" % state.id + '\n'.join(res))
+            raise SuggestionFailure("Error while processing %s:\n" % state.id + '\n'.join(res))
         return res
 
     def ensure_loaded(self, state: State, force: bool = False) -> MypyFile:
