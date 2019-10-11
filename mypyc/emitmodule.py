@@ -138,8 +138,7 @@ def compile_modules_to_c(
     names = NameGenerator([[source.module for source in sources] for sources, _ in groups])
 
     # Generate C code for each compilation group. Each group will be
-    # compiled into a separate extension module, so we produce
-    # a separate group of C source for each of them.
+    # compiled into a separate extension module.
     ctext = []
     module_dict = dict(modules)
     for group_sources, group_name in groups:
@@ -177,13 +176,15 @@ def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
     return '"{}"'.format(escaped), len(b)
 
 
-def pointerize(s: str, name: str) -> str:
-    """Given C type and a variable name, return a declaration of a pointer to it."""
+def pointerize(decl: str, name: str) -> str:
+    """Given a C decl and its name, modify it to be a declaration to a pointer."""
     # This doesn't work in general but does work for all our types...
-    if '(' in s:
-        return s.replace(name, '(*{})'.format(name))
+    if '(' in decl:
+        # Function pointer. Stick a * in front of the name and wrap it in parens.
+        return decl.replace(name, '(*{})'.format(name))
     else:
-        return s.replace(name, '*{}'.format(name))
+        # Non-function pointer. Just stick a * in front of the name.
+        return decl.replace(name, '*{}'.format(name))
 
 
 class GroupGenerator:
@@ -197,8 +198,9 @@ class GroupGenerator:
                  multi_file: bool) -> None:
         """Generator for C source for a compilation group.
 
-        We do this by just regexping the source, which is a bit simpler than
-        properly plumbing the data through.
+        The code for a compilation group contains an internal and an
+        external .h file, and then one .c if not in multi_file mode or
+        one .c file per module if in multi_file mode.)
 
         Arguments:
             literals: The literals declared in this group
