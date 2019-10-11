@@ -484,7 +484,7 @@ Example:
 
 .. code-block:: python
 
-    # Error: Cannot find module named 'acme'  [import]
+    # Error: Cannot find implementation or library stub for module named 'acme'  [import]
     import acme
 
 See :ref:`ignore-missing-imports` for how to work around these errors.

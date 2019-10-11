@@ -316,7 +316,7 @@ from baz import baz
 baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
-file.py:1: error: Cannot find module named 'no_stubs'
+file.py:1: error: Cannot find implementation or library stub for module named 'no_stubs'
 file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
@@ -461,7 +461,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = False
 [out]
-main.py:1: error: Cannot find module named 'missing'
+main.py:1: error: Cannot find implementation or library stub for module named 'missing'
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
@@ -508,9 +508,9 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find module named 'a.b'
+main.py:1: error: Cannot find implementation or library stub for module named 'a.b'
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass

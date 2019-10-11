@@ -2085,7 +2085,7 @@ x = 1
 [rechecked n]
 [stale]
 [out2]
-tmp/n.py:1: error: Cannot find module named 'm'
+tmp/n.py:1: error: Cannot find implementation or library stub for module named 'm'
 tmp/n.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeleteFileWithinCycle]
@@ -3382,7 +3382,7 @@ import a
 [out1]
 
 [out2]
-main:2: error: Cannot find module named 'a'
+main:2: error: Cannot find implementation or library stub for module named 'a'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
@@ -3525,7 +3525,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 [out2]
-main:1: error: Cannot find module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named 'p.q'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
 main:2: error: Too few arguments for "f"
@@ -4140,10 +4140,10 @@ def __getattr__(attr: str) -> Any: ...
 # empty
 [builtins fixtures/module.pyi]
 [out]
-tmp/c.py:1: error: Cannot find module named 'a.b.c'
+tmp/c.py:1: error: Cannot find implementation or library stub for module named 'a.b.c'
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out2]
-tmp/c.py:1: error: Cannot find module named 'a.b.c'
+tmp/c.py:1: error: Cannot find implementation or library stub for module named 'a.b.c'
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAddedMissingStubs]
