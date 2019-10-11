@@ -1541,6 +1541,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         * __metaclass__ attribute in Python 2
         * six.with_metaclass(M, B1, B2, ...)
         * @six.add_metaclass(M)
+        * future.utils.with_metaclass(M, B1, B2, ...)
+        * past.utils.with_metaclass(M, B1, B2, ...)
         """
 
         # Look for "__metaclass__ = <metaclass>" in Python 2
@@ -1561,7 +1563,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
                 base_expr.callee.accept(self)
-                if (base_expr.callee.fullname == 'six.with_metaclass'
+                if (base_expr.callee.fullname in {'six.with_metaclass',
+                                                  'future.utils.with_metaclass',
+                                                  'past.utils.with_metaclass'}
                         and len(base_expr.args) >= 1
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
                     with_meta_expr = base_expr.args[0]

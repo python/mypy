@@ -4899,6 +4899,116 @@ class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
 
+-- Special support for future.utils
+-- --------------------------------
+
+[case testFutureMetaclass]
+import future.utils
+class M(type):
+    x = 5
+class A(future.utils.with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+
+[case testFutureMetaclass_python2]
+import future.utils
+class M(type):
+    x = 5
+class A(future.utils.with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+
+[case testFromFutureMetaclass]
+from future.utils import with_metaclass
+class M(type):
+    x = 5
+class A(with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+
+[case testFutureMetaclassImportFrom]
+import future.utils
+from metadefs import M
+class A(future.utils.with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+[file metadefs.py]
+class M(type):
+    x = 5
+
+[case testFutureMetaclassImport]
+import future.utils
+import metadefs
+class A(future.utils.with_metaclass(metadefs.M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+[file metadefs.py]
+class M(type):
+    x = 5
+
+[case testFutureMetaclassAndBase]
+from typing import Iterable, Iterator
+import future.utils
+class M(type, Iterable[int]):
+    x = 5
+    def __iter__(self) -> Iterator[int]: ...
+class A:
+    def foo(self): pass
+class B:
+    def bar(self): pass
+class C1(future.utils.with_metaclass(M, A)): pass
+class C2(future.utils.with_metaclass(M, A, B)): pass
+reveal_type(type(C1).x)  # N: Revealed type is 'builtins.int'
+reveal_type(type(C2).x)  # N: Revealed type is 'builtins.int'
+C1().foo()
+C1().bar()  # E: "C1" has no attribute "bar"
+for x in C1: reveal_type(x)  # N: Revealed type is 'builtins.int*'
+for x in C2: reveal_type(x)  # N: Revealed type is 'builtins.int*'
+C2().foo()
+C2().bar()
+C2().baz()  # E: "C2" has no attribute "baz"
+
+[case testFutureMetaclassGenerics]
+from typing import Generic, GenericMeta, TypeVar
+import future.utils
+class DestroyableMeta(type):
+    pass
+class Destroyable(future.utils.with_metaclass(DestroyableMeta)):
+    pass
+T_co = TypeVar('T_co', bound='Destroyable', covariant=True)
+class ArcMeta(GenericMeta, DestroyableMeta):
+    pass
+class Arc(future.utils.with_metaclass(ArcMeta, Generic[T_co], Destroyable)):
+    pass
+class MyDestr(Destroyable):
+    pass
+reveal_type(Arc[MyDestr]())  # N: Revealed type is '__main__.Arc[__main__.MyDestr*]'
+[builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testFutureMetaclassErrors]
+import future.utils
+class M(type): pass
+class A(object): pass
+def f() -> type: return M
+class C1(future.utils.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
+class C2(C1, future.utils.with_metaclass(M)): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
+class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class C4(future.utils.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
+class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+
+class M1(type): pass
+class Q1(metaclass=M1): pass
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+
+[case testFutureMetaclassErrors_python2]
+# flags: --python-version 2.7
+import future.utils
+class M(type): pass
+class C4(future.utils.with_metaclass(M)):  # E: Multiple metaclass definitions
+    __metaclass__ = M
+
+[case testFutureMetaclassAny]
+import t  # type: ignore
+import future.utils
+class E(metaclass=t.M): pass
+class F(future.utils.with_metaclass(t.M)): pass
+
 -- Misc
 -- ----
 
