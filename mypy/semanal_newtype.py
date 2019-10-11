@@ -118,8 +118,7 @@ class NewTypeAnalyzer:
 
             names = self.api.current_symbol_table()
             existing = names.get(name)
-            # Give a better error message than generic "Name already defined",
-            # like the old semantic analyzer does.
+            # Give a better error message than generic "Name already defined".
             if (existing and
                     not isinstance(existing.node, PlaceholderNode) and not s.rvalue.analyzed):
                 self.fail("Cannot redefine '%s' as a NewType" % name, s)
