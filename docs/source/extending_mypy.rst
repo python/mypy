@@ -88,8 +88,8 @@ can be specified after colon:
     [mypy]
     plugins = custom_plugin:custom_entry_point
 
-In following sections we describe basics of the plugin system with
-some examples. For more technical details please read docstrings in
+In the following sections we describe the basics of the plugin system with
+some examples. For more technical details, please read the docstrings in
 `mypy/plugin.py <https://github.com/python/mypy/blob/master/mypy/plugin.py>`_
 in mypy source code. Also you can find good examples in the bundled plugins
 located in `mypy/plugins <https://github.com/python/mypy/tree/master/mypy/plugins>`_.
@@ -115,9 +115,9 @@ that is a full mypy version and return a subclass of ``mypy.plugin.Plugin``:
 
 During different phases of analyzing the code (first in semantic analysis,
 and then in type checking) mypy calls plugin methods such as
-``get_type_analyze_hook()`` on user plugins. This particular method for example
-can return a callback that mypy will use to analyze unbound types with given
-full name. See full plugin hook methods list :ref:`below <plugin_hooks>`.
+``get_type_analyze_hook()`` on user plugins. This particular method, for example,
+can return a callback that mypy will use to analyze unbound types with the given
+full name. See the full plugin hook method list :ref:`below <plugin_hooks>`.
 
 Mypy maintains a list of plugins it gets from the config file plus the default
 (built-in) plugin that is always enabled. Mypy calls a method once for each
@@ -126,7 +126,7 @@ This callback will be then used to customize the corresponding aspect of
 analyzing/checking the current abstract syntax tree node.
 
 The callback returned by the ``get_xxx`` method will be given a detailed
-current context and an API to create new nodes, new types, emit error messages
+current context and an API to create new nodes, new types, emit error messages,
 etc., and the result will be used for further processing.
 
 Plugin developers should ensure that their plugins work well in incremental and
@@ -236,12 +236,13 @@ module. It is called before semantic analysis. For example, this can
 be used if a library has dependencies that are dynamically loaded
 based on configuration information.
 
-Supporting the new semantic analyzer
-************************************
+Notes about the semantic analyzer
+*********************************
 
-Support for the new semantic analyzer (enabled through
-``--new-semantic-analyzer``) requires some changes to plugins. Here is
-a short summary of the most important changes:
+Mypy 0.710 introduced a new semantic analyzer, and the old semantic
+analyzer was removed in mypy 0.730. Support for the new semantic analyzer
+required some changes to existing plugins. Here is a short summary of the
+most important changes:
 
 * The order of processing AST nodes is different. Code outside
   functions is processed first, and functions and methods are

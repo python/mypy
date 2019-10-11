@@ -1,9 +1,9 @@
-"""Top-level logic for the new semantic analyzer.
+"""Top-level logic for the semantic analyzer.
 
 The semantic analyzer binds names, resolves imports, detects various
 special constructs that don't have dedicated AST nodes after parse
-(such as 'cast' which looks like a call), and performs various simple
-consistency checks.
+(such as 'cast' which looks like a call), populates symbol tables, and
+performs various simple consistency checks.
 
 Semantic analysis of each SCC (strongly connected component; import
 cycle) is performed in one unit. Each module is analyzed as multiple

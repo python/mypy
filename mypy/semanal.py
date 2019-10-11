@@ -1,8 +1,9 @@
-"""The new semantic analyzer (work in progress).
+"""The semantic analyzer.
 
 Bind names to definitions and do various other simple consistency
-checks. It also detects special forms such as NamedTuple and cast().
-Multiple analysis iterations may be needed to analyze forward
+checks.  Populate symbol tables.  The semantic analyzer also detects
+special forms which reuse generic syntax such as NamedTuple and
+cast().  Multiple analysis iterations may be needed to analyze forward
 references and import cycles. Each iteration "fills in" additional
 bindings and references until everything has been bound.
 
