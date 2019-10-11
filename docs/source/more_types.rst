@@ -613,7 +613,7 @@ decorator to convert a generator into a coroutine.
 
 Note that we set the ``YieldType`` of the generator to be ``Any`` in the
 following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the :py:mod:`asyncio` :doc:`event loop <library/asyncio-eventloop>`) and your
+detail of the coroutine runner (e.g. the :py:mod:`asyncio` event loop) and your
 coroutine shouldn't have to know or care about what precisely that type is.
 
 .. code-block:: python
