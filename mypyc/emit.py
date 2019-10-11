@@ -5,7 +5,7 @@ from typing import List, Set, Dict, Optional, Callable, Union
 
 from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
-    FAST_ISINSTANCE_MAX_SUBCLASSES
+    FAST_ISINSTANCE_MAX_SUBCLASSES,
 )
 from mypyc.ops import (
     Environment, BasicBlock, Value, RType, RTuple, RInstance,
@@ -31,6 +31,8 @@ class HeaderDeclaration:
       dependencies: The names of any objects that must be declared prior.
       is_type: Whether the declaration is of a C type. (C types will be declared in
                external header files and not marked 'extern'.)
+      needs_export: Whether the declared object needs to be exported to
+                    other modules in the linking table.
     """
 
     def __init__(self,
@@ -38,20 +40,37 @@ class HeaderDeclaration:
                  defn: Optional[List[str]] = None,
                  *,
                  dependencies: Optional[Set[str]] = None,
-                 is_type: bool = False
+                 is_type: bool = False,
+                 needs_export: bool = False
                  ) -> None:
         self.decl = [decl] if isinstance(decl, str) else decl
         self.defn = defn
         self.dependencies = dependencies or set()
         self.is_type = is_type
+        self.needs_export = needs_export
 
 
 class EmitterContext:
-    """Shared emitter state for an entire compilation unit."""
+    """Shared emitter state for a compilation group."""
 
-    def __init__(self, module_names: List[str]) -> None:
+    def __init__(self,
+                 names: NameGenerator,
+                 group_name: Optional[str] = None,
+                 group_map: Optional[Dict[str, Optional[str]]] = None,
+                 ) -> None:
+        """Setup shared emitter state.
+
+        Args:
+            names: The name generator to use
+            group_map: Map from module names to group name
+            group_name: Current group name
+        """
         self.temp_counter = 0
-        self.names = NameGenerator(module_names)
+        self.names = names
+        self.group_name = group_name
+        self.group_map = group_map or {}
+        # Groups that this group depends on
+        self.group_deps = set()  # type: Set[str]
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -126,6 +145,37 @@ class Emitter:
         self.context.temp_counter += 1
         return '__LL%d' % self.context.temp_counter
 
+    def get_module_group_prefix(self, module_name: str) -> str:
+        """Get the group prefix for a module (relative to the current group).
+
+        The prefix should be prepended to the object name whenever
+        accessing an object from this module.
+
+        If the module lives is in the current compilation group, there is
+        no prefix.  But if it lives in a different group (and hence a separate
+        extension module), we need to access objects from it indirectly via an
+        export table.
+
+        For example, for code in group `a` to call a function `bar` in group `b`,
+        it would need to do `exports_b.CPyDef_bar(...)`, while code that is
+        also in group `b` can simply do `CPyDef_bar(...)`.
+
+        Thus the prefix for a module in group `b` is 'exports_b.' if the current
+        group is *not* b and just '' if it is.
+        """
+        groups = self.context.group_map
+        target_group_name = groups.get(module_name)
+        if target_group_name and target_group_name != self.context.group_name:
+            self.context.group_deps.add(target_group_name)
+            return 'exports_{}.'.format(target_group_name)
+        else:
+            return ''
+
+    def get_group_prefix(self, obj: Union[ClassIR, FuncDecl]) -> str:
+        """Get the group prefix for an object."""
+        # See docs above
+        return self.get_module_group_prefix(obj.module_name)
+
     def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 
@@ -134,10 +184,14 @@ class Emitter:
 
         The caller should ensure that the (id, module) pair cannot
         overlap with other calls to this method within a compilation
-        unit.
+        group.
         """
+        lib_prefix = '' if not module else self.get_module_group_prefix(module)
+        # If we are accessing static via the export table, we need to dereference
+        # the pointer also.
+        star_maybe = '*' if lib_prefix else ''
         suffix = self.names.private_name(module or '', id)
-        return '{}{}'.format(prefix, suffix)
+        return '{}{}{}{}'.format(star_maybe, lib_prefix, prefix, suffix)
 
     def type_struct_name(self, cl: ClassIR) -> str:
         return self.static_name(cl.name, cl.module_name, prefix=TYPE_PREFIX)

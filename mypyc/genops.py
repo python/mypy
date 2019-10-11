@@ -115,16 +115,12 @@ F = TypeVar('F', bound=Callable[..., Any])
 strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
 
 
-@strict_optional_dec  # Turn on strict optional for any type manipulations we do
-def build_ir(modules: List[MypyFile],
-             graph: Graph,
-             types: Dict[Expression, Type],
-             options: CompilerOptions,
-             errors: Errors) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
-    result = []
-    mapper = Mapper()
-
-    # Collect all classes defined in the compilation unit.
+def build_type_map(mapper: 'Mapper',
+                   modules: List[MypyFile],
+                   graph: Graph,
+                   types: Dict[Expression, Type],
+                   errors: Errors) -> None:
+    # Collect all classes defined in everything we are compiling
     classes = []
     for module in modules:
         module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
@@ -161,6 +157,19 @@ def build_ir(modules: List[MypyFile],
                 prepare_func_def(module.fullname(), None, get_func_def(node.node), mapper)
             # TODO: what else?
 
+
+@strict_optional_dec  # Turn on strict optional for any type manipulations we do
+def build_ir(modules: List[MypyFile],
+             graph: Graph,
+             types: Dict[Expression, Type],
+             mapper: 'Mapper',
+             options: CompilerOptions,
+             errors: Errors) -> List[Tuple[str, ModuleIR]]:
+
+    build_type_map(mapper, modules, graph, types, errors)
+
+    result = []
+
     # Generate IR for all modules.
     module_names = [mod.fullname() for mod in modules]
     class_irs = []
@@ -171,7 +180,9 @@ def build_ir(modules: List[MypyFile],
         module.accept(pbv)
 
         # Second pass.
-        builder = IRBuilder(types, graph, errors, mapper, module_names, pbv, options)
+        builder = IRBuilder(
+            module.fullname(), types, graph, errors, mapper, module_names, pbv, options
+        )
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             list(builder.imports),
@@ -187,7 +198,7 @@ def build_ir(modules: List[MypyFile],
         if cir.is_ext_class:
             compute_vtable(cir)
 
-    return mapper.literals, result
+    return result
 
 
 def is_extension_class(cdef: ClassDef) -> bool:
@@ -334,14 +345,20 @@ def compute_vtable(cls: ClassIR) -> None:
 class Mapper:
     """Keep track of mappings from mypy concepts to IR concepts.
 
-    This state is shared across all modules in a compilation unit.
+    This state is shared across all modules being compiled in all
+    compilation groups.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, group_map: Dict[str, Optional[str]]) -> None:
+        self.group_map = group_map
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
         self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
-        # Maps integer, float, and unicode literals to a static name
-        self.literals = OrderedDict()  # type: LiteralsMap
+        # LiteralsMap maps literal values to a static name. Each
+        # compilation group has its own LiteralsMap. (Since they can't
+        # share literals.)
+        self.literals = {
+            v: OrderedDict() for v in group_map.values()
+        }  # type: Dict[Optional[str], LiteralsMap]
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
@@ -439,16 +456,21 @@ class Mapper:
             ret = object_rprimitive
         return FuncSignature(args, ret)
 
-    def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
+    def literal_static_name(self, module: str,
+                            value: Union[int, float, complex, str, bytes]) -> str:
+        # Literals are shared between modules in a compilation group
+        # but not outside the group.
+        literals = self.literals[self.group_map.get(module)]
+
         # Include type to distinguish between 1 and 1.0, and so on.
         key = (type(value), value)
-        if key not in self.literals:
+        if key not in literals:
             if isinstance(value, str):
                 prefix = 'unicode_'
             else:
                 prefix = type(value).__name__ + '_'
-            self.literals[key] = prefix + str(len(self.literals))
-        return self.literals[key]
+            literals[key] = prefix + str(len(literals))
+        return literals[key]
 
 
 def prepare_func_def(module_name: str, class_name: Optional[str],
@@ -989,6 +1011,7 @@ class FinallyNonlocalControl(CleanupNonlocalControl):
 
 class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
+                 current_module: str,
                  types: Dict[Expression, Type],
                  graph: Graph,
                  errors: Errors,
@@ -996,6 +1019,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  modules: List[str],
                  pbv: PreBuildVisitor,
                  options: CompilerOptions) -> None:
+        self.current_module = current_module
         self.types = types
         self.graph = graph
         self.environment = Environment()
@@ -5201,24 +5225,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def load_globals_dict(self) -> Value:
         return self.add(LoadStatic(dict_rprimitive, 'globals', self.module_name))
 
+    def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
+        return self.mapper.literal_static_name(self.current_module, value)
+
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
-        static_symbol = self.mapper.literal_static_name(value)
+        static_symbol = self.literal_static_name(value)
         return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
-        static_symbol = self.mapper.literal_static_name(value)
+        static_symbol = self.literal_static_name(value)
         return self.add(LoadStatic(float_rprimitive, static_symbol, ann=value))
 
     def load_static_bytes(self, value: bytes) -> Value:
         """Loads a static bytes value into a register."""
-        static_symbol = self.mapper.literal_static_name(value)
+        static_symbol = self.literal_static_name(value)
         return self.add(LoadStatic(object_rprimitive, static_symbol, ann=value))
 
     def load_static_complex(self, value: complex) -> Value:
         """Loads a static complex value into a register."""
-        static_symbol = self.mapper.literal_static_name(value)
+        static_symbol = self.literal_static_name(value)
         return self.add(LoadStatic(object_rprimitive, static_symbol, ann=value))
 
     def load_static_unicode(self, value: str) -> Value:
@@ -5227,7 +5254,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         This is useful for more than just unicode literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        static_symbol = self.mapper.literal_static_name(value)
+        static_symbol = self.literal_static_name(value)
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
     def load_module(self, name: str) -> Value:

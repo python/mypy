@@ -6,11 +6,12 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitwrapper import generate_arg_check
 from mypyc.ops import list_rprimitive, int_rprimitive
+from mypyc.namegen import NameGenerator
 
 
 class TestArgCheck(unittest.TestCase):
     def setUp(self) -> None:
-        self.context = EmitterContext(['mod'])
+        self.context = EmitterContext(NameGenerator([['mod']]))
 
     def test_check_list(self) -> None:
         emitter = Emitter(self.context)

@@ -105,8 +105,9 @@ def build_ir_for_single_file(input_lines: List[str],
         raise CompileError(result.errors)
 
     errors = Errors()
-    _, modules = genops.build_ir(
+    modules = genops.build_ir(
         [result.files['__main__']], result.graph, result.types,
+        genops.Mapper({'__main__': None}),
         compiler_options, errors)
     assert errors.num_errors == 0
 
@@ -187,9 +188,10 @@ def heading(text: str) -> None:
     print('=' * 20 + ' ' + text + ' ' + '=' * 20)
 
 
-def show_c(cfiles: List[Tuple[str, str]]) -> None:
+def show_c(cfiles: List[List[Tuple[str, str]]]) -> None:
     heading('Generated C')
-    for cfile, ctext in cfiles:
-        print('== {} =='.format(cfile))
-        print_with_line_numbers(ctext)
+    for group in cfiles:
+        for cfile, ctext in group:
+            print('== {} =='.format(cfile))
+            print_with_line_numbers(ctext)
     heading('End C')

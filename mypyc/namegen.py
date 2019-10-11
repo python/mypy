@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set, Optional
+from typing import List, Dict, Tuple, Set, Optional, Iterable
 
 
 class NameGenerator:
@@ -35,16 +35,17 @@ class NameGenerator:
     though not very usable.
     """
 
-    def __init__(self, module_names: Optional[List[str]] = None) -> None:
-        """Initialize with names of all modules in the compilation unit.
+    def __init__(self, groups: Iterable[List[str]]) -> None:
+        """Initialize with a list of modules in each compilation group.
 
         The names of modules are used to shorten names referring to
-        modules in the compilation unit, for convenience. Arbitary module
-        names are supported for generated names, but modules not in the
-        compilation unit will use long names.
+        modules, for convenience. Arbitary module
+        names are supported for generated names, but uncompiled modules
+        will use long names.
         """
-        module_names = module_names or []
-        self.module_map = make_module_translation_map(module_names)
+        self.module_map = {}  # type: Dict[str, str]
+        for names in groups:
+            self.module_map.update(make_module_translation_map(names))
         self.translations = {}  # type: Dict[Tuple[str, str], str]
         self.used_names = set()  # type: Set[str]
 

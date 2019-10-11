@@ -1122,7 +1122,7 @@ class LoadStatic(RegisterOp):
     """dest = name :: static
 
     Load a C static variable/pointer. The namespace for statics is shared
-    for the entire compilation unit. You can optionally provide a module
+    for the entire compilation group. You can optionally provide a module
     name and a sub-namespace identifier for additional namespacing to avoid
     name conflicts. The static namespace does not overlap with other C names,
     since the final C name will get a prefix, so conflicts only must be

@@ -29,7 +29,7 @@ class TestNameGen(unittest.TestCase):
                                                   'foo.baz': 'baz.'}
 
     def test_name_generator(self) -> None:
-        g = NameGenerator(['foo', 'foo.zar'])
+        g = NameGenerator([['foo', 'foo.zar']])
         assert g.private_name('foo', 'f') == 'foo___f'
         assert g.private_name('foo', 'C.x.y') == 'foo___C___x___y'
         assert g.private_name('foo', 'C.x.y') == 'foo___C___x___y'

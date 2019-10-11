@@ -66,14 +66,20 @@ SIDE_TABLES = [
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]
 
+# Slots that need to always be filled in because they don't get
+# inherited right.
+ALWAYS_FILL = {
+    '__hash__',
+}
+
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items()):
-        method = cl.get_method(name)
-        if method:
-            fields[slot] = generator(cl, method, emitter)
+        method_cls = cl.get_method_and_class(name)
+        if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
+            fields[slot] = generator(cl, method_cls[0], emitter)
 
     return fields
 
@@ -84,14 +90,18 @@ def generate_class_type_decl(cl: ClassIR, c_emitter: Emitter,
     context = c_emitter.context
     name = emitter.type_struct_name(cl)
     context.declarations[name] = HeaderDeclaration(
-        'PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
+        'PyTypeObject *{};'.format(emitter.type_struct_name(cl)),
+        needs_export=True)
 
     generate_object_struct(cl, external_emitter)
-    declare_native_getters_and_setters(cl, emitter)
     generate_full = not cl.is_trait and not cl.builtin_base
     if generate_full:
+        declare_native_getters_and_setters(cl, emitter)
+
         context.declarations[emitter.native_function_name(cl.ctor)] = HeaderDeclaration(
-            '{};'.format(native_function_header(cl.ctor, emitter)))
+            '{};'.format(native_function_header(cl.ctor, emitter)),
+            needs_export=True,
+        )
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -274,12 +284,14 @@ def declare_native_getters_and_setters(cl: ClassIR,
         decls[getter_name] = HeaderDeclaration(
             '{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
                                      getter_name,
-                                     cl.struct_name(emitter.names))
+                                     cl.struct_name(emitter.names)),
+            needs_export=True,
         )
         decls[setter_name] = HeaderDeclaration(
             'bool {}({} *self, {}value);'.format(native_setter_name(cl, attr, emitter.names),
                                                  cl.struct_name(emitter.names),
-                                                 emitter.ctype_spaced(rtype))
+                                                 emitter.ctype_spaced(rtype)),
+            needs_export=True,
         )
 
 
@@ -384,12 +396,16 @@ def generate_vtable(entries: VTableEntries,
 
     for entry in entries:
         if isinstance(entry, VTableMethod):
-            emitter.emit_line('(CPyVTableItem){}{},'.format(NATIVE_PREFIX,
-                                                            entry.method.cname(emitter.names)))
+            emitter.emit_line('(CPyVTableItem){}{}{},'.format(
+                emitter.get_group_prefix(entry.method.decl),
+                NATIVE_PREFIX,
+                entry.method.cname(emitter.names)))
         else:
             cl, attr, is_setter = entry
             namer = native_setter_name if is_setter else native_getter_name
-            emitter.emit_line('(CPyVTableItem){},'.format(namer(cl, attr, emitter.names)))
+            emitter.emit_line('(CPyVTableItem){}{},'.format(
+                emitter.get_group_prefix(cl),
+                namer(cl, attr, emitter.names)))
     # msvc doesn't allow empty arrays; maybe allowing them at all is an extension?
     if not entries:
         emitter.emit_line('NULL')
@@ -445,7 +461,8 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('    return NULL;')
     args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
     if init_fn is not None:
-        emitter.emit_line('char res = {}{}({});'.format(
+        emitter.emit_line('char res = {}{}{}({});'.format(
+            emitter.get_group_prefix(init_fn.decl),
             NATIVE_PREFIX, init_fn.cname(emitter.names), args))
         emitter.emit_line('if (res == 2) {')
         emitter.emit_line('Py_DECREF(self);')
