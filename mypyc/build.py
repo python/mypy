@@ -472,15 +472,13 @@ def mypycify(
                 '/wd9025',  # warning about overriding /GL
             ]
 
-    # In multi-file mode, copy the runtime library in.
-    # Otherwise it just gets #included to save on compiler invocations
+    # Copy the runtime library in
     shared_cfilenames = []
-    if multi_file:
-        for name in ['CPy.c', 'getargs.c']:
-            rt_file = os.path.join(build_dir, name)
-            with open(os.path.join(include_dir(), name), encoding='utf-8') as f:
-                write_file(rt_file, f.read())
-            shared_cfilenames.append(rt_file)
+    for name in ['CPy.c', 'getargs.c']:
+        rt_file = os.path.join(build_dir, name)
+        with open(os.path.join(include_dir(), name), encoding='utf-8') as f:
+            write_file(rt_file, f.read())
+        shared_cfilenames.append(rt_file)
 
     extensions = []
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
