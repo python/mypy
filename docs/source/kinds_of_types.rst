@@ -409,6 +409,66 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 
 .. _no_strict_optional:
 
+Other types with only one value
+*******************************
+
+Much like ``None`` only has one value, there are a few other situations
+where mypy can determine that a certain type can only have a single value.
+
+This works with enum literals; but also with final enum variables, since they
+cannot change during the execution of the program:
+
+.. code-block:: python
+
+   from typing import Union
+   from typing_extensions import Final
+   import enum
+
+   class SomeEnum(enum.Enum):
+      VALUE_ONE = 1
+      VALUE_TWO = 2
+   ValueOne: Final = SomeEnum.VALUE_ONE
+
+   def f1(se: SomeEnum) -> None:
+      if se is ValueOne:
+          # With the final, this is the same as `se is SomeEnum.Value_ONE`
+          # Without the final, mypy can't be sure, since someone would be in
+          # their right to assign another member value
+          reveal_type(se) # Revealed type is 'Literal[SomeEnum.VALUE_ONE]'
+
+   def f2(se: Union[int, SomeEnum]) -> None:
+      if se is ValueOne:
+          # Also works with Union
+          reveal_type(se) # Revealed type is 'Literal[SomeEnum.VALUE_ONE]'
+          # Without the final, the type revealed would then be `Union[int, SomeEnum]`
+      else:
+          reveal_type(se) # Revealed type is 'Union[builtins.int, Literal[SomeEnum.VALUE_TWO]]'
+
+
+Likewise, enums that only have one member value can only have a single value:
+
+.. code-block:: python
+
+   from typing import Union
+   import enum
+
+   class SingleEnum(enum.Enum):
+      VALUE_ONE = 1
+   ValueOne = SingleEnum.VALUE_ONE
+
+   def f1(se: SingleEnum) -> None:
+      if se is ValueOne:
+          reveal_type(se) # Revealed type is 'SingleEnum'
+          # Since SingleEnum only has one value, this is all you need to know
+
+   def f2(se: Union[int, SingleEnum]) -> None:
+      if se is ValueOne:
+          # Also works with Union
+          reveal_type(se) # Revealed type is 'SingleEnum'
+      else:
+          reveal_type(se) # Revealed type is 'builtins.int'
+
+
 Disabling strict optional checking
 **********************************
 

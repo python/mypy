@@ -4759,6 +4759,13 @@ def is_singleton_type(typ: Type) -> bool:
     constructing two distinct instances of 100001.
     """
     typ = get_proper_type(typ)
+
+    if isinstance(typ, Instance) and typ.type.is_enum and 1 == len(typ.type.names):
+        # This is a value for an Enum that has exactly one member value.
+        # No other value can be assigned to this variable
+        # That is the same as it being a singleton like None
+        return True
+
     # TODO: Also make this return True if the type is a bool LiteralType.
     # Also make this return True if the type corresponds to ... (ellipsis) or NotImplemented?
     return isinstance(typ, NoneType) or (isinstance(typ, LiteralType) and typ.is_enum_literal())

@@ -854,3 +854,40 @@ def process(response: Union[str, Reason] = '') -> str:
         return 'PROCESSED: ' + response
 
 [builtins fixtures/primitives.pyi]
+
+[case testEnumSingularSingleton]
+from typing import Union
+from enum import Enum
+
+class NothingEnum(Enum):
+    NothingValue = 1
+
+NOTHING = NothingEnum.NothingValue
+
+def process(response: Union[str, NothingEnum] = '') -> str:
+    if response is NOTHING:
+        reveal_type(response)  # N: Revealed type is '__main__.NothingEnum'
+        return 'No response given'
+    else:
+        # response can be only str, all other possible values exhausted
+        reveal_type(response)  # N: Revealed type is 'builtins.str'
+        return 'PROCESSED: ' + response
+
+[builtins fixtures/primitives.pyi]
+
+[case testEnumSingularSingletonUnion]
+from typing import Union
+from enum import Enum
+
+class NothingEnum(Enum):
+    NothingValue = 1
+
+NOTHING: Union[NothingEnum, str] = NothingEnum.NothingValue
+
+def process(response: Union[str, NothingEnum] = '') -> None:
+    if response is NOTHING:
+        # response could be assigned a string at any point,
+        # so the type checker cannot be sure which it is.
+        reveal_type(response)  # N: Revealed type is 'Union[builtins.str, __main__.NothingEnum]'
+
+[builtins fixtures/primitives.pyi]
