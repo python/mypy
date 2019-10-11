@@ -278,15 +278,15 @@ A(1) != 1
 
 [case testAttrsCmpEqOrderValues]
 from attr import attrib, attrs
-@attrs(cmp=True)  # E: cmp is deprecated, use eq and order
+@attrs(cmp=True)
 class DeprecatedTrue:
    ...
 
-@attrs(cmp=False)  # E: cmp is deprecated, use eq and order
+@attrs(cmp=False)
 class DeprecatedFalse:
    ...
 
-@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`  # E: cmp is deprecated, use eq and order
+@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`
 class Mixed:
    ...
 
