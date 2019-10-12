@@ -273,4 +273,5 @@ intersphinx_mapping = {
     'attrs': ('http://www.attrs.org/en/stable', None),
     'cython': ('http://docs.cython.org/en/latest', None),
     'monkeytype': ('https://monkeytype.readthedocs.io/en/latest', None),
+    'setuptools': ('https://setuptools.readthedocs.io/en/latest', None),
 }

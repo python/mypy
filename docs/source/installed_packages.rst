@@ -4,11 +4,11 @@ Using installed packages
 ========================
 
 :pep:`561` specifies how to mark a package as supporting type checking.
-Below is a summary of how to create :pep:`561` compatible packages and have
+Below is a summary of how to create PEP 561 compatible packages and have
 mypy use them in type checking.
 
-Using :pep:`561` compatible packages with mypy
-**********************************************
+Using PEP 561 compatible packages with mypy
+*******************************************
 
 Generally, you do not need to do anything to use installed packages that
 support typing for the Python executable used to run mypy. Note that most
@@ -36,8 +36,8 @@ to find the package, it must be installed. For a package ``foo``, the name of
 the stub-only package (``foo-stubs``) is not a legal package name, so mypy
 will not find it, unless it is installed.
 
-Making :pep:`561` compatible packages
-*************************************
+Making PEP 561 compatible packages
+**********************************
 
 :pep:`561` notes three main ways to distribute type information. The first is a
 package that has only inline type annotations in the code itself. The second is
@@ -60,7 +60,7 @@ structure as follows
         lib.py
         py.typed
 
-the setup.py might look like
+the ``setup.py`` might look like
 
 .. code-block:: python
 
@@ -76,7 +76,7 @@ the setup.py might look like
 
 .. note::
 
-   If you use setuptools, you must pass the option ``zip_safe=False`` to
+   If you use :doc:`setuptools <setuptools:index>`, you must pass the option ``zip_safe=False`` to
    ``setup()``, or mypy will not be able to find the installed package.
 
 Some packages have a mix of stub files and runtime files. These packages also
@@ -91,7 +91,7 @@ require a ``py.typed`` file. An example can be seen below
         lib.pyi
         py.typed
 
-the setup.py might look like:
+the ``setup.py`` might look like:
 
 .. code-block:: python
 
@@ -121,7 +121,7 @@ had stubs for ``package_c``, we might do the following:
         __init__.pyi
         lib.pyi
 
-the setup.py might look like:
+the ``setup.py`` might look like:
 
 .. code-block:: python
 
