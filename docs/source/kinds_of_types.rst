@@ -108,7 +108,7 @@ The ``Any`` type is discussed in more detail in section :ref:`dynamic-typing`.
 Tuple types
 ***********
 
-The type ``Tuple[T1, ..., Tn]`` represents a :py:data:`~typing.Tuple` with the item types ``T1``, ..., ``Tn``:
+The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
 
 .. code-block:: python
 
@@ -675,7 +675,7 @@ Now mypy will infer the correct type of the result when we call
    compatible with the constructor of ``C``.  If ``C`` is a type
    variable, its upper bound must be a class object.
 
-For more details about :py:class:`~typing.Type` see :pep:`PEP 484: The type of
+For more details about ``Type[]`` see :pep:`PEP 484: The type of
 class objects <484#the-type-of-class-objects>`.
 
 .. _text-and-anystr:
