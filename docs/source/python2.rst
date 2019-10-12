@@ -15,7 +15,7 @@ Run mypy in Python 2 mode by using the ``--py2`` option::
 To run your program, you must have the ``typing`` module in your
 Python 2 module search path. Use ``pip install typing`` to install the
 module. This also works for Python 3 versions prior to 3.5 that don't
-include ``typing`` in the standard library.
+include :py:mod:`typing` in the standard library.
 
 The example below illustrates the Python 2 function type annotation
 syntax. This syntax is also valid in Python 3 mode:

@@ -6,11 +6,11 @@ Metaclasses
 A :ref:`metaclass <python:metaclasses>` is a class that describes
 the construction and behavior of other classes, similarly to how classes
 describe the construction and behavior of objects.
-The default metaclass is ``type``, but it's possible to use other metaclasses.
-Metaclasses allows one to create "a different kind of class", such as Enums,
-NamedTuples and singletons.
+The default metaclass is :py:class:`type`, but it's possible to use other metaclasses.
+Metaclasses allows one to create "a different kind of class", such as
+:py:class:`~enum.Enum`\s, :py:class:`~typing.NamedTuple`\s and singletons.
 
-Mypy has some special understanding of ``ABCMeta`` and ``EnumMeta``.
+Mypy has some special understanding of :py:class:`~abc.ABCMeta` and ``EnumMeta``.
 
 .. _defining:
 
@@ -32,7 +32,7 @@ In Python 2, the syntax for defining a metaclass is different:
     class A(object):
         __metaclass__ = M
 
-Mypy also supports using :py:func:`six.with_metaclass`
+Mypy also supports using :py:func:`six.with_metaclass` and :py:func:`@six.add_metaclass <six.add_metaclass>`
 to define metaclass in a portable way:
 
 .. code-block:: python
@@ -103,4 +103,4 @@ so it's better not to combine metaclasses and class hierarchies:
 * Mypy does not understand dynamically-computed metaclasses,
   such as ``class A(metaclass=f()): ...``
 * Mypy does not and cannot understand arbitrary metaclass code.
-* Mypy only recognizes subclasses of ``type`` as potential metaclasses.
+* Mypy only recognizes subclasses of :py:class:`type` as potential metaclasses.

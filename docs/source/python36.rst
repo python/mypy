@@ -8,7 +8,7 @@ Mypy has supported all language features new in Python 3.6 starting with mypy
 type checking.
 
 Syntax for variable annotations (:pep:`526`)
----------------------------------------------------------------------------------------
+--------------------------------------------
 
 Python 3.6 introduced a new syntax for variable annotations (in
 global, class and local scopes).  There are two variants of the
@@ -23,7 +23,7 @@ syntax, with or without an initializer expression:
 .. _class-var:
 
 You can also mark names intended to be used as class variables with
-``ClassVar``.  In a pinch you can also use ClassVar in ``# type``
+:py:data:`~typing.ClassVar`. In a pinch you can also use :py:data:`~typing.ClassVar` in ``# type``
 comments.  Example:
 
 .. code-block:: python
@@ -49,7 +49,7 @@ Asynchronous generators (:pep:`525`) and comprehensions (:pep:`530`)
 
 Python 3.6 allows coroutines defined with ``async def`` (:pep:`492`) to be
 generators, i.e. contain ``yield`` expressions. It also introduced a syntax for
-asynchronous comprehensions. This example uses the ``AsyncIterator`` type to
+asynchronous comprehensions. This example uses the :py:class:`~typing.AsyncIterator` type to
 define an async generator:
 
 .. code-block:: python
