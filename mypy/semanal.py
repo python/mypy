@@ -2129,7 +2129,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not is_named_tuple:
             return False
         if isinstance(s.lvalues[0], MemberExpr):
-            self.fail("NamedTuple type as an attribute is not supported", s.lvalues[0])
+            self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
