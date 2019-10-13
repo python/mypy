@@ -30,7 +30,7 @@ quite understand what is going on.
    .. code-block:: python
 
       def foo(o: object) -> None:
-          print(o + 5)  # Error: can't add 'object' and 'int'
+          print(o + 5)  # error: Unsupported operand types for + ("object" and "int")
           assert isinstance(o, int)
           print(o + 5)  # OK: type of 'o' is 'int' here
 
@@ -44,6 +44,6 @@ any operations on the result. For example:
     from typing import cast, Any
 
     x = 1
-    x.whatever()  # Type check error
+    x.whatever()  # error: "int" has no attribute "whatever"
     y = cast(Any, x)
     y.whatever()  # Type check OK (runtime error)
