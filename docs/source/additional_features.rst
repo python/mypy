@@ -24,7 +24,7 @@ They can be defined using the :py:func:`@dataclasses.dataclass
         plugins: List[str] = field(default_factory=list)
 
     test = Application("Testing...")  # OK
-    bad = Application("Testing...", "with plugin")  # Error: List[str] expected
+    bad = Application("Testing...", "with plugin")  # error: Argument 2 to "Application" has incompatible type "str"; expected "List[str]"
 
 Mypy will detect special methods (such as :py:meth:`__lt__ <object.__lt__>`) depending on the flags used to
 define dataclasses. For example:
@@ -44,7 +44,7 @@ define dataclasses. For example:
         y: int
 
     OrderedPoint(1, 2) < OrderedPoint(3, 4)  # OK
-    UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # Error: Unsupported operand types
+    UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # error: Unsupported left operand type for < ("UnorderedPoint")
 
 Dataclasses can be generic and can be used in any other way a normal
 class can be used:
@@ -103,8 +103,8 @@ do **not** work:
       """
       attribute: int
 
-    AliasDecorated(attribute=1) # error: Unexpected keyword argument
-    DynamicallyDecorated(attribute=1) # error: Unexpected keyword argument
+    AliasDecorated(attribute=1)  # error: Unexpected keyword argument "attribute" for "AliasDecorated"
+    DynamicallyDecorated(attribute=1)  # error: Unexpected keyword argument "attribute" for "DynamicallyDecorated"
 
 .. _attrs_package:
 
@@ -153,7 +153,7 @@ That enables this to work:
     class A:
         one: int = attr.ib(8)
         two: Dict[str, str] = attr.Factory(dict)
-        bad: str = attr.ib(16)   # Error: can't assign int to str
+        bad: str = attr.ib(16)   # error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 Caveats/Known Issues
 ====================
@@ -169,7 +169,7 @@ Caveats/Known Issues
 
       import attr
       YES = True
-      @attr.s(init=YES)
+      @attr.s(init=YES)  # error: "init" argument must be True or False.
       class A:
           ...
 
