@@ -21,7 +21,7 @@ initialized within the class. Mypy infers the types of attributes:
 
    a = A(1)
    a.x = 2  # OK!
-   a.y = 3  # Error: 'A' has no attribute 'y'
+   a.y = 3  # error: "A" has no attribute "y"
 
 This is a bit like each class having an implicitly defined
 :py:data:`__slots__ <object.__slots__>` attribute. This is only enforced during type
@@ -76,7 +76,7 @@ to it explicitly using ``self``:
        def __init__(self) -> None:
            self.y = 1   # Define 'y'
            a = self
-           a.x = 1      # Error: 'x' not defined
+           a.x = 1      # error: "A" has no attribute "x"
 
 Annotating __init__ methods
 ***************************
@@ -124,7 +124,7 @@ particular attribute should not be set on instances:
   A.x += 1  # OK
 
   a = A()
-  a.x = 1  # Error: Cannot assign to class variable "x" via instance
+  a.x = 1  # error: Cannot assign to class variable "x" via instance
   print(a.x)  # OK -- can be read through an instance
 
 .. note::
@@ -183,11 +183,11 @@ override has a compatible signature:
            ...
 
    class Derived1(Base):
-       def f(self, x: str) -> None:   # Error: type of 'x' incompatible
+       def f(self, x: str) -> None:   # error: Argument 1 of "f" is incompatible with supertype "Base"; supertype defines the argument type as "int"
            ...
 
    class Derived2(Base):
-       def f(self, x: int, y: int) -> None:  # Error: too many arguments
+       def f(self, x: int, y: int) -> None:  # error: Signature of "f" incompatible with supertype "Base"
            ...
 
    class Derived3(Base):
@@ -258,7 +258,7 @@ function decorator. Example:
        def can_walk(self) -> bool:
            return True
 
-   x = Animal()  # Error: 'Animal' is abstract due to 'eat' and 'can_walk'
+   x = Animal()  # error: Cannot instantiate abstract class 'Animal' with abstract attributes 'can_walk' and 'eat'
    y = Cat()     # OK
 
 .. note::
