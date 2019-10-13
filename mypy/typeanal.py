@@ -55,6 +55,10 @@ ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.KwArg': ARG_STAR2,
 }  # type: Final
 
+GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
+    'OrderedDict'
+}  # type: Final
+
 
 def analyze_type_alias(node: Expression,
                        api: SemanticAnalyzerCoreInterface,
@@ -907,8 +911,12 @@ def get_omitted_any(disallow_any: bool, fail: FailCallback,
             typ = unexpanded_type or typ
             type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
 
-            fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ,
-                 code=codes.TYPE_ARG)
+            if type_str in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
+                #Recommend to put type in quotes (string literal escaping)
+                fail(message_registry.BARE_GENERIC_STRING_LITERAL_ESCAPE.format(quote_type_string(type_str)), typ, code=codes.TYPE_ARG)
+            else:
+                fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ,
+                    code=codes.TYPE_ARG)
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
         any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
