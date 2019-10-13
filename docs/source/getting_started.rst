@@ -336,7 +336,7 @@ add a dynamically-typed function by mistake. You can make mypy do this
 by running mypy with the ``--disallow-untyped-defs`` flag.
 
 Another potentially useful flag is ``--strict``, which enables many
-(thought not all) of the available strictness options -- including
+(though not all) of the available strictness options -- including
 ``--disallow-untyped-defs``.
 
 This flag is mostly useful if you're starting a new project from scratch
