@@ -91,7 +91,7 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
 BARE_GENERIC = 'Missing type parameters for generic type {}'  # type: Final
 BARE_GENERIC_STRING_LITERAL_ESCAPE = \
     'Missing type parameters for generic type {}, ' \
-        'also consider using string literal escaping'  # type: Final
+    'also consider using string literal escaping'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
     'Implicit generic "Any". Use "{}" and specify generic parameters'  # type: Final
 
