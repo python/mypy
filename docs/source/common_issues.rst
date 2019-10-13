@@ -47,8 +47,7 @@ flagged as an error.
   .. code-block:: python
 
       def foo(a: str) -> str:
-          return '(' + a.split() + ')'
-      # error: Unsupported operand types for + ("str" and List[str])
+          return '(' + a.split() + ')'  # error: Unsupported operand types for + ("str" and "List[str]")
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
@@ -110,7 +109,7 @@ module:
 
 .. code-block:: python
 
-    import frobnicate  # Error: No module "frobnicate"
+    import frobnicate  # error: Cannot find module named 'frobnicate'
     frobnicate.start()
 
 You can add a ``# type: ignore`` comment to tell mypy to ignore this
@@ -234,7 +233,7 @@ with the ``Any`` type.
    def f() -> None:
        n = 1
        ...
-       n = 'x'        # Type error: n has type int
+       n = 'x'  # error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 .. note::
 
@@ -270,7 +269,8 @@ unexpected errors when combined with type inference. For example:
 
    lst = [A(), A()]  # Inferred type is List[A]
    new_lst = [B(), B()]  # inferred type is List[B]
-   lst = new_lst  # mypy will complain about this, because List is invariant
+   # mypy will complain about this, because List is invariant
+   lst = new_lst  # error: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]")
 
 Possible strategies in such situations are:
 
@@ -611,7 +611,7 @@ Consider this example:
    class C:
        x = 42
    c = C()
-   fun(c)  # This is not safe
+   fun(c)  # This is not safe:  # error: Argument 1 to "fun" has incompatible type "C"; expected "P"
    c.x << 5  # Since this will fail!
 
 To work around this problem consider whether "mutating" is actually part
@@ -646,7 +646,7 @@ method signature.  E.g.:
    class Message:
        def bytes(self):
            ...
-       def register(self, path: bytes):  # error: Invalid type "mod.Message.bytes"
+       def register(self, path: bytes):  # error: Function "__main__.Message.bytes" is not valid as a type
            ...
 
 The third line elicits an error because mypy sees the argument type
