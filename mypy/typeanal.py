@@ -231,8 +231,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.note,
                         disallow_any=disallow_any,
                         use_generic_error=True,
-                        unexpanded_type=t,
-                        note=self.note)
+                        unexpanded_type=t)
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
@@ -928,7 +927,9 @@ def get_omitted_any(disallow_any: bool, fail: FailCallback, note: NoteCallback,
             if type_str in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
                 # Recommend to put type in quotes (string literal escaping)
                 note(
-                    "Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime",
+                    "Subscripting classes that are not generic at runtime may require "
+                    "escaping, see https://mypy.readthedocs.io/"
+                    "en/latest/common_issues.html#not-generic-runtime",
                     typ,
                     code=codes.TYPE_ARG)
 
