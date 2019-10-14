@@ -110,7 +110,10 @@ IDE, Linter Integrations, and Pre-commit
 
 Mypy can be integrated into popular IDEs:
 
-* Vim: [syntastic](https://github.com/vim-syntastic/syntastic) in `.vimrc` add `let g:syntastic_python_checkers=['mypy']`
+* Vim:
+  * Using [Syntastic](https://github.com/vim-syntastic/syntastic): in `~/.vimrc` add `let g:syntastic_python_checkers=['mypy']`
+  * Using [ALE](https://github.com/dense-analysis/ale): should be enabled by default when `mypy` is installed, or can be explicitly enabled by adding `let b:ale_linters = ['mypy']` in
+ `~/vim/ftplugin/python.vim` 
 * Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy)
 * Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
 * Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
