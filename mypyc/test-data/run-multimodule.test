@@ -554,4 +554,180 @@ print(y)
 2
 [out2]
 3
-[rechecked other]
+[rechecked other, other_b]
+
+[case testIncrementalCompilation1]
+from other_a import A
+from other_b import z
+
+a = A()
+assert a.y == z
+
+[file other_a.py]
+from other_b import z
+
+class A:
+    def __init__(self) -> None:
+        self.y = z
+[file other_a.py.2]
+from other_b import z
+
+class A:
+    def __init__(self) -> None:
+        self.x = 'test'
+        self.y = z
+[file other_b.py]
+import other_a
+
+z = 10
+
+def foo() -> 'other_a.A':
+    return other_a.A()
+[file other_b.py.3]
+import other_a
+
+z = 20
+
+def foo() -> 'other_a.A':
+    return other_a.A()
+
+[file driver.py]
+from native import a
+print(a.y, getattr(a, 'x', None))
+
+[out]
+10 None
+[out2]
+10 test
+[out3]
+20 test
+
+[rechecked other_a, other_b, native]
+[rechecked2 other_a, other_b]
+
+
+-- This one tests a group that is not an SCC.
+[case testIncrementalCompilation2]
+# separate: [(["other_a.py", "other_b.py"], "stuff")]
+from other_a import A
+from other_b import z
+
+a = A()
+assert a.y == z
+
+[file other_a.py]
+from other_b import z
+
+class A:
+    def __init__(self) -> None:
+        self.y = z
+[file other_a.py.2]
+from other_b import z
+
+class A:
+    def __init__(self) -> None:
+        self.x = 'test'
+        self.y = z
+
+[file other_b.py]
+z = 10
+
+[file driver.py]
+from native import a
+print(a.y, getattr(a, 'x', None))
+
+[out]
+10 None
+[out2]
+10 test
+
+[rechecked other_a, other_b, native]
+
+[case testIncrementalCompilation3]
+from other import X
+Y = X
+def foo() -> int:
+    return X
+
+[file other.py]
+from typing_extensions import Final
+X: Final = 10
+
+[file other.py.2]
+from typing_extensions import Final
+X: Final = 20
+
+[file driver.py]
+import native
+import other
+assert native.Y == other.X
+assert native.foo() == other.X
+
+[rechecked native, other]
+
+-- This one tests a group changing
+[case testIncrementalCompilation4]
+# separate: [(["other_a.py", "other_b.py"], "stuff")]
+# separate2: []
+from other_a import A
+from other_b import z
+
+a = A()
+assert a.y == z
+
+[file other_a.py]
+from other_b import z
+
+class A:
+    def __init__(self) -> None:
+        self.y = z
+
+[file other_b.py]
+z = 10
+
+[file wtvr.py.2]
+
+[file driver.py]
+from native import a
+print(a.y, getattr(a, 'x', None))
+
+[out]
+10 None
+[out2]
+10 None
+
+[rechecked other_a, other_b, native]
+
+-- This one tests cases where other modules *do not* need rechecked
+[case testIncrementalCompilation5]
+import other_a
+[file other_a.py]
+from other_b import f
+assert f(10) == 20
+[file other_a.py.2]
+from other_b import f
+assert f(20) == 40
+
+[file other_b.py]
+def f(x: int) -> int:
+    return x * 2
+
+[file driver.py]
+import native
+
+[rechecked other_a]
+
+-- Delete one of the C files and make sure this forces recompilation
+[case testIncrementalCompilation6]
+import other_a
+assert other_a.foo() == 10
+[file other_a.py]
+def foo() -> int: return 10
+
+
+[delete build/__native_other_a.c.2]
+
+[file driver.py]
+import native
+
+[rechecked native, other_a]
