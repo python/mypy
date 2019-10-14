@@ -533,6 +533,7 @@ Here's the above example modified to use ``MYPY``:
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
 
+.. _not-generic-runtime:
 
 Using classes that are generic in stubs but not at runtime
 ----------------------------------------------------------

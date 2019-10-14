@@ -56,7 +56,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 }  # type: Final
 
 GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
-    'OrderedDict'
+    'Queue'
 }  # type: Final
 
 
@@ -225,8 +225,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 res = get_proper_type(res)
                 if (isinstance(res, Instance) and len(res.args) != len(res.type.type_vars) and
                         not self.defining_alias):
-                    fix_instance(res, self.fail, disallow_any=disallow_any, use_generic_error=True,
-                                 unexpanded_type=t)
+                    fix_instance(
+                        res,
+                        self.fail,
+                        self.note,
+                        disallow_any=disallow_any,
+                        use_generic_error=True,
+                        unexpanded_type=t,
+                        note=self.note)
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
@@ -323,13 +329,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
         disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
-        return get_omitted_any(disallow_any, self.fail, typ, fullname)
+        return get_omitted_any(disallow_any, self.fail, self.note, typ, fullname)
 
     def analyze_type_with_type_info(self, info: TypeInfo, args: List[Type], ctx: Context) -> Type:
         """Bind unbound type when were able to find target TypeInfo.
 
         This handles simple cases like 'int', 'modname.UserClass[str]', etc.
         """
+
         if len(args) > 0 and info.fullname() == 'builtins.tuple':
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
@@ -341,7 +348,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
         # Check type argument count.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
-            fix_instance(instance, self.fail,
+            fix_instance(instance, self.fail, self.note,
                          disallow_any=self.options.disallow_any_generics and
                          not self.is_typeshed_stub)
 
@@ -896,9 +903,10 @@ TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 # Mypyc doesn't support callback protocols yet.
 FailCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
+NoteCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
 
 
-def get_omitted_any(disallow_any: bool, fail: FailCallback,
+def get_omitted_any(disallow_any: bool, fail: FailCallback, note: NoteCallback,
                     typ: Type, fullname: Optional[str] = None,
                     unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
@@ -911,22 +919,28 @@ def get_omitted_any(disallow_any: bool, fail: FailCallback,
             typ = unexpanded_type or typ
             type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
 
+            fail(
+                message_registry.BARE_GENERIC.format(
+                    quote_type_string(type_str)),
+                typ,
+                code=codes.TYPE_ARG)
+
             if type_str in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
                 # Recommend to put type in quotes (string literal escaping)
-                fail(message_registry.BARE_GENERIC_STRING_LITERAL_ESCAPE.format(
-                    quote_type_string(type_str)), typ, code=codes.TYPE_ARG)
-            else:
-                fail(message_registry.BARE_GENERIC.format(quote_type_string(type_str)), typ,
-                     code=codes.TYPE_ARG)
+                note(
+                    "Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime",
+                    typ,
+                    code=codes.TYPE_ARG)
+
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
         any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
     return any_type
 
 
-def fix_instance(t: Instance, fail: FailCallback,
+def fix_instance(t: Instance, fail: FailCallback, note: NoteCallback,
                  disallow_any: bool, use_generic_error: bool = False,
-                 unexpanded_type: Optional[Type] = None) -> None:
+                 unexpanded_type: Optional[Type] = None,) -> None:
     """Fix a malformed instance by replacing all type arguments with Any.
 
     Also emit a suitable error if this is not due to implicit Any's.
@@ -936,7 +950,7 @@ def fix_instance(t: Instance, fail: FailCallback,
             fullname = None  # type: Optional[str]
         else:
             fullname = t.type.fullname()
-        any_type = get_omitted_any(disallow_any, fail, t, fullname, unexpanded_type)
+        any_type = get_omitted_any(disallow_any, fail, note, t, fullname, unexpanded_type)
         t.args = [any_type] * len(t.type.type_vars)
         return
     # Invalid number of type parameters.
@@ -1190,20 +1204,21 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: FailCallback) -> None:
+def fix_instance_types(t: Type, fail: FailCallback, note: NoteCallback) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
     'Union[Dict[Any, Any], List[Any]]' in place.
     """
-    t.accept(InstanceFixer(fail))
+    t.accept(InstanceFixer(fail, note))
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: FailCallback) -> None:
+    def __init__(self, fail: FailCallback, note: NoteCallback) -> None:
         self.fail = fail
+        self.note = note
 
     def visit_instance(self, typ: Instance) -> None:
         super().visit_instance(typ)
         if len(typ.args) != len(typ.type.type_vars):
-            fix_instance(typ, self.fail, disallow_any=False, use_generic_error=True)
+            fix_instance(typ, self.fail, self.note, disallow_any=False, use_generic_error=True)
