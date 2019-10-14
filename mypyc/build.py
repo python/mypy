@@ -35,7 +35,7 @@ from mypy.build import BuildSource
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.common import shared_lib_name
+from mypyc.common import BUILD_DIR, shared_lib_name
 from mypyc.ops import format_modules
 
 from mypyc import emitmodule
@@ -79,7 +79,8 @@ def fail(message: str) -> NoReturn:
 
 
 def get_mypy_config(paths: List[str],
-                    mypy_options: Optional[List[str]]) -> Tuple[List[BuildSource], Options]:
+                    mypy_options: Optional[List[str]],
+                    compiler_options: CompilerOptions) -> Tuple[List[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
     # It is kind of silly to do this but oh well
     mypy_options = mypy_options or []
@@ -99,8 +100,7 @@ def get_mypy_config(paths: List[str],
     options.show_traceback = True
     # Needed to get types for all AST nodes
     options.export_types = True
-    # TODO: Support incremental checking
-    options.incremental = False
+    options.incremental = compiler_options.separate
     options.preserve_asts = True
 
     for source in sources:
@@ -184,7 +184,7 @@ def generate_c(sources: List[BuildSource],
     # Do the actual work now
     t0 = time.time()
     try:
-        result = emitmodule.parse_and_typecheck(sources, options)
+        result = emitmodule.parse_and_typecheck(sources, options, groups)
     except CompileError as e:
         for line in e.messages:
             print(line)
@@ -283,14 +283,17 @@ def write_file(path: str, contents: str) -> None:
     want to write, skip writing so as to preserve the mtime
     and avoid triggering recompilation.
     """
+    # We encode it ourselves and open the files as binary to avoid windows
+    # newline translation
+    encoded_contents = contents.encode('utf-8')
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            old_contents = f.read()  # type: Optional[str]
+        with open(path, 'rb') as f:
+            old_contents = f.read()  # type: Optional[bytes]
     except IOError:
         old_contents = None
-    if old_contents != contents:
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(contents)
+    if old_contents != encoded_contents:
+        with open(path, 'wb') as f:
+            f.write(encoded_contents)
 
         # Fudge the mtime forward because otherwise when two builds happen close
         # together (like in a test) setuptools might not realize the source is newer
@@ -400,8 +403,12 @@ def mypycify(
     """
 
     setup_mypycify_vars()
-    compiler_options = CompilerOptions(strip_asserts=strip_asserts,
-                                       multi_file=multi_file, verbose=verbose)
+    compiler_options = CompilerOptions(
+        strip_asserts=strip_asserts,
+        multi_file=multi_file,
+        verbose=verbose,
+        separate=separate is not False,
+    )
 
     # Create a compiler object so we can make decisions based on what
     # compiler is being used. typeshed is missing some attribues on the
@@ -413,13 +420,13 @@ def mypycify(
     for path in paths:
         expanded_paths.extend(glob.glob(path))
 
-    build_dir = 'build'  # TODO: can this be overridden??
+    build_dir = BUILD_DIR  # TODO: can this be overridden??
     try:
         os.mkdir(build_dir)
     except FileExistsError:
         pass
 
-    sources, options = get_mypy_config(expanded_paths, mypy_options)
+    sources, options = get_mypy_config(expanded_paths, mypy_options, compiler_options)
     # We generate a shared lib if there are multiple modules or if any
     # of the modules are in package. (Because I didn't want to fuss
     # around with making the single module code handle packages.)

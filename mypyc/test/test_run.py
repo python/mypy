@@ -99,6 +99,15 @@ def chdir_manager(target: str) -> Iterator[None]:
         os.chdir(dir)
 
 
+def fudge_dir_mtimes(dir: str, delta: int) -> None:
+    for dirpath, _, filenames in os.walk(dir):
+        for name in filenames:
+            # if name.endswith(('.c', '.h')): continue
+            path = os.path.join(dirpath, name)
+            new_mtime = os.stat(path).st_mtime + delta
+            os.utime(path, times=(new_mtime, new_mtime))
+
+
 class TestRun(MypycDataSuite):
     """Test cases that build a C extension and run code."""
     files = files
@@ -134,6 +143,11 @@ class TestRun(MypycDataSuite):
             steps = []
 
         for operations in steps:
+            # To make sure that any new changes get picked up as being
+            # new by distutils, shift the mtime of all of the
+            # generated artifacts back by a second.
+            fudge_dir_mtimes(WORKDIR, -1)
+
             step += 1
             with chdir_manager('..'):
                 for op in operations:
@@ -162,7 +176,7 @@ class TestRun(MypycDataSuite):
         options.python_version = max(sys.version_info[:2], (3, 6))
         options.export_types = True
         options.preserve_asts = True
-        options.incremental = False
+        options.incremental = self.separate
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -200,6 +214,7 @@ class TestRun(MypycDataSuite):
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
+                groups=groups,
                 alt_lib_path='.')
             errors = Errors()
             compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)

@@ -2,6 +2,8 @@ MYPY = False
 if MYPY:
     from typing_extensions import Final
 
+BUILD_DIR = 'build'
+
 PREFIX = 'CPyPy_'  # type: Final # Python wrappers
 NATIVE_PREFIX = 'CPyDef_'  # type: Final # Native functions etc.
 DUNDER_PREFIX = 'CPyDunder_'  # type: Final # Wrappers for exposing dunder methods to the API
