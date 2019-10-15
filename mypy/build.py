@@ -1835,8 +1835,8 @@ class State:
         Also report an internal error if an unexpected exception was raised
         and raise an exception on a blocking error, unless
         check_blockers is False. Skipping blocking error reporting is used
-        in the new semantic analyzer so that we can report all blocking
-        errors for a file (across multiple targets) to maintain backward
+        in the semantic analyzer so that we can report all blocking errors
+        for a file (across multiple targets) to maintain backward
         compatibility.
         """
         save_import_context = self.manager.errors.import_context()

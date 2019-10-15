@@ -96,7 +96,7 @@ class DataclassTransformer:
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
         }
 
-        # If there are no attributes, it may be that the new semantic analyzer has not
+        # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
         # __init__ if there are no attributes, because if the user truly did not define any,
         # then the object default __init__ with an empty signature will be present anyway.
