@@ -871,6 +871,17 @@ class A(metaclass=ABCMeta):
     def x(self, x): pass
 [out]
 
+[case testMixinTypedAbstractProperty]
+from abc import ABCMeta, abstractproperty
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(Mixin, A):
+    pass
+[out]
 
 -- Special cases
 -- -------------
