@@ -30,6 +30,7 @@ TYPE_PROMOTIONS = {
 TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()  # type: Final
 TYPE_PROMOTIONS_PYTHON3.update({
     'builtins.bytearray': 'bytes',
+    'builtins.memoryview': 'bytes',
 })
 
 # Hard coded type promotions for Python 2.
@@ -41,6 +42,7 @@ TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()  # type: Final
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'unicode',
     'builtins.bytearray': 'str',
+    'builtins.memoryview': 'str',
 })
 
 
