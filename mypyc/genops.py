@@ -1137,10 +1137,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             getter_ir, _ = class_ir.properties[name]
             class_ir.properties[name] = (getter_ir, func_ir)
 
-        if func_ir.decl.is_prop_setter:
-            class_ir.methods[PROPSET_PREFIX + name] = func_ir
-        else:
-            class_ir.methods[name] = func_ir
+        class_ir.methods[func_ir.decl.name] = func_ir
 
         # If this overrides a parent class method with a different type, we need
         # to generate a glue method to mediate between them.

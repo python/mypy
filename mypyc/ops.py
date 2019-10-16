@@ -27,12 +27,6 @@ from mypyc.namegen import NameGenerator
 T = TypeVar('T')
 
 
-def short_name(name: str) -> str:
-    if name.startswith('builtins.'):
-        return name[9:]
-    return name
-
-
 class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
@@ -834,9 +828,7 @@ class Call(RegisterOp):
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         # TODO: Display long name?
-        short_name = self.fn.name
-        if self.fn.class_name:
-            short_name = self.fn.class_name + '.' + short_name
+        short_name = self.fn.shortname
         s = '%s(%s)' % (short_name, args)
         if not self.is_void:
             s = env.format('%r = ', self) + s
@@ -1398,14 +1390,16 @@ class FuncDecl:
                  class_name: Optional[str],
                  module_name: str,
                  sig: FuncSignature,
-                 kind: int = FUNC_NORMAL) -> None:
+                 kind: int = FUNC_NORMAL,
+                 is_prop_setter: bool = False,
+                 is_prop_getter: bool = False) -> None:
         self.name = name
         self.class_name = class_name
         self.module_name = module_name
         self.sig = sig
         self.kind = kind
-        self.is_prop_setter = False
-        self.is_prop_getter = False
+        self.is_prop_setter = is_prop_setter
+        self.is_prop_getter = is_prop_getter
         if class_name is None:
             self.bound_sig = None  # type: Optional[FuncSignature]
         else:
@@ -1414,9 +1408,17 @@ class FuncDecl:
             else:
                 self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
 
+    @staticmethod
+    def compute_shortname(class_name: Optional[str], name: str) -> str:
+        return class_name + '.' + name if class_name else name
+
     @property
     def shortname(self) -> str:
-        return self.class_name + '.' + self.name if self.class_name else self.name
+        return FuncDecl.compute_shortname(self.class_name, self.name)
+
+    @property
+    def fullname(self) -> str:
+        return self.module_name + '.' + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.shortname)
@@ -1459,6 +1461,10 @@ class FuncIR:
     @property
     def name(self) -> str:
         return self.decl.name
+
+    @property
+    def fullname(self) -> str:
+        return self.decl.fullname
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)
@@ -1546,21 +1552,18 @@ class ClassIR:
         self.name = name
         self.module_name = module_name
         self.is_trait = is_trait
-        self.is_ext_class = is_ext_class
-        self.is_abstract = is_abstract
         self.is_generated = is_generated
+        self.is_abstract = is_abstract
+        self.is_ext_class = is_ext_class
         self.inherits_python = False
+        self.has_dict = False
+        # If this a subclass of some built-in python class, the name
+        # of the object for that class. We currently only support this
+        # in a few ad-hoc cases.
+        self.builtin_base = None  # type: Optional[str]
         # Default empty ctor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
-        # Properties are accessed like attributes, but have behaivor like method calls.
-        # They don't belong in the methods dictionary, since we don't want to expose them to
-        # Python's method API. But we want to put them into our own vtable as methods, so that
-        # they are properly handled and overridden. The property dictionary values are a tuple
-        # contianing a property getter and an optional property setter.
-        self.properties = OrderedDict()  # type: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]]
-        # We generate these in prepare_class_def so that we have access to them when generating
-        # other methods and properties that rely on these types.
-        self.property_types = OrderedDict()  # type: OrderedDict[str, RType]
+
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
@@ -1569,7 +1572,18 @@ class ClassIR:
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overrided, method)
         # to IR of glue method.
-        self.glue_methods = {}  # type: Dict[Tuple[ClassIR, str], FuncIR]
+        self.glue_methods = OrderedDict()  # type: Dict[Tuple[ClassIR, str], FuncIR]
+
+        # Properties are accessed like attributes, but have behavior like method calls.
+        # They don't belong in the methods dictionary, since we don't want to expose them to
+        # Python's method API. But we want to put them into our own vtable as methods, so that
+        # they are properly handled and overridden. The property dictionary values are a tuple
+        # containing a property getter and an optional property setter.
+        self.properties = OrderedDict()  # type: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]]
+        # We generate these in prepare_class_def so that we have access to them when generating
+        # other methods and properties that rely on these types.
+        self.property_types = OrderedDict()  # type: OrderedDict[str, RType]
+
         self.vtable = None  # type: Optional[Dict[str, int]]
         self.vtable_entries = []  # type: VTableEntries
         self.trait_vtables = OrderedDict()  # type: OrderedDict[ClassIR, VTableEntries]
@@ -1582,14 +1596,9 @@ class ClassIR:
         self.mro = [self]  # type: List[ClassIR]
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro = [self]  # type: List[ClassIR]
-        self.has_dict = False
 
         # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
         self.children = []  # type: List[ClassIR]
-        # If this a subclass of some built-in python class, the name
-        # of the object for that class. We currently only support this
-        # in a few ad-hoc cases.
-        self.builtin_base = None  # type: Optional[str]
 
     @property
     def fullname(self) -> str:
@@ -1881,6 +1890,12 @@ def all_concrete_classes(class_ir: ClassIR) -> List[ClassIR]:
     if not (class_ir.is_abstract or class_ir.is_trait):
         concrete.append(class_ir)
     return concrete
+
+
+def short_name(name: str) -> str:
+    if name.startswith('builtins.'):
+        return name[9:]
+    return name
 
 
 # Import ops_primitive that will set up set up global primitives tables.
