@@ -56,7 +56,8 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 }  # type: Final
 
 GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
-    'Queue'
+    'queue.Queue',
+    'os.Pathlike',
 }  # type: Final
 
 
@@ -901,11 +902,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 # Mypyc doesn't support callback protocols yet.
-FailCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
-NoteCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
+MsgCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
 
 
-def get_omitted_any(disallow_any: bool, fail: FailCallback, note: NoteCallback,
+def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
                     typ: Type, fullname: Optional[str] = None,
                     unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
@@ -924,11 +924,14 @@ def get_omitted_any(disallow_any: bool, fail: FailCallback, note: NoteCallback,
                 typ,
                 code=codes.TYPE_ARG)
 
-            if type_str in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
-                # Recommend to put type in quotes (string literal escaping)
+            if fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
+                # Recommend `from __future__ import annotations` or to put type in quotes
+                # (string literal escaping) for classes not generic at runtime
                 note(
                     "Subscripting classes that are not generic at runtime may require "
-                    "escaping, see https://mypy.readthedocs.io/"
+                    "escaping. If you are running Python 3.7+ you can simply use "
+                    "`from __future__ import annotations`, otherwise please "
+                    "see https://mypy.readthedocs.io/"
                     "en/latest/common_issues.html#not-generic-runtime",
                     typ,
                     code=codes.TYPE_ARG)
@@ -939,7 +942,7 @@ def get_omitted_any(disallow_any: bool, fail: FailCallback, note: NoteCallback,
     return any_type
 
 
-def fix_instance(t: Instance, fail: FailCallback, note: NoteCallback,
+def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
                  disallow_any: bool, use_generic_error: bool = False,
                  unexpanded_type: Optional[Type] = None,) -> None:
     """Fix a malformed instance by replacing all type arguments with Any.
@@ -974,7 +977,7 @@ def fix_instance(t: Instance, fail: FailCallback, note: NoteCallback,
 
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
-                      fail: FailCallback, no_args: bool, ctx: Context, *,
+                      fail: MsgCallback, no_args: bool, ctx: Context, *,
                       unexpanded_type: Optional[Type] = None,
                       disallow_any: bool = False) -> Type:
     """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
@@ -1022,7 +1025,7 @@ def set_any_tvars(tp: Type, vars: List[str],
                   newline: int, newcolumn: int, *,
                   from_error: bool = False,
                   disallow_any: bool = False,
-                  fail: Optional[FailCallback] = None,
+                  fail: Optional[MsgCallback] = None,
                   unexpanded_type: Optional[Type] = None) -> ProperType:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
@@ -1205,7 +1208,7 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: FailCallback, note: NoteCallback) -> None:
+def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
@@ -1215,7 +1218,7 @@ def fix_instance_types(t: Type, fail: FailCallback, note: NoteCallback) -> None:
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: FailCallback, note: NoteCallback) -> None:
+    def __init__(self, fail: MsgCallback, note: MsgCallback) -> None:
         self.fail = fail
         self.note = note
 
