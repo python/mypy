@@ -58,7 +58,7 @@ from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
     Return, FuncIR, Assign, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable,
-    TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, GetAttr, SetAttr,
+    TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
     LoadStatic, InitStatic, MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
@@ -164,11 +164,11 @@ def build_ir(modules: List[MypyFile],
              types: Dict[Expression, Type],
              mapper: 'Mapper',
              options: CompilerOptions,
-             errors: Errors) -> List[Tuple[str, ModuleIR]]:
+             errors: Errors) -> ModuleIRs:
 
     build_type_map(mapper, modules, graph, types, errors)
 
-    result = []
+    result = OrderedDict()  # type: ModuleIRs
 
     # Generate IR for all modules.
     module_names = [mod.fullname() for mod in modules]
@@ -185,12 +185,13 @@ def build_ir(modules: List[MypyFile],
         )
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
+            module.fullname(),
             list(builder.imports),
             builder.functions,
             builder.classes,
             builder.final_names
         )
-        result.append((module.fullname(), module_ir))
+        result[module.fullname()] = module_ir
         class_irs.extend(builder.classes)
 
     # Compute vtables.

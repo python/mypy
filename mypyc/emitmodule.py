@@ -18,7 +18,9 @@ from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
-from mypyc.ops import FuncIR, ClassIR, ModuleIR, LiteralsMap, format_func, RType, RTuple
+from mypyc.ops import (
+    FuncIR, ClassIR, ModuleIR, ModuleIRs, LiteralsMap, RType, RTuple
+)
 from mypyc.options import CompilerOptions
 from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes
@@ -77,8 +79,7 @@ def compile_modules_to_c(
     compiler_options: CompilerOptions,
     errors: Errors,
     groups: Groups,
-    ops: Optional[List[str]] = None,
-) -> List[FileContents]:
+) -> Tuple[ModuleIRs, List[FileContents]]:
     """Compile Python module(s) to the source of Python C extension modules.
 
     This generates the source code for the "shared library" module
@@ -95,7 +96,7 @@ def compile_modules_to_c(
         groups: The groups that we are compiling. See documentation of Groups type above.
         ops: Optionally, where to dump stringified ops for debugging.
 
-    Returns a list containing the generated files for each group.
+    Returns the IR of the modules and a list containing the generated files for each group.
     """
     module_names = [source.module for group_sources, _ in groups for source in group_sources]
     file_nodes = [result.files[name] for name in module_names]
@@ -112,25 +113,19 @@ def compile_modules_to_c(
                               mapper,
                               compiler_options, errors)
     if errors.num_errors > 0:
-        return []
+        return modules, []
     # Insert uninit checks.
-    for _, module in modules:
+    for module in modules.values():
         for fn in module.functions:
             insert_uninit_checks(fn)
     # Insert exception handling.
-    for _, module in modules:
+    for module in modules.values():
         for fn in module.functions:
             insert_exception_handling(fn)
     # Insert refcount handling.
-    for _, module in modules:
+    for module in modules.values():
         for fn in module.functions:
             insert_ref_count_opcodes(fn)
-    # Format ops for debugging
-    if ops is not None:
-        for _, module in modules:
-            for fn in module.functions:
-                ops.extend(format_func(fn))
-                ops.append('')
 
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
@@ -140,16 +135,15 @@ def compile_modules_to_c(
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
     ctext = []
-    module_dict = dict(modules)
     for group_sources, group_name in groups:
-        modules = [(source.module, module_dict[source.module]) for source in group_sources]
+        group_modules = [(source.module, modules[source.module]) for source in group_sources]
         literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            literals, modules, source_paths, group_name, group_map, names,
+            literals, group_modules, source_paths, group_name, group_map, names,
             compiler_options.multi_file
         )
         ctext.append(generator.generate_c_for_modules())
-    return ctext
+    return modules, ctext
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:

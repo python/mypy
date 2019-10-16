@@ -38,6 +38,7 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.common import shared_lib_name
+from mypyc.ops import format_modules
 
 from mypyc import emitmodule
 
@@ -199,11 +200,10 @@ def generate_c(sources: List[BuildSource],
 
     errors = Errors()
 
-    ops = []  # type: List[str]
-    ctext = emitmodule.compile_modules_to_c(result,
-                                            compiler_options=compiler_options,
-                                            errors=errors, ops=ops,
-                                            groups=groups)
+    modules, ctext = emitmodule.compile_modules_to_c(result,
+                                                     compiler_options=compiler_options,
+                                                     errors=errors,
+                                                     groups=groups)
     if errors.num_errors:
         errors.flush_errors()
         sys.exit(1)
@@ -212,7 +212,7 @@ def generate_c(sources: List[BuildSource],
     if compiler_options.verbose:
         print("Compiled to C in {:.3f}s".format(t2 - t1))
 
-    return ctext, '\n'.join(ops)
+    return ctext, '\n'.join(format_modules(modules))
 
 
 def build_using_shared_lib(sources: List[BuildSource],

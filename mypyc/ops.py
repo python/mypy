@@ -24,8 +24,6 @@ from mypy_extensions import trait
 
 from mypyc.namegen import NameGenerator
 
-MYPY = False
-
 T = TypeVar('T')
 
 
@@ -1713,15 +1711,23 @@ LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], 
 class ModuleIR:
     """Intermediate representation of a module."""
 
-    def __init__(self,
+    def __init__(
+            self,
+            fullname: str,
             imports: List[str],
             functions: List[FuncIR],
             classes: List[ClassIR],
             final_names: List[Tuple[str, RType]]) -> None:
+        self.fullname = fullname
         self.imports = imports[:]
         self.functions = functions
         self.classes = classes
         self.final_names = final_names
+
+
+# ModulesIRs should also always be an *OrderedDict*, but if we
+# declared it that way we would need to put it in quotes everywhere...
+ModuleIRs = Dict[str, ModuleIR]
 
 
 @trait
@@ -1858,6 +1864,15 @@ def format_func(fn: FuncIR) -> List[str]:
     code = format_blocks(fn.blocks, fn.env)
     lines.extend(code)
     return lines
+
+
+def format_modules(modules: ModuleIRs) -> List[str]:
+    ops = []
+    for module in modules.values():
+        for fn in module.functions:
+            ops.extend(format_func(fn))
+            ops.append('')
+    return ops
 
 
 def all_concrete_classes(class_ir: ClassIR) -> List[ClassIR]:
