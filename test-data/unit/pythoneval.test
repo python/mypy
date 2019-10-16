@@ -293,8 +293,12 @@ reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.TextIO'
+_testOpenReturnTypeInferenceSpecialCases.py:1: error: All overload variants of "open" require at least one argument
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Possible overload variants:
+_testOpenReturnTypeInferenceSpecialCases.py:1: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: <union: 53 items> = ..., buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> TextIO
+_testOpenReturnTypeInferenceSpecialCases.py:1: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: <union: 38 items>, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> BinaryIO
+_testOpenReturnTypeInferenceSpecialCases.py:1: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: str, buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> IO[Any]
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'Any'
 _testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:3: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:5: note: Revealed type is 'typing.IO[Any]'
@@ -321,8 +325,8 @@ reveal_type(p.open(errors='replace', mode='rb'))
 mode = 'rb'
 reveal_type(p.open(mode=mode, errors='replace'))
 [out]
-_program.py:3: note: Revealed type is 'typing.BinaryIO'
-_program.py:4: note: Revealed type is 'typing.BinaryIO'
+_program.py:3: note: Revealed type is 'typing.IO[Any]'
+_program.py:4: note: Revealed type is 'typing.IO[Any]'
 _program.py:6: note: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]
