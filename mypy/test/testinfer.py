@@ -452,7 +452,7 @@ class OperandComparisonGroupingSuite(Suite):
 
     def test_empty_pair_list(self) -> None:
         # This case should never occur in practice -- ComparisionExprs
-        # always contain at least one comparision. But in case it does...
+        # always contain at least one comparison. But in case it does...
 
         self.assertEqual(group_comparison_operands([], {}, set()), [])
         self.assertEqual(group_comparison_operands([], {}, {'=='}), [])

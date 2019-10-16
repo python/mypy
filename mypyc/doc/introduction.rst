@@ -116,7 +116,7 @@ arbitary third-party libraries, including C extensions.
 often requires only minor changes to compile using mypyc.
 
 **No need to wait for compilation.** Compiled code also runs as normal
-Python code. You can use intepreted Python during development, with
+Python code. You can use interpreted Python during development, with
 familiar workflows.
 
 **Runtime type safety.** Mypyc aims to protect you from segfaults and

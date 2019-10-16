@@ -567,7 +567,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease referece count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref r).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
