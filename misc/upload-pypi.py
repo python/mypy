@@ -124,7 +124,9 @@ class Builder:
 
     def download_compiled_wheels(self) -> None:
         self.heading('Downloading wheels compiled with mypyc')
-        self.run_in_virtualenv('misc/download-mypyc-wheels.py %s' % self.version)
+        self.run_in_virtualenv(
+            '%s %s' %
+            (os.path.abspath('misc/download-mypyc-wheels.py'), self.version))
 
     def upload_wheels(self) -> None:
         self.heading('Uploading wheels')
