@@ -168,7 +168,7 @@ class TestRun(MypycDataSuite):
                     alt_lib_path='.')
                 errors = Errors()
                 compiler_options = CompilerOptions(multi_file=self.multi_file)
-                cfiles = emitmodule.compile_modules_to_c(
+                _, cfiles = emitmodule.compile_modules_to_c(
                     result,
                     compiler_options=compiler_options,
                     errors=errors,

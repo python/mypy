@@ -111,7 +111,7 @@ def build_ir_for_single_file(input_lines: List[str],
         compiler_options, errors)
     assert errors.num_errors == 0
 
-    module = modules[0][1]
+    module = list(modules.values())[0]
     return module.functions
 
 
