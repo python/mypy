@@ -1892,6 +1892,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ok = is_subtype(first_sig, second_sig, ignore_pos_arg_names=True)
         elif first_type and second_type:
             ok = is_equivalent(first_type, second_type)
+            if not ok:
+                second_node = base2[name].node
+                if isinstance(second_node, Decorator) and second_node.func.is_property:
+                    ok = is_subtype(first_type, cast(CallableType, second_type).ret_type)
         else:
             if first_type is None:
                 self.msg.cannot_determine_type_in_base(name, base1.name(), ctx)
