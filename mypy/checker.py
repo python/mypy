@@ -1706,7 +1706,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 with self.scope.push_class(defn.info):
                     self.accept(defn.defs)
             self.binder = old_binder
-            self.check_init_subclass(defn)
+            if not (defn.info.typeddict_type or defn.info.tuple_type or defn.info.is_enum):
+                # If it is not a normal class (not a special form) check class keywords.
+                self.check_init_subclass(defn)
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
@@ -1751,6 +1753,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Base.__init_subclass__(thing=5) is called at line 4. This is what we simulate here.
         Child.__init_subclass__ is never called.
         """
+        if (defn.info.metaclass_type and
+                defn.info.metaclass_type.type.fullname() not in ('builtins.type', 'abc.ABCMeta')):
+            # We can't safely check situations when both __init_subclass__ and a custom
+            # metaclass are present.
+            return
         # At runtime, only Base.__init_subclass__ will be called, so
         # we skip the current class itself.
         for base in defn.info.mro[1:]:
@@ -1775,10 +1782,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.expr_checker.accept(call_expr,
                                      allow_none_return=True,
                                      always_allow_any=True)
-            # We are only interested in the first Base having __init_subclass__
+            # We are only interested in the first Base having __init_subclass__,
             # all other bases have already been checked.
             break
-        return
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared

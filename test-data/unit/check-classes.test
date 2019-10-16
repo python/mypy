@@ -6339,14 +6339,21 @@ class Child(Base, thing=5, default_name=""):
 [builtins fixtures/object_with_init_subclass.pyi]
 
 [case testInitSubclassWithMetaclassOK]
-class Base(type):
+class Base:
     thing: int
 
     def __init_subclass__(cls, thing: int):
         cls.thing = thing
 
-class Child(Base, metaclass=Base, thing=0):
+class Child(Base, metaclass=type, thing=0):
     pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithCustomMetaclassOK]
+class M(type): ...
+class Child(metaclass=M, thing=0):
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
 
 [case testTooManyArgsForObject]
 class A(thing=5):
