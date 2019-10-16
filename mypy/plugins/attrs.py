@@ -639,11 +639,21 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
               adder: 'MethodAdder') -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
-    adder.add_method(
-        '__init__',
-        [attribute.argument(ctx) for attribute in attributes if attribute.init],
-        NoneType()
-    )
+    args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
+    if all(
+        # We use getattr rather than instance checks because the variable.type
+        # might be wrapped into a Union or some other type, but even non-Any
+        # types reliably track the fact that the argument was not annotated.
+        getattr(arg.variable.type, "type_of_any", None) == TypeOfAny.unannotated
+        for arg in args
+    ):
+        # This workaround makes --disallow-incomplete-defs usable with attrs,
+        # but is definitely suboptimal as a long-term solution.
+        # See https://github.com/python/mypy/issues/5954 for discussion.
+        for a in args:
+            a.variable.type = AnyType(TypeOfAny.implementation_artifact)
+            a.type_annotation = AnyType(TypeOfAny.implementation_artifact)
+    adder.add_method('__init__', args, NoneType())
 
 
 class MethodAdder:

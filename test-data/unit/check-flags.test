@@ -1029,6 +1029,31 @@ def f(i: int, s):
 main:3: error: Function is missing a return type annotation
 main:3: error: Function is missing a type annotation for one or more arguments
 
+[case testDisallowIncompleteDefsAttrsNoAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class Unannotated:
+    foo = attr.ib()
+
+[case testDisallowIncompleteDefsAttrsWithAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class Annotated:
+    bar: int = attr.ib()
+
+[case testDisallowIncompleteDefsAttrsPartialAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+    bar: int = attr.ib()
+    baz = attr.ib()
+
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
 from somewhere import YOLO, BLAH
