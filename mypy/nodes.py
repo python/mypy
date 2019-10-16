@@ -2355,12 +2355,6 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
-    # If during analysis of ClassDef associated with this TypeInfo a syntethic
-    # type (NamedTuple or TypedDict) was generated, store the corresponding
-    # TypeInfo here. (This attribute does not need to be serialized, it is only
-    # needed during the semantic passes.)
-    replaced = None  # type: Optional[TypeInfo]
-
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.
     metadata = None  # type: Dict[str, JsonDict]
