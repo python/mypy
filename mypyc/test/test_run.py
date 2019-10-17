@@ -24,6 +24,7 @@ from mypyc.test.testutil import (
     use_custom_builtins, MypycDataSuite, assert_test_output,
     show_c
 )
+from mypyc.test.test_serialization import check_serialization_roundtrip
 
 files = [
     'run-functions.test',
@@ -168,7 +169,7 @@ class TestRun(MypycDataSuite):
                     alt_lib_path='.')
                 errors = Errors()
                 compiler_options = CompilerOptions(multi_file=self.multi_file)
-                _, cfiles = emitmodule.compile_modules_to_c(
+                ir, cfiles = emitmodule.compile_modules_to_c(
                     result,
                     compiler_options=compiler_options,
                     errors=errors,
@@ -181,6 +182,9 @@ class TestRun(MypycDataSuite):
                 for line in e.messages:
                     print(line)
                 assert False, 'Compile error'
+
+            # Check that serialization works on this IR
+            check_serialization_roundtrip(ir)
 
             setup_file = os.path.abspath(os.path.join(workdir, 'setup.py'))
             # We pass the C file information to the build script via setup.py unfortunately
