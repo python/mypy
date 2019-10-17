@@ -6387,6 +6387,42 @@ class MidBase(Base): pass
 [file init_subclass/__init__.py]
 [builtins fixtures/object_with_init_subclass.pyi]
 
+[case testInitSubclassUnannotated]
+class A:
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+
+class B(A):
+    pass
+
+reveal_type(A.__init_subclass__)  # N: Revealed type is 'def (*args: Any, **kwargs: Any) -> Any'
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassUnannotatedMulti]
+from typing import ClassVar, List, Type
+
+class A:
+    registered_classes: ClassVar[List[Type[A]]] = []
+    def __init_subclass__(cls, *args, register=True, **kwargs):
+        if register:
+            cls.registered_classes.append(cls)
+        super().__init_subclass__(*args, **kwargs)
+
+class B(A): ...
+class C(A, register=False): ...
+class D(C): ...
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testClassMethodUnannotated]
+class C:
+    def __new__(cls): ...
+    @classmethod
+    def meth(cls): ...
+
+reveal_type(C.meth)  # N: Revealed type is 'def () -> Any'
+reveal_type(C.__new__)  # N: Revealed type is 'def (cls: Type[__main__.C]) -> Any'
+[builtins fixtures/classmethod.pyi]
+
 [case testOverrideGenericSelfClassMethod]
 from typing import Generic, TypeVar, Type, List
 

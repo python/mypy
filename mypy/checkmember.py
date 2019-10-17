@@ -736,7 +736,12 @@ def analyze_class_attribute_access(itype: Instance,
             mx.not_ready_callback(name, mx.context)
             return AnyType(TypeOfAny.from_error)
     else:
-        return function_type(cast(FuncBase, node.node), mx.builtin_type('builtins.function'))
+        assert isinstance(node.node, FuncBase)
+        # Note: if we are accessing class method on class object, the cls argument is bound.
+        # Annotated and/or explicit class methods go through other code paths above, for
+        # unannotated implicit class method we can just drop first argument.
+        return function_type(node.node, mx.builtin_type('builtins.function'),
+                             no_self=node.node.is_class)
 
 
 def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
