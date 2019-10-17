@@ -124,6 +124,9 @@ class Builder:
 
     def download_compiled_wheels(self) -> None:
         self.heading('Downloading wheels compiled with mypyc')
+        # N.B: We run the version in the current checkout instead of
+        # the one in the version we are releasing, in case we needed
+        # to fix the script.
         self.run_in_virtualenv(
             '%s %s' %
             (os.path.abspath('misc/download-mypyc-wheels.py'), self.version))
