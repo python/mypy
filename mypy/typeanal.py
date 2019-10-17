@@ -929,9 +929,7 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
                 # (string literal escaping) for classes not generic at runtime
                 note(
                     "Subscripting classes that are not generic at runtime may require "
-                    "escaping. If you are running Python 3.7+ you can simply use "
-                    "`from __future__ import annotations`, otherwise please "
-                    "see https://mypy.readthedocs.io/"
+                    "escaping, see https://mypy.readthedocs.io/"
                     "en/latest/common_issues.html#not-generic-runtime",
                     typ,
                     code=codes.TYPE_ARG)
