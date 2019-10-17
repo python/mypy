@@ -1,4 +1,4 @@
-"""Functions to check that serialization round-tripped properliy."""
+"""Functions to check that serialization round-tripped properly."""
 
 # This file is named test_serialization.py even though it doesn't
 # contain its own tests so that pytest will rewrite the asserts...
@@ -8,7 +8,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 
 from mypyc.ops import (
-    deserialize_scc, DeserMaps, ModuleIR, FuncDecl, FuncIR, ClassIR, FuncSignature, RType
+    deserialize_modules, DeserMaps, ModuleIR, FuncDecl, FuncIR, ClassIR, FuncSignature, RType
 )
 from mypyc.sametype import is_same_type, is_same_signature
 
@@ -51,7 +51,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
         assert len(x.keys()) == len(y.keys()), "Keys mismatch at {}".format(trail)
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):
             assert_blobs_same(xk, yk, trail + ("keys",))
-            assert_blobs_same(xv, yv, trail + (xv,))
+            assert_blobs_same(xv, yv, trail + (xk,))
     elif isinstance(x, dict):
         assert x.keys() == y.keys(), "Keys mismatch at {}".format(trail)
         for k in x.keys():
@@ -95,7 +95,7 @@ def check_serialization_roundtrip(irs: Dict[str, ModuleIR]) -> None:
     serialized = {k: ir.serialize() for k, ir in irs.items()}
 
     ctx = DeserMaps({}, {})
-    irs2 = deserialize_scc(serialized, ctx)
+    irs2 = deserialize_modules(serialized, ctx)
     assert irs.keys() == irs2.keys()
 
     for k in irs:

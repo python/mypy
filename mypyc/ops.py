@@ -159,6 +159,7 @@ class RPrimitive(RType):
     These often have custom ops associated with them.
     """
 
+    # Map from primitive names to primitive types and is used by deserialization
     primitive_map = {}  # type: ClassVar[Dict[str, RPrimitive]]
 
     def __init__(self,
@@ -1757,6 +1758,7 @@ class ClassIR:
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
         self.method_decls = OrderedDict()  # type: OrderedDict[str, FuncDecl]
+        # Map of methods that are actually present in an extension class
         self.methods = OrderedDict()  # type: OrderedDict[str, FuncIR]
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overrided, method)
@@ -1899,8 +1901,8 @@ class ClassIR:
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             'attributes': [(k, t.serialize()) for k, t in self.attributes.items()],
-            # We serialize decls out if the decl isn't in methods otherwise
-            # we refer to the whatever
+            # We try to serialize a name reference, but if the decl isn't in methods
+            # then we can't be sure that will work so we serialize the whole decl.
             'method_decls': [(k, d.fullname if k in self.methods else d.serialize())
                              for k, d in self.method_decls.items()],
             # We serialize method fullnames out and put methods in a separate dict
@@ -2030,7 +2032,21 @@ class ModuleIR:
         )
 
 
-def deserialize_scc(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, ModuleIR]:
+def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, ModuleIR]:
+    """Deserialize a collection of modules.
+
+    The modules can contain dependencies on each other.
+
+    Arguments:
+        data: A dict containing the modules to deserialize.
+        ctx: The deserialization maps to use and to populate.
+             They are populated with information from the deserialized
+             modules and as a precondition must have been populated by
+             deserializing any dependencies of the modules being deserialized
+             (outside of dependencies between the modules themselves).
+
+    Returns a map containing the deserialized modules.
+    """
     for mod in data.values():
         # First create ClassIRs for every class so that we can construct types and whatnot
         for cls in mod['classes']:
