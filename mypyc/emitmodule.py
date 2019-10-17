@@ -310,9 +310,6 @@ class GroupGenerator:
 
         emitter = base_emitter
         self.generate_globals_init(emitter)
-        for declaration in sorted_decls:
-            if declaration.defn:
-                emitter.emit_lines(*declaration.defn)
 
         emitter.emit_line()
 
@@ -321,7 +318,12 @@ class GroupGenerator:
             if not declaration.is_type:
                 decls.emit_lines(
                     'extern {}'.format(declaration.decl[0]), *declaration.decl[1:])
-                emitter.emit_lines(*declaration.decl)
+                # If there is a definition, emit it. Otherwise repeat the declaration
+                # (without an extern).
+                if declaration.defn:
+                    emitter.emit_lines(*declaration.defn)
+                else:
+                    emitter.emit_lines(*declaration.decl)
             else:
                 decls.emit_lines(*declaration.decl)
 
