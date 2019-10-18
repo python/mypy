@@ -45,6 +45,8 @@ setup(name='test_run_output',
 )
 """
 
+WORKDIR = 'build'
+
 
 def run_setup(script_name: str, script_args: List[str]) -> bool:
     """Run a setup script in a somewhat controlled environment.
@@ -102,143 +104,144 @@ class TestRun(MypycDataSuite):
     separate = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
-
         # setup.py wants to be run from the root directory of the package, which we accommodate
         # by chdiring into tmp/
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
                 chdir_manager('tmp')):
-            text = '\n'.join(testcase.input)
+            os.mkdir(WORKDIR)
+            self.run_case_inner(testcase)
 
-            options = Options()
-            options.use_builtins_fixtures = True
-            options.show_traceback = True
-            options.strict_optional = True
-            # N.B: We try to (and ought to!) run with the current
-            # version of python, since we are going to link and run
-            # against the current version of python.
-            # But a lot of the tests use type annotations so we can't say it is 3.5.
-            options.python_version = max(sys.version_info[:2], (3, 6))
-            options.export_types = True
-            options.preserve_asts = True
+    def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
+        bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
 
-            # Avoid checking modules/packages named 'unchecked', to provide a way
-            # to test interacting with code we don't have types for.
-            options.per_module_options['unchecked.*'] = {'follow_imports': 'error'}
+        text = '\n'.join(testcase.input)
 
-            workdir = 'build'
-            os.mkdir(workdir)
+        options = Options()
+        options.use_builtins_fixtures = True
+        options.show_traceback = True
+        options.strict_optional = True
+        # N.B: We try to (and ought to!) run with the current
+        # version of python, since we are going to link and run
+        # against the current version of python.
+        # But a lot of the tests use type annotations so we can't say it is 3.5.
+        options.python_version = max(sys.version_info[:2], (3, 6))
+        options.export_types = True
+        options.preserve_asts = True
 
-            source_path = 'native.py'
-            with open(source_path, 'w', encoding='utf-8') as f:
-                f.write(text)
-            with open('interpreted.py', 'w', encoding='utf-8') as f:
-                f.write(text)
+        # Avoid checking modules/packages named 'unchecked', to provide a way
+        # to test interacting with code we don't have types for.
+        options.per_module_options['unchecked.*'] = {'follow_imports': 'error'}
 
-            shutil.copyfile(TESTUTIL_PATH, 'testutil.py')
+        source_path = 'native.py'
+        with open(source_path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        with open('interpreted.py', 'w', encoding='utf-8') as f:
+            f.write(text)
 
-            source = build.BuildSource(source_path, 'native', text)
-            sources = [source]
-            module_names = ['native']
-            module_paths = [os.path.abspath('native.py')]
+        shutil.copyfile(TESTUTIL_PATH, 'testutil.py')
 
-            # Hard code another module name to compile in the same compilation unit.
-            to_delete = []
-            for fn, text in testcase.files:
-                fn = os.path.relpath(fn, test_temp_dir)
+        source = build.BuildSource(source_path, 'native', text)
+        sources = [source]
+        module_names = ['native']
+        module_paths = [os.path.abspath('native.py')]
 
-                if os.path.basename(fn).startswith('other'):
-                    name = os.path.basename(fn).split('.')[0]
-                    module_names.append(name)
-                    sources.append(build.BuildSource(fn, name, text))
-                    to_delete.append(fn)
-                    module_paths.append(os.path.abspath(fn))
+        # Hard code another module name to compile in the same compilation unit.
+        to_delete = []
+        for fn, text in testcase.files:
+            fn = os.path.relpath(fn, test_temp_dir)
 
-                    shutil.copyfile(fn,
-                                    os.path.join(os.path.dirname(fn), name + '_interpreted.py'))
+            if os.path.basename(fn).startswith('other'):
+                name = os.path.basename(fn).split('.')[0]
+                module_names.append(name)
+                sources.append(build.BuildSource(fn, name, text))
+                to_delete.append(fn)
+                module_paths.append(os.path.abspath(fn))
 
-            for source in sources:
-                options.per_module_options.setdefault(source.module, {})['mypyc'] = True
+                shutil.copyfile(fn,
+                                os.path.join(os.path.dirname(fn), name + '_interpreted.py'))
 
-            groups = construct_groups(sources, self.separate, len(module_names) > 1)
+        for source in sources:
+            options.per_module_options.setdefault(source.module, {})['mypyc'] = True
 
-            try:
-                result = emitmodule.parse_and_typecheck(
-                    sources=sources,
-                    options=options,
-                    alt_lib_path='.')
-                errors = Errors()
-                compiler_options = CompilerOptions(multi_file=self.multi_file)
-                ir, cfiles = emitmodule.compile_modules_to_c(
-                    result,
-                    compiler_options=compiler_options,
-                    errors=errors,
-                    groups=groups,
-                )
-                if errors.num_errors:
-                    errors.flush_errors()
-                    assert False, "Compile error"
-            except CompileError as e:
-                for line in e.messages:
-                    print(line)
-                assert False, 'Compile error'
+        groups = construct_groups(sources, self.separate, len(module_names) > 1)
 
-            # Check that serialization works on this IR
-            check_serialization_roundtrip(ir)
+        try:
+            result = emitmodule.parse_and_typecheck(
+                sources=sources,
+                options=options,
+                alt_lib_path='.')
+            errors = Errors()
+            compiler_options = CompilerOptions(multi_file=self.multi_file)
+            ir, cfiles = emitmodule.compile_modules_to_c(
+                result,
+                compiler_options=compiler_options,
+                errors=errors,
+                groups=groups,
+            )
+            if errors.num_errors:
+                errors.flush_errors()
+                assert False, "Compile error"
+        except CompileError as e:
+            for line in e.messages:
+                print(line)
+            assert False, 'Compile error'
 
-            setup_file = os.path.abspath(os.path.join(workdir, 'setup.py'))
-            # We pass the C file information to the build script via setup.py unfortunately
-            with open(setup_file, 'w', encoding='utf-8') as f:
-                f.write(setup_format.format(module_paths, self.separate, cfiles))
+        # Check that serialization works on this IR
+        check_serialization_roundtrip(ir)
 
-            if not run_setup(setup_file, ['build_ext', '--inplace']):
-                if testcase.config.getoption('--mypyc-showc'):
-                    show_c(cfiles)
-                assert False, "Compilation failed"
+        setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
+        # We pass the C file information to the build script via setup.py unfortunately
+        with open(setup_file, 'w', encoding='utf-8') as f:
+            f.write(setup_format.format(module_paths, self.separate, cfiles))
 
-            # Assert that an output file got created
-            suffix = 'pyd' if sys.platform == 'win32' else 'so'
-            assert glob.glob('native.*.{}'.format(suffix))
-
-            for p in to_delete:
-                os.remove(p)
-
-            driver_path = 'driver.py'
-            env = os.environ.copy()
-            env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
-
-            # XXX: This is an ugly hack.
-            if 'MYPYC_RUN_GDB' in os.environ:
-                if platform.system() == 'Darwin':
-                    subprocess.check_call(['lldb', '--', sys.executable, driver_path], env=env)
-                    assert False, ("Test can't pass in lldb mode. (And remember to pass -s to "
-                                   "pytest)")
-                elif platform.system() == 'Linux':
-                    subprocess.check_call(['gdb', '--args', sys.executable, driver_path], env=env)
-                    assert False, ("Test can't pass in gdb mode. (And remember to pass -s to "
-                                   "pytest)")
-                else:
-                    assert False, 'Unsupported OS'
-
-            proc = subprocess.Popen([sys.executable, driver_path], stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT, env=env)
-            output = proc.communicate()[0].decode('utf8')
-            outlines = output.splitlines()
-
+        if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):
                 show_c(cfiles)
-            if proc.returncode != 0:
-                print()
-                print('*** Exit status: %d' % proc.returncode)
+            assert False, "Compilation failed"
 
-            # Verify output.
-            if bench:
-                print('Test output:')
-                print(output)
+        # Assert that an output file got created
+        suffix = 'pyd' if sys.platform == 'win32' else 'so'
+        assert glob.glob('native.*.{}'.format(suffix))
+
+        for p in to_delete:
+            os.remove(p)
+
+        driver_path = 'driver.py'
+        env = os.environ.copy()
+        env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
+
+        # XXX: This is an ugly hack.
+        if 'MYPYC_RUN_GDB' in os.environ:
+            if platform.system() == 'Darwin':
+                subprocess.check_call(['lldb', '--', sys.executable, driver_path], env=env)
+                assert False, ("Test can't pass in lldb mode. (And remember to pass -s to "
+                               "pytest)")
+            elif platform.system() == 'Linux':
+                subprocess.check_call(['gdb', '--args', sys.executable, driver_path], env=env)
+                assert False, ("Test can't pass in gdb mode. (And remember to pass -s to "
+                               "pytest)")
             else:
-                assert_test_output(testcase, outlines, 'Invalid output')
+                assert False, 'Unsupported OS'
 
-            assert proc.returncode == 0
+        proc = subprocess.Popen([sys.executable, driver_path], stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, env=env)
+        output = proc.communicate()[0].decode('utf8')
+        outlines = output.splitlines()
+
+        if testcase.config.getoption('--mypyc-showc'):
+            show_c(cfiles)
+        if proc.returncode != 0:
+            print()
+            print('*** Exit status: %d' % proc.returncode)
+
+        # Verify output.
+        if bench:
+            print('Test output:')
+            print(output)
+        else:
+            assert_test_output(testcase, outlines, 'Invalid output')
+
+        assert proc.returncode == 0
 
 
 # Run the main multi-module tests in multi-file compliation mode
