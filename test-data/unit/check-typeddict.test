@@ -1130,7 +1130,7 @@ f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, '
 # flags: --warn-unreachable
 from mypy_extensions import TypedDict
 
-class A(TypedDict, total=False):
+class A(TypedDict):
     ...
 
 class B(TypedDict, total=False):
