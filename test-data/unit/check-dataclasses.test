@@ -15,6 +15,7 @@ Person('John', 32)
 Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testDataclassesCustomInit]
 # flags: --python-version 3.6
@@ -52,6 +53,7 @@ Person(32, 'John')
 Person(21, 'Jonh', None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testDataclassesDeepInheritance]
 # flags: --python-version 3.6
