@@ -1250,6 +1250,7 @@ b'%a' % 3
 '%*%' % 1
 '%*% %d' % 1  # E: Not enough arguments for format string
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationC]
 '%c' % 1
@@ -1263,14 +1264,15 @@ b'%a' % 3
 '%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "Union[int, float, SupportsInt]")
 b'%(x)s' % {b'x': b'data'}
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
 '%(a)d %%' % {'a': 1}
-
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationMappingDictTypes]
 from typing import Any, Dict
@@ -1300,6 +1302,7 @@ di = None # type: Dict[int, int]
 '%(a).1d' % {'a': 1}
 '%(a)#1.1ld' % {'a': 1}
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationFloatPrecision]
 '%.f' % 1.2
