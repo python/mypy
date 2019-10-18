@@ -140,8 +140,8 @@ class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
 
-class SupportsAbs(Protocol[T_co]):
-    def __abs__(self) -> T_co: pass
+class SupportsFloat(Protocol):
+    def __float__(self) -> float: pass
 
 def runtime_checkable(cls: T) -> T:
     return cls
