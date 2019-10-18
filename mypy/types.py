@@ -1376,7 +1376,7 @@ class TypedDictType(ProperType):
         self.required_keys = required_keys
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
-        self.can_be_false = len(self.items) == 0
+        self.can_be_false = len(self.required_keys) == 0
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_typeddict_type(self)

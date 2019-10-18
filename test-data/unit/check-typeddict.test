@@ -1126,6 +1126,25 @@ ll = [b, c]
 f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 
+[case testNonTotalTypedDictCanBeEmpty]
+# flags: --warn-unreachable
+from mypy_extensions import TypedDict
+
+class A(TypedDict):
+    ...
+
+class B(TypedDict, total=False):
+    x: int
+
+a: A = {}
+b: B = {}
+
+if not a:
+    reveal_type(a) # N: Revealed type is 'TypedDict('__main__.A', {})'
+
+if not b:
+    reveal_type(b) # N: Revealed type is 'TypedDict('__main__.B', {'x'?: builtins.int})'
+[builtins fixtures/dict.pyi]
 
 -- Create Type (Errors)
 
