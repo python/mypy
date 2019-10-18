@@ -292,6 +292,13 @@ def write_file(path: str, contents: str) -> None:
         with open(path, 'w', encoding='utf-8') as f:
             f.write(contents)
 
+        # Fudge the mtime forward because otherwise when two builds happen close
+        # together (like in a test) setuptools might not realize the source is newer
+        # than the new artifact.
+        # XXX: This is bad though.
+        new_mtime = os.stat(path).st_mtime + 1
+        os.utime(path, times=(new_mtime, new_mtime))
+
 
 def construct_groups(
     sources: List[BuildSource],
