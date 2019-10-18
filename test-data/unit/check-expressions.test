@@ -1147,11 +1147,12 @@ i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 '%d' % (s,) # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
 '%d' % t
 '%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
-'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
+'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFlo1at]")
 '%x' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
 '%i' % f
 '%o' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationSAcceptsAnyType]
 from typing import Any
@@ -1179,6 +1180,7 @@ reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is 'builtins.unicode'
 reveal_type('%r' % xu)  # N: Revealed type is 'builtins.str'
 reveal_type('%s' % xs)  # N: Revealed type is 'builtins.str'
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationCount]
 '%d %d' % 1  # E: Not enough arguments for format string
@@ -1189,12 +1191,14 @@ t = 1, 's'
 '%s %d' % t  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
 '%d' % t  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationWithAnyType]
 from typing import Any
 a = None # type: Any
 '%d %d' % a
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character 'W'
@@ -1682,6 +1686,7 @@ class Good:
 x: Union[float, Good]
 '{:+f}'.format(x)
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testFormatCallSpecialCases]
 '{:08b}'.format(int('3'))
