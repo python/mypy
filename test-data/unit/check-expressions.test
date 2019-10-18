@@ -1307,6 +1307,7 @@ di = None # type: Dict[int, int]
 '%.f' % 'x'
 '%.3f' % 'x'
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:3: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
 main:4: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
@@ -1322,6 +1323,7 @@ foo(b'a', b'b') == b'a:b'
 [case testStringInterpolationStarArgs]
 x = (1, 2)
 "%d%d" % (*x,)
+[typing fixtures/typing-full.pyi]
 
 [case testBytePercentInterpolationSupported]
 b'%s' % (b'xyz',)
@@ -1338,6 +1340,7 @@ def f(t: Tuple[int, ...]) -> None:
     '%d %d' % t
     '%d %d %d' % t
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStringInterpolationUnionType]
 from typing import Tuple, Union
