@@ -533,3 +533,32 @@ class C:
 x: Union[A, C]
 reveal_type(x.same)  # N: Revealed type is 'Union[builtins.int, def () -> __main__.C*]'
 [builtins fixtures/classmethod.pyi]
+
+[case SelfTypeOverloadedClassMethod]
+from lib import Base
+from typing import overload, Tuple
+
+class Sub(Base):
+    @overload
+    @classmethod
+    def make(cls) -> Sub: ...
+    @overload
+    @classmethod
+    def make(cls, num: int) -> Tuple[Sub, ...]: ...
+    @classmethod
+    def make(cls, num=1):
+        ...
+
+[file lib.pyi]
+from typing import overload, TypeVar, Type, Tuple
+
+T = TypeVar('T', bound=Base)
+
+class Base:
+    @overload
+    @classmethod
+    def make(cls: Type[T]) -> T: ...
+    @overload
+    @classmethod
+    def make(cls: Type[T], num: int) -> Tuple[T, ...]: ...
+[builtins fixtures/classmethod.pyi]
