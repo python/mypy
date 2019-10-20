@@ -383,15 +383,14 @@ def erase_to_union_or_bound(typ: TypeVarType) -> ProperType:
         return get_proper_type(typ.upper_bound)
 
 
-def function_type(func: FuncBase, fallback: Instance,
-                  no_self: bool = False) -> FunctionLike:
+def function_type(func: FuncBase, fallback: Instance) -> FunctionLike:
     if func.type:
         assert isinstance(func.type, FunctionLike)
         return func.type
     else:
         # Implicit type signature with dynamic types.
         if isinstance(func, FuncItem):
-            return callable_type(func, fallback, no_self=no_self)
+            return callable_type(func, fallback)
         else:
             # Broken overloads can have self.type set to None.
             # TODO: should we instead always set the type in semantic analyzer?
@@ -408,8 +407,7 @@ def function_type(func: FuncBase, fallback: Instance,
 
 
 def callable_type(fdef: FuncItem, fallback: Instance,
-                  ret_type: Optional[Type] = None,
-                  no_self: bool = False) -> CallableType:
+                  ret_type: Optional[Type] = None) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
         self_type = fill_typevars(fdef.info)  # type: Type
@@ -419,7 +417,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
     else:
         args = [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names)
 
-    typ = CallableType(
+    return CallableType(
         args,
         fdef.arg_kinds,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
@@ -430,11 +428,6 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         column=fdef.column,
         implicit=True,
     )
-    if no_self and typ.arg_types:
-        typ = typ.copy_modified(arg_types=typ.arg_types[1:],
-                                arg_kinds=typ.arg_kinds[1:],
-                                arg_names=typ.arg_names[1:])
-    return typ
 
 
 def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]:
