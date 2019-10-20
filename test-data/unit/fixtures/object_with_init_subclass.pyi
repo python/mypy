@@ -1,4 +1,4 @@
-from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic
+from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic, List
 
 class object:
     def __init__(self) -> None: ...
@@ -33,6 +33,15 @@ class bytearray: pass
 class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
+
+# copy-pasted from list.pyi
+class list(Sequence[T]):
+    def __iter__(self) -> Iterator[T]: pass
+    def __mul__(self, x: int) -> list[T]: pass
+    def __setitem__(self, x: int, v: T) -> None: pass
+    def __getitem__(self, x: int) -> T: pass
+    def __add__(self, x: List[T]) -> T: pass
+    def __contains__(self, item: object) -> bool: pass
 
 # copy-pasted from dict.pyi
 class dict(Mapping[KT, VT]):
