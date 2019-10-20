@@ -15,16 +15,19 @@ from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
     Union, Iterable, Set
 )
-from typing_extensions import Final, Type
+from typing_extensions import Final, Type, ClassVar
 from collections import OrderedDict
 
 from mypy.nodes import ARG_NAMED_OPT, ARG_OPT, ARG_POS, Block, FuncDef, SymbolNode
+from mypyc.common import PROPSET_PREFIX
 
 from mypy_extensions import trait
 
 from mypyc.namegen import NameGenerator
 
 T = TypeVar('T')
+
+JsonDict = Dict[str, Any]
 
 
 class RType:
@@ -54,6 +57,61 @@ class RType:
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def serialize(self) -> Union[JsonDict, str]:
+        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+
+
+# We do a three-pass deserialization scheme in order to resolve name
+# references.
+#  1. Create an empty ClassIR for each class in an SCC.
+#  2. Deserialize all of the functions, which can contain references
+#     to ClassIRs in their types
+#  3. Deserialize all of the classes, which contain lots of references
+#     to the functions they contain. (And to other classes.)
+#
+# Note that this approach differs from how we deserialize ASTs in mypy itself,
+# where everything is deserialized in one pass then a second pass cleans up
+# 'cross_refs'. We don't follow that approach here because it seems to be more
+# code for not a lot of gain since it is easy in mypyc to identify all the objects
+# we might need to reference.
+#
+# Because of these references, we need to maintain maps from class
+# names to ClassIRs and func names to FuncIRs.
+#
+# These are tracked in a DeserMaps which is passed to every
+# deserialization function.
+#
+# (Serialization and deserialization *will* be used for incremental
+# compilation but so far it is not hooked up to anything.)
+DeserMaps = NamedTuple('DeserMaps',
+                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
+
+
+def deserialize_type(data: Union[JsonDict, str], ctx: DeserMaps) -> 'RType':
+    """Deserialize a JSON-serialized RType.
+
+    Arguments:
+        data: The decoded JSON of the serialized type
+        ctx: The deserialization maps to use
+    """
+    # Since there are so few types, we just case on them directly.  If
+    # more get added we should switch to a system like mypy.types
+    # uses.
+    if isinstance(data, str):
+        if data in ctx.classes:
+            return RInstance(ctx.classes[data])
+        elif data in RPrimitive.primitive_map:
+            return RPrimitive.primitive_map[data]
+        elif data == "void":
+            return RVoid()
+        else:
+            assert False, "Can't find class {}".format(data)
+    elif data['.class'] == 'RTuple':
+        return RTuple.deserialize(data, ctx)
+    elif data['.class'] == 'RUnion':
+        return RUnion.deserialize(data, ctx)
+    raise NotImplementedError('unexpected .class {}'.format(data['.class']))
 
 
 class RTypeVisitor(Generic[T]):
@@ -88,6 +146,9 @@ class RVoid(RType):
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rvoid(self)
 
+    def serialize(self) -> str:
+        return 'void'
+
 
 void_rtype = RVoid()  # type: Final
 
@@ -98,11 +159,16 @@ class RPrimitive(RType):
     These often have custom ops associated with them.
     """
 
+    # Map from primitive names to primitive types and is used by deserialization
+    primitive_map = {}  # type: ClassVar[Dict[str, RPrimitive]]
+
     def __init__(self,
                  name: str,
                  is_unboxed: bool,
                  is_refcounted: bool,
                  ctype: str = 'PyObject *') -> None:
+        RPrimitive.primitive_map[name] = self
+
         self.name = name
         self.is_unboxed = is_unboxed
         self._ctype = ctype
@@ -118,6 +184,9 @@ class RPrimitive(RType):
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rprimitive(self)
+
+    def serialize(self) -> str:
+        return self.name
 
     def __repr__(self) -> str:
         return '<RPrimitive %s>' % self.name
@@ -257,6 +326,15 @@ class RTuple(RType):
     def __hash__(self) -> int:
         return hash((self.name, self.types))
 
+    def serialize(self) -> JsonDict:
+        types = [x.serialize() for x in self.types]
+        return {'.class': 'RTuple', 'types': types}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RTuple':
+        types = [deserialize_type(t, ctx) for t in data['types']]
+        return RTuple(types)
+
 
 exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 
@@ -294,6 +372,9 @@ class RInstance(RType):
     def __repr__(self) -> str:
         return '<RInstance %s>' % self.name
 
+    def serialize(self) -> str:
+        return self.name
+
 
 class RUnion(RType):
     """union[x, ..., y]"""
@@ -321,6 +402,15 @@ class RUnion(RType):
 
     def __hash__(self) -> int:
         return hash(('union', self.items_set))
+
+    def serialize(self) -> JsonDict:
+        types = [x.serialize() for x in self.items]
+        return {'.class': 'RUnion', 'types': types}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RUnion':
+        types = [deserialize_type(t, ctx) for t in data['types']]
+        return RUnion(types)
 
 
 def optional_value_type(rtype: RType) -> Optional[RType]:
@@ -1368,6 +1458,17 @@ class RuntimeArg:
     def __repr__(self) -> str:
         return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
 
+    def serialize(self) -> JsonDict:
+        return {'name': self.name, 'type': self.type.serialize(), 'kind': self.kind}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RuntimeArg':
+        return RuntimeArg(
+            data['name'],
+            deserialize_type(data['type'], ctx),
+            data['kind'],
+        )
+
 
 class FuncSignature:
     # TODO: track if method?
@@ -1377,6 +1478,16 @@ class FuncSignature:
 
     def __repr__(self) -> str:
         return 'FuncSignature(args=%r, ret=%r)' % (self.args, self.ret_type)
+
+    def serialize(self) -> JsonDict:
+        return {'args': [t.serialize() for t in self.args], 'ret_type': self.ret_type.serialize()}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncSignature':
+        return FuncSignature(
+            [RuntimeArg.deserialize(arg, ctx) for arg in data['args']],
+            deserialize_type(data['ret_type'], ctx),
+        )
 
 
 FUNC_NORMAL = 0  # type: Final
@@ -1422,6 +1533,33 @@ class FuncDecl:
 
     def cname(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.shortname)
+
+    def serialize(self) -> JsonDict:
+        return {
+            'name': self.name,
+            'class_name': self.class_name,
+            'module_name': self.module_name,
+            'sig': self.sig.serialize(),
+            'kind': self.kind,
+            'is_prop_setter': self.is_prop_setter,
+            'is_prop_getter': self.is_prop_getter,
+        }
+
+    @staticmethod
+    def get_name_from_json(f: JsonDict) -> str:
+        return f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
+        return FuncDecl(
+            data['name'],
+            data['class_name'],
+            data['module_name'],
+            FuncSignature.deserialize(data['sig'], ctx),
+            data['kind'],
+            data['is_prop_setter'],
+            data['is_prop_getter'],
+        )
 
 
 class FuncIR:
@@ -1471,6 +1609,24 @@ class FuncIR:
 
     def __str__(self) -> str:
         return '\n'.join(format_func(self))
+
+    def serialize(self) -> JsonDict:
+        # We don't include blocks or env in the serialized version
+        return {
+            'decl': self.decl.serialize(),
+            'line': self.line,
+            'traceback_name': self.traceback_name,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncIR':
+        return FuncIR(
+            FuncDecl.deserialize(data['decl'], ctx),
+            [],
+            Environment(),
+            data['line'],
+            data['traceback_name'],
+        )
 
 
 INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
@@ -1538,7 +1694,41 @@ VTableAttr = NamedTuple(
                    ('is_setter', bool)])
 
 
-VTableEntries = List[Union[VTableMethod, VTableAttr]]
+VTableEntry = Union[VTableMethod, VTableAttr]
+VTableEntries = List[VTableEntry]
+
+
+def serialize_vtable_entry(entry: VTableEntry) -> JsonDict:
+    if isinstance(entry, VTableMethod):
+        return {
+            '.class': 'VTableMethod',
+            'cls': entry.cls.fullname,
+            'name': entry.name,
+            'method': entry.method.decl.fullname,
+        }
+    else:
+        return {
+            '.class': 'VTableAttr',
+            'cls': entry.cls.fullname,
+            'name': entry.name,
+            'is_setter': entry.is_setter,
+        }
+
+
+def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
+    return [serialize_vtable_entry(v) for v in vtable]
+
+
+def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableEntry:
+    if data['.class'] == 'VTableMethod':
+        return VTableMethod(ctx.classes[data['cls']], data['name'], ctx.functions[data['method']])
+    elif data['.class'] == 'VTableAttr':
+        return VTableAttr(ctx.classes[data['cls']], data['name'], data['is_setter'])
+    assert False, "Bogus vtable .class: %s" % data['.class']
+
+
+def deserialize_vtable(data: List[JsonDict], ctx: DeserMaps) -> VTableEntries:
+    return [deserialize_vtable_entry(x, ctx) for x in data]
 
 
 class ClassIR:
@@ -1568,6 +1758,7 @@ class ClassIR:
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
         self.method_decls = OrderedDict()  # type: OrderedDict[str, FuncDecl]
+        # Map of methods that are actually present in an extension class
         self.methods = OrderedDict()  # type: OrderedDict[str, FuncIR]
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overrided, method)
@@ -1696,6 +1887,94 @@ class ClassIR:
         # to get stable order.
         return sorted(concrete, key=lambda c: (len(c.children), c.name))
 
+    def serialize(self) -> JsonDict:
+        return {
+            'name': self.name,
+            'module_name': self.module_name,
+            'is_trait': self.is_trait,
+            'is_ext_class': self.is_ext_class,
+            'is_abstract': self.is_abstract,
+            'is_generated': self.is_generated,
+            'inherits_python': self.inherits_python,
+            'has_dict': self.has_dict,
+            'builtin_base': self.builtin_base,
+            'ctor': self.ctor.serialize(),
+            # We serialize dicts as lists to ensure order is preserved
+            'attributes': [(k, t.serialize()) for k, t in self.attributes.items()],
+            # We try to serialize a name reference, but if the decl isn't in methods
+            # then we can't be sure that will work so we serialize the whole decl.
+            'method_decls': [(k, d.fullname if k in self.methods else d.serialize())
+                             for k, d in self.method_decls.items()],
+            # We serialize method fullnames out and put methods in a separate dict
+            'methods': [(k, m.fullname) for k, m in self.methods.items()],
+            'glue_methods': [
+                ((cir.fullname, k), m.fullname)
+                for (cir, k), m in self.glue_methods.items()
+            ],
+
+            # We serialize properties and property_types separately out of an
+            # abundance of caution about preserving dict ordering...
+            'property_types': [(k, t.serialize()) for k, t in self.property_types.items()],
+            'properties': list(self.properties),
+
+            'vtable': self.vtable,
+            'vtable_entries': serialize_vtable(self.vtable_entries),
+            'trait_vtables': [
+                (cir.fullname, serialize_vtable(v)) for cir, v in self.trait_vtables.items()
+            ],
+
+            # References to class IRs are all just names
+            'base': self.base.fullname if self.base else None,
+            'traits': [cir.fullname for cir in self.traits],
+            'mro': [cir.fullname for cir in self.mro],
+            'base_mro': [cir.fullname for cir in self.base_mro],
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'ClassIR':
+        fullname = data['module_name'] + '.' + data['name']
+        assert fullname in ctx.classes, "Class %s not in deser class map" % fullname
+        ir = ctx.classes[fullname]
+
+        ir.is_trait = data['is_trait']
+        ir.is_generated = data['is_generated']
+        ir.is_abstract = data['is_abstract']
+        ir.is_ext_class = data['is_ext_class']
+        ir.inherits_python = data['inherits_python']
+        ir.has_dict = data['has_dict']
+        ir.builtin_base = data['builtin_base']
+        ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
+        ir.attributes = OrderedDict(
+            (k, deserialize_type(t, ctx)) for k, t in data['attributes']
+        )
+        ir.method_decls = OrderedDict((k, ctx.functions[v].decl
+                                       if isinstance(v, str) else FuncDecl.deserialize(v, ctx))
+                                      for k, v in data['method_decls'])
+        ir.methods = OrderedDict((k, ctx.functions[v]) for k, v in data['methods'])
+        ir.glue_methods = OrderedDict(
+            ((ctx.classes[c], k), ctx.functions[v]) for (c, k), v in data['glue_methods']
+        )
+        ir.property_types = OrderedDict(
+            (k, deserialize_type(t, ctx)) for k, t in data['property_types']
+        )
+        ir.properties = OrderedDict(
+            (k, (ir.methods[k], ir.methods.get(PROPSET_PREFIX + k))) for k in data['properties']
+        )
+
+        ir.vtable = data['vtable']
+        ir.vtable_entries = deserialize_vtable(data['vtable_entries'], ctx)
+        ir.trait_vtables = OrderedDict(
+            (ctx.classes[k], deserialize_vtable(v, ctx)) for k, v in data['trait_vtables']
+        )
+
+        base = data['base']
+        ir.base = ctx.classes[base] if base else None
+        ir.traits = [ctx.classes[s] for s in data['traits']]
+        ir.mro = [ctx.classes[s] for s in data['mro']]
+        ir.base_mro = [ctx.classes[s] for s in data['base_mro']]
+
+        return ir
+
 
 class NonExtClassInfo:
     """Information needed to construct a non-extension class.
@@ -1732,6 +2011,59 @@ class ModuleIR:
         self.functions = functions
         self.classes = classes
         self.final_names = final_names
+
+    def serialize(self) -> JsonDict:
+        return {
+            'fullname': self.fullname,
+            'imports': self.imports,
+            'functions': [f.serialize() for f in self.functions],
+            'classes': [c.serialize() for c in self.classes],
+            'final_names': [(k, t.serialize()) for k, t in self.final_names],
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'ModuleIR':
+        return ModuleIR(
+            data['fullname'],
+            data['imports'],
+            [ctx.functions[FuncDecl.get_name_from_json(f['decl'])] for f in data['functions']],
+            [ClassIR.deserialize(c, ctx) for c in data['classes']],
+            [(k, deserialize_type(t, ctx)) for k, t in data['final_names']],
+        )
+
+
+def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, ModuleIR]:
+    """Deserialize a collection of modules.
+
+    The modules can contain dependencies on each other.
+
+    Arguments:
+        data: A dict containing the modules to deserialize.
+        ctx: The deserialization maps to use and to populate.
+             They are populated with information from the deserialized
+             modules and as a precondition must have been populated by
+             deserializing any dependencies of the modules being deserialized
+             (outside of dependencies between the modules themselves).
+
+    Returns a map containing the deserialized modules.
+    """
+    for mod in data.values():
+        # First create ClassIRs for every class so that we can construct types and whatnot
+        for cls in mod['classes']:
+            ir = ClassIR(cls['name'], cls['module_name'])
+            assert ir.fullname not in ctx.classes, "Class %s already in map" % ir.fullname
+            ctx.classes[ir.fullname] = ir
+
+    for mod in data.values():
+        # Then deserialize all of the functions so that methods are available
+        # to the class deserialization.
+        for method in mod['functions']:
+            func = FuncIR.deserialize(method, ctx)
+            assert func.decl.fullname not in ctx.functions, (
+                "Method %s already in map" % func.decl.fullname)
+            ctx.functions[func.decl.fullname] = func
+
+    return {k: ModuleIR.deserialize(v, ctx) for k, v in data.items()}
 
 
 # ModulesIRs should also always be an *OrderedDict*, but if we

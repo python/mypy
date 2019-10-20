@@ -247,8 +247,6 @@ class GroupGenerator:
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
             self.declare_imports(module.imports, emitter)
-            # Finals must be last (types can depend on declared above)
-            self.define_finals(module_name, module.final_names, emitter)
 
             for cl in module.classes:
                 if cl.is_ext_class:
@@ -306,9 +304,6 @@ class GroupGenerator:
 
         emitter = base_emitter
         self.generate_globals_init(emitter)
-        for declaration in sorted_decls:
-            if declaration.defn:
-                emitter.emit_lines(*declaration.defn)
 
         emitter.emit_line()
 
@@ -317,7 +312,12 @@ class GroupGenerator:
             if not declaration.is_type:
                 decls.emit_lines(
                     'extern {}'.format(declaration.decl[0]), *declaration.decl[1:])
-                emitter.emit_lines(*declaration.decl)
+                # If there is a definition, emit it. Otherwise repeat the declaration
+                # (without an extern).
+                if declaration.defn:
+                    emitter.emit_lines(*declaration.defn)
+                else:
+                    emitter.emit_lines(*declaration.decl)
             else:
                 decls.emit_lines(*declaration.decl)
 
@@ -715,20 +715,19 @@ class GroupGenerator:
             static_name = emitter.static_name(name, module)
             emitter.context.declarations[static_name] = HeaderDeclaration(
                 '{}{};'.format(emitter.ctype_spaced(typ), static_name),
+                [self.final_definition(module, name, typ, emitter)],
                 needs_export=True)
 
-    def define_finals(
-            self, module: str, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
-        for name, typ in final_names:
-            static_name = emitter.static_name(name, module)
-            # Here we rely on the fact that undefined value and error value are always the same
-            if isinstance(typ, RTuple):
-                # We need to inline because initializer must be static
-                undefined = '{{ {} }}'.format(''.join(emitter.tuple_undefined_value_helper(typ)))
-            else:
-                undefined = emitter.c_undefined_value(typ)
-            emitter.emit_line('{}{} = {};'.format(emitter.ctype_spaced(typ), static_name,
-                                                  undefined))
+    def final_definition(
+            self, module: str, name: str, typ: RType, emitter: Emitter) -> str:
+        static_name = emitter.static_name(name, module)
+        # Here we rely on the fact that undefined value and error value are always the same
+        if isinstance(typ, RTuple):
+            # We need to inline because initializer must be static
+            undefined = '{{ {} }}'.format(''.join(emitter.tuple_undefined_value_helper(typ)))
+        else:
+            undefined = emitter.c_undefined_value(typ)
+        return '{}{} = {};'.format(emitter.ctype_spaced(typ), static_name, undefined)
 
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)
