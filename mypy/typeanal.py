@@ -57,7 +57,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 
 GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
     'queue.Queue',
-    'os.Pathlike',
+    'builtins._PathLike',
 }  # type: Final
 
 
