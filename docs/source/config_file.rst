@@ -317,10 +317,10 @@ section of the command line docs.
 
 .. _config-file-none-and-optional-handling:
 
-None and optional handling
+None and Optional handling
 **************************
 
-For more information, see the :ref:`None and optional handling <none-and-optional-handling>`
+For more information, see the :ref:`None and Optional handling <none-and-optional-handling>`
 section of the command line docs.
 
 ``no_implicit_optional`` (bool, default False)
