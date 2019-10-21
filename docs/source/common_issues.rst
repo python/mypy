@@ -533,6 +533,7 @@ Here's the above example modified to use ``MYPY``:
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
 
+.. _not-generic-runtime:
 
 Using classes that are generic in stubs but not at runtime
 ----------------------------------------------------------
@@ -568,6 +569,15 @@ string literal types or :py:data:`~typing.TYPE_CHECKING`:
 
    results: 'Queue[int]' = Queue()  # OK
 
+If you are running Python 3.7+ you can use ``from __future__ import annotations``
+as a (nicer) alternative to string quotes, read more in :pep:`563`.  For example:
+
+.. code-block:: python
+
+   from __future__ import annotations
+   from queue import Queue
+
+   results: Queue[int] = Queue()  # This works at runtime
 
 .. _silencing-linters:
 
