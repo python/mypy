@@ -1446,7 +1446,7 @@ some_file.py:1: error: invalid syntax  [syntax]
 == Return code: 2
 
 [case testSpecialTypeshedGenericNote]
-# cmd: mypy --disallow-any-generics test.py
+# cmd: mypy --disallow-any-generics --python-version=3.6 test.py
 [file test.py]
 from os import PathLike
 from queue import Queue
