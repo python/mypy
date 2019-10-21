@@ -487,7 +487,3 @@ These options may only be set in the global section (``[mypy]``).
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
-
-``new_semantic_analyzer`` (bool, default True)
-    Enables the new, improved, semantic analyzer.
-    (See :ref:`The mypy command line <command-line>` for more information.)
