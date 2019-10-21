@@ -87,7 +87,7 @@ imports.
     module search path -- this is primarily set from the source files
     passed on the command line, the ``MYPYPATH`` environment variable,
     and the :ref:`mypy_path config option
-    <config-file-import-discovery-global>`.
+    <config-file-import-discovery>`.
 
     Note that this only affects import discovery -- for modules and
     packages explicitly passed on the command line, mypy still

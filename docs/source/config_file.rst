@@ -25,6 +25,7 @@ Some flags support user home directory and environment variable expansion.
 To refer to the user home directory, use ``~`` at the beginning of the path.
 To expand environment variables use ``$VARNAME`` or ``${VARNAME}``.
 
+
 Config file format
 ******************
 
@@ -134,12 +135,11 @@ assume here is some 3rd party library you've installed and are importing. These 
     module ``somelibrary``. This is useful if ``somelibrary`` is some 3rd party library
     missing type hints.
 
-.. _per-module-flags:
 
 Per-module and global options
 *****************************
 
-The following config options may be set either globally (in the ``[mypy]`` section)
+Some of the config options may be set either globally (in the ``[mypy]`` section)
 or on a per-module basis (in sections like ``[mypy-foo.bar]``).
 
 If you set an option both globally and for a specific module, the module configuration
@@ -147,21 +147,23 @@ options take precedence. This lets you set global defaults and override them on 
 module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
 most specific section are used where they disagree <config-precedence>`.
 
+Some other options, as specified in their description,
+may only be set in the global section (``[mypy]``).
+
+
+Inverting option values
+***********************
+
 Options that take a boolean value may be inverted by adding ``no_`` to
 their name or by (when applicable) swapping their prefix from
 ``disallow`` to ``allow`` (and vice versa).
 
-.. _config-file-import-discovery-per-module:
 
 Import discovery
-----------------
+****************
 
 For more information, see the :ref:`import discovery <import-discovery>`
 section of the command line docs.
-
-Note: this section describes options that can be used both globally and per-module.
-See below for a list of import discovery options that may be used
-:ref:`only globally <config-file-import-discovery-global>`.
 
 ``ignore_missing_imports`` (bool, default False)
     Suppresses error messages about imports that cannot be resolved.
@@ -194,8 +196,9 @@ See below for a list of import discovery options that may be used
     Used in conjunction with ``follow_imports=error``, this can be used
     to make any use of a particular ``typeshed`` module an error.
 
+
 Disallow dynamic typing
------------------------
+***********************
 
 For more information, see the :ref:`disallowing dynamic typing <disallow-dynamic-typing>`
 section of the command line docs.
@@ -222,7 +225,7 @@ section of the command line docs.
 
 
 Untyped definitions and calls
------------------------------
+*****************************
 
 For more information, see the :ref:`untyped definitions and calls <untyped-definitions-and-calls>`
 section of the command line docs.
@@ -245,10 +248,9 @@ section of the command line docs.
     Reports an error whenever a function with type annotations is decorated with a
     decorator without annotations.
 
-.. _config-file-none-and-optional-handling:
 
 None and optional handling
---------------------------
+**************************
 
 For more information, see the :ref:`None and optional handling <none-and-optional-handling>`
 section of the command line docs.
@@ -265,7 +267,7 @@ section of the command line docs.
 
 
 Configuring warnings
---------------------
+********************
 
 For more information, see the :ref:`configuring warnings <configuring-warnings>`
 section of the command line docs.
@@ -284,10 +286,9 @@ section of the command line docs.
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
 
-.. _config-file-suppressing-errors:
 
 Suppressing errors
-------------------
+******************
 
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
@@ -299,8 +300,9 @@ no analog available via the command line options.
 ``ignore_errors`` (bool, default False)
     Ignores all non-fatal errors.
 
+
 Miscellaneous strictness flags
-------------------------------
+******************************
 
 ``allow_redefinition`` (bool, default False)
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
@@ -326,8 +328,9 @@ Miscellaneous strictness flags
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+
 Platform configuration
-----------------------
+**********************
 
 ``always_true`` (comma-separated list of strings)
     Specifies a list of variables that mypy will treat as
@@ -338,26 +341,14 @@ Platform configuration
     compile-time constants that are always false.
 
 
-Global-only options
-*******************
-
-The following options may only be set in the global section (``[mypy]``).
-
-.. _config-file-import-discovery-global:
-
 Import discovery
-----------------
-
-For more information, see the :ref:`import discovery <import-discovery>`
-section of the command line docs.
-
-Note: this section describes only global-only import discovery options. See above for
-a list of import discovery options that may be used
-:ref:`both per-module and globally <config-file-import-discovery-per-module>`.
+*****************
 
 ``namespace_packages`` (bool, default False)
     Enables :pep:`420` style namespace packages.  See :ref:`the
     corresponding flag <import-discovery>` for more information.
+
+    This option may only be set in the global section (``[mypy]``).
 
 ``python_executable`` (string)
     Specifies the path to the Python executable to inspect to collect
@@ -365,16 +356,22 @@ a list of import discovery options that may be used
     home directory and environment variables will be expanded. Defaults to
     the executable used to run mypy.
 
+    This option may only be set in the global section (``[mypy]``).
+
 ``no_silence_site_packages`` (bool, default False)
     Enables reporting error messages generated within :pep:`561` compliant packages.
     Those error messages are suppressed by default, since you are usually
     not able to control errors in 3rd party code.
+
+    This option may only be set in the global section (``[mypy]``).
 
 ``mypy_path`` (string)
     Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
     variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
     Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
     User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
 
 ``files`` (string)
 
@@ -383,12 +380,13 @@ a list of import discovery options that may be used
     files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
     the current one. User home directory and environment variables will be expanded.
 
+    This option may only be set in the global section (``[mypy]``).
+
 
 Platform configuration
-----------------------
+**********************
 
-For more information, see the :ref:`platform configuration <platform-configuration>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
 ``python_version`` (string)
     Specifies the Python version used to parse and check the target
@@ -404,10 +402,9 @@ section of the command line docs.
 
 
 Incremental mode
-----------------
+****************
 
-For more information, see the :ref:`incremental mode <incremental>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
 ``incremental`` (bool, default True)
     Enables :ref:`incremental mode <incremental>`.
@@ -429,10 +426,9 @@ section of the command line docs.
 
 
 Configuring error messages
---------------------------
+**************************
 
-For more information, see the :ref:`configuring error messages <configuring-error-messages>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
 ``show_error_context`` (bool, default False)
     Prefixes each error with the relevant context.
@@ -451,10 +447,9 @@ section of the command line docs.
 
 
 Advanced options
-----------------
+****************
 
-For more information, see the :ref:`advanced flags <advanced-flags>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
 ``pdb`` (bool, default False)
     Invokes pdb on fatal error.
@@ -476,7 +471,9 @@ section of the command line docs.
 
 
 Miscellaneous
--------------
+*************
+
+These options may only be set in the global section (``[mypy]``).
 
 ``warn_redundant_casts`` (bool, default False)
     Warns about casting an expression to its inferred type.
