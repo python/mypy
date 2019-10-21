@@ -148,7 +148,7 @@ If the module is a part of your own codebase, try:
     how you're invoking mypy accordingly.
 3.  Adding the directory containing that module to either the ``MYPYPATH``
     environment variable or the ``mypy_path``
-    :ref:`config file option <config-file-import-discovery-global>`.
+    :ref:`config file option <config-file-import-discovery>`.
 
     Note: if the module you are trying to import is actually a *submodule* of
     some package, you should add the directory containing the *entire* package
@@ -175,7 +175,7 @@ are trying to use has done neither of these things. In that case, you can try:
     the library. You can point mypy at your type hints either by passing
     them in via the command line, by adding the location to the
     ``MYPYPATH`` environment variable, or by using the  ``mypy_path``
-    :ref:`config file option <config-file-import-discovery-global>`.
+    :ref:`config file option <config-file-import-discovery>`.
 
     Note that if you decide to write your own stub files, they don't need
     to be complete! A good strategy is to add stubs for just the parts
@@ -204,12 +204,12 @@ type hints nor have time to write your own, you can *silence* the errors:
     Note: this option is equivalent to adding a ``# type: ignore`` to every
     import of ``foobar`` in your codebase. For more information, see the
     documentation about configuring
-    :ref:`import discovery <config-file-import-discovery-per-module>` in config files.
+    :ref:`import discovery <config-file-import-discovery>` in config files.
 
 3.  To silence *all* missing import errors for *all* libraries in your codebase,
     invoke mypy with the ``--ignore-missing-imports`` command line flag or set
     the ``ignore_missing_imports``
-    :ref:`config file option <config-file-import-discovery-per-module>` to True
+    :ref:`config file option <config-file-import-discovery>` to True
     in the *global* section of your mypy config file::
 
         [mypy]
@@ -361,7 +361,7 @@ This is computed from the following items:
 
 - The ``MYPYPATH`` environment variable
   (a colon-separated list of directories).
-- The ``mypy_path`` :ref:`config file option <config-file-import-discovery-global>`.
+- The ``mypy_path`` :ref:`config file option <config-file-import-discovery>`.
 - The directories containing the sources given on the command line
   (see below).
 - The installed packages marked as safe for type checking (see

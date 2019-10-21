@@ -158,6 +158,7 @@ assume here is some 3rd party library you've installed and are importing. These 
     module ``somelibrary``. This is useful if ``somelibrary`` is some 3rd party library
     missing type hints.
 
+.. _config-file-import-discovery:
 
 Import discovery
 ****************
@@ -286,6 +287,7 @@ section of the command line docs.
     Reports an error whenever a function with type annotations is decorated with a
     decorator without annotations.
 
+.. _config-file-none-and-optional-handling:
 
 None and optional handling
 **************************
