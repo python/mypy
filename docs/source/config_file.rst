@@ -81,6 +81,29 @@ unfortunate, and is subject to change in future versions.
    Configuration flags are liable to change between releases.
 
 
+Per-module and global options
+*****************************
+
+Some of the config options may be set either globally (in the ``[mypy]`` section)
+or on a per-module basis (in sections like ``[mypy-foo.bar]``).
+
+If you set an option both globally and for a specific module, the module configuration
+options take precedence. This lets you set global defaults and override them on a
+module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
+most specific section are used where they disagree <config-precedence>`.
+
+Some other options, as specified in their description,
+may only be set in the global section (``[mypy]``).
+
+
+Inverting option values
+***********************
+
+Options that take a boolean value may be inverted by adding ``no_`` to
+their name or by (when applicable) swapping their prefix from
+``disallow`` to ``allow`` (and vice versa).
+
+
 Examples
 ********
 
@@ -134,29 +157,6 @@ assume here is some 3rd party library you've installed and are importing. These 
 3.  Suppress any error messages generated when your codebase tries importing the
     module ``somelibrary``. This is useful if ``somelibrary`` is some 3rd party library
     missing type hints.
-
-
-Per-module and global options
-*****************************
-
-Some of the config options may be set either globally (in the ``[mypy]`` section)
-or on a per-module basis (in sections like ``[mypy-foo.bar]``).
-
-If you set an option both globally and for a specific module, the module configuration
-options take precedence. This lets you set global defaults and override them on a
-module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
-most specific section are used where they disagree <config-precedence>`.
-
-Some other options, as specified in their description,
-may only be set in the global section (``[mypy]``).
-
-
-Inverting option values
-***********************
-
-Options that take a boolean value may be inverted by adding ``no_`` to
-their name or by (when applicable) swapping their prefix from
-``disallow`` to ``allow`` (and vice versa).
 
 
 Import discovery
