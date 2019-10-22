@@ -380,6 +380,10 @@ no analog available via the command line options.
 Miscellaneous strictness flags
 ******************************
 
+``allow_untyped_globals`` (bool, default False)
+    Causes mypy to suppress errors caused by not being able to fully
+    infer the types of global and class variables.
+
 ``allow_redefinition`` (bool, default False)
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
