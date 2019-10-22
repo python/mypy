@@ -227,7 +227,7 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
-``files`` (string)
+``files`` (comma-separated list of strings)
 
     A comma-separated list of paths which should be checked by mypy if none are given on the command
     line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
