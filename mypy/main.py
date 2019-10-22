@@ -512,6 +512,37 @@ def process_options(args: List[str],
                         help="Treat imports as private unless aliased",
                         group=strictness_group)
 
+    error_group = parser.add_argument_group(
+        title='Configuring error messages',
+        description="Adjust the amount of detail shown in error messages.")
+    add_invertible_flag('--show-error-context', default=False,
+                        dest='show_error_context',
+                        help='Precede errors with "note:" messages explaining context',
+                        group=error_group)
+    add_invertible_flag('--show-column-numbers', default=False,
+                        help="Show column numbers in error messages",
+                        group=error_group)
+    add_invertible_flag('--show-error-codes', default=False,
+                        help="Show error codes in error messages",
+                        group=error_group)
+    add_invertible_flag('--pretty', default=False,
+                        help="Use visually nicer output in error messages:"
+                             " Use soft word wrap, show source code snippets,"
+                             " and error location markers",
+                        group=error_group)
+    add_invertible_flag('--no-color-output', dest='color_output', default=True,
+                        help="Do not colorize error messages",
+                        group=error_group)
+    add_invertible_flag('--no-error-summary', dest='error_summary', default=True,
+                        help="Do not show error stats summary",
+                        group=error_group)
+
+    strict_help = "Strict mode; enables the following flags: {}".format(
+        ", ".join(strict_flag_names))
+    strictness_group.add_argument(
+        '--strict', action='store_true', dest='special-opts:strict',
+        help=strict_help)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -570,37 +601,6 @@ def process_options(args: List[str],
              "the contents of SHADOW_FILE instead.")
     add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
                         group=internals_group)
-
-    error_group = parser.add_argument_group(
-        title='Configuring error messages',
-        description="Adjust the amount of detail shown in error messages.")
-    add_invertible_flag('--show-error-context', default=False,
-                        dest='show_error_context',
-                        help='Precede errors with "note:" messages explaining context',
-                        group=error_group)
-    add_invertible_flag('--show-column-numbers', default=False,
-                        help="Show column numbers in error messages",
-                        group=error_group)
-    add_invertible_flag('--show-error-codes', default=False,
-                        help="Show error codes in error messages",
-                        group=error_group)
-    add_invertible_flag('--pretty', default=False,
-                        help="Use visually nicer output in error messages:"
-                             " Use soft word wrap, show source code snippets,"
-                             " and error location markers",
-                        group=error_group)
-    add_invertible_flag('--no-color-output', dest='color_output', default=True,
-                        help="Do not colorize error messages",
-                        group=error_group)
-    add_invertible_flag('--no-error-summary', dest='error_summary', default=True,
-                        help="Do not show error stats summary",
-                        group=error_group)
-
-    strict_help = "Strict mode; enables the following flags: {}".format(
-        ", ".join(strict_flag_names))
-    strictness_group.add_argument(
-        '--strict', action='store_true', dest='special-opts:strict',
-        help=strict_help)
 
     report_group = parser.add_argument_group(
         title='Report generation',
