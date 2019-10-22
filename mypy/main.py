@@ -397,7 +397,7 @@ def process_options(args: List[str],
         help="Additional variable to be considered False (may be repeated)")
 
     disallow_any_group = parser.add_argument_group(
-        title='Dynamic typing',
+        title='Disallow dynamic typing',
         description="Disallow the use of the dynamic 'Any' type under certain conditions.")
     disallow_any_group.add_argument(
         '--disallow-any-unimported', default=False, action='store_true',
@@ -464,7 +464,7 @@ def process_options(args: List[str],
              "in non-whitelisted files)")
 
     lint_group = parser.add_argument_group(
-        title='Warnings',
+        title='Configuring warnings',
         description="Detect code that is sound but redundant or problematic.")
     add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="Warn about casting an expression to its inferred type",
@@ -492,7 +492,7 @@ def process_options(args: List[str],
     # We add `--strict` near the end so we don't accidentally miss any strictness
     # flags that are added after this group.
     strictness_group = parser.add_argument_group(
-        title='Other strictness checks')
+        title='Miscellaneous strictness flags')
 
     add_invertible_flag('--allow-untyped-globals', default=False, strict_flag=False,
                         help="Suppress toplevel errors caused by missing annotations",
@@ -543,7 +543,7 @@ def process_options(args: List[str],
         help="Skip cache internal consistency checks based on mtime")
 
     internals_group = parser.add_argument_group(
-        title='Mypy internals',
+        title='Advanced options',
         description="Debug and customize mypy internals.")
     internals_group.add_argument(
         '--pdb', action='store_true', help="Invoke pdb on fatal error")
@@ -572,7 +572,7 @@ def process_options(args: List[str],
                         group=internals_group)
 
     error_group = parser.add_argument_group(
-        title='Error reporting',
+        title='Configuring error messages',
         description="Adjust the amount of detail shown in error messages.")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
