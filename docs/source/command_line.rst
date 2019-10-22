@@ -1,5 +1,7 @@
 .. _command-line:
 
+.. program:: mypy
+
 The mypy command line
 =====================
 
@@ -25,35 +27,41 @@ Mypy also lets you specify what code to type check in several other
 ways. A short summary of the relevant flags is included below:
 for full details, see :ref:`running-mypy`.
 
-``-m MODULE``, ``--module MODULE``
+.. option:: -m MODULE, --module MODULE
+
     Asks mypy to type check the provided module. This flag may be
     repeated multiple times.
 
     Mypy *will not* recursively type check any submodules of the provided
     module.
 
-``-p PACKAGE``, ``--package PACKAGE``
+.. option:: -p PACKAGE, --package PACKAGE
+
     Asks mypy to type check the provided package. This flag may be
     repeated multiple times.
 
     Mypy *will* recursively type check any submodules of the provided
-    package. This flag is identical to ``-module`` apart from this
+    package. This flag is identical to :option:`--module` apart from this
     behavior.
 
-``-c PROGRAM_TEXT``, ``--command PROGRAM_TEXT``
+.. option -c PROGRAM_TEXT, --command PROGRAM_TEXT
+
     Asks mypy to type check the provided string as a program.
 
 
 Optional arguments
 ******************
 
-``-h`` / ``--help``
+.. option:: -h, --help
+
     Show help message and exit.
 
-``-v`` / ``--verbose``
+.. option:: -v, --verbose
+
     More verbose messages.
 
-``-V`` / ``--version``
+.. option:: -V, --version
+
     Show program's version number and exit.
 
 .. _config-file-flag:
@@ -61,7 +69,8 @@ Optional arguments
 Config file
 ***********
 
-``--config-file CONFIG_FILE``
+.. option:: --config-file CONFIG_FILE
+
     This flag makes mypy read configuration settings from the given file.
 
     By default settings are read from ``mypy.ini`` or ``setup.cfg`` in the
@@ -69,15 +78,16 @@ Config file
     Settings override mypy's built-in defaults and command line flags
     can override settings.
 
-    Specifying ``--config-file=`` (with no filename) will ignore *all*
+    Specifying :option:`--config-file= <--config-file>` (with no filename) will ignore *all*
     config files.
 
     See :ref:`config-file` for the syntax of configuration files.
 
-``--warn-unused-configs``
+.. option:: --warn-unused-configs
+
     This flag makes mypy warn about unused ``[mypy-<pattern>]`` config
     file sections.
-    (This requires turning off incremental mode using ``--no-incremental``.)
+    (This requires turning off incremental mode using :option:`--no-incremental`.)
 
 
 .. _import-discovery:
@@ -88,7 +98,8 @@ Import discovery
 The following flags customize how exactly mypy discovers and follows
 imports.
 
-``--namespace-packages``
+.. option:: --namespace-packages
+
     This flag enables import discovery to use namespace packages (see
     :pep:`420`).  In particular, this allows discovery of imported
     packages that don't have an ``__init__.py`` (or ``__init__.pyi``)
@@ -106,7 +117,8 @@ imports.
     searches for ``__init__.py[i]`` files in order to determine the
     fully-qualified module/package name.
 
-``--ignore-missing-imports``
+.. option:: --ignore-missing-imports
+
     This flag makes mypy ignore all missing imports. It is equivalent
     to adding ``# type: ignore`` comments to all unresolved imports
     within your codebase.
@@ -118,7 +130,7 @@ imports.
         package/__init__.py
         package/mod.py
 
-    Then mypy will generate the following errors with ``--ignore-missing-imports``:
+    Then mypy will generate the following errors with :option:`--ignore-missing-imports`:
 
     .. code-block:: python
 
@@ -130,7 +142,8 @@ imports.
 
     For more details, see :ref:`ignore-missing-imports`.
 
-``--follow-imports {normal,silent,skip,error}``
+.. option:: --follow-imports {normal,silent,skip,error}
+
     This flag adjusts how mypy follows imported modules that were not
     explicitly passed in via the command line.
 
@@ -138,7 +151,8 @@ imports.
     all modules. For more information on what the other options do,
     see :ref:`Following imports <follow-imports>`.
 
-``--python-executable EXECUTABLE``
+.. option:: --python-executable EXECUTABLE
+
     This flag will have mypy collect type information from :pep:`561`
     compliant packages installed for the Python executable ``EXECUTABLE``.
     If not provided, mypy will use PEP 561 compliant packages installed for
@@ -146,15 +160,17 @@ imports.
 
     See :ref:`installed-packages` for more on making PEP 561 compliant packages.
 
-``--no-site-packages``
+.. option:: --no-site-packages
+
     This flag will disable searching for :pep:`561` compliant packages. This
     will also disable searching for a usable Python executable.
 
     Use this  flag if mypy cannot find a Python executable for the version of
     Python being checked, and you don't need to use PEP 561 typed packages.
-    Otherwise, use ``--python-executable``.
+    Otherwise, use :option:`--python-executable`.
 
-``--no-silence-site-packages``
+.. option:: --no-silence-site-packages
+
     By default, mypy will suppress any error messages generated within :pep:`561`
     compliant packages. Adding this flag will disable this behavior.
 
@@ -170,21 +186,24 @@ following flags let you modify this behavior.
 
 For more information on how to use these flags, see :ref:`version_and_platform_checks`.
 
-``--python-version X.Y``
+.. option:: --python-version X.Y
+
     This flag will make mypy type check your code as if it were
     run under Python version X.Y. Without this option, mypy will default to using
-    whatever version of Python is running mypy. Note that the ``-2`` and
-    ``--py2`` flags are aliases for ``--python-version 2.7``.
+    whatever version of Python is running mypy. Note that the :option:`-2` and
+    :option:`--py2` flags are aliases for :option:`--python-version 2.7 <--python-version>`.
 
     This flag will attempt to find a Python executable of the corresponding
     version to search for :pep:`561` compliant packages. If you'd like to
-    disable this, use the ``--no-site-packages`` flag (see
+    disable this, use the :option:`--no-site-packages` flag (see
     :ref:`import-discovery` for more details).
 
-``-2``, ``--py2``
-    Equivalent to running ``--python-version 2.7``.
+.. option:: -2, --py2
 
-``--platform PLATFORM``
+    Equivalent to running :option:`--python-version 2.7 <--python-version>`.
+
+.. option:: --platform PLATFORM
+
     This flag will make mypy type check your code as if it were
     run under the given operating system. Without this option, mypy will
     default to using whatever operating system you are currently using.
@@ -194,12 +213,14 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
 .. _always-true:
 
-``--always-true NAME``
+.. option:: --always-true NAME
+
     This flag will treat all variables named ``NAME`` as
     compile-time constants that are always true.  This flag may
     be repeated.
 
-``--always-false NAME``
+.. option:: --always-false NAME
+
     This flag will treat all variables named ``NAME`` as
     compile-time constants that are always false.  This flag may
     be repeated.
@@ -216,13 +237,15 @@ a module -- this lets us strategically disallow the use of dynamic typing in a c
 
 The following options are available:
 
-``--disallow-any-unimported``
+.. option:: --disallow-any-unimported
+
     This flag disallows usage of types that come from unfollowed imports
     (such types become aliases for ``Any``). Unfollowed imports occur either
-    when the imported module does not exist or when ``--follow-imports=skip``
+    when the imported module does not exist or when :option:`--follow-imports=skip <--follow-imports>`
     is set.
 
-``--disallow-any-expr``
+.. option:: --disallow-any-expr
+
     This flag disallows all expressions in the module that have type ``Any``.
     If an expression of type ``Any`` appears anywhere in the module
     mypy will output an error unless the expression is immediately
@@ -233,26 +256,30 @@ The following options are available:
     or casting to type ``Any`` is not allowed. Note that calling functions
     that take parameters of type ``Any`` is still allowed.
 
-``--disallow-any-decorated``
+.. option:: --disallow-any-decorated
+
     This flag disallows functions that have ``Any`` in their signature
     after decorator transformation.
 
-``--disallow-any-explicit``
+.. option:: --disallow-any-explicit
+
     This flag disallows explicit ``Any`` in type positions such as type
     annotations and generic type parameters.
 
-``--disallow-any-generics``
+.. option:: --disallow-any-generics
+
     This flag disallows usage of generic types that do not specify explicit
     type parameters. Moreover, built-in collections (such as :py:class:`list` and
     :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
     module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
 
-``--disallow-subclassing-any``
+.. option:: --disallow-subclassing-any
+
     This flag reports an error whenever a class subclasses a value of
     type ``Any``.  This may occur when the base class is imported from
     a module that doesn't exist (when using
-    :ref:`--ignore-missing-imports <ignore-missing-imports>`) or is
-    ignored due to :ref:`--follow-imports=skip <follow-imports>` or a
+    :option:`--ignore-missing-imports`) or is
+    ignored due to :option:`--follow-imports=skip <--follow-imports>` or a
     ``# type: ignore`` comment on the ``import`` statement.
 
     Since the module is silenced, the imported class is given a type of ``Any``.
@@ -269,19 +296,23 @@ Untyped definitions and calls
 The following flags configure how mypy handles untyped function
 definitions or calls.
 
-``--disallow-untyped-calls``
+.. option:: --disallow-untyped-calls
+
     This flag reports an error whenever a function with type annotations
     calls a function defined without annotations.
 
-``--disallow-untyped-defs``
+.. option:: --disallow-untyped-defs
+
     This flag reports an error whenever it encounters a function definition
     without type annotations.
 
-``--disallow-incomplete-defs``
+.. option:: --disallow-incomplete-defs
+
     This flag reports an error whenever it encounters a partly annotated
     function definition.
 
-``--check-untyped-defs``
+.. option:: --check-untyped-defs
+
     This flag is less severe than the previous two options -- it type checks
     the body of every function, regardless of whether it has type annotations.
     (By default the bodies of functions without annotations are not type
@@ -290,7 +321,8 @@ definitions or calls.
     It will assume all arguments have type ``Any`` and always infer ``Any``
     as the return type.
 
-``--disallow-untyped-decorators``
+.. option:: --disallow-untyped-decorators
+
     This flag reports an error whenever a function with type annotations
     is decorated with a decorator without annotations.
 
@@ -305,7 +337,8 @@ For more details, see :ref:`no_strict_optional`.
 
 .. _no-implicit-optional:
 
-``--no-implicit-optional``
+.. option:: --no-implicit-optional
+
     This flag causes mypy to stop treating arguments with a ``None``
     default value as having an implicit :py:data:`~typing.Optional` type.
 
@@ -326,7 +359,8 @@ For more details, see :ref:`no_strict_optional`.
         def foo(x: Optional[int] = None) -> None:
             print(x)
 
-``--no-strict-optional``
+.. option:: --no-strict-optional
+
     This flag disables strict checking of :py:data:`~typing.Optional`
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- they are valid
@@ -345,16 +379,18 @@ Configuring warnings
 The follow flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
-``--warn-redundant-casts``
+.. option:: --warn-redundant-casts
+
     This flag will make mypy report an error whenever your code uses
     an unnecessary cast that can safely be removed.
 
-``--warn-unused-ignores``
+.. option:: --warn-unused-ignores
+
     This flag will make mypy report an error whenever your code uses
     a ``# type: ignore`` comment on a line that is not actually
     generating an error message.
 
-    This flag, along with the ``--warn-redundant-casts`` flag, are both
+    This flag, along with the :option:`--warn-redundant-casts` flag, are both
     particularly useful when you are upgrading mypy. Previously,
     you may have needed to add casts or ``# type: ignore`` annotations
     to work around bugs in mypy or missing stubs for 3rd party libraries.
@@ -362,7 +398,8 @@ potentially problematic or redundant in some way.
     These two flags let you discover cases where either workarounds are
     no longer necessary.
 
-``--no-warn-no-return``
+.. option:: --no-warn-no-return
+
     By default, mypy will generate errors when a function is missing
     return statements in some execution paths. The only exceptions
     are when:
@@ -372,14 +409,16 @@ potentially problematic or redundant in some way.
         ellipsis (``...``). Empty functions are often used for
         abstract methods.
 
-    Passing in ``--no-warn-no-return`` will disable these error
+    Passing in :option:`--no-warn-no-return` will disable these error
     messages in all cases.
 
-``--warn-return-any``
+.. option:: --warn-return-any
+
     This flag causes mypy to generate a warning when returning a value
     with type ``Any`` from a function declared with a non-``Any`` return type.
 
-``--warn-unreachable``
+.. option:: --warn-unreachable
+
     This flag will make mypy report an error whenever it encounters
     code determined to be unreachable or redundant after performing type analysis.
     This can be a helpful way of detecting certain kinds of bugs in your code.
@@ -422,11 +461,13 @@ Miscellaneous strictness flags
 This section documents any other flags that do not neatly fall under any
 of the above sections.
 
-``--allow-untyped-globals``
+.. option:: --allow-untyped-globals
+
     This flag causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
-``--allow-redefinition``
+.. option:: --allow-redefinition
+
     By default, mypy won't allow a variable to be redefined with an
     unrelated type. This flag enables redefinion of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
@@ -441,7 +482,8 @@ of the above sections.
            # 'items' now has type List[List[str]]
            ...
 
-``--no-implicit-reexport``
+.. option:: --no-implicit-reexport
+
     By default, imported values to a module are treated as exported and mypy allows
     other modules to import them. This flag changes the behavior to not re-export unless
     the item is imported using from-as or is included in ``__all__``. Note this is
@@ -458,7 +500,8 @@ of the above sections.
        __all__ = ['bar']
 
 
-``--strict-equality``
+.. option:: --strict-equality
+
     By default, mypy allows always-false comparisons like ``42 == 'no'``.
     Use this flag to prohibit such comparisons of non-overlapping types, and
     similar identity and container checks:
@@ -477,11 +520,12 @@ of the above sections.
 
        assert text is not None  # OK, check against None is allowed as a special case.
 
-``--strict``
+.. option:: --strict
+
     This flag mode enables all optional error checking flags.  You can see the
     list of flags enabled by strict mode in the full ``mypy --help`` output.
 
-    Note: the exact list of flags enabled by running ``--strict`` may change
+    Note: the exact list of flags enabled by running :option:`--strict` may change
     over time.
 
 
@@ -493,7 +537,8 @@ Configuring error messages
 The following flags let you adjust how much detail mypy displays
 in error messages.
 
-``--show-error-context``
+.. option:: --show-error-context
+
     This flag will precede all errors with "note" messages explaining the
     context of the error. For example, consider the following program:
 
@@ -512,14 +557,16 @@ in error messages.
         main.py: note: In member "foo" of class "Test":
         main.py:3: error: Unsupported operand types for + ("int" and "str")
 
-``--show-column-numbers``
+.. option:: --show-column-numbers
+
     This flag will add column offsets to error messages.
     For example, the following indicates an error in line 12, column 9
     (note that column offsets are 0-based)::
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
-``--show-error-codes``
+.. option:: --show-error-codes
+
     This flag will add an error code ``[<code>]`` to error messages. The error
     code is shown after each error message::
 
@@ -527,19 +574,23 @@ in error messages.
 
     See :ref:`error-codes` for more information.
 
-``--pretty``
+.. option:: --pretty
+
     Use visually nicer output in error messages: use soft word wrap,
     show source code snippets, and show error location markers.
 
-``--no-color-output``
+.. option:: --no-color-output
+
     This flag will disable color output in error messages, enabled by default.
 
-``--no-error-summary``
+.. option:: --no-error-summary
+
     This flag will disable error summary. By default mypy shows a summary line
     including total number of errors, number of files with errors, and number
     of files checked.
 
-``--show-absolute-path``
+.. option:: --show-absolute-path
+
     Show absolute paths to files.
 
 
@@ -558,15 +609,17 @@ If you want to speed up how long it takes to recheck your code
 beyond what incremental mode can offer, try running mypy in
 :ref:`daemon mode <mypy_daemon>`.
 
-``--no-incremental``
+.. option:: --no-incremental
+
     This flag disables incremental mode: mypy will no longer reference
     the cache when re-run.
 
     Note that mypy will still write out to the cache even when
-    incremental mode is disabled: see the ``--cache-dir`` flag below
+    incremental mode is disabled: see the :option:`--cache-dir` flag below
     for more details.
 
-``--cache-dir DIR``
+.. option:: --cache-dir DIR
+
     By default, mypy stores all cache data inside of a folder named
     ``.mypy_cache`` in the current directory. This flag lets you
     change this folder. This flag can also be useful for controlling
@@ -580,17 +633,21 @@ beyond what incremental mode can offer, try running mypy in
     writing to the cache, use ``--cache-dir=/dev/null`` (UNIX)
     or ``--cache-dir=nul`` (Windows).
 
-``--sqlite-cache``
+.. option:: --sqlite-cache
+
     Use an `SQLite`_ database to store the cache.
 
-``--cache-fine-grained``
+.. option:: --cache-fine-grained
+
     Include fine-grained dependency information in the cache for the mypy daemon.
 
-``--skip-version-check``
+.. option:: --skip-version-check
+
     By default, mypy will ignore cache data generated by a different
     version of mypy. This flag disables that behavior.
 
-``--skip-cache-mtime-checks``
+.. option:: --skip-cache-mtime-checks
+
     Skip cache internal consistency checks based on mtime.
 
 
@@ -600,22 +657,27 @@ Advanced options
 The following flags are useful mostly for people who are interested
 in developing or debugging mypy internals.
 
-``--pdb``
+.. option:: --pdb
+
     This flag will invoke the Python debugger when mypy encounters
     a fatal error.
 
-``--show-traceback``, ``--tb``
+.. option:: --show-traceback, --tb
+
     If set, this flag will display a full traceback when mypy
     encounters a fatal error.
 
-``--raise-exceptions``
+.. option:: --raise-exceptions
+
     Raise exception on fatal error.
 
-``--custom-typing-module MODULE``
+.. option:: --custom-typing-module MODULE
+
     This flag lets you use a custom module as a substitute for the
     :py:mod:`typing` module.
 
-``--custom-typeshed-dir DIR``
+.. option:: --custom-typeshed-dir DIR
+
     This flag specifies the directory where mypy looks for typeshed
     stubs, instead of the typeshed that ships with mypy.  This is
     primarily intended to make it easier to test typeshed changes before
@@ -624,11 +686,12 @@ in developing or debugging mypy internals.
 
 .. _warn-incomplete-stub:
 
-``--warn-incomplete-stub``
-    This flag modifies both the ``--disallow-untyped-defs`` and
-    ``--disallow-incomplete-defs`` flags so they also report errors
+.. option:: --warn-incomplete-stub
+
+    This flag modifies both the :option:`--disallow-untyped-defs` and
+    :option:`--disallow-incomplete-defs` flags so they also report errors
     if stubs in typeshed are missing type annotations or has incomplete
-    annotations. If both flags are missing, ``--warn-incomplete-stub``
+    annotations. If both flags are missing, :option:`--warn-incomplete-stub`
     also does nothing.
 
     This flag is mainly intended to be used by people who want contribute
@@ -636,12 +699,13 @@ in developing or debugging mypy internals.
 
     If you want mypy to report an error when your codebase *uses* an untyped
     function, whether that function is defined in typeshed or not, use the
-    ``--disallow-untyped-call`` flag. See :ref:`untyped-definitions-and-calls`
+    :option:`--disallow-untyped-calls` flag. See :ref:`untyped-definitions-and-calls`
     for more details.
 
 .. _shadow-file:
 
-``--shadow-file SOURCE_FILE SHADOW_FILE``
+.. option:: --shadow-file SOURCE_FILE SHADOW_FILE
+
     When mypy is asked to type check ``SOURCE_FILE``, this flag makes mypy
     read from and type check the contents of ``SHADOW_FILE`` instead. However,
     diagnostics will continue to refer to ``SOURCE_FILE``.
@@ -664,57 +728,67 @@ Report generation
 If these flags are set, mypy will generate a report in the specified
 format into the specified directory.
 
-``--any-exprs-report DIR``
+.. option:: --any-exprs-report DIR
+
     Causes mypy to generate a text file report documenting how many
     expressions of type ``Any`` are present within your codebase.
 
-``--cobertura-xml-report DIR``
+.. option:: --cobertura-xml-report DIR
+
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
-``--html-report`` / ``--xslt-html-report DIR``
+.. option:: --html-report / --xslt-html-report DIR
+
     Causes mypy to generate an HTML type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
-``--linecount-report DIR``
+.. option:: --linecount-report DIR
+
     Causes mypy to generate a text file report documenting the functions
     and lines that are typed and untyped within your codebase.
 
-``--linecoverage-report DIR``
+.. option:: --linecoverage-report DIR
+
     Causes mypy to generate a JSON file that maps each source file's
     absolute filename to a list of line numbers that belong to typed
     functions in that file.
 
-``--lineprecision-report DIR``
+.. option:: --lineprecision-report DIR
+
     Causes mypy to generate a flat text file report with per-module
     statistics of how many lines are typechecked etc.
 
-``--txt-report`` / ``--xslt-txt-report DIR``
+.. option:: --txt-report / --xslt-txt-report DIR
+
     Causes mypy to generate a text file type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
-``--xml-report DIR``
+.. option:: --xml-report DIR
+
     Causes mypy to generate an XML type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
-
 Miscellaneous
 *************
 
-``--junit-xml JUNIT_XML``
+.. option:: --junit-xml JUNIT_XML
+
     Causes mypy to generate a JUnit XML test result document with
     type checking results. This can make it easier to integrate mypy
     with continuous integration (CI) tools.
 
-``--find-occurrences CLASS.MEMBER``
+.. option:: --find-occurrences CLASS.MEMBER
+
     This flag will make mypy print out all usages of a class member
     based on static type information. This feature is experimental.
 
-``--scripts-are-modules``
+.. option:: --scripts-are-modules
+
     This flag will give command line arguments that appear to be
     scripts (i.e. files whose name does not end in ``.py``)
     a module name derived from the script name rather than the fixed
