@@ -647,6 +647,15 @@ format into the specified directory.
     absolute filename to a list of line numbers that belong to typed
     functions in that file.
 
+``--lineprecision-report DIR``
+    TBD
+
+``--memory-xml-report DIR``
+    TBD
+
+``--xml-report DIR``
+    TBD
+
 ``--cobertura-xml-report DIR``
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
