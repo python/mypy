@@ -148,6 +148,9 @@ class Errors:
     # Set to True to show column numbers in error messages.
     show_column_numbers = False  # type: bool
 
+    # Set to True to show absolute file paths in error messages.
+    show_absolute_path = False  # type: bool
+
     # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
     # Current module id.
@@ -159,10 +162,12 @@ class Errors:
                  show_column_numbers: bool = False,
                  show_error_codes: bool = False,
                  pretty: bool = False,
-                 read_source: Optional[Callable[[str], Optional[List[str]]]] = None) -> None:
+                 read_source: Optional[Callable[[str], Optional[List[str]]]] = None,
+                 show_absolute_path: bool = False) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
+        self.show_absolute_path = show_absolute_path
         self.pretty = pretty
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
@@ -188,7 +193,8 @@ class Errors:
                      self.show_column_numbers,
                      self.show_error_codes,
                      self.pretty,
-                     self.read_source)
+                     self.read_source,
+                     self.show_absolute_path)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.function_or_member = self.function_or_member[:]
@@ -208,8 +214,11 @@ class Errors:
         self.ignore_prefix = prefix
 
     def simplify_path(self, file: str) -> str:
-        file = os.path.normpath(file)
-        return remove_path_prefix(file, self.ignore_prefix)
+        if self.show_absolute_path:
+            return os.path.abspath(file)
+        else:
+            file = os.path.normpath(file)
+            return remove_path_prefix(file, self.ignore_prefix)
 
     def set_file(self, file: str,
                  module: Optional[str],
