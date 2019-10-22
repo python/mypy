@@ -664,7 +664,7 @@ format into the specified directory.
 
     You must install the `lxml`_ library to generate this report.
 
-``--html-report DIR``, ``--xslt-html-report DIR``
+``--html-report`` / ``--xslt-html-report DIR``
     Causes mypy to generate an HTML type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
@@ -684,13 +684,17 @@ format into the specified directory.
 ``--memory-xml-report DIR``
     TBD
 
-``--txt-report DIR``, ``--xslt-txt-report DIR``
+    You must install the `lxml`_ library to generate this report.
+
+``--txt-report`` / ``--xslt-txt-report DIR``
     Causes mypy to generate a text file type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
 ``--xml-report DIR``
     TBD
+
+    You must install the `lxml`_ library to generate this report.
 
 
 Miscellaneous
