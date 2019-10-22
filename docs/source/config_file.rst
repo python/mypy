@@ -167,6 +167,22 @@ Import discovery
 For more information, see the :ref:`import discovery <import-discovery>`
 section of the command line docs.
 
+``mypy_path`` (string)
+    Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
+    variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
+    Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
+    User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
+
+``files`` (comma-separated list of strings)
+    A comma-separated list of paths which should be checked by mypy if none are given on the command
+    line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
+    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
+    the current one. User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
+
 ``namespace_packages`` (bool, default False)
     Enables :pep:`420` style namespace packages.  See :ref:`the
     corresponding flag <import-discovery>` for more information.
@@ -216,22 +232,6 @@ section of the command line docs.
     Enables reporting error messages generated within :pep:`561` compliant packages.
     Those error messages are suppressed by default, since you are usually
     not able to control errors in 3rd party code.
-
-    This option may only be set in the global section (``[mypy]``).
-
-``mypy_path`` (string)
-    Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
-    variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
-    Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
-    User home directory and environment variables will be expanded.
-
-    This option may only be set in the global section (``[mypy]``).
-
-``files`` (comma-separated list of strings)
-    A comma-separated list of paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
-    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
-    the current one. User home directory and environment variables will be expanded.
 
     This option may only be set in the global section (``[mypy]``).
 
