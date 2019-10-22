@@ -41,7 +41,8 @@ from distutils.core import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
-      ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False),
+      ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
+                           multi_file={}),
 )
 """
 
@@ -192,7 +193,7 @@ class TestRun(MypycDataSuite):
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
         with open(setup_file, 'w', encoding='utf-8') as f:
-            f.write(setup_format.format(module_paths, self.separate, cfiles))
+            f.write(setup_format.format(module_paths, self.separate, cfiles, self.multi_file))
 
         if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):
