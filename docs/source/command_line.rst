@@ -530,7 +530,7 @@ in error messages.
 
 ``--pretty``
     Use visually nicer output in error messages: use soft word wrap,
-    show source code snippets and error location markers.
+    show source code snippets, and show error location markers.
 
 ``--no-color-output``
     This flag will disable color output in error messages, enabled by default.

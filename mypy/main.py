@@ -526,7 +526,7 @@ def process_options(args: List[str],
     add_invertible_flag('--pretty', default=False,
                         help="Use visually nicer output in error messages:"
                              " Use soft word wrap, show source code snippets,"
-                             " and error location markers",
+                             " and show error location markers",
                         group=error_group)
     add_invertible_flag('--no-color-output', dest='color_output', default=True,
                         help="Do not colorize error messages",

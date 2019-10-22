@@ -424,7 +424,7 @@ These options may only be set in the global section (``[mypy]``).
 
 ``pretty`` (bool, default False)
     Use visually nicer output in error messages: use soft word wrap,
-    show source code snippets and error location markers.
+    show source code snippets, and show error location markers.
 
 ``color_output`` (bool, default True)
     Shows error messages with color enabled.
