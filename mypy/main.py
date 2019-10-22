@@ -554,7 +554,7 @@ def process_options(args: List[str],
         '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
     )
     internals_group.add_argument(
-        '--custom-typing', metavar='MODULE', dest='custom_typing_module',
+        '--custom-typing-module', metavar='MODULE', dest='custom_typing_module',
         help="Use a custom typing module")
     internals_group.add_argument(
         '--custom-typeshed-dir', metavar='DIR',
