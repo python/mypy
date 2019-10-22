@@ -332,8 +332,7 @@ section of the command line docs.
     Enables or disables strict Optional checks. If False, mypy treats ``None``
     as compatible with every type.
 
-.. note::
-    This was False by default in mypy versions earlier than 0.600.
+    **Note:** This was False by default in mypy versions earlier than 0.600.
 
 
 Configuring warnings
