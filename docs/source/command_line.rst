@@ -691,12 +691,8 @@ format into the specified directory.
     functions in that file.
 
 ``--lineprecision-report DIR``
-    TBD
-
-``--memory-xml-report DIR``
-    TBD
-
-    You must install the `lxml`_ library to generate this report.
+    Causes mypy to generate a flat text file report with per-module
+    statistics of how many lines are typechecked etc.
 
 ``--txt-report`` / ``--xslt-txt-report DIR``
     Causes mypy to generate a text file type checking coverage report.
@@ -704,7 +700,7 @@ format into the specified directory.
     You must install the `lxml`_ library to generate this report.
 
 ``--xml-report DIR``
-    TBD
+    Causes mypy to generate an XML type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
