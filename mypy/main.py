@@ -459,9 +459,7 @@ def process_options(args: List[str],
         help="Disable strict Optional checks (inverse: --strict-optional)")
     none_group.add_argument(
         '--strict-optional-whitelist', metavar='GLOB', nargs='*',
-        help="Suppress strict Optional errors in all but the provided files; "
-             "implies --strict-optional (may suppress certain other errors "
-             "in non-whitelisted files)")
+        help=argparse.SUPPRESS)
 
     lint_group = parser.add_argument_group(
         title='Configuring warnings',

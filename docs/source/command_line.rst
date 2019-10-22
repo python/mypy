@@ -337,11 +337,6 @@ For more details, see :ref:`no_strict_optional`.
     mypy 0.600, and in previous versions it had to be explicitly enabled
     using ``--strict-optional`` (which is still accepted).
 
-``--strict-optional-whitelist [GLOB [GLOB ...]]``
-    Suppress strict ``Optional`` errors in all but the provided files;
-    implies ``--strict-optional`` (may suppress certain other errors
-    in non-whitelisted files).
-
 
 .. _configuring-warnings:
 

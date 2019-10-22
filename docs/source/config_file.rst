@@ -335,11 +335,6 @@ section of the command line docs.
 .. note::
     This was False by default in mypy versions earlier than 0.600.
 
-``strict_optional_whitelist`` (comma-separated list of strings)
-    Suppress strict ``Optional`` errors in all but the provided files;
-    implies ``strict_optional`` (may suppress certain other errors
-    in non-whitelisted files).
-
 
 Configuring warnings
 ********************
