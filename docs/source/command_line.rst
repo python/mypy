@@ -44,6 +44,18 @@ for full details, see :ref:`running-mypy`.
     Asks mypy to type check the provided string as a program.
 
 
+Optional arguments
+******************
+
+``-h`` / ``--help``
+    Show help message and exit.
+
+``-v`` / ``--verbose``
+    More verbose messages.
+
+``-V`` / ``--version``
+    Show program's version number and exit.
+
 .. _config-file-flag:
 
 Config file
