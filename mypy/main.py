@@ -348,6 +348,10 @@ def process_options(args: List[str],
     imports_group = parser.add_argument_group(
         title='Import discovery',
         description="Configure how imports are discovered and followed.")
+    add_invertible_flag(
+        '--namespace-packages', default=False,
+        help="Support namespace packages (PEP 420, __init__.py-less)",
+        group=imports_group)
     imports_group.add_argument(
         '--ignore-missing-imports', action='store_true',
         help="Silently ignore imports of missing modules")
@@ -366,10 +370,6 @@ def process_options(args: List[str],
     imports_group.add_argument(
         '--no-silence-site-packages', action='store_true',
         help="Do not silence errors in PEP 561 compliant installed packages")
-    add_invertible_flag(
-        '--namespace-packages', default=False,
-        help="Support namespace packages (PEP 420, __init__.py-less)",
-        group=imports_group)
 
     platform_group = parser.add_argument_group(
         title='Platform configuration',
@@ -402,9 +402,6 @@ def process_options(args: List[str],
     disallow_any_group.add_argument(
         '--disallow-any-unimported', default=False, action='store_true',
         help="Disallow Any types resulting from unfollowed imports")
-    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
-                        help="Disallow subclassing values of type 'Any' when defining classes",
-                        group=disallow_any_group)
     disallow_any_group.add_argument(
         '--disallow-any-expr', default=False, action='store_true',
         help='Disallow all expressions that have type Any')
@@ -418,6 +415,9 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
                         help='Disallow usage of generic types that do not specify explicit type '
                         'parameters', group=disallow_any_group)
+    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
+                        help="Disallow subclassing values of type 'Any' when defining classes",
+                        group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
         title='Untyped definitions and calls',
@@ -502,14 +502,14 @@ def process_options(args: List[str],
                         help="Allow unconditional variable redefinition with a new type",
                         group=strictness_group)
 
-    add_invertible_flag('--strict-equality', default=False, strict_flag=False,
-                        help="Prohibit equality, identity, and container checks for"
-                             " non-overlapping types",
-                        group=strictness_group)
-
     add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
                         dest='implicit_reexport',
                         help="Treat imports as private unless aliased",
+                        group=strictness_group)
+
+    add_invertible_flag('--strict-equality', default=False, strict_flag=False,
+                        help="Prohibit equality, identity, and container checks for"
+                             " non-overlapping types",
                         group=strictness_group)
 
     error_group = parser.add_argument_group(
@@ -617,12 +617,12 @@ def process_options(args: List[str],
     other_group.add_argument(
         '--junit-xml', help="Write junit.xml to the given file")
     other_group.add_argument(
-        '--scripts-are-modules', action='store_true',
-        help="Script x becomes module x instead of __main__")
-    other_group.add_argument(
         '--find-occurrences', metavar='CLASS.MEMBER',
         dest='special-opts:find_occurrences',
         help="Print out all usages of a class member (experimental)")
+    other_group.add_argument(
+        '--scripts-are-modules', action='store_true',
+        help="Script x becomes module x instead of __main__")
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
