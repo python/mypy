@@ -478,6 +478,46 @@ These options may only be set in the global section (``[mypy]``).
     in combination with ``disallow_untyped_defs`` or ``disallow_incomplete_defs``.
 
 
+Report generation
+*****************
+
+If these options are set, mypy will generate a report in the specified
+format into the specified directory.
+
+``any_exprs_report`` (string)
+    Causes mypy to generate a text file report documenting how many
+    expressions of type ``Any`` are present within your codebase.
+
+``linecount_report`` (string)
+    Causes mypy to generate a text file report documenting the functions
+    and lines that are typed and untyped within your codebase.
+
+``linecoverage_report`` (string)
+    Causes mypy to generate a JSON file that maps each source file's
+    absolute filename to a list of line numbers that belong to typed
+    functions in that file.
+
+``cobertura_xml_report`` (string)
+    Causes mypy to generate a Cobertura XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``html_report`` / ``xslt_html_report`` (string)
+    Causes mypy to generate an HTML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``txt_report`` / ``xslt_txt_report`` (string)
+    Causes mypy to generate a text file type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``junit_xml`` (string)
+    Causes mypy to generate a JUnit XML test result document with
+    type checking results. This can make it easier to integrate mypy
+    with continuous integration (CI) tools.
+
+
 Miscellaneous
 *************
 
@@ -494,3 +534,5 @@ These options may only be set in the global section (``[mypy]``).
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
+
+.. _lxml: https://pypi.org/project/lxml/
