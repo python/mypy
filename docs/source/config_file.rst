@@ -508,6 +508,16 @@ format into the specified directory.
     Causes mypy to generate a text file report documenting how many
     expressions of type ``Any`` are present within your codebase.
 
+``cobertura_xml_report`` (string)
+    Causes mypy to generate a Cobertura XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``html_report`` / ``xslt_html_report`` (string)
+    Causes mypy to generate an HTML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
 ``linecount_report`` (string)
     Causes mypy to generate a text file report documenting the functions
     and lines that are typed and untyped within your codebase.
@@ -523,17 +533,6 @@ format into the specified directory.
 ``memory_xml_report`` (string)
     TBD
 
-``xml_report`` (string)
-    TBD
-
-``cobertura_xml_report`` (string)
-    Causes mypy to generate a Cobertura XML type checking coverage report.
-
-    You must install the `lxml`_ library to generate this report.
-
-``html_report`` / ``xslt_html_report`` (string)
-    Causes mypy to generate an HTML type checking coverage report.
-
     You must install the `lxml`_ library to generate this report.
 
 ``txt_report`` / ``xslt_txt_report`` (string)
@@ -541,16 +540,21 @@ format into the specified directory.
 
     You must install the `lxml`_ library to generate this report.
 
-``junit_xml`` (string)
-    Causes mypy to generate a JUnit XML test result document with
-    type checking results. This can make it easier to integrate mypy
-    with continuous integration (CI) tools.
+``xml_report`` (string)
+    TBD
+
+    You must install the `lxml`_ library to generate this report.
 
 
 Miscellaneous
 *************
 
 These options may only be set in the global section (``[mypy]``).
+
+``junit_xml`` (string)
+    Causes mypy to generate a JUnit XML test result document with
+    type checking results. This can make it easier to integrate mypy
+    with continuous integration (CI) tools.
 
 ``scripts_are_modules`` (bool, default False)
     Makes script ``x`` become module ``x`` instead of ``__main__``.  This is

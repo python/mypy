@@ -659,6 +659,16 @@ format into the specified directory.
     Causes mypy to generate a text file report documenting how many
     expressions of type ``Any`` are present within your codebase.
 
+``--cobertura-xml-report DIR``
+    Causes mypy to generate a Cobertura XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``--html-report DIR``, ``--xslt-html-report DIR``
+    Causes mypy to generate an HTML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
 ``--linecount-report DIR``
     Causes mypy to generate a text file report documenting the functions
     and lines that are typed and untyped within your codebase.
@@ -674,32 +684,22 @@ format into the specified directory.
 ``--memory-xml-report DIR``
     TBD
 
-``--xml-report DIR``
-    TBD
-
-``--cobertura-xml-report DIR``
-    Causes mypy to generate a Cobertura XML type checking coverage report.
-
-    You must install the `lxml`_ library to generate this report.
-
-``--html-report DIR``, ``--xslt-html-report DIR``
-    Causes mypy to generate an HTML type checking coverage report.
-
-    You must install the `lxml`_ library to generate this report.
-
 ``--txt-report DIR``, ``--xslt-txt-report DIR``
     Causes mypy to generate a text file type checking coverage report.
 
     You must install the `lxml`_ library to generate this report.
 
-``--junit-xml JUNIT_XML``
-    Causes mypy to generate a JUnit XML test result document with
-    type checking results. This can make it easier to integrate mypy
-    with continuous integration (CI) tools.
+``--xml-report DIR``
+    TBD
 
 
 Miscellaneous
 *************
+
+``--junit-xml JUNIT_XML``
+    Causes mypy to generate a JUnit XML test result document with
+    type checking results. This can make it easier to integrate mypy
+    with continuous integration (CI) tools.
 
 ``--find-occurrences CLASS.MEMBER``
     This flag will make mypy print out all usages of a class member
