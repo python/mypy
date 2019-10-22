@@ -567,10 +567,8 @@ beyond what incremental mode can offer, try running mypy in
     version of mypy. This flag disables that behavior.
 
 
-.. _advanced-flags:
-
-Advanced flags
-**************
+Advanced options
+****************
 
 The following flags are useful mostly for people who are interested
 in developing or debugging mypy internals.
