@@ -164,7 +164,7 @@ assume here is some 3rd party library you've installed and are importing. These 
 Import discovery
 ****************
 
-For more information, see the :ref:`import discovery <import-discovery>`
+For more information, see the :ref:`Import discovery <import-discovery>`
 section of the command line docs.
 
 ``mypy_path`` (string)
@@ -267,7 +267,7 @@ Platform configuration
 Disallow dynamic typing
 ***********************
 
-For more information, see the :ref:`disallowing dynamic typing <disallow-dynamic-typing>`
+For more information, see the :ref:`Disallow dynamic typing <disallow-dynamic-typing>`
 section of the command line docs.
 
 ``disallow_any_unimported`` (bool, default False)
@@ -294,7 +294,7 @@ section of the command line docs.
 Untyped definitions and calls
 *****************************
 
-For more information, see the :ref:`untyped definitions and calls <untyped-definitions-and-calls>`
+For more information, see the :ref:`Untyped definitions and calls <untyped-definitions-and-calls>`
 section of the command line docs.
 
 ``disallow_untyped_calls`` (bool, default False)
@@ -338,7 +338,7 @@ section of the command line docs.
 Configuring warnings
 ********************
 
-For more information, see the :ref:`configuring warnings <configuring-warnings>`
+For more information, see the :ref:`Configuring warnings <configuring-warnings>`
 section of the command line docs.
 
 ``warn_redundant_casts`` (bool, default False)
@@ -409,6 +409,9 @@ Miscellaneous strictness flags
 
 Configuring error messages
 **************************
+
+For more information, see the :ref:`Configuring error messages <configuring-error-messages>`
+section of the command line docs.
 
 These options may only be set in the global section (``[mypy]``).
 
