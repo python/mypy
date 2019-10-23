@@ -608,7 +608,7 @@ in developing or debugging mypy internals.
 ``--raise-exceptions``
     Raise exception on fatal error.
 
-``--custom-typing MODULE``
+``--custom-typing-module MODULE``
     This flag lets you use a custom module as a substitute for the
     :py:mod:`typing` module.
 
