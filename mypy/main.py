@@ -510,6 +510,12 @@ def process_options(args: List[str],
                              " non-overlapping types",
                         group=strictness_group)
 
+    strict_help = "Strict mode; enables the following flags: {}".format(
+        ", ".join(strict_flag_names))
+    strictness_group.add_argument(
+        '--strict', action='store_true', dest='special-opts:strict',
+        help=strict_help)
+
     error_group = parser.add_argument_group(
         title='Configuring error messages',
         description="Adjust the amount of detail shown in error messages.")
@@ -534,12 +540,10 @@ def process_options(args: List[str],
     add_invertible_flag('--no-error-summary', dest='error_summary', default=True,
                         help="Do not show error stats summary",
                         group=error_group)
+    add_invertible_flag('--show-absolute-path', default=False,
+                        help="Show absolute paths to files",
+                        group=error_group)
 
-    strict_help = "Strict mode; enables the following flags: {}".format(
-        ", ".join(strict_flag_names))
-    strictness_group.add_argument(
-        '--strict', action='store_true', dest='special-opts:strict',
-        help=strict_help)
 
     incremental_group = parser.add_argument_group(
         title='Incremental mode',

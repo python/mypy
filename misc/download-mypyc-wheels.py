@@ -9,14 +9,14 @@ from urllib.request import urlopen
 
 
 PLATFORMS = [
-    'macosx_10_6_x86_64.macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64',
+    'macosx_10_{macos_ver}_x86_64',
     'manylinux1_x86_64',
     'win_amd64',
 ]
 MIN_VER = 5
-MAX_VER = 7
+MAX_VER = 8
 BASE_URL = "https://github.com/mypyc/mypy_mypyc-wheels/releases/download"
-URL = "{base}/v{version}/mypy-{version}-cp3{pyver}-cp3{pyver}m-{platform}.whl"
+URL = "{base}/v{version}/mypy-{version}-cp3{pyver}-cp3{pyver}{abi_tag}-{platform}.whl"
 
 def download(url):
     print('Downloading', url)
@@ -29,11 +29,15 @@ def download(url):
 def download_files(version):
     for pyver in range(MIN_VER, MAX_VER + 1):
         for platform in PLATFORMS:
+            abi_tag = "" if pyver >= 8 else "m"
+            macos_ver = 9 if pyver >= 8 else 6
             url = URL.format(
                 base=BASE_URL,
                 version=version,
                 pyver=pyver,
-                platform=platform)
+                abi_tag=abi_tag,
+                platform=platform.format(macos_ver=macos_ver)
+            )
             # argh, there is an inconsistency here and I don't know why
             if 'win_' in platform:
                 parts = url.rsplit('/', 1)

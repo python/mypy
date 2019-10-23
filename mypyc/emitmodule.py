@@ -227,6 +227,12 @@ class GroupGenerator:
         multi_file = self.use_shared_lib and self.multi_file
 
         base_emitter = Emitter(self.context)
+        # When not in multi-file mode we just include the runtime
+        # library c files to reduce the number of compiler invocations
+        # needed
+        if not self.multi_file:
+            base_emitter.emit_line('#include "CPy.c"')
+            base_emitter.emit_line('#include "getargs.c"')
         base_emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
         base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.group_suffix))
         emitter = base_emitter

@@ -261,6 +261,8 @@ class Options:
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = False
+        # Print full path to each file in the report.
+        self.show_absolute_path = False  # type: bool
 
     # To avoid breaking plugin compatability, keep providing new_semantic_analyzer
     @property
