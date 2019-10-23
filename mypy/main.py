@@ -544,7 +544,6 @@ def process_options(args: List[str],
                         help="Show absolute paths to files",
                         group=error_group)
 
-
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "
@@ -608,7 +607,7 @@ def process_options(args: List[str],
         title='Report generation',
         description='Generate a report in the specified format.')
     for report_type in sorted(defaults.REPORTER_NAMES):
-        if report_type not in {'memory-xml',}:
+        if report_type not in {'memory-xml'}:
             report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
                                       metavar='DIR',
                                       dest='special-opts:%s_report' % report_type)
