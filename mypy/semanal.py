@@ -450,7 +450,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail)
+                    fix_instance_types(target, self.fail, self.note)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -608,7 +608,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # has external return type `Coroutine[Any, Any, T]`.
                 any_type = AnyType(TypeOfAny.special_form)
                 ret_type = self.named_type_or_none('typing.Coroutine',
-                    [any_type, any_type, defn.type.ret_type])
+                                                   [any_type, any_type, defn.type.ret_type])
                 assert ret_type is not None, "Internal error: typing.Coroutine not found"
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
 
@@ -2490,7 +2490,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args  # type: ignore
-        fix_instance_types(res, self.fail)
+        fix_instance_types(res, self.fail, self.note)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line

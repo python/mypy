@@ -1444,3 +1444,17 @@ some_file.py:1: error: invalid syntax  [syntax]
     ...ooks_like_we_started_typing_something_but_then. = did_not_notice(an_ex...
                                                         ^
 == Return code: 2
+
+[case testSpecialTypeshedGenericNote]
+# cmd: mypy --disallow-any-generics --python-version=3.6 test.py
+[file test.py]
+from os import PathLike
+from queue import Queue
+
+p: PathLike
+q: Queue
+[out]
+test.py:4: error: Missing type parameters for generic type "_PathLike"
+test.py:4: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
+test.py:5: error: Missing type parameters for generic type "Queue"
+test.py:5: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
