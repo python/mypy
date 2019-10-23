@@ -539,6 +539,9 @@ in error messages.
     including total number of errors, number of files with errors, and number
     of files checked.
 
+``--show-absolute-path``
+    Show absolute paths to files.
+
 
 .. _incremental:
 

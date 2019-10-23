@@ -434,6 +434,9 @@ These options may only be set in the global section (``[mypy]``).
 ``error_summary`` (bool, default True)
     Shows a short summary line after error messages.
 
+``show_absolute_path`` (bool, default False)
+    Show absolute paths to files.
+
 
 Incremental mode
 ****************
