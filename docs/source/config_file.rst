@@ -25,6 +25,7 @@ Some flags support user home directory and environment variable expansion.
 To refer to the user home directory, use ``~`` at the beginning of the path.
 To expand environment variables use ``$VARNAME`` or ``${VARNAME}``.
 
+
 Config file format
 ******************
 
@@ -78,6 +79,29 @@ unfortunate, and is subject to change in future versions.
 .. note::
 
    Configuration flags are liable to change between releases.
+
+
+Per-module and global options
+*****************************
+
+Some of the config options may be set either globally (in the ``[mypy]`` section)
+or on a per-module basis (in sections like ``[mypy-foo.bar]``).
+
+If you set an option both globally and for a specific module, the module configuration
+options take precedence. This lets you set global defaults and override them on a
+module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
+most specific section are used where they disagree <config-precedence>`.
+
+Some other options, as specified in their description,
+may only be set in the global section (``[mypy]``).
+
+
+Inverting option values
+***********************
+
+Options that take a boolean value may be inverted by adding ``no_`` to
+their name or by (when applicable) swapping their prefix from
+``disallow`` to ``allow`` (and vice versa).
 
 
 Examples
@@ -134,34 +158,36 @@ assume here is some 3rd party library you've installed and are importing. These 
     module ``somelibrary``. This is useful if ``somelibrary`` is some 3rd party library
     missing type hints.
 
-.. _per-module-flags:
 
-Per-module and global options
-*****************************
-
-The following config options may be set either globally (in the ``[mypy]`` section)
-or on a per-module basis (in sections like ``[mypy-foo.bar]``).
-
-If you set an option both globally and for a specific module, the module configuration
-options take precedence. This lets you set global defaults and override them on a
-module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
-most specific section are used where they disagree <config-precedence>`.
-
-Options that take a boolean value may be inverted by adding ``no_`` to
-their name or by (when applicable) swapping their prefix from
-``disallow`` to ``allow`` (and vice versa).
-
-.. _config-file-import-discovery-per-module:
+.. _config-file-import-discovery:
 
 Import discovery
-----------------
+****************
 
-For more information, see the :ref:`import discovery <import-discovery>`
+For more information, see the :ref:`Import discovery <import-discovery>`
 section of the command line docs.
 
-Note: this section describes options that can be used both globally and per-module.
-See below for a list of import discovery options that may be used
-:ref:`only globally <config-file-import-discovery-global>`.
+``mypy_path`` (string)
+    Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
+    variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
+    Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
+    User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
+
+``files`` (comma-separated list of strings)
+    A comma-separated list of paths which should be checked by mypy if none are given on the command
+    line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
+    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
+    the current one. User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
+
+``namespace_packages`` (bool, default False)
+    Enables :pep:`420` style namespace packages.  See :ref:`the
+    corresponding flag <import-discovery>` for more information.
+
+    This option may only be set in the global section (``[mypy]``).
 
 ``ignore_missing_imports`` (bool, default False)
     Suppresses error messages about imports that cannot be resolved.
@@ -194,10 +220,54 @@ See below for a list of import discovery options that may be used
     Used in conjunction with ``follow_imports=error``, this can be used
     to make any use of a particular ``typeshed`` module an error.
 
-Disallow dynamic typing
------------------------
+``python_executable`` (string)
+    Specifies the path to the Python executable to inspect to collect
+    a list of available :ref:`PEP 561 packages <installed-packages>`. User
+    home directory and environment variables will be expanded. Defaults to
+    the executable used to run mypy.
 
-For more information, see the :ref:`disallowing dynamic typing <disallow-dynamic-typing>`
+    This option may only be set in the global section (``[mypy]``).
+
+``no_silence_site_packages`` (bool, default False)
+    Enables reporting error messages generated within :pep:`561` compliant packages.
+    Those error messages are suppressed by default, since you are usually
+    not able to control errors in 3rd party code.
+
+    This option may only be set in the global section (``[mypy]``).
+
+
+Platform configuration
+**********************
+
+``python_version`` (string)
+    Specifies the Python version used to parse and check the target
+    program.  The string should be in the format ``DIGIT.DIGIT`` --
+    for example ``2.7``.  The default is the version of the Python
+    interpreter used to run mypy.
+
+    This option may only be set in the global section (``[mypy]``).
+
+``platform`` (string)
+    Specifies the OS platform for the target program, for example
+    ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
+    The default is the current platform as revealed by Python's
+    :py:data:`sys.platform` variable.
+
+    This option may only be set in the global section (``[mypy]``).
+
+``always_true`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as
+    compile-time constants that are always true.
+
+``always_false`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as
+    compile-time constants that are always false.
+
+
+Disallow dynamic typing
+***********************
+
+For more information, see the :ref:`Disallow dynamic typing <disallow-dynamic-typing>`
 section of the command line docs.
 
 ``disallow_any_unimported`` (bool, default False)
@@ -222,9 +292,9 @@ section of the command line docs.
 
 
 Untyped definitions and calls
------------------------------
+*****************************
 
-For more information, see the :ref:`untyped definitions and calls <untyped-definitions-and-calls>`
+For more information, see the :ref:`Untyped definitions and calls <untyped-definitions-and-calls>`
 section of the command line docs.
 
 ``disallow_untyped_calls`` (bool, default False)
@@ -245,12 +315,13 @@ section of the command line docs.
     Reports an error whenever a function with type annotations is decorated with a
     decorator without annotations.
 
+
 .. _config-file-none-and-optional-handling:
 
-None and optional handling
---------------------------
+None and Optional handling
+**************************
 
-For more information, see the :ref:`None and optional handling <none-and-optional-handling>`
+For more information, see the :ref:`None and Optional handling <none-and-optional-handling>`
 section of the command line docs.
 
 ``no_implicit_optional`` (bool, default False)
@@ -265,10 +336,15 @@ section of the command line docs.
 
 
 Configuring warnings
---------------------
+********************
 
-For more information, see the :ref:`configuring warnings <configuring-warnings>`
+For more information, see the :ref:`Configuring warnings <configuring-warnings>`
 section of the command line docs.
+
+``warn_redundant_casts`` (bool, default False)
+    Warns about casting an expression to its inferred type.
+
+    This option may only be set in the global section (``[mypy]``).
 
 ``warn_unused_ignores`` (bool, default False)
     Warns about unneeded ``# type: ignore`` comments.
@@ -284,10 +360,9 @@ section of the command line docs.
     Shows a warning when encountering any code inferred to be unreachable or
     redundant after performing type analysis.
 
-.. _config-file-suppressing-errors:
 
 Suppressing errors
-------------------
+******************
 
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
@@ -299,8 +374,13 @@ no analog available via the command line options.
 ``ignore_errors`` (bool, default False)
     Ignores all non-fatal errors.
 
+
 Miscellaneous strictness flags
-------------------------------
+******************************
+
+``allow_untyped_globals`` (bool, default False)
+    Causes mypy to suppress errors caused by not being able to fully
+    infer the types of global and class variables.
 
 ``allow_redefinition`` (bool, default False)
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
@@ -326,88 +406,42 @@ Miscellaneous strictness flags
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
-Platform configuration
-----------------------
 
-``always_true`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as
-    compile-time constants that are always true.
+Configuring error messages
+**************************
 
-``always_false`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as
-    compile-time constants that are always false.
-
-
-Global-only options
-*******************
-
-The following options may only be set in the global section (``[mypy]``).
-
-.. _config-file-import-discovery-global:
-
-Import discovery
-----------------
-
-For more information, see the :ref:`import discovery <import-discovery>`
+For more information, see the :ref:`Configuring error messages <configuring-error-messages>`
 section of the command line docs.
 
-Note: this section describes only global-only import discovery options. See above for
-a list of import discovery options that may be used
-:ref:`both per-module and globally <config-file-import-discovery-per-module>`.
+These options may only be set in the global section (``[mypy]``).
 
-``namespace_packages`` (bool, default False)
-    Enables :pep:`420` style namespace packages.  See :ref:`the
-    corresponding flag <import-discovery>` for more information.
+``show_error_context`` (bool, default False)
+    Prefixes each error with the relevant context.
 
-``python_executable`` (string)
-    Specifies the path to the Python executable to inspect to collect
-    a list of available :ref:`PEP 561 packages <installed-packages>`. User
-    home directory and environment variables will be expanded. Defaults to
-    the executable used to run mypy.
+``show_column_numbers`` (bool, default False)
+    Shows column numbers in error messages.
 
-``no_silence_site_packages`` (bool, default False)
-    Enables reporting error messages generated within :pep:`561` compliant packages.
-    Those error messages are suppressed by default, since you are usually
-    not able to control errors in 3rd party code.
+``show_error_codes`` (bool, default False)
+    Shows error codes in error messages. See :ref:`error-codes` for more information.
 
-``mypy_path`` (string)
-    Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
-    variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
-    Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
-    User home directory and environment variables will be expanded.
+``pretty`` (bool, default False)
+    Use visually nicer output in error messages: use soft word wrap,
+    show source code snippets, and show error location markers.
 
-``files`` (string)
+``color_output`` (bool, default True)
+    Shows error messages with color enabled.
 
-    A comma-separated list of paths which should be checked by mypy if none are given on the command
-    line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
-    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
-    the current one. User home directory and environment variables will be expanded.
+``error_summary`` (bool, default True)
+    Shows a short summary line after error messages.
 
-
-Platform configuration
-----------------------
-
-For more information, see the :ref:`platform configuration <platform-configuration>`
-section of the command line docs.
-
-``python_version`` (string)
-    Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
-    for example ``2.7``.  The default is the version of the Python
-    interpreter used to run mypy.
-
-``platform`` (string)
-    Specifies the OS platform for the target program, for example
-    ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
-    The default is the current platform as revealed by Python's
-    :py:data:`sys.platform` variable.
+``show_absolute_path`` (bool, default False)
+    Show absolute paths to files.
 
 
 Incremental mode
-----------------
+****************
 
-For more information, see the :ref:`incremental mode <incremental>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
 ``incremental`` (bool, default True)
     Enables :ref:`incremental mode <incremental>`.
@@ -422,45 +456,34 @@ section of the command line docs.
     but is always written to, unless the value is set to ``/dev/null``
     (UNIX) or ``nul`` (Windows).
 
+``sqlite_cache`` (bool, default False)
+    Use an `SQLite`_ database to store the cache.
+
+``cache_fine_grained`` (bool, default False)
+    Include fine-grained dependency information in the cache for the mypy daemon.
+
 ``skip_version_check`` (bool, default False)
     Makes mypy use incremental cache data even if it was generated by a
     different version of mypy. (By default, mypy will perform a version
     check and regenerate the cache if it was written by older versions of mypy.)
 
-
-Configuring error messages
---------------------------
-
-For more information, see the :ref:`configuring error messages <configuring-error-messages>`
-section of the command line docs.
-
-``show_error_context`` (bool, default False)
-    Prefixes each error with the relevant context.
-
-``show_column_numbers`` (bool, default False)
-    Shows column numbers in error messages.
-
-``show_error_codes`` (bool, default False)
-    Shows error codes in error messages. See :ref:`error-codes` for more information.
-
-``color_output`` (bool, default True)
-    Shows error messages with color enabled.
-
-``error_summary`` (bool, default True)
-    Shows a short summary line after error messages.
+``skip_cache_mtime_checks`` (bool, default False)
+    Skip cache internal consistency checks based on mtime.
 
 
 Advanced options
-----------------
+****************
 
-For more information, see the :ref:`advanced flags <advanced-flags>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
 ``pdb`` (bool, default False)
     Invokes pdb on fatal error.
 
 ``show_traceback`` (bool, default False)
     Shows traceback on fatal error.
+
+``raise_exceptions`` (bool, default False)
+    Raise exception on fatal error.
 
 ``custom_typing_module`` (string)
     Specifies a custom module to use as a substitute for the :py:mod:`typing` module.
@@ -475,11 +498,59 @@ section of the command line docs.
     in combination with ``disallow_untyped_defs`` or ``disallow_incomplete_defs``.
 
 
-Miscellaneous
--------------
+Report generation
+*****************
 
-``warn_redundant_casts`` (bool, default False)
-    Warns about casting an expression to its inferred type.
+If these options are set, mypy will generate a report in the specified
+format into the specified directory.
+
+``any_exprs_report`` (string)
+    Causes mypy to generate a text file report documenting how many
+    expressions of type ``Any`` are present within your codebase.
+
+``cobertura_xml_report`` (string)
+    Causes mypy to generate a Cobertura XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``html_report`` / ``xslt_html_report`` (string)
+    Causes mypy to generate an HTML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``linecount_report`` (string)
+    Causes mypy to generate a text file report documenting the functions
+    and lines that are typed and untyped within your codebase.
+
+``linecoverage_report`` (string)
+    Causes mypy to generate a JSON file that maps each source file's
+    absolute filename to a list of line numbers that belong to typed
+    functions in that file.
+
+``lineprecision_report`` (string)
+    Causes mypy to generate a flat text file report with per-module
+    statistics of how many lines are typechecked etc.
+
+``txt_report`` / ``xslt_txt_report`` (string)
+    Causes mypy to generate a text file type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+``xml_report`` (string)
+    Causes mypy to generate an XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+
+Miscellaneous
+*************
+
+These options may only be set in the global section (``[mypy]``).
+
+``junit_xml`` (string)
+    Causes mypy to generate a JUnit XML test result document with
+    type checking results. This can make it easier to integrate mypy
+    with continuous integration (CI) tools.
 
 ``scripts_are_modules`` (bool, default False)
     Makes script ``x`` become module ``x`` instead of ``__main__``.  This is
@@ -493,6 +564,5 @@ Miscellaneous
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
-``new_semantic_analyzer`` (bool, default True)
-    Enables the new, improved, semantic analyzer.
-    (See :ref:`The mypy command line <command-line>` for more information.)
+.. _lxml: https://pypi.org/project/lxml/
+.. _SQLite: https://www.sqlite.org/
