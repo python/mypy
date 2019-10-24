@@ -349,7 +349,7 @@ class ASTConverter:
                 self.type_ignores[ti.lineno] = parsed
             else:
                 self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
-        body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, module=True))
         return MypyFile(body,
                         self.imports,
                         False,
