@@ -402,7 +402,7 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
     ``Optional[...]`` *does not* mean a function argument with a default value.
     However, if the default value of an argument is ``None``, you can use
     an optional type for the argument, but it's not enforced by default.
-    You can use the ``--no-implicit-optional`` command-line option to stop
+    You can use the :option:`--no-implicit-optional <mypy --no-implicit-optional>` command-line option to stop
     treating arguments with a ``None`` default value as having an implicit
     ``Optional[...]`` type. It's possible that this will become the default
     behavior in the future.
@@ -418,7 +418,7 @@ the Java ``null``). In this mode ``None`` is also valid for primitive
 types such as ``int`` and ``float``, and :py:data:`~typing.Optional` types are
 not required.
 
-The mode is enabled through the ``--no-strict-optional`` command-line
+The mode is enabled through the :option:`--no-strict-optional <mypy --no-strict-optional>` command-line
 option. In mypy versions before 0.600 this was the default mode. You
 can enable this option explicitly for backward compatibility with
 earlier mypy versions, in case you don't want to introduce optional

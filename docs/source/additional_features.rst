@@ -286,7 +286,7 @@ run after starting or restarting the daemon.
 
 The mypy daemon requires extra fine-grained dependency data in
 the cache files which aren't included by default. To use caching with
-the mypy daemon, use the ``--cache-fine-grained`` option in your CI
+the mypy daemon, use the :option:`--cache-fine-grained <mypy --cache-fine-grained>` option in your CI
 build::
 
     $ mypy --cache-fine-grained <args...>
@@ -326,7 +326,7 @@ at least if your codebase is hundreds of thousands of lines or more:
   network), the script can still fall back to a normal incremental build.
 
 * You can have multiple local cache directories for different local branches
-  using the ``--cache-dir`` option. If the user switches to an existing
+  using the :option:`--cache-dir <mypy --cache-dir>` option. If the user switches to an existing
   branch where downloaded cache data is already available, you can continue
   to use the existing cache data instead of redownloading the data.
 

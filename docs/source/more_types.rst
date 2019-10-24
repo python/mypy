@@ -535,7 +535,7 @@ type hints provided on the implementation. For example, in the
 argument list ``index: Union[int, slice]`` and a return type of
 ``Union[T, Sequence[T]]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
-force mypy to check the body anyways, use the ``--check-untyped-defs``
+force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).
 
 The variants must also also be compatible with the implementation
