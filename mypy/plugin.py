@@ -153,7 +153,7 @@ class TypeAnalyzerPluginInterface:
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
-        """Emmit an error message at given location."""
+        """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
@@ -256,7 +256,7 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
-        """Emmit an error message at given location."""
+        """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
@@ -629,7 +629,7 @@ class Plugin(CommonPluginApi):
                                ) -> Optional[Callable[[DynamicClassDefContext], None]]:
         """Semantically analyze a dynamic class definition.
 
-        This plugin hook allows to semantically analyze dynamic class definitions like:
+        This plugin hook allows one to semantically analyze dynamic class definitions like:
 
             from lib import dynamic_class
 

@@ -341,7 +341,7 @@ class Emitter:
 
         Somewhat strangely, this supports unboxed types but only
         operates on boxed versions.  This is necessary to properly
-        handle types such as Optional[int] in compatability glue.
+        handle types such as Optional[int] in compatibility glue.
 
         Assign NULL (error value) to dest if the value has an incompatible type.
 

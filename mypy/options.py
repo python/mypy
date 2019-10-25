@@ -264,7 +264,7 @@ class Options:
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool
 
-    # To avoid breaking plugin compatability, keep providing new_semantic_analyzer
+    # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:
         return True

@@ -495,7 +495,7 @@ def mypycify(
     return extensions
 
 
-# For backwards compatability we define this as an alias.  Previous
+# For backwards compatibility we define this as an alias.  Previous
 # versions used to require using it, and it is conceivable that future
 # versions will need it also.
 MypycifyBuildExt = build_ext
