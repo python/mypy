@@ -2,14 +2,13 @@ from functools import partial
 from typing import Callable, Optional, List
 
 from mypy import message_registry
-from mypy.nodes import Expression, StrExpr, IntExpr, DictExpr, UnaryExpr
+from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
-    CheckerPluginInterface,
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
+    Type, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
     TypeVarType, TPDICT_FB_NAMES, get_proper_type
 )
 from mypy.subtypes import is_subtype
