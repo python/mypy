@@ -1625,7 +1625,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         class A:
             def f(self, x: int) -> object: ...
 
-        then it is totally permissable to have a subclass
+        then it is totally permissible to have a subclass
 
         class B(A):
             def f(self, x: object) -> int: ...

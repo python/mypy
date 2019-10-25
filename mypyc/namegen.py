@@ -39,7 +39,7 @@ class NameGenerator:
         """Initialize with a list of modules in each compilation group.
 
         The names of modules are used to shorten names referring to
-        modules, for convenience. Arbitary module
+        modules, for convenience. Arbitrary module
         names are supported for generated names, but uncompiled modules
         will use long names.
         """

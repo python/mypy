@@ -201,7 +201,7 @@ class FileSystemCache:
         else:
             try:
                 names = self.listdir(head)
-                # This allows to check file name case sensitively in
+                # This allows one to check file name case sensitively in
                 # case-insensitive filesystems.
                 res = tail in names and self.isfile(path)
             except OSError:
