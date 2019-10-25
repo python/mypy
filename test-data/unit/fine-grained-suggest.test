@@ -768,3 +768,20 @@ z = foo(f(), g())
 [out]
 (foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
 ==
+
+[case testSuggestDict]
+# suggest: foo.foo
+# suggest: foo.bar
+[file foo.py]
+def foo():
+    # return dict(x=5)
+    return {'x': 5}
+
+def bar():
+    return {}
+
+[builtins fixtures/dict.pyi]
+[out]
+() -> typing.Dict[str, int]
+() -> typing.Dict[Any, Any]
+==

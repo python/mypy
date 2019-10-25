@@ -30,10 +30,9 @@ from typing_extensions import TypedDict
 from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
-    TypeVarType, FunctionLike,
+    TypeVarType, FunctionLike, TypedDictType, UninhabitedType,
     TypeStrVisitor, TypeTranslator,
     is_optional, remove_optional, ProperType, get_proper_type,
-    TypedDictType
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -714,6 +713,9 @@ class TypeFormatter(TypeStrVisitor):
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
+        return "Any"
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         return t.fallback.accept(self)
