@@ -44,7 +44,7 @@ for full details, see :ref:`running-mypy`.
     package. This flag is identical to :option:`--module` apart from this
     behavior.
 
-.. option -c PROGRAM_TEXT, --command PROGRAM_TEXT
+.. option:: -c PROGRAM_TEXT, --command PROGRAM_TEXT
 
     Asks mypy to type check the provided string as a program.
 
