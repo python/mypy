@@ -125,6 +125,8 @@ def add_method(
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info
     func.type = set_callable_name(signature, func)
+    func.is_class = is_classmethod
+    func.is_static = is_staticmethod
     func._fullname = info.fullname() + '.' + name
     func.line = info.line
 
