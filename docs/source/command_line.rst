@@ -6,7 +6,7 @@ The mypy command line
 =====================
 
 This section documents mypy's command line interface. You can view
-a quick summary of the available flags by running ``mypy --help``.
+a quick summary of the available flags by running :option:`mypy --help`.
 
 .. note::
 
@@ -523,7 +523,7 @@ of the above sections.
 .. option:: --strict
 
     This flag mode enables all optional error checking flags.  You can see the
-    list of flags enabled by strict mode in the full ``mypy --help`` output.
+    list of flags enabled by strict mode in the full :option:`mypy --help` output.
 
     Note: the exact list of flags enabled by running :option:`--strict` may change
     over time.

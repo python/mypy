@@ -418,7 +418,7 @@ Example:
 
 Some other expressions exhibit similar behavior; in particular,
 :py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
-whose name is passed to ``--always-true`` or ``--always-false``.
+whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
 .. note::
