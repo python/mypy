@@ -28,6 +28,8 @@ try matching anything against it.
 from typing import Union, Iterator, Tuple, List, Any, Optional, Dict
 from typing_extensions import Final
 
+import sys
+
 from mypy.types import (
     Type, ProperType, Instance, NoneType, LiteralType,
     TupleType, remove_optional,
@@ -95,7 +97,11 @@ def find_mandatory_groups(ast: Union[SubPattern, Tuple[NIC, Any]]) -> Iterator[i
 
     for op, av in data:
         if op is SUBPATTERN:
-            group, _, _, children = av
+            # Use relative indexing for maximum compatibility:
+            # av contains just these two elements in Python 3.5
+            # but four elements for newer Pythons.
+            group, children = av[0], av[-1]
+
             # This can be 'None' for "extension notation groups"
             if group is not None:
                 yield group
@@ -134,8 +140,13 @@ def extract_regex_group_info(pattern: str) -> Tuple[List[int], int, Dict[str, in
         raise RegexPluginException("Invalid regex: {}".format(ex.msg))
 
     mandatory_groups = [0] + list(sorted(find_mandatory_groups(ast)))
-    total_groups = ast.pattern.groups
-    named_groups = ast.pattern.groupdict
+
+    if sys.version_info >= (3, 8, 0):
+        state = ast.state
+    else:
+        state = ast.pattern
+    total_groups = state.groups
+    named_groups = state.groupdict
 
     return mandatory_groups, total_groups, named_groups
 

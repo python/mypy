@@ -1,4 +1,5 @@
 from typing import List, Dict
+import sys
 
 from mypy.test.helpers import Suite, assert_equal
 from mypy.plugins.regex import extract_regex_group_info, RegexPluginException
@@ -47,14 +48,15 @@ class RegexPluginSuite(Suite):
         check(r"(?:x)(m1)", [0, 1], 2, {})
         check(r"(?:x)", [0], 1, {})
 
-        # Flag groups
+        # Flag groups, added in Python 3.6.
         # Note: Doing re.compile("(?a)foo") is equivalent to doing
         # re.compile("foo", flags=re.A). You can also use inline
         # flag groups "(?FLAGS:PATTERN)" to apply flags just for
         # the specified pattern.
-        check(r"(?a)(?i)x", [0], 1, {})
-        check(r"(?ai)x", [0], 1, {})
-        check(r"(?a:(m1)(o2)*(?P<n3>m3))", [0, 1, 3], 4, {'n3': 3})
+        if sys.version_info >= (3, 6):
+            check(r"(?s)(?i)x", [0], 1, {})
+            check(r"(?si)x", [0], 1, {})
+            check(r"(?s:(m1)(o2)*(?P<n3>m3))", [0, 1, 3], 4, {'n3': 3})
 
         # Lookahead assertions
         check(r"(m1) (?=x)     (m2)", [0, 1, 2], 3, {})
