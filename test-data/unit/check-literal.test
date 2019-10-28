@@ -851,7 +851,7 @@ func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], 
 [case testLiteralDisallowAny]
 from typing import Any
 from typing_extensions import Literal
-from missing_module import BadAlias     # E: Cannot find module named 'missing_module' \
+from missing_module import BadAlias     # E: Cannot find implementation or library stub for module named 'missing_module' \
                                         # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 a: Literal[Any]                         # E: Parameter 1 of Literal[...] cannot be of type "Any"

@@ -135,7 +135,7 @@ This can cause a lot of errors that look like the following::
 
     main.py:1: error: No library stub file for standard library module 'antigravity'
     main.py:2: error: No library stub file for module 'flask'
-    main.py:3: error: Cannot find module named 'this_module_does_not_exist'
+    main.py:3: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
 
 There are several different things you can try doing, depending on the exact
 nature of the module.
