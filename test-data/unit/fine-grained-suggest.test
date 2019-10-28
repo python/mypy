@@ -642,21 +642,34 @@ class C:
 ==
 
 [case testSuggestColonAfter]
-# suggest: tmp/foo.py:3
-# suggest: tmp/foo.py:8
+# suggest: tmp/foo.py:6
+# suggest: tmp/foo.py:15
+# suggest: tmp/foo.py:16
+# suggest: tmp/foo.py:18
 [file foo.py]
+from typing import TypeVar
+F = TypeVar('F')
+
 def foo():
     # hi
     return 1
 
-def bar():
-    return 1.0
+def dec(x: F) -> F:
+    return x
 
+class A:
+    @dec
+    def bar(self):
+        return 1.0
+
+@dec
 def baz():
     return 'test'
 
 [out]
 () -> int
+() -> float
+() -> str
 () -> str
 ==
 

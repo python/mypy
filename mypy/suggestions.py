@@ -479,11 +479,10 @@ class SuggestionEngine:
         tree = self.ensure_loaded(self.fgmanager.graph[modname], force=True)
         node = None  # type: Optional[SymbolNode]
         closest_line = None
+        # TODO: Handle nested functions.
         for _, sym, _ in tree.local_definitions():
-            if isinstance(sym.node, FuncDef):
+            if isinstance(sym.node, (FuncDef, Decorator)):
                 sym_line = sym.node.line
-            elif isinstance(sym.node, Decorator):
-                sym_line = sym.node.func.line
             # TODO: add support for OverloadedFuncDef.
             else:
                 continue
