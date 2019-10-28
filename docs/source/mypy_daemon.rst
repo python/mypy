@@ -1,5 +1,7 @@
 .. _mypy_daemon:
 
+.. program:: dmypy
+
 Mypy daemon (mypy server)
 =========================
 
@@ -41,8 +43,8 @@ will always run on the current host. Example::
     dmypy run -- --follow-imports=error prog.py pkg1/ pkg2/
 
 .. note::
-   You'll need to use either the ``--follow-imports=error`` or the
-   ``--follow-imports=skip`` option with dmypy because the current
+   You'll need to use either the :option:`--follow-imports=error <mypy --follow-imports>` or the
+   :option:`--follow-imports=skip <mypy --follow-imports>` option with dmypy because the current
    implementation can't follow imports.
    See :ref:`follow-imports` for details on how these work.
    You can also define these using a
@@ -53,7 +55,7 @@ configuration or mypy version changes.
 
 You need to provide all files or directories you want to type check
 (other than stubs) as arguments. This is a result of the
-``--follow-imports`` restriction mentioned above.
+:option:`--follow-imports <mypy --follow-imports>` restriction mentioned above.
 
 The initial run will process all the code and may take a while to
 finish, but subsequent runs will be quick, especially if you've only
@@ -95,8 +97,8 @@ command-specific options.
 Limitations
 ***********
 
-* You have to use either the ``--follow-imports=error`` or
-  the ``--follow-imports=skip`` option because of an implementation
+* You have to use either the :option:`--follow-imports=error <mypy --follow-imports>` or
+  the :option:`--follow-imports=skip <mypy --follow-imports>` option because of an implementation
   limitation. This can be defined
   through the command line or through a
   :ref:`configuration file <config-file>`.

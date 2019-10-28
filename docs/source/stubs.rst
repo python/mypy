@@ -18,14 +18,14 @@ Here is an overview of how to create a stub file:
 * Write a stub file for the library (or an arbitrary module) and store it as
   a ``.pyi`` file in the same directory as the library module.
 * Alternatively, put your stubs (``.pyi`` files) in a directory
-  reserved for stubs (e.g., ``myproject/stubs``). In this case you
+  reserved for stubs (e.g., :file:`myproject/stubs`). In this case you
   have to set the environment variable ``MYPYPATH`` to refer to the
   directory.  For example::
 
     $ export MYPYPATH=~/work/myproject/stubs
 
-Use the normal Python file name conventions for modules, e.g. ``csv.pyi``
-for module ``csv``. Use a subdirectory with ``__init__.pyi`` for packages. Note
+Use the normal Python file name conventions for modules, e.g. :file:`csv.pyi`
+for module ``csv``. Use a subdirectory with :file:`__init__.pyi` for packages. Note
 that :pep:`561` stub-only packages must be installed, and may not be pointed
 at through the ``MYPYPATH`` (see :ref:`PEP 561 support <installed-packages>`).
 
@@ -49,7 +49,7 @@ in your programs and stub files.
 .. note::
 
    You may be tempted to point ``MYPYPATH`` to the standard library or
-   to the ``site-packages`` directory where your 3rd party packages
+   to the :file:`site-packages` directory where your 3rd party packages
    are installed. This is almost always a bad idea -- you will likely
    get tons of error messages about code you didn't write and that
    mypy can't analyze all that well yet, and in the worst case

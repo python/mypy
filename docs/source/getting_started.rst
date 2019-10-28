@@ -42,7 +42,7 @@ to your code to take full advantage of mypy. See the section below for details.
 .. note::
 
   Although you must install Python 3 to run mypy, mypy is fully capable of
-  type checking Python 2 code as well: just pass in the ``--py2`` flag. See
+  type checking Python 2 code as well: just pass in the :option:`--py2 <mypy --py2>` flag. See
   :ref:`python2` for more details.
 
   .. code-block:: shell
@@ -102,7 +102,7 @@ when you are prototyping a new feature, it may be convenient to initially implem
 the code using dynamic typing and only add type hints later once the code is more stable.
 
 Once you are finished migrating or prototyping your code, you can make mypy warn you
-if you add a dynamic function by mistake by using the ``--disallow-untyped-defs``
+if you add a dynamic function by mistake by using the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`
 flag. See :ref:`command-line` for more information on configuring mypy.
 
 .. note::
@@ -333,11 +333,11 @@ mypy behaves: see :ref:`command-line` for more details.
 For example, suppose you want to make sure *all* functions within your
 codebase are using static typing and make mypy report an error if you
 add a dynamically-typed function by mistake. You can make mypy do this
-by running mypy with the ``--disallow-untyped-defs`` flag.
+by running mypy with the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>` flag.
 
-Another potentially useful flag is ``--strict``, which enables many
+Another potentially useful flag is :option:`--strict <mypy --strict>`, which enables many
 (though not all) of the available strictness options -- including
-``--disallow-untyped-defs``.
+:option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`.
 
 This flag is mostly useful if you're starting a new project from scratch
 and want to maintain a high degree of type safety from day one. However,

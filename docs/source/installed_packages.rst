@@ -19,15 +19,15 @@ By default, mypy searches for packages installed for the Python executable
 running mypy. It is highly unlikely you want this situation if you have
 installed typed packages in another Python's package directory.
 
-Generally, you can use the ``--python-version`` flag and mypy will try to find
+Generally, you can use the :option:`--python-version <mypy --python-version>` flag and mypy will try to find
 the correct package directory. If that fails, you can use the
-``--python-executable`` flag to point to the exact executable, and mypy will
+:option:`--python-executable <mypy --python-executable>` flag to point to the exact executable, and mypy will
 find packages installed for that Python executable.
 
 Note that mypy does not support some more advanced import features, such as zip
 imports and custom import hooks.
 
-If you do not want to use typed packages, use the ``--no-site-packages`` flag
+If you do not want to use typed packages, use the :option:`--no-site-packages <mypy --no-site-packages>` flag
 to disable searching.
 
 Note that stub-only packages (defined in :pep:`PEP 561: Stub-only Packages
