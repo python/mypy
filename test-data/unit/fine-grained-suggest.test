@@ -641,6 +641,25 @@ class C:
 (str) -> int
 ==
 
+[case testSuggestColonAfter]
+# suggest: tmp/foo.py:3
+# suggest: tmp/foo.py:8
+[file foo.py]
+def foo():
+    # hi
+    return 1
+
+def bar():
+    return 1.0
+
+def baz():
+    return 'test'
+
+[out]
+() -> int
+() -> str
+==
+
 [case testSuggestColonBadLocation]
 # suggest: tmp/foo.py:7:8:9
 [file foo.py]
