@@ -672,7 +672,7 @@ from typing import Any
 a = [] # type: Any
 [builtins fixtures/list.pyi]
 [out]
-ListExpr(2) : builtins.list[Any]
+ListExpr(2) : builtins.list[<nothing>]
 
 [case testHigherOrderFunction]
 from typing import TypeVar, Callable, List
