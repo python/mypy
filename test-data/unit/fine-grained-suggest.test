@@ -153,6 +153,18 @@ def bar() -> TD: ...
 () -> foo.TD
 ==
 
+[case testSuggestWithNested]
+# suggest: foo.foo
+[file foo.py]
+def foo():
+    def bar():
+        return 1
+    return 'lol'
+
+[out]
+() -> str
+==
+
 [case testSuggestReexportNaming]
 # suggest: foo.foo
 [file foo.py]
