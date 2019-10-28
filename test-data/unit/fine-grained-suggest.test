@@ -682,16 +682,6 @@ def f(): pass
 Source file is not a Python file
 ==
 
-[case testSuggestColonUnknownLine]
-# suggest: tmp/foo.py:42
-[file foo.py]
-def func(x):
-    return 0
-func('test')
-[out]
-Cannot find a function at line 42
-==
-
 [case testSuggestColonClass]
 # suggest: tmp/foo.py:1
 [file foo.py]
