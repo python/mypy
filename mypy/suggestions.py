@@ -478,7 +478,7 @@ class SuggestionEngine:
         # We must be sure about any edits in this file as this might affect the line numbers.
         tree = self.ensure_loaded(self.fgmanager.graph[modname], force=True)
         node = None  # type: Optional[SymbolNode]
-        closest_line = None
+        closest_line = None  # type: Optional[int]
         # TODO: Handle nested functions.
         for _, sym, _ in tree.local_definitions():
             if isinstance(sym.node, (FuncDef, Decorator)):
