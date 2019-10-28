@@ -2126,13 +2126,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Check if s defines a namedtuple."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
             return True  # This is a valid and analyzed named tuple definition, nothing to do here.
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
                                                                           self.is_func_scope())
         if not is_named_tuple:
+            return False
+        if isinstance(s.lvalues[0], MemberExpr):
+            self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:

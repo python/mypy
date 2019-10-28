@@ -1479,3 +1479,15 @@ def f_suppresses() -> int:
 [out]
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
+
+[case testNamedTupleAtRunTime]
+from typing import NamedTuple
+
+class A:
+    def __init__(self) -> None:
+        self.b = NamedTuple('x', [('s', str), ('n', int)])
+
+reveal_type(A().b)
+[out]
+_testNamedTupleAtRunTime.py:5: error: NamedTuple type as an attribute is not supported
+_testNamedTupleAtRunTime.py:7: note: Revealed type is 'Any'
