@@ -310,14 +310,16 @@ class DataclassTransformer:
 
                     known_attrs.add(name)
                     super_attrs.append(attr)
-                else:
+                elif all_attrs:
                     # How early in the attribute list an attribute appears is determined by the
                     # reverse MRO, not simply MRO.
                     # See https://docs.python.org/3/library/dataclasses.html#inheritance for
                     # details.
-                    (attr,) = [a for a in all_attrs if a.name == name]
-                    all_attrs.remove(attr)
-                    super_attrs.append(attr)
+                    for attr in all_attrs:
+                        if attr.name == name:
+                            all_attrs.remove(attr)
+                            super_attrs.append(attr)
+                            break
             all_attrs = super_attrs + all_attrs
 
         # Ensure that arguments without a default don't follow
