@@ -807,3 +807,16 @@ class A2:
     b: str = 'test'
 
 [builtins fixtures/list.pyi]
+
+[case testDataclassesInheritingDuplicateField]
+# see mypy issue #7792
+from dataclasses import dataclass
+
+@dataclass
+class A:  # E: Name 'x' already defined (possibly by an import)
+    x: int = 0
+    x: int = 0  # E: Name 'x' already defined on line 6
+
+@dataclass
+class B(A):
+    pass
