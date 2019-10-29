@@ -123,11 +123,15 @@ class ReturnFinder(TraverserVisitor):
         if o.expr is not None and o.expr in self.typemap:
             self.return_types.append(self.typemap[o.expr])
 
+    def visit_func_def(self, o: FuncDef) -> None:
+        # Skip nested functions
+        pass
+
 
 def get_return_types(typemap: Dict[Expression, Type], func: FuncDef) -> List[Type]:
     """Find all the types returned by return statements in func."""
     finder = ReturnFinder(typemap)
-    func.accept(finder)
+    func.body.accept(finder)
     return finder.return_types
 
 
