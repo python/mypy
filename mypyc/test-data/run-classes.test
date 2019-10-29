@@ -115,6 +115,10 @@ class TestEnum(Enum):
 
 assert TestEnum.test() == 3
 
+[file other.py]
+# Force a multi-module test to make sure we can compile multi-file with
+# non-extension classes
+
 [file driver.py]
 from native import TestEnum
 assert TestEnum.a.name == 'a'
