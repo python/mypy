@@ -462,6 +462,8 @@ class SuggestionEngine:
     def find_node_by_file_and_line(self, file: str, line: int) -> Tuple[str, SymbolNode]:
         """Find symbol node by path to file and line number.
 
+        Find the first function declared *before or on* the line number.
+
         Return module id and the node found. Raise SuggestionFailure if can't find one.
         """
         if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
@@ -475,14 +477,19 @@ class SuggestionEngine:
         # We must be sure about any edits in this file as this might affect the line numbers.
         tree = self.ensure_loaded(self.fgmanager.graph[modname], force=True)
         node = None  # type: Optional[SymbolNode]
+        closest_line = None  # type: Optional[int]
+        # TODO: Handle nested functions.
         for _, sym, _ in tree.local_definitions():
-            if isinstance(sym.node, FuncDef) and sym.node.line == line:
-                node = sym.node
-                break
-            elif isinstance(sym.node, Decorator) and sym.node.func.line == line:
-                node = sym.node
-                break
+            if isinstance(sym.node, (FuncDef, Decorator)):
+                sym_line = sym.node.line
             # TODO: add support for OverloadedFuncDef.
+            else:
+                continue
+
+            # We want the closest function above the specified line
+            if sym_line <= line and (closest_line is None or sym_line > closest_line):
+                closest_line = sym_line
+                node = sym.node
         if not node:
             raise SuggestionFailure('Cannot find a function at line {}'.format(line))
         return modname, node

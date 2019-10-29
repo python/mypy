@@ -641,6 +641,38 @@ class C:
 (str) -> int
 ==
 
+[case testSuggestColonAfter]
+# suggest: tmp/foo.py:6
+# suggest: tmp/foo.py:15
+# suggest: tmp/foo.py:16
+# suggest: tmp/foo.py:18
+[file foo.py]
+from typing import TypeVar
+F = TypeVar('F')
+
+def foo():
+    # hi
+    return 1
+
+def dec(x: F) -> F:
+    return x
+
+class A:
+    @dec
+    def bar(self):
+        return 1.0
+
+@dec
+def baz():
+    return 'test'
+
+[out]
+() -> int
+() -> float
+() -> str
+() -> str
+==
+
 [case testSuggestColonBadLocation]
 # suggest: tmp/foo.py:7:8:9
 [file foo.py]
@@ -661,16 +693,6 @@ Line number must be a number. Got bad
 def f(): pass
 [out]
 Source file is not a Python file
-==
-
-[case testSuggestColonUnknownLine]
-# suggest: tmp/foo.py:42
-[file foo.py]
-def func(x):
-    return 0
-func('test')
-[out]
-Cannot find a function at line 42
 ==
 
 [case testSuggestColonClass]
