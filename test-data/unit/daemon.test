@@ -211,7 +211,7 @@ $ {python} -c "x = open('.mypy_cache/3.6/bar.meta.json').read(); y = open('asdf.
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy suggest foo:foo
-Command 'suggest' is only valid after a 'check' command
+Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
 == Return code: 2
 $ dmypy check foo.py bar.py
 $ dmypy suggest foo.bar
