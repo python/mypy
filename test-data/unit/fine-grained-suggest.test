@@ -807,3 +807,16 @@ def bar():
 () -> typing.Dict[str, int]
 () -> typing.Dict[Any, Any]
 ==
+
+[case testSuggestWithErrors]
+# suggest: foo.foo
+[file foo.py]
+1+'no'
+
+def foo():
+    return 10
+[out]
+foo.py:1: error: Unsupported operand types for + ("int" and "str")
+() -> int
+==
+foo.py:1: error: Unsupported operand types for + ("int" and "str")
