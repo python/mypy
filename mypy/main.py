@@ -1,12 +1,17 @@
 """Mypy type checker command line tool."""
 
 import argparse
+from gettext import gettext
 import os
 import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Optional, Tuple, TextIO
+from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
+try:
+    from typing import NoReturn
+except ImportError:  # Python 3.5.1
+    NoReturn = None  # type: ignore
 from typing_extensions import Final
 
 from mypy import build
@@ -252,6 +257,99 @@ FOOTER = """Environment variables:
   Define MYPY_CACHE_DIR to override configuration cache_dir path."""  # type: Final
 
 
+class CapturableArgumentParser(argparse.ArgumentParser):
+
+    """Override ArgumentParser methods that use sys.stdout/sys.stderr directly.
+
+    This is needed because hijacking sys.std* is not thread-safe,
+    yet output must be captured to properly support mypy.api.run.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        self.stdout = kwargs.pop('stdout', sys.stdout)
+        self.stderr = kwargs.pop('stderr', sys.stderr)
+        super().__init__(*args, **kwargs)
+
+    # =====================
+    # Help-printing methods
+    # =====================
+    def print_usage(self, file: Optional[IO[str]] = None) -> None:
+        if file is None:
+            file = self.stdout
+        self._print_message(self.format_usage(), file)
+
+    def print_help(self, file: Optional[IO[str]] = None) -> None:
+        if file is None:
+            file = self.stdout
+        self._print_message(self.format_help(), file)
+
+    def _print_message(self, message: str, file: Optional[IO[str]] = None) -> None:
+        if message:
+            if file is None:
+                file = self.stderr
+            file.write(message)
+
+    # ===============
+    # Exiting methods
+    # ===============
+    def exit(self, status: int = 0, message: Optional[str] = None) -> NoReturn:
+        if message:
+            self._print_message(message, self.stderr)
+        sys.exit(status)
+
+    def error(self, message: str) -> NoReturn:
+        """error(message: string)
+
+        Prints a usage message incorporating the message to stderr and
+        exits.
+
+        If you override this in a subclass, it should not return -- it
+        should either exit or raise an exception.
+        """
+        self.print_usage(self.stderr)
+        args = {'prog': self.prog, 'message': message}
+        self.exit(2, gettext('%(prog)s: error: %(message)s\n') % args)
+
+
+class CapturableVersionAction(argparse.Action):
+
+    """Supplement CapturableArgumentParser to handle --version.
+
+    This is nearly identical to argparse._VersionAction except,
+    like CapturableArgumentParser, it allows output to be captured.
+
+    Another notable difference is that version is mandatory.
+    This allows removing a line in __call__ that falls back to parser.version
+    (which does not appear to exist).
+    """
+
+    def __init__(self,
+                 option_strings: Sequence[str],
+                 version: str,
+                 dest: str = argparse.SUPPRESS,
+                 default: str = argparse.SUPPRESS,
+                 help: str = "show program's version number and exit",
+                 stdout: Optional[IO[str]] = None):
+        super().__init__(
+            option_strings=option_strings,
+            dest=dest,
+            default=default,
+            nargs=0,
+            help=help)
+        self.version = version
+        self.stdout = stdout or sys.stdout
+
+    def __call__(self,
+                 parser: argparse.ArgumentParser,
+                 namespace: argparse.Namespace,
+                 values: Union[str, Sequence[Any], None],
+                 option_string: Optional[str] = None) -> NoReturn:
+        formatter = parser._get_formatter()
+        formatter.add_text(self.version)
+        parser._print_message(formatter.format_help(), self.stdout)
+        parser.exit()
+
+
 def process_options(args: List[str],
                     stdout: Optional[TextIO] = None,
                     stderr: Optional[TextIO] = None,
@@ -269,13 +367,15 @@ def process_options(args: List[str],
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
-    parser = argparse.ArgumentParser(prog=program,
-                                     usage=header,
-                                     description=DESCRIPTION,
-                                     epilog=FOOTER,
-                                     fromfile_prefix_chars='@',
-                                     formatter_class=AugmentedHelpFormatter,
-                                     add_help=False)
+    parser = CapturableArgumentParser(prog=program,
+                                      usage=header,
+                                      description=DESCRIPTION,
+                                      epilog=FOOTER,
+                                      fromfile_prefix_chars='@',
+                                      formatter_class=AugmentedHelpFormatter,
+                                      add_help=False,
+                                      stdout=stdout,
+                                      stderr=stderr)
 
     strict_flag_names = []  # type: List[str]
     strict_flag_assignments = []  # type: List[Tuple[str, bool]]
@@ -328,9 +428,10 @@ def process_options(args: List[str],
         '-v', '--verbose', action='count', dest='verbosity',
         help="More verbose messages")
     general_group.add_argument(
-        '-V', '--version', action='version',
+        '-V', '--version', action=CapturableVersionAction,
         version='%(prog)s ' + __version__,
-        help="Show program's version number and exit")
+        help="Show program's version number and exit",
+        stdout=stdout)
 
     config_group = parser.add_argument_group(
         title='Config file',
