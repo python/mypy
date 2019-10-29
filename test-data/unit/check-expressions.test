@@ -1330,6 +1330,18 @@ def f(t: Tuple[int, ...]) -> None:
     '%d %d %d' % t
 [builtins fixtures/primitives.pyi]
 
+[case testStringInterpolationUnionType]
+from typing import Tuple, Union
+a: Union[Tuple[int, str], Tuple[str, int]] = ('A', 1)
+'%s %s' % a
+'%s' % a  # E: Not all arguments converted during string formatting
+
+b: Union[Tuple[int, str], Tuple[int, int], Tuple[str, int]] = ('A', 1)
+'%s %s' % b
+'%s %s %s' % b  # E: Not enough arguments for format string
+
+c: Union[Tuple[str, int], Tuple[str, int, str]] = ('A', 1)
+'%s %s' % c  # E: Not all arguments converted during string formatting
 
 -- str.format() calls
 -- ------------------
