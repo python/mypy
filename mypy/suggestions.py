@@ -545,16 +545,12 @@ class SuggestionEngine:
         If check_errors is true, raise an exception if there are errors.
         """
         assert state.path is not None
-        res = self.fgmanager.update([(state.id, state.path)], [])
-        if check_errors and res:
-            # TODO: apply color and formatting to error messages?
-            raise SuggestionFailure("Error while processing %s:\n" % state.id + '\n'.join(res))
-        return res
+        return self.fgmanager.update([(state.id, state.path)], [])
 
     def ensure_loaded(self, state: State, force: bool = False) -> MypyFile:
         """Make sure that the module represented by state is fully loaded."""
         if not state.tree or state.tree.is_cache_skeleton or force:
-            self.reload(state, check_errors=True)
+            self.reload(state)
         assert state.tree is not None
         return state.tree
 

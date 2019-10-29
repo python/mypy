@@ -566,7 +566,9 @@ class Server:
                     **kwargs: Any) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
-            return {'error': "Command 'suggest' is only valid after a 'check' command"}
+            return {
+                'error': "Command 'suggest' is only valid after a 'check' command"
+                " (that produces no parse errors)"}
         engine = SuggestionEngine(self.fine_grained_manager, **kwargs)
         try:
             if callsites:
