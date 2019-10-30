@@ -2579,20 +2579,35 @@ Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad
 
 [case testStrictEqualityMetaclass]
 # flags: --strict-equality
-from typing import List, Type
+from typing import List, Type, Any
 
 class Meta(type): ...
 class OtherMeta(type): ...
 
 class A(metaclass=Meta): ...
+class B(metaclass=Meta): ...
 class C(metaclass=OtherMeta): ...
 
 o: Type[object]
+a: Type[Any]
+aa: type
 exp: List[Meta]
 
 A in exp
+B in exp
 C in exp  # E: Non-overlapping container check (element type: "Type[C]", container item type: "Meta")
+
 o in exp
+a in exp
+aa in exp
+
+a in [A, B]
+aa in [A, B]
+
+class AA: ...
+class BB: ...
+a in [AA, BB]
+aa in [AA, BB]
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 

@@ -249,13 +249,15 @@ def is_overlapping_types(left: Type,
         if isinstance(left, TypeType) and isinstance(right, CallableType) and right.is_type_obj():
             return _is_overlapping_types(left.item, right.ret_type)
         # 2. Type[C] vs Meta, where Meta is a metaclass for C.
-        if (isinstance(left, TypeType) and isinstance(left.item, Instance) and
-                isinstance(right, Instance)):
-            left_meta = left.item.type.metaclass_type
-            if left_meta is not None:
-                return _is_overlapping_types(left_meta, right)
-            # builtins.type (default metaclass) overlaps with all metaclasses
-            return right.type.has_base('builtins.type')
+        if isinstance(left, TypeType) and isinstance(right, Instance):
+            if isinstance(left.item, Instance):
+                left_meta = left.item.type.metaclass_type
+                if left_meta is not None:
+                    return _is_overlapping_types(left_meta, right)
+                # builtins.type (default metaclass) overlaps with all metaclasses
+                return right.type.has_base('builtins.type')
+            elif isinstance(left.item, AnyType):
+                return right.type.has_base('builtins.type')
         # 3. Callable[..., C] vs Meta is considered below, when we switch to fallbacks.
         return False
 
