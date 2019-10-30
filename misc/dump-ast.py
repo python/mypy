@@ -10,14 +10,13 @@ import argparse
 
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.nodes import MypyFile
 from mypy import defaults
 from mypy.parse import parse
 
 
 def dump(fname: str,
          python_version: Tuple[int, int],
-         quiet: bool = False) -> MypyFile:
+         quiet: bool = False) -> None:
     options = Options()
     options.python_version = python_version
     with open(fname, 'rb') as f:
