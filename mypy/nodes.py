@@ -2625,7 +2625,8 @@ class FakeInfo(TypeInfo):
     # Fake type_vars so `mypy.checkmember` can process this info.
     type_vars = None
 
-    def fullname(self) -> str:
+    @staticmethod
+    def fullname() -> str:
         # Fake fullname so `mypy.checkmember` can process this info.
         return 'FakeInfo'
 
