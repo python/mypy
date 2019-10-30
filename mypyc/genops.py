@@ -1461,7 +1461,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         non-extension class, calling dataclass, then switching them back.
 
         The resulting class is an extension class and instances of it do not
-        does not have a __dict__ (unless something else requires it).
+        have a __dict__ (unless something else requires it).
         All methods written explicitly in the source are compiled and
         may be called through the vtable while the methods generated
         by dataclasses are interpreted and may not be.
