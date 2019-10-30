@@ -250,13 +250,23 @@ import other_interpreted
 
 # Test for an exceptional cases
 from testutil import assertRaises
-from native import Person1, Person1b
+from native import Person1, Person1b, Person3
+from types import BuiltinMethodType
 
 with assertRaises(TypeError, "missing 1 required positional argument"):
     Person1(0)
 
 with assertRaises(TypeError, "missing 2 required positional arguments"):
     Person1b()
+
+with assertRaises(TypeError, "int object expected; got str"):
+    Person1('nope', 'test')
+
+p = Person1(0, 'test')
+with assertRaises(TypeError, "int object expected; got str"):
+    p.age = 'nope'
+
+assert isinstance(Person3().get_age, BuiltinMethodType)
 
 [case testGetAttribute]
 class C:
