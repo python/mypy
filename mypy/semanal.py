@@ -1241,8 +1241,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
-                    if (sym.node.fullname in ('typing.Protocol',
-                                                'typing_extensions.Protocol') and
+                    if (sym.node.fullname in ('typing.Protocol', 'typing_extensions.Protocol') and
                             i not in removed):
                         # also remove bare 'Protocol' bases
                         removed.append(i)
@@ -3071,8 +3070,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
             return False
-        return sym.node.fullname in ('typing.Final',
-                                       'typing_extensions.Final')
+        return sym.node.fullname in ('typing.Final', 'typing_extensions.Final')
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)

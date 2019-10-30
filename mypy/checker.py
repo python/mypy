@@ -4455,8 +4455,10 @@ def builtin_item_type(tp: Type) -> Optional[Type]:
     tp = get_proper_type(tp)
 
     if isinstance(tp, Instance):
-        if tp.type.fullname in ['builtins.list', 'builtins.tuple', 'builtins.dict',
-                                  'builtins.set', 'builtins.frozenset']:
+        if tp.type.fullname in [
+            'builtins.list', 'builtins.tuple', 'builtins.dict',
+            'builtins.set', 'builtins.frozenset',
+        ]:
             if not tp.args:
                 # TODO: fix tuple in lib-stub/builtins.pyi (it should be generic).
                 return None

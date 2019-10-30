@@ -1418,8 +1418,7 @@ def format_type_inner(typ: Type,
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
-        if itype.type.fullname in ('types.ModuleType',
-                                     '_importlib_modulespec.ModuleType'):
+        if itype.type.fullname in ('types.ModuleType', '_importlib_modulespec.ModuleType'):
             # Make some common error messages simpler and tidier.
             return 'Module'
         if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
