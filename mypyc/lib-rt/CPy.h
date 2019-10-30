@@ -1395,9 +1395,28 @@ fail:
 
 /* Support for our partial built-in support for dataclasses.
  *
- * Take a class we want to make a dataclass, swap in conventional
- * looking attributes instead of our descriptors, invoke dataclass,
- * then swap everything back.
+ * Take a class we want to make a dataclass, remove any descriptors
+ * for annotated attributes, swap in the actual values of the class
+ * variables invoke dataclass, and then restore all of the
+ * descriptors.
+ *
+ * The purpose of all this is that dataclasses uses the values of
+ * class variables to drive which attributes are required and what the
+ * default values/factories are for optional attributes. This means
+ * that the class dict needs to contain those values instead of getset
+ * descriptors for the attributes when we invoke dataclass.
+ *
+ * We need to remove descriptors for attributes even when there is no
+ * default value for them, or else dataclass will think the descriptor
+ * is the default value. We remove only the attributes, since we don't
+ * want dataclasses to try generating functions when they are already
+ * implemented.
+ *
+ * Args:
+ *   dataclass_dec: The decorator to apply
+ *   tp: The class we are making a dataclass
+ *   dict: The dictionary containing values that dataclasses needs
+ *   annotations: The type annotation dictionary
  */
 static int
 CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,

@@ -204,7 +204,7 @@ def build_ir(modules: List[MypyFile],
 
 
 def is_trait_decorator(d: Expression) -> bool:
-    return isinstance(d, NameExpr) and d.fullname == 'mypy_extensions.trait'
+    return isinstance(d, RefExpr) and d.fullname == 'mypy_extensions.trait'
 
 
 def is_trait(cdef: ClassDef) -> bool:
@@ -213,10 +213,10 @@ def is_trait(cdef: ClassDef) -> bool:
 
 def is_dataclass_decorator(d: Expression) -> bool:
     return (
-        (isinstance(d, NameExpr) and d.fullname == 'dataclasses.dataclass')
+        (isinstance(d, RefExpr) and d.fullname == 'dataclasses.dataclass')
         or (
             isinstance(d, CallExpr)
-            and isinstance(d.callee, NameExpr)
+            and isinstance(d.callee, RefExpr)
             and d.callee.fullname == 'dataclasses.dataclass'
         )
     )
@@ -557,6 +557,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
     # We sort the table for determinism here on Python 3.5
     for name, node in sorted(info.names.items()):
+        # Currenly all plugin generated methods are dummies and not included.
         if node.plugin_generated:
             continue
 
@@ -1459,6 +1460,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         (which will be descriptors) with whatever they would be in a
         non-extension class, calling dataclass, then switching them back.
 
+        The resulting class is an extension class and instances of it do not
+        does not have a __dict__ (unless something else requires it).
+        All methods written explicitly in the source are compiled and
+        may be called through the vtable while the methods generated
+        by dataclasses are interpreted and may not be.
+
         (If we just called dataclass without doing this, it would think that all
         of the descriptors for our attributes are default values and generate an
         incorrect constructor. We need to do the switch so that dataclass gets the
@@ -1503,7 +1510,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     with self.catch_errors(stmt.line):
                         self.visit_method(cdef, non_ext, get_func_def(item))
             elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
-                # Ignore plugin generated methods
+                # Ignore plugin generated methods (since they have no
+                # bodies to compile and will need to have the bodies
+                # provided by some other mechanism.)
                 if cdef.info.names[stmt.name()].plugin_generated:
                     continue
                 with self.catch_errors(stmt.line):

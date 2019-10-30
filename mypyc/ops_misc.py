@@ -424,6 +424,8 @@ pytype_from_template_op = custom_op(
     emit=simple_emit(
         '{dest} = CPyType_FromTemplate((PyTypeObject *){args[0]}, {args[1]}, {args[2]});'))
 
+# Create a dataclass from an extension class. See
+# CPyDataclass_SleightOfHand for more docs.
 dataclass_sleight_of_hand = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
     result_type=bool_rprimitive,
