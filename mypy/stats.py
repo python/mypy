@@ -332,7 +332,7 @@ class StatisticsVisitor(TraverserVisitor):
             return
 
         if isinstance(t, AnyType) and is_special_form_any(t):
-            # If there is an error in special form definition. it will override TYPE_PRECISE
+            # TODO: What if there is an error in special form definition?
             self.record_line(self.line, TYPE_PRECISE)
             return
 
