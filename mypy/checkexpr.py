@@ -3593,11 +3593,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if node in self.type_overrides:
             return self.type_overrides[node]
-        # Don't use an Any type context, since that will cause more
-        # anys than we want for things that consume the inferred
-        # types.
-        if isinstance(get_proper_type(type_context), AnyType):
-            type_context = None
         self.type_context.append(type_context)
         try:
             if allow_none_return and isinstance(node, CallExpr):
