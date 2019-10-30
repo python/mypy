@@ -2622,9 +2622,16 @@ class FakeInfo(TypeInfo):
     def __init__(self, msg: str) -> None:
         self.msg = msg
 
+    # Fake type_vars so `mypy.checkmember` can process this info.
+    type_vars = None
+
+    def fullname(self) -> str:
+        # Fake fullname so `mypy.checkmember` can process this info.
+        return 'FakeInfo'
+
     def __getattribute__(self, attr: str) -> None:
-        # Handle __class__ so that isinstance still works...
-        if attr == '__class__':
+        # Handle __class__, fullname, type_vars so that isinstance still works...
+        if attr in ('__class__', 'fullname', 'type_vars'):
             return object.__getattribute__(self, attr)
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
