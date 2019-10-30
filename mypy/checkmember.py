@@ -703,7 +703,7 @@ def analyze_class_attribute_access(itype: Instance,
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         result = add_class_tvars(get_proper_type(t), itype, isuper, is_classmethod,
-                                 mx.builtin_type, mx.original_type)
+                                 mx.builtin_type, mx.self_type)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                                mx.msg, mx.context, chk=mx.chk)
@@ -761,7 +761,8 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
 
     B.foo()
 
-    original_type is the value of the type B in the expression B.foo()
+    original_type is the value of the type B in the expression B.foo() or the corresponding
+    component in case if a union (this is used to bind the self-types).
     """
     # TODO: verify consistency between Q and T
     info = itype.type  # type: TypeInfo
