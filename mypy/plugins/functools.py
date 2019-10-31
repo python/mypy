@@ -25,8 +25,8 @@ _MethodInfo = NamedTuple('_MethodInfo', [('is_static', bool), ('type', CallableT
 def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
                                             auto_attribs_default: bool = False) -> None:
     """Add dunder methods to classes decorated with functools.total_ordering."""
-    if ctx.api.options.python_version < (3, 2):
-        ctx.api.fail('"functools.total_ordering" is not supported in Python 2 or 3.1', ctx.reason)
+    if ctx.api.options.python_version < (3,):
+        ctx.api.fail('"functools.total_ordering" is not supported in Python 2', ctx.reason)
         return
 
     comparison_methods = _analyze_class(ctx)
@@ -49,7 +49,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
     if root_method.type.ret_type != ctx.api.named_type('__builtins__.bool'):
         proper_ret_type = get_proper_type(root_method.type.ret_type)
         if not (isinstance(proper_ret_type, UnboundType)
-                and proper_ret_type.name.endswith('bool')):
+                and proper_ret_type.name.split('.')[-1] == 'bool'):
             ret_type = AnyType(TypeOfAny.implementation_artifact)
     for additional_op in _ORDERING_METHODS:
         # Either the method is not implemented
@@ -60,7 +60,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
 
 
 def _find_other_type(method: _MethodInfo) -> Type:
-    """Find the type of the ``other`` argument in a comparision method."""
+    """Find the type of the ``other`` argument in a comparison method."""
     first_arg_pos = 0 if method.is_static else 1
     cur_pos_arg = 0
     other_arg = None
