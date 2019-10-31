@@ -293,6 +293,7 @@ def bar() -> None:
 # suggest: foo.baz
 # suggest: foo.Cls.spam
 # suggest: foo.method
+# suggest: foo.meet
 [file foo.py]
 from typing import Any, List
 
@@ -300,6 +301,9 @@ class A: pass
 class B(A):
     def test(self, x: A) -> None:
         pass
+
+def take_a(x: A) -> None:
+    pass
 
 def take_b(x: B) -> None:
     pass
@@ -327,6 +331,10 @@ def method(x):
     b = B()
     b.test(x)
 
+def meet(x):
+    take_a(x)
+    take_b(x)
+
 bar(A())
 
 [builtins fixtures/isinstancelist.pyi]
@@ -336,6 +344,7 @@ bar(A())
 (foo.B, foo.A) -> None
 (foo.A, foo.A) -> None
 (foo.A) -> None
+(foo.B) -> None
 ==
 
 [case testSuggestInferFunctionUnreachable]

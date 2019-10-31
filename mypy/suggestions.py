@@ -51,6 +51,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type, map_actuals_to_formals
 
 from mypy.join import join_type_list
+from mypy.meet import meet_type_list
 from mypy.sametypes import is_same_type
 from mypy.typeops import make_simplified_union
 
@@ -324,7 +325,8 @@ class SuggestionEngine:
                 arg_types.append(AnyType(TypeOfAny.explicit))
 
             if all_use_types:
-                arg_types.append(join_type_list(all_use_types))
+                # This is a meet because the type needs to be compatible with all the uses
+                arg_types.append(meet_type_list(all_use_types))
 
             types.append(arg_types)
         return types
