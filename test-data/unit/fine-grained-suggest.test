@@ -906,3 +906,40 @@ Command 'suggest' is only valid after a 'check' command (that produces no parse 
 ==
 foo.py:4: error: unexpected EOF while parsing
 -- )
+
+[case testSuggestRefine]
+# suggest: foo.foo
+# suggest: foo.spam
+# suggest: foo.eggs
+# suggest: foo.take_l
+[file foo.py]
+from typing import Any, List
+
+def bar():
+    return 10
+
+def foo(x: int, y):
+    return x + y
+
+def spam(x: int, y: Any) -> Any:
+    return x + y
+
+def eggs(x: int) -> List[Any]:
+    a = [x]
+    return a
+
+def take_l(x: List[Any]) -> Any:
+    return x[0]
+
+
+foo(bar(), 10)
+spam(bar(), 20)
+test = [10, 20]
+take_l(test)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(int, int) -> int
+(int, int) -> int
+(int) -> foo.List[int]
+(foo.List[int]) -> int
+==

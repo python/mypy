@@ -51,7 +51,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type, map_actuals_to_formals
 
 from mypy.join import join_type_list
-from mypy.meet import meet_type_list
+from mypy.meet import meet_types, meet_type_list
 from mypy.sametypes import is_same_type
 from mypy.typeops import make_simplified_union
 
@@ -288,6 +288,12 @@ class SuggestionEngine:
             AnyType(TypeOfAny.special_form),
             self.builtin_type('builtins.function'))
 
+    def get_starting_type(self, fdef: FuncDef) -> CallableType:
+        if isinstance(fdef.type, CallableType):
+            return fdef.type
+        else:
+            return self.get_trivial_type(fdef)
+
     def get_args(self, is_method: bool,
                  base: CallableType, defaults: List[Optional[Type]],
                  callsites: List[Callsite],
@@ -356,11 +362,12 @@ class SuggestionEngine:
         """
         options = self.get_args(is_method, base, defaults, callsites, uses)
         options = [self.add_adjustments(tps) for tps in options]
-        return [base.copy_modified(arg_types=list(x)) for x in itertools.product(*options)]
+        return [merge_callables(base, base.copy_modified(arg_types=list(x)))
+                for x in itertools.product(*options)]
 
     def get_callsites(self, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
         """Find all call sites of a function."""
-        new_type = self.get_trivial_type(func)
+        new_type = self.get_starting_type(func)
 
         collector_plugin = SuggestionPlugin(func.fullname())
 
@@ -413,7 +420,7 @@ class SuggestionEngine:
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
-                self.get_trivial_type(node),
+                self.get_starting_type(node),
                 self.get_default_arg_types(graph[mod], node),
                 callsites,
                 uses,
@@ -432,7 +439,7 @@ class SuggestionEngine:
             else:
                 ret_types = [NoneType()]
 
-        guesses = [best.copy_modified(ret_type=t) for t in ret_types]
+        guesses = [merge_callables(best, best.copy_modified(ret_type=t)) for t in ret_types]
         guesses = self.filter_options(guesses, is_method)
         best, errors = self.find_best(node, guesses)
 
@@ -593,8 +600,9 @@ class SuggestionEngine:
         """
         old = func.unanalyzed_type
         # During reprocessing, unanalyzed_type gets copied to type (by aststrip).
-        # We don't modify type because it isn't necessary and it
-        # would mess up the snapshotting.
+        # We set type to None to ensure that the type always changes during
+        # reprocessing.
+        func.type = None
         func.unanalyzed_type = typ
         try:
             res = self.fgmanager.trigger(func.fullname())
@@ -841,6 +849,25 @@ def count_errors(msgs: List[str]) -> int:
 
 
 T = TypeVar('T')
+
+
+def merge_callables(t: CallableType, s: CallableType) -> CallableType:
+    """Merge two callable types in a way that prefers dropping Anys.
+
+    This is implemented by doing a meet on both the arguments and the return type,
+    since meet(t, Any) == t.
+
+    This won't do perfectly with complex compound types (like
+    callables nested inside), but it does pretty well.
+    """
+
+    # We don't want to ever squash away optionals while doing this, so set
+    # strict optional to be true always
+    with strict_optional_set(True):
+        arg_types = []  # type: List[Type]
+        for i in range(len(t.arg_types)):
+            arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
+    return t.copy_modified(arg_types=arg_types, ret_type=meet_types(t.ret_type, s.ret_type))
 
 
 def dedup(old: List[T]) -> List[T]:
