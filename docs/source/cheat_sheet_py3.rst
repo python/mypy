@@ -143,7 +143,7 @@ When you're puzzled or when things are complicated
    reveal_type(1)  # -> Revealed type is 'builtins.int'
 
    # Use Union when something could be one of a few types
-   # Python 3.8+ (or List[Union[int,str]])
+   # Python 3.9+ (or List[Union[int,str]])
    x: List[int | str]] = [3, 5, "test", "fun"]
 
    # Use Any if you don't know the type of something or it's too
