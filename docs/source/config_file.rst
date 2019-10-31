@@ -172,9 +172,11 @@ section of the command line docs.
     variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
     Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
     User home directory and environment variables will be expanded.
-
+    
     This option may only be set in the global section (``[mypy]``).
 
+    **Note:** On Windows, use UNC paths to avoid using ``:`` (e.g. ``\\127.0.0.1\X$\MyDir`` where ``X`` is the drive letter).
+    
 ``files`` (comma-separated list of strings)
     A comma-separated list of paths which should be checked by mypy if none are given on the command
     line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
