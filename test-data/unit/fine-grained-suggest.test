@@ -917,8 +917,10 @@ foo.py:4: error: unexpected EOF while parsing
 # suggest: foo.callable2
 # suggest: foo.optional1
 # suggest: foo.optional2
+# suggest: foo.optional3
+# suggest: foo.optional4
 [file foo.py]
-from typing import Any, List, Union, Callable, Optional
+from typing import Any, List, Union, Callable, Optional, Set
 
 def bar():
     return 10
@@ -977,6 +979,20 @@ def optional2(x: Union[None, int, Any]):
 optional2(10)
 optional2('test')
 
+def optional3(x: Optional[List[Any]]):
+    assert not x
+    return x[0]
+
+optional3(test)
+
+set_test = {1, 2}
+
+def optional4(x: Union[Set[Any], List[Any]]):
+    pass
+
+optional4(test)
+optional4(set_test)
+
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (int, int) -> int
@@ -988,4 +1004,26 @@ optional2('test')
 (Callable[[float], int]) -> int
 (Optional[int]) -> None
 (Union[None, int, str]) -> None
+(Optional[foo.List[int]]) -> int
+(Union[foo.Set[int], foo.List[int]]) -> None
+==
+
+[case testSuggestRefine2]
+# suggest: foo.optional4
+[file foo.py]
+from typing import Any, List, Union, Callable, Optional, Set
+
+test = [10, 20]
+
+set_test = {1, 2}
+
+def optional4(x: Union[Set[Any], List[Any]]):
+    pass
+
+optional4(test)
+optional4(set_test)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[foo.Set[int], foo.List[int]]) -> None
 ==

@@ -690,6 +690,8 @@ class SuggestionEngine:
         if isinstance(t, UnionType):
             if any(isinstance(x, AnyType) for x in t.items):
                 return 20
+            if any(has_any_type(x) for x in t.items):
+                return 15
             if not is_optional(t):
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
@@ -848,9 +850,6 @@ def count_errors(msgs: List[str]) -> int:
     return len([x for x in msgs if ' error: ' in x])
 
 
-T = TypeVar('T')
-
-
 def refine_type(ti: Type, si: Type) -> Type:
     """Refine `ti` by replacing Anys in it with information taken from `si`
 
@@ -876,16 +875,39 @@ def refine_type(ti: Type, si: Type) -> Type:
     if isinstance(t, CallableType) and isinstance(s, CallableType):
         return refine_callable(t, s)
 
-    if isinstance(t, UnionType) and any(isinstance(x, AnyType) for x in t.items):
-        # TODO: Should we try to go deeper??
-
-        new_items = [x for x in t.items if not isinstance(x, AnyType)] + [s]
-        # We don't ever want to drop None while making these things and
-        # make_simplified_union calls join
-        with strict_optional_set(True):
-            return make_simplified_union(new_items)
+    if isinstance(t, UnionType):
+        return refine_union(t, s)
 
     return t
+
+
+def refine_union(t: UnionType, s: ProperType) -> Type:
+    """Refine a union type based on another type.
+
+    This is done by refining every component of the union against the
+    right hand side type (or every component of its union if it is
+    one). If an element of the union is succesfully refined, we drop it
+    from the union in favor of the refined versions.
+    """
+    rhs_items = s.items if isinstance(s, UnionType) else [s]
+
+    new_items = []
+    for lhs in t.items:
+        refined = False
+        for rhs in rhs_items:
+            new = refine_type(lhs, rhs)
+            if new != lhs:
+                new_items.append(new)
+                refined = True
+        if not refined:
+            new_items.append(lhs)
+
+    print('done', new_items)
+
+    # We don't ever want to drop None while making these things and
+    # make_simplified_union calls join which cases
+    with strict_optional_set(True):
+        return make_simplified_union(new_items)
 
 
 def refine_callable(t: CallableType, s: CallableType) -> CallableType:
@@ -906,6 +928,9 @@ def refine_callable(t: CallableType, s: CallableType) -> CallableType:
         arg_types=[refine_type(ta, sa) for ta, sa in zip(t.arg_types, s.arg_types)],
         ret_type=refine_type(t.ret_type, s.ret_type),
     )
+
+
+T = TypeVar('T')
 
 
 def dedup(old: List[T]) -> List[T]:
