@@ -439,7 +439,7 @@ class SuggestionEngine:
             else:
                 ret_types = [NoneType()]
 
-        guesses = [refine_callable(best, best.copy_modified(ret_type=t)) for t in ret_types]
+        guesses = [best.copy_modified(ret_type=refine_type(best.ret_type, t)) for t in ret_types]
         guesses = self.filter_options(guesses, is_method)
         best, errors = self.find_best(node, guesses)
 
@@ -920,8 +920,6 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
                 refined = True
         if not refined:
             new_items.append(lhs)
-
-    print('done', new_items)
 
     # We don't ever want to drop None while making these things and
     # make_simplified_union calls join which cases
