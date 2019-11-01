@@ -573,6 +573,11 @@ class MessageBuilder:
     def unexpected_keyword_argument(self, callee: CallableType, name: str,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
+        # Suggest intended keyword, if any match is found.
+        matches = best_matches(name, list(filter(None, callee.arg_names)))[:3]
+        if matches:
+            suggestion = ";  did you mean {}?".format(pretty_or(matches))
+            msg += "{}".format(suggestion)
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:

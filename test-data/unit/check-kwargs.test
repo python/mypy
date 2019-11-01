@@ -86,6 +86,14 @@ def f(a: 'A') -> None: pass # N: "f" defined here
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
+[case testKeywordsMisspelling]
+def f(thing, other): ...
+f(otter='test') # E: Unexpected keyword argument "otter" for "f";  did you mean "other"?
+
+[case testMultipleKeywordsForMisspelling]
+def f(thing, other, atter, btter): ...
+f(otter='test') # E: Unexpected keyword argument "otter" for "f";  did you mean "other", "btter", or "atter"?
+
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
 f = None # type: Any
