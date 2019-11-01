@@ -138,7 +138,7 @@ def get_return_types(typemap: Dict[Expression, Type], func: FuncDef) -> List[Typ
 
 
 class ArgUseFinder(TraverserVisitor):
-    """Find all the types of arguments that each arg is passed to.
+    """Visitor for finding all the types of arguments that each arg is passed to.
 
     This is extremely simple minded but might be effective anyways.
     """
@@ -147,10 +147,6 @@ class ArgUseFinder(TraverserVisitor):
         self.arg_types = {
             arg.variable: [] for arg in func.arguments
         }  # type: Dict[SymbolNode, List[Type]]
-
-    def visit_func_def(self, o: FuncDef) -> None:
-        # Skip nested functions
-        pass
 
     def visit_call_expr(self, o: CallExpr) -> None:
         if not any(isinstance(e, RefExpr) and e.node in self.arg_types for e in o.args):
@@ -172,7 +168,17 @@ class ArgUseFinder(TraverserVisitor):
 
 
 def get_arg_uses(typemap: Dict[Expression, Type], func: FuncDef) -> List[List[Type]]:
-    """Find all the types of arguments that each arg is passed to."""
+    """Find all the types of arguments that each arg is passed to.
+
+    For example, given
+      def foo(x: int) -> None: ...
+      def bar(x: str) -> None: ...
+      def test(x, y):
+          foo(x)
+          bar(y)
+
+    this will return [[int], [str]].
+    """
     finder = ArgUseFinder(func, typemap)
     func.body.accept(finder)
     return [finder.arg_types[arg.variable] for arg in func.arguments]
