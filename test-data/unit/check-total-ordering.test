@@ -33,3 +33,20 @@ class Ord:  # E: Classes with total_ordering must define one of __{lt, gt, le, g
         return False
 
 [builtins fixtures/dict.pyi]
+
+[case testTotalOrderingInherited]
+from functools import total_ordering
+from typing import Any
+
+class Super:
+    def __eq__(self, other: Any) -> bool:
+        return False
+
+@total_ordering
+class Ord(Super):
+    def __lt__(self, other: "Ord") -> bool:
+        return False
+
+Ord() <= Ord()
+
+[builtins fixtures/dict.pyi]

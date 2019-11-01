@@ -10,7 +10,10 @@ SELF_TVAR_NAME = '_AT'  # type: Final
 
 
 def _validate_total_ordering(ctx: ClassDefContext) -> None:
-    names = set(ctx.cls.info.names)
+    names = set()
+    for info in ctx.cls.info.mro:
+        names = names.union(info.names)
+
     if '__eq__' not in names:
         ctx.api.fail("Classes with total_ordering must define __eq__", ctx.cls)
     if not ('__lt__' in names or '__le__' in names or
