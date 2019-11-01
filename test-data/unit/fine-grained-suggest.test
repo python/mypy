@@ -1031,3 +1031,19 @@ tuple1(t)
 (foo.Dict[int, int]) -> None
 (Tuple[int, int]) -> None
 ==
+
+[case testSuggestRefine2]
+# suggest: foo.optional5
+[file foo.py]
+from typing import Optional, Any
+
+def optional5(x: Optional[Any]):
+    pass
+
+optional5(10)
+optional5(None)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Optional[int]) -> None
+==
