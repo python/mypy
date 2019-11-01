@@ -48,9 +48,10 @@ from mypy.find_sources import SourceFinder, InvalidSourceList
 from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.plugin import Plugin, FunctionContext, MethodContext
 from mypy.traverser import TraverserVisitor
-from mypy.checkexpr import has_any_type
+from mypy.checkexpr import has_any_type, map_actuals_to_formals
 
 from mypy.join import join_type_list
+from mypy.meet import meet_type_list
 from mypy.sametypes import is_same_type
 from mypy.typeops import make_simplified_union
 
@@ -136,6 +137,53 @@ def get_return_types(typemap: Dict[Expression, Type], func: FuncDef) -> List[Typ
     return finder.return_types
 
 
+class ArgUseFinder(TraverserVisitor):
+    """Visitor for finding all the types of arguments that each arg is passed to.
+
+    This is extremely simple minded but might be effective anyways.
+    """
+    def __init__(self, func: FuncDef, typemap: Dict[Expression, Type]) -> None:
+        self.typemap = typemap
+        self.arg_types = {
+            arg.variable: [] for arg in func.arguments
+        }  # type: Dict[SymbolNode, List[Type]]
+
+    def visit_call_expr(self, o: CallExpr) -> None:
+        if not any(isinstance(e, RefExpr) and e.node in self.arg_types for e in o.args):
+            return
+
+        typ = get_proper_type(self.typemap.get(o.callee))
+        if not isinstance(typ, CallableType):
+            return
+
+        formal_to_actual = map_actuals_to_formals(
+            o.arg_kinds, o.arg_names, typ.arg_kinds, typ.arg_names,
+            lambda n: AnyType(TypeOfAny.special_form))
+
+        for i, args in enumerate(formal_to_actual):
+            for arg_idx in args:
+                arg = o.args[arg_idx]
+                if isinstance(arg, RefExpr) and arg.node in self.arg_types:
+                    self.arg_types[arg.node].append(typ.arg_types[i])
+
+
+def get_arg_uses(typemap: Dict[Expression, Type], func: FuncDef) -> List[List[Type]]:
+    """Find all the types of arguments that each arg is passed to.
+
+    For example, given
+      def foo(x: int) -> None: ...
+      def bar(x: str) -> None: ...
+      def test(x, y):
+          foo(x)
+          bar(y)
+
+    this will return [[int], [str]].
+    """
+    finder = ArgUseFinder(func, typemap)
+    func.body.accept(finder)
+    return [finder.arg_types[arg.variable] for arg in func.arguments]
+
+
 class SuggestionFailure(Exception):
     pass
 
@@ -179,7 +227,7 @@ class SuggestionEngine:
         if no_any:
             self.flex_any = 1.0
 
-        self.max_guesses = 16
+        self.max_guesses = 64
         self.use_fixme = use_fixme
 
     def suggest(self, function: str) -> str:
@@ -242,7 +290,8 @@ class SuggestionEngine:
 
     def get_args(self, is_method: bool,
                  base: CallableType, defaults: List[Optional[Type]],
-                 callsites: List[Callsite]) -> List[List[Type]]:
+                 callsites: List[Callsite],
+                 uses: List[List[Type]]) -> List[List[Type]]:
         """Produce a list of type suggestions for each argument type."""
         types = []  # type: List[List[Type]]
         for i in range(len(base.arg_kinds)):
@@ -258,22 +307,34 @@ class SuggestionEngine:
                     # Collect all the types except for implicit anys
                     if not is_implicit_any(typ):
                         all_arg_types.append(typ)
+            all_use_types = []
+            for typ in uses[i]:
+                # Collect all the types except for implicit anys
+                if not is_implicit_any(typ):
+                    all_use_types.append(typ)
             # Add in any default argument types
             default = defaults[i]
             if default:
                 all_arg_types.append(default)
+                if all_use_types:
+                    all_use_types.append(default)
 
-            if len(all_arg_types) == 1 and isinstance(get_proper_type(all_arg_types[0]), NoneType):
-                types.append(
-                    [UnionType.make_union([all_arg_types[0],
-                                           AnyType(TypeOfAny.explicit)])])
+            arg_types = []
+
+            if (all_arg_types
+                    and all(isinstance(get_proper_type(tp), NoneType) for tp in all_arg_types)):
+                arg_types.append(
+                    UnionType.make_union([all_arg_types[0], AnyType(TypeOfAny.explicit)]))
             elif all_arg_types:
-                types.append(generate_type_combinations(all_arg_types))
+                arg_types.extend(generate_type_combinations(all_arg_types))
             else:
-                # If we don't have anything, we'll try Any and object
-                # (Actually object usually is bad for downstream consumers...)
-                # types.append([AnyType(TypeOfAny.explicit), self.builtin_type('builtins.object')])
-                types.append([AnyType(TypeOfAny.explicit)])
+                arg_types.append(AnyType(TypeOfAny.explicit))
+
+            if all_use_types:
+                # This is a meet because the type needs to be compatible with all the uses
+                arg_types.append(meet_type_list(all_use_types))
+
+            types.append(arg_types)
         return types
 
     def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
@@ -287,12 +348,13 @@ class SuggestionEngine:
         return dedup(typs + [tp.accept(translator) for tp in typs])
 
     def get_guesses(self, is_method: bool, base: CallableType, defaults: List[Optional[Type]],
-                    callsites: List[Callsite]) -> List[CallableType]:
+                    callsites: List[Callsite],
+                    uses: List[List[Type]]) -> List[CallableType]:
         """Compute a list of guesses for a function's type.
 
         This focuses just on the argument types, and doesn't change the provided return type.
         """
-        options = self.get_args(is_method, base, defaults, callsites)
+        options = self.get_args(is_method, base, defaults, callsites, uses)
         options = [self.add_adjustments(tps) for tps in options]
         return [base.copy_modified(arg_types=list(x)) for x in itertools.product(*options)]
 
@@ -338,6 +400,7 @@ class SuggestionEngine:
         """
         graph = self.graph
         callsites, orig_errors = self.get_callsites(node)
+        uses = get_arg_uses(self.manager.all_types, node)
 
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
@@ -352,7 +415,9 @@ class SuggestionEngine:
                 is_method,
                 self.get_trivial_type(node),
                 self.get_default_arg_types(graph[mod], node),
-                callsites)
+                callsites,
+                uses,
+            )
         guesses = self.filter_options(guesses, is_method)
         if len(guesses) > self.max_guesses:
             raise SuggestionFailure("Too many possibilities!")

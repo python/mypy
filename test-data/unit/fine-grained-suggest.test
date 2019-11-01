@@ -287,6 +287,83 @@ def bar() -> None:
 ==
 (Optional[str]) -> None
 
+[case testSuggestBackflow]
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: foo.baz
+# suggest: foo.Cls.spam
+# suggest: foo.method
+# suggest: foo.meet
+# suggest: foo.has_nested
+[file foo.py]
+from typing import Any, List, Optional
+
+class A: pass
+class B(A):
+    def test(self, x: A) -> None:
+        pass
+
+def take_optional_a(x: Optional[A]) -> None:
+    pass
+
+def take_a(x: A) -> None:
+    pass
+
+def take_b(x: B) -> None:
+    pass
+
+def take_any(x: Any) -> None:
+    pass
+
+def take_kws(a: A, b: B) -> None:
+    pass
+
+def take_star(*a: A) -> None:
+    pass
+
+def foo(x):
+    take_b(x)
+
+def bar(x):
+    take_b(x)
+
+bar(A())
+
+def baz(x, y):
+    take_kws(a=y, b=x)
+
+class Cls:
+    def spam(self, x, y):
+        take_star(x, y)
+
+def method(x):
+    b = B()
+    b.test(x)
+
+def meet(x, y):
+    take_a(x)
+    take_b(x)
+
+    take_a(y)
+    take_optional_a(y)
+    take_any(y)
+    foo(y)  # unannotated
+
+def has_nested(x):
+    def nested():
+        take_b(x)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(foo.B) -> None
+(foo.A) -> None
+(foo.B, foo.A) -> None
+(foo.A, foo.A) -> None
+(foo.A) -> None
+(foo.B, foo.A) -> None
+(foo.B) -> None
+==
+
 [case testSuggestInferFunctionUnreachable]
 # flags: --strict-optional
 # suggest: foo.foo
