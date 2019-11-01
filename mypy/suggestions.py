@@ -851,23 +851,61 @@ def count_errors(msgs: List[str]) -> int:
 T = TypeVar('T')
 
 
-def merge_callables(t: CallableType, s: CallableType) -> CallableType:
-    """Merge two callable types in a way that prefers dropping Anys.
+def merge_types(ti: Type, si: Type) -> Type:
+    """Merge two callable types in a left-biased Any dropping way.
 
-    This is implemented by doing a meet on both the arguments and the return type,
-    since meet(t, Any) == t.
-
-    This won't do perfectly with complex compound types (like
-    callables nested inside), but it does pretty well.
+    XXX: More
     """
+    t = get_proper_type(ti)
+    s = get_proper_type(si)
 
-    # We don't want to ever squash away optionals while doing this, so set
-    # strict optional to be true always
-    with strict_optional_set(True):
-        arg_types = []  # type: List[Type]
-        for i in range(len(t.arg_types)):
-            arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
-    return t.copy_modified(arg_types=arg_types, ret_type=meet_types(t.ret_type, s.ret_type))
+    if isinstance(t, AnyType):
+        return s
+
+    if isinstance(t, Instance) and isinstance(s, Instance) and t.type == s.type:
+        return t.copy_modified(args=[merge_types(ta, sa) for ta, sa in zip(t.args, s.args)])
+
+    if (
+        isinstance(t, TupleType)
+        and isinstance(s, TupleType)
+        and t.partial_fallback == s.partial_fallback
+        and len(t.items) == len(s.items)
+    ):
+        return t.copy_modified(items=[merge_types(ta, sa) for ta, sa in zip(t.items, s.items)])
+
+    if isinstance(t, CallableType) and isinstance(s, CallableType):
+        return merge_callables(t, s)
+
+    if isinstance(t, UnionType) and any(isinstance(x, AnyType) for x in t.items):
+        # TODO: Should we try to go deeper??
+
+        new_items = [x for x in t.items if not isinstance(x, AnyType)] + [s]
+        # We don't ever want to drop None while making these things and
+        # make_simplified_union calls join
+        with strict_optional_set(True):
+            return make_simplified_union(new_items)
+
+    return t
+
+
+def merge_callables(t: CallableType, s: CallableType) -> CallableType:
+    """Merge two callable types in a left-biased Any dropping way.
+
+    See comments for merge_types.
+    """
+    if t.fallback != s.fallback:
+        return t
+
+    if t.is_ellipsis_args and not is_tricky_callable(s):
+        return s.copy_modified(ret_type=merge_types(t.ret_type, s.ret_type))
+
+    if is_tricky_callable(t) or t.arg_kinds != s.arg_kinds:
+        return t
+
+    return t.copy_modified(
+        arg_types=[merge_types(ta, sa) for ta, sa in zip(t.arg_types, s.arg_types)],
+        ret_type=merge_types(t.ret_type, s.ret_type),
+    )
 
 
 def dedup(old: List[T]) -> List[T]:

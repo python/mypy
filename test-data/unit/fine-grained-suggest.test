@@ -912,8 +912,13 @@ foo.py:4: error: unexpected EOF while parsing
 # suggest: foo.spam
 # suggest: foo.eggs
 # suggest: foo.take_l
+# suggest: foo.union
+# suggest: foo.callable1
+# suggest: foo.callable2
+# suggest: foo.optional1
+# suggest: foo.optional2
 [file foo.py]
-from typing import Any, List
+from typing import Any, List, Union, Callable, Optional
 
 def bar():
     return 10
@@ -921,8 +926,12 @@ def bar():
 def foo(x: int, y):
     return x + y
 
+foo(bar(), 10)
+
 def spam(x: int, y: Any) -> Any:
     return x + y
+
+spam(bar(), 20)
 
 def eggs(x: int) -> List[Any]:
     a = [x]
@@ -931,15 +940,52 @@ def eggs(x: int) -> List[Any]:
 def take_l(x: List[Any]) -> Any:
     return x[0]
 
-
-foo(bar(), 10)
-spam(bar(), 20)
 test = [10, 20]
 take_l(test)
+
+def union(x: Union[int, str]):
+    pass
+
+union(10)
+
+def add1(x: float) -> int:
+    pass
+
+def callable1(f: Callable[[int], Any]):
+    return f(10)
+
+callable1(add1)
+
+def callable2(f: Callable[..., Any]):
+    return f(10)
+
+callable2(add1)
+
+def optional1(x: Optional[Any]):
+    pass
+
+optional1(10)
+
+def optional2(x: Union[None, int, Any]):
+    if x is None:
+        pass
+    elif isinstance(x, str):
+        pass
+    else:
+        add1(x)
+
+optional2(10)
+optional2('test')
+
 [builtins fixtures/isinstancelist.pyi]
 [out]
 (int, int) -> int
 (int, int) -> int
 (int) -> foo.List[int]
 (foo.List[int]) -> int
+(Union[int, str]) -> None
+(Callable[[int], int]) -> int
+(Callable[[float], int]) -> int
+(Optional[int]) -> None
+(Union[None, int, str]) -> None
 ==
