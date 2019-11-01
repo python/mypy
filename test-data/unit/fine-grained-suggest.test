@@ -1031,23 +1031,3 @@ tuple1(t)
 (foo.Dict[int, int]) -> None
 (Tuple[int, int]) -> None
 ==
-
-[case testSuggestRefine2]
-# suggest: foo.optional4
-[file foo.py]
-from typing import Any, List, Union, Callable, Optional, Set
-
-test = [10, 20]
-
-set_test = {1, 2}
-
-def optional4(x: Union[Set[Any], List[Any]]):
-    pass
-
-optional4(test)
-optional4(set_test)
-
-[builtins fixtures/isinstancelist.pyi]
-[out]
-(Union[foo.Set[int], foo.List[int]]) -> None
-==
