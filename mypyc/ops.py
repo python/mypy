@@ -23,7 +23,7 @@ from mypyc.common import PROPSET_PREFIX
 
 from mypy_extensions import trait
 
-from mypyc.namegen import NameGenerator
+from mypyc.namegen import NameGenerator, exported_name
 
 T = TypeVar('T')
 
@@ -1858,7 +1858,7 @@ class ClassIR:
         return names.private_name(self.module_name, self.name)
 
     def struct_name(self, names: NameGenerator) -> str:
-        return '{}Object'.format(self.name_prefix(names))
+        return '{}Object'.format(exported_name(self.fullname))
 
     def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, 'ClassIR']]:
         for ir in self.mro:
