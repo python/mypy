@@ -90,6 +90,7 @@ class DefaultPlugin(Plugin):
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         from mypy.plugins import attrs
         from mypy.plugins import dataclasses
+        from mypy.plugins import total_ordering
 
         if fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
@@ -100,6 +101,8 @@ class DefaultPlugin(Plugin):
             )
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
+        elif fullname == total_ordering.total_ordering_fullname:
+            return total_ordering.total_ordering_callback
         return None
 
 

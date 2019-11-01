@@ -1,0 +1,35 @@
+[case testTotalOrderingInference]
+from functools import total_ordering
+from typing import Any
+
+@total_ordering
+class Ord:
+    def __eq__(self, other: Any) -> bool:
+        return False
+
+    def __lt__(self, other: "Ord") -> bool:
+        return False
+
+Ord() <= Ord()
+
+[builtins fixtures/dict.pyi]
+[case testTotalOrderingNoEq]
+from functools import total_ordering
+from typing import Any
+
+@total_ordering
+class Ord:  # E: Classes with total_ordering must define __eq__
+    def __lt__(self, other: "Ord") -> bool:
+        return False
+
+[builtins fixtures/dict.pyi]
+[case testTotalOrderingNoLt]
+from functools import total_ordering
+from typing import Any
+
+@total_ordering
+class Ord:  # E: Classes with total_ordering must define one of __{lt, gt, le, ge}__
+    def __eq__(self, other: Any) -> bool:
+        return False
+
+[builtins fixtures/dict.pyi]
