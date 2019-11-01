@@ -246,6 +246,13 @@ def snapshot_simple_type(typ: Type) -> SnapshotItem:
     return (type(typ).__name__,)
 
 
+def encode_optional_str(s: Optional[str]) -> str:
+    if s is None:
+        return '<None>'
+    else:
+        return s
+
+
 class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     """Creates a read-only, self-contained snapshot of a type object.
 
@@ -256,6 +263,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     - Has no references to mutable or non-primitive objects.
     - Two snapshots represent the same object if and only if they are
       equal.
+    - Results must be sortable. It's important that tuples have
+      consistent types and can't arbitrarily mix str and None values,
+      for example, since they can't be compared.
     """
 
     def visit_unbound_type(self, typ: UnboundType) -> SnapshotItem:
@@ -282,9 +292,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
         return ('Instance',
-                typ.type.fullname(),
+                encode_optional_str(typ.type.fullname()),
                 snapshot_types(typ.args),
-                None if typ.last_known_value is None else snapshot_type(typ.last_known_value))
+                ('None',) if typ.last_known_value is None else snapshot_type(typ.last_known_value))
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
         return ('TypeVar',
@@ -301,7 +311,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('CallableType',
                 snapshot_types(typ.arg_types),
                 snapshot_type(typ.ret_type),
-                tuple(typ.arg_names),
+                tuple([encode_optional_str(name) for name in typ.arg_names]),
                 tuple(typ.arg_kinds),
                 typ.is_type_obj(),
                 typ.is_ellipsis_args)
@@ -316,7 +326,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('TypedDictType', items, required)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
-        return ('LiteralType', typ.value, snapshot_type(typ.fallback))
+        return ('LiteralType', snapshot_type(typ.fallback), typ.value)
 
     def visit_union_type(self, typ: UnionType) -> SnapshotItem:
         # Sort and remove duplicates so that we can use equality to test for
