@@ -116,6 +116,10 @@ p.add_argument('--callsites', action='store_true',
                help="Find callsites instead of suggesting a type")
 p.add_argument('--use-fixme', metavar='NAME', type=str,
                help="A dummy name to use instead of Any for types that can't be inferred")
+p.add_argument('--max-guesses', type=int,
+               help="Set the maximum number of types to try for a function (default 64)")
+p.add_argument('--max-args', type=int,
+               help="Set the maximum number of arguments on a function to infer (default 10)")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -370,7 +374,8 @@ def do_suggest(args: argparse.Namespace) -> None:
     response = request(args.status_file, 'suggest', function=args.function,
                        json=args.json, callsites=args.callsites, no_errors=args.no_errors,
                        no_any=args.no_any, flex_any=args.flex_any, try_text=args.try_text,
-                       use_fixme=args.use_fixme)
+                       use_fixme=args.use_fixme, max_guesses=args.max_guesses,
+                       max_args=args.max_args)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

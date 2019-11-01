@@ -213,7 +213,10 @@ class SuggestionEngine:
                  no_any: bool = False,
                  try_text: bool = False,
                  flex_any: Optional[float] = None,
-                 use_fixme: Optional[str] = None) -> None:
+                 use_fixme: Optional[str] = None,
+                 max_guesses: Optional[int] = None,
+                 max_args: Optional[int] = None
+                 ) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
@@ -227,7 +230,8 @@ class SuggestionEngine:
         if no_any:
             self.flex_any = 1.0
 
-        self.max_guesses = 64
+        self.max_guesses = max_guesses or 64
+        self.max_args = max_args or 10
         self.use_fixme = use_fixme
 
     def suggest(self, function: str) -> str:
@@ -414,7 +418,7 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        if len(node.arg_names) >= 10:
+        if len(node.arg_names) >= self.max_args:
             raise SuggestionFailure("Too many arguments")
 
         with strict_optional_set(graph[mod].options.strict_optional):
@@ -427,7 +431,7 @@ class SuggestionEngine:
             )
         guesses = self.filter_options(guesses, is_method)
         if len(guesses) > self.max_guesses:
-            raise SuggestionFailure("Too many possibilities!")
+            raise SuggestionFailure("Too many possibilities")
         best, _ = self.find_best(node, guesses)
 
         # Now try to find the return type!

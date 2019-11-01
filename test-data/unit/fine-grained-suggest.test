@@ -44,6 +44,18 @@ bar.py:4: (arg=str)
 bar.py:6: (*typing.List[str])
 bar.py:8: (**typing.Dict[str, str])
 
+[case testMaxGuesses]
+# suggest: --max-guesses=2 foo.foo
+# suggest: --max-args=1 foo.foo
+[file foo.py]
+def foo(x, y): pass
+foo(1, 2)
+foo('3', '4')
+[out]
+Too many possibilities
+Too many arguments
+==
+
 [case testSuggestInferFunc1]
 # flags: --strict-optional
 # suggest: foo.foo
