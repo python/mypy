@@ -51,7 +51,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.checkexpr import has_any_type, map_actuals_to_formals
 
 from mypy.join import join_type_list
-from mypy.meet import meet_types, meet_type_list
+from mypy.meet import meet_type_list
 from mypy.sametypes import is_same_type
 from mypy.typeops import make_simplified_union
 
