@@ -362,7 +362,7 @@ class SuggestionEngine:
         """
         options = self.get_args(is_method, base, defaults, callsites, uses)
         options = [self.add_adjustments(tps) for tps in options]
-        return [merge_callables(base, base.copy_modified(arg_types=list(x)))
+        return [refine_callable(base, base.copy_modified(arg_types=list(x)))
                 for x in itertools.product(*options)]
 
     def get_callsites(self, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
@@ -439,7 +439,7 @@ class SuggestionEngine:
             else:
                 ret_types = [NoneType()]
 
-        guesses = [merge_callables(best, best.copy_modified(ret_type=t)) for t in ret_types]
+        guesses = [refine_callable(best, best.copy_modified(ret_type=t)) for t in ret_types]
         guesses = self.filter_options(guesses, is_method)
         best, errors = self.find_best(node, guesses)
 
@@ -851,8 +851,8 @@ def count_errors(msgs: List[str]) -> int:
 T = TypeVar('T')
 
 
-def merge_types(ti: Type, si: Type) -> Type:
-    """Merge two callable types in a left-biased Any dropping way.
+def refine_type(ti: Type, si: Type) -> Type:
+    """Refine `ti` by replacing Anys in it with information taken from `si`
 
     XXX: More
     """
@@ -863,7 +863,7 @@ def merge_types(ti: Type, si: Type) -> Type:
         return s
 
     if isinstance(t, Instance) and isinstance(s, Instance) and t.type == s.type:
-        return t.copy_modified(args=[merge_types(ta, sa) for ta, sa in zip(t.args, s.args)])
+        return t.copy_modified(args=[refine_type(ta, sa) for ta, sa in zip(t.args, s.args)])
 
     if (
         isinstance(t, TupleType)
@@ -871,10 +871,10 @@ def merge_types(ti: Type, si: Type) -> Type:
         and t.partial_fallback == s.partial_fallback
         and len(t.items) == len(s.items)
     ):
-        return t.copy_modified(items=[merge_types(ta, sa) for ta, sa in zip(t.items, s.items)])
+        return t.copy_modified(items=[refine_type(ta, sa) for ta, sa in zip(t.items, s.items)])
 
     if isinstance(t, CallableType) and isinstance(s, CallableType):
-        return merge_callables(t, s)
+        return refine_callable(t, s)
 
     if isinstance(t, UnionType) and any(isinstance(x, AnyType) for x in t.items):
         # TODO: Should we try to go deeper??
@@ -888,23 +888,23 @@ def merge_types(ti: Type, si: Type) -> Type:
     return t
 
 
-def merge_callables(t: CallableType, s: CallableType) -> CallableType:
-    """Merge two callable types in a left-biased Any dropping way.
+def refine_callable(t: CallableType, s: CallableType) -> CallableType:
+    """Refine a callable based on another.
 
-    See comments for merge_types.
+    See comments for refine_type.
     """
     if t.fallback != s.fallback:
         return t
 
     if t.is_ellipsis_args and not is_tricky_callable(s):
-        return s.copy_modified(ret_type=merge_types(t.ret_type, s.ret_type))
+        return s.copy_modified(ret_type=refine_type(t.ret_type, s.ret_type))
 
     if is_tricky_callable(t) or t.arg_kinds != s.arg_kinds:
         return t
 
     return t.copy_modified(
-        arg_types=[merge_types(ta, sa) for ta, sa in zip(t.arg_types, s.arg_types)],
-        ret_type=merge_types(t.ret_type, s.ret_type),
+        arg_types=[refine_type(ta, sa) for ta, sa in zip(t.arg_types, s.arg_types)],
+        ret_type=refine_type(t.ret_type, s.ret_type),
     )
 
 
