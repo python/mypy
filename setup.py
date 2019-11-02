@@ -129,7 +129,6 @@ if USE_MYPYC:
     # order. Sort them so that the mypyc output is deterministic.
     mypyc_targets.sort()
 
-
     use_other_mypyc = os.getenv('ALTERNATE_MYPYC_PATH', None)
     if use_other_mypyc:
         # This bit is super unfortunate: we want to use a different
