@@ -624,7 +624,7 @@ def check_self_arg(functype: FunctionLike,
             selfarg = item.arg_types[0]
             if is_classmethod:
                 dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
-            if subtypes.is_subtype(dispatched_arg_type, erase_typevars(selfarg)):
+            if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
                 new_items.append(item)
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).

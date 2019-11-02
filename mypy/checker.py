@@ -909,7 +909,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         erased = erase_to_bound(arg_type)
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
-                            if typ.arg_names[i] in ['self', 'cls']:
+                            if isinstance(erased, Instance) and erased.type.is_protocol:
+                                msg = None
+                            elif typ.arg_names[i] in ['self', 'cls']:
                                 if (self.options.python_version[0] < 3
                                         and is_same_type(erased, arg_type) and not isclass):
                                     msg = message_registry.INVALID_SELF_TYPE_OR_EXTRA_ARG
@@ -919,9 +921,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                         erased, ref_type)
                             else:
                                 msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
-                            self.fail(msg, defn)
-                            if note:
-                                self.note(note, defn)
+                            if msg:
+                                self.fail(msg, defn)
+                                if note:
+                                    self.note(note, defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables

@@ -524,6 +524,28 @@ cs: C[str]
 reveal_type(ci.from_item)  # N: Revealed type is 'def (item: Tuple[builtins.int])'
 reveal_type(cs.from_item)  # N: Revealed type is 'def (item: builtins.str)'
 
+[case testSelfTypeRestrictedMethodOverloadFallback]
+from typing import TypeVar, Generic, overload, Callable
+
+T = TypeVar('T')
+class C(Generic[T]):
+    @overload
+    def from_item(self: C[str]) -> str: ...
+    @overload
+    def from_item(self, converter: Callable[[T], str]) -> str: ...
+    def from_item(self, converter):
+        ...
+
+ci: C[int]
+cs: C[str]
+reveal_type(cs.from_item())  # N: Revealed type is 'builtins.str'
+ci.from_item()  # E: Too few arguments for "from_item" of "C"
+
+def conv(x: int) -> str: ...
+def bad(x: str) -> str: ...
+reveal_type(ci.from_item(conv))  # N: Revealed type is 'builtins.str'
+ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
+
 [case testSelfTypeRestrictedMethodOverloadInit]
 from lib import P, C
 
@@ -567,6 +589,53 @@ class BadSub(Base[int]): ...
 reveal_type(Sub().get_item())  # N: Revealed type is 'builtins.int'
 BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[List[S]]], S]"
 [builtins fixtures/list.pyi]
+
+[case testMixinAllowedWithProtocol]
+from typing import TypeVar
+from typing_extensions import Protocol
+
+class Resource(Protocol):
+    def close(self) -> int: ...
+
+class AtomicClose:
+    def atomic_close(self: Resource) -> int:
+        return self.close()
+
+T = TypeVar('T', bound=Resource)
+class Copyable:
+    def copy(self: T) -> T: ...
+
+class File(AtomicClose, Copyable):
+    def close(self) -> int:
+       ...
+
+class Bad(AtomicClose, Copyable):
+    ...
+
+f: File
+b: Bad
+f.atomic_close()  # OK
+b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic_close" with type "Callable[[Resource], int]"
+
+reveal_type(f.copy())  # N: Revealed type is '__main__.File*'
+b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
+
+[case testBadClassLevelDecoratorHack]
+from typing_extensions import Protocol
+from typing import TypeVar, Any
+
+class FuncLike(Protocol):
+    __call__: Any
+F = TypeVar('F', bound=FuncLike)
+
+class Test:
+    def _deco(func: F) -> F: ...
+
+    @_deco
+    def meth(self, x: str) -> int: ...
+
+reveal_type(Test().meth)  # N: Revealed type is 'def (x: builtins.str) -> builtins.int'
+Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
 
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950
