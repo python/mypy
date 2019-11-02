@@ -130,6 +130,10 @@ def map_type_from_supertype(typ: Type,
     return expand_type_by_instance(typ, inst_type)
 
 
+def instance_or_var(typ: ProperType) -> bool:
+    return isinstance(typ, TypeVarType) or isinstance(typ, Instance)
+
+
 F = TypeVar('F', bound=FunctionLike)
 
 
@@ -174,9 +178,9 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         # TODO: infer bounds on the type of *args?
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
-    if func.variables and (isinstance(self_param_type, TypeVarType) or
+    if func.variables and (instance_or_var(self_param_type) or
                            (isinstance(self_param_type, TypeType) and
-                            isinstance(self_param_type.item, TypeVarType))):
+                            instance_or_var(self_param_type.item))):
         if original_type is None:
             # Type check method override
             # XXX value restriction as union?
@@ -184,13 +188,15 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         original_type = get_proper_type(original_type)
 
         ids = [x.id for x in func.variables]
-        typearg = get_proper_type(infer_type_arguments(ids, self_param_type, original_type)[0])
+        typearg = get_proper_type(infer_type_arguments(ids, self_param_type,
+                                                       original_type, is_supertype=True)[0])
         if (is_classmethod and isinstance(typearg, UninhabitedType)
                 and isinstance(original_type, (Instance, TypeVarType, TupleType))):
             # In case we call a classmethod through an instance x, fallback to type(x)
             # TODO: handle Union
             typearg = get_proper_type(infer_type_arguments(ids, self_param_type,
-                                                           TypeType(original_type))[0])
+                                                           TypeType(original_type),
+                                                           is_supertype=True)[0])
 
         def expand(target: Type) -> Type:
             assert typearg is not None

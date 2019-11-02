@@ -200,6 +200,8 @@ def analyze_instance_member_access(name: str,
             # the first argument.
             pass
         else:
+            if isinstance(signature, FunctionLike):
+                check_self_arg(signature, mx.self_type, False, mx.context, name, mx.msg)
             signature = bind_self(signature, mx.self_type)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
@@ -614,7 +616,7 @@ def check_self_arg(functype: FunctionLike,
             selfarg = item.arg_types[0]
             if is_classmethod:
                 dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
-            if not subtypes.is_subtype(dispatched_arg_type, erase_to_bound(selfarg)):
+            if not subtypes.is_subtype(dispatched_arg_type, erase_typevars(selfarg)):
                 msg.incompatible_self_argument(name, dispatched_arg_type, item,
                                                is_classmethod, context)
 
@@ -702,7 +704,10 @@ def analyze_class_attribute_access(itype: Instance,
 
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
-        result = add_class_tvars(get_proper_type(t), itype, isuper, is_classmethod,
+        t = get_proper_type(t)
+        if isinstance(t, FunctionLike):
+            check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
+        result = add_class_tvars(t, itype, isuper, is_classmethod,
                                  mx.builtin_type, mx.self_type)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,

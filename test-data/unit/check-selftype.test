@@ -468,15 +468,60 @@ class B(A[Q]):
 a: A[int]
 b: B[str]
 reveal_type(a.g)  # N: Revealed type is 'builtins.int'
---reveal_type(a.gt)  # N: Revealed type is 'builtins.int'
+reveal_type(a.gt)  # N: Revealed type is 'builtins.int*'
 reveal_type(a.f())  # N: Revealed type is 'builtins.int'
 reveal_type(a.ft())  # N: Revealed type is '__main__.A*[builtins.int]'
 reveal_type(b.g)  # N: Revealed type is 'builtins.int'
---reveal_type(b.gt)  # N: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(b.gt)  # N: Revealed type is 'builtins.str*'
 reveal_type(b.f())  # N: Revealed type is 'builtins.int'
 reveal_type(b.ft())  # N: Revealed type is '__main__.B*[builtins.str]'
-
 [builtins fixtures/property.pyi]
+
+[case testSelfTypeRestrictedMethod]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class C(Generic[T]):
+    def from_item(self: C[str]) -> None: ...
+
+i: C[int]
+s: C[str]
+
+i.from_item()  # E: Invalid self argument "C[int]" to attribute function "from_item" with type "Callable[[C[str]], None]"
+s.from_item()
+
+[case testSelfTypeRestrictedClassMethod]
+from typing import TypeVar, Generic, Type
+
+T = TypeVar('T')
+class C(Generic[T]):
+    @classmethod
+    def from_item(cls: Type[C[str]]) -> None: ...
+
+class DI(C[int]): ...
+class DS(C[str]): ...
+
+DI().from_item()  # E: Invalid self argument "Type[DI]" to class attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DS().from_item()
+DI.from_item()  # E: Invalid self argument "Type[DI]" to attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DS.from_item()
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeNarrowBinding]
+from typing import TypeVar, List, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Base(Generic[T]):
+    def get_item(self: Base[List[S]]) -> S: ...
+
+class Sub(Base[List[int]]): ...
+class BadSub(Base[int]): ...
+
+reveal_type(Sub().get_item())  # N: Revealed type is 'builtins.int'
+BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[List[S]]], S]"
+[builtins fixtures/list.pyi]
 
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950
