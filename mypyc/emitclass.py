@@ -271,6 +271,10 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                     lines.append('{}{};'.format(emitter.ctype_spaced(rtype),
                                                 emitter.attr(attr)))
                     seen_attrs.add((attr, rtype))
+
+                    if isinstance(rtype, RTuple):
+                        emitter.declare_tuple_struct(rtype)
+
     lines.append('}} {};'.format(cl.struct_name(emitter.names)))
     lines.append('')
     emitter.context.declarations[cl.struct_name(emitter.names)] = HeaderDeclaration(

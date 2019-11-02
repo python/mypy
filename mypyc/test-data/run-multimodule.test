@@ -310,9 +310,11 @@ class Base2:
         self.y = 2
 
 [file other.py]
+from typing import Tuple
 import native
 
 class Base1:
+    a: Tuple[int, int]
     x: int
     def __init__(self) -> None:
         self.x = 1
