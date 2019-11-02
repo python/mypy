@@ -194,12 +194,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_get_attr(self) -> None:
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
-            """cpy_r_r0 = native_A_gety((AObject *)cpy_r_r); /* y */""")
+            """cpy_r_r0 = native_A_gety((mod___AObject *)cpy_r_r); /* y */""")
 
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
-            "cpy_r_r0 = native_A_sety((AObject *)cpy_r_r, cpy_r_m); /* y */")
+            "cpy_r_r0 = native_A_sety((mod___AObject *)cpy_r_r, cpy_r_m); /* y */")
 
     def test_dict_get_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),
