@@ -3300,6 +3300,10 @@ class BoxedThing:
 class Subclass2(BoxedThing):
     pass
 
+class UsesNotImplemented:
+    def __eq__(self, b: object) -> bool:
+        return NotImplemented
+
 def index_into(x : Any, y : Any) -> Any:
     return x[y]
 
@@ -3344,6 +3348,8 @@ assert is_truthy(Item(''))
 assert is_truthy(Item('a'))
 assert not is_truthy(Subclass1(''))
 assert is_truthy(Subclass1('a'))
+
+assert UsesNotImplemented() != object()
 
 internal_index_into()
 [out]
