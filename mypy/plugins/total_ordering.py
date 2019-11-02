@@ -13,7 +13,7 @@ SELF_TVAR_NAME = '_AT'  # type: Final
 
 
 def _validate_total_ordering(ctx: ClassDefContext) -> None:
-    names: Dict[str, str] = dict()
+    names = dict()  # type: Dict[str, str]
     for info in ctx.cls.info.mro:
         for name in info.names:
             if name not in names:
