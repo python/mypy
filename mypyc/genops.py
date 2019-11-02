@@ -84,7 +84,7 @@ from mypyc.ops_misc import (
     check_stop_op, send_op, yield_from_except_op, coro_op,
     py_getattr_op, py_setattr_op, py_delattr_op, py_hasattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
-    fast_isinstance_op, bool_op, new_slice_op,
+    fast_isinstance_op, bool_op, new_slice_op, not_implemented_op,
     type_op, pytype_from_template_op, import_op, get_module_dict_op,
     ellipsis_op, method_new_op, type_is_op, type_object_op, py_calc_meta_op,
     dataclass_sleight_of_hand,
@@ -1794,11 +1794,24 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
         args = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
                 for var, type in fake_vars]  # type: List[Value]
-        self.ret_types[-1] = bool_rprimitive
+        self.ret_types[-1] = object_rprimitive
 
-        retval = self.add(MethodCall(args[0], '__eq__', [args[1]], line))
-        retval = self.unary_op(retval, 'not', line)
+        # If __eq__ returns NotImplemented, then __ne__ should also
+        not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+        eqval = self.add(MethodCall(args[0], '__eq__', [args[1]], line))
+        not_implemented = self.primitive_op(not_implemented_op, [], line)
+        self.add(Branch(
+            self.binary_op(eqval, not_implemented, 'is', line),
+            not_implemented_block,
+            regular_block,
+            Branch.BOOL_EXPR))
+
+        self.activate_block(regular_block)
+        retval = self.coerce(self.unary_op(eqval, 'not', line), object_rprimitive, line)
         self.add(Return(retval))
+
+        self.activate_block(not_implemented_block)
+        self.add(Return(not_implemented))
 
         blocks, env, ret_type, _ = self.leave()
         return FuncIR(
