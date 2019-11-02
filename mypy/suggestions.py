@@ -897,6 +897,8 @@ def refine_type(ti: Type, si: Type) -> Type:
     if isinstance(t, UnionType):
         return refine_union(t, s)
 
+    # TODO: Refining of builtins.tuple, Type?
+
     return t
 
 
@@ -921,8 +923,8 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
         if not refined:
             new_items.append(lhs)
 
-    # We don't ever want to drop None while making these things and
-    # make_simplified_union calls join which cases
+    # Turn strict optional on when simplifying the union since we
+    # don't want to drop Nones.
     with strict_optional_set(True):
         return make_simplified_union(new_items)
 
