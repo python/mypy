@@ -637,6 +637,56 @@ class Test:
 reveal_type(Test().meth)  # N: Revealed type is 'def (x: builtins.str) -> builtins.int'
 Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
 
+[case testSelfTypeTrickyExample]
+from typing import *
+
+In = TypeVar('In')
+Out = TypeVar('Out')
+Mid = TypeVar('Mid')
+NewOut = TypeVar('NewOut')
+
+class Lnk(Generic[In, Out]):
+    def test(self: Lnk[In, Mid], other: Lnk[Mid, NewOut]) -> Lnk[In, NewOut]: ...
+
+class X: pass
+class Y: pass
+class Z: pass
+
+a: Lnk[X, Y] = Lnk()
+b: Lnk[Y, Z] = Lnk()
+
+a.test(b)
+b.test(a)  # E: Argument 1 to "test" of "Lnk" has incompatible type "Lnk[X, Y]"; expected "Lnk[Z, Y]"
+
+[case testSelfTypeReallyTrickyExample]
+from typing import *
+
+In = TypeVar('In')
+Out = TypeVar('Out')
+Other = TypeVar('Other')
+
+_1 = TypeVar('_1')
+_2 = TypeVar('_2')
+__1 = TypeVar('__1')
+__2 = TypeVar('__2')
+
+class Lnk(Generic[In, Out]):
+    @overload
+    def __rshift__(self, other: Lnk[Out, Other]) -> Lnk[In,Other]: ...
+    @overload
+    def __rshift__(self: Lnk[In, Tuple[_1, _2]],
+                   other: Tuple[Lnk[_1, __1], Lnk[_2, __2]]) -> Lnk[In, Tuple[__1, __2]]: ...
+    def __rshift__(self: Any, other: Any) -> Any:
+        ...
+
+a: Lnk[str, Tuple[str, int]] = Lnk()
+b: Lnk[str, int] = Lnk()
+c: Lnk[int, float] = Lnk()
+
+d: Lnk[str, float] = b >> c  # OK
+e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
+f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
+
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950
 class A:
