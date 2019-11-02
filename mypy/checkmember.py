@@ -201,9 +201,11 @@ def analyze_instance_member_access(name: str,
             pass
         else:
             if isinstance(signature, FunctionLike) and name != '__call__':
+                # TODO: use proper treatment of special methods on unions instead
+                #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)
                 signature = check_self_arg(signature, dispatched_type, False, mx.context,
-                name, mx.msg)
+                                           name, mx.msg)
             signature = bind_self(signature, mx.self_type)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
