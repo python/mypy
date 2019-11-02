@@ -120,6 +120,7 @@ def build_type_map(mapper: 'Mapper',
                    modules: List[MypyFile],
                    graph: Graph,
                    types: Dict[Expression, Type],
+                   options: CompilerOptions,
                    errors: Errors) -> None:
     # Collect all classes defined in everything we are compiling
     classes = []
@@ -132,6 +133,9 @@ def build_type_map(mapper: 'Mapper',
     for module, cdef in classes:
         class_ir = ClassIR(cdef.name, module.fullname(), is_trait(cdef),
                            is_abstract=cdef.info.is_abstract)
+        # If global optimizations are disabled, turn of tracking of class children
+        if not options.global_opts:
+            class_ir.children = None
         mapper.type_to_ir[cdef.info] = class_ir
 
     # Figure out which classes need to be compiled as non-extension classes.
@@ -167,7 +171,7 @@ def build_ir(modules: List[MypyFile],
              options: CompilerOptions,
              errors: Errors) -> ModuleIRs:
 
-    build_type_map(mapper, modules, graph, types, errors)
+    build_type_map(mapper, modules, graph, types, options, errors)
 
     result = OrderedDict()  # type: ModuleIRs
 
@@ -654,7 +658,8 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     ir.base_mro = base_mro
 
     for base in bases:
-        base.children.append(ir)
+        if base.children is not None:
+            base.children.append(ir)
 
     if is_dataclass(cdef):
         ir.is_augmented = True
@@ -1358,7 +1363,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 continue
             # Add the current class to the base classes list of concrete subclasses
             if cls in self.mapper.type_to_ir:
-                self.mapper.type_to_ir[cls].children.append(ir)
+                base_ir = self.mapper.type_to_ir[cls]
+                if base_ir.children is not None:
+                    base_ir.children.append(ir)
 
             base = self.load_global_str(cls.name(), cdef.line)
             bases.append(base)
@@ -3064,7 +3071,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         its children, use even faster type comparison checks `type(obj) is typ`.
         """
         concrete = all_concrete_classes(class_ir)
-        if len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
+        if concrete is None or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
             return self.primitive_op(fast_isinstance_op,
                                      [obj, self.get_native_type(class_ir)],
                                      line)

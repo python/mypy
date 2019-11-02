@@ -1792,7 +1792,8 @@ class ClassIR:
         self.base_mro = [self]  # type: List[ClassIR]
 
         # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
-        self.children = []  # type: List[ClassIR]
+        # None if separate compilation prevents this from working
+        self.children = []  # type: Optional[List[ClassIR]]
 
     @property
     def fullname(self) -> str:
@@ -1837,15 +1838,19 @@ class ClassIR:
         return True
 
     def is_method_final(self, name: str) -> bool:
+        subs = self.subclasses()
+        if subs is None:
+            # TODO: Look at the final attribute!
+            return False
+
         if self.has_method(name):
             method_decl = self.method_decl(name)
-            for subc in self.subclasses():
+            for subc in subs:
                 if subc.method_decl(name) != method_decl:
                     return False
             return True
         else:
-            return not any(subc.has_method(name)
-                for subc in self.subclasses())
+            return not any(subc.has_method(name) for subc in subs)
 
     def has_attr(self, name: str) -> bool:
         try:
@@ -1871,24 +1876,32 @@ class ClassIR:
         res = self.get_method_and_class(name)
         return res[0] if res else None
 
-    def subclasses(self) -> Set['ClassIR']:
+    def subclasses(self) -> Optional[Set['ClassIR']]:
         """Return all subclassses of this class, both direct and indirect."""
+        if self.children is None:
+            return None
         result = set(self.children)
         for child in self.children:
             if child.children:
-                result.update(child.subclasses())
+                child_subs = child.subclasses()
+                if child_subs is None:
+                    return None
+                result.update(child_subs)
         return result
 
-    def concrete_subclasses(self) -> List['ClassIR']:
+    def concrete_subclasses(self) -> Optional[List['ClassIR']]:
         """Return all concrete (i.e. non-trait and non-abstract) subclasses.
 
         Include both direct and indirect subclasses. Place classes with no children first.
         """
-        concrete = {c for c in self.subclasses() if not (c.is_trait or c.is_abstract)}
+        subs = self.subclasses()
+        if subs is None:
+            return None
+        concrete = {c for c in subs if not (c.is_trait or c.is_abstract)}
         # We place classes with no children first because they are more likely
         # to appear in various isinstance() checks. We then sort leafs by name
         # to get stable order.
-        return sorted(concrete, key=lambda c: (len(c.children), c.name))
+        return sorted(concrete, key=lambda c: (len(c.children or []), c.name))
 
     def serialize(self) -> JsonDict:
         return {
@@ -1932,6 +1945,9 @@ class ClassIR:
             'traits': [cir.fullname for cir in self.traits],
             'mro': [cir.fullname for cir in self.mro],
             'base_mro': [cir.fullname for cir in self.base_mro],
+            'children': [
+                cir.fullname for cir in self.children
+            ] if self.children is not None else None,
         }
 
     @classmethod
@@ -1977,6 +1993,7 @@ class ClassIR:
         ir.traits = [ctx.classes[s] for s in data['traits']]
         ir.mro = [ctx.classes[s] for s in data['mro']]
         ir.base_mro = [ctx.classes[s] for s in data['base_mro']]
+        ir.children = data['children'] and [ctx.classes[s] for s in data['children']]
 
         return ir
 
@@ -2221,9 +2238,11 @@ def format_modules(modules: ModuleIRs) -> List[str]:
     return ops
 
 
-def all_concrete_classes(class_ir: ClassIR) -> List[ClassIR]:
+def all_concrete_classes(class_ir: ClassIR) -> Optional[List[ClassIR]]:
     """Return all concrete classes among the class itself and its subclasses."""
     concrete = class_ir.concrete_subclasses()
+    if concrete is None:
+        return None
     if not (class_ir.is_abstract or class_ir.is_trait):
         concrete.append(class_ir)
     return concrete
