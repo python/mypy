@@ -906,3 +906,144 @@ Command 'suggest' is only valid after a 'check' command (that produces no parse 
 ==
 foo.py:4: error: unexpected EOF while parsing
 -- )
+
+[case testSuggestRefine]
+# suggest: foo.foo
+# suggest: foo.spam
+# suggest: foo.eggs
+# suggest: foo.take_l
+# suggest: foo.union
+# suggest: foo.callable1
+# suggest: foo.callable2
+# suggest: foo.optional1
+# suggest: foo.optional2
+# suggest: foo.optional3
+# suggest: foo.optional4
+# suggest: foo.optional5
+# suggest: foo.dict1
+# suggest: foo.tuple1
+[file foo.py]
+from typing import Any, List, Union, Callable, Optional, Set, Dict, Tuple
+
+def bar():
+    return 10
+
+def foo(x: int, y):
+    return x + y
+
+foo(bar(), 10)
+
+def spam(x: int, y: Any) -> Any:
+    return x + y
+
+spam(bar(), 20)
+
+def eggs(x: int) -> List[Any]:
+    a = [x]
+    return a
+
+def take_l(x: List[Any]) -> Any:
+    return x[0]
+
+test = [10, 20]
+take_l(test)
+
+def union(x: Union[int, str]):
+    pass
+
+union(10)
+
+def add1(x: float) -> int:
+    pass
+
+def callable1(f: Callable[[int], Any]):
+    return f(10)
+
+callable1(add1)
+
+def callable2(f: Callable[..., Any]):
+    return f(10)
+
+callable2(add1)
+
+def optional1(x: Optional[Any]):
+    pass
+
+optional1(10)
+
+def optional2(x: Union[None, int, Any]):
+    if x is None:
+        pass
+    elif isinstance(x, str):
+        pass
+    else:
+        add1(x)
+
+optional2(10)
+optional2('test')
+
+def optional3(x: Optional[List[Any]]):
+    assert not x
+    return x[0]
+
+optional3(test)
+
+set_test = {1, 2}
+
+def optional4(x: Union[Set[Any], List[Any]]):
+    pass
+
+optional4(test)
+optional4(set_test)
+
+def optional5(x: Optional[Any]):
+    pass
+
+optional5(10)
+optional5(None)
+
+def dict1(d: Dict[int, Any]):
+    pass
+
+d: Dict[Any, int]
+dict1(d)
+
+def tuple1(d: Tuple[int, Any]):
+    pass
+
+t: Tuple[Any, int]
+tuple1(t)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(int, int) -> int
+(int, int) -> int
+(int) -> foo.List[int]
+(foo.List[int]) -> int
+(Union[int, str]) -> None
+(Callable[[int], int]) -> int
+(Callable[[float], int]) -> int
+(Optional[int]) -> None
+(Union[None, int, str]) -> None
+(Optional[foo.List[int]]) -> int
+(Union[foo.Set[int], foo.List[int]]) -> None
+(Optional[int]) -> None
+(foo.Dict[int, int]) -> None
+(Tuple[int, int]) -> None
+==
+
+[case testSuggestRefine2]
+# suggest: foo.optional5
+[file foo.py]
+from typing import Optional, Any
+
+def optional5(x: Optional[Any]):
+    pass
+
+optional5(10)
+optional5(None)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Optional[int]) -> None
+==
