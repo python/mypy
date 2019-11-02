@@ -13,12 +13,12 @@ class Ord:
 Ord() <= Ord()
 
 [builtins fixtures/dict.pyi]
-[case testTotalOrderingNoEq]
+[case testTotalOrderingObjectEq]
 from functools import total_ordering
 from typing import Any
 
 @total_ordering
-class Ord:  # E: Classes with total_ordering must define __eq__
+class Ord:  # N: Combining inherited object.__eq__ with total_ordering is unlikely to be correct
     def __lt__(self, other: "Ord") -> bool:
         return False
 

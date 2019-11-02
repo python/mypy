@@ -10,12 +10,16 @@ SELF_TVAR_NAME = '_AT'  # type: Final
 
 
 def _validate_total_ordering(ctx: ClassDefContext) -> None:
-    names = set()
+    names = dict()
     for info in ctx.cls.info.mro:
-        names = names.union(info.names)
+        for name in info.names:
+            if name not in names:
+                names[name] = info.defn.fullname
 
     if '__eq__' not in names:
         ctx.api.fail("Classes with total_ordering must define __eq__", ctx.cls)
+    elif names['__eq__'] == "builtins.object":
+        ctx.api.note("Combining inherited object.__eq__ with total_ordering is unlikely to be correct", ctx.cls)
     if not ('__lt__' in names or '__le__' in names or
             '__gt__' in names or '__ge__' in names):
         ctx.api.fail("Classes with total_ordering must define one of __{lt, gt, le, ge}__", ctx.cls)
