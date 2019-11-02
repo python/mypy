@@ -9,13 +9,13 @@ from typing import cast, Optional, List, Sequence, Set
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
-    TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, NoneType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2, Expression,
-    StrExpr
+    StrExpr, ARG_POS
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
@@ -50,6 +50,15 @@ def type_object_type_from_function(signature: FunctionLike,
     #   class B(A[List[T]], Generic[T]): pass
     #
     # We need to first map B's __init__ to the type (List[T]) -> None.
+
+    # We first record all non-trivial (explicit) self types.
+    if not is_new and def_info == info:
+        orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_kinds[0] == ARG_POS and
+                            it.arg_types[0] != fill_typevars(def_info) else None)
+                           for it in signature.items()]
+    else:
+        orig_self_types = [None] * len(signature.items())
+
     signature = bind_self(signature, original_type=fill_typevars(info), is_classmethod=is_new)
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, def_info))
@@ -59,19 +68,19 @@ def type_object_type_from_function(signature: FunctionLike,
         special_sig = 'dict'
 
     if isinstance(signature, CallableType):
-        return class_callable(signature, info, fallback, special_sig, is_new)
+        return class_callable(signature, info, fallback, special_sig, is_new, orig_self_types[0])
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items = []  # type: List[CallableType]
-        for item in signature.items():
-            items.append(class_callable(item, info, fallback, special_sig, is_new))
+        for item, orig_self in zip(signature.items(), orig_self_types):
+            items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
 
 
 def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
-                   is_new: bool) -> CallableType:
+                   is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     variables.extend(info.defn.type_vars)
@@ -89,6 +98,8 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         and is_subtype(init_ret_type, default_ret_type, ignore_type_params=True)
     ):
         ret_type = init_ret_type  # type: Type
+    elif orig_self_type is not None:
+        ret_type = orig_self_type
     else:
         ret_type = default_ret_type
 
@@ -131,6 +142,7 @@ def map_type_from_supertype(typ: Type,
 
 
 def instance_or_var(typ: ProperType) -> bool:
+    # TODO: use more principled check for non-trivial self-types.
     return (isinstance(typ, TypeVarType) or
             isinstance(typ, Instance) and typ != fill_typevars(typ.type))
 

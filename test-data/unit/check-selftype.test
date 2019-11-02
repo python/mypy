@@ -507,6 +507,51 @@ DI.from_item()  # E: Invalid self argument "Type[DI]" to attribute function "fro
 DS.from_item()
 [builtins fixtures/classmethod.pyi]
 
+[case testSelfTypeRestrictedMethodOverload]
+from typing import TypeVar, Generic, overload, Tuple
+
+T = TypeVar('T')
+class C(Generic[T]):
+    @overload
+    def from_item(self: C[str], item: str) -> None: ...
+    @overload
+    def from_item(self: C[int], item: Tuple[int]) -> None: ...
+    def from_item(self, item):
+        ...
+
+ci: C[int]
+cs: C[str]
+reveal_type(ci.from_item)  # N: Revealed type is 'def (item: Tuple[builtins.int])'
+reveal_type(cs.from_item)  # N: Revealed type is 'def (item: builtins.str)'
+
+[case testSelfTypeRestrictedMethodOverloadInit]
+from lib import P, C
+
+reveal_type(P)  # N: Revealed type is 'Overload(def [T] (use_str: Literal[True]) -> lib.P[builtins.str], def [T] (use_str: Literal[False]) -> lib.P[builtins.int])'
+reveal_type(P(use_str=True))  # N: Revealed type is 'lib.P[builtins.str]'
+reveal_type(P(use_str=False))  # N: Revealed type is 'lib.P[builtins.int]'
+
+reveal_type(C)  # N: Revealed type is 'Overload(def [T] (item: T`1, use_tuple: Literal[False]) -> lib.C[T`1], def [T] (item: T`1, use_tuple: Literal[True]) -> lib.C[builtins.tuple[T`1]])'
+reveal_type(C(0, use_tuple=False))  # N: Revealed type is 'lib.C[builtins.int*]'
+reveal_type(C(0, use_tuple=True))  # N: Revealed type is 'lib.C[builtins.tuple[builtins.int*]]'
+
+[file lib.pyi]
+from typing import TypeVar, Generic, overload, Tuple
+from typing_extensions import Literal
+
+T = TypeVar('T')
+class P(Generic[T]):
+    @overload
+    def __init__(self: P[str], use_str: Literal[True]) -> None: ...
+    @overload
+    def __init__(self: P[int], use_str: Literal[False]) -> None: ...
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[T], item: T, use_tuple: Literal[False]) -> None: ...
+    @overload
+    def __init__(self: C[Tuple[T, ...]], item: T, use_tuple: Literal[True]) -> None: ...
+
 [case testSelfTypeNarrowBinding]
 from typing import TypeVar, List, Generic
 

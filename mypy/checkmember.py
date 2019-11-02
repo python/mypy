@@ -202,7 +202,8 @@ def analyze_instance_member_access(name: str,
         else:
             if isinstance(signature, FunctionLike) and name != '__call__':
                 dispatched_type = meet.meet_types(mx.original_type, typ)
-                check_self_arg(signature, dispatched_type, False, mx.context, name, mx.msg)
+                signature = check_self_arg(signature, dispatched_type, False, mx.context,
+                name, mx.msg)
             signature = bind_self(signature, mx.self_type)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
@@ -549,8 +550,8 @@ def analyze_var(name: str,
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking agains B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
-                check_self_arg(functype, dispatched_type, var.is_classmethod, mx.context, name,
-                               mx.msg)
+                functype = check_self_arg(functype, dispatched_type, var.is_classmethod,
+                                          mx.context, name, mx.msg)
                 signature = bind_self(functype, mx.self_type, var.is_classmethod)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
@@ -599,7 +600,7 @@ def check_self_arg(functype: FunctionLike,
                    dispatched_arg_type: Type,
                    is_classmethod: bool,
                    context: Context, name: str,
-                   msg: MessageBuilder) -> None:
+                   msg: MessageBuilder) -> FunctionLike:
     """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
 
     dispatched_arg_type is meet(B, A) in the following example
@@ -608,18 +609,31 @@ def check_self_arg(functype: FunctionLike,
         class A:
             f: Callable[[A1], None]
     """
-    # TODO: this is too strict. We can return filtered overloads for matching definitions
-    for item in functype.items():
+    items = functype.items()
+    if not items:
+        return functype
+    new_items = []
+    for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
             msg.no_formal_self(name, item, context)
+            # This is pretty bad, so just return the original signature if
+            # there is at least one such error.
+            return functype
         else:
             selfarg = item.arg_types[0]
             if is_classmethod:
                 dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
-            if not subtypes.is_subtype(dispatched_arg_type, erase_typevars(selfarg)):
-                msg.incompatible_self_argument(name, dispatched_arg_type, item,
-                                               is_classmethod, context)
+            if subtypes.is_subtype(dispatched_arg_type, erase_typevars(selfarg)):
+                new_items.append(item)
+    if not new_items:
+        # Choose first item for the message (it may be not very helpful for overloads).
+        msg.incompatible_self_argument(name, dispatched_arg_type, items[0],
+                                       is_classmethod, context)
+        return functype
+    if len(new_items) == 1:
+        return new_items[0]
+    return Overloaded(new_items)
 
 
 def analyze_class_attribute_access(itype: Instance,
@@ -707,7 +721,7 @@ def analyze_class_attribute_access(itype: Instance,
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         t = get_proper_type(t)
         if isinstance(t, FunctionLike) and is_classmethod:
-            check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
+            t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         result = add_class_tvars(t, itype, isuper, is_classmethod,
                                  mx.builtin_type, mx.self_type)
         if not mx.is_lvalue:
