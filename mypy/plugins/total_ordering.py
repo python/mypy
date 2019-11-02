@@ -22,10 +22,12 @@ def _validate_total_ordering(ctx: ClassDefContext) -> None:
     if '__eq__' not in names:
         ctx.api.fail("Classes with total_ordering must define __eq__", ctx.cls)
     elif names['__eq__'] == "builtins.object":
-        ctx.api.note("Combining inherited object.__eq__ with total_ordering is unlikely to be correct", ctx.cls)
+        ctx.api.note("Combining inherited object.__eq__ with total_ordering "
+                     "is unlikely to be correct", ctx.cls)
     if not ('__lt__' in names or '__le__' in names or
             '__gt__' in names or '__ge__' in names):
-        ctx.api.fail("Classes with total_ordering must define one of __{lt, gt, le, ge}__", ctx.cls)
+        ctx.api.fail("Classes with total_ordering must define one of "
+                     "__{lt, gt, le, ge}__", ctx.cls)
 
 
 def _create_typevar_on_class(ctx: ClassDefContext) -> Tuple[TypeVarDef, TypeVarType]:
