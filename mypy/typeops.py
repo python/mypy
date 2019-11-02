@@ -131,7 +131,8 @@ def map_type_from_supertype(typ: Type,
 
 
 def instance_or_var(typ: ProperType) -> bool:
-    return isinstance(typ, TypeVarType) or isinstance(typ, Instance)
+    return (isinstance(typ, TypeVarType) or
+            isinstance(typ, Instance) and typ != fill_typevars(typ.type))
 
 
 F = TypeVar('F', bound=FunctionLike)

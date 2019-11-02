@@ -200,8 +200,9 @@ def analyze_instance_member_access(name: str,
             # the first argument.
             pass
         else:
-            if isinstance(signature, FunctionLike):
-                check_self_arg(signature, mx.self_type, False, mx.context, name, mx.msg)
+            if isinstance(signature, FunctionLike) and name != '__call__':
+                dispatched_type = meet.meet_types(mx.original_type, typ)
+                check_self_arg(signature, dispatched_type, False, mx.context, name, mx.msg)
             signature = bind_self(signature, mx.self_type)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
@@ -705,7 +706,7 @@ def analyze_class_attribute_access(itype: Instance,
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         t = get_proper_type(t)
-        if isinstance(t, FunctionLike):
+        if isinstance(t, FunctionLike) and is_classmethod:
             check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         result = add_class_tvars(t, itype, isuper, is_classmethod,
                                  mx.builtin_type, mx.self_type)
