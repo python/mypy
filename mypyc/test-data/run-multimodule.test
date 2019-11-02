@@ -31,6 +31,7 @@ else:
 
 [case testMultiModuleSameNames]
 # Use same names in both modules
+import other
 def f() -> int:
     return 0
 class C:
@@ -40,6 +41,10 @@ class C:
     def f(self, x: int) -> int:
         return self.x + x
 class D(C): pass
+
+def g(x: 'other.C') -> None:
+    pass
+
 [file other.py]
 def f(x: int) -> int:
     return x + 1
