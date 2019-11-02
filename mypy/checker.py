@@ -906,7 +906,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         isclass = defn.is_class or defn.name() in ('__new__', '__init_subclass__')
                         if isclass:
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
-                        erased = erase_to_bound(arg_type)
+                        erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
                             if isinstance(erased, Instance) and erased.type.is_protocol:
