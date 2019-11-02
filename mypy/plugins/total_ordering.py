@@ -1,3 +1,6 @@
+from typing import Dict, Tuple
+from typing_extensions import Final
+
 from mypy.nodes import (Argument, TypeVarExpr, SymbolTableNode, Var, ARG_POS, MDEF)
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import add_method
@@ -10,7 +13,7 @@ SELF_TVAR_NAME = '_AT'  # type: Final
 
 
 def _validate_total_ordering(ctx: ClassDefContext) -> None:
-    names = dict()
+    names: Dict[str, str] = dict()
     for info in ctx.cls.info.mro:
         for name in info.names:
             if name not in names:
@@ -25,7 +28,7 @@ def _validate_total_ordering(ctx: ClassDefContext) -> None:
         ctx.api.fail("Classes with total_ordering must define one of __{lt, gt, le, ge}__", ctx.cls)
 
 
-def _create_typevar_on_class(ctx: ClassDefContext) -> TypeVarType:
+def _create_typevar_on_class(ctx: ClassDefContext) -> Tuple[TypeVarDef, TypeVarType]:
     object_type = ctx.api.named_type('__builtins__.object')
     tvar_name = SELF_TVAR_NAME
     tvar_fullname = ctx.cls.info.fullname() + '.' + SELF_TVAR_NAME

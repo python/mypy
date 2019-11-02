@@ -260,6 +260,11 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
+        """Emit a warning message at given location."""
+        raise NotImplementedError
+
+    @abstractmethod
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
