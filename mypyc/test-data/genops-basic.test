@@ -2611,11 +2611,19 @@ L0:
     return r0
 def A.__ne__(self, rhs):
     self :: __main__.A
-    rhs, r0 :: object
-    r1 :: bool
+    rhs, r0, r1 :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = not r0
+    r1 = NotImplemented
+    r2 = r0 is r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = not r0
+    r4 = box(bool, r3)
+    return r4
+L2:
     return r1
 
 [case testDecorators_toplevel]

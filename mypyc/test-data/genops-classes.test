@@ -863,11 +863,19 @@ L0:
     return r1
 def Base.__ne__(self, rhs):
     self :: __main__.Base
-    rhs, r0 :: object
-    r1 :: bool
+    rhs, r0, r1 :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = not r0
+    r1 = NotImplemented
+    r2 = r0 is r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = not r0
+    r4 = box(bool, r3)
+    return r4
+L2:
     return r1
 def Derived.__eq__(self, other):
     self :: __main__.Derived
@@ -904,10 +912,12 @@ L0:
     return r1
 def fOpt2(a, b):
     a, b :: __main__.Derived
-    r0 :: bool
+    r0 :: object
+    r1 :: bool
 L0:
     r0 = a.__ne__(b)
-    return r0
+    r1 = unbox(bool, r0)
+    return r1
 
 [case testEqDefinedLater]
 def f(a: 'Base', b: 'Base') -> bool:
@@ -974,11 +984,19 @@ L0:
     return r1
 def Derived.__ne__(self, rhs):
     self :: __main__.Derived
-    rhs, r0 :: object
-    r1 :: bool
+    rhs, r0, r1 :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = not r0
+    r1 = NotImplemented
+    r2 = r0 is r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = not r0
+    r4 = box(bool, r3)
+    return r4
+L2:
     return r1
 
 [case testDefaultVars]
