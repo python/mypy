@@ -679,12 +679,18 @@ Advanced options
 
 These options may only be set in the global section (``[mypy]``).
 
+.. confval:: plugins
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of mypy plugins. See :ref:`extending-mypy-using-plugins`.
+
 .. confval:: pdb
 
     :type: boolean
     :default: False
 
-    Invokes pdb on fatal error.
+    Invokes :mod:`pdb` on fatal error.
 
 .. confval:: show_traceback
 
