@@ -784,8 +784,6 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     # This behaviour is useful for defining alternative constructors for generic classes.
     # To achieve such behaviour, we add the class type variables that are still free
     # (i.e. appear in the return type of the class object on which the method was accessed).
-    free_ids = {t.id for t in itype.args if isinstance(t, TypeVarType)}
-
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
         if is_classmethod:
