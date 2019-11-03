@@ -913,6 +913,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     isinstance(erased, TypeType) and
                                     isinstance(erased.item, Instance) and
                                     erased.item.type.is_protocol):
+                                # We allow the explicit self-type to be not a supertype of
+                                # the current class if it is a protocol. For such cases
+                                # the consistency check will be performed at call sites.
                                 msg = None
                             elif typ.arg_names[i] in {'self', 'cls'}:
                                 if (self.options.python_version[0] < 3
