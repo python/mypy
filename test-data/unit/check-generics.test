@@ -1952,13 +1952,12 @@ reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.
 from typing import Generic, TypeVar, Type, Tuple, Any
 
 T = TypeVar('T')
-Q = TypeVar('Q', bound=Base[Any])
+Q = TypeVar('Q')
 
 class Base(Generic[T]):
     def __init__(self, item: T) -> None: ...
     @classmethod
-    def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]:
-        return cls(item), cls(item)
+    def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]: ...
 class Sub(Base[T]):
     ...
 
