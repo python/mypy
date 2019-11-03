@@ -2,10 +2,11 @@
 
 from typing import List, Optional, Sequence
 
-from mypy.constraints import infer_constraints, infer_constraints_for_callable, SUBTYPE_OF
+from mypy.constraints import (
+    infer_constraints, infer_constraints_for_callable, SUBTYPE_OF, SUPERTYPE_OF
+)
 from mypy.types import Type, TypeVarId, CallableType
 from mypy.solve import solve_constraints
-from mypy.constraints import SUPERTYPE_OF
 
 
 def infer_function_type_arguments(callee_type: CallableType,
