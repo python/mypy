@@ -573,7 +573,7 @@ for certain programming patterns.
 Restricted methods in generic classes
 -------------------------------------
 
-In generic classes some methods may be allowed to call only
+In generic classes some methods may be allowed to be called only
 for certain values of type arguments:
 
 .. code-block:: python
