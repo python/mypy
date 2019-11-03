@@ -566,7 +566,7 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
 Advanced uses of self-types
 ***************************
 
-Normally, mypy doesn't require annotation for first argument of instance and
+Normally, mypy doesn't require annotations for the first arguments of instance and
 class methods. However, they may be needed to have more precise static typing
 for certain programming patterns.
 
