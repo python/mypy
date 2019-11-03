@@ -1960,7 +1960,7 @@ class C(Generic[T]):
 
     @classmethod
     def g(cls, x: T2) -> T2:
-        cls.f(x)  # E: Argument 1 to "f" of "C" has incompatible type "T2"; expected "T
+        cls.f(x)  # E: Argument 1 to "f" of "C" has incompatible type "T2"; expected "T"
         return x
 [builtins fixtures/classmethod.pyi]
 
@@ -1988,11 +1988,17 @@ from typing import TypeVar, Generic
 T = TypeVar('T')
 
 class C(Generic[T]):
-    def __init__(self, item: T) -> None: ...
+    def __init__(self, item: T) -> None:
+        self.item = item
     @classmethod
-    def f(cls) -> C[T]:
-        return cls(1)
+    def f(cls) -> None:
+        cls(1)
 
+class D(C[str]):
+    def __init__(self, item: str) -> None:
+        self.item = item + 'no way'
+
+D().f()
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAlternativeConstructorPrecise]
@@ -2034,7 +2040,7 @@ class B(A[T], Generic[T, S]):
         reveal_type(A[T].foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.A*[T`1]]'
     @classmethod
     def other(cls) -> None:
-        reveal_type(cls.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
+        reveal_type(cls.foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
 reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
 [builtins fixtures/classmethod.pyi]
 

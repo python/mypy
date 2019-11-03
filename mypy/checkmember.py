@@ -801,7 +801,8 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(item, itype, isuper, is_classmethod,
-                                                              builtin_type, original_type))
+                                                              builtin_type, original_type,
+                                                              original_vars=original_vars))
                            for item in t.items()])
     return t
 
