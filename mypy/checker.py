@@ -162,7 +162,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     binder = None  # type: ConditionalTypeBinder
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
-
+    # temporary container for ctn
+    ctns_queue = None  # type:List[str]
+    # uniqueness check for ctn
+    ctns_keys = None # type:Set[str]
+    # custom type narrowers
+    ctns = None  # type:List[Tuple[str, Expression]]
     tscope = None  # type: Scope
     scope = None  # type: CheckerScope
     # Stack of function return types
@@ -231,6 +236,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.type_map = {}
         self.module_refs = set()
         self.pass_num = 0
+        self.ctns_queue = []
+        self.ctns_keys = set()
+        self.ctns = []
         self.current_node_deferred = False
         self.is_stub = tree.is_stub
         self.is_typeshed_stub = errors.is_typeshed_file(path)
@@ -3379,6 +3387,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     e.var.type = AnyType(TypeOfAny.special_form)
                     e.var.is_ready = True
                     return
+            elif isinstance(d, CallExpr):
+                assert isinstance(d.callee, RefExpr)
+                if d.callee.fullname == 'mypy.extern.narrow_cast':
+                    # this function is a CTN
+                    self.ctns_queue.append(e.func.fullname())  # type will be added later
 
         if self.recurse_into_functions:
             with self.tscope.function_scope(e.func):
@@ -3702,6 +3715,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif is_false_literal(node):
             return None, {}
         elif isinstance(node, CallExpr):
+            expr = None
+            vartype = None
+            type = None
+            for name, expr_ in self.ctns:
+                if refers_to_fullname(node.callee, name):
+                    expr = node.args[0]
+                    if literal(expr_) == LITERAL_TYPE:
+                        vartype = type_map[node.args[0]]
+                        type = get_isinstance_type(expr_, type_map)
+                        break  # name is unique
             if refers_to_fullname(node.callee, 'builtins.isinstance'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
@@ -3709,7 +3732,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]
                     type = get_isinstance_type(node.args[1], type_map)
-                    return conditional_type_map(expr, vartype, type)
+            if expr and vartype and type:
+                return conditional_type_map(expr, vartype, type)
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
