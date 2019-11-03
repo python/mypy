@@ -687,6 +687,50 @@ d: Lnk[str, float] = b >> c  # OK
 e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
 f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
 
+[case testSelfTypeStructureMetaclassMatch]
+from typing import TypeVar, Type, Generic, cast
+
+Cls = TypeVar('Cls')
+T = TypeVar('T')
+
+class Manager(Generic[Cls]):
+    def create(self: Manager[Type[T]]) -> T: ...
+
+class ModelMeta(type):
+    @property
+    def objects(cls: T) -> Manager[T]: ...
+
+class Model(metaclass=ModelMeta):
+    pass
+
+class Dog(Model): ...
+class Cat(Model): ...
+
+c: Cat = Dog.objects.create()  # E: Incompatible types in assignment (expression has type "Dog", variable has type "Cat")
+d: Dog = Dog.objects.create()
+[builtins fixtures/property.pyi]
+
+[case testSelfTypeProtocolMetaclassMatch]
+from typing import Type, TypeVar, Protocol
+
+class HasX(Protocol):
+    x: int
+
+T = TypeVar('T', bound=HasX)
+
+class Meta(type):
+    def do_x(cls: Type[T]) -> T:
+        cls.x
+        return cls()
+
+class Good(metaclass=Meta):
+    x: int
+class Bad(metaclass=Meta):
+    pass
+
+Good.do_x()
+Bad.do_x()  # E: error
+
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950
 class A:

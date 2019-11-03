@@ -493,6 +493,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             call = unpack_callback_protocol(t)
             if call:
                 return meet_types(call, self.s)
+        elif isinstance(self.s, FunctionLike) and self.s.is_type_obj() and t.type.is_metaclass():
+            if is_subtype(self.s.fallback, t):
+                return self.s
+            return self.default(self.s)
         elif isinstance(self.s, TypeType):
             return meet_types(t, self.s)
         elif isinstance(self.s, TupleType):

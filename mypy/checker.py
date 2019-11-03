@@ -909,7 +909,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
-                            if isinstance(erased, Instance) and erased.type.is_protocol:
+                            if (isinstance(erased, Instance) and erased.type.is_protocol or
+                                    isinstance(erased, TypeType) and
+                                    isinstance(erased.item, Instance) and
+                                    erased.item.type.is_protocol):
                                 msg = None
                             elif typ.arg_names[i] in ['self', 'cls']:
                                 if (self.options.python_version[0] < 3
