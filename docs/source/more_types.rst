@@ -590,7 +590,7 @@ for certain values of type arguments:
                             # "uppercase_item" with type "Callable[[Tag[str]], str]"
        ts.uppercase_item()  # This is OK
 
-This pattern also allows extraction of items in situations where the type
+This pattern also allows matching on nested types in situations where the type
 argument is itself generic:
 
 .. code-block:: python
@@ -598,17 +598,17 @@ argument is itself generic:
   T = TypeVar('T')
   S = TypeVar('S')
 
-   class Node(Generic[T]):
+   class Storage(Generic[T]):
        def __init__(self, content: T) -> None:
            self.content = content
-       def first_item(self: Node[Sequence[S]]) -> S:
+       def first_chunk(self: Storage[Sequence[S]]) -> S:
            return self.content[0]
 
-   page: Node[List[str]]
-   page.get_first_item()  # OK, type is "str"
+   page: Storage[List[str]]
+   page.first_chunk()  # OK, type is "str"
 
-   Node(0).get_first_item()  # Error: Invalid self argument "Node[int]" to attribute function
-                             # "first_item" with type "Callable[[Node[Sequence[S]]], S]"
+   Storage(0).first_chunk()  # Error: Invalid self argument "Storage[int]" to attribute function
+                             # "first_chunk" with type "Callable[[Storage[Sequence[S]]], S]"
 
 Finally, one can use overloads on self-type to express precise types of
 some tricky methods:
@@ -645,12 +645,12 @@ host classes instead of adding required abstract methods to every mixin:
    class AtomicCloseMixin:
        def atomic_close(self: Lockable) -> int:
            with self.lock:
-               ...
+               # perform actions
 
    class AtomicOpenMixin:
        def atomic_open(self: Lockable) -> int:
            with self.lock:
-               ...
+               # perform actions
 
    class File(AtomicCloseMixin, AtomicOpenMixin):
        def __init__(self) -> None:
@@ -665,7 +665,7 @@ host classes instead of adding required abstract methods to every mixin:
    b.atomic_close()  # Error: Invalid self type for "atomic_close"
 
 Note that the explicit self-type is *required* to be a protocol whenever it
-is not a subtype of the current class. In this case mypy will check the validity
+is not a supertype of the current class. In this case mypy will check the validity
 of the self-type only at the call site.
 
 Precise typing of alternative constructors
@@ -679,7 +679,7 @@ classes are generic, self-type allows giving them precise signatures:
    T = TypeVar('T')
 
    class Base(Generic[T]):
-       Q = TypeVar('Q', bound=Base[T])
+       Q = TypeVar('Q', bound='Base[T]')
 
        def __init__(self, item: T) -> None:
            self.item = item
