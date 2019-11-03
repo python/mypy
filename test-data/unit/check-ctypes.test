@@ -6,8 +6,8 @@ class MyCInt(ctypes.c_int):
 
 intarr4 = ctypes.c_int * 4
 a = intarr4(1, ctypes.c_int(2), MyCInt(3), 4)
-intarr4(1, 2, 3, "invalid")  # E: Array constructor argument 4 of type "builtins.str" is not convertible to the array element type "ctypes.c_int"
-reveal_type(a)  # N: Revealed type is 'ctypes.Array[ctypes.c_int]'
+intarr4(1, 2, 3, "invalid")  # E: Array constructor argument 4 of type "str" is not convertible to the array element type "c_int"
+reveal_type(a)  # N: Revealed type is 'ctypes.Array[ctypes.c_int*]'
 reveal_type(a[0])  # N: Revealed type is 'builtins.int'
 reveal_type(a[1:3])  # N: Revealed type is 'builtins.list[builtins.int]'
 a[0] = 42
@@ -30,11 +30,11 @@ class MyCInt(ctypes.c_int):
 
 myintarr4 = MyCInt * 4
 mya = myintarr4(1, 2, MyCInt(3), 4)
-myintarr4(1, ctypes.c_int(2), MyCInt(3), "invalid")  # E: Array constructor argument 2 of type "ctypes.c_int" is not convertible to the array element type "__main__.MyCInt" \
-                                                     # E: Array constructor argument 4 of type "builtins.str" is not convertible to the array element type "__main__.MyCInt"
-reveal_type(mya)  # N: Revealed type is 'ctypes.Array[__main__.MyCInt]'
-reveal_type(mya[0])  # N: Revealed type is '__main__.MyCInt'
-reveal_type(mya[1:3])  # N: Revealed type is 'builtins.list[__main__.MyCInt]'
+myintarr4(1, ctypes.c_int(2), MyCInt(3), "invalid")  # E: Array constructor argument 2 of type "c_int" is not convertible to the array element type "MyCInt" \
+                                                     # E: Array constructor argument 4 of type "str" is not convertible to the array element type "MyCInt"
+reveal_type(mya)  # N: Revealed type is 'ctypes.Array[__main__.MyCInt*]'
+reveal_type(mya[0])  # N: Revealed type is '__main__.MyCInt*'
+reveal_type(mya[1:3])  # N: Revealed type is 'builtins.list[__main__.MyCInt*]'
 mya[0] = 42
 mya[1] = ctypes.c_int(42)  # E: No overload variant of "__setitem__" of "Array" matches argument types "int", "c_int" \
                            # N: Possible overload variants: \
@@ -106,7 +106,7 @@ import ctypes
 
 wca = (ctypes.c_wchar * 4)('a', 'b', 'c', '\x00')
 reveal_type(wca.value)  # N: Revealed type is 'builtins.str'
-wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
+wca.raw  # E: Array attribute "raw" is only available with element type "c_char", not "c_wchar"
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesWcharArrayAttrsPy2]
@@ -115,7 +115,7 @@ import ctypes
 
 wca = (ctypes.c_wchar * 4)(u'a', u'b', u'c', u'\x00')
 reveal_type(wca.value)  # N: Revealed type is 'builtins.unicode'
-wca.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_wchar"
+wca.raw  # E: Array attribute "raw" is only available with element type "c_char", not "c_wchar"
 [builtins_py2 fixtures/floatdict_python2.pyi]
 
 [case testCtypesCharUnionArrayAttrs]
@@ -124,7 +124,7 @@ from typing import Union
 
 cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_wchar]]
 reveal_type(cua.value)  # N: Revealed type is 'Union[builtins.bytes, builtins.str]'
-cua.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "Union[ctypes.c_char, ctypes.c_wchar]"
+cua.raw  # E: Array attribute "raw" is only available with element type "c_char", not "Union[c_char, c_wchar]"
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesAnyUnionArrayAttrs]
@@ -141,8 +141,8 @@ import ctypes
 from typing import Union
 
 cua: ctypes.Array[Union[ctypes.c_char, ctypes.c_int]]
-cua.value  # E: ctypes.Array attribute "value" is only available with element type c_char or c_wchar, not "Union[ctypes.c_char, ctypes.c_int]"
-cua.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "Union[ctypes.c_char, ctypes.c_int]"
+cua.value  # E: Array attribute "value" is only available with element type "c_char" or "c_wchar", not "Union[c_char, c_int]"
+cua.raw  # E: Array attribute "raw" is only available with element type "c_char", not "Union[c_char, c_int]"
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesAnyArrayAttrs]
@@ -157,8 +157,8 @@ reveal_type(aa.raw)  # N: Revealed type is 'builtins.bytes'
 import ctypes
 
 oa = (ctypes.c_int * 4)(1, 2, 3, 4)
-oa.value  # E: ctypes.Array attribute "value" is only available with element type c_char or c_wchar, not "ctypes.c_int"
-oa.raw  # E: ctypes.Array attribute "raw" is only available with element type c_char, not "ctypes.c_int"
+oa.value  # E: Array attribute "value" is only available with element type "c_char" or "c_wchar", not "c_int"
+oa.raw  # E: Array attribute "raw" is only available with element type "c_char", not "c_int"
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesArrayConstructorStarargs]
@@ -168,13 +168,13 @@ intarr4 = ctypes.c_int * 4
 intarr6 = ctypes.c_int * 6
 int_values = [1, 2, 3, 4]
 c_int_values = [ctypes.c_int(1), ctypes.c_int(2), ctypes.c_int(3), ctypes.c_int(4)]
-reveal_type(intarr4(*int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int]'
-reveal_type(intarr4(*c_int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int]'
-reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int]'
-reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int]'
+reveal_type(intarr4(*int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int*]'
+reveal_type(intarr4(*c_int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int*]'
+reveal_type(intarr6(1, ctypes.c_int(2), *int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int*]'
+reveal_type(intarr6(1, ctypes.c_int(2), *c_int_values))  # N: Revealed type is 'ctypes.Array[ctypes.c_int*]'
 
 float_values = [1.0, 2.0, 3.0, 4.0]
-intarr4(*float_values) # E: Array constructor argument 1 of type "builtins.list[builtins.float*]" is not convertible to the array element type "Iterable[ctypes.c_int]"
+intarr4(*float_values) # E: Array constructor argument 1 of type "List[float]" is not convertible to the array element type "Iterable[c_int]"
 [builtins fixtures/floatdict.pyi]
 
 [case testCtypesArrayConstructorKwargs]
