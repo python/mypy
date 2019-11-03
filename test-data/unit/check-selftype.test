@@ -729,7 +729,7 @@ class Bad(metaclass=Meta):
     pass
 
 Good.do_x()
-Bad.do_x()  # E: error
+Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "Callable[[Type[T]], T]"
 
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950

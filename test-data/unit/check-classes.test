@@ -4271,9 +4271,9 @@ reveal_type(A.g4)  # N: Revealed type is 'def () -> def () -> __main__.A'
 class B(metaclass=M):
     def foo(self): pass
 
-B.g1  # Should be error: Argument 0 to "g1" of "M" has incompatible type "B"; expected "Type[A]"
-B.g2  # Should be error: Argument 0 to "g2" of "M" has incompatible type "B"; expected "Type[TA]"
-B.g3  # Should be error: Argument 0 to "g3" of "M" has incompatible type "B"; expected "TTA"
+B.g1  # E: Invalid self argument "Type[B]" to attribute function "g1" with type "Callable[[Type[A]], A]"
+B.g2  # E: Invalid self argument "Type[B]" to attribute function "g2" with type "Callable[[Type[TA]], TA]"
+B.g3  # E: Invalid self argument "Type[B]" to attribute function "g3" with type "Callable[[TTA], TTA]"
 reveal_type(B.g4)  # N: Revealed type is 'def () -> def () -> __main__.B'
 
 # 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
