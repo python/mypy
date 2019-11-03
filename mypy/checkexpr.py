@@ -911,7 +911,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             res = type_object_type(item.type, self.named_type)
             if isinstance(res, CallableType):
                 res = res.copy_modified(from_type_type=True)
-            return expand_type_by_instance(res, item)
+            expanded = expand_type_by_instance(res, item)
+            if isinstance(expanded, CallableType):
+                # Callee of the form Type[...] should never be generic, only
+                # proper class objects can be.
+                expanded = expanded.copy_modified(variables=[])
+            return expanded
         if isinstance(item, UnionType):
             return UnionType([self.analyze_type_type_callee(tp, context)
                               for tp in item.relevant_items()], item.line)

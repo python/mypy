@@ -769,7 +769,6 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     component in case if a union (this is used to bind the self-types).
     """
     # TODO: verify consistency between Q and T
-    info = itype.type  # type: TypeInfo
     if is_classmethod:
         assert isuper is not None
         t = expand_type_by_instance(t, isuper)
@@ -788,13 +787,6 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     free_ids = {t.id for t in itype.args if isinstance(t, TypeVarType)}
 
     if isinstance(t, CallableType):
-        # NOTE: in practice either all or none of the variables are free, since
-        # visit_type_application() will detect any type argument count mismatch and apply
-        # a correct number of Anys.
-        tvars = [TypeVarDef(n, n, i + 1, [], builtin_type('builtins.object'), tv.variance)
-                 for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)
-                 # use 'is' to avoid id clashes with unrelated variables
-                 if any(tv.id is id for id in free_ids)]
         tvars = original_vars if original_vars is not None else []
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
