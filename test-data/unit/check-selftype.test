@@ -547,6 +547,7 @@ reveal_type(ci.from_item(conv))  # N: Revealed type is 'builtins.str'
 ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
 
 [case testSelfTypeRestrictedMethodOverloadInit]
+from typing import TypeVar
 from lib import P, C
 
 reveal_type(P)  # N: Revealed type is 'Overload(def [T] (use_str: Literal[True]) -> lib.P[builtins.str], def [T] (use_str: Literal[False]) -> lib.P[builtins.int])'
@@ -556,6 +557,20 @@ reveal_type(P(use_str=False))  # N: Revealed type is 'lib.P[builtins.int]'
 reveal_type(C)  # N: Revealed type is 'Overload(def [T] (item: T`1, use_tuple: Literal[False]) -> lib.C[T`1], def [T] (item: T`1, use_tuple: Literal[True]) -> lib.C[builtins.tuple[T`1]])'
 reveal_type(C(0, use_tuple=False))  # N: Revealed type is 'lib.C[builtins.int*]'
 reveal_type(C(0, use_tuple=True))  # N: Revealed type is 'lib.C[builtins.tuple[builtins.int*]]'
+
+T = TypeVar('T')
+class SubP(P[T]):
+    pass
+
+SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
+            # N: Possible overload variants: \
+            # N:     def [T] __init__(self, use_str: Literal[True]) -> SubP[T] \
+            # N:     def [T] __init__(self, use_str: Literal[False]) -> SubP[T]
+
+# This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
+x = SubP(use_str=True)  # E: Need type annotation for 'x'
+reveal_type(x)  # N: Revealed type is '__main__.SubP[Any]'
+y: SubP[str] = SubP(use_str=True)
 
 [file lib.pyi]
 from typing import TypeVar, Generic, overload, Tuple
@@ -573,6 +588,47 @@ class C(Generic[T]):
     def __init__(self: C[T], item: T, use_tuple: Literal[False]) -> None: ...
     @overload
     def __init__(self: C[Tuple[T, ...]], item: T, use_tuple: Literal[True]) -> None: ...
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeRestrictedMethodOverloadInitFallBacks]
+from lib import PFallBack, PFallBackAny
+
+t: bool
+xx = PFallBack(t)  # E: Need type annotation for 'xx'
+yy = PFallBackAny(t)  # OK
+
+[file lib.pyi]
+from typing import TypeVar, Generic, overload, Tuple, Any
+from typing_extensions import Literal
+
+class PFallBack(Generic[T]):
+    @overload
+    def __init__(self: PFallBack[str], use_str: Literal[True]) -> None: ...
+    @overload
+    def __init__(self: PFallBack[int], use_str: Literal[False]) -> None: ...
+    @overload
+    def __init__(self, use_str: bool) -> None: ...
+
+class PFallBackAny(Generic[T]):
+    @overload
+    def __init__(self: PFallBackAny[str], use_str: Literal[True]) -> None: ...
+    @overload
+    def __init__(self: PFallBackAny[int], use_str: Literal[False]) -> None: ...
+    @overload
+    def __init__(self: PFallBackAny[Any], use_str: bool) -> None: ...
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash]
+from lib import P
+P(0)
+[file lib.pyi]
+from typing import overload
+
+class P:
+    @overload
+    def __init__(self: Bad, x: int) -> None: ...  # E: Name 'Bad' is not defined
+    @overload
+    def __init__(self) -> None: ...
 
 [case testSelfTypeNarrowBinding]
 from typing import TypeVar, List, Generic
