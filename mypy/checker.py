@@ -911,7 +911,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             note = None
                             if isinstance(erased, Instance) and erased.type.is_protocol:
                                 msg = None
-                            elif typ.arg_names[i] in ['self', 'cls']:
+                            elif typ.arg_names[i] in {'self', 'cls'}:
                                 if (self.options.python_version[0] < 3
                                         and is_same_type(erased, arg_type) and not isclass):
                                     msg = message_registry.INVALID_SELF_TYPE_OR_EXTRA_ARG
