@@ -1928,6 +1928,96 @@ reveal_type(E.make_one)  # N: Revealed type is 'def [S] (x: Tuple[S`1, builtins.
 reveal_type(E[int].make_one)  # N: Revealed type is 'def (x: Tuple[builtins.int*, builtins.str*]) -> __main__.C[Tuple[builtins.int*, builtins.str*]]'
 [builtins fixtures/classmethod.pyi]
 
+[case testGenericClassClsNonGeneric]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+    @classmethod
+    def other(cls) -> None:
+        reveal_type(C)  # N: Revealed type is 'def [T] () -> __main__.C[T`1]'
+        reveal_type(C[T])  # N: Revealed type is 'def () -> __main__.C[T`1]'
+        reveal_type(C.f)  # N: Revealed type is 'def [T] (x: T`1) -> T`1'
+        reveal_type(C[T].f)  # N: Revealed type is 'def (x: T`1) -> T`1'
+        reveal_type(cls.f)  # N: Revealed type is 'def (x: T`1) -> T`1'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassUnrelatedVars]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+T2 = TypeVar('T2')
+
+class C(Generic[T]):
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+    @classmethod
+    def g(cls, x: T2) -> T2:
+        cls.f(x)  # E: Argument 1 to "f" of "C" has incompatible type "T2"; expected "T
+        return x
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassInGenericFunction]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, item: T) -> None: ...
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+def foo(x: T, y: int) -> T:
+    C(y)  # OK
+    C[T](y)  # E: Argument 1 to "C" has incompatible type "int"; expected "T"
+    C[T].f(y)  # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "T"
+    return x
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassDirectCall]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, item: T) -> None: ...
+    @classmethod
+    def f(cls) -> C[T]:
+        return cls(1)
+
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAlternativeConstructorPrecise]
+from typing import Generic, TypeVar, Type, Tuple, Any
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    Q = TypeVar('Q', bound=Base[T])
+
+    def __init__(self, item: T) -> None: ...
+
+    @classmethod
+    def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]:
+        if bool():
+            return cls(0), cls(0)  # E: error
+        return cls(item), cls(item)
+
+class Sub(Base[T]):
+    ...
+
+reveal_type(Sub.make_pair('yes'))  # N: Revealed type is 'Tuple[__main__.Sub[builtins.str*], __main__.Sub[builtins.str*]]'
+Sub[int].make_pair('no')  # E: Argument 1 to "make_pair" of "Base" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
 [case testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric]
 from typing import Generic, TypeVar, Any, Tuple, Type
 

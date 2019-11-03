@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, Optional, Union
+from typing import cast, Callable, Optional, Union, List
 from typing_extensions import TYPE_CHECKING
 
 from mypy.types import (
@@ -234,7 +234,8 @@ def analyze_type_callable_member_access(name: str,
             # This check makes sure that when we encounter an operator, we skip looking up
             # the corresponding method in the current instance to avoid this edge case.
             # See https://github.com/python/mypy/pull/1787 for more info.
-            result = analyze_class_attribute_access(ret_type, name, mx)
+            result = analyze_class_attribute_access(ret_type, name, mx,
+                                                    original_vars=typ.items()[0].variables)
             if result:
                 return result
         # Look up from the 'type' type.
@@ -622,7 +623,9 @@ def check_self_arg(functype: FunctionLike,
 def analyze_class_attribute_access(itype: Instance,
                                    name: str,
                                    mx: MemberContext,
-                                   override_info: Optional[TypeInfo] = None) -> Optional[Type]:
+                                   override_info: Optional[TypeInfo] = None,
+                                   original_vars: Optional[List[TypeVarDef]] = None
+                                   ) -> Optional[Type]:
     """original_type is the type of E in the expression E.var"""
     info = itype.type
     if override_info:
@@ -703,7 +706,7 @@ def analyze_class_attribute_access(itype: Instance,
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         result = add_class_tvars(get_proper_type(t), itype, isuper, is_classmethod,
-                                 mx.builtin_type, mx.self_type)
+                                 mx.builtin_type, mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                                mx.msg, mx.context, chk=mx.chk)
@@ -749,7 +752,8 @@ def analyze_class_attribute_access(itype: Instance,
 def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
                     is_classmethod: bool,
                     builtin_type: Callable[[str], Instance],
-                    original_type: Type) -> Type:
+                    original_type: Type,
+                    original_vars: Optional[List[TypeVarDef]] = None) -> Type:
     """Instantiate type variables during analyze_class_attribute_access,
     e.g T and Q in the following:
 
@@ -791,6 +795,7 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)
                  # use 'is' to avoid id clashes with unrelated variables
                  if any(tv.id is id for id in free_ids)]
+        tvars = original_vars if original_vars is not None else []
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
         return t.copy_modified(variables=tvars + t.variables)
