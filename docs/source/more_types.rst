@@ -566,14 +566,14 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
 Advanced uses of self-types
 ***************************
 
-Normally, mypy doesn't require annotation for first argument of instance and
+Normally, mypy doesn't require annotations for the first arguments of instance and
 class methods. However, they may be needed to have more precise static typing
 for certain programming patterns.
 
 Restricted methods in generic classes
 -------------------------------------
 
-In generic classes some methods may be allowed to call only
+In generic classes some methods may be allowed to be called only
 for certain values of type arguments:
 
 .. code-block:: python
@@ -589,7 +589,7 @@ for certain values of type arguments:
                             # "uppercase_item" with type "Callable[[Tag[str]], str]"
        ts.uppercase_item()  # This is OK
 
-This pattern also allows extraction of items in situations where type
+This pattern also allows extraction of items in situations where the type
 argument is itself generic:
 
 .. code-block:: python
