@@ -52,14 +52,14 @@ def type_object_type_from_function(signature: FunctionLike,
     # We need to first map B's __init__ to the type (List[T]) -> None.
 
     # We first record all non-trivial (explicit) self types.
+    default_self = fill_typevars(def_info)
     if not is_new and def_info == info and not info.is_newtype:
-        orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_kinds[0] == ARG_POS and
-                            it.arg_types[0] != fill_typevars(def_info) else None)
-                           for it in signature.items()]
+        orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
+                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items()]
     else:
         orig_self_types = [None] * len(signature.items())
 
-    signature = bind_self(signature, original_type=fill_typevars(info), is_classmethod=is_new)
+    signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
     signature = cast(FunctionLike,
                      map_type_from_supertype(signature, info, def_info))
     special_sig = None  # type: Optional[str]

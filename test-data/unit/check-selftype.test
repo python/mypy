@@ -687,6 +687,17 @@ d: Lnk[str, float] = b >> c  # OK
 e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
 f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
 
+[case testSelfTypeMutuallyExclusiveRestrictions]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def f1(self: Foo[str]) -> None:
+        self.f2()  # E: Invalid self argument "Foo[str]" to attribute function "f2" with type "Callable[[Foo[int]], None]"
+    def f2(self: Foo[int]) -> None:
+        self.f1()  # E: Invalid self argument "Foo[int]" to attribute function "f1" with type "Callable[[Foo[str]], None]"
+
 [case testSelfTypeStructureMetaclassMatch]
 from typing import TypeVar, Type, Generic, cast
 

@@ -579,6 +579,7 @@ for certain values of type arguments:
 .. code-block:: python
 
    T = TypeVar('T')
+
    class Tag(Generic[T]):
        item: T
        def uppercase_item(self: C[str]) -> str:
@@ -631,29 +632,41 @@ Mixin classes
 -------------
 
 Using host class protocol as a self-type in mixin methods allows
-static typing of mixin class patter:
+more code re-usability for static typing of mixin classes. For example,
+one can define a protocol that defines common functionality for
+host classes instead of adding required abstract methods to every mixin:
 
 .. code-block:: python
 
-   class Resource(Protocol):
-       def close(self) -> int: ...
+   class Lockable(Protocol):
+       @property
+       def lock(self) -> Lock: ...
 
-   class AtomicClose:
-       def atomic_close(self: Resource) -> int:
-           with Lock():
-               return self.close()
+   class AtomicCloseMixin:
+       def atomic_close(self: Lockable) -> int:
+           with self.lock:
+               ...
 
-   class File(AtomicClose):
-       def close(self) -> int:
-          ...
+   class AtomicOpenMixin:
+       def atomic_open(self: Lockable) -> int:
+           with self.lock:
+               ...
 
-   class Bad(AtomicClose):
-       ...
+   class File(AtomicCloseMixin, AtomicOpenMixin):
+       def __init__(self) -> None:
+           self.lock = Lock()
 
-   f: File
+   class Bad(AtomicCloseMixin):
+       pass
+
+   f = File()
    b: Bad
    f.atomic_close()  # OK
    b.atomic_close()  # Error: Invalid self type for "atomic_close"
+
+Note that the explicit self-type is *required* to be a protocol whenever it
+is not a subtype of the current class. In this case mypy will check the validity
+of the self-type only at the call site.
 
 Precise typing of alternative constructors
 ------------------------------------------
