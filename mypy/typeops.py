@@ -92,6 +92,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     from mypy.subtypes import is_subtype
 
     init_ret_type = get_proper_type(init_type.ret_type)
+    orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
     if (
         is_new
