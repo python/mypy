@@ -589,7 +589,7 @@ for certain values of type arguments:
                             # "uppercase_item" with type "Callable[[Tag[str]], str]"
        ts.uppercase_item()  # This is OK
 
-This pattern also allows extraction of items in situations where type
+This pattern also allows extraction of items in situations where the type
 argument is itself generic:
 
 .. code-block:: python
