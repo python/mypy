@@ -603,13 +603,18 @@ def check_self_arg(functype: FunctionLike,
                    is_classmethod: bool,
                    context: Context, name: str,
                    msg: MessageBuilder) -> FunctionLike:
-    """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
+    """Check that an instance has a valid type for a method with annotated 'self'.
 
-    dispatched_arg_type is meet(B, A) in the following example
-
-        def g(x: B): x.f
+    For example if the method is defined as:
         class A:
-            f: Callable[[A1], None]
+            def f(self: S) -> T: ...
+    then for 'x.f' we check that meet(type(x), A) <: S. If the method is overloaded, we
+    select only overloads items that satisfy this requirement. If there are no matching
+    overloads, an error is generated.
+
+    Note: dispatched_arg_type uses a meet to select a relevant item in case if the
+    original type of 'x' is a union. This is done because several special methods
+    treat union types in ad-hoc manner, so we can't use MemberContext.self_type yet.
     """
     items = functype.items()
     if not items:
