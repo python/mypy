@@ -165,9 +165,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # temporary container for ctn
     ctns_queue = None  # type:List[str]
     # uniqueness check for ctn
-    ctns_keys = None # type:Set[str]
+    ctns_keys = None  # type: Set[str]
     # custom type narrowers
-    ctns = None  # type:List[Tuple[str, Expression]]
+    ctns = None  # type: List[Tuple[str, Expression]]
     tscope = None  # type: Scope
     scope = None  # type: CheckerScope
     # Stack of function return types
