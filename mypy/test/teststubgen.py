@@ -506,7 +506,7 @@ class StubgenPythonSuite(DataSuite):
                 generate_stubs(options)
                 a = []  # type: List[str]
                 for module in modules:
-                    fnam = os.path.join(out_dir, '{}.pyi'.format(module.replace('.', '/')))
+                    fnam = module_to_path(out_dir, module)
                     self.add_file(fnam, a, header=len(modules) > 1)
             except CompileError as e:
                 a = e.messages
@@ -764,3 +764,12 @@ class ArgSigSuite(Suite):
                      "ArgSig(name='func', type='str', default=False)")
         assert_equal(repr(ArgSig("func", 'str', default=True)),
                      "ArgSig(name='func', type='str', default=True)")
+
+
+def module_to_path(out_dir: str, module: str) -> str:
+    fnam = os.path.join(out_dir, '{}.pyi'.format(module.replace('.', '/')))
+    if not os.path.exists(fnam):
+        alt_fnam = fnam.replace('.pyi', '/__init__.pyi')
+        if os.path.exists(alt_fnam):
+            return alt_fnam
+    return fnam
