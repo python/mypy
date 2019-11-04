@@ -1067,6 +1067,11 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
+            for d in defn.decorators:
+                d.accept(self)
+                if d.fullname in ('typing.final',
+                                    'typing_extensions.final'):
+                    self.fail("@final cannot be used with TypedDict", d)
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
