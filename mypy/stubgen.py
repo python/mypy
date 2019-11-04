@@ -768,7 +768,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         exported_names = set()  # type: Set[str]
         import_names = []
         for name, as_name in o.names:
-            if as_name is None and (self.module + '.' + name) in EXTRA_EXPORTED:
+            if as_name is None and self.module and (self.module + '.' + name) in EXTRA_EXPORTED:
                 as_name = name
             import_names.append((name, as_name))
         self.import_tracker.add_import_from('.' * o.relative + o.id, import_names)
