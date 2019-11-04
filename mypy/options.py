@@ -3,20 +3,10 @@ import re
 import pprint
 import sys
 
-<<<<<<< HEAD
-from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
-from typing_extensions import Final
-||||||| merged common ancestors
-from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-=======
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, AnyStr
 MYPY = False
 if MYPY:
     from typing_extensions import Final
->>>>>>> Stubgen: Remove misplaced type comments before parsing
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
