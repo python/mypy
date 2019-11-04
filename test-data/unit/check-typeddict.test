@@ -1924,3 +1924,16 @@ v = {bad2: 2}  # E: Extra key 'bad' for TypedDict "Value"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testCannotUseFinalDecoratorWithTypedDict]
+from typing import TypedDict
+from typing_extensions import final
+
+@final  # E: @final cannot be used with TypedDict
+class DummyTypedDict(TypedDict):
+    int_val: int
+    float_val: float
+    str_val: str
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
