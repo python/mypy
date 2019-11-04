@@ -141,7 +141,7 @@ def find_module_path_and_all_py3(module: str,
     it is a Python module. Raise CantImport if import failed.
     """
     if module in NOT_IMPORTABLE_MODULES:
-        raise CantImport(module)
+        raise CantImport(module, '')
 
     # TODO: Support custom interpreters.
     if verbose:
