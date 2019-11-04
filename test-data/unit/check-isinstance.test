@@ -2279,3 +2279,52 @@ var = 'some string'
 if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
     pass
 [builtins fixtures/isinstancelist.pyi]
+
+[case testCustomTypeNarrower]
+from typing import Union, List, Tuple, Any, Callable
+from mypy.extern import narrow_cast
+@narrow_cast(int)
+def isint(x: Union[str, int], *args) -> bool:
+    return isinstance(x, int)
+
+@narrow_cast(str)
+def isstr(x, name) -> bool:
+    return name == 'STRING'
+
+u: Union[str, int] = 5
+x: Union[str, float]
+if isint(u):
+    reveal_type(u)  # N: Revealed type is 'builtins.int'
+if isinstance(u, int):
+    reveal_type(u)  # N: Revealed type is 'builtins.int'
+if isstr(x, 'STRING'):
+    x + ""
+
+@narrow_cast(str)
+def is_fizz_buzz(foo):
+    return foo in ['fizz', 'buzz']
+
+def foobar(foo: Union[str, float]):
+    if foo in ['fizz', 'buzz']:
+        reveal_type(foo)  # N: Revealed type is 'Union[builtins.str, builtins.float]'
+    if is_fizz_buzz(foo):
+        reveal_type(foo)  # N: Revealed type is 'builtins.str'
+
+@narrow_cast((str, (int,)))
+def is_str_or_int(x):
+    return isinstance(x, (str, (int,)))
+
+@narrow_cast((str, (list,)))
+def is_str_or_list(x):
+    return isinstance(x, (str, (list,)))
+
+def f(x: Union[int, str, List]) -> None:
+    if isinstance(x, (str, (int,))):
+        reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    if is_str_or_int(x):
+        reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    if isinstance(x, (str, (list,))):
+        reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.list[Any]]'
+    if is_str_or_list(x):
+        reveal_type(x)   # N: Revealed type is 'Union[builtins.str, builtins.list[Any]]'
+[builtins fixtures/isinstancelist.pyi]
