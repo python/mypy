@@ -387,6 +387,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
+        options.error_summary = False
 
     # Allow custom python version to override testcase_pyversion
     if (not flag_list or

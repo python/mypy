@@ -453,7 +453,7 @@ main:2: note: (Using --follow-imports=error, module not passed on command line)
 [case testIgnoreMissingImportsFalse]
 from mod import x
 [out]
-main:1: error: Cannot find module named 'mod'
+main:1: error: Cannot find implementation or library stub for module named 'mod'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIgnoreMissingImportsTrue]
@@ -472,9 +472,9 @@ def incomplete(x) -> int:
 def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
     return 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_incomplete_defs = False
-[[mypy-incomplete]
+\[mypy-incomplete]
 disallow_incomplete_defs = True
 
 
@@ -492,9 +492,9 @@ if int():
     x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 
@@ -519,9 +519,9 @@ f(standard.an_int)  # ints can be used as ints
 f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; expected "int"
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 
@@ -542,9 +542,9 @@ x = 0  # type: Optional[int]
 y = None  # type: None
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 [case testPerFileStrictOptionalListItemImportOptional]
@@ -565,9 +565,9 @@ x = []  # type: List[Optional[int]]
 y = []  # type: List[int]
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 [builtins fixtures/list.pyi]
 
@@ -591,9 +591,9 @@ def f(x: int = None) -> None: pass
 standard.f(None)
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 [case testDisallowImplicitTypesIgnoreMissingTypes]
@@ -610,7 +610,7 @@ from missing import MyType
 def f(x: MyType) -> None:
     pass
 [out]
-main:2: error: Cannot find module named 'missing'
+main:2: error: Cannot find implementation or library stub for module named 'missing'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 
@@ -1029,6 +1029,31 @@ def f(i: int, s):
 main:3: error: Function is missing a return type annotation
 main:3: error: Function is missing a type annotation for one or more arguments
 
+[case testDisallowIncompleteDefsAttrsNoAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class Unannotated:
+    foo = attr.ib()
+
+[case testDisallowIncompleteDefsAttrsWithAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class Annotated:
+    bar: int = attr.ib()
+
+[case testDisallowIncompleteDefsAttrsPartialAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+    bar: int = attr.ib()
+    baz = attr.ib()
+
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
 from somewhere import YOLO, BLAH
@@ -1046,7 +1071,7 @@ if not YOLO:
 if BLAH:
     1+()
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_missing_imports = True
 always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
@@ -1129,9 +1154,9 @@ import b
 [file b.py]
 42 == 'no'
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_equality = True
-[[mypy-b]
+\[mypy-b]
 strict_equality = False
 [builtins fixtures/bool.pyi]
 
@@ -1192,9 +1217,9 @@ a = 5
 from other_module_1 import a
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 implicit_reexport = True
-[[mypy-other_module_2]
+\[mypy-other_module_2]
 implicit_reexport = False
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'

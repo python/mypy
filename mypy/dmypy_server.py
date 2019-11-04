@@ -16,7 +16,7 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
-from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple
 from typing_extensions import Final
 
 import mypy.build
@@ -33,6 +33,7 @@ from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
+from mypy.util import FancyFormatter, count_stats
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
@@ -174,6 +175,7 @@ class Server:
 
         self.fscache = FileSystemCache()
 
+        options.raise_exceptions = True
         options.incremental = True
         options.fine_grained_incremental = True
         options.show_traceback = True
@@ -187,6 +189,10 @@ class Server:
         # (details in https://github.com/python/mypy/issues/4492)
         options.local_partial_types = True
         self.status_file = status_file
+
+        # Since the object is created in the parent process we can check
+        # the output terminal options here.
+        self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
 
     def _response_metadata(self) -> Dict[str, str]:
         py_version = '{}_{}'.format(self.options.python_version[0], self.options.python_version[1])
@@ -248,13 +254,17 @@ class Server:
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)
 
-    def run_command(self, command: str, data: Mapping[str, object]) -> Dict[str, object]:
+    def run_command(self, command: str, data: Dict[str, object]) -> Dict[str, object]:
         """Run a specific command from the registry."""
         key = 'cmd_' + command
         method = getattr(self.__class__, key, None)
         if method is None:
             return {'error': "Unrecognized command '%s'" % command}
         else:
+            if command not in {'check', 'recheck', 'run'}:
+                # Only the above commands use some error formatting.
+                del data['is_tty']
+                del data['terminal_width']
             return method(self, **data)
 
     # Command functions (run in the server via RPC).
@@ -280,7 +290,8 @@ class Server:
         os.unlink(self.status_file)
         return {}
 
-    def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
+    def cmd_run(self, version: str, args: Sequence[str],
+                is_tty: bool, terminal_width: int) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
             # Process options can exit on improper arguments, so we need to catch that and
@@ -313,17 +324,20 @@ class Server:
             return {'out': '', 'err': str(err), 'status': 2}
         except SystemExit as e:
             return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
-        return self.check(sources)
+        return self.check(sources, is_tty, terminal_width)
 
-    def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
+    def cmd_check(self, files: Sequence[str],
+                  is_tty: bool, terminal_width: int) -> Dict[str, object]:
         """Check a list of files."""
         try:
             sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(sources)
+        return self.check(sources, is_tty, terminal_width)
 
     def cmd_recheck(self,
+                    is_tty: bool,
+                    terminal_width: int,
                     remove: Optional[List[str]] = None,
                     update: Optional[List[str]] = None) -> Dict[str, object]:
         """Check the same list of files we checked most recently.
@@ -349,17 +363,23 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
-        res = self.fine_grained_increment(sources, remove, update)
+        res = self.fine_grained_increment(sources, is_tty, terminal_width,
+                                          remove, update)
         self.fscache.flush()
         self.update_stats(res)
         return res
 
-    def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
-        """Check using fine-grained incremental mode."""
+    def check(self, sources: List[BuildSource],
+              is_tty: bool, terminal_width: int) -> Dict[str, Any]:
+        """Check using fine-grained incremental mode.
+
+        If is_tty is True format the output nicely with colors and summary line
+        (unless disabled in self.options). Also pass the terminal_width to formatter.
+        """
         if not self.fine_grained_manager:
-            res = self.initialize_fine_grained(sources)
+            res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
-            res = self.fine_grained_increment(sources)
+            res = self.fine_grained_increment(sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -371,7 +391,8 @@ class Server:
             res['stats'] = manager.stats
             manager.stats = {}
 
-    def initialize_fine_grained(self, sources: List[BuildSource]) -> Dict[str, Any]:
+    def initialize_fine_grained(self, sources: List[BuildSource],
+                                is_tty: bool, terminal_width: int) -> Dict[str, Any]:
         self.fswatcher = FileSystemWatcher(self.fscache)
         t0 = time.time()
         self.update_sources(sources)
@@ -433,10 +454,13 @@ class Server:
             print_memory_profile(run_gc=False)
 
         status = 1 if messages else 0
+        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self,
                                sources: List[BuildSource],
+                               is_tty: bool,
+                               terminal_width: int,
                                remove: Optional[List[str]] = None,
                                update: Optional[List[str]] = None,
                                ) -> Dict[str, Any]:
@@ -466,7 +490,31 @@ class Server:
 
         status = 1 if messages else 0
         self.previous_sources = sources
+        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+
+    def pretty_messages(self, messages: List[str], n_sources: int,
+                        is_tty: bool = False, terminal_width: Optional[int] = None) -> List[str]:
+        use_color = self.options.color_output and is_tty
+        fit_width = self.options.pretty and is_tty
+        if fit_width:
+            messages = self.formatter.fit_in_terminal(messages,
+                                                      fixed_terminal_width=terminal_width)
+        if self.options.error_summary:
+            summary = None  # type: Optional[str]
+            if messages:
+                n_errors, n_files = count_stats(messages)
+                if n_errors:
+                    summary = self.formatter.format_error(n_errors, n_files, n_sources,
+                                                          use_color)
+            else:
+                summary = self.formatter.format_success(n_sources, use_color)
+            if summary:
+                # Create new list to avoid appending multiple summaries on successive runs.
+                messages = messages + [summary]
+        if use_color:
+            messages = [self.formatter.colorize(m) for m in messages]
+        return messages
 
     def update_sources(self, sources: List[BuildSource]) -> None:
         paths = [source.path for source in sources if source.path is not None]
@@ -515,10 +563,12 @@ class Server:
     def cmd_suggest(self,
                     function: str,
                     callsites: bool,
-                    **kwargs: bool) -> Dict[str, object]:
+                    **kwargs: Any) -> Dict[str, object]:
         """Suggest a signature for a function."""
         if not self.fine_grained_manager:
-            return {'error': "Command 'suggest' is only valid after a 'check' command"}
+            return {
+                'error': "Command 'suggest' is only valid after a 'check' command"
+                " (that produces no parse errors)"}
         engine = SuggestionEngine(self.fine_grained_manager, **kwargs)
         try:
             if callsites:

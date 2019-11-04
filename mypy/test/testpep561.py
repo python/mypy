@@ -59,7 +59,7 @@ class SimpleMsg(Enum):
 
 
 class NamespaceMsg(Enum):
-    cfm_beta = ("{tempfile}:4: error: Cannot find module named "
+    cfm_beta = ("{tempfile}:4: error: Cannot find implementation or library stub for module named "
                 "'typedpkg_ns.ns.dne'")
     help_note = ('{tempfile}:4: note: See https://mypy.readthedocs.io/en/latest/'
                  'running_mypy.html#missing-imports')
@@ -114,6 +114,7 @@ class ExampleProg(object):
             old_dir = os.getcwd()
             os.chdir(venv_dir)
         try:
+            cmd_line.append('--no-error-summary')
             if python_executable != sys.executable:
                 cmd_line.append('--python-executable={}'.format(python_executable))
             out, err, returncode = mypy.api.run(cmd_line)

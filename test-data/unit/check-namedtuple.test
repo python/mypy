@@ -44,6 +44,24 @@ x.x
 x.y
 x.z # E: "X" has no attribute "z"
 
+[case testNamedTupleClassPython35]
+# flags: --python-version 3.5
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x = 3  # type: int
+[out]
+main:4: error: NamedTuple class syntax is only supported in Python 3.6
+
+[case testNamedTupleClassInStubPython35]
+# flags: --python-version 3.5
+import foo
+
+[file foo.pyi]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    x: int
 
 [case testNamedTupleAttributesAreReadOnly]
 from collections import namedtuple
@@ -134,7 +152,7 @@ X(0, 1)  # ok
 X(0, 1, 2)  # E: Too many arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to namedtuple()
-Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"  # E: List or tuple literal expected as the defaults argument to namedtuple()
+Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
 
 [builtins fixtures/list.pyi]
 

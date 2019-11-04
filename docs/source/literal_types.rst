@@ -5,7 +5,7 @@ Literal types
 
 .. note::
 
-   Literal is an officially supported feature, but is highly experimental
+   ``Literal`` is an officially supported feature, but is highly experimental
    and should be considered to be in alpha stage. It is very likely that future
    releases of mypy will modify the behavior of literal types, either by adding
    new features or by tuning or removing problematic ones.
@@ -67,7 +67,7 @@ So, ``Literal[-3, b"foo", True]`` is equivalent to
 more complex types involving literals a little more convenient.
 
 Literal types may also contain ``None``. Mypy will treat ``Literal[None]`` as being
-equivalent to just ``None``. This means that ``Literal[4, None]``, 
+equivalent to just ``None``. This means that ``Literal[4, None]``,
 ``Union[Literal[4], None]``, and ``Optional[Literal[4]]`` are all equivalent.
 
 Literals may also contain aliases to other literal types. For example, the
@@ -85,7 +85,7 @@ following program is legal:
     paint("turquoise")  # Does not type check
 
 Literals may not contain any other kind of type or expression. This means doing
-``Literal[my_instance]``, ``Literal[Any]``, ``Literal[3.14]``, or 
+``Literal[my_instance]``, ``Literal[Any]``, ``Literal[3.14]``, or
 ``Literal[{"foo": 2, "bar": 5}]`` are all illegal.
 
 Future versions of mypy may relax some of these restrictions. For example, we
@@ -111,7 +111,7 @@ are **not** assumed to be literals:
     reveal_type(b)          # Revealed type is 'int'
 
 If you find repeating the value of the variable in the type hint to be tedious,
-you can instead change the variable to be :ref:`Final <final_attrs>`:
+you can instead change the variable to be ``Final`` (see :ref:`final_attrs`):
 
 .. code-block:: python
 
@@ -124,7 +124,7 @@ you can instead change the variable to be :ref:`Final <final_attrs>`:
     reveal_type(c)          # Revealed type is 'int'
     expects_literal(c)      # ...but this type checks!
 
-If you do not provide an explicit type in the Final, the type of ``c`` becomes
+If you do not provide an explicit type in the ``Final``, the type of ``c`` becomes
 context-sensitive: mypy will basically try "substituting" the original assigned
 value whenever it's used before performing type checking. So, mypy will type-check
 the above program almost as if it were written like so:
@@ -141,7 +141,7 @@ the above program almost as if it were written like so:
 This is why ``expects_literal(19)`` type-checks despite the fact that ``reveal_type(c)``
 reports ``int``.
 
-So while changing a variable to be Final is not quite the same thing as adding
+So while changing a variable to be ``Final`` is not quite the same thing as adding
 an explicit ``Literal[...]`` annotation, it often leads to the same effect in practice.
 
 Limitations

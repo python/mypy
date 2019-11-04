@@ -115,6 +115,10 @@ class TestEnum(Enum):
 
 assert TestEnum.test() == 3
 
+[file other.py]
+# Force a multi-module test to make sure we can compile multi-file with
+# non-extension classes
+
 [file driver.py]
 from native import TestEnum
 assert TestEnum.a.name == 'a'
@@ -122,7 +126,7 @@ assert TestEnum.a.value == 1
 assert TestEnum.b.name == 'b'
 assert TestEnum.b.value == 2
 
-[case testDataClass]
+[case testRunDataclass]
 from dataclasses import dataclass, field
 from typing import Set, List, Callable, Any
 
@@ -141,9 +145,13 @@ def testBool(p: Person1) -> bool:
         return False
 
 @dataclass
+class Person1b(Person1):
+    id: str = '000'
+
+@dataclass
 class Person2:
     age : int
-    name : str = 'robot'
+    name : str = field(default='robot')
 
 @dataclass(order = True)
 class Person3:
@@ -180,20 +188,22 @@ class Person4:
     def name(self) -> str:
         return self._name
 
-[file driver.py]
-import sys
-
-# Dataclasses introduced in 3.7
-version = sys.version_info[:2]
-if version[0] < 3 or version[1] < 7:
-    exit()
-
-from native import Person1, Person2, Person3, Person4, testBool
+[file other.py]
+from native import Person1, Person1b, Person2, Person3, Person4, testBool
 i1 = Person1(age = 5, name = 'robot')
 assert i1.age == 5
 assert i1.name == 'robot'
 assert testBool(i1) == True
 assert testBool(Person1(age = 5, name = 'robo')) == False
+i1b = Person1b(age = 5, name = 'robot')
+assert i1b.age == 5
+assert i1b.name == 'robot'
+assert testBool(i1b) == True
+assert testBool(Person1b(age = 5, name = 'robo')) == False
+i1c = Person1b(age = 20, name = 'robot', id = 'test')
+assert i1c.age == 20
+assert i1c.id == 'test'
+
 i2 = Person2(age = 5)
 assert i2.age == 5
 assert i2.name == 'robot'
@@ -224,6 +234,39 @@ i9 = Person3(age = 1, friendIDs = [1,2])
 assert i8 == i9
 i8.age = 2
 assert i8 > i9
+
+
+[file driver.py]
+import sys
+
+# Dataclasses introduced in 3.7
+version = sys.version_info[:2]
+if version[0] < 3 or version[1] < 7:
+    exit()
+
+# Run the tests in both interpreted and compiled mode
+import other
+import other_interpreted
+
+# Test for an exceptional cases
+from testutil import assertRaises
+from native import Person1, Person1b, Person3
+from types import BuiltinMethodType
+
+with assertRaises(TypeError, "missing 1 required positional argument"):
+    Person1(0)
+
+with assertRaises(TypeError, "missing 2 required positional arguments"):
+    Person1b()
+
+with assertRaises(TypeError, "int object expected; got str"):
+    Person1('nope', 'test')
+
+p = Person1(0, 'test')
+with assertRaises(TypeError, "int object expected; got str"):
+    p.age = 'nope'
+
+assert isinstance(Person3().get_age, BuiltinMethodType)
 
 [case testGetAttribute]
 class C:
@@ -1031,3 +1074,125 @@ try:
     import native
 except TypeError as e:
     assert(str(e) == "mypyc classes can't have a metaclass")
+
+[case testPickling]
+from mypy_extensions import trait
+from typing import Any, TypeVar, Generic
+
+def dec(x: Any) -> Any:
+    return x
+
+class A:
+    x: int
+    y: str
+
+class B(A):
+    z: bool
+
+    def __init__(self, x: int, y: str, z: bool) -> None:
+        self.x = x
+        self.y = y
+        self.z = z
+
+@trait
+class T:
+    a: str
+
+class C(B, T):
+    w: object
+
+    # property shouldn't go in
+    @property
+    def foo(self) -> int:
+        return 0
+
+@dec
+class D:
+    x: int
+
+class E(D):
+    y: int
+
+
+U = TypeVar('U')
+
+class F(Generic[U]):
+    y: int
+
+class G(F[int]):
+    pass
+
+[file driver.py]
+from native import A, B, T, C, D, E, F, G
+
+import copy
+import pickle
+
+assert A.__mypyc_attrs__ == ('x', 'y')
+assert B.__mypyc_attrs__ == ('z', 'x', 'y')
+assert T.__mypyc_attrs__ == ('a',)
+assert C.__mypyc_attrs__ == ('w', 'z', 'x', 'y', 'a')
+assert not hasattr(D, '__mypyc_attrs__')
+assert E.__mypyc_attrs__ == ('y', '__dict__')
+assert F.__mypyc_attrs__ == ('y', '__dict__')
+assert G.__mypyc_attrs__ == ('y', '__dict__')
+
+b = B(10, '20', False)
+assert b.__getstate__() == {'z': False, 'x': 10, 'y': '20'}
+b2 = copy.copy(b)
+assert b is not b2 and b.y == b2.y
+
+b3 = pickle.loads(pickle.dumps(b))
+assert b is not b3 and b.y == b3.y
+
+e = E()
+e.x = 10
+e.y = 20
+
+assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
+e2 = pickle.loads(pickle.dumps(e))
+assert e is not e2 and e.x == e2.x and e.y == e2.y
+
+
+[case testInterpretedParentInit]
+from interp import C
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def dec(x: T) -> T:
+    return x
+
+@dec
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class B(A):
+    s = 'test'
+
+def b(x: int) -> B: return B(x)
+
+class D(C):
+    s = 'test'
+
+def d(x: int) -> D: return D(x)
+
+
+[file interp.py]
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file driver.py]
+from native import b, d, B, D
+
+def test(f, v):
+    x = f(v)
+    assert x.x == v
+    assert x.s == 'test'
+
+test(b, 20)
+test(d, 30)
+test(B, -1)
+test(D, -2)

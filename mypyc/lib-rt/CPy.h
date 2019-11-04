@@ -57,15 +57,6 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
     }
 }
 
-// At load time, we need to patch up trait vtables to contain actual pointers
-// to the type objects of the trait, rather than an indirection.
-static inline void CPy_FixupTraitVtable(CPyVTableItem *vtable, int count) {
-    int i;
-    for (i = 0; i < count; i++) {
-        vtable[i*2] = *(CPyVTableItem *)vtable[i*2];
-    }
-}
-
 static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // mypyc classes can't work with metaclasses in
     // general. Through some various nasty hacks we *do*
@@ -1332,6 +1323,148 @@ static int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     CPy_Reraise();
     return 2;
 }
+
+static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
+{
+    Py_ssize_t pos = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(dict, &pos, &key, &value)) {
+        if (PyObject_SetAttr(obj, key, value) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+// Support for pickling; reusable getstate and setstate functions
+static PyObject *
+CPyPickle_SetState(PyObject *obj, PyObject *state)
+{
+    if (_CPy_UpdateObjFromDict(obj, state) != 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+CPyPickle_GetState(PyObject *obj)
+{
+    PyObject *attrs = NULL, *state = NULL;
+
+    attrs = PyObject_GetAttrString((PyObject *)Py_TYPE(obj), "__mypyc_attrs__");
+    if (!attrs) {
+        goto fail;
+    }
+    if (!PyTuple_Check(attrs)) {
+        PyErr_SetString(PyExc_TypeError, "__mypyc_attrs__ is not a tuple");
+        goto fail;
+    }
+    state = PyDict_New();
+    if (!state) {
+        goto fail;
+    }
+
+    // Collect all the values of attributes in __mypyc_attrs__
+    // Attributes that are missing we just ignore
+    int i;
+    for (i = 0; i < PyTuple_GET_SIZE(attrs); i++) {
+        PyObject *key = PyTuple_GET_ITEM(attrs, i);
+        PyObject *value = PyObject_GetAttr(obj, key);
+        if (!value) {
+            if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+                PyErr_Clear();
+                continue;
+            }
+            goto fail;
+        }
+        int result = PyDict_SetItem(state, key, value);
+        Py_DECREF(value);
+        if (result != 0) {
+            goto fail;
+        }
+    }
+
+    Py_DECREF(attrs);
+
+    return state;
+fail:
+    Py_XDECREF(attrs);
+    Py_XDECREF(state);
+    return NULL;
+}
+
+/* Support for our partial built-in support for dataclasses.
+ *
+ * Take a class we want to make a dataclass, remove any descriptors
+ * for annotated attributes, swap in the actual values of the class
+ * variables invoke dataclass, and then restore all of the
+ * descriptors.
+ *
+ * The purpose of all this is that dataclasses uses the values of
+ * class variables to drive which attributes are required and what the
+ * default values/factories are for optional attributes. This means
+ * that the class dict needs to contain those values instead of getset
+ * descriptors for the attributes when we invoke dataclass.
+ *
+ * We need to remove descriptors for attributes even when there is no
+ * default value for them, or else dataclass will think the descriptor
+ * is the default value. We remove only the attributes, since we don't
+ * want dataclasses to try generating functions when they are already
+ * implemented.
+ *
+ * Args:
+ *   dataclass_dec: The decorator to apply
+ *   tp: The class we are making a dataclass
+ *   dict: The dictionary containing values that dataclasses needs
+ *   annotations: The type annotation dictionary
+ */
+static int
+CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
+                           PyObject *dict, PyObject *annotations) {
+    PyTypeObject *ttp = (PyTypeObject *)tp;
+    Py_ssize_t pos;
+    PyObject *res;
+
+    /* Make a copy of the original class __dict__ */
+    PyObject *orig_dict = PyDict_Copy(ttp->tp_dict);
+    if (!orig_dict) {
+        goto fail;
+    }
+
+    /* Delete anything that had an annotation */
+    pos = 0;
+    PyObject *key;
+    while (PyDict_Next(annotations, &pos, &key, NULL)) {
+        if (PyObject_DelAttr(tp, key) != 0) {
+            goto fail;
+        }
+    }
+
+    /* Copy in all the attributes that we want dataclass to see */
+    if (_CPy_UpdateObjFromDict(tp, dict) != 0) {
+        goto fail;
+    }
+
+    /* Run the @dataclass descriptor */
+    res = PyObject_CallFunctionObjArgs(dataclass_dec, tp, NULL);
+    if (!res) {
+        goto fail;
+    }
+    Py_DECREF(res);
+
+    /* Copy back the original contents of the dict */
+    if (_CPy_UpdateObjFromDict(tp, orig_dict) != 0) {
+        goto fail;
+    }
+
+    Py_DECREF(orig_dict);
+    return 1;
+
+fail:
+    Py_XDECREF(orig_dict);
+    return 0;
+}
+
 
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);

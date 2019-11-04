@@ -246,6 +246,11 @@ IGNORE
 # type: ignore
 import MISSING
 
+[case testIgnoreWholeModulePy27]
+# flags: --python-version 2.7
+# type: ignore
+IGNORE
+
 [case testDontIgnoreWholeModule1]
 if True:
     # type: ignore

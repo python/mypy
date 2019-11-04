@@ -555,6 +555,22 @@ app.database_name  # E: "Application" has no attribute "database_name"
 class Yes: ...
 [builtins fixtures/list.pyi]
 
+[case testDataclassesNoInitInitVarInheritance]
+from dataclasses import dataclass, field, InitVar
+
+@dataclass
+class Super:
+    foo: InitVar = field(init=False)
+
+@dataclass
+class Sub(Super):
+    bar: int
+
+sub = Sub(5)
+sub.foo  # E: "Sub" has no attribute "foo"
+sub.bar
+[builtins fixtures/bool.pyi]
+
 [case testDataclassFactory]
 from typing import Type, TypeVar
 from dataclasses import dataclass
@@ -730,3 +746,77 @@ class C(B):
 
 a = C(None, 'abc')
 [builtins fixtures/bool.pyi]
+
+[case testDataclassesDefaultsIncremental]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+from dataclasses import dataclass
+from b import Person
+
+@dataclass
+class Asdf(Person):
+    c: str = 'test'
+
+[file a.py.2]
+from dataclasses import dataclass
+from b import Person
+
+@dataclass
+class Asdf(Person):
+    c: str = 'test'
+
+# asdf
+
+[file b.py]
+from dataclasses import dataclass
+
+@dataclass
+class Person:
+    b: int
+    a: str = 'test'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesDefaultsMroOtherFile]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+from dataclasses import dataclass
+from b import A1, A2
+
+@dataclass
+class Asdf(A1, A2):  # E: Attributes without a default cannot follow attributes with one
+    pass
+
+[file b.py]
+from dataclasses import dataclass
+
+# a bunch of blank lines to make sure the error doesn't accidentally line up...
+
+
+
+@dataclass
+class A1:
+    a: int
+
+@dataclass
+class A2:
+    b: str = 'test'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesInheritingDuplicateField]
+# see mypy issue #7792
+from dataclasses import dataclass
+
+@dataclass
+class A:  # E: Name 'x' already defined (possibly by an import)
+    x: int = 0
+    x: int = 0  # E: Name 'x' already defined on line 6
+
+@dataclass
+class B(A):
+    pass

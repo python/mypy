@@ -379,7 +379,7 @@ class B(A):
 [case testOverride__init_subclass__WithDifferentSignature]
 class A:
     def __init_subclass__(cls, x: int) -> None: pass
-class B(A):
+class B(A):  # E: Too few arguments for "__init_subclass__" of "A"
     def __init_subclass__(cls) -> None: pass
 
 [case testOverrideWithDecorator]
@@ -1377,14 +1377,13 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: note: Revealed type is 'd.D'
 main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
-main:6: note: Revealed type is 'Any'
+main:5: note: Revealed type is 'd.D'
 main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
 main:6: note: Possible overload variants:
 main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
 main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
-
+main:6: note: Revealed type is 'Any'
 
 [case testAccessingGenericNonDataDescriptor]
 from typing import TypeVar, Type, Generic, Any
@@ -1480,12 +1479,11 @@ class D(Generic[T, V]):
     def __get__(self, inst: T, own: Type[T]) -> V: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: note: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
 main:5: note: Possible overload variants:
 main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
 main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
-
+main:5: note: Revealed type is 'Any'
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -2513,6 +2511,28 @@ class A:
 a = A()
 a.y()  # E: "A" not callable
 
+[case testGetattrWithCallable]
+from typing import Callable, Any
+
+class C:
+    def __getattr__(self, attr: str) -> C: ...
+
+def do(cd: Callable[..., Any]) -> None: ...
+
+do(C())  # E: Argument 1 to "do" has incompatible type "C"; expected "Callable[..., Any]"
+
+[case testGetattrWithCallableTypeVar]
+from typing import Callable, Any, TypeVar
+
+class C:
+    def __getattr__(self, attr: str) -> C: ...
+
+T = TypeVar('T', bound=Callable[..., Any])
+
+def do(cd: T) -> T: ...
+
+do(C())  # E: Value of type variable "T" of "do" cannot be "C"
+
 [case testNestedGetattr]
 def foo() -> object:
     def __getattr__() -> None:  # no error because not in a class
@@ -2590,7 +2610,7 @@ t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (self: Any) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "def (self: __main__.A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -2953,8 +2973,8 @@ def error(u_c: Type[U]) -> P:
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: note: Revealed type is '__main__.WizUser*'
-main:13: error: Incompatible return value type (got "U", expected "P")
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
+main:13: error: Incompatible return value type (got "U", expected "P")
 
 [case testTypeUsingTypeCCovariance]
 from typing import Type, TypeVar
@@ -4844,8 +4864,9 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-@six.add_metaclass(A)  # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]" \
-                       # E: Metaclasses not inheriting from 'type' are not supported
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported  \
+    # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
+
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 @six.add_metaclass(M)
@@ -4877,6 +4898,116 @@ class E(metaclass=t.M): pass
 class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
+
+-- Special support for future.utils
+-- --------------------------------
+
+[case testFutureMetaclass]
+import future.utils
+class M(type):
+    x = 5
+class A(future.utils.with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+
+[case testFutureMetaclass_python2]
+import future.utils
+class M(type):
+    x = 5
+class A(future.utils.with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+
+[case testFromFutureMetaclass]
+from future.utils import with_metaclass
+class M(type):
+    x = 5
+class A(with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+
+[case testFutureMetaclassImportFrom]
+import future.utils
+from metadefs import M
+class A(future.utils.with_metaclass(M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+[file metadefs.py]
+class M(type):
+    x = 5
+
+[case testFutureMetaclassImport]
+import future.utils
+import metadefs
+class A(future.utils.with_metaclass(metadefs.M)): pass
+reveal_type(type(A).x)  # N: Revealed type is 'builtins.int'
+[file metadefs.py]
+class M(type):
+    x = 5
+
+[case testFutureMetaclassAndBase]
+from typing import Iterable, Iterator
+import future.utils
+class M(type, Iterable[int]):
+    x = 5
+    def __iter__(self) -> Iterator[int]: ...
+class A:
+    def foo(self): pass
+class B:
+    def bar(self): pass
+class C1(future.utils.with_metaclass(M, A)): pass
+class C2(future.utils.with_metaclass(M, A, B)): pass
+reveal_type(type(C1).x)  # N: Revealed type is 'builtins.int'
+reveal_type(type(C2).x)  # N: Revealed type is 'builtins.int'
+C1().foo()
+C1().bar()  # E: "C1" has no attribute "bar"
+for x in C1: reveal_type(x)  # N: Revealed type is 'builtins.int*'
+for x in C2: reveal_type(x)  # N: Revealed type is 'builtins.int*'
+C2().foo()
+C2().bar()
+C2().baz()  # E: "C2" has no attribute "baz"
+
+[case testFutureMetaclassGenerics]
+from typing import Generic, GenericMeta, TypeVar
+import future.utils
+class DestroyableMeta(type):
+    pass
+class Destroyable(future.utils.with_metaclass(DestroyableMeta)):
+    pass
+T_co = TypeVar('T_co', bound='Destroyable', covariant=True)
+class ArcMeta(GenericMeta, DestroyableMeta):
+    pass
+class Arc(future.utils.with_metaclass(ArcMeta, Generic[T_co], Destroyable)):
+    pass
+class MyDestr(Destroyable):
+    pass
+reveal_type(Arc[MyDestr]())  # N: Revealed type is '__main__.Arc[__main__.MyDestr*]'
+[builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testFutureMetaclassErrors]
+import future.utils
+class M(type): pass
+class A(object): pass
+def f() -> type: return M
+class C1(future.utils.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
+class C2(C1, future.utils.with_metaclass(M)): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
+class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class C4(future.utils.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
+class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+
+class M1(type): pass
+class Q1(metaclass=M1): pass
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+
+[case testFutureMetaclassErrors_python2]
+# flags: --python-version 2.7
+import future.utils
+class M(type): pass
+class C4(future.utils.with_metaclass(M)):  # E: Multiple metaclass definitions
+    __metaclass__ = M
+
+[case testFutureMetaclassAny]
+import t  # type: ignore
+import future.utils
+class E(metaclass=t.M): pass
+class F(future.utils.with_metaclass(t.M)): pass
 
 -- Misc
 -- ----
@@ -4970,8 +5101,8 @@ def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
 @decorate(11)
 class A: pass
 
-@decorate
-class A2: pass  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
+@decorate  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
+class A2: pass
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...
@@ -6010,7 +6141,7 @@ class A:
     def __new__(cls) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "A")
         pass
 
-reveal_type(A())  # N: Revealed type is 'builtins.int'
+reveal_type(A())  # N: Revealed type is '__main__.A'
 
 [case testNewReturnType4]
 from typing import TypeVar, Type
@@ -6078,6 +6209,16 @@ class X:
     def __new__(cls, x: TX) -> TX:  # E: "__new__" must return a class instance (got "TX")
         pass
 
+[case testNewReturnType9]
+class A:
+    def __new__(cls) -> A:
+        pass
+
+class B(A):
+    pass
+
+reveal_type(B())  # N: Revealed type is '__main__.B'
+
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
 
@@ -6142,3 +6283,209 @@ class C(B[int, T]):
     def __init__(self) -> None:
         # TODO: error message could be better.
         self.x: Tuple[str, T]  # E: Incompatible types in assignment (expression has type "Tuple[str, T]", base class "A" defined the type as "Tuple[int, T]")
+
+[case testInitSubclassWrongType]
+class Base:
+    default_name: str
+
+    def __init_subclass__(cls, default_name: str):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+
+class Child(Base, default_name=5):  # E: Argument "default_name" to "__init_subclass__" of "Base" has incompatible type "int"; expected "str"
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassTooFewArgs]
+class Base:
+    default_name: str
+
+    def __init_subclass__(cls, default_name: str, **kwargs):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+
+class Child(Base):  # E: Too few arguments for "__init_subclass__" of "Base"
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassTooFewArgs2]
+class Base:
+    default_name: str
+
+    def __init_subclass__(cls, default_name: str, thing: int):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+# TODO implement this, so that no error is raised?
+d = {"default_name": "abc", "thing": 0}
+class Child(Base, **d):  # E: Too few arguments for "__init_subclass__" of "Base"
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassOK]
+class Base:
+    default_name: str
+    thing: int
+
+    def __init_subclass__(cls, default_name: str, thing:int, **kwargs):
+        super().__init_subclass__()
+        cls.default_name = default_name
+        return
+
+class Child(Base, thing=5, default_name=""):
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithMetaclassOK]
+class Base:
+    thing: int
+
+    def __init_subclass__(cls, thing: int):
+        cls.thing = thing
+
+class Child(Base, metaclass=type, thing=0):
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithCustomMetaclassOK]
+class M(type): ...
+class Child(metaclass=M, thing=0):
+    pass
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testTooManyArgsForObject]
+class A(thing=5):
+    pass
+[out]
+main:1: error: Unexpected keyword argument "thing" for "__init_subclass__" of "object"
+tmp/builtins.pyi:5: note: "__init_subclass__" of "object" defined here
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithImports]
+from init_subclass.a import Base
+class Child(Base, thing=5):  # E: Missing positional argument "default_name" in call to "__init_subclass__" of "Base"
+    pass
+[file init_subclass/a.py]
+class Base:
+    default_name: str
+    thing: int
+
+    def __init_subclass__(cls, default_name: str, thing:int, **kwargs):
+        pass
+[file init_subclass/__init__.py]
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassWithImportsOK]
+from init_subclass.a import MidBase
+class Main(MidBase, test=True): pass
+[file init_subclass/a.py]
+class Base:
+    def __init_subclass__(cls, **kwargs) -> None: pass
+class MidBase(Base): pass
+[file init_subclass/__init__.py]
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassUnannotated]
+class A:
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+
+class B(A):
+    pass
+
+reveal_type(A.__init_subclass__)  # N: Revealed type is 'def (*args: Any, **kwargs: Any) -> Any'
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testInitSubclassUnannotatedMulti]
+from typing import ClassVar, List, Type
+
+class A:
+    registered_classes: ClassVar[List[Type[A]]] = []
+    def __init_subclass__(cls, *args, register=True, **kwargs):
+        if register:
+            cls.registered_classes.append(cls)
+        super().__init_subclass__(*args, **kwargs)
+
+class B(A): ...
+class C(A, register=False): ...
+class D(C): ...
+[builtins fixtures/object_with_init_subclass.pyi]
+
+[case testClassMethodUnannotated]
+class C:
+    def __new__(cls): ...
+    @classmethod
+    def meth(cls): ...
+
+reveal_type(C.meth)  # N: Revealed type is 'def () -> Any'
+reveal_type(C.__new__)  # N: Revealed type is 'def (cls: Type[__main__.C]) -> Any'
+[builtins fixtures/classmethod.pyi]
+
+[case testOverrideGenericSelfClassMethod]
+from typing import Generic, TypeVar, Type, List
+
+T = TypeVar('T', bound=A)
+
+class A:
+    @classmethod
+    def meth(cls: Type[T]) -> List[T]: ...
+
+class B(A):
+    @classmethod
+    def meth(cls: Type[T]) -> List[T]: ...
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testCheckUntypedDefsSelf1]
+# flags: --check-untyped-defs
+
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class Desc:
+    def __get__(self, x, y):
+        # type: (...) -> bool
+        pass
+
+class Foo:
+    y = Desc()
+
+    def __init__(self):
+        self.x = 0
+
+    def foo(self):
+        reveal_type(self.x)  # N: Revealed type is 'builtins.int'
+        reveal_type(self.y)  # N: Revealed type is 'builtins.bool'
+        self.bar()
+        self.baz()  # E: "Foo" has no attribute "baz"
+
+    @classmethod
+    def bar(cls):
+        cls.baz()  # E: "Type[Foo]" has no attribute "baz"
+
+class C(Generic[T]):
+    x: T
+    def meth(self):
+        self.x + 1  # E: Unsupported left operand type for + ("T")
+[builtins fixtures/classmethod.pyi]
+
+[case testCheckUntypedDefsSelf2]
+# flags: --check-untyped-defs
+
+class Foo:
+    def __init__(self):
+        self.x = None
+        self.y = []
+
+reveal_type(Foo().x)  # N: Revealed type is 'Union[Any, None]'
+reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]
+
+[case testCheckUntypedDefsSelf3]
+# flags: --check-untyped-defs
+
+class Foo:
+    def bad():  # E: Method must have at least one argument
+        self.x = 0  # E: Name 'self' is not defined

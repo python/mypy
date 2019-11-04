@@ -808,7 +808,7 @@ else:
 
 [builtins fixtures/bool.pyi]
 
-[case testEnumReachabilityPEP484Example1]
+[case testEnumReachabilityPEP484ExampleWithFinal]
 # flags: --strict-optional
 from typing import Union
 from typing_extensions import Final
@@ -833,7 +833,7 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
         return x + 2
 [builtins fixtures/primitives.pyi]
 
-[case testEnumReachabilityPEP484Example2]
+[case testEnumReachabilityPEP484ExampleWithMultipleValues]
 from typing import Union
 from enum import Enum
 
@@ -852,5 +852,59 @@ def process(response: Union[str, Reason] = '') -> str:
         # response can be only str, all other possible values exhausted
         reveal_type(response)  # N: Revealed type is 'builtins.str'
         return 'PROCESSED: ' + response
+[builtins fixtures/primitives.pyi]
 
+
+[case testEnumReachabilityPEP484ExampleSingleton]
+# flags: --strict-optional
+from typing import Union
+from typing_extensions import Final
+from enum import Enum
+
+class Empty(Enum):
+    token = 0
+_empty = Empty.token
+
+def func(x: Union[int, None, Empty] = _empty) -> int:
+    boom = x + 42       # E: Unsupported left operand type for + ("None") \
+                        # E: Unsupported left operand type for + ("Empty") \
+                        # N: Left operand is of type "Union[int, None, Empty]"
+    if x is _empty:
+        reveal_type(x)  # N: Revealed type is 'Literal[__main__.Empty.token]'
+        return 0
+    elif x is None:
+        reveal_type(x)  # N: Revealed type is 'None'
+        return 1
+    else:  # At this point typechecker knows that x can only have type int
+        reveal_type(x)  # N: Revealed type is 'builtins.int'
+        return x + 2
+[builtins fixtures/primitives.pyi]
+
+[case testEnumReachabilityPEP484ExampleSingletonWithMethod]
+# flags: --strict-optional
+from typing import Union
+from typing_extensions import Final
+from enum import Enum
+
+class Empty(Enum):
+    token = lambda x: x
+
+    def f(self) -> int:
+        return 1
+
+_empty = Empty.token
+
+def func(x: Union[int, None, Empty] = _empty) -> int:
+    boom = x + 42       # E: Unsupported left operand type for + ("None") \
+                        # E: Unsupported left operand type for + ("Empty") \
+                        # N: Left operand is of type "Union[int, None, Empty]"
+    if x is _empty:
+        reveal_type(x)  # N: Revealed type is 'Literal[__main__.Empty.token]'
+        return 0
+    elif x is None:
+        reveal_type(x)  # N: Revealed type is 'None'
+        return 1
+    else:  # At this point typechecker knows that x can only have type int
+        reveal_type(x)  # N: Revealed type is 'builtins.int'
+        return x + 2
 [builtins fixtures/primitives.pyi]

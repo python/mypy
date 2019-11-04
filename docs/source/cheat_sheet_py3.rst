@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 3)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 annotation notation represents various common types in Python 3.
 
 .. note::
@@ -18,9 +17,8 @@ annotation notation represents various common types in Python 3.
 Variables
 *********
 
-Python 3.6 introduced a syntax for annotating variables in
-`PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_ and
-we use it in most examples.
+Python 3.6 introduced a syntax for annotating variables in :pep:`526`
+and we use it in most examples.
 
 .. code-block:: python
 
@@ -214,12 +212,13 @@ that are common in idiomatic Python are standardized.
    # Mapping describes a dict-like object (with "__getitem__") that we won't
    # mutate, and MutableMapping one (with "__setitem__") that we might
    def f(my_dict: Mapping[int, str]) -> List[int]:
+       my_mapping[5] = 'maybe'  # if we try this, mypy will throw an error...
        return list(my_dict.keys())
 
    f({3: 'yes', 4: 'no'})
 
    def f(my_mapping: MutableMapping[int, str]) -> Set[str]:
-       my_mapping[5] = 'maybe'
+       my_mapping[5] = 'maybe'  # ...but mypy is OK with this.
        return set(my_mapping.values())
 
    f({3: 'yes', 4: 'no'})

@@ -4,7 +4,7 @@ Getting started
 ===============
 
 This chapter introduces some core concepts of mypy, including function
-annotations, the ``typing`` module, library stubs, and more.
+annotations, the :py:mod:`typing` module, library stubs, and more.
 
 Be sure to read this chapter carefully, as the rest of the documentation
 may not make much sense otherwise.
@@ -42,7 +42,7 @@ to your code to take full advantage of mypy. See the section below for details.
 .. note::
 
   Although you must install Python 3 to run mypy, mypy is fully capable of
-  type checking Python 2 code as well: just pass in the ``--py2`` flag. See
+  type checking Python 2 code as well: just pass in the :option:`--py2 <mypy --py2>` flag. See
   :ref:`python2` for more details.
 
   .. code-block:: shell
@@ -88,13 +88,11 @@ calls since the arguments have invalid types:
    greeting(b'Alice')  # Argument 1 to "greeting" has incompatible type "bytes"; expected "str"
 
 Note that this is all still valid Python 3 code! The function annotation syntax
-shown above was added to Python `as a part of Python 3.0 <pep3107_>`_.
+shown above was added to Python :pep:`as a part of Python 3.0 <3107>`.
 
 If you are trying to type check Python 2 code, you can add type hints
 using a comment-based syntax instead of the Python 3 annotation syntax.
 See our section on :ref:`typing Python 2 code <python2>` for more details.
-
-.. _pep3107: https://www.python.org/dev/peps/pep-3107/
 
 Being able to pick whether you want a function to be dynamically or statically
 typed can be very helpful. For example, if you are migrating an existing
@@ -104,7 +102,7 @@ when you are prototyping a new feature, it may be convenient to initially implem
 the code using dynamic typing and only add type hints later once the code is more stable.
 
 Once you are finished migrating or prototyping your code, you can make mypy warn you
-if you add a dynamic function by mistake by using the ``--disallow-untyped-defs``
+if you add a dynamic function by mistake by using the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`
 flag. See :ref:`command-line` for more information on configuring mypy.
 
 .. note::
@@ -167,11 +165,11 @@ The typing module
 
 So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
-such as "a list of strings" or "an iterable of ints"? 
+such as "a list of strings" or "an iterable of ints"?
 
-You can find many of these more complex static types inside of the ``typing``
+You can find many of these more complex static types inside of the :py:mod:`typing`
 module. For example, to indicate that some function can accept a list of
-strings, use the ``List`` type from the ``typing`` module:
+strings, use the :py:class:`~typing.List` type:
 
 .. code-block:: python
 
@@ -183,12 +181,12 @@ strings, use the ``List`` type from the ``typing`` module:
 
    names = ["Alice", "Bob", "Charlie"]
    ages = [10, 20, 30]
-   
+
    greet_all(names)   # Ok!
    greet_all(ages)    # Error due to incompatible types
 
-The ``List`` type is an example of something called a *generic type*: it can
-accept one or more *type parameters*. In this case, we *parameterized* ``List``
+The :py:class:`~typing.List` type is an example of something called a *generic type*: it can
+accept one or more *type parameters*. In this case, we *parameterized* :py:class:`~typing.List`
 by writing ``List[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
@@ -196,7 +194,7 @@ In this particular case, the type signature is perhaps a little too rigid.
 After all, there's no reason why this function must accept *specifically* a list --
 it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
 
-You can express this idea using the ``Iterable`` type instead of ``List``:
+You can express this idea using the :py:class:`~typing.Iterable` type instead of :py:class:`~typing.List`:
 
 .. code-block:: python
 
@@ -207,7 +205,7 @@ You can express this idea using the ``Iterable`` type instead of ``List``:
            print('Hello ' + name)
 
 As another example, suppose you want to write a function that can accept *either*
-ints or strings, but no other types. You can express this using the ``Union`` type:
+ints or strings, but no other types. You can express this using the :py:data:`~typing.Union` type:
 
 .. code-block:: python
 
@@ -219,8 +217,8 @@ ints or strings, but no other types. You can express this using the ``Union`` ty
        else:
            return user_id
 
-Similarly, suppose that you want the function to accept only strings or None. You can
-again use ``Union`` and use ``Union[str, None]`` -- or alternatively, use the type
+Similarly, suppose that you want the function to accept only strings or ``None``. You can
+again use :py:data:`~typing.Union` and use ``Union[str, None]`` -- or alternatively, use the type
 ``Optional[str]``. These two types are identical and interchangeable: ``Optional[str]``
 is just a shorthand or *alias* for ``Union[str, None]``. It exists mostly as a convenience
 to help function signatures look a little cleaner:
@@ -235,18 +233,18 @@ to help function signatures look a little cleaner:
            name = 'stranger'
        return 'Hello, ' + name
 
-The ``typing`` module contains many other useful types. You can find a
-quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>` 
+The :py:mod:`typing` module contains many other useful types. You can find a
+quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>`
 and a more detailed overview (including information on how to make your own
 generic types or your own type aliases) by looking through the
 :ref:`type system reference <overview-type-system-reference>`.
 
-One final note: when adding types, the convention is to import types 
+One final note: when adding types, the convention is to import types
 using the form ``from typing import Iterable`` (as opposed to doing
 just ``import typing`` or ``import typing as t`` or ``from typing import *``).
 
-For brevity, we often omit these ``typing`` imports in code examples, but
-mypy will give an error if you use types such as ``Iterable``
+For brevity, we often omit these :py:mod:`typing` imports in code examples, but
+mypy will give an error if you use types such as :py:class:`~typing.Iterable`
 without first importing them.
 
 Local type inference
@@ -254,10 +252,10 @@ Local type inference
 
 Once you have added type hints to a function (i.e. made it statically typed),
 mypy will automatically type check that function's body. While doing so,
-mypy will try and *infer* as many details as possible. 
+mypy will try and *infer* as many details as possible.
 
 We saw an example of this in the ``normalize_id`` function above -- mypy understands
-basic ``isinstance`` checks and so can infer that the ``user_id`` variable was of
+basic :py:func:`isinstance <isinstance>` checks and so can infer that the ``user_id`` variable was of
 type ``int`` in the if-branch and of type ``str`` in the else-branch. Similarly, mypy
 was able to understand that ``name`` could not possibly be ``None`` in the ``greeting``
 function above, based both on the ``name is None`` check and the variable assignment
@@ -286,7 +284,7 @@ for example, when assigning an empty dictionary to some global value:
 You can teach mypy what type ``my_global_dict`` is meant to have by giving it
 a type hint. For example, if you knew this variable is supposed to be a dict
 of ints to floats, you could annotate it using either variable annotations
-(introduced in Python 3.6 by `PEP 526 <pep526_>`_) or using a comment-based
+(introduced in Python 3.6 by :pep:`526`) or using a comment-based
 syntax like so:
 
 .. code-block:: python
@@ -296,9 +294,6 @@ syntax like so:
 
    # If you want compatibility with older versions of Python
    my_global_dict = {}  # type: Dict[int, float]
-
-.. _pep526: https://www.python.org/dev/peps/pep-0526/
-
 
 .. _stubs-intro:
 
@@ -320,7 +315,7 @@ For example, consider this code:
   x = chr(4)
 
 Without a library stub, mypy would have no way of inferring the type of ``x``
-and checking that the argument to ``chr`` has a valid type.
+and checking that the argument to :py:func:`chr` has a valid type.
 
 Mypy complains if it can't find a stub (or a real module) for a
 library module that you import. Some modules ship with stubs that mypy
@@ -338,11 +333,11 @@ mypy behaves: see :ref:`command-line` for more details.
 For example, suppose you want to make sure *all* functions within your
 codebase are using static typing and make mypy report an error if you
 add a dynamically-typed function by mistake. You can make mypy do this
-by running mypy with the ``--disallow-untyped-defs`` flag.
+by running mypy with the :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>` flag.
 
-Another potentially useful flag is ``--strict``, which enables many
-(thought not all) of the available strictness options -- including
-``--disallow-untyped-defs``.
+Another potentially useful flag is :option:`--strict <mypy --strict>`, which enables many
+(though not all) of the available strictness options -- including
+:option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`.
 
 This flag is mostly useful if you're starting a new project from scratch
 and want to maintain a high degree of type safety from day one. However,

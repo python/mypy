@@ -10,8 +10,8 @@ main:2:5: error: invalid syntax
 import typing
 def f() -> 'A':
     def g() -> 'B':
-        return A() # E:9: Incompatible return value type (got "A", expected "B")
-    return B() # E:5: Incompatible return value type (got "B", expected "A")
+        return A() # E:16: Incompatible return value type (got "A", expected "B")
+    return B() # E:12: Incompatible return value type (got "B", expected "A")
 class A: pass
 class B: pass
 
@@ -22,9 +22,58 @@ class A:
         pass
 A().f()
 A().f(1)
-(A().f('')) # E:2: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
-( A().f(1, 1)) # E:3: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
+A().f('') # E:7: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+A().f(1, 1) # E:10: Argument 2 to "f" of "A" has incompatible type "int"; expected "str"
 (A().f(1, 'hello', 'hi')) # E:2: Too many arguments for "f" of "A"
+
+[case testColumnsInvalidArgumentType]
+# flags: --strict-optional
+def f(x: int, y: str) -> None: ...
+def g(*x: int) -> None: pass
+def h(**x: int) -> None: pass
+def ff(x: int) -> None: pass
+
+class A:
+    x: str
+    def __neg__(self) -> str: pass
+    def __add__(self, other: int) -> str: pass
+    def __lt__(self, other: int) -> str: pass
+
+f(
+ y=0, x=0) # E:4: Argument "y" to "f" has incompatible type "int"; expected "str"
+f(x=0,
+   y=None) # E:6: Argument "y" to "f" has incompatible type "None"; expected "str"
+g(1, '', 2) # E:6: Argument 2 to "g" has incompatible type "str"; expected "int"
+aaa: str
+h(x=1, y=aaa, z=2) # E:10: Argument "y" to "h" has incompatible type "str"; expected "int"
+a: A
+ff(a.x) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff([1]) # E:4: Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
+# TODO: Different column in Python 3.8+
+#ff([1 for x in [1]]) # Argument 1 to "ff" has incompatible type "List[int]"; expected "int"
+ff({1: 2}) # E:4: Argument 1 to "ff" has incompatible type "Dict[int, int]"; expected "int"
+ff(1.1) # E:4: Argument 1 to "ff" has incompatible type "float"; expected "int"
+# TODO: Different column in Python 3.8+
+#ff( ( 1, 1)) # Argument 1 to "ff" has incompatible type "Tuple[int, int]"; expected "int"
+ff(-a) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff(a + 1) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff(a < 1) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+ff([''][0]) # E:4: Argument 1 to "ff" has incompatible type "str"; expected "int"
+
+class B(A):
+    def f(self) -> None:
+        ff(super().__neg__()) # E:12: Argument 1 to "ff" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testColumnsInvalidArgumentTypeVarArgs]
+def f(*x: int) -> None: pass
+def g(**x: int) -> None: pass
+
+a = ['']
+f(*a)  # E:4: Argument 1 to "f" has incompatible type "*List[str]"; expected "int"
+b = {'x': 'y'}
+g(**b) # E:5: Argument 1 to "g" has incompatible type "**Dict[str, str]"; expected "int"
+[builtins fixtures/dict.pyi]
 
 [case testColumnsMultipleStatementsPerLine]
 x = 15
@@ -32,18 +81,44 @@ y = 'hello'
 if int():
     x = 2; y = x; y += 1
 [out]
-main:4:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:4:19: error: Unsupported operand types for + ("str" and "int")
+main:4:16: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:4:24: error: Unsupported operand types for + ("str" and "int")
+
+[case testColumnsAssignment]
+class A:
+    x = 0
+
+A().x = ''  # E:9: Incompatible types in assignment (expression has type "str", variable has type "int")
+a = [0]
+a[0] = ''  # E:8: Incompatible types in assignment (expression has type "str", target has type "int")
+b = 0
+c = 0
+b, c = 0, ''  # E:11: Incompatible types in assignment (expression has type "str", variable has type "int")
+b, c = '', 0  # E:8: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+t = 0, ''
+b, c = t  # E:8: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+class B(A):
+    x = ''  # E:9: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
+[builtins fixtures/list.pyi]
+
+[case testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation]
+class A:
+    x: str
+
+class B(A):
+    x: int  # E:5: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
 
 [case testColumnsSimpleIsinstance]
 import typing
 def f(x: object, n: int, s: str) -> None:
     if int():
-        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
+        n = x # E:13: Incompatible types in assignment (expression has type "object", variable has type "int")
         if isinstance(x, int):
             n = x
-            s = x # E:13: Incompatible types in assignment (expression has type "int", variable has type "str")
-        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
+            s = x # E:17: Incompatible types in assignment (expression has type "int", variable has type "str")
+        n = x # E:13: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 
 [case testColumnHasNoAttribute]
@@ -58,9 +133,12 @@ def foobar(): pass
 
 [builtins fixtures/module.pyi]
 
-[case testColumnUnexpectedKeywordArg]
+[case testColumnUnexpectedOrMissingKeywordArg]
 def f(): pass
+# TODO: Point to "x" instead
 (f(x=1)) # E:2: Unexpected keyword argument "x" for "f"
+def g(*, x: int) -> None: pass
+(g())  # E:2: Missing named argument "x" for "g"
 
 [case testColumnDefinedHere]
 class A: pass
@@ -128,13 +206,21 @@ def f(x, y): pass
 (f()) # E:2: Too few arguments for "f"
 (f(y=1)) # E:2: Missing positional argument "x" in call to "f"
 
+[case testColumnTooFewSuperArgs_python2]
+class A:
+    def f(self):
+        pass
+class B(A):
+    def f(self):   # type: () -> None
+        super().f()  # E:9: Too few arguments for "super"
+
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict
-# TODO: Point to the actual item since a list/dict literal can span many lines
-x: List[int] = [  # E:16: List item 0 has incompatible type "str"; expected "int"
-    'x']
-y: Dict[int, int] = {  # E:21: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
-    'x': 1
+x: List[int] = [
+    'x',  # E:5: List item 0 has incompatible type "str"; expected "int"
+      1.1]  # E:7: List item 1 has incompatible type "float"; expected "int"
+y: Dict[int, int] = {
+    'x': 1  # E:5: Dict entry 0 has incompatible type "str": "int"; expected "int": "int"
 }
 [builtins fixtures/dict.pyi]
 
@@ -144,7 +230,7 @@ x = None
 
 [case testColumnInvalidIndexing]
 from typing import List
-([1]['']) # E:2: Invalid index type "str" for "List[int]"; expected type "int"
+([1]['']) # E:6: Invalid index type "str" for "List[int]"; expected type "int"
 (1[1]) # E:2: Value of type "int" is not indexable
 def f() -> None:
     1[1] = 1 # E:5: Unsupported target for indexed assignment
@@ -183,7 +269,7 @@ if int():
 
 [case testColumnIncompatibleDefault]
 if int():
-    def f(x: int = '') -> None: # E:5: Incompatible default for argument "x" (default has type "str", argument has type "int")
+    def f(x: int = '') -> None: # E:20: Incompatible default for argument "x" (default has type "str", argument has type "int")
         pass
 
 [case testColumnMissingProtocolMember]
@@ -198,9 +284,9 @@ class C:
 
 p: P
 if int():
-    p = C() # E:5: Incompatible types in assignment (expression has type "C", variable has type "P") \
-      # N:5: 'C' is missing following 'P' protocol member: \
-      # N:5:     y
+    p = C() # E:9: Incompatible types in assignment (expression has type "C", variable has type "P") \
+      # N:9: 'C' is missing following 'P' protocol member: \
+      # N:9:     y
 
 [case testColumnRedundantCast]
 # flags: --warn-redundant-casts
@@ -222,7 +308,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:5: Revealed type is 'builtins.int'
+    reveal_type(1) # N:17: Revealed type is 'builtins.int'
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
@@ -250,6 +336,13 @@ if int():
 [out]
 main:2:11: error: Syntax error in type annotation
 main:2:11: note: Suggestion: Is there a spurious trailing comma?
+
+[case testColumnSyntaxErrorInTypeAnnotation2]
+if int():
+    # TODO: It would be better to point to the type comment
+    xyz = 0  # type: blurbnard blarb
+[out]
+main:3:5: error: syntax error in type comment 'blurbnard blarb'
 
 [case testColumnProperty]
 class A:
@@ -301,9 +394,14 @@ def f(x: T) -> T:
     g(y=x) # E:5: Unexpected keyword argument "y" for "g"
     y: List[int, str] # E:8: "list" expects 1 type argument, but 2 given
     del 1[0] # E:5: "int" has no attribute "__delitem__"
-    bb: List[int] = [''] # E:21: List item 0 has incompatible type "str"; expected "int"
-    aa: List[int] = ['' for x in [1]] # E:22: List comprehension has incompatible type List[str]; expected List[int]
+    bb: List[int] = [''] # E:22: List item 0 has incompatible type "str"; expected "int"
+    # XXX: Disabled because the column differs in 3.8
+    # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
     cc = (1).bad # E:11: "int" has no attribute "bad"
-    n: int = '' # E:5: Incompatible types in assignment (expression has type "str", variable has type "int")
+    n: int = '' # E:14: Incompatible types in assignment (expression has type "str", variable has type "int")
     return x
 [builtins fixtures/list.pyi]
+
+[case testColumnReturnValueExpected]
+def f() -> int:
+    return  # E:5: Return value expected

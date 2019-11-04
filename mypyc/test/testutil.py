@@ -17,6 +17,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc import genops
 from mypyc.options import CompilerOptions
 from mypyc.ops import FuncIR
+from mypyc.errors import Errors
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.
@@ -102,11 +103,15 @@ def build_ir_for_single_file(input_lines: List[str],
                          alt_lib_path=test_temp_dir)
     if result.errors:
         raise CompileError(result.errors)
-    _, modules, errors = genops.build_ir([result.files['__main__']], result.graph, result.types,
-                                         compiler_options)
-    assert errors == 0
 
-    module = modules[0][1]
+    errors = Errors()
+    modules = genops.build_ir(
+        [result.files['__main__']], result.graph, result.types,
+        genops.Mapper({'__main__': None}),
+        compiler_options, errors)
+    assert errors.num_errors == 0
+
+    module = list(modules.values())[0]
     return module.functions
 
 
@@ -183,9 +188,10 @@ def heading(text: str) -> None:
     print('=' * 20 + ' ' + text + ' ' + '=' * 20)
 
 
-def show_c(cfiles: List[Tuple[str, str]]) -> None:
+def show_c(cfiles: List[List[Tuple[str, str]]]) -> None:
     heading('Generated C')
-    for cfile, ctext in cfiles:
-        print('== {} =='.format(cfile))
-        print_with_line_numbers(ctext)
+    for group in cfiles:
+        for cfile, ctext in group:
+            print('== {} =='.format(cfile))
+            print_with_line_numbers(ctext)
     heading('End C')

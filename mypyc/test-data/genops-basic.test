@@ -568,7 +568,7 @@ def f(x):
     r2, r3, r4 :: object
     r5 :: int
 L0:
-    r0 = testmodule.module :: static
+    r0 = testmodule :: module
     r1 = unicode_2 :: static  ('factorial')
     r2 = getattr r0, r1
     r3 = box(int, x)
@@ -614,7 +614,7 @@ def f(x):
     r4, r5 :: object
     r6, r7 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
     r3 = 5
@@ -638,7 +638,7 @@ def f(x):
     r6, r7 :: None
 L0:
     r0 = 5
-    r1 = builtins.module :: static
+    r1 = builtins :: module
     r2 = unicode_1 :: static  ('print')
     r3 = getattr r1, r2
     r4 = box(short_int, r0)
@@ -1324,7 +1324,7 @@ def foo():
     r2, r3 :: object
     r4 :: bool
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('Exception')
     r2 = getattr r0, r1
     r3 = py_call(r2)
@@ -1336,7 +1336,7 @@ def bar():
     r2 :: object
     r3 :: bool
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('Exception')
     r2 = getattr r0, r1
     raise_exception(r2); r3 = 0
@@ -1363,7 +1363,7 @@ L0:
     r1 = unicode_1 :: static  ('x')
     r2 = r0[r1] :: dict
     r3 = unbox(int, r2)
-    r4 = builtins.module :: static
+    r4 = builtins :: module
     r5 = unicode_2 :: static  ('print')
     r6 = getattr r4, r5
     r7 = box(int, r3)
@@ -1390,14 +1390,14 @@ def __top_level__():
     r16, r17, r18 :: object
     r19, r20 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
     r4 = import r3 :: str
-    builtins.module = r4 :: static
+    builtins = r4 :: module
 L2:
     r5 = 1
     r6 = __main__.globals :: static
@@ -1408,7 +1408,7 @@ L2:
     r11 = unicode_1 :: static  ('x')
     r12 = r10[r11] :: dict
     r13 = unbox(int, r12)
-    r14 = builtins.module :: static
+    r14 = builtins :: module
     r15 = unicode_2 :: static  ('print')
     r16 = getattr r14, r15
     r17 = box(int, r13)
@@ -1436,7 +1436,7 @@ def f():
     r4, r5 :: object
     r6 :: str
 L0:
-    r0 = m.module :: static
+    r0 = m :: module
     r1 = unicode_2 :: static  ('f')
     r2 = getattr r0, r1
     r3 = 1
@@ -1444,6 +1444,93 @@ L0:
     r5 = py_call(r2, r4)
     r6 = cast(str, r5)
     return r6
+
+[case testCallOverloadedNative]
+from typing import overload, Union
+
+@overload
+def foo(x: int) -> int: ...
+
+@overload
+def foo(x: str) -> str: ...
+
+def foo(x: Union[int, str]) -> Union[int, str]:
+    return x
+
+def main() -> None:
+    x = foo(0)
+[out]
+def foo(x):
+    x :: union[int, str]
+L0:
+    return x
+def main():
+    r0 :: short_int
+    r1 :: object
+    r2 :: union[int, str]
+    r3, x :: int
+    r4 :: None
+L0:
+    r0 = 0
+    r1 = box(short_int, r0)
+    r2 = foo(r1)
+    r3 = unbox(int, r2)
+    x = r3
+    r4 = None
+    return r4
+
+[case testCallOverloadedNativeSubclass]
+from typing import overload, Union
+
+class A:
+    x: int
+class B(A):
+    y: int
+
+@overload
+def foo(x: int) -> B: ...
+
+@overload
+def foo(x: Union[int, str]) -> A: ...
+
+def foo(x: Union[int, str]) -> A:
+    if isinstance(x, int):
+        return B()
+    return A()
+
+def main() -> None:
+    x = foo(0)
+[out]
+def foo(x):
+    x :: union[int, str]
+    r0 :: object
+    r1 :: bool
+    r2 :: __main__.B
+    r3 :: __main__.A
+L0:
+    r0 = int
+    r1 = isinstance x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = B()
+    return r2
+L2:
+    r3 = A()
+    return r3
+def main():
+    r0 :: short_int
+    r1 :: object
+    r2 :: __main__.A
+    r3, x :: __main__.B
+    r4 :: None
+L0:
+    r0 = 0
+    r1 = box(short_int, r0)
+    r2 = foo(r1)
+    r3 = cast(__main__.B, r2)
+    x = r3
+    r4 = None
+    return r4
 
 [case testFunctionCallWithKeywordArgs]
 def f(x: int, y: str) -> None: pass
@@ -1501,11 +1588,11 @@ def g(a):
     r4 :: str
     r5, r6 :: None
 L0:
-    r0 = unicode_3 :: static  ('a')
+    r0 = unicode_4 :: static  ('a')
     r1 = 0
     r2 = a.f(r1, r0)
     r3 = 1
-    r4 = unicode_4 :: static  ('b')
+    r4 = unicode_5 :: static  ('b')
     r5 = a.f(r3, r4)
     r6 = None
     return r6
@@ -1741,7 +1828,7 @@ L1:
 L2:
     if is_error(z) goto L3 else goto L4
 L3:
-    r1 = unicode_3 :: static  ('test')
+    r1 = unicode_4 :: static  ('test')
     z = r1
 L4:
     r2 = None
@@ -2384,25 +2471,25 @@ def __top_level__():
     r85 :: bool
     r86 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
     r4 = import r3 :: str
-    builtins.module = r4 :: static
+    builtins = r4 :: module
 L2:
-    r5 = typing.module :: static
+    r5 = typing :: module
     r6 = builtins.None :: object
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
     r9 = import r8 :: str
-    typing.module = r9 :: static
+    typing = r9 :: module
 L4:
-    r10 = typing.module :: static
+    r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('List')
     r13 = getattr r10, r12
@@ -2524,11 +2611,19 @@ L0:
     return r0
 def A.__ne__(self, rhs):
     self :: __main__.A
-    rhs, r0 :: object
-    r1 :: bool
+    rhs, r0, r1 :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = not r0
+    r1 = NotImplemented
+    r2 = r0 is r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = not r0
+    r4 = box(bool, r3)
+    return r4
+L2:
     return r1
 
 [case testDecorators_toplevel]
@@ -2593,7 +2688,7 @@ L0:
     r1 = r0.g
     g = r1
     r2 = unicode_3 :: static  ('Entering')
-    r3 = builtins.module :: static
+    r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
@@ -2602,7 +2697,7 @@ L0:
     r9 = py_call(r8)
     r10 = unbox(None, r9)
     r11 = unicode_5 :: static  ('Exited')
-    r12 = builtins.module :: static
+    r12 = builtins :: module
     r13 = unicode_4 :: static  ('print')
     r14 = getattr r12, r13
     r15 = py_call(r14, r11)
@@ -2658,7 +2753,7 @@ L0:
     r1 = r0.g
     g = r1
     r2 = unicode_6 :: static  ('---')
-    r3 = builtins.module :: static
+    r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
@@ -2667,7 +2762,7 @@ L0:
     r9 = py_call(r8)
     r10 = unbox(None, r9)
     r11 = unicode_6 :: static  ('---')
-    r12 = builtins.module :: static
+    r12 = builtins :: module
     r13 = unicode_4 :: static  ('print')
     r14 = getattr r12, r13
     r15 = py_call(r14, r11)
@@ -2716,7 +2811,7 @@ L0:
     r1 = r0.d
     d = r1
     r2 = unicode_7 :: static  ('d')
-    r3 = builtins.module :: static
+    r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
@@ -2755,7 +2850,7 @@ L0:
     r10 = py_call(r9, r6)
     r0.d = r10; r11 = is_error
     r12 = unicode_10 :: static  ('c')
-    r13 = builtins.module :: static
+    r13 = builtins :: module
     r14 = unicode_4 :: static  ('print')
     r15 = getattr r13, r14
     r16 = py_call(r15, r12)
@@ -2792,25 +2887,25 @@ def __top_level__():
     r29 :: bool
     r30 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
     r4 = import r3 :: str
-    builtins.module = r4 :: static
+    builtins = r4 :: module
 L2:
-    r5 = typing.module :: static
+    r5 = typing :: module
     r6 = builtins.None :: object
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
     r9 = import r8 :: str
-    typing.module = r9 :: static
+    typing = r9 :: module
 L4:
-    r10 = typing.module :: static
+    r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('Callable')
     r13 = getattr r10, r12
@@ -2878,7 +2973,7 @@ L0:
     r1 = r0.g
     g = r1
     r2 = unicode_3 :: static  ('Entering')
-    r3 = builtins.module :: static
+    r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
@@ -2887,7 +2982,7 @@ L0:
     r9 = py_call(r8)
     r10 = unbox(None, r9)
     r11 = unicode_5 :: static  ('Exited')
-    r12 = builtins.module :: static
+    r12 = builtins :: module
     r13 = unicode_4 :: static  ('print')
     r14 = getattr r12, r13
     r15 = py_call(r14, r11)
@@ -2924,25 +3019,25 @@ def __top_level__():
     r15 :: bool
     r16 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
     r4 = import r3 :: str
-    builtins.module = r4 :: static
+    builtins = r4 :: module
 L2:
-    r5 = typing.module :: static
+    r5 = typing :: module
     r6 = builtins.None :: object
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
     r9 = import r8 :: str
-    typing.module = r9 :: static
+    typing = r9 :: module
 L4:
-    r10 = typing.module :: static
+    r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('Callable')
     r13 = getattr r10, r12
@@ -3180,7 +3275,7 @@ def f():
     r3 :: object
     r4 :: int
 L0:
-    r0 = final.__main__.x :: static
+    r0 = __main__.x :: static
     if is_error(r0) goto L1 else goto L2
 L1:
     raise ValueError('value for final name "x" was not set')
@@ -3190,7 +3285,6 @@ L2:
     r3 = r0[r2] :: list
     r4 = unbox(int, r3)
     return r4
-
 
 [case testFinalStaticTuple]
 from typing import Final
@@ -3205,7 +3299,7 @@ def f():
     r1 :: bool
     r2 :: int
 L0:
-    r0 = final.__main__.x :: static
+    r0 = __main__.x :: static
     if is_error(r0) goto L1 else goto L2
 L1:
     raise ValueError('value for final name "x" was not set')
@@ -3228,7 +3322,7 @@ def f():
     r2 :: short_int
     r3 :: int
 L0:
-    r0 = final.__main__.x :: static
+    r0 = __main__.x :: static
     if is_error(r0) goto L1 else goto L2
 L1:
     raise ValueError('value for final name "x" was not set')
@@ -3237,7 +3331,6 @@ L2:
     r2 = 1
     r3 = r0 - r2 :: int
     return r3
-
 
 [case testFinalRestrictedTypeVar]
 from typing import TypeVar
@@ -3314,7 +3407,7 @@ def f(x):
     r5 :: int
     r6 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = unicode_1 :: static  ('reveal_type')
     r2 = getattr r0, r1
     r3 = box(int, x)

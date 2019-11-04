@@ -14,8 +14,8 @@ what normally would have been the command line arguments to mypy.
 
 Function ``run`` returns a ``Tuple[str, str, int]``, namely
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
-is what mypy normally writes to ``sys.stdout``, ``<error_report>`` is what mypy
-normally writes to ``sys.stderr`` and ``exit_status`` is the exit status mypy normally
+is what mypy normally writes to :py:data:`sys.stdout`, ``<error_report>`` is what mypy
+normally writes to :py:data:`sys.stderr` and ``exit_status`` is the exit status mypy normally
 returns to the operating system.
 
 A trivial example of using the api is the following
@@ -43,12 +43,12 @@ Extending mypy using plugins
 Python is a highly dynamic language and has extensive metaprogramming
 capabilities. Many popular libraries use these to create APIs that may
 be more flexible and/or natural for humans, but are hard to express using
-static types. Extending the PEP 484 type system to accommodate all existing
+static types. Extending the :pep:`484` type system to accommodate all existing
 dynamic patterns is impractical and often just impossible.
 
 Mypy supports a plugin system that lets you customize the way mypy type checks
 code. This can be useful if you want to extend mypy so it can type check code
-that uses a library that is difficult to express using just PEP 484 types.
+that uses a library that is difficult to express using just :pep:`484` types.
 
 The plugin system is focused on improving mypy's understanding
 of *semantics* of third party frameworks. There is currently no way to define
@@ -88,8 +88,8 @@ can be specified after colon:
     [mypy]
     plugins = custom_plugin:custom_entry_point
 
-In following sections we describe basics of the plugin system with
-some examples. For more technical details please read docstrings in
+In the following sections we describe the basics of the plugin system with
+some examples. For more technical details, please read the docstrings in
 `mypy/plugin.py <https://github.com/python/mypy/blob/master/mypy/plugin.py>`_
 in mypy source code. Also you can find good examples in the bundled plugins
 located in `mypy/plugins <https://github.com/python/mypy/tree/master/mypy/plugins>`_.
@@ -98,7 +98,7 @@ High-level overview
 *******************
 
 Every entry point function should accept a single string argument
-that is a full mypy version and return a subclass of ``mypy.plugins.Plugin``:
+that is a full mypy version and return a subclass of ``mypy.plugin.Plugin``:
 
 .. code-block:: python
 
@@ -115,9 +115,9 @@ that is a full mypy version and return a subclass of ``mypy.plugins.Plugin``:
 
 During different phases of analyzing the code (first in semantic analysis,
 and then in type checking) mypy calls plugin methods such as
-``get_type_analyze_hook()`` on user plugins. This particular method for example
-can return a callback that mypy will use to analyze unbound types with given
-full name. See full plugin hook methods list :ref:`below <plugin_hooks>`.
+``get_type_analyze_hook()`` on user plugins. This particular method, for example,
+can return a callback that mypy will use to analyze unbound types with the given
+full name. See the full plugin hook method list :ref:`below <plugin_hooks>`.
 
 Mypy maintains a list of plugins it gets from the config file plus the default
 (built-in) plugin that is always enabled. Mypy calls a method once for each
@@ -126,7 +126,7 @@ This callback will be then used to customize the corresponding aspect of
 analyzing/checking the current abstract syntax tree node.
 
 The callback returned by the ``get_xxx`` method will be given a detailed
-current context and an API to create new nodes, new types, emit error messages
+current context and an API to create new nodes, new types, emit error messages,
 etc., and the result will be used for further processing.
 
 Plugin developers should ensure that their plugins work well in incremental and
@@ -139,7 +139,7 @@ Current list of plugin hooks
 ****************************
 
 **get_type_analyze_hook()** customizes behaviour of the type analyzer.
-For example, PEP 484 doesn't support defining variadic generic types:
+For example, :pep:`484` doesn't support defining variadic generic types:
 
 .. code-block:: python
 
@@ -174,7 +174,7 @@ For example:
 instead of module level functions.
 
 **get_method_signature_hook()** is used to adjust the signature of a method.
-This includes special Python methods except ``__init__()`` and ``__new__()``.
+This includes special Python methods except :py:meth:`~object.__init__` and :py:meth:`~object.__new__`.
 For example in this code:
 
 .. code-block:: python
@@ -185,12 +185,12 @@ For example in this code:
    x[0] = 42
 
 mypy will call ``get_method_signature_hook("ctypes.Array.__setitem__")``
-so that the plugin can mimic the ``ctypes`` auto-convert behavior.
+so that the plugin can mimic the :py:mod:`ctypes` auto-convert behavior.
 
-**get_attribute_hook** overrides instance member field lookups and property
+**get_attribute_hook()** overrides instance member field lookups and property
 access (not assignments, and not method calls). This hook is only called for
-fields which already exist on the class. *Exception:* if ``__getattr__`` or
-``__getattribute__`` is a method on the class, the hook is called for all
+fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <object.__getattr__>` or
+:py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.
 
 **get_class_decorator_hook()** can be used to update class definition for
@@ -236,12 +236,13 @@ module. It is called before semantic analysis. For example, this can
 be used if a library has dependencies that are dynamically loaded
 based on configuration information.
 
-Supporting the new semantic analyzer
-************************************
+Notes about the semantic analyzer
+*********************************
 
-Support for the new semantic analyzer (enabled through
-``--new-semantic-analyzer``) requires some changes to plugins. Here is
-a short summary of the most important changes:
+Mypy 0.710 introduced a new semantic analyzer, and the old semantic
+analyzer was removed in mypy 0.730. Support for the new semantic analyzer
+required some changes to existing plugins. Here is a short summary of the
+most important changes:
 
 * The order of processing AST nodes is different. Code outside
   functions is processed first, and functions and methods are

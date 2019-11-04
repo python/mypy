@@ -1,15 +1,16 @@
 .. _stugen:
 
+.. program:: stubgen
+
 Automatic stub generation (stubgen)
 ===================================
 
-A stub file (see `PEP 484 <https://www.python.org/dev/peps/pep-0484/#stub-files>`_)
-contains only type hints for the public interface of a module, with empty
-function bodies. Mypy can use a stub file instead of the real implementation
-to provide type information for the module. They are useful for third-party
-modules whose authors have not yet added type hints (and when no stubs are
-available in typeshed) and C extension modules (which mypy can't directly
-process).
+A stub file (see :pep:`484`) contains only type hints for the public
+interface of a module, with empty function bodies. Mypy can use a stub
+file instead of the real implementation to provide type information
+for the module. They are useful for third-party modules whose authors
+have not yet added type hints (and when no stubs are available in
+typeshed) and C extension modules (which mypy can't directly process).
 
 Mypy includes the ``stubgen`` tool that can automatically generate
 stub files (``.pyi`` files) for Python modules and C extension modules.
@@ -23,9 +24,9 @@ For example, consider this source file:
 
    class Window:
        parent = dynamic()
-       def __init__(self, width, hight):
+       def __init__(self, width, height):
            self.width = width
-           self.hight = hight
+           self.height = height
 
    def create_empty() -> Window:
        return Window(0, 0)
@@ -41,13 +42,13 @@ Stubgen can generate this stub file based on the above file:
    class Window:
        parent: Any = ...
        width: Any = ...
-       height: Any: ...
+       height: Any = ...
        def __init__(self, width, height) -> None: ...
 
    def create_empty() -> Window: ...
 
 Stubgen generates *draft* stubs. The auto-generated stub files often
-require some some manual updates, and most types will default to ``Any``.
+require some manual updates, and most types will default to ``Any``.
 The stubs will be much more useful if you add more precise type annotations,
 at least for the most commonly used functionality.
 
@@ -67,7 +68,7 @@ generate stubs::
     $ stubgen foo.py bar.py
 
 This generates stubs ``out/foo.pyi`` and ``out/bar.pyi``. The default
-output directory ``out`` can be overridden with ``-o DIR``.
+output directory ``out`` can be overridden with :option:`-o DIR <-o>`.
 
 You can also pass directories, and stubgen will recursively search
 them for any ``.py`` files and generate stubs for all of them::
@@ -81,24 +82,26 @@ Alternatively, you can give module or package names using the
 
 Details of the options:
 
-``-m MODULE``, ``--module MODULE``
+.. option:: -m MODULE, --module MODULE
+
     Generate a stub file for the given module. This flag may be repeated
     multiple times.
 
     Stubgen *will not* recursively generate stubs for any submodules of
     the provided module.
 
-``-p PACKAGE``, ``--package PACKAGE``
+.. option:: -p PACKAGE, --package PACKAGE
+
     Generate stubs for the given package. This flag maybe repeated
     multiple times.
 
     Stubgen *will* recursively generate stubs for all submodules of
-    the provided package. This flag is identical to ``--module`` apart from
+    the provided package. This flag is identical to :option:`--module` apart from
     this behavior.
 
 .. note::
 
-   You can't mix paths and ``-m``/``-p`` options in the same stubgen
+   You can't mix paths and :option:`-m`/:option:`-p` options in the same stubgen
    invocation.
 
 Specifying how to generate stubs
@@ -111,7 +114,8 @@ stubs. By default, stubgen will also use mypy to perform light-weight
 semantic analysis of any Python modules. Use the following flags to
 alter the default behavior:
 
-``--no-import``
+.. option:: --no-import
+
     Don't try to import modules. Instead use mypy's normal search mechanism to find
     sources. This does not support C extension modules. This flag also disables
     runtime introspection functionality, which mypy uses to find the value of
@@ -119,13 +123,15 @@ alter the default behavior:
     incomplete. This flag is generally only useful when importing a module generates
     an error for some reason.
 
-``--parse-only``
+.. option:: --parse-only
+
     Don't perform semantic analysis of source files. This may generate
     worse stubs -- in particular, some module, class, and function aliases may
     be represented as variables with the ``Any`` type. This is generally only
     useful if semantic analysis causes a critical mypy error.
 
-``--doc-dir PATH``
+.. option:: --doc-dir PATH
+
     Try to infer better signatures by parsing .rst documentation in ``PATH``.
     This may result in better stubs, but currently it only works for C extension
     modules.
@@ -133,28 +139,34 @@ alter the default behavior:
 Additional flags
 ****************
 
-``--py2``
+.. option:: --py2
+
     Run stubgen in Python 2 mode (the default is Python 3 mode).
 
-``--ignore-errors``
+.. option:: --ignore-errors
+
     If an exception was raised during stub generation, continue to process any
     remaining modules instead of immediately failing with an error.
 
-``--include-private``
+.. option:: --include-private
+
     Include definitions that are considered private in stubs (with names such
     as ``_foo`` with single leading underscore and no trailing underscores).
 
-``--search-path PATH``
-    Specify module search directories, separated by colons (only used if
-    ``--no-import`` is given).
+.. option:: --search-path PATH
 
-``--python-executable PATH``
+    Specify module search directories, separated by colons (only used if
+    :option:`--no-import` is given).
+
+.. option:: --python-executable PATH
+
     Use Python interpreter at ``PATH`` for importing modules and runtime
-    introspection. This has no effect with ``--no-import``, and this only works
+    introspection. This has no effect with :option:`--no-import`, and this only works
     in Python 2 mode. In Python 3 mode the Python interpreter used to run stubgen
     will always be used.
 
-``-o PATH``, ``--output PATH``
+.. option:: -o PATH, --output PATH
+
     Change the output directory. By default the stubs are written in the
     ``./out`` directory. The output directory will be created if it doesn't
     exist. Existing stubs in the output directory will be overwritten without

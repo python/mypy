@@ -47,7 +47,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
     TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
-    TYPE_IGNORE_PATTERN
+    TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
 )
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
@@ -342,9 +342,14 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno: parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
-                             for ti in mod.type_ignores}
-        body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
+        self.type_ignores = {}
+        for ti in mod.type_ignores:
+            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            if parsed is not None:
+                self.type_ignores[ti.lineno] = parsed
+            else:
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, module=True))
         return MypyFile(body,
                         self.imports,
                         False,
@@ -553,7 +558,10 @@ class ASTConverter:
                 if extra_ignore:
                     tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
                     ignored = parse_type_ignore_tag(tag)
-                    self.type_ignores[converter.line] = ignored
+                    if ignored is None:
+                        self.fail(INVALID_TYPE_IGNORE, converter.line, -1)
+                    else:
+                        self.type_ignores[converter.line] = ignored
                 return typ
         return None
 
@@ -834,8 +842,8 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         n_body = ast27.Return(n.body)
-        n_body.lineno = n.lineno
-        n_body.col_offset = n.col_offset
+        n_body.lineno = n.body.lineno
+        n_body.col_offset = n.body.col_offset
         body = self.as_required_block([n_body], n.lineno)
         if decompose_stmts:
             body.body = decompose_stmts + body.body
@@ -1009,7 +1017,12 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast27.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        return self.set_line(e, n)
+        self.set_line(e, n)
+        if isinstance(e.index, SliceExpr):
+            # Slice has no line/column in the raw ast.
+            e.index.line = e.line
+            e.index.column = e.column
+        return e
 
     # Name(identifier id, expr_context ctx)
     def visit_Name(self, n: Name) -> NameExpr:

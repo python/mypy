@@ -1,10 +1,10 @@
 from contextlib import contextmanager
 
-from typing import List, Optional, Callable, Tuple, Iterator, Set, Union, cast
+from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType, function_type,
+    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type
@@ -16,7 +16,6 @@ import mypy.sametypes
 from mypy.erasetype import erase_type
 # Circular import; done in the function instead.
 # import mypy.solve
-from mypy import messages
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
@@ -230,7 +229,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return is_named_instance(item, 'builtins.object')
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
-            call = find_member('__call__', left, left)
+            call = find_member('__call__', left, left, is_operator=True)
             if call:
                 return self._is_subtype(call, right)
             return False
@@ -241,7 +240,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
-        if left.values and self._is_subtype(UnionType.make_simplified_union(left.values), right):
+        if left.values and self._is_subtype(
+                mypy.typeops.make_simplified_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
@@ -258,7 +258,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if right.type.is_protocol and right.type.protocol_members == ['__call__']:
                 # OK, a callable can implement a protocol with a single `__call__` member.
                 # TODO: we should probably explicitly exclude self-types in this case.
-                call = find_member('__call__', right, left)
+                call = find_member('__call__', right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
@@ -345,7 +345,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if right.type.is_protocol and right.type.protocol_members == ['__call__']:
                 # same as for CallableType
-                call = find_member('__call__', right, left)
+                call = find_member('__call__', right, left, is_operator=True)
                 assert call is not None
                 if self._is_subtype(left, call):
                     return True
@@ -521,7 +521,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
     return True
 
 
-def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
+def find_member(name: str,
+                itype: Instance,
+                subtype: Type,
+                is_operator: bool = False) -> Optional[Type]:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
     Fin the member type after applying type arguments from 'itype', and binding
@@ -549,7 +552,8 @@ def find_member(name: str, itype: Instance, subtype: Type) -> Optional[Type]:
             v = v.var
         if isinstance(v, Var):
             return find_node_type(v, itype, subtype)
-        if not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
+        if (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
+                not is_operator):
             for method_name in ('__getattribute__', '__getattr__'):
                 # Normally, mypy assumes that instances that define __getattr__ have all
                 # attributes with the corresponding return type. If this will produce
@@ -609,10 +613,11 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
-    from mypy.checkmember import bind_self
+    from mypy.typeops import bind_self
+
     if isinstance(node, FuncBase):
-        typ = function_type(node,
-                            fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
+        typ = mypy.typeops.function_type(
+            node, fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
     else:
         typ = node.type
     typ = get_proper_type(typ)
@@ -841,7 +846,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     #           also accept. The only exception is if we are allowing partial
     #           partial overlaps: in that case, we ignore optional args on the right.
     for right_arg in right.formal_arguments():
-        left_arg = left.corresponding_argument(right_arg)
+        left_arg = mypy.typeops.callable_corresponding_argument(left, right_arg)
         if left_arg is None:
             if allow_partial_overlap and not right_arg.required:
                 continue
@@ -981,13 +986,17 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 def unify_generic_callable(type: CallableType, target: CallableType,
                            ignore_return: bool,
-                           return_constraint_direction: int = mypy.constraints.SUBTYPE_OF,
+                           return_constraint_direction: Optional[int] = None,
                            ) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
     """
     import mypy.solve
+
+    if return_constraint_direction is None:
+        return_constraint_direction = mypy.constraints.SUBTYPE_OF
+
     constraints = []  # type: List[mypy.constraints.Constraint]
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
@@ -1002,10 +1011,15 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     if None in inferred_vars:
         return None
     non_none_inferred_vars = cast(List[Type], inferred_vars)
-    msg = messages.temp_message_builder()
-    applied = mypy.applytype.apply_generic_arguments(type, non_none_inferred_vars, msg,
+    had_errors = False
+
+    def report(*args: Any) -> None:
+        nonlocal had_errors
+        had_errors = True
+
+    applied = mypy.applytype.apply_generic_arguments(type, non_none_inferred_vars, report,
                                                      context=target)
-    if msg.is_errors():
+    if had_errors:
         return None
     return applied
 
@@ -1157,7 +1171,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             return False
         if isinstance(right, CallableType):
-            call = find_member('__call__', left, left)
+            call = find_member('__call__', left, left, is_operator=True)
             if call:
                 return self._is_proper_subtype(call, right)
             return False
@@ -1166,8 +1180,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         if isinstance(self.right, TypeVarType) and left.id == self.right.id:
             return True
-        if left.values and self._is_proper_subtype(UnionType.make_simplified_union(left.values),
-                                                   self.right):
+        if left.values and self._is_proper_subtype(
+                mypy.typeops.make_simplified_union(left.values), self.right):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 

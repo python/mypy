@@ -740,9 +740,9 @@ def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int})
 d: object
-if isinstance(d, D):   # E: Cannot use isinstance() with a TypedDict type
+if isinstance(d, D):   # E: Cannot use isinstance() with TypedDict type
     reveal_type(d)     # N: Revealed type is '__main__.D'
-issubclass(object, D)  # E: Cannot use issubclass() with a TypedDict type
+issubclass(object, D)  # E: Cannot use issubclass() with TypedDict type
 [builtins fixtures/isinstancelist.pyi]
 
 
@@ -1126,6 +1126,25 @@ ll = [b, c]
 f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 
+[case testNonTotalTypedDictCanBeEmpty]
+# flags: --warn-unreachable
+from mypy_extensions import TypedDict
+
+class A(TypedDict):
+    ...
+
+class B(TypedDict, total=False):
+    x: int
+
+a: A = {}
+b: B = {}
+
+if not a:
+    reveal_type(a) # N: Revealed type is 'TypedDict('__main__.A', {})'
+
+if not b:
+    reveal_type(b) # N: Revealed type is 'TypedDict('__main__.B', {'x'?: builtins.int})'
+[builtins fixtures/dict.pyi]
 
 -- Create Type (Errors)
 
@@ -1612,8 +1631,8 @@ td: Union[TDA, TDB]
 
 reveal_type(td.get('a'))  # N: Revealed type is 'builtins.int'
 reveal_type(td.get('b'))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(td.get('c'))  # N: Revealed type is 'Union[Any, builtins.int]' \
-                          # E: TypedDict "TDA" has no key 'c'
+reveal_type(td.get('c'))  # E: TypedDict "TDA" has no key 'c' \
+                          # N: Revealed type is 'Union[Any, builtins.int]'
 
 reveal_type(td['a'])  # N: Revealed type is 'builtins.int'
 reveal_type(td['b'])  # N: Revealed type is 'Union[builtins.str, builtins.int]'
@@ -1639,8 +1658,8 @@ td: Union[TDA, TDB]
 
 reveal_type(td.pop('a'))  # N: Revealed type is 'builtins.int'
 reveal_type(td.pop('b'))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(td.pop('c'))  # N: Revealed type is 'Union[Any, builtins.int]' \
-                          # E: TypedDict "TDA" has no key 'c'
+reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key 'c' \
+                          # N: Revealed type is 'Union[Any, builtins.int]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1881,5 +1900,27 @@ else:
 
 assert isinstance(u2, Mapping)
 reveal_type(u2)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictLiteralTypeKeyInCreation]
+from typing import TypedDict, Final, Literal
+
+class Value(TypedDict):
+    num: int
+
+num: Final = 'num'
+v: Value = {num: 5}
+v = {num: ''}  # E: Incompatible types (expression has type "str", TypedDict item "num" has type "int")
+
+bad: Final = 2
+v = {bad: 3}  # E: Expected TypedDict key to be string literal
+union: Literal['num', 'foo']
+v = {union: 2} # E: Expected TypedDict key to be string literal
+num2: Literal['num']
+v = {num2: 2}
+bad2: Literal['bad']
+v = {bad2: 2}  # E: Extra key 'bad' for TypedDict "Value"
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]

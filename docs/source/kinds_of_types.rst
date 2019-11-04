@@ -10,7 +10,7 @@ Class types
 
 Every class is also a valid type. Any instance of a subclass is also
 compatible with all superclasses -- it follows that every value is compatible
-with the ``object`` type (and incidentally also the ``Any`` type, discussed
+with the :py:class:`object` type (and incidentally also the ``Any`` type, discussed
 below). Mypy analyzes the bodies of classes to determine which methods and
 attributes are available in instances. This example uses subclassing:
 
@@ -135,7 +135,7 @@ purpose. Example:
 .. note::
 
    Usually it's a better idea to use ``Sequence[T]`` instead of ``Tuple[T, ...]``, as
-   ``Sequence`` is also compatible with lists and other non-tuple sequences.
+   :py:class:`~typing.Sequence` is also compatible with lists and other non-tuple sequences.
 
 .. note::
 
@@ -179,12 +179,12 @@ Any)`` function signature. Example:
 
    from typing import Callable
 
-    def arbitrary_call(f: Callable[..., int]) -> int:
-        return f('x') + f(y=2)  # OK
+   def arbitrary_call(f: Callable[..., int]) -> int:
+       return f('x') + f(y=2)  # OK
 
-    arbitrary_call(ord)   # No static error, but fails at runtime
-    arbitrary_call(open)  # Error: does not return an int
-    arbitrary_call(1)     # Error: 'int' is not callable
+   arbitrary_call(ord)   # No static error, but fails at runtime
+   arbitrary_call(open)  # Error: does not return an int
+   arbitrary_call(1)     # Error: 'int' is not callable
 
 In situations where more precise or complex types of callbacks are
 necessary one can use flexible :ref:`callback protocols <callback_protocols>`.
@@ -212,7 +212,7 @@ Use the ``Union[T1, ..., Tn]`` type constructor to construct a union
 type. For example, if an argument has type ``Union[int, str]``, both
 integers and strings are valid argument values.
 
-You can use an ``isinstance()`` check to narrow down a union type to a
+You can use an :py:func:`isinstance` check to narrow down a union type to a
 more specific type:
 
 .. code-block:: python
@@ -235,10 +235,10 @@ more specific type:
 .. note::
 
     Operations are valid for union types only if they are valid for *every*
-    union item. This is why it's often necessary to use an ``isinstance()``
+    union item. This is why it's often necessary to use an :py:func:`isinstance`
     check to first narrow down a union type to a non-union type. This also
     means that it's recommended to avoid union types as function return types,
-    since the caller may have to use ``isinstance()`` before doing anything
+    since the caller may have to use :py:func:`isinstance` before doing anything
     interesting with the value.
 
 .. _strict_optional:
@@ -246,7 +246,7 @@ more specific type:
 Optional types and the None type
 ********************************
 
-You can use the ``Optional`` type modifier to define a type variant
+You can use the :py:data:`~typing.Optional` type modifier to define a type variant
 that allows ``None``, such as ``Optional[int]`` (``Optional[X]`` is
 the preferred shorthand for ``Union[X, None]``):
 
@@ -264,7 +264,7 @@ the preferred shorthand for ``Union[X, None]``):
            return None  # Error: None not compatible with int
        return len(s)
 
-Most operations will not be allowed on unguarded ``None`` or ``Optional``
+Most operations will not be allowed on unguarded ``None`` or :py:data:`~typing.Optional`
 values:
 
 .. code-block:: python
@@ -402,7 +402,7 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
     ``Optional[...]`` *does not* mean a function argument with a default value.
     However, if the default value of an argument is ``None``, you can use
     an optional type for the argument, but it's not enforced by default.
-    You can use the ``--no-implicit-optional`` command-line option to stop
+    You can use the :option:`--no-implicit-optional <mypy --no-implicit-optional>` command-line option to stop
     treating arguments with a ``None`` default value as having an implicit
     ``Optional[...]`` type. It's possible that this will become the default
     behavior in the future.
@@ -415,10 +415,10 @@ Disabling strict optional checking
 Mypy also has an option to treat ``None`` as a valid value for every
 type (in case you know Java, it's useful to think of it as similar to
 the Java ``null``). In this mode ``None`` is also valid for primitive
-types such as ``int`` and ``float``, and ``Optional[...]`` types are
+types such as ``int`` and ``float``, and :py:data:`~typing.Optional` types are
 not required.
 
-The mode is enabled through the ``--no-strict-optional`` command-line
+The mode is enabled through the :option:`--no-strict-optional <mypy --no-strict-optional>` command-line
 option. In mypy versions before 0.600 this was the default mode. You
 can enable this option explicitly for backward compatibility with
 earlier mypy versions, in case you don't want to introduce optional
@@ -455,7 +455,7 @@ but it's not obvious from its signature:
     print(greeting('Python'))  # Okay!
     print(greeting(None))      # Also okay!
 
-You can still use ``Optional[t]`` to document that ``None`` is a
+You can still use :py:data:`Optional[t] <typing.Optional>` to document that ``None`` is a
 valid argument type, even if strict ``None`` checking is not
 enabled:
 
@@ -484,7 +484,7 @@ defined. Thus this code does not work as expected:
 .. code-block:: python
 
    def f(x: A) -> None:  # Error: Name A not defined
-       ....
+       ...
 
    class A:
        ...
@@ -566,9 +566,9 @@ missing attribute:
     p = Point(x=1, y=2)
     print(p.z)  # Error: Point has no attribute 'z'
 
-If you use ``namedtuple`` to define your named tuple, all the items
+If you use :py:func:`namedtuple <collections.namedtuple>` to define your named tuple, all the items
 are assumed to have ``Any`` types. That is, mypy doesn't know anything
-about item types. You can use ``typing.NamedTuple`` to also define
+about item types. You can use :py:class:`~typing.NamedTuple` to also define
 item types:
 
 .. code-block:: python
@@ -596,14 +596,14 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 The type of class objects
 *************************
 
-(Freely after `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.)
+(Freely after :pep:`PEP 484: The type of class objects
+<484#the-type-of-class-objects>`.)
 
 Sometimes you want to talk about class objects that inherit from a
-given class.  This can be spelled as ``Type[C]`` where ``C`` is a
+given class.  This can be spelled as :py:class:`Type[C] <typing.Type>` where ``C`` is a
 class.  In other words, when ``C`` is the name of a class, using ``C``
 to annotate an argument declares that the argument is an instance of
-``C`` (or of a subclass of ``C``), but using ``Type[C]`` as an
+``C`` (or of a subclass of ``C``), but using :py:class:`Type[C] <typing.Type>` as an
 argument annotation declares that the argument is a class object
 deriving from ``C`` (or ``C`` itself).
 
@@ -634,7 +634,7 @@ you pass it the right class object:
        # (Here we could write the user object to a database)
        return user
 
-How would we annotate this function?  Without ``Type[]`` the best we
+How would we annotate this function?  Without :py:class:`~typing.Type` the best we
 could do would be:
 
 .. code-block:: python
@@ -650,7 +650,7 @@ doesn't see that the ``buyer`` variable has type ``ProUser``:
    buyer = new_user(ProUser)
    buyer.pay()  # Rejected, not a method on User
 
-However, using ``Type[]`` and a type variable with an upper bound (see
+However, using :py:class:`~typing.Type` and a type variable with an upper bound (see
 :ref:`type-variable-upper-bound`) we can do better:
 
 .. code-block:: python
@@ -670,13 +670,13 @@ Now mypy will infer the correct type of the result when we call
 
 .. note::
 
-   The value corresponding to ``Type[C]`` must be an actual class
+   The value corresponding to :py:class:`Type[C] <typing.Type>` must be an actual class
    object that's a subtype of ``C``.  Its constructor must be
    compatible with the constructor of ``C``.  If ``C`` is a type
    variable, its upper bound must be a class object.
 
-For more details about ``Type[]`` see `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#the-type-of-class-objects>`_.
+For more details about ``Type[]`` see :pep:`PEP 484: The type of
+class objects <484#the-type-of-class-objects>`.
 
 .. _text-and-anystr:
 
@@ -688,7 +688,7 @@ strings. This can be challenging to do in a codebase intended to run in
 both Python 2 and Python 3 since ``str`` means something different in both
 versions and ``unicode`` is not a keyword in Python 3.
 
-To help solve this issue, use ``typing.Text`` which is aliased to
+To help solve this issue, use :py:class:`~typing.Text` which is aliased to
 ``unicode`` in Python 2 and to ``str`` in Python 3. This allows you to
 indicate that a function should accept only unicode strings in a
 cross-compatible way:
@@ -702,7 +702,7 @@ cross-compatible way:
 
 In other cases, you may want to write a function that will work with any
 kind of string but will not let you mix two different string types. To do
-so use ``typing.AnyStr``:
+so use :py:data:`~typing.AnyStr`:
 
 .. code-block:: python
 
@@ -728,7 +728,7 @@ Generators
 **********
 
 A basic generator that only yields values can be annotated as having a return
-type of either ``Iterator[YieldType]`` or ``Iterable[YieldType]``. For example:
+type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`Iterable[YieldType] <typing.Iterable>`. For example:
 
 .. code-block:: python
 
@@ -736,9 +736,9 @@ type of either ``Iterator[YieldType]`` or ``Iterable[YieldType]``. For example:
        for i in range(n):
            yield i * i
 
-If you want your generator to accept values via the ``send`` method or return
+If you want your generator to accept values via the :py:meth:`~generator.send` method or return
 a value, you should use the
-``Generator[YieldType, SendType, ReturnType]`` generic type instead. For example:
+:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead. For example:
 
 .. code-block:: python
 
@@ -749,7 +749,7 @@ a value, you should use the
        return 'Done'
 
 Note that unlike many other generics in the typing module, the ``SendType`` of
-``Generator`` behaves contravariantly, not covariantly or invariantly.
+:py:class:`~typing.Generator` behaves contravariantly, not covariantly or invariantly.
 
 If you do not plan on receiving or returning values, then set the ``SendType``
 or ``ReturnType`` to ``None``, as appropriate. For example, we could have
@@ -762,6 +762,6 @@ annotated the first example as the following:
            yield i * i
 
 This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
-since generators have ``close()``, ``send()``, and ``throw()`` methods that
+since generators have :py:meth:`~generator.close`, :py:meth:`~generator.send`, and :py:meth:`~generator.throw` methods that
 generic iterables don't. If you will call these methods on the returned
-generator, use the ``Generator`` type instead of ``Iterable`` or ``Iterator``.
+generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterable` or :py:class:`~typing.Iterator`.

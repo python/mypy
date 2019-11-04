@@ -258,6 +258,17 @@ class A:
         super().__init_subclass__()
 [builtins fixtures/__init_subclass__.pyi]
 
+[case testSuperClassGetItem]
+from typing import TypeVar, Type, Any
+
+T = TypeVar("T", bound="B")
+
+class A:
+    def __class_getitem__(cls, item) -> None: pass
+
+class B(A):
+    def __class_getitem__(cls: Type[T], item: Any) -> None:
+        super(B, cls).__class_getitem__(item)
 
 -- Invalid uses of super()
 -- -----------------------

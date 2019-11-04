@@ -1796,10 +1796,10 @@ reveal_type(a.x)
 [file a.py]
 x = 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = normal
 [file mypy.ini.2]
-[[mypy]
+\[mypy]
 follow_imports = skip
 [out1]
 main:3: note: Revealed type is 'builtins.int'
@@ -1972,9 +1972,9 @@ import a
 [file a.py]
 pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 warn_no_return = False
-[[mypy-a]
+\[mypy-a]
 warn_no_return = True
 [rechecked]
 
@@ -2085,7 +2085,7 @@ x = 1
 [rechecked n]
 [stale]
 [out2]
-tmp/n.py:1: error: Cannot find module named 'm'
+tmp/n.py:1: error: Cannot find implementation or library stub for module named 'm'
 tmp/n.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeleteFileWithinCycle]
@@ -2937,7 +2937,7 @@ class Frozen:
 @attr.s(init=False)
 class NoInit:
     x: int = attr.ib()
-@attr.s(cmp=False)
+@attr.s(eq=False)
 class NoCmp:
     x: int = attr.ib()
 
@@ -3382,7 +3382,7 @@ import a
 [out1]
 
 [out2]
-main:2: error: Cannot find module named 'a'
+main:2: error: Cannot find implementation or library stub for module named 'a'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
@@ -3525,7 +3525,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 [out2]
-main:1: error: Cannot find module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named 'p.q'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
 main:2: error: Too few arguments for "f"
@@ -3606,10 +3606,10 @@ import a
 [file a.py]
 x = 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 cache_fine_grained = True
 [file mypy.ini.2]
-[[mypy]
+\[mypy]
 cache_fine_grained = False
 -- Nothing should get rechecked
 [rechecked]
@@ -3621,10 +3621,10 @@ import a
 [file a.py]
 x = 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 cache_fine_grained = False
 [file mypy.ini.2]
-[[mypy]
+\[mypy]
 cache_fine_grained = True
 [rechecked a, builtins, typing]
 [stale a, builtins, typing]
@@ -4140,10 +4140,10 @@ def __getattr__(attr: str) -> Any: ...
 # empty
 [builtins fixtures/module.pyi]
 [out]
-tmp/c.py:1: error: Cannot find module named 'a.b.c'
+tmp/c.py:1: error: Cannot find implementation or library stub for module named 'a.b.c'
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out2]
-tmp/c.py:1: error: Cannot find module named 'a.b.c'
+tmp/c.py:1: error: Cannot find implementation or library stub for module named 'a.b.c'
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAddedMissingStubs]
@@ -4586,7 +4586,7 @@ import other
 [file other.pyi.2]
 x = 1
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports_for_stubs = True
 [stale]
 [rechecked]
@@ -4793,7 +4793,7 @@ def my_hook(ctx):
 def plugin(version):
     return MyPlugin
 [file mypy.ini]
-[[mypy]
+\[mypy]
 plugins=basic_plugin.py
 [out]
 [out2]
@@ -4844,7 +4844,7 @@ choice = True
 __version__ = 0.2
 choice = False
 [file mypy.ini]
-[[mypy]
+\[mypy]
 plugins=basic_plugin.py
 [out]
 [out2]
@@ -4883,10 +4883,10 @@ def plugin(version):
     return MyPlugin
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version=3.6
 [file mypy.ini.2]
-[[mypy]
+\[mypy]
 python_version=3.6
 plugins=basic_plugin.py
 [out]
@@ -4926,11 +4926,11 @@ def plugin(version):
     return MyPlugin
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version=3.6
 plugins=basic_plugin.py
 [file mypy.ini.2]
-[[mypy]
+\[mypy]
 python_version=3.6
 [out]
 [out2]
@@ -5094,3 +5094,16 @@ tmp/a.py:4: error: Cannot determine type of 'foo'
 [out2]
 tmp/a.py:3: error: Cannot determine type of 'foo'
 tmp/a.py:4: error: Cannot determine type of 'foo'
+
+[case testRedefinitionClass]
+import b
+[file a.py]
+from whatever import Foo  # type: ignore
+
+class Foo:  # type: ignore
+    def f(self) -> None:
+        pass
+[file b.py]
+import a
+[file b.py.2]
+import a # a change

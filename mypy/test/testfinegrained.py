@@ -96,7 +96,8 @@ class FineGrainedSuite(DataSuite):
         if messages:
             a.extend(normalize_messages(messages))
 
-        a.extend(self.maybe_suggest(step, server, main_src))
+        assert testcase.tmpdir
+        a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -155,7 +156,8 @@ class FineGrainedSuite(DataSuite):
 
             a.append('==')
             a.extend(new_messages)
-            a.extend(self.maybe_suggest(step, server, main_src))
+            assert testcase.tmpdir
+            a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
 
         # Normalize paths in test output (for Windows).
         a = [line.replace('\\', '/') for line in a]
@@ -181,6 +183,7 @@ class FineGrainedSuite(DataSuite):
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.error_summary = False
         options.fine_grained_incremental = not build_cache
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
@@ -196,7 +199,7 @@ class FineGrainedSuite(DataSuite):
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
-        response = server.check(sources)
+        response = server.check(sources, is_tty=False, terminal_width=-1)
         out = cast(str, response['out'] or response['err'])
         return out.splitlines()
 
@@ -267,7 +270,7 @@ class FineGrainedSuite(DataSuite):
             return [base] + create_source_list([test_temp_dir], options,
                                                allow_empty_dir=True)
 
-    def maybe_suggest(self, step: int, server: Server, src: str) -> List[str]:
+    def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
         output = []  # type: List[str]
         targets = self.get_suggest(src, step)
         for flags, target in targets:
@@ -276,19 +279,27 @@ class FineGrainedSuite(DataSuite):
             no_any = '--no-any' in flags
             no_errors = '--no-errors' in flags
             try_text = '--try-text' in flags
+            m = re.match('--flex-any=([0-9.]+)', flags)
+            flex_any = float(m.group(1)) if m else None
+            m = re.match(r'--use-fixme=(\w+)', flags)
+            use_fixme = m.group(1) if m else None
             res = cast(Dict[str, Any],
                        server.cmd_suggest(
                            target.strip(), json=json, no_any=no_any, no_errors=no_errors,
-                           try_text=try_text,
+                           try_text=try_text, flex_any=flex_any, use_fixme=use_fixme,
                            callsites=callsites))
             val = res['error'] if 'error' in res else res['out'] + res['err']
+            if json:
+                # JSON contains already escaped \ on Windows, so requires a bit of care.
+                val = val.replace('\\\\', '\\')
+                val = val.replace(os.path.realpath(tmp_dir) + os.path.sep, '')
             output.extend(val.strip().split('\n'))
         return normalize_messages(output)
 
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./?^ ]+ )*([a-zA-Z0-9_./?^ ]+)$'.format(step_bit)
+        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'.format(step_bit)
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 

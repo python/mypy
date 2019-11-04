@@ -422,6 +422,18 @@ x = int # type: typing.Type[int]
 raise x # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
+[case testRaiseUnion]
+import typing
+x = None # type: typing.Union[BaseException, typing.Type[BaseException]]
+raise x
+[builtins fixtures/exception.pyi]
+
+[case testRaiseNonExceptionUnionFails]
+import typing
+x = None # type: typing.Union[BaseException, int]
+raise x # E: Exception must be derived from BaseException
+[builtins fixtures/exception.pyi]
+
 [case testRaiseFromStatement]
 e = None # type: BaseException
 f = None # type: MyError
@@ -1430,6 +1442,97 @@ with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int] 
 with A(), B(), B() as p, A(), A():  # type: str
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testWithStmtBoolExitReturnWithResultFalse]
+from typing import Optional
+
+class InvalidReturn1:
+    def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
+# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
+        return False
+
+class InvalidReturn2:
+    def __exit__(self, x, y, z) -> Optional[bool]:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
+# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
+        if int():
+            return False
+        else:
+            return False
+
+class InvalidReturn3:
+    def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False \
+# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
+        def nested() -> bool:
+            return True
+        return False
+[builtins fixtures/bool.pyi]
+
+[case testWithStmtBoolExitReturnOkay]
+from typing_extensions import Literal
+
+class GoodReturn1:
+    def __exit__(self, x, y, z) -> bool:
+        if int():
+            return True
+        else:
+            return False
+
+class GoodReturn2:
+    def __exit__(self, x, y, z) -> bool:
+        if int():
+            return False
+        else:
+            return True
+
+class GoodReturn3:
+    def __exit__(self, x, y, z) -> bool:
+        return bool()
+
+class GoodReturn4:
+    def __exit__(self, x, y, z) -> None:
+        return
+
+class GoodReturn5:
+    def __exit__(self, x, y, z) -> None:
+        return None
+
+class GoodReturn6:
+    def exit(self, x, y, z) -> bool:
+        return False
+
+class GoodReturn7:
+    def exit(self, x, y, z) -> bool:
+        pass
+
+class MissingReturn:
+    def exit(self, x, y, z) -> bool: # E: Missing return statement
+        x = 0
+
+class LiteralReturn:
+    def __exit__(self, x, y, z) -> Literal[False]:
+        return False
+[builtins fixtures/bool.pyi]
+
+
+[case testWithStmtBoolExitReturnInStub]
+import stub
+
+[file stub.pyi]
+from typing import Optional
+
+class C1:
+    def __exit__(self, x, y, z) -> bool: ...
+
+class C2:
+    def __exit__(self, x, y, z) -> bool: pass
+
+class C3:
+    def __exit__(self, x, y, z) -> Optional[bool]: pass
+[builtins fixtures/bool.pyi]
+
 
 -- Chained assignment
 -- ------------------

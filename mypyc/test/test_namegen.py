@@ -7,8 +7,8 @@ from mypyc.namegen import (
 
 class TestNameGen(unittest.TestCase):
     def test_candidate_suffixes(self) -> None:
-        assert candidate_suffixes('foo') == ['', 'foo_']
-        assert candidate_suffixes('foo.bar') == ['', 'bar_', 'foo_bar_']
+        assert candidate_suffixes('foo') == ['', 'foo.']
+        assert candidate_suffixes('foo.bar') == ['', 'bar.', 'foo.bar.']
 
     def test_exported_name(self) -> None:
         assert exported_name('foo') == 'foo'
@@ -16,24 +16,25 @@ class TestNameGen(unittest.TestCase):
 
     def test_make_module_translation_map(self) -> None:
         assert make_module_translation_map(
-            ['foo', 'bar']) == {'foo': 'foo_', 'bar': 'bar_'}
+            ['foo', 'bar']) == {'foo': 'foo.', 'bar': 'bar.'}
         assert make_module_translation_map(
-            ['foo.bar', 'foo.baz']) == {'foo.bar': 'bar_', 'foo.baz': 'baz_'}
+            ['foo.bar', 'foo.baz']) == {'foo.bar': 'bar.', 'foo.baz': 'baz.'}
         assert make_module_translation_map(
-            ['zar', 'foo.bar', 'foo.baz']) == {'foo.bar': 'bar_',
-                                               'foo.baz': 'baz_',
-                                               'zar': 'zar_'}
+            ['zar', 'foo.bar', 'foo.baz']) == {'foo.bar': 'bar.',
+                                               'foo.baz': 'baz.',
+                                               'zar': 'zar.'}
         assert make_module_translation_map(
-            ['foo.bar', 'fu.bar', 'foo.baz']) == {'foo.bar': 'foo_bar_',
-                                                  'fu.bar': 'fu_bar_',
-                                                  'foo.baz': 'baz_'}
+            ['foo.bar', 'fu.bar', 'foo.baz']) == {'foo.bar': 'foo.bar.',
+                                                  'fu.bar': 'fu.bar.',
+                                                  'foo.baz': 'baz.'}
 
     def test_name_generator(self) -> None:
-        g = NameGenerator(['foo', 'foo.zar'])
-        assert g.private_name('foo', 'f') == 'foo_f'
-        assert g.private_name('foo', 'C.x.y') == 'foo_C_x_y'
-        assert g.private_name('foo', 'C.x.y') == 'foo_C_x_y'
-        assert g.private_name('foo.zar', 'C.x.y') == 'zar_C_x_y'
-        assert g.private_name('foo', 'C.x_y') == 'foo_C_x_y_2'
-        assert g.private_name('foo', 'C_x_y') == 'foo_C_x_y_3'
-        assert g.private_name('foo', 'C_x_y') == 'foo_C_x_y_3'
+        g = NameGenerator([['foo', 'foo.zar']])
+        assert g.private_name('foo', 'f') == 'foo___f'
+        assert g.private_name('foo', 'C.x.y') == 'foo___C___x___y'
+        assert g.private_name('foo', 'C.x.y') == 'foo___C___x___y'
+        assert g.private_name('foo.zar', 'C.x.y') == 'zar___C___x___y'
+        assert g.private_name('foo', 'C.x_y') == 'foo___C___x_y'
+        assert g.private_name('foo', 'C_x_y') == 'foo___C_x_y'
+        assert g.private_name('foo', 'C_x_y') == 'foo___C_x_y'
+        assert g.private_name('foo', '___') == 'foo______3_'

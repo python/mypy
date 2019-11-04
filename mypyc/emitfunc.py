@@ -1,13 +1,15 @@
 """Code generation for native function bodies."""
 
 
-from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX
+from mypyc.common import (
+    REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
+)
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, RType, RTuple, MethodCall, PrimitiveOp,
-    EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE,
+    EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, FuncDecl, ClassIR,
     FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
@@ -217,8 +219,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 op.attr))
         else:
             typ, decl_cl = cl.attr_details(op.attr)
-            self.emit_line('%s = %s((%s *)%s); /* %s */' % (
+            # FIXME: We use the lib_prefixed version which is an
+            # indirect call we can't inline. We should investigate
+            # duplicating getter/setter code.
+            self.emit_line('%s = %s%s((%s *)%s); /* %s */' % (
                 dest,
+                self.emitter.get_group_prefix(decl_cl),
                 native_getter_name(decl_cl, op.attr, self.emitter.names),
                 decl_cl.struct_name(self.names),
                 obj,
@@ -244,8 +250,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 op.attr))
         else:
             typ, decl_cl = cl.attr_details(op.attr)
-            self.emit_line('%s = %s((%s *)%s, %s); /* %s */' % (
+            self.emit_line('%s = %s%s((%s *)%s, %s); /* %s */' % (
                 dest,
+                self.emitter.get_group_prefix(decl_cl),
                 native_setter_name(decl_cl, op.attr, self.emitter.names),
                 decl_cl.struct_name(self.names),
                 obj,
@@ -255,6 +262,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
+        NAMESPACE_MODULE: MODULE_PREFIX,
     }  # type: Final
 
     def visit_load_static(self, op: LoadStatic) -> None:
@@ -295,8 +303,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         """Call native function."""
         dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
+        lib = self.emitter.get_group_prefix(op.fn)
         cname = op.fn.cname(self.names)
-        self.emit_line('%s%s%s(%s);' % (dest, NATIVE_PREFIX, cname, args))
+        self.emit_line('%s%s%s%s(%s);' % (dest, lib, NATIVE_PREFIX, cname, args))
 
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""
@@ -324,10 +333,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
         if is_direct:
             # Directly call method, without going through the vtable.
-            self.emit_line('{}{}{}({});'.format(dest,
-                                                NATIVE_PREFIX,
-                                                method.cname(self.names),
-                                                args))
+            lib = self.emitter.get_group_prefix(method.decl)
+            self.emit_line('{}{}{}{}({});'.format(
+                dest, lib, NATIVE_PREFIX, method.cname(self.names), args))
         else:
             # Call using vtable.
             self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(

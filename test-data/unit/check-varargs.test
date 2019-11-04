@@ -353,7 +353,7 @@ class CC(C): pass
 from typing import Any
 d, a = None, None # type: (Any, A)
 f(a, a, *d) # Fail
-f(a, *d)    # Fail
+f(a, *d)    # Ok
 f(*d)       # Ok
 
 g(*d)
@@ -366,7 +366,6 @@ class A: pass
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: Too many arguments for "f"
-main:4: error: Too many arguments for "f"
 
 [case testListVarArgsAndSubtyping]
 from typing import List
@@ -448,6 +447,21 @@ def f(x: int, *, y: str) -> None: pass
 f(y='x', *(1,))
 [builtins fixtures/list.pyi]
 
+[case testVarArgsEmptyList]
+from typing import List
+
+def foo() -> None:
+    pass
+
+lst: List[int] = []
+foo(*lst)
+[builtins fixtures/list.pyi]
+
+[case testVarArgsEmptyTuple]
+def foo() -> None:
+    pass
+
+foo(*())
 
 -- Overloads + varargs
 -- -------------------

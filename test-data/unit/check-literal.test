@@ -851,7 +851,7 @@ func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], 
 [case testLiteralDisallowAny]
 from typing import Any
 from typing_extensions import Literal
-from missing_module import BadAlias     # E: Cannot find module named 'missing_module' \
+from missing_module import BadAlias     # E: Cannot find implementation or library stub for module named 'missing_module' \
                                         # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 a: Literal[Any]                         # E: Parameter 1 of Literal[...] cannot be of type "Any"
@@ -1579,19 +1579,19 @@ reveal_type(func(c))  # N: Revealed type is 'Union[__main__.B, __main__.A]'
 reveal_type(func(d))  # N: Revealed type is '__main__.B' \
                       # E: Argument 1 to "func" has incompatible type "Union[Literal[6], Literal[7]]"; expected "Union[Literal[3], Literal[4], Literal[5], Literal[6]]"
 
-reveal_type(func(e))  # N: Revealed type is 'Any' \
-                      # E: No overload variant of "func" matches argument type "int" \
+reveal_type(func(e))  # E: No overload variant of "func" matches argument type "int" \
                       # N: Possible overload variants: \
                       # N:     def func(x: Literal[-40]) -> A \
                       # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
-                      # N:     def func(x: Literal['foo']) -> C
+                      # N:     def func(x: Literal['foo']) -> C \
+                      # N: Revealed type is 'Any'
 
-reveal_type(func(f))  # N: Revealed type is 'Any' \
-                      # E: No overload variant of "func" matches argument type "Union[Literal[7], Literal['bar']]" \
+reveal_type(func(f))  # E: No overload variant of "func" matches argument type "Union[Literal[7], Literal['bar']]" \
                       # N: Possible overload variants: \
                       # N:     def func(x: Literal[-40]) -> A \
                       # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
-                      # N:     def func(x: Literal['foo']) -> C
+                      # N:     def func(x: Literal['foo']) -> C \
+                      # N: Revealed type is 'Any'
 [out]
 
 [case testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType]
@@ -1767,17 +1767,17 @@ import typing_extensions as indirect
 
 Alias = Literal[3]
 
-isinstance(3, Literal[3])           # E: Cannot use isinstance() with a Literal type
-isinstance(3, Alias)                # E: Cannot use isinstance() with a Literal type \
+isinstance(3, Literal[3])           # E: Cannot use isinstance() with Literal type
+isinstance(3, Alias)                # E: Cannot use isinstance() with Literal type \
                                     # E: The type alias to Literal is invalid in runtime context
-isinstance(3, Renamed[3])           # E: Cannot use isinstance() with a Literal type
-isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with a Literal type
+isinstance(3, Renamed[3])           # E: Cannot use isinstance() with Literal type
+isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with Literal type
 
-issubclass(int, Literal[3])           # E: Cannot use issubclass() with a Literal type
-issubclass(int, Alias)                # E: Cannot use issubclass() with a Literal type \
+issubclass(int, Literal[3])           # E: Cannot use issubclass() with Literal type
+issubclass(int, Alias)                # E: Cannot use issubclass() with Literal type \
                                       # E: The type alias to Literal is invalid in runtime context
-issubclass(int, Renamed[3])           # E: Cannot use issubclass() with a Literal type
-issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with a Literal type
+issubclass(int, Renamed[3])           # E: Cannot use issubclass() with Literal type
+issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with Literal type
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
@@ -1941,12 +1941,12 @@ reveal_type(func1)      # N: Revealed type is 'def [TLiteral <: Literal[3]] (x: 
 
 reveal_type(func1(3))   # N: Revealed type is 'Literal[3]'
 reveal_type(func1(a))   # N: Revealed type is 'Literal[3]'
-reveal_type(func1(4))   # N: Revealed type is 'Literal[4]' \
-                        # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
-reveal_type(func1(b))   # N: Revealed type is 'Literal[4]' \
-                        # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
-reveal_type(func1(c))   # N: Revealed type is 'builtins.int*' \
-                        # E: Value of type variable "TLiteral" of "func1" cannot be "int"
+reveal_type(func1(4))   # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]" \
+                        # N: Revealed type is 'Literal[4]'
+reveal_type(func1(b))   # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]" \
+                        # N: Revealed type is 'Literal[4]'
+reveal_type(func1(c))   # E: Value of type variable "TLiteral" of "func1" cannot be "int" \
+                        # N: Revealed type is 'builtins.int*'
 
 reveal_type(func2(3))   # N: Revealed type is 'builtins.int*'
 reveal_type(func2(a))   # N: Revealed type is 'Literal[3]'
@@ -1986,21 +1986,20 @@ reveal_type(func1)          # N: Revealed type is 'def [TLiteral in (Literal[3],
 
 reveal_type(func1(3))       # N: Revealed type is 'Literal[3]'
 reveal_type(func1(i1))      # N: Revealed type is 'Literal[3]'
-reveal_type(func1(4))       # N: Revealed type is 'Literal[4]' \
-                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
-reveal_type(func1(i2))      # N: Revealed type is 'Literal[4]' \
-                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]"
-reveal_type(func1(i))       # N: Revealed type is 'builtins.int*' \
-                            # E: Value of type variable "TLiteral" of "func1" cannot be "int"
-
+reveal_type(func1(4))       # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]" \
+                            # N: Revealed type is 'Literal[4]'
+reveal_type(func1(i2))      # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]" \
+                            # N: Revealed type is 'Literal[4]'
+reveal_type(func1(i))       # E: Value of type variable "TLiteral" of "func1" cannot be "int" \
+                            # N: Revealed type is 'builtins.int*'
 reveal_type(func1("foo"))   # N: Revealed type is 'Literal['foo']'
 reveal_type(func1(s1))      # N: Revealed type is 'Literal['foo']'
-reveal_type(func1("bar"))   # N: Revealed type is 'Literal['bar']' \
-                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']"
-reveal_type(func1(s2))      # N: Revealed type is 'Literal['bar']' \
-                            # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']"
-reveal_type(func1(s))       # N: Revealed type is 'builtins.str*' \
-                            # E: Value of type variable "TLiteral" of "func1" cannot be "str"
+reveal_type(func1("bar"))   # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']" \
+                            # N: Revealed type is 'Literal['bar']'
+reveal_type(func1(s2))      # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']" \
+                            # N: Revealed type is 'Literal['bar']'
+reveal_type(func1(s))       # E: Value of type variable "TLiteral" of "func1" cannot be "str" \
+                            # N: Revealed type is 'builtins.str*'
 
 reveal_type(func2(3))       # N: Revealed type is 'builtins.int*'
 reveal_type(func2(i1))      # N: Revealed type is 'builtins.int*'
@@ -2061,8 +2060,8 @@ reveal_type(arr5)  # N: Revealed type is 'builtins.list[def (Literal[1]) -> buil
 
 # Inspect just only one interesting one
 lit: Literal[1]
-reveal_type(arr2[0](lit))  # N: Revealed type is 'Any' \
-                           # E: Cannot call function of unknown type
+reveal_type(arr2[0](lit))  # E: Cannot call function of unknown type \
+                           # N: Revealed type is 'Any'
 
 T = TypeVar('T')
 def unify(func: Callable[[T, T], None]) -> T: pass
@@ -2092,8 +2091,8 @@ lit: Literal[1]
 
 arr = [a, b]
 reveal_type(arr)  # N: Revealed type is 'builtins.list[builtins.function*]'
-reveal_type(arr[0](lit))  # N: Revealed type is 'Any' \
-                          # E: Cannot call function of unknown type
+reveal_type(arr[0](lit))  # E: Cannot call function of unknown type \
+                          # N: Revealed type is 'Any'
 
 T = TypeVar('T')
 def unify(func: Callable[[T, T], None]) -> T: pass
@@ -2177,8 +2176,8 @@ reveal_type(d.get(a_key, u))  # N: Revealed type is 'Union[builtins.int, __main_
 reveal_type(d.get(b_key, u))  # N: Revealed type is 'Union[builtins.str, __main__.Unrelated]'
 d.get(c_key, u)               # E: TypedDict "Outer" has no key 'c'
 
-reveal_type(d.pop(a_key))     # N: Revealed type is 'builtins.int' \
-                              # E: Key 'a' of TypedDict "Outer" cannot be deleted
+reveal_type(d.pop(a_key))     # E: Key 'a' of TypedDict "Outer" cannot be deleted \
+                              # N: Revealed type is 'builtins.int'
 reveal_type(d.pop(b_key))     # N: Revealed type is 'builtins.str'
 d.pop(c_key)                  # E: TypedDict "Outer" has no key 'c'
 
@@ -2583,8 +2582,9 @@ class Foo:
         self.instancevar3: Final[Literal[False]] = True    # E: Incompatible types in assignment (expression has type "Literal[True]", variable has type "Literal[False]")
 
 # TODO: Fix the order in which these error messages are shown to be more consistent.
-var1 = 10                # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]") \
-                         # E: Cannot assign to final name "var1"
+var1 = 10                # E: Cannot assign to final name "var1" \
+                         # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")
+
 
 Foo.classvar1 = 10       # E: Cannot assign to final attribute "classvar1" \
                          # E: Incompatible types in assignment (expression has type "Literal[10]", variable has type "Literal[4]")

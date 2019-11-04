@@ -94,7 +94,7 @@ def g(a):
     r3 :: None
 L0:
     r0 = 1
-    r1 = unicode_3 :: static  ('hi')
+    r1 = unicode_4 :: static  ('hi')
     r2 = a.f(r0, r1)
     r3 = None
     return r3
@@ -360,51 +360,59 @@ def __top_level__():
     r40 :: str
     r41, r42 :: object
     r43 :: bool
-    r44 :: dict
-    r45 :: str
+    r44 :: str
+    r45 :: tuple
     r46 :: bool
-    r47 :: object
+    r47 :: dict
     r48 :: str
-    r49, r50 :: object
-    r51 :: bool
-    r52 :: dict
-    r53 :: str
-    r54 :: bool
-    r55, r56 :: object
+    r49 :: bool
+    r50 :: object
+    r51 :: str
+    r52, r53 :: object
+    r54 :: str
+    r55 :: tuple
+    r56 :: bool
     r57 :: dict
     r58 :: str
-    r59 :: object
-    r60 :: dict
-    r61 :: str
-    r62, r63 :: object
-    r64 :: tuple
-    r65 :: str
-    r66, r67 :: object
-    r68 :: bool
-    r69 :: dict
+    r59 :: bool
+    r60, r61 :: object
+    r62 :: dict
+    r63 :: str
+    r64 :: object
+    r65 :: dict
+    r66 :: str
+    r67, r68 :: object
+    r69 :: tuple
     r70 :: str
-    r71 :: bool
-    r72 :: None
+    r71, r72 :: object
+    r73 :: bool
+    r74, r75 :: str
+    r76 :: tuple
+    r77 :: bool
+    r78 :: dict
+    r79 :: str
+    r80 :: bool
+    r81 :: None
 L0:
-    r0 = builtins.module :: static
+    r0 = builtins :: module
     r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
     r4 = import r3 :: str
-    builtins.module = r4 :: static
+    builtins = r4 :: module
 L2:
-    r5 = typing.module :: static
+    r5 = typing :: module
     r6 = builtins.None :: object
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
     r9 = import r8 :: str
-    typing.module = r9 :: static
+    typing = r9 :: module
 L4:
-    r10 = typing.module :: static
+    r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('TypeVar')
     r13 = getattr r10, r12
@@ -414,16 +422,16 @@ L4:
     r17 = getattr r10, r16
     r18 = unicode_3 :: static  ('Generic')
     r19 = r11.__setitem__(r18, r17) :: dict
-    r20 = mypy_extensions.module :: static
+    r20 = mypy_extensions :: module
     r21 = builtins.None :: object
     r22 = r20 is not r21
     if r22 goto L6 else goto L5 :: bool
 L5:
     r23 = unicode_4 :: static  ('mypy_extensions')
     r24 = import r23 :: str
-    mypy_extensions.module = r24 :: static
+    mypy_extensions = r24 :: module
 L6:
-    r25 = mypy_extensions.module :: static
+    r25 = mypy_extensions :: module
     r26 = __main__.globals :: static
     r27 = unicode_5 :: static  ('trait')
     r28 = getattr r25, r27
@@ -442,39 +450,48 @@ L6:
     r41 = __main__.C_template :: type
     r42 = pytype_from_template(r41, r39, r40)
     r43 = C_trait_vtable_setup()
+    r44 = unicode_8 :: static  ('__mypyc_attrs__')
+    r45 = () :: tuple
+    r46 = setattr r42, r44, r45
     __main__.C = r42 :: type
-    r44 = __main__.globals :: static
-    r45 = unicode_8 :: static  ('C')
-    r46 = r44.__setitem__(r45, r42) :: dict
-    r47 = <error> :: object
-    r48 = unicode_7 :: static  ('__main__')
-    r49 = __main__.S_template :: type
-    r50 = pytype_from_template(r49, r47, r48)
-    r51 = S_trait_vtable_setup()
-    __main__.S = r50 :: type
-    r52 = __main__.globals :: static
-    r53 = unicode_9 :: static  ('S')
-    r54 = r52.__setitem__(r53, r50) :: dict
-    r55 = __main__.C :: type
-    r56 = __main__.S :: type
+    r47 = __main__.globals :: static
+    r48 = unicode_9 :: static  ('C')
+    r49 = r47.__setitem__(r48, r42) :: dict
+    r50 = <error> :: object
+    r51 = unicode_7 :: static  ('__main__')
+    r52 = __main__.S_template :: type
+    r53 = pytype_from_template(r52, r50, r51)
+    r54 = unicode_8 :: static  ('__mypyc_attrs__')
+    r55 = () :: tuple
+    r56 = setattr r53, r54, r55
+    __main__.S = r53 :: type
     r57 = __main__.globals :: static
-    r58 = unicode_3 :: static  ('Generic')
-    r59 = r57[r58] :: dict
-    r60 = __main__.globals :: static
-    r61 = unicode_6 :: static  ('T')
-    r62 = r60[r61] :: dict
-    r63 = r59[r62] :: object
-    r64 = (r55, r56, r63) :: tuple
-    r65 = unicode_7 :: static  ('__main__')
-    r66 = __main__.D_template :: type
-    r67 = pytype_from_template(r66, r64, r65)
-    r68 = D_trait_vtable_setup()
-    __main__.D = r67 :: type
-    r69 = __main__.globals :: static
-    r70 = unicode_10 :: static  ('D')
-    r71 = r69.__setitem__(r70, r67) :: dict
-    r72 = None
-    return r72
+    r58 = unicode_10 :: static  ('S')
+    r59 = r57.__setitem__(r58, r53) :: dict
+    r60 = __main__.C :: type
+    r61 = __main__.S :: type
+    r62 = __main__.globals :: static
+    r63 = unicode_3 :: static  ('Generic')
+    r64 = r62[r63] :: dict
+    r65 = __main__.globals :: static
+    r66 = unicode_6 :: static  ('T')
+    r67 = r65[r66] :: dict
+    r68 = r64[r67] :: object
+    r69 = (r60, r61, r68) :: tuple
+    r70 = unicode_7 :: static  ('__main__')
+    r71 = __main__.D_template :: type
+    r72 = pytype_from_template(r71, r69, r70)
+    r73 = D_trait_vtable_setup()
+    r74 = unicode_8 :: static  ('__mypyc_attrs__')
+    r75 = unicode_11 :: static  ('__dict__')
+    r76 = (r75) :: tuple
+    r77 = setattr r72, r74, r76
+    __main__.D = r72 :: type
+    r78 = __main__.globals :: static
+    r79 = unicode_12 :: static  ('D')
+    r80 = r78.__setitem__(r79, r72) :: dict
+    r81 = None
+    return r81
 
 [case testIsInstance]
 class A: pass
@@ -785,11 +802,10 @@ def f():
     r3 :: int
 L0:
     r0 = __main__.A :: type
-    r1 = unicode_5 :: static  ('x')
+    r1 = unicode_6 :: static  ('x')
     r2 = getattr r0, r1
     r3 = unbox(int, r2)
     return r3
-
 
 [case testNoEqDefined]
 class A:
@@ -847,11 +863,19 @@ L0:
     return r1
 def Base.__ne__(self, rhs):
     self :: __main__.Base
-    rhs, r0 :: object
-    r1 :: bool
+    rhs, r0, r1 :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = not r0
+    r1 = NotImplemented
+    r2 = r0 is r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = not r0
+    r4 = box(bool, r3)
+    return r4
+L2:
     return r1
 def Derived.__eq__(self, other):
     self :: __main__.Derived
@@ -888,10 +912,12 @@ L0:
     return r1
 def fOpt2(a, b):
     a, b :: __main__.Derived
-    r0 :: bool
+    r0 :: object
+    r1 :: bool
 L0:
     r0 = a.__ne__(b)
-    return r0
+    r1 = unbox(bool, r0)
+    return r1
 
 [case testEqDefinedLater]
 def f(a: 'Base', b: 'Base') -> bool:
@@ -958,11 +984,19 @@ L0:
     return r1
 def Derived.__ne__(self, rhs):
     self :: __main__.Derived
-    rhs, r0 :: object
-    r1 :: bool
+    rhs, r0, r1 :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = not r0
+    r1 = NotImplemented
+    r2 = r0 is r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = not r0
+    r4 = box(bool, r3)
+    return r4
+L2:
     return r1
 
 [case testDefaultVars]
@@ -1014,7 +1048,7 @@ L0:
     r0 = 10
     __mypyc_self__.x = r0; r1 = is_error
     r2 = __main__.globals :: static
-    r3 = unicode_7 :: static  ('LOL')
+    r3 = unicode_9 :: static  ('LOL')
     r4 = r2[r3] :: dict
     r5 = cast(str, r4)
     __mypyc_self__.y = r5; r6 = is_error

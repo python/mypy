@@ -31,7 +31,7 @@ flagged as an error.
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
   annotations. Where that isn't possible, functions without annotations
-  can be checked using ``--check-untyped-defs``.
+  can be checked using :option:`--check-untyped-defs <mypy --check-untyped-defs>`.
 
   Example:
 
@@ -69,21 +69,21 @@ flagged as an error.
   :ref:`reveal_type() <reveal-type>` might come in handy.
 
   Note that sometimes library stubs have imprecise type information,
-  e.g. the ``pow()`` builtin returns ``Any`` (see `typeshed issue 285
+  e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
 - **Some imports may be silently ignored**.  Another source of
-  unexpected ``Any`` values are the :ref:`"--ignore-missing-imports"
-  <ignore-missing-imports>` and :ref:`"--follow-imports=skip"
-  <follow-imports>` flags.  When you use ``--ignore-missing-imports``,
+  unexpected ``Any`` values are the :option:`--ignore-missing-imports
+  <mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
+  <mypy --follow-imports>` flags.  When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
   any imported module that cannot be found is silently replaced with
-  ``Any``.  When using ``--follow-imports=skip`` the same is true for
+  ``Any``.  When using :option:`--follow-imports=skip <mypy --follow-imports>` the same is true for
   modules for which a ``.py`` file is found but that are not specified
   on the command line.  (If a ``.pyi`` stub is found it is always
   processed normally, regardless of the value of
-  ``--follow-imports``.)  To help debug the former situation (no
-  module found at all) leave out ``--ignore-missing-imports``; to get
-  clarity about the latter use ``--follow-imports=error``.  You can
+  :option:`--follow-imports <mypy --follow-imports>`.)  To help debug the former situation (no
+  module found at all) leave out :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`; to get
+  clarity about the latter use :option:`--follow-imports=error <mypy --follow-imports>`.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
 - **A function annotated as returning a non-optional type returns 'None'
@@ -126,6 +126,14 @@ The second line is now fine, since the ignore comment causes the name
 
 .. note::
 
+    You can use the form ``# type: ignore[<code>]`` to only ignore
+    specific errors on the line. This way you are less likely to
+    silence unexpected errors that are not safe to ignore, and this
+    will also document what the purpose of the comment is.  See
+    :ref:`error-codes` for more information.
+
+.. note::
+
     The ``# type: ignore`` comment will only assign the implicit ``Any``
     type if mypy cannot find information about that particular module. So,
     if we did have a stub available for ``frobnicate`` then mypy would
@@ -135,7 +143,7 @@ Another option is to explicitly annotate values with type ``Any`` --
 mypy will let you perform arbitrary operations on ``Any``
 values. Sometimes there is no more precise type you can use for a
 particular value, especially if you use dynamic Python features
-such as ``__getattr__``:
+such as :py:meth:`__getattr__ <object.__getattr__>`:
 
 .. code-block:: python
 
@@ -318,7 +326,7 @@ above example:
 Complex type tests
 ------------------
 
-Mypy can usually infer the types correctly when using ``isinstance()``
+Mypy can usually infer the types correctly when using :py:func:`isinstance <isinstance>`
 type tests, but for other kinds of checks you may need to add an
 explicit type cast:
 
@@ -334,17 +342,17 @@ explicit type cast:
 
 .. note::
 
-    Note that the ``object`` type used in the above example is similar
+    Note that the :py:class:`object` type used in the above example is similar
     to ``Object`` in Java: it only supports operations defined for *all*
-    objects, such as equality and ``isinstance()``. The type ``Any``,
+    objects, such as equality and :py:func:`isinstance`. The type ``Any``,
     in contrast, supports all operations, even if they may fail at
     runtime. The cast above would have been unnecessary if the type of
     ``o`` was ``Any``.
 
-Mypy can't infer the type of ``o`` after the ``type()`` check
-because it only knows about ``isinstance()`` (and the latter is better
+Mypy can't infer the type of ``o`` after the :py:class:`type() <type>` check
+because it only knows about :py:func:`isinstance` (and the latter is better
 style anyway).  We can write the above code without a cast by using
-``isinstance()``:
+:py:func:`isinstance`:
 
 .. code-block:: python
 
@@ -371,8 +379,8 @@ the targeted Python version or platform. This allows you to more effectively
 typecheck code that supports multiple versions of Python or multiple operating
 systems.
 
-More specifically, mypy will understand the use of ``sys.version_info`` and
-``sys.platform`` checks within ``if/elif/else`` statements. For example:
+More specifically, mypy will understand the use of :py:data:`sys.version_info` and
+:py:data:`sys.platform` checks within ``if/elif/else`` statements. For example:
 
 .. code-block:: python
 
@@ -409,29 +417,28 @@ Example:
    # The rest of this file doesn't apply to Windows.
 
 Some other expressions exhibit similar behavior; in particular,
-``typing.TYPE_CHECKING``, variables named ``MYPY``, and any variable
-whose name is passed to ``--always-true`` or ``--always-false``.
+:py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
+whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
 .. note::
 
    Mypy currently does not support more complex checks, and does not assign
-   any special meaning when assigning a ``sys.version_info`` or ``sys.platform``
+   any special meaning when assigning a :py:data:`sys.version_info` or :py:data:`sys.platform`
    check to a variable. This may change in future versions of mypy.
 
 By default, mypy will use your current version of Python and your current
 operating system as default values for ``sys.version_info`` and
 ``sys.platform``.
 
-To target a different Python version, use the ``--python-version X.Y`` flag.
+To target a different Python version, use the :option:`--python-version X.Y <mypy --python-version>` flag.
 For example, to verify your code typechecks if were run using Python 2, pass
-in ``--python-version 2.7`` from the command line. Note that you do not need
+in :option:`--python-version 2.7 <mypy --python-version>` from the command line. Note that you do not need
 to have Python 2.7 installed to perform this check.
 
-To target a different operating system, use the ``--platform PLATFORM`` flag.
+To target a different operating system, use the :option:`--platform PLATFORM <mypy --platform>` flag.
 For example, to verify your code typechecks if it were run in Windows, pass
-in ``--platform win32``. See the documentation for
-`sys.platform <https://docs.python.org/3/library/sys.html#sys.platform>`_
+in :option:`--platform win32 <mypy --platform>`. See the documentation for :py:data:`sys.platform`
 for examples of valid platform parameters.
 
 .. _reveal-type:
@@ -507,10 +514,10 @@ File ``bar.py``:
 
 .. note::
 
-   The ``TYPE_CHECKING`` constant defined by the ``typing`` module
+   The :py:data:`~typing.TYPE_CHECKING` constant defined by the :py:mod:`typing` module
    is ``False`` at runtime but ``True`` while type checking.
 
-Python 3.5.1 doesn't have ``typing.TYPE_CHECKING``. An alternative is
+Python 3.5.1 doesn't have :py:data:`~typing.TYPE_CHECKING`. An alternative is
 to define a constant named ``MYPY`` that has the value ``False``
 at runtime. Mypy considers it to be ``True`` when type checking.
 Here's the above example modified to use ``MYPY``:
@@ -526,12 +533,13 @@ Here's the above example modified to use ``MYPY``:
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
 
+.. _not-generic-runtime:
 
 Using classes that are generic in stubs but not at runtime
 ----------------------------------------------------------
 
 Some classes are declared as generic in stubs, but not at runtime. Examples
-in the standard library include ``os.PathLike`` and ``queue.Queue``.
+in the standard library include :py:class:`os.PathLike` and :py:class:`queue.Queue`.
 Subscripting such a class will result in a runtime error:
 
 .. code-block:: python
@@ -544,7 +552,7 @@ Subscripting such a class will result in a runtime error:
    results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
 
 To avoid these errors while still having precise types you can either use
-string literal types or ``typing.TYPE_CHECKING``:
+string literal types or :py:data:`~typing.TYPE_CHECKING`:
 
 .. code-block:: python
 
@@ -561,6 +569,15 @@ string literal types or ``typing.TYPE_CHECKING``:
 
    results: 'Queue[int]' = Queue()  # OK
 
+If you are running Python 3.7+ you can use ``from __future__ import annotations``
+as a (nicer) alternative to string quotes, read more in :pep:`563`.  For example:
+
+.. code-block:: python
+
+   from __future__ import annotations
+   from queue import Queue
+
+   results: Queue[int] = Queue()  # This works at runtime
 
 .. _silencing-linters:
 
@@ -608,7 +625,7 @@ Consider this example:
    c.x << 5  # Since this will fail!
 
 To work around this problem consider whether "mutating" is actually part
-of a protocol. If not, then one can use a ``@property`` in
+of a protocol. If not, then one can use a :py:class:`@property <property>` in
 the protocol definition:
 
 .. code-block:: python

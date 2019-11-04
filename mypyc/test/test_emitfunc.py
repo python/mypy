@@ -23,6 +23,7 @@ from mypyc.ops_list import (
 from mypyc.ops_dict import new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
 from mypyc.ops_int import int_neg_op
 from mypyc.subtype import is_subtype
+from mypyc.namegen import NameGenerator
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
@@ -47,7 +48,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         ir.mro = [ir]
         self.r = self.env.add_local(Var('r'), RInstance(ir))
 
-        self.context = EmitterContext(['mod'])
+        self.context = EmitterContext(NameGenerator([['mod']]))
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
         self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog')
@@ -193,12 +194,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_get_attr(self) -> None:
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
-            """cpy_r_r0 = native_A_gety((AObject *)cpy_r_r); /* y */""")
+            """cpy_r_r0 = native_A_gety((mod___AObject *)cpy_r_r); /* y */""")
 
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
-            "cpy_r_r0 = native_A_sety((AObject *)cpy_r_r, cpy_r_m); /* y */")
+            "cpy_r_r0 = native_A_sety((mod___AObject *)cpy_r_r, cpy_r_m); /* y */")
 
     def test_dict_get_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),
@@ -270,7 +271,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(Return(self.reg))
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.block], self.env)
-        emitter = Emitter(EmitterContext(['mod']))
+        emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
         generate_native_function(fn, emitter, 'prog.py', 'prog')
         result = emitter.fragments
         assert_string_arrays_equal(
@@ -289,7 +290,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.env.add_op(op)
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.block], self.env)
-        emitter = Emitter(EmitterContext(['mod']))
+        emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
         generate_native_function(fn, emitter, 'prog.py', 'prog')
         result = emitter.fragments
         assert_string_arrays_equal(

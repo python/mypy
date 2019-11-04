@@ -1139,7 +1139,7 @@ class Column(Generic[T]): ...
 class Instr(Generic[T]): ...
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 [out]
 __main__.Diff
@@ -1443,3 +1443,25 @@ class C:
 [out]
 __main__.C.method
 __main__.func
+
+[case testUnionOfLiterals]
+from typing_extensions import Literal
+x: Literal[1, '2']
+[file next.py]
+from typing_extensions import Literal
+x: Literal[1, 2]
+[out]
+__main__.x
+
+[case testUnionOfCallables]
+from typing import Callable, Union
+from mypy_extensions import Arg
+x: Union[Callable[[Arg(int, 'x')], None],
+         Callable[[int], None]]
+[file next.py]
+from typing import Callable, Union
+from mypy_extensions import Arg
+x: Union[Callable[[Arg(int, 'y')], None],
+         Callable[[int], None]]
+[out]
+__main__.x

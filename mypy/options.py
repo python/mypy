@@ -138,6 +138,10 @@ class Options:
         # Show "note: In function "foo":" messages.
         self.show_error_context = False
 
+        # Use nicer output (when possible).
+        self.color_output = True
+        self.error_summary = True
+
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors
         self.strict_optional_whitelist = None   # type: Optional[List[str]]
@@ -240,6 +244,8 @@ class Options:
         self.shadow_file = None  # type: Optional[List[List[str]]]
         self.show_column_numbers = False  # type: bool
         self.show_error_codes = False
+        # Use soft word wrap and show trimmed source snippets with error location markers.
+        self.pretty = False
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False
@@ -255,8 +261,10 @@ class Options:
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = False
+        # Print full path to each file in the report.
+        self.show_absolute_path = False  # type: bool
 
-    # To avoid breaking plugin compatability, keep providing new_semantic_analyzer
+    # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:
         return True

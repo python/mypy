@@ -871,6 +871,57 @@ class A(metaclass=ABCMeta):
     def x(self, x): pass
 [out]
 
+[case testMixinTypedAbstractProperty]
+from abc import ABCMeta, abstractproperty
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(Mixin, A):
+    pass
+[out]
+
+[case testMixinTypedProperty]
+class A:
+    @property
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(Mixin, A):
+    pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testMixinSubtypedProperty]
+class X:
+    pass
+class Y(X):
+    pass
+class A:
+    @property
+    def foo(cls) -> X:
+        pass
+class Mixin:
+    foo = Y()
+class C(Mixin, A):
+    pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testMixinTypedPropertyReversed]
+class A:
+    @property
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(A, Mixin): # E: Definition of "foo" in base class "A" is incompatible with definition in base class "Mixin"
+    pass
+[builtins fixtures/property.pyi]
+[out]
 
 -- Special cases
 -- -------------

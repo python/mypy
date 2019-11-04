@@ -30,15 +30,19 @@ def f(): ...  # type: ignore
 [case testIgnoreScopeIssue1032]
 def f(a: int): ...
 f(
-    "IGNORE"
+    1,
+    2,
 )  # type: ignore
 
 [case testIgnoreScopeNested1]
+def g(x: str) -> str: ...
 def f(a: int) -> int: ...
 f(
     f(
-        "IGNORE"
-    )  # type: ignore
+        g(
+            "IGNORE"
+        )  # type: ignore
+    )
 )
 
 [case testIgnoreScopeNested2]
@@ -86,9 +90,9 @@ def g(x: int): ...
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
 (  # type: ignore  # E: unused 'type: ignore' comment
-    "IGNORE"  # type: ignore
+    "IGNORE"  # type: ignore  # E: unused 'type: ignore' comment
     +  # type: ignore  # E: unused 'type: ignore' comment
-    0  # type: ignore  # E: unused 'type: ignore' comment
+    0  # type: ignore
 )  # type: ignore  # E: unused 'type: ignore' comment
 
 [case testIgnoreScopeUnused2]
@@ -231,10 +235,10 @@ def f(x: int = (c := 4)) -> int:
 
     # Just make sure we don't crash on this sort of thing.
     if NT := NamedTuple("NT", [("x", int)]):  # E: "int" not callable
-        z2: NT  # E: Invalid type "NT"
+        z2: NT  # E: Variable "NT" is not valid as a type
 
     if Alias := int:
-        z3: Alias  # E: Invalid type "Alias"
+        z3: Alias  # E: Variable "Alias" is not valid as a type
 
     return (y9 := 3) + y9
 

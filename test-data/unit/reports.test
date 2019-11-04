@@ -5,7 +5,7 @@
 [case testConfigErrorUnknownReport]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 bad_report = .
 [out]
 mypy.ini: [mypy]: Unrecognized report type: bad_report
@@ -422,3 +422,39 @@ async def some_function(x) -> None:
     l             1          0            0                  0       0              0                         0
 -----------------------------------------------------------------------------------------------------------------
 Total             1          1            0                  0       0              0                         0
+
+[case testSpecialAnyHtmlReport]
+# cmd: mypy --html-report report n.py
+[file n.py]
+from typing import Callable
+
+SourceToDisplay = Callable[[int], int]
+DisplayToSource = Callable[[int], int]
+
+[file report/mypy-html.css]
+[file report/index.html]
+[outfile report/html/n.py.html]
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="../mypy-html.css">
+</head>
+<body>
+<h2>n</h2>
+<table>
+<caption>n.py</caption>
+<tbody><tr>
+<td class="table-lines"><pre><span id="L1" class="lineno"><a class="lineno" href="#L1">1</a></span>
+<span id="L2" class="lineno"><a class="lineno" href="#L2">2</a></span>
+<span id="L3" class="lineno"><a class="lineno" href="#L3">3</a></span>
+<span id="L4" class="lineno"><a class="lineno" href="#L4">4</a></span>
+</pre></td>
+<td class="table-code"><pre><span class="line-precise" title="No Anys on this line!">from typing import Callable</span>
+<span class="line-empty" title="No Anys on this line!"></span>
+<span class="line-precise" title="No Anys on this line!">SourceToDisplay = Callable[[int], int]</span>
+<span class="line-precise" title="No Anys on this line!">DisplayToSource = Callable[[int], int]</span>
+</pre></td>
+</tr></tbody>
+</table>
+</body>
+</html>

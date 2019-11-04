@@ -4563,6 +4563,7 @@ def f(*args):
 x: Union[int, str]
 f(x, x, x, x, x, x, x, x)
 [out]
+main:11: error: Not all union combinations were tried because there are too many unions
 main:11: error: Argument 1 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 2 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 3 to "f" has incompatible type "Union[int, str]"; expected "int"
@@ -4571,7 +4572,6 @@ main:11: error: Argument 5 to "f" has incompatible type "Union[int, str]"; expec
 main:11: error: Argument 6 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 7 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 8 to "f" has incompatible type "Union[int, str]"; expected "int"
-main:11: note: Not all union combinations were tried because there are too many unions
 
 [case testSafeDunderOverlapInSubclass]
 from typing import overload
@@ -4959,8 +4959,9 @@ def foo() -> None: ...
 def foo(iterable: Iterable[_T]) -> None: ...
 def foo(iterable = None) -> None: pass
 
-foo(bar('lol').foo())  # E: Argument 1 to "bar" has incompatible type "str"; expected "int" \
-                       # E: Item "int" of "Union[A, int]" has no attribute "foo"
+foo(bar('lol').foo())  # E: Item "int" of "Union[A, int]" has no attribute "foo" \
+                       # E: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
 
 [case testOverloadInferringArgumentsUsingContext1]
 from typing import Optional, List, overload, TypeVar

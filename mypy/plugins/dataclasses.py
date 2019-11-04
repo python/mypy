@@ -1,7 +1,5 @@
 """Plugin that provides support for dataclasses."""
 
-from collections import OrderedDict
-
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
@@ -83,7 +81,12 @@ class DataclassTransformer:
             # Some definitions are not ready, defer() should be already called.
             return
         for attr in attributes:
-            if info[attr.name].type is None:
+            node = info.get(attr.name)
+            if node is None:
+                # Nodes of superclass InitVars not used in __init__ cannot be reached.
+                assert attr.is_init_var and not attr.is_in_init
+                continue
+            if node.type is None:
                 ctx.api.defer()
                 return
         decorator_arguments = {
@@ -93,7 +96,7 @@ class DataclassTransformer:
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
         }
 
-        # If there are no attributes, it may be that the new semantic analyzer has not
+        # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
         # __init__ if there are no attributes, because if the user truly did not define any,
         # then the object default __init__ with an empty signature will be present anyway.
@@ -176,7 +179,7 @@ class DataclassTransformer:
         self.reset_init_only_vars(info, attributes)
 
         info.metadata['dataclass'] = {
-            'attributes': OrderedDict((attr.name, attr.serialize()) for attr in attributes),
+            'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
         }
 
@@ -184,7 +187,11 @@ class DataclassTransformer:
         """Remove init-only vars from the class and reset init var declarations."""
         for attr in attributes:
             if attr.is_init_var:
-                del info.names[attr.name]
+                if attr.name in info.names:
+                    del info.names[attr.name]
+                else:
+                    # Nodes of superclass InitVars not used in __init__ cannot be reached.
+                    assert attr.is_init_var and not attr.is_in_init
                 for stmt in info.defn.defs.body:
                     if isinstance(stmt, AssignmentStmt) and stmt.unanalyzed_type:
                         lvalue = stmt.lvalues[0]
@@ -287,7 +294,8 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname()))
 
-            for name, data in info.metadata['dataclass']['attributes'].items():
+            for data in info.metadata['dataclass']['attributes']:
+                name = data['name']  # type: str
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data)
                     if attr.is_init_var and isinstance(init_method, FuncDef):
@@ -302,14 +310,16 @@ class DataclassTransformer:
 
                     known_attrs.add(name)
                     super_attrs.append(attr)
-                else:
+                elif all_attrs:
                     # How early in the attribute list an attribute appears is determined by the
                     # reverse MRO, not simply MRO.
                     # See https://docs.python.org/3/library/dataclasses.html#inheritance for
                     # details.
-                    (attr,) = [a for a in all_attrs if a.name == name]
-                    all_attrs.remove(attr)
-                    super_attrs.append(attr)
+                    for attr in all_attrs:
+                        if attr.name == name:
+                            all_attrs.remove(attr)
+                            super_attrs.append(attr)
+                            break
             all_attrs = super_attrs + all_attrs
 
         # Ensure that arguments without a default don't follow
@@ -320,9 +330,13 @@ class DataclassTransformer:
             # doesn't have a default after one that does have one,
             # then that's an error.
             if found_default and attr.is_in_init and not attr.has_default:
+                # If the issue comes from merging different classes, report it
+                # at the class definition point.
+                context = (Context(line=attr.line, column=attr.column) if attr in attrs
+                           else ctx.cls)
                 ctx.api.fail(
                     'Attributes without a default cannot follow attributes with one',
-                    Context(line=attr.line, column=attr.column),
+                    context,
                 )
 
             found_default = found_default or (attr.has_default and attr.is_in_init)

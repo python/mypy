@@ -41,7 +41,8 @@ class NamedTupleAnalyzer:
         self.options = options
         self.api = api
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> Tuple[bool, Optional[TypeInfo]]:
+    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool
+                                    ) -> Tuple[bool, Optional[TypeInfo]]:
         """Analyze if given class definition can be a named tuple definition.
 
         Return a tuple where first item indicates whether this can possibly be a named tuple,
@@ -52,7 +53,7 @@ class NamedTupleAnalyzer:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname == 'typing.NamedTuple':
-                    result = self.check_namedtuple_classdef(defn)
+                    result = self.check_namedtuple_classdef(defn, is_stub_file)
                     if result is None:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
@@ -68,8 +69,10 @@ class NamedTupleAnalyzer:
         # This can't be a valid named tuple.
         return False, None
 
-    def check_namedtuple_classdef(
-            self, defn: ClassDef) -> Optional[Tuple[List[str], List[Type], Dict[str, Expression]]]:
+    def check_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool
+                                  ) -> Optional[Tuple[List[str],
+                                                List[Type],
+                                                Dict[str, Expression]]]:
         """Parse and validate fields in named tuple class definition.
 
         Return a three tuple:
@@ -78,7 +81,7 @@ class NamedTupleAnalyzer:
           * field default values
         or None, if any of the types are not ready.
         """
-        if self.options.python_version < (3, 6):
+        if self.options.python_version < (3, 6) and not is_stub_file:
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
             return [], [], {}
         if len(defn.base_type_exprs) > 1:

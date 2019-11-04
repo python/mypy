@@ -23,8 +23,9 @@ import sys
 import os.path
 import hashlib
 import time
+import re
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import List, Tuple, Any, Optional, Dict, Union, Set, cast
 MYPY = False
 if MYPY:
     from typing import NoReturn
@@ -35,6 +36,9 @@ from mypy.options import Options
 from mypy.build import BuildSource
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
+from mypyc.errors import Errors
+from mypyc.common import shared_lib_name
+from mypyc.ops import format_modules
 
 from mypyc import emitmodule
 
@@ -111,7 +115,8 @@ shim_template = """\
 PyMODINIT_FUNC
 PyInit_{modname}(void)
 {{
-    void *init_func = PyCapsule_Import("{libname}.{full_modname}", 0);
+    if (!PyImport_ImportModule("{libname}")) return NULL;
+    void *init_func = PyCapsule_Import("{libname}.init_{full_modname}", 0);
     if (!init_func) {{
         return NULL;
     }}
@@ -125,32 +130,35 @@ PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}
 
 
 def generate_c_extension_shim(
-        full_module_name: str, module_name: str, dirname: str, libname: str) -> str:
+        full_module_name: str, module_name: str, dir_name: str, group_name: str) -> str:
     """Create a C extension shim with a passthrough PyInit function.
 
     Arguments:
-      * full_module_name: the dotted full module name
-      * module_name: the final component of the module name
-      * dirname: the directory to place source code
-      * libname: the name of the module where the code actually lives
+        full_module_name: the dotted full module name
+        module_name: the final component of the module name
+        dir_name: the directory to place source code
+        group_name: the name of the group
     """
-    cname = '%s.c' % full_module_name.replace('.', '___')  # XXX
-    cpath = os.path.join(dirname, cname)
+    cname = '%s.c' % exported_name(full_module_name)
+    cpath = os.path.join(dir_name, cname)
 
     write_file(
         cpath,
         shim_template.format(modname=module_name,
-                             libname=libname,
+                             libname=shared_lib_name(group_name),
                              full_modname=exported_name(full_module_name)))
 
     return cpath
 
 
-def shared_lib_name(modules: List[str]) -> str:
-    """Produce a probably unique name for a library from a list of module names."""
+def group_name(modules: List[str]) -> str:
+    """Produce a probably unique name for a group from a list of module names."""
+    if len(modules) == 1:
+        return exported_name(modules[0])
+
     h = hashlib.sha1()
     h.update(','.join(modules).encode())
-    return 'mypyc_%s' % h.hexdigest()[:20]
+    return h.hexdigest()[:20]
 
 
 def include_dir() -> str:
@@ -158,15 +166,19 @@ def include_dir() -> str:
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'lib-rt')
 
 
-def generate_c(sources: List[BuildSource], options: Options,
-               shared_lib_name: Optional[str],
+def generate_c(sources: List[BuildSource],
+               options: Options,
+               groups: emitmodule.Groups,
                compiler_options: Optional[CompilerOptions] = None
-               ) -> Tuple[List[Tuple[str, str]], str]:
+               ) -> Tuple[List[List[Tuple[str, str]]], str]:
     """Drive the actual core compilation step.
+
+    The groups argument describes how modules are assigned to C
+    extension modules. See the comments on the Groups type in
+    mypyc.emitmodule for details.
 
     Returns the C source code and (for debugging) the pretty printed IR.
     """
-    module_names = [source.module for source in sources]
     compiler_options = compiler_options or CompilerOptions()
 
     # Do the actual work now
@@ -182,20 +194,31 @@ def generate_c(sources: List[BuildSource], options: Options,
     if compiler_options.verbose:
         print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
 
-    ops = []  # type: List[str]
-    ctext = emitmodule.compile_modules_to_c(result, module_names, shared_lib_name,
-                                            compiler_options=compiler_options, ops=ops)
+    all_module_names = []
+    for group_sources, _ in groups:
+        all_module_names.extend([source.module for source in group_sources])
+
+    errors = Errors()
+
+    modules, ctext = emitmodule.compile_modules_to_c(result,
+                                                     compiler_options=compiler_options,
+                                                     errors=errors,
+                                                     groups=groups)
+    if errors.num_errors:
+        errors.flush_errors()
+        sys.exit(1)
 
     t2 = time.time()
     if compiler_options.verbose:
         print("Compiled to C in {:.3f}s".format(t2 - t1))
 
-    return ctext, '\n'.join(ops)
+    return ctext, '\n'.join(format_modules(modules))
 
 
 def build_using_shared_lib(sources: List[BuildSource],
-                           lib_name: str,
+                           group_name: str,
                            cfiles: List[str],
+                           deps: List[str],
                            build_dir: str,
                            extra_compile_args: List[str],
                            ) -> List[Extension]:
@@ -211,15 +234,16 @@ def build_using_shared_lib(sources: List[BuildSource],
     Capsules stored in module attributes.
     """
     extensions = [Extension(
-        lib_name,
+        shared_lib_name(group_name),
         sources=cfiles,
         include_dirs=[include_dir()],
+        depends=deps,
         extra_compile_args=extra_compile_args,
     )]
 
     for source in sources:
         module_name = source.module.split('.')[-1]
-        shim_file = generate_c_extension_shim(source.module, module_name, build_dir, lib_name)
+        shim_file = generate_c_extension_shim(source.module, module_name, build_dir, group_name)
 
         # We include the __init__ in the "module name" we stick in the Extension,
         # since this seems to be needed for it to end up in the right place.
@@ -269,23 +293,103 @@ def write_file(path: str, contents: str) -> None:
             f.write(contents)
 
 
-def mypycify(paths: List[str],
-             mypy_options: Optional[List[str]] = None,
-             opt_level: str = '3',
-             multi_file: bool = False,
-             skip_cgen: bool = False,
-             verbose: bool = False,
-             strip_asserts: bool = False) -> List[Extension]:
+def construct_groups(
+    sources: List[BuildSource],
+    separate: Union[bool, List[Tuple[List[str], Optional[str]]]],
+    use_shared_lib: bool,
+) -> emitmodule.Groups:
+    """Compute Groups given the input source list and separate configs.
+
+    separate is the user-specified configuration for how to assign
+    modules to compilation groups (see mypycify docstring for details).
+
+    This takes that and expands it into our internal representation of
+    group configuration, documented in mypyc.emitmodule's definition
+    of Group.
+    """
+
+    if separate is True:
+        groups = [
+            ([source], None) for source in sources
+        ]  # type: emitmodule.Groups
+    elif isinstance(separate, list):
+        groups = []
+        used_sources = set()
+        for files, name in separate:
+            group_sources = [src for src in sources if src.path in files]
+            groups.append((group_sources, name))
+            used_sources.update(group_sources)
+        unused_sources = [src for src in sources if src not in used_sources]
+        if unused_sources:
+            groups.extend([([source], None) for source in unused_sources])
+    else:
+        groups = [(sources, None)]
+
+    # Generate missing names
+    for i, (group, name) in enumerate(groups):
+        if use_shared_lib and not name:
+            name = group_name([source.module for source in group])
+        groups[i] = (group, name)
+
+    return groups
+
+
+def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
+    """Find all the headers used by a group of cfiles.
+
+    We do this by just regexping the source, which is a bit simpler than
+    properly plumbing the data through.
+
+    Arguments:
+        cfiles: A list of (file name, file contents) pairs.
+    """
+    headers = set()  # type: Set[str]
+    for _, contents in cfiles:
+        headers.update(re.findall(r'#include "(.*)"', contents))
+
+    return sorted(headers)
+
+
+def mypycify(
+    paths: List[str],
+    mypy_options: Optional[List[str]] = None,
+    *,
+    verbose: bool = False,
+    opt_level: str = '3',
+    strip_asserts: bool = False,
+    multi_file: bool = False,
+    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
+    skip_cgen_input: Optional[Any] = None
+) -> List[Extension]:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
     ext_modules parameter to setup.
 
     Arguments:
-      * paths: A list of file paths to build. It may contain globs.
-      * mypy_options: Optionally, a list of command line flags to pass to mypy.
+        paths: A list of file paths to build. It may contain globs.
+        mypy_options: Optionally, a list of command line flags to pass to mypy.
                       (This can also contain additional files, for compatibility reasons.)
-      * opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
+        verbose: Should mypyc be more verbose. Defaults to false.
+
+        opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
+        strip_asserts: Should asserts be stripped from the generated code.
+
+        multi_file: Should each Python module be compiled into its own C source file.
+                    This can reduce compile time and memory requirements at the likely
+                    cost of runtime performance of compiled code. Defaults to false.
+        separate: Should compiled modules be placed in separate extension modules.
+                  If False, all modules are placed in a single shared library.
+                  If True, every module is placed in its own library.
+                  Otherwise separate should be a list of
+                  (file name list, optional shared library name) pairs specifying
+                  groups of files that should be placed in the same shared library
+                  (while all other modules will be placed in its own library).
+
+                  Each group can be compiled independently, which can
+                  speed up compilation, but calls between groups can
+                  be slower than calls within a group and can't be
+                  inlined.
     """
 
     setup_mypycify_vars()
@@ -314,25 +418,31 @@ def mypycify(paths: List[str],
     # around with making the single module code handle packages.)
     use_shared_lib = len(sources) > 1 or any('.' in x.module for x in sources)
 
-    lib_name = shared_lib_name([source.module for source in sources]) if use_shared_lib else None
+    groups = construct_groups(sources, separate, use_shared_lib)
 
-    # We let the test harness make us skip doing the full compilation
+    # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
-    # TODO: Be able to do this based on file mtimes?
-    if not skip_cgen:
-        cfiles, ops_text = generate_c(sources, options, lib_name,
-                                      compiler_options=compiler_options)
+    if not skip_cgen_input:
+        group_cfiles, ops_text = generate_c(sources, options, groups,
+                                            compiler_options=compiler_options)
         # TODO: unique names?
         with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
             f.write(ops_text)
+    else:
+        group_cfiles = skip_cgen_input
+
+    # Write out the generated C and collect the files for each group
+    group_cfilenames = []  # type: List[Tuple[List[str], List[str]]]
+    for cfiles in group_cfiles:
         cfilenames = []
         for cfile, ctext in cfiles:
             cfile = os.path.join(build_dir, cfile)
             write_file(cfile, ctext)
             if os.path.splitext(cfile)[1] == '.c':
                 cfilenames.append(cfile)
-    else:
-        cfilenames = glob.glob(os.path.join(build_dir, '*.c'))
+
+        deps = [os.path.join(build_dir, dep) for dep in get_header_deps(cfiles)]
+        group_cfilenames.append((cfilenames, deps))
 
     cflags = []  # type: List[str]
     if compiler.compiler_type == 'unix':
@@ -362,23 +472,30 @@ def mypycify(paths: List[str],
                 '/wd9025',  # warning about overriding /GL
             ]
 
-    # Copy the runtime library in
-    for name in ['CPy.c', 'getargs.c']:
-        rt_file = os.path.join(build_dir, name)
-        with open(os.path.join(include_dir(), name), encoding='utf-8') as f:
-            write_file(rt_file, f.read())
-        cfilenames.append(rt_file)
+    # In multi-file mode, copy the runtime library in.
+    # Otherwise it just gets #included to save on compiler invocations
+    shared_cfilenames = []
+    if multi_file:
+        for name in ['CPy.c', 'getargs.c']:
+            rt_file = os.path.join(build_dir, name)
+            with open(os.path.join(include_dir(), name), encoding='utf-8') as f:
+                write_file(rt_file, f.read())
+            shared_cfilenames.append(rt_file)
 
-    if use_shared_lib:
-        assert lib_name
-        extensions = build_using_shared_lib(sources, lib_name, cfilenames, build_dir, cflags)
-    else:
-        extensions = build_single_module(sources, cfilenames, cflags)
+    extensions = []
+    for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
+        if use_shared_lib:
+            assert lib_name
+            extensions.extend(build_using_shared_lib(
+                group_sources, lib_name, cfilenames + shared_cfilenames, deps, build_dir, cflags))
+        else:
+            extensions.extend(build_single_module(
+                group_sources, cfilenames + shared_cfilenames, cflags))
 
     return extensions
 
 
-# For backwards compatability we define this as an alias.  Previous
+# For backwards compatibility we define this as an alias.  Previous
 # versions used to require using it, and it is conceivable that future
 # versions will need it also.
 MypycifyBuildExt = build_ext

@@ -41,6 +41,7 @@ from typing import (
     List as _List, Tuple as _Tuple, Dict as _Dict, Iterable as _Iterable,
     IO as _IO, cast as _cast, Optional as _Optional, Type as _Type,
 )
+from typing_extensions import Literal
 from types import TracebackType as _TracebackType
 
 try:
@@ -419,8 +420,10 @@ class _TemporaryFileWrapper:
             self.close()
             return result
     else:
-        def __exit__(self, exc: _Type[BaseException], value: BaseException,
-                     tb: _Optional[_TracebackType]) -> bool:
+        def __exit__(self,  # type: ignore[misc]
+                     exc: _Type[BaseException],
+                     value: BaseException,
+                     tb: _Optional[_TracebackType]) -> Literal[False]:
             self.file.__exit__(exc, value, tb)
             return False
 
@@ -554,7 +557,7 @@ class SpooledTemporaryFile:
         return self
 
     def __exit__(self, exc: type, value: BaseException,
-                 tb: _TracebackType) -> bool:
+                 tb: _TracebackType) -> Literal[False]:
         self._file.close()
         return False
 
@@ -691,7 +694,7 @@ class TemporaryDirectory(object):
                            ResourceWarning)
 
     def __exit__(self, exc: type, value: BaseException,
-                 tb: _TracebackType) -> bool:
+                 tb: _TracebackType) -> Literal[False]:
         self.cleanup()
         return False
 

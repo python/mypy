@@ -418,9 +418,8 @@ from native import primes
 print(primes(3))
 print(primes(13))
 [out]
-[[0, 0, 1, 1]
-[[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
--- argh ]]
+\[0, 0, 1, 1]
+\[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
 
 
 [case testListPrims]
@@ -3301,6 +3300,10 @@ class BoxedThing:
 class Subclass2(BoxedThing):
     pass
 
+class UsesNotImplemented:
+    def __eq__(self, b: object) -> bool:
+        return NotImplemented
+
 def index_into(x : Any, y : Any) -> Any:
     return x[y]
 
@@ -3345,6 +3348,8 @@ assert is_truthy(Item(''))
 assert is_truthy(Item('a'))
 assert not is_truthy(Subclass1(''))
 assert is_truthy(Subclass1('a'))
+
+assert UsesNotImplemented() != object()
 
 internal_index_into()
 [out]
@@ -4346,6 +4351,9 @@ class C:
     def foo(self) -> None:
         def bar(self) -> None:
             pass
+
+def C___foo() -> None: pass
+
 class D:
     def foo(self) -> None:
         def bar(self) -> None:
@@ -4633,3 +4641,43 @@ with assertRaises(TypeError, "errored formatting real type!"):
 
 with assertRaises(TypeError, "tuple[int, native.A] object expected; got tuple[int, int]"):
     g((20, 30))
+
+[case testComprehensionShadowBinder]
+def foo(x: object) -> object:
+    if isinstance(x, list):
+        return tuple(x for x in x), x
+    return None
+
+[file driver.py]
+from native import foo
+
+assert foo(None) == None
+assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
+
+[case testReexport]
+# Test that we properly handle accessing values that have been reexported
+import a
+def f(x: int) -> int:
+    return a.g(x) + a.foo + a.b.foo
+
+whatever = a.A()
+
+[file a.py]
+from b import g as g, A as A, foo as foo
+import b
+
+[file b.py]
+def g(x: int) -> int:
+    return x + 1
+
+class A:
+    pass
+
+foo = 20
+
+[file driver.py]
+from native import f, whatever
+import b
+
+assert f(20) == 61
+assert isinstance(whatever, b.A)

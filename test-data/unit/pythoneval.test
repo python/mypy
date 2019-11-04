@@ -21,12 +21,11 @@ print(list(reversed([1,2,3])))
 print(list(reversed('abc')))
 print(list(reversed(A())))
 [out]
--- Duplicate [ at line beginning.
-[[4, 3, 2, 1, 0]
-[[3, 2, 1]
-[['c', 'b', 'a']
-[['f', 'o', 'o']
--- ]]]]]
+-- Escape bracket at line beginning
+\[4, 3, 2, 1, 0]
+\[3, 2, 1]
+\['c', 'b', 'a']
+\['f', 'o', 'o']
 
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
@@ -90,8 +89,7 @@ x2
 import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
-[[1, 2, 3, 4]
--- ]
+\[1, 2, 3, 4]
 
 [case testInheritedClassAttribute]
 import typing
@@ -121,11 +119,12 @@ math
 
 [case testSpecialAttributes]
 import typing
-class A: pass
-print(object().__doc__)
+class A:
+    """A docstring!"""
+print(A().__doc__)
 print(A().__class__)
 [out]
-The most base type
+A docstring!
 <class '__main__.A'>
 
 [case testFunctionAttributes]
@@ -294,11 +293,37 @@ reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.TextIO'
 _testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.TextIO'
 _testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:3: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:5: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInference]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open())
+reveal_type(p.open('r'))
+reveal_type(p.open('rb'))
+mode = 'rb'
+reveal_type(p.open(mode))
+[out]
+_program.py:3: note: Revealed type is 'typing.TextIO'
+_program.py:4: note: Revealed type is 'typing.TextIO'
+_program.py:5: note: Revealed type is 'typing.BinaryIO'
+_program.py:7: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInferenceSpecialCases]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open(mode='rb', errors='replace'))
+reveal_type(p.open(errors='replace', mode='rb'))
+mode = 'rb'
+reveal_type(p.open(mode=mode, errors='replace'))
+[out]
+_program.py:3: note: Revealed type is 'typing.BinaryIO'
+_program.py:4: note: Revealed type is 'typing.BinaryIO'
+_program.py:6: note: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -773,14 +798,20 @@ n = 4
 t = ('',) * n
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
 t = n * ('',)
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -1139,7 +1170,7 @@ reveal_type(asyncio.gather(*[asyncio.sleep(1), asyncio.sleep(1)]))
 [out]
 _testAsyncioGatherPreciseType.py:9: note: Revealed type is 'builtins.str'
 _testAsyncioGatherPreciseType.py:10: note: Revealed type is 'builtins.str'
-_testAsyncioGatherPreciseType.py:11: note: Revealed type is 'asyncio.futures.Future[builtins.tuple[Any]]'
+_testAsyncioGatherPreciseType.py:11: note: Revealed type is 'asyncio.futures.Future[builtins.list[Any]]'
 
 [case testMultipleInheritanceWorksWithTupleTypeGeneric]
 from typing import SupportsAbs, NamedTuple
@@ -1231,7 +1262,7 @@ bar: Type[C]
 
 bar * 4 + bar + 3  # should not produce more errors
 [out]
-_testMetaclassOpAccessAny.py:2: error: Cannot find module named 'nonexistent'
+_testMetaclassOpAccessAny.py:2: error: Cannot find implementation or library stub for module named 'nonexistent'
 _testMetaclassOpAccessAny.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testEnumIterationAndPreciseElementType]
@@ -1405,3 +1436,58 @@ _testStrictEqualityWhitelist.py:5: error: Non-overlapping equality check (left o
 _testStrictEqualityWhitelist.py:11: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "Set[str]")
 _testStrictEqualityWhitelist.py:12: error: Non-overlapping equality check (left operand type: "ValuesView[int]", right operand type: "Set[int]")
 _testStrictEqualityWhitelist.py:13: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "List[int]")
+
+[case testUnreachableWithStdlibContextManagers]
+# mypy: warn-unreachable, strict-optional
+
+from contextlib import suppress
+
+# This test overlaps with some of the warn-unreachable tests in check-unreachable-code,
+# but 'open(...)' is a very common function so we want to make sure we don't regress
+# against it specifically
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# contextlib.suppress is less common, but it's a fairly prominent example of an
+# exception-suppressing context manager, so it'd be good to double-check.
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagers.py:11: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagers.py:15: error: Missing return statement
+
+[case testUnreachableWithStdlibContextManagersNoStrictOptional]
+# mypy: warn-unreachable, no-strict-optional
+
+from contextlib import suppress
+
+# When strict-optional is disabled, 'open' should still behave in the same way as before
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# ...but unfortunately, we can't
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
+
+[case testNamedTupleAtRunTime]
+from typing import NamedTuple
+
+class A:
+    def __init__(self) -> None:
+        self.b = NamedTuple('x', [('s', str), ('n', int)])
+
+reveal_type(A().b)
+[out]
+_testNamedTupleAtRunTime.py:5: error: NamedTuple type as an attribute is not supported
+_testNamedTupleAtRunTime.py:7: note: Revealed type is 'Any'

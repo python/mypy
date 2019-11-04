@@ -146,7 +146,7 @@ def while_loop() -> int:
 def free_vars(foo: int, bar: int) -> int:
     x = 1
     y = 2
-    def g() -> None:
+    def g():  # type: ignore  # missing type annotation for testing
         nonlocal y
         y = 3
         nonlocal bar

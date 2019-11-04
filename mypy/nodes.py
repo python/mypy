@@ -559,7 +559,7 @@ class Argument(Node):
                  end_line: Optional[int] = None) -> None:
         super().set_line(target, column, end_line)
 
-        if self.initializer:
+        if self.initializer and self.initializer.line < 0:
             self.initializer.set_line(self.line, self.column, self.end_line)
 
         self.variable.set_line(self.line, self.column, self.end_line)
@@ -2224,13 +2224,21 @@ class TempNode(Expression):
     # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
     no_rhs = False  # type: bool
 
-    def __init__(self, typ: 'mypy.types.Type', no_rhs: bool = False) -> None:
+    def __init__(self,
+                 typ: 'mypy.types.Type',
+                 no_rhs: bool = False,
+                 *,
+                 context: Optional[Context] = None) -> None:
+        """Construct a dummy node; optionally borrow line/column from context object."""
         super().__init__()
         self.type = typ
         self.no_rhs = no_rhs
+        if context is not None:
+            self.line = context.line
+            self.column = context.column
 
     def __repr__(self) -> str:
-        return 'TempNode(%s)' % str(self.type)
+        return 'TempNode:%d(%s)' % (self.line, str(self.type))
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_temp_node(self)
@@ -2346,12 +2354,6 @@ class TypeInfo(SymbolNode):
 
     # Is this a newtype type?
     is_newtype = False
-
-    # If during analysis of ClassDef associated with this TypeInfo a syntethic
-    # type (NamedTuple or TypedDict) was generated, store the corresponding
-    # TypeInfo here. (This attribute does not need to be serialized, it is only
-    # needed during the semantic passes.)
-    replaced = None  # type: Optional[TypeInfo]
 
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.
@@ -2986,8 +2988,8 @@ class SymbolTableNode:
             assert self.node is not None, '%s:%s' % (prefix, name)
             if prefix is not None:
                 fullname = self.node.fullname()
-                if (fullname is not None and '.' in fullname and
-                        fullname != prefix + '.' + name
+                if (fullname is not None and '.' in fullname
+                        and fullname != prefix + '.' + name
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
                     data['cross_ref'] = fullname

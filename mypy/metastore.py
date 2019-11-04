@@ -47,7 +47,7 @@ class MetadataStore:
         If mtime is specified, set it as the mtime of the entry. Otherwise,
         the current time is used.
 
-        Returns True if the entry is succesfully written, False otherwise.
+        Returns True if the entry is successfully written, False otherwise.
         """
 
     @abstractmethod

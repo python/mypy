@@ -137,7 +137,7 @@ def f():
 [case testConfigFile]
 # cmd: mypy main.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 2.7
 [file main.py]
 def f():
@@ -149,7 +149,7 @@ def f():
 [case testErrorContextConfig]
 # cmd: mypy main.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 show_error_context=True
 [file main.py]
 def f() -> None:
@@ -161,7 +161,7 @@ main.py:2: error: Unsupported operand types for + ("int" and "str")
 [case testAltConfigFile]
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
-[[mypy]
+\[mypy]
 python_version = 2.7
 [file main.py]
 def f():
@@ -173,7 +173,7 @@ def f():
 [case testNoConfigFile]
 # cmd: mypy main.py --config-file=
 [file mypy.ini]
-[[mypy]
+\[mypy]
 warn_unused_ignores = True
 [file main.py]
 # type: ignore
@@ -181,11 +181,11 @@ warn_unused_ignores = True
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_untyped_defs = True
-[[mypy-y]
+\[mypy-y]
 disallow_untyped_defs = False
-[[mypy-z]
+\[mypy-z]
 disallow_untyped_calls = True
 [file x.py]
 def f(a):
@@ -210,10 +210,10 @@ x.py:1: error: Function is missing a type annotation
 [case testPerFileConfigSectionMultipleMatchesDisallowed]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
-[[mypy]
-[[mypy-*x*]
+\[mypy]
+\[mypy-*x*]
 disallow_untyped_defs = True
-[[mypy-*y*]
+\[mypy-*y*]
 disallow_untyped_calls = True
 [file xx.py]
 def f(a): pass
@@ -235,8 +235,8 @@ mypy.ini: [mypy-*y*]: Patterns must be fully-qualified module names, optionally 
 [case testMultipleGlobConfigSection]
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
-[[mypy]
-[[mypy-x.*,z.*]
+\[mypy]
+\[mypy-x.*,z.*]
 disallow_untyped_defs = True
 [file x.py]
 def f(a): pass
@@ -258,7 +258,7 @@ mypy.ini: No [mypy] section in config file
 [case testConfigErrorUnknownFlag]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 bad = 0
 [out]
 mypy.ini: [mypy]: Unrecognized option: bad = 0
@@ -267,7 +267,7 @@ mypy.ini: [mypy]: Unrecognized option: bad = 0
 [case testConfigErrorBadFlag]
 # cmd: mypy a.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow-untyped-defs = True
 [file a.py]
 def f():
@@ -279,7 +279,7 @@ mypy.ini: [mypy]: Unrecognized option: disallow-untyped-defs = True
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_missing_imports = nah
 [out]
 mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
@@ -288,8 +288,8 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 [case testConfigErrorNotPerFile]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
-[[mypy-*]
+\[mypy]
+\[mypy-*]
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
@@ -298,7 +298,7 @@ mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (py
 [case testConfigMypyPath]
 # cmd: mypy file.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 mypy_path =
     foo:bar
     , baz
@@ -316,15 +316,15 @@ from baz import baz
 baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
-file.py:1: error: Cannot find module named 'no_stubs'
+file.py:1: error: Cannot find implementation or library stub for module named 'no_stubs'
 file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testIgnoreErrorsConfig]
 # cmd: mypy x.py y.py
 [file mypy.ini]
-[[mypy]
-[[mypy-x]
+\[mypy]
+\[mypy-x]
 ignore_errors = True
 [file x.py]
 "" + 0
@@ -345,7 +345,7 @@ a.x + ''  # E
 a.y  # E
 a + 0  # E
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = normal
 [file a.py]
 x = 0
@@ -367,7 +367,7 @@ a.x + ''
 a.y
 a + 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = silent
 [file a.py]
 x = 0
@@ -386,7 +386,7 @@ reveal_type(x)  # Expect Any
 import a
 reveal_type(a.x)  # Expect Any
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = skip
 [file a.py]
 /  # No error reported
@@ -402,7 +402,7 @@ reveal_type(x)  # Expect Any
 import a  # Error reported here
 reveal_type(a.x)  # Expect Any
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = error
 [file a.py]
 /  # No error reported
@@ -415,14 +415,14 @@ main.py:4: note: Revealed type is 'Any'
 [case testConfigFollowImportsSelective]
 # cmd: mypy main.py
 [file mypy.ini]
-[[mypy]
-[[mypy-normal]
+\[mypy]
+\[mypy-normal]
 follow_imports = normal
-[[mypy-silent]
+\[mypy-silent]
 follow_imports = silent
-[[mypy-skip]
+\[mypy-skip]
 follow_imports = skip
-[[mypy-error]
+\[mypy-error]
 follow_imports = error
 [file main.py]
 import normal
@@ -458,10 +458,10 @@ main.py:8: note: Revealed type is 'Any'
 import missing  # Expect error here
 reveal_type(missing.x)  # Expect Any
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_missing_imports = False
 [out]
-main.py:1: error: Cannot find module named 'missing'
+main.py:1: error: Cannot find implementation or library stub for module named 'missing'
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
@@ -471,7 +471,7 @@ main.py:2: note: Revealed type is 'Any'
 import missing  # No error here
 reveal_type(missing.x)  # Expect Any
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_missing_imports = True
 [out]
 main.py:2: note: Revealed type is 'Any'
@@ -479,8 +479,8 @@ main.py:2: note: Revealed type is 'Any'
 [case testConfigNoErrorForUnknownXFlagInSubsection]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
-[[mypy-foo]
+\[mypy]
+\[mypy-foo]
 x_bad = 0
 [out]
 
@@ -508,14 +508,14 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find module named 'a.b'
+main.py:1: error: Cannot find implementation or library stub for module named 'a.b'
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 1.0
 [out]
 mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
@@ -524,7 +524,7 @@ mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be
 [case testPythonVersionTooOld26]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 2.6
 [out]
 mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
@@ -533,7 +533,7 @@ mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
 [case testPythonVersionTooOld33]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 3.3
 [out]
 mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
@@ -542,7 +542,7 @@ mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or hi
 [case testPythonVersionTooNew28]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 2.8
 [out]
 mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
@@ -551,7 +551,7 @@ mypy.ini: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
 [case testPythonVersionTooNew40]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 4.0
 [out]
 mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
@@ -560,28 +560,47 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 [case testPythonVersionAccepted27]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 2.7
 [out]
 
 [case testPythonVersionAccepted34]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 3.4
 [out]
 
 [case testPythonVersionAccepted36]
 # cmd: mypy -c pass
 [file mypy.ini]
-[[mypy]
+\[mypy]
 python_version = 3.6
 [out]
+
+-- This should be a dumping ground for tests of plugins that are sensitive to
+-- typeshed changes.
+[case testTypeshedSensitivePlugins]
+# cmd: mypy int_pow.py
+
+[file int_pow.py]
+a = 1
+b = a + 2
+reveal_type(a**0) # N: Revealed type is 'builtins.int'
+reveal_type(a**1) # N: Revealed type is 'builtins.int'
+reveal_type(a**2) # N: Revealed type is 'builtins.int'
+reveal_type(a**-0) # N: Revealed type is 'builtins.int'
+reveal_type(a**-1) # N: Revealed type is 'builtins.float'
+reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
+reveal_type(a**b) # N: Revealed type is 'Any'
+reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
+reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
+a.__pow__() # E: Too few arguments for "__pow__" of "int"
 
 [case testDisallowAnyUnimported]
 # cmd: mypy main.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_any_unimported = True
 ignore_missing_imports = True
 [file main.py]
@@ -594,8 +613,8 @@ main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 [case testDisallowAnyExplicitDefSignature]
 # cmd: mypy m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -619,8 +638,8 @@ m.py:9: error: Explicit "Any" is not allowed
 # cmd: mypy --python-version=3.6 m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -639,8 +658,8 @@ m.py:5: error: Explicit "Any" is not allowed
 # cmd: mypy --python-version=3.6 m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -653,8 +672,8 @@ m.py:2: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -673,8 +692,8 @@ m.py:6: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -695,8 +714,8 @@ m.py:4: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -720,8 +739,8 @@ m.py:10: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -738,8 +757,8 @@ m.py:5: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -755,8 +774,8 @@ m.py:3: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -770,8 +789,8 @@ m.py:3: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -788,8 +807,8 @@ m.py:4: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -806,8 +825,8 @@ m.py:4: error: Explicit "Any" is not allowed
 # cmd: mypy m.py
 
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -822,8 +841,8 @@ m.py:4: error: Explicit "Any" is not allowed
 [case testDisallowAnyGenericsTupleNoTypeParams]
 # cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -843,8 +862,8 @@ m.py:8: error: Missing type parameters for generic type "Tuple"
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
 # cmd: mypy m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -858,8 +877,8 @@ m.py:3: error: Missing type parameters for generic type "Tuple"
 [case testDisallowAnyGenericsTypeType]
 # cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -878,8 +897,8 @@ m.py:8: error: Missing type parameters for generic type "Type"
 [case testDisallowAnyGenericsAliasGenericType]
 # cmd: mypy m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -895,8 +914,8 @@ m.py:5: error: Missing type parameters for generic type "L"
 [case testDisallowAnyGenericsGenericAlias]
 # cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -919,8 +938,8 @@ m.py:11: error: Missing type parameters for generic type "A"
 [case testDisallowAnyGenericsPlainList]
 # cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -943,8 +962,8 @@ m.py:9: error: Missing type parameters for generic type "List"
 [case testDisallowAnyGenericsCustomGenericClass]
 # cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -966,8 +985,8 @@ m.py:10: error: Missing type parameters for generic type "G"
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -988,8 +1007,8 @@ m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generi
 [case testDisallowAnyGenericsTypingCollections]
 # cmd: mypy m.py
 [file mypy.ini]
-[[mypy]
-[[mypy-m]
+\[mypy]
+\[mypy-m]
 disallow_any_generics = True
 
 [file m.py]
@@ -1010,9 +1029,9 @@ m.py:7: error: Missing type parameters for generic type "FrozenSet"
 [case testDisallowSubclassingAny]
 # cmd: mypy m.py y.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_subclassing_any = True
-[[mypy-m]
+\[mypy-m]
 disallow_subclassing_any = False
 
 [file m.py]
@@ -1046,21 +1065,21 @@ from typing import List
 def g(x: List) -> None: pass
 g(None)
 [file mypy.ini]
-[[mypy]
+\[mypy]
 allow_any_generics = True
-[[mypy-a.*]
+\[mypy-a.*]
 ignore_errors = True
-[[mypy-a.b.*]
+\[mypy-a.b.*]
 disallow_any_generics = True
 ignore_errors = True
-[[mypy-a.b.c.*]
+\[mypy-a.b.c.*]
 ignore_errors = True
-[[mypy-a.b.c.d.*]
+\[mypy-a.b.c.d.*]
 ignore_errors = True
-[[mypy-a.b.c.d.e.*]
+\[mypy-a.b.c.d.e.*]
 ignore_errors = True
 strict_optional = True
-[[mypy-a.b.c.d.e]
+\[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
 a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
@@ -1069,7 +1088,7 @@ a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; 
 [case testDisallowUntypedDefsAndGenerics]
 # cmd: mypy a.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_untyped_defs = True
 disallow_any_generics = True
 [file a.py]
@@ -1127,7 +1146,7 @@ c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 [case testSrcPEP420Packages]
 # cmd: mypy -p anamespace --namespace-packages
 [file mypy.ini]
-[[mypy]]
+\[mypy]]
 mypy_path = src
 [file src/setup.cfg]
 [file src/anamespace/foo/__init__.py]
@@ -1140,8 +1159,8 @@ src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", e
 [case testFollowImportStubs1]
 # cmd: mypy main.py
 [file mypy.ini]
-[[mypy]
-[[mypy-math.*]
+\[mypy]
+\[mypy-math.*]
 follow_imports = error
 follow_imports_for_stubs = True
 [file main.py]
@@ -1154,8 +1173,8 @@ main.py:1: note: (Using --follow-imports=error, module not passed on command lin
 [case testFollowImportStubs2]
 # cmd: mypy main.py
 [file mypy.ini]
-[[mypy]
-[[mypy-math.*]
+\[mypy]
+\[mypy-math.*]
 follow_imports = skip
 follow_imports_for_stubs = True
 [file main.py]
@@ -1204,23 +1223,23 @@ s1.py:2: error: Incompatible return value type (got "int", expected "str")
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 warn_unused_configs = True
 incremental = False
-[[mypy-bar]
-[[mypy-foo]
-[[mypy-baz.*]
-[[mypy-quux.*]
-[[mypy-spam.*]
-[[mypy-spam.eggs]
-[[mypy-emarg.*]
-[[mypy-emarg.hatch]
+\[mypy-bar]
+\[mypy-foo]
+\[mypy-baz.*]
+\[mypy-quux.*]
+\[mypy-spam.*]
+\[mypy-spam.eggs]
+\[mypy-emarg.*]
+\[mypy-emarg.hatch]
 -- Currently we don't treat an unstructured pattern like a.*.b as unused
 -- if it matches another section (like a.x.b). This would be reasonable
 -- to change. '
-[[mypy-a.*.b]
-[[mypy-a.*.c]
-[[mypy-a.x.b]
+\[mypy-a.*.b]
+\[mypy-a.*.c]
+\[mypy-a.x.b]
 [file foo.py]
 [file quux.py]
 [file spam/__init__.py]
@@ -1232,15 +1251,15 @@ Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*]
 [case testConfigUnstructuredGlob]
 # cmd: mypy emarg foo
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_errors = true
-[[mypy-*.lol]
+\[mypy-*.lol]
 ignore_errors = false
-[[mypy-emarg.*]
+\[mypy-emarg.*]
 ignore_errors = false
-[[mypy-emarg.*.villip.*]
+\[mypy-emarg.*.villip.*]
 ignore_errors = true
-[[mypy-emarg.hatch.villip.mankangulisk]
+\[mypy-emarg.hatch.villip.mankangulisk]
 ignore_errors = false
 [file emarg/__init__.py]
 [file emarg/foo.py]
@@ -1299,7 +1318,7 @@ import d
 [case testIniFiles]
 # cmd: mypy
 [file mypy.ini]
-[[mypy]
+\[mypy]
 files = a.py, b.py
 [file a.py]
 fail
@@ -1312,7 +1331,7 @@ a.py:1: error: Name 'fail' is not defined
 [case testIniFilesGlobbing]
 # cmd: mypy
 [file mypy.ini]
-[[mypy]
+\[mypy]
 files = **/*.py
 [file a/b.py]
 fail
@@ -1322,12 +1341,120 @@ fail
 a/b.py:1: error: Name 'fail' is not defined
 c.py:1: error: Name 'fail' is not defined
 
-
 [case testIniFilesCmdlineOverridesConfig]
 # cmd: mypy override.py
 [file mypy.ini]
-[[mypy]
+\[mypy]
 files = config.py
 [out]
 mypy: can't read file 'override.py': No such file or directory
 == Return code: 2
+
+[case testErrorSummaryOnSuccess]
+# cmd: mypy --error-summary good.py
+[file good.py]
+x = 2 + 2
+[out]
+Success: no issues found in 1 source file
+== Return code: 0
+
+[case testErrorSummaryOnFail]
+# cmd: mypy --error-summary bad.py
+[file bad.py]
+42 + 'no'
+[out]
+bad.py:1: error: Unsupported operand types for + ("int" and "str")
+Found 1 error in 1 file (checked 1 source file)
+
+[case testErrorSummaryOnFailNotes]
+# cmd: mypy --error-summary bad.py
+[file bad.py]
+from typing import List
+x = []  # type: List[float]
+y = []  # type: List[int]
+x = y
+[out]
+bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
+bad.py:4: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+bad.py:4: note: Consider using "Sequence" instead, which is covariant
+Found 1 error in 1 file (checked 1 source file)
+
+[case testErrorSummaryOnFailTwoErrors]
+# cmd: mypy --error-summary bad.py foo.py
+[file bad.py]
+42 + 'no'
+42 + 'no'
+[file foo.py]
+[out]
+bad.py:1: error: Unsupported operand types for + ("int" and "str")
+bad.py:2: error: Unsupported operand types for + ("int" and "str")
+Found 2 errors in 1 file (checked 2 source files)
+
+[case testErrorSummaryOnFailTwoFiles]
+# cmd: mypy --error-summary bad.py bad2.py
+[file bad.py]
+42 + 'no'
+[file bad2.py]
+42 + 'no'
+[out]
+bad2.py:1: error: Unsupported operand types for + ("int" and "str")
+bad.py:1: error: Unsupported operand types for + ("int" and "str")
+Found 2 errors in 2 files (checked 2 source files)
+
+[case testErrorSummaryOnBadUsage]
+# cmd: mypy --error-summary missing.py
+[out]
+mypy: can't read file 'missing.py': No such file or directory
+== Return code: 2
+
+[case testShowSourceCodeSnippetsWrappedFormatting]
+# cmd: mypy --pretty --python-version=3.6 some_file.py
+[file some_file.py]
+from typing import Union
+
+42 + 'no way'
+
+class OneCustomClassName:
+    def some_interesting_method(self, arg: AnotherCustomClassDefinedBelow) -> AnotherCustomClassDefinedBelow:
+        ...
+
+class AnotherCustomClassDefinedBelow:
+    def another_even_more_interesting_method(self, arg: Union[int, str, float]) -> None:
+        self.very_important_attribute_with_long_name: OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
+[out]
+some_file.py:3: error: Unsupported operand types for + ("int" and "str")
+    42 + 'no way'
+         ^
+some_file.py:11: error: Incompatible types in assignment (expression has type
+"AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
+    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
+                                                        ^
+some_file.py:11: error: Argument 1 to "some_interesting_method" of
+"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"AnotherCustomClassDefinedBelow"
+    ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
+                                                                         ^
+
+[case testShowSourceCodeSnippetsBlockingError]
+# cmd: mypy --pretty --show-error-codes some_file.py
+[file some_file.py]
+it_looks_like_we_started_typing_something_but_then. = did_not_notice(an_extra_dot)
+[out]
+some_file.py:1: error: invalid syntax  [syntax]
+    ...ooks_like_we_started_typing_something_but_then. = did_not_notice(an_ex...
+                                                        ^
+== Return code: 2
+
+[case testSpecialTypeshedGenericNote]
+# cmd: mypy --disallow-any-generics --python-version=3.6 test.py
+[file test.py]
+from os import PathLike
+from queue import Queue
+
+p: PathLike
+q: Queue
+[out]
+test.py:4: error: Missing type parameters for generic type "_PathLike"
+test.py:4: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
+test.py:5: error: Missing type parameters for generic type "Queue"
+test.py:5: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime

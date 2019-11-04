@@ -1,8 +1,9 @@
-"""The new semantic analyzer (work in progress).
+"""The semantic analyzer.
 
 Bind names to definitions and do various other simple consistency
-checks. It also detects special forms such as NamedTuple and cast().
-Multiple analysis iterations may be needed to analyze forward
+checks.  Populate symbol tables.  The semantic analyzer also detects
+special forms which reuse generic syntax such as NamedTuple and
+cast().  Multiple analysis iterations may be needed to analyze forward
 references and import cycles. Each iteration "fills in" additional
 bindings and references until everything has been bound.
 
@@ -50,7 +51,7 @@ Some important properties:
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 from typing_extensions import Final
 
@@ -84,11 +85,12 @@ from mypy.messages import best_matches, MessageBuilder, pretty_or
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types
 )
+from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -448,7 +450,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail)
+                    fix_instance_types(target, self.fail, self.note)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -606,7 +608,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # has external return type `Coroutine[Any, Any, T]`.
                 any_type = AnyType(TypeOfAny.special_form)
                 ret_type = self.named_type_or_none('typing.Coroutine',
-                    [any_type, any_type, defn.type.ret_type])
+                                                   [any_type, any_type, defn.type.ret_type])
                 assert ret_type is not None, "Internal error: typing.Coroutine not found"
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
 
@@ -615,11 +617,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Only non-static methods are special.
         functype = func.type
         if not func.is_static:
+            if func.name() in ['__init_subclass__', '__class_getitem__']:
+                func.is_class = True
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
             elif isinstance(functype, CallableType):
-                if func.name() == '__init_subclass__':
-                    func.is_class = True
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
                     leading_type = fill_typevars(info)  # type: Type
@@ -1108,7 +1110,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
         else:
-            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
+            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
+                defn, self.is_stub_file)
         if is_named_tuple:
             if info is None:
                 self.mark_incomplete(defn.name, defn)
@@ -1227,7 +1230,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if declared_tvars:
                     self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
                 removed.append(i)
-                tvars, is_protocol = result
+                tvars = result[0]
+                is_protocol |= result[1]
                 declared_tvars.extend(tvars)
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
@@ -1538,6 +1542,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         * __metaclass__ attribute in Python 2
         * six.with_metaclass(M, B1, B2, ...)
         * @six.add_metaclass(M)
+        * future.utils.with_metaclass(M, B1, B2, ...)
+        * past.utils.with_metaclass(M, B1, B2, ...)
         """
 
         # Look for "__metaclass__ = <metaclass>" in Python 2
@@ -1558,7 +1564,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
                 base_expr.callee.accept(self)
-                if (base_expr.callee.fullname == 'six.with_metaclass'
+                if (base_expr.callee.fullname in {'six.with_metaclass',
+                                                  'future.utils.with_metaclass',
+                                                  'past.utils.with_metaclass'}
                         and len(base_expr.args) >= 1
                         and all(kind == ARG_POS for kind in base_expr.arg_kinds)):
                     with_meta_expr = base_expr.args[0]
@@ -2118,13 +2126,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Check if s defines a namedtuple."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
             return True  # This is a valid and analyzed named tuple definition, nothing to do here.
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
                                                                           self.is_func_scope())
         if not is_named_tuple:
+            return False
+        if isinstance(s.lvalues[0], MemberExpr):
+            self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
@@ -2482,7 +2493,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args  # type: ignore
-        fix_instance_types(res, self.fail)
+        fix_instance_types(res, self.fail, self.note)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
@@ -3118,6 +3129,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
                             lnode.kind = self.current_symbol_kind()
+                            assert rnode.node is not None
                             lnode.node = rnode.node
 
     def process__all__(self, s: AssignmentStmt) -> None:
@@ -4243,6 +4255,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         redefinitions (such as e.g. variable redefined as a class).
         """
         i = 1
+        # Don't serialize redefined nodes. They are likely to have
+        # busted internal references which can cause problems with
+        # serialization and they can't have any external references to
+        # them.
+        symbol.no_serialize = True
         while True:
             if i == 1:
                 new_name = '{}-redefinition'.format(name)
@@ -4540,7 +4557,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 'Did you forget to import it from "{module}"?'
                 ' (Suggestion: "from {module} import {name}")'
             ).format(module=module, name=lowercased[fullname].rsplit('.', 1)[-1])
-            self.note(hint, ctx)
+            self.note(hint, ctx, code=codes.NAME_DEFINED)
 
     def already_defined(self,
                         name: str,
@@ -4605,12 +4622,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
 
-    def note(self, msg: str, ctx: Context) -> None:
+    def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if (not self.options.check_untyped_defs and
                 self.function_stack and
                 self.function_stack[-1].is_dynamic()):
             return
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note')
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note', code=code)
 
     def accept(self, node: Node) -> None:
         try:

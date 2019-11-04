@@ -75,7 +75,7 @@ A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 # flags: --disallow-untyped-defs
 import attr
 @attr.s
-class A:  # E: Function is missing a type annotation for one or more arguments
+class A:
     a = attr.ib()  # E: Need type annotation for 'a'
     _b = attr.ib()  # E: Need type annotation for '_b'
     c = attr.ib(18)  # E: Need type annotation for 'c'
@@ -214,9 +214,9 @@ A(1) != 1
 1 != A(1)
 [builtins fixtures/attr.pyi]
 
-[case testAttrsCmpFalse]
+[case testAttrsEqFalse]
 from attr import attrib, attrs
-@attrs(auto_attribs=True, cmp=False)
+@attrs(auto_attribs=True, eq=False)
 class A:
     a: int
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> __main__.A'
@@ -244,6 +244,57 @@ A(1) != 1
 1 == A(1)
 1 != A(1)
 [builtins fixtures/attr.pyi]
+
+[case testAttrsOrderFalse]
+from attr import attrib, attrs
+@attrs(auto_attribs=True, order=False)
+class A:
+    a: int
+reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> __main__.A'
+reveal_type(A.__eq__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
+reveal_type(A.__ne__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
+
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
+A(1) <= A(2)  # E: Unsupported left operand type for <= ("A")
+A(1) > A(2)  # E: Unsupported left operand type for > ("A")
+A(1) >= A(2)  # E: Unsupported left operand type for >= ("A")
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported left operand type for < ("A")
+A(1) <= 1  # E: Unsupported left operand type for <= ("A")
+A(1) > 1  # E: Unsupported left operand type for > ("A")
+A(1) >= 1  # E: Unsupported left operand type for >= ("A")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported left operand type for < ("int")
+1 <= A(1)  # E: Unsupported left operand type for <= ("int")
+1 > A(1)  # E: Unsupported left operand type for > ("int")
+1 >= A(1)  # E: Unsupported left operand type for >= ("int")
+1 == A(1)
+1 != A(1)
+[builtins fixtures/attr.pyi]
+
+[case testAttrsCmpEqOrderValues]
+from attr import attrib, attrs
+@attrs(cmp=True)
+class DeprecatedTrue:
+   ...
+
+@attrs(cmp=False)
+class DeprecatedFalse:
+   ...
+
+@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`
+class Mixed:
+   ...
+
+@attrs(order=True, eq=False)  # E: eq must be True if order is True
+class Confused:
+   ...
+[builtins fixtures/attr.pyi]
+
 
 [case testAttrsInheritance]
 import attr
@@ -1070,7 +1121,7 @@ reveal_type(B)  # N: Revealed type is 'def (x: __main__.C) -> __main__.B'
 import attr
 
 @attr.s
-class B:  # E: Function is missing a type annotation for one or more arguments
+class B:
     x = attr.ib()  # E: Need type annotation for 'x'
 
 reveal_type(B)  # N: Revealed type is 'def (x: Any) -> __main__.B'
@@ -1169,3 +1220,27 @@ C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib
 [builtins fixtures/bool.pyi]
+
+[case testAttrsDefaultsMroOtherFile]
+import a
+
+[file a.py]
+import attr
+from b import A1, A2
+
+@attr.s
+class Asdf(A1, A2):  # E: Non-default attributes not allowed after default attributes.
+    pass
+
+[file b.py]
+import attr
+
+@attr.s
+class A1:
+    a: str = attr.ib('test')
+
+@attr.s
+class A2:
+    b: int = attr.ib()
+
+[builtins fixtures/list.pyi]

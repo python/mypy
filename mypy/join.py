@@ -6,7 +6,7 @@ from typing import List, Optional
 from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
-    PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny, get_proper_type,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
     ProperType, get_proper_types
 )
 from mypy.maptype import map_instance_to_supertype
@@ -27,8 +27,8 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
-        s = true_or_false(s)
-        t = true_or_false(t)
+        s = mypy.typeops.true_or_false(s)
+        t = mypy.typeops.true_or_false(t)
 
     if isinstance(s, AnyType):
         return s
@@ -43,7 +43,7 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
         return s
 
     if isinstance(declaration, UnionType):
-        return UnionType.make_simplified_union([s, t])
+        return mypy.typeops.make_simplified_union([s, t])
 
     if isinstance(s, NoneType) and not isinstance(t, NoneType):
         s, t = t, s
@@ -68,8 +68,8 @@ def join_types(s: Type, t: Type) -> ProperType:
 
     if (s.can_be_true, s.can_be_false) != (t.can_be_true, t.can_be_false):
         # if types are restricted in different ways, use the more general versions
-        s = true_or_false(s)
-        t = true_or_false(t)
+        s = mypy.typeops.true_or_false(s)
+        t = mypy.typeops.true_or_false(t)
 
     if isinstance(s, AnyType):
         return s
@@ -107,7 +107,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if is_subtype(self.s, t):
             return t
         else:
-            return UnionType.make_simplified_union([self.s, t])
+            return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
         return t
@@ -119,7 +119,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             elif isinstance(self.s, UnboundType):
                 return AnyType(TypeOfAny.special_form)
             else:
-                return UnionType.make_simplified_union([self.s, t])
+                return mypy.typeops.make_simplified_union([self.s, t])
         else:
             return self.s
 
@@ -468,5 +468,5 @@ def join_type_list(types: List[Type]) -> Type:
 def unpack_callback_protocol(t: Instance) -> Optional[Type]:
     assert t.type.is_protocol
     if t.type.protocol_members == ['__call__']:
-        return find_member('__call__', t, t)
+        return find_member('__call__', t, t, is_operator=True)
     return None

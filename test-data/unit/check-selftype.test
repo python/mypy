@@ -533,3 +533,87 @@ class C:
 x: Union[A, C]
 reveal_type(x.same)  # N: Revealed type is 'Union[builtins.int, def () -> __main__.C*]'
 [builtins fixtures/classmethod.pyi]
+
+[case SelfTypeOverloadedClassMethod]
+from lib import Base
+from typing import overload, Tuple
+
+class Sub(Base):
+    @overload
+    @classmethod
+    def make(cls) -> Sub: ...
+    @overload
+    @classmethod
+    def make(cls, num: int) -> Tuple[Sub, ...]: ...
+    @classmethod
+    def make(cls, num=1):
+        ...
+
+class Other(Base): ...
+class Double(Sub): ...
+
+reveal_type(Other.make())  # N: Revealed type is '__main__.Other*'
+reveal_type(Other.make(3))  # N: Revealed type is 'builtins.tuple[__main__.Other*]'
+reveal_type(Double.make())  # N: Revealed type is '__main__.Sub'
+reveal_type(Double.make(3))  # N: Revealed type is 'builtins.tuple[__main__.Sub]'
+[file lib.pyi]
+from typing import overload, TypeVar, Type, Tuple
+
+T = TypeVar('T', bound=Base)
+
+class Base:
+    @overload
+    @classmethod
+    def make(cls: Type[T]) -> T: ...
+    @overload
+    @classmethod
+    def make(cls: Type[T], num: int) -> Tuple[T, ...]: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeClassMethodOnUnion]
+from typing import Type, Union, TypeVar
+
+T = TypeVar('T')
+
+class A:
+    @classmethod
+    def meth(cls: Type[T]) -> T: ...
+class B(A): ...
+class C(A): ...
+
+t: Type[Union[B, C]]
+reveal_type(t.meth)  # N: Revealed type is 'Union[def () -> __main__.B*, def () -> __main__.C*]'
+x = t.meth()
+reveal_type(x)  # N: Revealed type is 'Union[__main__.B*, __main__.C*]'
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeClassMethodOnUnionGeneric]
+from typing import Type, Union, TypeVar, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T]):
+    @classmethod
+    def meth(cls: Type[S]) -> S: ...
+
+t: Type[Union[A[int], A[str]]]
+x = t.meth()
+reveal_type(x)  # N: Revealed type is 'Union[__main__.A*[builtins.int], __main__.A*[builtins.str]]'
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeClassMethodOnUnionList]
+from typing import Type, Union, TypeVar, List
+
+T = TypeVar('T')
+
+class A:
+    @classmethod
+    def meth(cls: Type[T]) -> List[T]: ...
+class B(A): ...
+class C(A): ...
+
+t: Type[Union[B, C]]
+x = t.meth()[0]
+reveal_type(x)  # N: Revealed type is 'Union[__main__.B*, __main__.C*]'
+[builtins fixtures/isinstancelist.pyi]

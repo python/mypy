@@ -7,8 +7,11 @@ lxml>=4.4.0
 psutil>=4.0
 pytest>=5.1.1
 pytest-xdist>=1.22
+# pytest-xdist depends on pytest-forked and 1.1.0 doesn't install clean on macOS 3.5
+pytest-forked>=1.0.0,<1.1.0
 pytest-cov>=2.4.0
 typing>=3.5.2; python_version < '3.5'
 py>=1.5.2
 virtualenv
 setuptools
+importlib-metadata==0.20

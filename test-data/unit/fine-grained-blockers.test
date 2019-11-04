@@ -24,6 +24,29 @@ a.py:1: error: invalid syntax
 main:2: error: Too few arguments for "f"
 ==
 
+[case testParseErrorShowSource]
+# flags: --pretty --show-error-codes
+import a
+a.f()
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+def f(x: int) ->
+[file a.py.3]
+def f(x: int) -> None: pass
+[file a.py.4]
+def f() -> None: pass
+[out]
+==
+a.py:1: error: invalid syntax  [syntax]
+    def f(x: int) ->
+                     ^
+==
+main:3: error: Too few arguments for "f"  [call-arg]
+    a.f()
+    ^
+==
+
 [case testParseErrorMultipleTimes]
 import a
 a.f()
@@ -111,7 +134,7 @@ x x
 [file a.py.3]
 def f() -> None: pass
 [out]
-main:1: error: Cannot find module named 'a'
+main:1: error: Cannot find implementation or library stub for module named 'a'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:1: error: invalid syntax
@@ -254,9 +277,9 @@ x x
 ==
 a.py:1: error: invalid syntax
 ==
-main:1: error: Cannot find module named 'a'
+main:1: error: Cannot find implementation or library stub for module named 'a'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-b.py:1: error: Cannot find module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named 'a'
 
 [case testDeleteFileWithBlockingError-only_when_cache]
 -- Different cache/no-cache tests because:
@@ -275,9 +298,9 @@ x x
 ==
 a.py:1: error: invalid syntax
 ==
-b.py:1: error: Cannot find module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named 'a'
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find module named 'a'
+main:1: error: Cannot find implementation or library stub for module named 'a'
 
 [case testModifyFileWhileBlockingErrorElsewhere]
 import a
@@ -348,7 +371,7 @@ class A: pass
 [builtins fixtures/module.pyi]
 [out]
 ==
-main:1: error: Cannot find module named 'a'
+main:1: error: Cannot find implementation or library stub for module named 'a'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:4: error: "A" has no attribute "f"
@@ -366,7 +389,7 @@ class A:
 [builtins fixtures/module.pyi]
 [out]
 ==
-main:1: error: Cannot find module named 'a'
+main:1: error: Cannot find implementation or library stub for module named 'a'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:1: error: Module 'a' has no attribute 'A'

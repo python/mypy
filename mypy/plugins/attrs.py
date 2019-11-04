@@ -22,6 +22,7 @@ from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
     Overloaded, UnionType, FunctionLike, get_proper_type
 )
+from mypy.typeops import make_simplified_union
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
@@ -109,7 +110,7 @@ class Attribute:
                     types.append(item.arg_types[0])
                 # Make a union of all the valid types.
                 if types:
-                    args = UnionType.make_simplified_union(types)
+                    args = make_simplified_union(types)
                     init_type = ctx.api.anal_type(args)
 
             if self.converter.is_attr_converters_optional and init_type:
@@ -175,6 +176,61 @@ class Attribute:
         )
 
 
+def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> Tuple[bool, bool]:
+    """
+    Validate the combination of *cmp*, *eq*, and *order*. Derive the effective
+    values of eq and order.
+    """
+    cmp = _get_decorator_optional_bool_argument(ctx, 'cmp')
+    eq = _get_decorator_optional_bool_argument(ctx, 'eq')
+    order = _get_decorator_optional_bool_argument(ctx, 'order')
+
+    if cmp is not None and any((eq is not None, order is not None)):
+        ctx.api.fail("Don't mix `cmp` with `eq' and `order`", ctx.reason)
+
+    # cmp takes precedence due to bw-compatibility.
+    if cmp is not None:
+        return cmp, cmp
+
+    # If left None, equality is on and ordering mirrors equality.
+    if eq is None:
+        eq = True
+
+    if order is None:
+        order = eq
+
+    if eq is False and order is True:
+        ctx.api.fail("eq must be True if order is True", ctx.reason)
+
+    return eq, order
+
+
+def _get_decorator_optional_bool_argument(
+    ctx: 'mypy.plugin.ClassDefContext',
+    name: str,
+    default: Optional[bool] = None,
+) -> Optional[bool]:
+    """Return the Optional[bool] argument for the decorator.
+
+    This handles both @decorator(...) and @decorator.
+    """
+    if isinstance(ctx.reason, CallExpr):
+        attr_value = _get_argument(ctx.reason, name)
+        if attr_value:
+            if isinstance(attr_value, NameExpr):
+                if attr_value.fullname == 'builtins.True':
+                    return True
+                if attr_value.fullname == 'builtins.False':
+                    return False
+                if attr_value.fullname == 'builtins.None':
+                    return None
+            ctx.api.fail('"{}" argument must be True or False.'.format(name), ctx.reason)
+            return default
+        return default
+    else:
+        return default
+
+
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: bool = False) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
@@ -192,7 +248,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx)
-    cmp = _get_decorator_bool_argument(ctx, 'cmp', True)
+    eq, order = _determine_eq_order(ctx)
+
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
 
@@ -230,8 +287,10 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     adder = MethodAdder(ctx)
     if init:
         _add_init(ctx, attributes, adder)
-    if cmp:
-        _add_cmp(ctx, adder)
+    if eq:
+        _add_eq(ctx, adder)
+    if order:
+        _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
 
@@ -303,7 +362,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     last_default = False
     last_kw_only = False
 
-    for attribute in attributes:
+    for i, attribute in enumerate(attributes):
         if not attribute.init:
             continue
 
@@ -312,14 +371,18 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
             last_kw_only = True
             continue
 
+        # If the issue comes from merging different classes, report it
+        # at the class definition point.
+        context = attribute.context if i >= len(super_attrs) else ctx.cls
+
         if not attribute.has_default and last_default:
             ctx.api.fail(
                 "Non-default attributes not allowed after default attributes.",
-                attribute.context)
+                context)
         if last_kw_only:
             ctx.api.fail(
                 "Non keyword-only attributes are not allowed after a keyword-only attribute.",
-                attribute.context
+                context
             )
         last_default |= attribute.has_default
 
@@ -524,8 +587,8 @@ def _parse_assignments(
     return lvalues, rvalues
 
 
-def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
-    """Generate all the cmp methods for this class."""
+def _add_eq(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
+    """Generate __eq__ and __ne__ for this class."""
     # For __ne__ and __eq__ the type is:
     #     def __ne__(self, other: object) -> bool
     bool_type = ctx.api.named_type('__builtins__.bool')
@@ -533,7 +596,13 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     args = [Argument(Var('other', object_type), object_type, None, ARG_POS)]
     for method in ['__ne__', '__eq__']:
         adder.add_method(method, args, bool_type)
-    # For the rest we use:
+
+
+def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
+    """Generate all the ordering methods for this class."""
+    bool_type = ctx.api.named_type('__builtins__.bool')
+    object_type = ctx.api.named_type('__builtins__.object')
+    # Make the types be:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
@@ -570,11 +639,21 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
               adder: 'MethodAdder') -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
-    adder.add_method(
-        '__init__',
-        [attribute.argument(ctx) for attribute in attributes if attribute.init],
-        NoneType()
-    )
+    args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
+    if all(
+        # We use getattr rather than instance checks because the variable.type
+        # might be wrapped into a Union or some other type, but even non-Any
+        # types reliably track the fact that the argument was not annotated.
+        getattr(arg.variable.type, "type_of_any", None) == TypeOfAny.unannotated
+        for arg in args
+    ):
+        # This workaround makes --disallow-incomplete-defs usable with attrs,
+        # but is definitely suboptimal as a long-term solution.
+        # See https://github.com/python/mypy/issues/5954 for discussion.
+        for a in args:
+            a.variable.type = AnyType(TypeOfAny.implementation_artifact)
+            a.type_annotation = AnyType(TypeOfAny.implementation_artifact)
+    adder.add_method('__init__', args, NoneType())
 
 
 class MethodAdder:

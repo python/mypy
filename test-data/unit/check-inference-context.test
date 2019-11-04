@@ -656,10 +656,10 @@ f = lambda x: A() # type: Callable[[], A]
 f2 = lambda: A() # type: Callable[[A], A]
 class A: pass
 [out]
-main:2: error: Incompatible types in assignment (expression has type "Callable[[Any], A]", variable has type "Callable[[], A]")
 main:2: error: Cannot infer type of lambda
-main:3: error: Incompatible types in assignment (expression has type "Callable[[], A]", variable has type "Callable[[A], A]")
+main:2: error: Incompatible types in assignment (expression has type "Callable[[Any], A]", variable has type "Callable[[], A]")
 main:3: error: Cannot infer type of lambda
+main:3: error: Incompatible types in assignment (expression has type "Callable[[], A]", variable has type "Callable[[A], A]")
 
 [case testEllipsisContextForLambda]
 from typing import Callable
@@ -697,8 +697,9 @@ def f(func: Callable[[T], S], *z: T, r: S = None) -> S: pass
 f(lambda x: 0 if isinstance(x, B) else 1) # E: Cannot infer type argument 1 of "f"
 f(lambda x: 0 if isinstance(x, B) else 1, A())() # E: "int" not callable
 f(lambda x: x if isinstance(x, B) else B(), A(), r=B())() # E: "B" not callable
-f( # E: Argument 1 to "f" has incompatible type "Callable[[A], A]"; expected "Callable[[A], B]"
-    lambda x: B() if isinstance(x, B) else x, # E: Incompatible return value type (got "A", expected "B")
+f(
+    lambda x:  # E: Argument 1 to "f" has incompatible type "Callable[[A], A]"; expected "Callable[[A], B]"
+        B() if isinstance(x, B) else x, # E: Incompatible return value type (got "A", expected "B")
     A(), r=B())
 [builtins fixtures/isinstance.pyi]
 

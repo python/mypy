@@ -127,7 +127,8 @@ RICHCOMPARE_OPS = {
 
 def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]:
     """Generates a wrapper for richcompare dunder methods."""
-    matches = [name for name in RICHCOMPARE_OPS if cl.has_method(name)]
+    # Sort for determinism on Python 3.5
+    matches = sorted([name for name in RICHCOMPARE_OPS if cl.has_method(name)])
     if not matches:
         return None
 
@@ -174,9 +175,10 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_line('static Py_ssize_t {name}(PyObject *self) {{'.format(
         name=name
     ))
-    emitter.emit_line('{}retval = {}{}(self);'.format(emitter.ctype_spaced(fn.ret_type),
-                                                      NATIVE_PREFIX,
-                                                      fn.cname(emitter.names)))
+    emitter.emit_line('{}retval = {}{}{}(self);'.format(emitter.ctype_spaced(fn.ret_type),
+                                                        emitter.get_group_prefix(fn.decl),
+                                                        NATIVE_PREFIX,
+                                                        fn.cname(emitter.names)))
     emitter.emit_error_check('retval', fn.ret_type, 'return -1;')
     if is_int_rprimitive(fn.ret_type):
         emitter.emit_line('Py_ssize_t val = CPyTagged_AsSsize_t(retval);')

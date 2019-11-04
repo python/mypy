@@ -1,22 +1,22 @@
 More types
 ==========
 
-This section introduces a few additional kinds of types, including ``NoReturn``,
-``NewType``, ``TypedDict``, and types for async code. It also discusses
+This section introduces a few additional kinds of types, including :py:data:`~typing.NoReturn`,
+:py:func:`NewType <typing.NewType>`, ``TypedDict``, and types for async code. It also discusses
 how to give functions more precise types using overloads. All of these are only
 situationally useful, so feel free to skip this section and come back when you
 have a need for some of them.
 
 Here's a quick summary of what's covered here:
 
-* ``NoReturn`` lets you tell mypy that a function never returns normally.
+* :py:data:`~typing.NoReturn` lets you tell mypy that a function never returns normally.
 
-* ``NewType`` lets you define a variant of a type that is treated as a
+* :py:func:`NewType <typing.NewType>` lets you define a variant of a type that is treated as a
   separate type by mypy but is identical to the original type at runtime.
   For example, you can have ``UserId`` as a variant of ``int`` that is
   just an ``int`` at runtime.
 
-* ``@overload`` lets you define a function that can accept multiple distinct
+* :py:func:`@overload <typing.overload>` lets you define a function that can accept multiple distinct
   signatures. This is useful if you need to encode a relationship between the
   arguments and the return type that would be difficult to express normally.
 
@@ -40,7 +40,7 @@ example, a function that unconditionally raises an exception:
    def stop() -> NoReturn:
        raise Exception('no way')
 
-Mypy will ensure that functions annotated as returning ``NoReturn``
+Mypy will ensure that functions annotated as returning :py:data:`~typing.NoReturn`
 truly never return, either implicitly or explicitly. Mypy will also
 recognize that the code after calls to such functions is unreachable
 and will behave accordingly:
@@ -54,7 +54,7 @@ and will behave accordingly:
        return 'whatever works'  # No error in an unreachable block
 
 In earlier Python versions you need to install ``typing_extensions`` using
-pip to use ``NoReturn`` in your code. Python 3 command line:
+pip to use :py:data:`~typing.NoReturn` in your code. Python 3 command line:
 
 .. code-block:: text
 
@@ -80,11 +80,11 @@ certain values from base class instances. Example:
     class UserId(int):
         pass
 
-    get_by_user_id(user_id: UserId):
+    def get_by_user_id(user_id: UserId):
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper function ``NewType`` that creates simple unique types with
+module provides a helper function :py:func:`NewType <typing.NewType>` that creates simple unique types with
 almost zero runtime overhead. Mypy will treat the statement
 ``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
 definition:
@@ -122,12 +122,12 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
 
     num = UserId(5) + 1     # type: int
 
-``NewType`` accepts exactly two arguments. The first argument must be a string literal
+:py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
 type is assigned. The second argument must be a properly subclassable class, i.e.,
-not a type construct like ``Union``, etc.
+not a type construct like :py:data:`~typing.Union`, etc.
 
-The function returned by ``NewType`` accepts only one argument; this is equivalent to
+The function returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).
 Example:
 
@@ -147,14 +147,14 @@ Example:
 
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
-You cannot use ``isinstance()`` or ``issubclass()`` on the object returned by
-``NewType()``, because function objects don't support these operations. You cannot
+You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object returned by
+:py:func:`~typing.NewType`, because function objects don't support these operations. You cannot
 create subclasses of these objects either.
 
 .. note::
 
-    Unlike type aliases, ``NewType`` will create an entirely new and
-    unique type when used. The intended purpose of ``NewType`` is to help you
+    Unlike type aliases, :py:func:`NewType <typing.NewType>` will create an entirely new and
+    unique type when used. The intended purpose of :py:func:`NewType <typing.NewType>` is to help you
     detect cases where you accidentally mixed together the old base type and the
     new derived type.
 
@@ -170,7 +170,7 @@ create subclasses of these objects either.
 
         name_by_id(3)  # ints and UserId are synonymous
 
-    But a similar example using ``NewType`` will not typecheck:
+    But a similar example using :py:func:`NewType <typing.NewType>` will not typecheck:
 
     .. code-block:: python
 
@@ -189,7 +189,7 @@ Function overloading
 ********************
 
 Sometimes the arguments and types in a function depend on each other
-in ways that can't be captured with a ``Union``. For example, suppose
+in ways that can't be captured with a :py:data:`~typing.Union`. For example, suppose
 we want to write a function that can accept x-y coordinates. If we pass
 in just a single x-y coordinate, we return a ``ClickEvent`` object. However,
 if we pass in two x-y coordinates, we return a ``DragEvent`` object.
@@ -217,8 +217,7 @@ we pass in. It also does not prohibit a caller from passing in the wrong
 number of ints: mypy would treat calls like ``mouse_event(1, 2, 20)`` as being
 valid, for example.
 
-We can do better by using `overloading
-<https://www.python.org/dev/peps/pep-0484/#function-method-overloading>`_
+We can do better by using :pep:`overloading <484#function-method-overloading>`
 which lets us give the same function multiple type annotations (signatures)
 to more accurately describe the function's behavior:
 
@@ -262,9 +261,9 @@ always have a return type of ``ClickEvent`` and will report errors for
 calls like ``mouse_event(5, 25, 2)``.
 
 As another example, suppose we want to write a custom container class that
-implements the ``__getitem__`` method (``[]`` bracket indexing). If this
+implements the :py:meth:`__getitem__ <object.__getitem__>` method (``[]`` bracket indexing). If this
 method receives an integer we return a single item. If it receives a
-``slice``, we return a ``Sequence`` of items.
+``slice``, we return a :py:class:`~typing.Sequence` of items.
 
 We can precisely encode this relationship between the argument and the
 return type by using overloads like so:
@@ -311,7 +310,7 @@ ignored: they're overridden by the final implementation function.
 This means that an overloaded function is still an ordinary Python
 function! There is no automatic dispatch handling and you must manually
 handle the different types in the implementation (e.g. by using
-``if`` statements and ``isinstance`` checks).
+``if`` statements and :py:func:`isinstance <isinstance>` checks).
 
 If you are adding an overload within a stub file, the implementation
 function should be omitted: stubs do not contain runtime logic.
@@ -392,7 +391,7 @@ matching variant returns:
    To minimize potential issues, we recommend that you:
 
    1. Make sure your overload variants are listed in the same order as
-      the runtime checks (e.g. ``isinstance`` checks) in your implementation.
+      the runtime checks (e.g. :py:func:`isinstance <isinstance>` checks) in your implementation.
    2. Order your variants and runtime checks from most to least specific.
       (See the following section for an example).
 
@@ -482,7 +481,7 @@ when we try using it like so:
     some_obj: object = 42
     unsafe_func(some_obj) + " danger danger"  # Type checks, yet crashes at runtime!
 
-Since ``some_obj`` is of type ``object``, mypy will decide that ``unsafe_func``
+Since ``some_obj`` is of type :py:class:`object`, mypy will decide that ``unsafe_func``
 must return something of type ``str`` and concludes the above will type check.
 But in reality, ``unsafe_func`` will return an int, causing the code to crash
 at runtime!
@@ -536,7 +535,7 @@ type hints provided on the implementation. For example, in the
 argument list ``index: Union[int, slice]`` and a return type of
 ``Union[T, Sequence[T]]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
-force mypy to check the body anyways, use the ``--check-untyped-defs``
+force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).
 
 The variants must also also be compatible with the implementation
@@ -569,7 +568,7 @@ Typing async/await
 
 Mypy supports the ability to type coroutines that use the ``async/await``
 syntax introduced in Python 3.5. For more information regarding coroutines and
-this new syntax, see `PEP 492 <https://www.python.org/dev/peps/pep-0492/>`_.
+this new syntax, see :pep:`492`.
 
 Functions defined using ``async def`` are typed just like normal functions.
 The return type annotation should be the same as the type of the value you
@@ -595,8 +594,8 @@ expect to get back when ``await``-ing the coroutine.
    loop.close()
 
 The result of calling an ``async def`` function *without awaiting* will be a
-value of type ``typing.Coroutine[Any, Any, T]``, which is a subtype of
-``Awaitable[T]``:
+value of type :py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a subtype of
+:py:class:`Awaitable[T] <typing.Awaitable>`:
 
 .. code-block:: python
 
@@ -609,12 +608,12 @@ value of type ``typing.Coroutine[Any, Any, T]``, which is a subtype of
     an expression.
 
 If you want to use coroutines in Python 3.4, which does not support
-the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
+the ``async def`` syntax, you can instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
 decorator to convert a generator into a coroutine.
 
 Note that we set the ``YieldType`` of the generator to be ``Any`` in the
 following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the ``asyncio`` event loop) and your
+detail of the coroutine runner (e.g. the :py:mod:`asyncio` event loop) and your
 coroutine shouldn't have to know or care about what precisely that type is.
 
 .. code-block:: python
@@ -634,12 +633,12 @@ coroutine shouldn't have to know or care about what precisely that type is.
    loop.run_until_complete(countdown_2("USS Enterprise", 5))
    loop.close()
 
-As before, the result of calling a generator decorated with ``@asyncio.coroutine``
-will be a value of type ``Awaitable[T]``.
+As before, the result of calling a generator decorated with :py:func:`@asyncio.coroutine <asyncio.coroutine>`
+will be a value of type :py:class:`Awaitable[T] <typing.Awaitable>`.
 
 .. note::
 
-   At runtime, you are allowed to add the ``@asyncio.coroutine`` decorator to
+   At runtime, you are allowed to add the :py:func:`@asyncio.coroutine <asyncio.coroutine>` decorator to
    both functions and generators. This is useful when you want to mark a
    work-in-progress function as a coroutine, but have not yet added ``yield`` or
    ``yield from`` statements:
@@ -670,7 +669,7 @@ will be a value of type ``Awaitable[T]``.
               yield
           return "placeholder"
 
-You may also choose to create a subclass of ``Awaitable`` instead:
+You may also choose to create a subclass of :py:class:`~typing.Awaitable` instead:
 
 .. code-block:: python
 
@@ -695,7 +694,7 @@ You may also choose to create a subclass of ``Awaitable`` instead:
    loop.run_until_complete(countdown_3("Heart of Gold", 5))
    loop.close()
 
-To create an iterable coroutine, subclass ``AsyncIterator``:
+To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
 
 .. code-block:: python
 
@@ -765,20 +764,20 @@ dictionary value depends on the key:
 
    movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
 
-``Movie`` is a TypedDict type with two items: ``'name'`` (with type ``str``)
+``Movie`` is a ``TypedDict`` type with two items: ``'name'`` (with type ``str``)
 and ``'year'`` (with type ``int``). Note that we used an explicit type
 annotation for the ``movie`` variable. This type annotation is
 important -- without it, mypy will try to infer a regular, uniform
-``Dict`` type for ``movie``, which is not what we want here.
+:py:class:`~typing.Dict` type for ``movie``, which is not what we want here.
 
 .. note::
 
-   If you pass a TypedDict object as an argument to a function, no
+   If you pass a ``TypedDict`` object as an argument to a function, no
    type annotation is usually necessary since mypy can infer the
    desired type based on the declared argument type. Also, if an
    assignment target has been previously defined, and it has a
-   TypedDict type, mypy will treat the assigned value as a TypedDict,
-   not ``Dict``.
+   ``TypedDict`` type, mypy will treat the assigned value as a ``TypedDict``,
+   not :py:class:`~typing.Dict`.
 
 Now mypy will recognize these as valid:
 
@@ -795,10 +794,10 @@ Mypy will detect an invalid key as an error:
 
 Mypy will also reject a runtime-computed expression as a key, as
 it can't verify that it's a valid key. You can only use string
-literals as TypedDict keys.
+literals as ``TypedDict`` keys.
 
 The ``TypedDict`` type object can also act as a constructor. It
-returns a normal ``dict`` object at runtime -- a ``TypedDict`` does
+returns a normal :py:class:`dict` object at runtime -- a ``TypedDict`` does
 not define a new runtime type:
 
 .. code-block:: python
@@ -810,20 +809,20 @@ This is equivalent to just constructing a dictionary directly using
 sometimes convenient, since it can be used without a type annotation,
 and it also makes the type of the object explicit.
 
-Like all types, TypedDicts can be used as components to build
+Like all types, ``TypedDict``\s can be used as components to build
 arbitrarily complex types. For example, you can define nested
-TypedDicts and containers with TypedDict items.
+``TypedDict``\s and containers with ``TypedDict`` items.
 Unlike most other types, mypy uses structural compatibility checking
-(or structural subtyping) with TypedDicts. A TypedDict object with
+(or structural subtyping) with ``TypedDict``\s. A ``TypedDict`` object with
 extra items is a compatible with (a subtype of) a narrower
-TypedDict, assuming item types are compatible (*totality* also affects
+``TypedDict``, assuming item types are compatible (*totality* also affects
 subtyping, as discussed below).
 
-A TypedDict object is not a subtype of the regular ``Dict[...]``
-type (and vice versa), since ``Dict`` allows arbitrary keys to be
-added and removed, unlike TypedDict. However, any TypedDict object is
+A ``TypedDict`` object is not a subtype of the regular ``Dict[...]``
+type (and vice versa), since :py:class:`~typing.Dict` allows arbitrary keys to be
+added and removed, unlike ``TypedDict``. However, any ``TypedDict`` object is
 a subtype of (that is, compatible with) ``Mapping[str, object]``, since
-``typing.Mapping`` only provides read-only access to the dictionary items:
+:py:class:`~typing.Mapping` only provides read-only access to the dictionary items:
 
 .. code-block:: python
 
@@ -850,7 +849,7 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 Totality
 --------
 
-By default mypy ensures that a TypedDict object has all the specified
+By default mypy ensures that a ``TypedDict`` object has all the specified
 keys. This will be flagged as an error:
 
 .. code-block:: python
@@ -859,7 +858,7 @@ keys. This will be flagged as an error:
    toy_story = {'name': 'Toy Story'}  # type: Movie
 
 Sometimes you want to allow keys to be left out when creating a
-TypedDict object. You can provide the ``total=False`` argument to
+``TypedDict`` object. You can provide the ``total=False`` argument to
 ``TypedDict(...)`` to achieve this:
 
 .. code-block:: python
@@ -869,12 +868,12 @@ TypedDict object. You can provide the ``total=False`` argument to
    options = {}  # type: GuiOptions  # Okay
    options['language'] = 'en'
 
-You may need to use ``get()`` to access items of a partial (non-total)
-TypedDict, since indexing using ``[]`` could fail at runtime.
-However, mypy still lets use ``[]`` with a partial TypedDict -- you
-just need to be careful with it, as it could result in a ``KeyError``.
-Requiring ``get()`` everywhere would be too cumbersome. (Note that you
-are free to use ``get()`` with total TypedDicts as well.)
+You may need to use :py:meth:`~dict.get` to access items of a partial (non-total)
+``TypedDict``, since indexing using ``[]`` could fail at runtime.
+However, mypy still lets use ``[]`` with a partial ``TypedDict`` -- you
+just need to be careful with it, as it could result in a :py:exc:`KeyError`.
+Requiring :py:meth:`~dict.get` everywhere would be too cumbersome. (Note that you
+are free to use :py:meth:`~dict.get` with total ``TypedDict``\s as well.)
 
 Keys that aren't required are shown with a ``?`` in error messages:
 
@@ -885,33 +884,33 @@ Keys that aren't required are shown with a ``?`` in error messages:
    reveal_type(options)
 
 Totality also affects structural compatibility. You can't use a partial
-TypedDict when a total one is expected. Also, a total TypedDict is not
+``TypedDict`` when a total one is expected. Also, a total ``TypedDict`` is not
 valid when a partial one is expected.
 
 Supported operations
 --------------------
 
-TypedDict objects support a subset of dictionary operations and methods.
+``TypedDict`` objects support a subset of dictionary operations and methods.
 You must use string literals as keys when calling most of the methods,
 as otherwise mypy won't be able to check that the key is valid. List
 of supported operations:
 
-* Anything included in ``typing.Mapping``:
+* Anything included in :py:class:`~typing.Mapping`:
 
   * ``d[key]``
   * ``key in d``
   * ``len(d)``
   * ``for key in d`` (iteration)
-  * ``d.get(key[, default])``
-  * ``d.keys()``
-  * ``d.values()``
-  * ``d.items()``
+  * :py:meth:`d.get(key[, default]) <dict.get>`
+  * :py:meth:`d.keys() <dict.keys>`
+  * :py:meth:`d.values() <dict.values>`
+  * :py:meth:`d.items() <dict.items>`
 
-* ``d.copy()``
-* ``d.setdefault(key, default)``
-* ``d1.update(d2)``
-* ``d.pop(key[, default])`` (partial TypedDicts only)
-* ``del d[key]`` (partial TypedDicts only)
+* :py:meth:`d.copy() <dict.copy>`
+* :py:meth:`d.setdefault(key, default) <dict.setdefault>`
+* :py:meth:`d1.update(d2) <dict.update>`
+* :py:meth:`d.pop(key[, default]) <dict.pop>` (partial ``TypedDict``\s only)
+* ``del d[key]`` (partial ``TypedDict``\s only)
 
 In Python 2 code, these methods are also supported:
 
@@ -922,14 +921,14 @@ In Python 2 code, these methods are also supported:
 
 .. note::
 
-   ``clear()`` and ``popitem()`` are not supported since they are unsafe
-   -- they could delete required TypedDict items that are not visible to
+   :py:meth:`~dict.clear` and :py:meth:`~dict.popitem` are not supported since they are unsafe
+   -- they could delete required ``TypedDict`` items that are not visible to
    mypy because of structural subtyping.
 
 Class-based syntax
 ------------------
 
-An alternative, class-based syntax to define a TypedDict is supported
+An alternative, class-based syntax to define a ``TypedDict`` is supported
 in Python 3.6 and later:
 
 .. code-block:: python
@@ -944,7 +943,7 @@ The above definition is equivalent to the original ``Movie``
 definition. It doesn't actually define a real class. This syntax also
 supports a form of inheritance -- subclasses can define additional
 items. However, this is primarily a notational shortcut. Since mypy
-uses structural compatibility with TypedDicts, inheritance is not
+uses structural compatibility with ``TypedDict``\s, inheritance is not
 required for compatibility. Here is an example of inheritance:
 
 .. code-block:: python
@@ -961,9 +960,9 @@ Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
 Mixing required and non-required items
 --------------------------------------
 
-In addition to allowing reuse across TypedDict types, inheritance also allows
+In addition to allowing reuse across ``TypedDict`` types, inheritance also allows
 you to mix required and non-required (using ``total=False``) items
-in a single TypedDict. Example:
+in a single ``TypedDict``. Example:
 
 .. code-block:: python
 
@@ -975,8 +974,8 @@ in a single TypedDict. Example:
        based_on: str
 
 Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
-can be left out when constructing an object. A TypedDict with a mix of required
+can be left out when constructing an object. A ``TypedDict`` with a mix of required
 and non-required keys, such as ``Movie`` above, will only be compatible with
-another TypedDict if all required keys in the other TypedDict are required keys in the
-first TypedDict, and all non-required keys of the other TypedDict are also non-required keys
-in the first TypedDict.
+another ``TypedDict`` if all required keys in the other ``TypedDict`` are required keys in the
+first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
+in the first ``TypedDict``.

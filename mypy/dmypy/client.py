@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
 from mypy.dmypy_os import alive, kill
-from mypy.util import check_python_version
+from mypy.util import check_python_version, get_terminal_width
 
 from mypy.version import __version__
 
@@ -108,10 +108,14 @@ p.add_argument('--no-errors', action='store_true',
                help="Only produce suggestions that cause no errors")
 p.add_argument('--no-any', action='store_true',
                help="Only produce suggestions that don't contain Any")
+p.add_argument('--flex-any', type=float,
+               help="Allow anys in types if they go above a certain score (scores are from 0-1)")
 p.add_argument('--try-text', action='store_true',
                help="Try using unicode wherever str is inferred")
 p.add_argument('--callsites', action='store_true',
                help="Find callsites instead of suggesting a type")
+p.add_argument('--use-fixme', metavar='NAME', type=str,
+               help="A dummy name to use instead of Any for types that can't be inferred")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -365,7 +369,8 @@ def do_suggest(args: argparse.Namespace) -> None:
     """
     response = request(args.status_file, 'suggest', function=args.function,
                        json=args.json, callsites=args.callsites, no_errors=args.no_errors,
-                       no_any=args.no_any, try_text=args.try_text)
+                       no_any=args.no_any, flex_any=args.flex_any, try_text=args.try_text,
+                       use_fixme=args.use_fixme)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
@@ -464,6 +469,11 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     response = {}  # type: Dict[str, str]
     args = dict(kwds)
     args['command'] = command
+    # Tell the server whether this request was initiated from a human-facing terminal,
+    # so that it can format the type checking output accordingly.
+    args['is_tty'] = sys.stdout.isatty() or int(os.getenv('MYPY_FORCE_COLOR', '0')) > 0
+    args['terminal_width'] = (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
+                              get_terminal_width())
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:

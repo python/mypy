@@ -18,17 +18,16 @@ Here is an overview of how to create a stub file:
 * Write a stub file for the library (or an arbitrary module) and store it as
   a ``.pyi`` file in the same directory as the library module.
 * Alternatively, put your stubs (``.pyi`` files) in a directory
-  reserved for stubs (e.g., ``myproject/stubs``). In this case you
+  reserved for stubs (e.g., :file:`myproject/stubs`). In this case you
   have to set the environment variable ``MYPYPATH`` to refer to the
   directory.  For example::
 
     $ export MYPYPATH=~/work/myproject/stubs
 
-Use the normal Python file name conventions for modules, e.g. ``csv.pyi``
-for module ``csv``. Use a subdirectory with ``__init__.pyi`` for packages. Note
-that `PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ stub-only packages
-must be installed, and may not be pointed at through the ``MYPYPATH``
-(see :ref:`PEP 561 support <installed-packages>`).
+Use the normal Python file name conventions for modules, e.g. :file:`csv.pyi`
+for module ``csv``. Use a subdirectory with :file:`__init__.pyi` for packages. Note
+that :pep:`561` stub-only packages must be installed, and may not be pointed
+at through the ``MYPYPATH`` (see :ref:`PEP 561 support <installed-packages>`).
 
 If a directory contains both a ``.py`` and a ``.pyi`` file for the
 same module, the ``.pyi`` file takes precedence. This way you can
@@ -50,7 +49,7 @@ in your programs and stub files.
 .. note::
 
    You may be tempted to point ``MYPYPATH`` to the standard library or
-   to the ``site-packages`` directory where your 3rd party packages
+   to the :file:`site-packages` directory where your 3rd party packages
    are installed. This is almost always a bad idea -- you will likely
    get tons of error messages about code you didn't write and that
    mypy can't analyze all that well yet, and in the worst case
@@ -104,7 +103,7 @@ Python code -- for example, when writing methods in
 
 The recommended style is to use ellipses to do so, just like in
 stub files. It is also considered stylistically acceptable to
-throw a ``NotImplementedError`` in cases where the user of the
+throw a :py:exc:`NotImplementedError` in cases where the user of the
 code may accidentally call functions with no actual logic.
 
 You can also elide default arguments as long as the function body
@@ -138,5 +137,4 @@ For example:
     Ellipsis expressions are legal syntax in Python 3 only. This means
     it is not possible to elide default arguments in Python 2 code.
     You can still elide function bodies in Python 2 by using either
-    the ``pass`` statement or by throwing a ``NotImplementedError``.
-
+    the ``pass`` statement or by throwing a :py:exc:`NotImplementedError`.

@@ -61,7 +61,7 @@ Quick Start for Contributors
 
 First clone the mypy git repository *and git submodules*:
 
-    $ git clone --recurse-submodules https://github.com/mypyc/mypy.git
+    $ git clone --recurse-submodules https://github.com/python/mypy.git
     $ cd mypy
 
 Optionally create a virtualenv (recommended):
@@ -114,16 +114,16 @@ These are the current planned major milestones:
 
 6. [DONE] Release a version of mypy that includes a compiled mypy.
 
-7a. More feature/compatibility work. (100% compatibility with Python is distinctly
-    an anti-goal, but more than we have now is a good idea.)
+7. 
+    1. More feature/compatibility work. (100% compatibility with Python is distinctly
+       an anti-goal, but more than we have now is a good idea.)
+    2. Support compiling Black, which is a prominent tool that could benefit
+       and has maintainer buy-in.
+       (Let us know if you maintain another Python tool or library and are
+       interested in working with us on this!)
 
-7b. Support compiling Black, which is a prominent tool that could benefit
-    and has maintainer buy-in.
-    (Let us know if you maintain another Python tool or library and are
-     interested in working with us on this!)
-
-7c. More optimization! Code size reductions in particular are likely to
-    be valuable and will speed up mypyc compilation.
+    3. More optimization! Code size reductions in particular are likely to
+       be valuable and will speed up mypyc compilation.
 
 8.  We'll see! Adventure is out there!
 

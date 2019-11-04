@@ -1204,6 +1204,50 @@ class A(six.with_metaclass(B, Defer)):
 class Defer:
     x: str
 
+[case testNewAnalyzerMetaclassFuture1]
+import future.utils
+
+class A(future.utils.with_metaclass(B)):
+    pass
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+reveal_type(A.f()) # N: Revealed type is 'builtins.int'
+
+[case testNewAnalyzerMetaclassFuture3]
+import future.utils
+
+class A(future.utils.with_metaclass(B, Defer)):
+    pass
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+class Defer:
+    x: str
+
+reveal_type(A.f()) # N: Revealed type is 'builtins.int'
+reveal_type(A.x) # N: Revealed type is 'builtins.str'
+
+[case testNewAnalyzerMetaclassFuture4]
+import future.utils
+
+class B(type):
+    def f(cls) -> int:
+        return 0
+
+reveal_type(A.f()) # N: Revealed type is 'builtins.int'
+reveal_type(A.x) # N: Revealed type is 'builtins.str'
+
+class A(future.utils.with_metaclass(B, Defer)):
+    pass
+
+class Defer:
+    x: str
+
 [case testNewAnalyzerMetaclass1_python2]
 class A:
     __metaclass__ = B
@@ -1696,12 +1740,10 @@ y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builti
 z: C[int]
 
 [file mypy.ini]
-[[mypy-a]
+\[mypy-a]
 strict_optional = True
-[[mypy-b]
+\[mypy-b]
 strict_optional = False
-
--- ]]
 
 [case testNewAnalyzerProperty]
 class A:
@@ -3049,8 +3091,8 @@ reveal_type(x) # N: Revealed type is '__main__.C'
 [case testNewAnalyzerIdentityAssignment7]
 C = C # E: Name 'C' is not defined
 
-reveal_type(C) # N: Revealed type is 'Any' \
-               # E: Name 'C' is not defined
+reveal_type(C) # E: Name 'C' is not defined \
+               # N: Revealed type is 'Any'
 
 [case testNewAnalyzerIdentityAssignment8]
 from typing import Final

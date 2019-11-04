@@ -493,8 +493,12 @@ def compute_search_paths(sources: List[BuildSource],
     egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
     for site_dir in site_packages:
         assert site_dir not in lib_path
-        if site_dir in mypypath:
+        if (site_dir in mypypath or
+                any(p.startswith(site_dir + os.path.sep) for p in mypypath) or
+                os.path.altsep and any(p.startswith(site_dir + os.path.altsep) for p in mypypath)):
             print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+            print("See https://mypy.readthedocs.io/en/latest/running_mypy.html"
+                  "#how-mypy-handles-imports for more info", file=sys.stderr)
             sys.exit(1)
         elif site_dir in python_path:
             print("{} is in the PYTHONPATH. Please change directory"

@@ -36,10 +36,9 @@ At large scale the plugin system works as following:
   named tuples for details about which information is given to each hook.
 
 Plugin developers should ensure that their plugins work well in incremental and
-daemon modes, and with both the old and new semantic analyzers (the old semantic
-analyzer will be removed soon). In particular, plugins should not hold global
-state, and should always call add_plugin_dependency() in plugin hooks called
-during semantic analysis. See the method docstring for more details.
+daemon modes. In particular, plugins should not hold global state, and should
+always call add_plugin_dependency() in plugin hooks called during semantic
+analysis. See the method docstring for more details.
 
 There is no dedicated cache storage for plugins, but plugins can store
 per-TypeInfo data in a special .metadata attribute that is serialized to the
@@ -48,13 +47,14 @@ are encouraged to store their state under a dedicated key coinciding with
 plugin name in the metadata dictionary. Every value stored there must be
 JSON-serializable.
 
-## New semantic analyzer
+## Notes about the semantic analyzer
 
-The new semantic analyzer (enabled through the --new-semantic-analyzer flag)
-changes how plugins are expected to work in several notable ways:
+Mypy 0.710 introduced a new semantic analyzer that changed how plugins are
+expected to work in several notable ways (from mypy 0.730 the old semantic
+analyzer is no longer available):
 
 1. The order of processing AST nodes in modules is different. The old semantic
-   analyzer processes modules in textual order, one module at a time. The new
+   analyzer processed modules in textual order, one module at a time. The new
    semantic analyzer first processes the module top levels, including bodies of
    any top-level classes and classes nested within classes. ("Top-level" here
    means "not nested within a function/method".) Functions and methods are
@@ -104,10 +104,9 @@ changes how plugins are expected to work in several notable ways:
    another module, such as the builtins, that is outside the current module or
    import cycle, you can safely assume that you won't receive a placeholder.
 
-When testing your plugin with the new semantic analyzer, you should have a test
-case that forces a module top level to be processed multiple times. The easiest
-way to do this is to include a forward reference to a class in a top-level
-annotation. Example:
+When testing your plugin, you should have a test case that forces a module top
+level to be processed multiple times. The easiest way to do this is to include
+a forward reference to a class in a top-level annotation. Example:
 
     c: C  # Forward reference causes second analysis pass
     class C: pass
@@ -117,7 +116,7 @@ pass, since all functions are processed only after the top level has been fully
 analyzed.
 
 You can use `api.options.new_semantic_analyzer` to check whether the new
-semantic analyzer is enabled.
+semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 import types
@@ -154,7 +153,7 @@ class TypeAnalyzerPluginInterface:
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
-        """Emmit an error message at given location."""
+        """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
@@ -257,7 +256,7 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
-        """Emmit an error message at given location."""
+        """Emit an error message at given location."""
         raise NotImplementedError
 
     @abstractmethod
@@ -269,9 +268,9 @@ class SemanticAnalyzerPluginInterface:
                   third_pass: bool = False) -> Optional[Type]:
         """Analyze an unbound type.
 
-        Return None if the some part of the type is not ready yet (only
-        happens with the new semantic analyzer). In this case the current
-        target being analyzed will be deferred and analyzed again.
+        Return None if some part of the type is not ready yet. In this
+        case the current target being analyzed will be deferred and
+        analyzed again.
         """
         raise NotImplementedError
 
@@ -343,16 +342,12 @@ class SemanticAnalyzerPluginInterface:
         """Call this to defer the processing of the current node.
 
         This will request an additional iteration of semantic analysis.
-        Only available with new semantic analyzer.
         """
         raise NotImplementedError
 
     @abstractproperty
     def final_iteration(self) -> bool:
-        """Is this the final iteration of semantic analysis?
-
-        Only available with new semantic analyzer.
-        """
+        """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
 
@@ -634,7 +629,7 @@ class Plugin(CommonPluginApi):
                                ) -> Optional[Callable[[DynamicClassDefContext], None]]:
         """Semantically analyze a dynamic class definition.
 
-        This plugin hook allows to semantically analyze dynamic class definitions like:
+        This plugin hook allows one to semantically analyze dynamic class definitions like:
 
             from lib import dynamic_class
 

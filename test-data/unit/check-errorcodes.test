@@ -1,4 +1,4 @@
--- Tests for error codes
+-- Tests for error codes and ignoring errors using error codes
 --
 -- These implicitly use --show-error-codes.
 
@@ -45,6 +45,12 @@ x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
 x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
 for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+    pass
+
+[case testErrorCodeSyntaxErrorIgnoreNote]
+# This is a bit inconsistent -- syntax error would be more logical?
+x: 'a b'  # type: ignore[valid-type]
+for v in x:  # type: int, int  # type: ignore[syntax]
     pass
 
 [case testErrorCodeSyntaxError_python2]
@@ -101,6 +107,22 @@ a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not de
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
 
+[case testErrorCodeIgnoreWithExtraSpace]
+x  # type: ignore   [name-defined]
+x2 # type: ignore   [ name-defined ]
+x3 # type: ignore   [ xyz , name-defined ]
+x4 # type: ignore[xyz,name-defined]
+y  # type: ignore   [xyz]  # E: Name 'y' is not defined  [name-defined]
+y  # type: ignore[  xyz  ]  # E: Name 'y' is not defined  [name-defined]
+y  # type: ignore[ xyz , foo  ]  # E: Name 'y' is not defined  [name-defined]
+
+a = z  # type: int  # type: ignore  [name-defined]
+b = z2  # type: int  # type: ignore  [ name-defined ]
+c = z2  # type: int  # type: ignore  [ name-defined , xyz ]
+d = zz # type: int  # type: ignore  [xyz]  # E: Name 'zz' is not defined  [name-defined]
+e = zz # type: int  # type: ignore  [ xyz ]  # E: Name 'zz' is not defined  [name-defined]
+f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name 'zz' is not defined  [name-defined]
+
 [case testErrorCodeIgnoreAfterArgComment]
 def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
       ):
@@ -132,6 +154,63 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name
       ):
     # type () -> None
     pass
+
+[case testErrorCodeIgnoreWithNote]
+import nostub  # type: ignore[import]
+from defusedxml import xyz  # type: ignore[import]
+
+[case testErrorCodeIgnoreWithNote_python2]
+import nostub  # type: ignore[import]
+from defusedxml import xyz  # type: ignore[import]
+
+[case testErrorCodeBadIgnore]
+import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo]]  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo][bar]  # E: Invalid "type: ignore" comment  [syntax]
+import nostub # type: ignore[foo] [bar]  # E: Invalid "type: ignore" comment  [syntax]
+
+x = 0  # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+
+def f(x,  # type: int  # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
+      ):
+    # type: (...) -> None
+    pass
+
+[case testErrorCodeBadIgnoreNoExtraComment]
+# Omit the E: ... comments, as they affect parsing
+import nostub # type: ignore xyz
+import nostub # type: ignore[xyz
+import nostub # type: ignore[xyz][xyz]
+x = 0  # type: ignore[
+def f(x,  # type: int  # type: ignore[
+      ):
+    # type: (...) -> None
+    pass
+[out]
+main:2: error: Invalid "type: ignore" comment  [syntax]
+main:3: error: Invalid "type: ignore" comment  [syntax]
+main:4: error: Invalid "type: ignore" comment  [syntax]
+main:5: error: Invalid "type: ignore" comment  [syntax]
+main:6: error: Invalid "type: ignore" comment  [syntax]
+
+[case testErrorCodeBadIgnore_python2]
+import nostub # type: ignore xyz
+import nostub # type: ignore[xyz  # Comment [x]
+import nostub # type: ignore[xyz][xyz]
+x = 0  # type: ignore[
+def f(x,  # type: int  # type: ignore[
+      ):
+    # type: (...) -> None
+    pass
+[out]
+main:1: error: Invalid "type: ignore" comment  [syntax]
+main:2: error: Invalid "type: ignore" comment  [syntax]
+main:3: error: Invalid "type: ignore" comment  [syntax]
+main:4: error: Invalid "type: ignore" comment  [syntax]
+main:5: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
@@ -222,6 +301,10 @@ class OO(O):
 def f() -> int:
     return ''  # E: Incompatible return value type (got "str", expected "int")  [return-value]
 
+[case testErrorCodeMissingReturnValueInReturnStatement]
+def f() -> int:
+    return  # E: Return value expected  [return-value]
+
 [case testErrorCodeAssignment]
 x: str = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
 
@@ -233,6 +316,9 @@ class A:
 
 class B(A):
     x = ''  # E: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")  [assignment]
+
+a: A
+a.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
 
 [case testErrorCodeMissingTypeArg]
 # flags: --disallow-any-generics
@@ -368,7 +454,8 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-x  # E: Cannot determine type of 'x'  [has-type]
+y = x  # E: Cannot determine type of 'x'  [has-type]
+reveal_type(y)  # N: Revealed type is 'Any'
 x = None
 
 [case testErrorCodeRedundantCast]
@@ -408,12 +495,12 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [case testErrorCodeMissingModule]
 from defusedxml import xyz  # E: No library stub file for module 'defusedxml'  [import] \
                             # N: (Stub files are from https://github.com/python/typeshed)
-from nonexistent import foobar  # E: Cannot find module named 'nonexistent'  [import] \
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named 'nonexistent'  [import] \
     # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-import nonexistent2  # E: Cannot find module named 'nonexistent2'  [import]
-from nonexistent3 import *  # E: Cannot find module named 'nonexistent3'  [import]
+import nonexistent2  # E: Cannot find implementation or library stub for module named 'nonexistent2'  [import]
+from nonexistent3 import *  # E: Cannot find implementation or library stub for module named 'nonexistent3'  [import]
 from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find module named 'pkg.bad2'  [import]
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named 'pkg.bad2'  [import]
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]
@@ -428,6 +515,10 @@ def f(): # E: Name 'f' already defined on line 4  [no-redef]
 [case testErrorCodeMissingReturn]
 def f() -> int:  # E: Missing return statement  [return]
     x = 0
+
+[case testErrorCodeReturnValueNotExpected]
+def f() -> None:
+    return 1  # E: No return value expected  [return-value]
 
 [case testErrorCodeFunctionDoesNotReturnValue]
 from typing import Callable
@@ -486,6 +577,18 @@ f(1, 1)  # E: No overload variant of "f" matches argument types "int", "int"  [c
   # N:     def f(x: int) -> int \
   # N:     def f(x: str) -> str
 
+[case testErrorCodeOverloadVariantIgnore]
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x):
+    return x
+
+f(object())  # type: ignore[call-overload]
+
 [case testErrorCodeAnyFromUnfollowedImport]
 # flags: --disallow-any-unimported
 from m import C  # type: ignore
@@ -500,3 +603,103 @@ def f(): pass
 
 def g() -> int:
     return f()  # E: Returning Any from function declared to return "int"  [no-any-return]
+
+[case testErrorCodeFormatCall]
+'{:d}'.format('no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")  [str-format]
+'{!x}'.format('Hm...')  # E: Invalid conversion type "x", must be one of "r", "s" or "a"  [str-format]
+'}{'.format()  # E: Invalid conversion specifier in format string: unexpected }  [str-format]
+
+'%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
+'%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
+
+'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
+[builtins fixtures/primitives.pyi]
+
+[case testErrorCodeIgnoreNamedDefinedNote]
+x: List[int]  # type: ignore[name-defined]
+
+[case testErrorCodeIgnoreMiscNote]
+x: [int]  # type: ignore[misc]
+
+[case testErrorCodeProtocolProblemsIgnore]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    def f(self, x: str) -> None: ...
+
+class A:
+    def f(self, x: int) -> None: ...
+
+def g(p: P) -> None: pass
+
+p: A
+g(p)  # type: ignore[arg-type]
+
+[case testErrorCodeNoneReturnNoteIgnore]
+# flags: --disallow-untyped-defs
+
+def f():  # type: ignore[no-untyped-def]
+    pass
+
+[case testErrorCodeVarianceNoteIgnore]
+from typing import List
+def f(x: List[object]) -> None: pass
+a = [1]
+f(a)  # type: ignore[arg-type]
+[builtins fixtures/list.pyi]
+
+[case testErrorCodeAssignToMethod]
+class A:
+    def f(self) -> None: pass
+
+def g(self: A) -> None: pass
+
+A.f = g  # E: Cannot assign to a method  [assignment]
+
+[case testErrorCodeDefinedHereNoteIgnore]
+import m
+m.f(kw=1)  # type: ignore[call-arg]
+[file m.py]
+def f() -> None: pass
+
+[case testErrorCodeUnionNoteIgnore]
+from typing import Union
+
+class Foo:
+    def __add__(self, x: Foo) -> Foo: pass
+    def __radd__(self, x: Foo) -> Foo: pass
+
+class Bar:
+    def __add__(self, x: Bar) -> Bar: pass
+    def __radd__(self, x: Bar) -> Bar: pass
+
+a: Union[Foo, Bar]
+
+a + a  # type: ignore[operator]
+a + Foo()  # type: ignore[operator]
+Foo() + a  # type: ignore[operator]
+
+[case testErrorCodeTypeIgnoreMisspelled1]
+x = y  # type: ignored[foo]
+xx = y  # type: ignored [foo]
+[out]
+main:1: error: Name 'ignored' is not defined  [name-defined]
+main:1: error: Name 'y' is not defined  [name-defined]
+main:2: error: Name 'ignored' is not defined  [name-defined]
+main:2: error: Name 'y' is not defined  [name-defined]
+
+[case testErrorCodeTypeIgnoreMisspelled2]
+x = y  # type: int  # type: ignored[foo]
+x = y  # type: int  # type: ignored [foo]
+[out]
+main:1: error: syntax error in type comment 'int'  [syntax]
+main:2: error: syntax error in type comment 'int'  [syntax]
+
+[case testErrorCode__exit__Return]
+class InvalidReturn:
+    def __exit__(self, x, y, z) -> bool:  # E: "bool" is invalid as return type for "__exit__" that always returns False  [exit-return] \
+# N: Use "typing_extensions.Literal[False]" as the return type or change it to "None" \
+# N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
+        return False
+[builtins fixtures/bool.pyi]

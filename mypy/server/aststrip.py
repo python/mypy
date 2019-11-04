@@ -50,13 +50,11 @@ SavedAttributes = Dict[Tuple[ClassDef, str], SymbolTableNode]
 
 def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                  saved_attrs: SavedAttributes) -> None:
-    """Reset a fine-grained incremental target to state before main pass of semantic analysis.
+    """Reset a fine-grained incremental target to state before semantic analysis.
 
-    The most notable difference from the old version of strip_target() is that new semantic
-    analyzer doesn't have first pass where Vars and TypeInfos are pre-populated, so the stripping
-    is more thorough: all TypeInfos are killed. Therefore we need to preserve the variables
-    defined as attributes on self. This is done by patches (callbacks) returned from this function
-    that re-add these variables when called.
+    All TypeInfos are killed. Therefore we need to preserve the variables
+    defined as attributes on self. This is done by patches (callbacks)
+    returned from this function that re-add these variables when called.
 
     Args:
         node: node to strip
@@ -219,7 +217,8 @@ class NodeStripVisitor(TraverserVisitor):
                 # true for a MemberExpr, we know that it must be an assignment through
                 # self, since only those can define new attributes.
                 assert self.type is not None
-                del self.type.names[lvalue.name]
+                if lvalue.name in self.type.names:
+                    del self.type.names[lvalue.name]
                 key = (self.type.defn, lvalue.name)
                 if key in self.saved_class_attrs:
                     del self.saved_class_attrs[key]

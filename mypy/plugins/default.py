@@ -2,16 +2,18 @@ from functools import partial
 from typing import Callable, Optional, List
 
 from mypy import message_registry
-from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
+from mypy.nodes import Expression, StrExpr, IntExpr, DictExpr, UnaryExpr
 from mypy.plugin import (
-    Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext
+    Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
+    CheckerPluginInterface,
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, UnionType, TypedDictType,
+    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
     TypeVarType, TPDICT_FB_NAMES, get_proper_type
 )
 from mypy.subtypes import is_subtype
+from mypy.typeops import make_simplified_union
 
 
 class DefaultPlugin(Plugin):
@@ -65,6 +67,8 @@ class DefaultPlugin(Plugin):
             return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
             return ctypes.array_iter_callback
+        elif fullname == 'pathlib.Path.open':
+            return path_open_callback
         return None
 
     def get_attribute_hook(self, fullname: str
@@ -100,23 +104,55 @@ class DefaultPlugin(Plugin):
 
 
 def open_callback(ctx: FunctionContext) -> Type:
-    """Infer a better return type for 'open'.
+    """Infer a better return type for 'open'."""
+    return _analyze_open_signature(
+        arg_types=ctx.arg_types,
+        args=ctx.args,
+        mode_arg_index=1,
+        default_return_type=ctx.default_return_type,
+        api=ctx.api,
+    )
 
-    Infer TextIO or BinaryIO as the return value if the mode argument is not
-    given or is a literal.
+
+def path_open_callback(ctx: MethodContext) -> Type:
+    """Infer a better return type for 'pathlib.Path.open'."""
+    return _analyze_open_signature(
+        arg_types=ctx.arg_types,
+        args=ctx.args,
+        mode_arg_index=0,
+        default_return_type=ctx.default_return_type,
+        api=ctx.api,
+    )
+
+
+def _analyze_open_signature(arg_types: List[List[Type]],
+                            args: List[List[Expression]],
+                            mode_arg_index: int,
+                            default_return_type: Type,
+                            api: CheckerPluginInterface,
+                            ) -> Type:
+    """A helper for analyzing any function that has approximately
+    the same signature as the builtin 'open(...)' function.
+
+    Currently, the only thing the caller can customize is the index
+    of the 'mode' argument. If the mode argument is omitted or is a
+    string literal, we refine the return type to either 'TextIO' or
+    'BinaryIO' as appropriate.
     """
     mode = None
-    if not ctx.arg_types or len(ctx.arg_types[1]) != 1:
+    if not arg_types or len(arg_types[mode_arg_index]) != 1:
         mode = 'r'
-    elif isinstance(ctx.args[1][0], StrExpr):
-        mode = ctx.args[1][0].value
+    else:
+        mode_expr = args[mode_arg_index][0]
+        if isinstance(mode_expr, StrExpr):
+            mode = mode_expr.value
     if mode is not None:
-        assert isinstance(ctx.default_return_type, Instance)  # type: ignore
+        assert isinstance(default_return_type, Instance)  # type: ignore
         if 'b' in mode:
-            return ctx.api.named_generic_type('typing.BinaryIO', [])
+            return api.named_generic_type('typing.BinaryIO', [])
         else:
-            return ctx.api.named_generic_type('typing.TextIO', [])
-    return ctx.default_return_type
+            return api.named_generic_type('typing.TextIO', [])
+    return default_return_type
 
 
 def contextmanager_callback(ctx: FunctionContext) -> Type:
@@ -168,7 +204,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             tv = TypeVarType(signature.variables[0])
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0],
-                           UnionType.make_simplified_union([value_type, tv])],
+                           make_simplified_union([value_type, tv])],
                 ret_type=ret_type)
     return signature
 
@@ -205,7 +241,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if len(ctx.arg_types) == 1:
             output_types.append(NoneType())
 
-        return UnionType.make_simplified_union(output_types)
+        return make_simplified_union(output_types)
     return ctx.default_return_type
 
 
@@ -231,7 +267,7 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
             tv = TypeVarType(signature.variables[0])
-            typ = UnionType.make_simplified_union([value_type, tv])
+            typ = make_simplified_union([value_type, tv])
             return signature.copy_modified(
                 arg_types=[str_type, typ],
                 ret_type=typ)
@@ -261,10 +297,10 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
                 return AnyType(TypeOfAny.from_error)
 
         if len(ctx.args[1]) == 0:
-            return UnionType.make_simplified_union(value_types)
+            return make_simplified_union(value_types)
         elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
               and len(ctx.args[1]) == 1):
-            return UnionType.make_simplified_union([*value_types, ctx.arg_types[1][0]])
+            return make_simplified_union([*value_types, ctx.arg_types[1][0]])
     return ctx.default_return_type
 
 
@@ -321,7 +357,7 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
             value_types.append(value_type)
 
-        return UnionType.make_simplified_union(value_types)
+        return make_simplified_union(value_types)
     return ctx.default_return_type
 
 
@@ -364,8 +400,10 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
 
 def int_pow_callback(ctx: MethodContext) -> Type:
     """Infer a more precise return type for int.__pow__."""
-    if (len(ctx.arg_types) == 1
-            and len(ctx.arg_types[0]) == 1):
+    # int.__pow__ has an optional modulo argument,
+    # so we expect 2 argument positions
+    if (len(ctx.arg_types) == 2
+            and len(ctx.arg_types[0]) == 1 and len(ctx.arg_types[1]) == 0):
         arg = ctx.args[0][0]
         if isinstance(arg, IntExpr):
             exponent = arg.value

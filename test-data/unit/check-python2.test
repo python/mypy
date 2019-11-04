@@ -68,6 +68,12 @@ raise BaseException, "a"
 raise BaseException, "a", None
 [builtins_py2 fixtures/exception.pyi]
 
+[case testRaiseTupleTypeFail]
+import typing
+x = None # type: typing.Type[typing.Tuple[typing.Any, typing.Any, typing.Any]]
+raise x # E: Exception must be derived from BaseException
+[builtins_py2 fixtures/exception.pyi]
+
 [case testTryExceptWithTuple]
 try:
     None
@@ -161,7 +167,7 @@ main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[in
 import asyncio
 import Bastion
 [out]
-main:1: error: Cannot find module named 'asyncio'
+main:1: error: Cannot find implementation or library stub for module named 'asyncio'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: No library stub file for standard library module 'Bastion'
 main:2: note: (Stub files are from https://github.com/python/typeshed)

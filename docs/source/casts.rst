@@ -6,7 +6,7 @@ Casts and type assertions
 Mypy supports type casts that are usually used to coerce a statically
 typed value to a subtype. Unlike languages such as Java or C#,
 however, mypy casts are only used as hints for the type checker, and they
-don't perform a runtime type check. Use the function ``cast`` to perform a
+don't perform a runtime type check. Use the function :py:func:`~typing.cast` to perform a
 cast:
 
 .. code-block:: python
