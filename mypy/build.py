@@ -1164,7 +1164,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log('Metadata abandoned for {}: plugins differ'.format(id))
             return None
-        plugin_data = manager.plugin.get_config_data(id, path)
+        plugin_data = manager.plugin.report_config_data(id, path)
         if m.plugin_data != plugin_data:
             manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
             return None
@@ -1373,7 +1373,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     data_str = json_dumps(data, manager.options.debug_cache)
     interface_hash = compute_hash(data_str)
 
-    plugin_data = manager.plugin.get_config_data(id, path)
+    plugin_data = manager.plugin.report_config_data(id, path)
 
     # Obtain and set up metadata
     try:

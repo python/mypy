@@ -459,7 +459,7 @@ class Plugin(CommonPluginApi):
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
 
-    def get_config_data(self, id: str, path: str) -> Any:
+    def report_config_data(self, id: str, path: str) -> Any:
         """Get representation of configuration data for a module.
 
         The data must be encodable as JSON and will be stored in the
@@ -679,8 +679,8 @@ class WrapperPlugin(Plugin):
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         return self.plugin.lookup_fully_qualified(fullname)
 
-    def get_config_data(self, id: str, path: str) -> Any:
-        return self.plugin.get_config_data(id, path)
+    def report_config_data(self, id: str, path: str) -> Any:
+        return self.plugin.report_config_data(id, path)
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         return self.plugin.get_additional_deps(file)
@@ -750,8 +750,8 @@ class ChainedPlugin(Plugin):
         for plugin in self._plugins:
             plugin.set_modules(modules)
 
-    def get_config_data(self, id: str, path: str) -> Any:
-        config_data = [plugin.get_config_data(id, path) for plugin in self._plugins]
+    def report_config_data(self, id: str, path: str) -> Any:
+        config_data = [plugin.report_config_data(id, path) for plugin in self._plugins]
         return config_data if any(x is not None for x in config_data) else None
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:

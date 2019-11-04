@@ -7,7 +7,7 @@ from mypy.plugin import Plugin
 
 
 class ConfigDataPlugin(Plugin):
-    def get_config_data(self, id: str, path: str) -> Any:
+    def report_config_data(self, id: str, path: str) -> Any:
         path = os.path.join('tmp/test.json')
         with open(path) as f:
             data = json.load(f)
