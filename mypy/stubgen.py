@@ -1144,7 +1144,7 @@ def find_module_paths_using_imports(modules: List[str],
 
 def is_test_module(module: str) -> bool:
     """Does module look like a test module?"""
-    return (module.endswith(('.tests', '.test'))
+    return (module.endswith(('.tests', '.test', '.conftest'))
             or '.tests.' in module
             or '.test.' in module)
 
