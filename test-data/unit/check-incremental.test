@@ -4936,6 +4936,24 @@ python_version=3.6
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testPluginConfigData]
+# flags: --config-file tmp/mypy.ini
+import a
+import b
+[file a.py]
+[file b.py]
+[file test.json]
+{"a": false, "b": false}
+[file test.json.2]
+{"a": true, "b": false}
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/config_data.py
+
+# The config change will force a to be rechecked but not b.
+[rechecked a]
+
 [case testLiteralIncrementalTurningIntoLiteral]
 import mod
 reveal_type(mod.a)
