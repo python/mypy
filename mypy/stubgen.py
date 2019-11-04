@@ -91,6 +91,14 @@ from mypy.errors import CompileError, Errors
 from mypy.traverser import has_return_statement
 
 
+# Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
+BLACKLIST = [
+    '/six.py\n',  # Likely vendored six; too dynamic for us to handle
+    '/vendored/',  # Vendored packages
+    '/vendor/',  # Vendored packages
+]
+
+
 class Options:
     """Represents stubgen options.
 
@@ -968,6 +976,14 @@ def find_module_paths_using_imports(modules: List[str],
             path, runtime_all = result
             py_modules.append(StubSource(mod, path, runtime_all))
     return py_modules, c_modules
+
+
+def remove_test_modules(modules: List[str]) -> List[str]:
+    """Remove anything from modules that looks like a test."""
+    return [module for module in modules
+            if (not module.endswith(('.tests', '.test'))
+                and '.tests.' not in module
+                and '.test.' not in module)]
 
 
 def find_module_paths_using_search(modules: List[str], packages: List[str],
