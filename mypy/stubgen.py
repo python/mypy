@@ -955,7 +955,7 @@ def find_module_paths_using_imports(modules: List[str],
                 result = find_module_path_and_all_py2(mod, interpreter)
             else:
                 result = find_module_path_and_all_py3(mod, verbose)
-        except CantImport e:
+        except CantImport as e:
             tb = traceback.format_exc()
             if verbose:
                 sys.stdout.write(tb)
@@ -1098,7 +1098,8 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     return sigs, class_sigs
 
 
-def generate_stubs(options: Options) -> None:
+def generate_stubs(options: Options,
+                   add_header: bool) -> None:
     """Main entry point for the program."""
     mypy_opts = mypy_options(options)
     py_modules, c_modules = collect_build_targets(options, mypy_opts)
@@ -1238,7 +1239,7 @@ def main() -> None:
         sys.path.insert(0, '')
 
     options = parse_options(sys.argv[1:])
-    generate_stubs(options)
+    generate_stubs(options, add_header=False)
 
 
 if __name__ == '__main__':
