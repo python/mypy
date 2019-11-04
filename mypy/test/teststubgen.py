@@ -477,25 +477,28 @@ class StubgenPythonSuite(DataSuite):
             result.extend(file.read().splitlines())
 
 
+self_arg = ArgSig(name='self')
+
+
 class StubgencSuite(Suite):
     def test_infer_hash_sig(self) -> None:
-        assert_equal(infer_method_sig('__hash__'), [])
+        assert_equal(infer_method_sig('__hash__'), [self_arg])
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_sig('__getitem__'), [ArgSig(name='index')])
+        assert_equal(infer_method_sig('__getitem__'), [self_arg, ArgSig(name='index')])
 
     def test_infer_setitem_sig(self) -> None:
         assert_equal(infer_method_sig('__setitem__'),
-                     [ArgSig(name='index'), ArgSig(name='object')])
+                     [self_arg, ArgSig(name='index'), ArgSig(name='object')])
 
     def test_infer_binary_op_sig(self) -> None:
         for op in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul'):
-            assert_equal(infer_method_sig('__%s__' % op), [ArgSig(name='other')])
+            assert_equal(infer_method_sig('__%s__' % op), [self_arg, ArgSig(name='other')])
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ('neg', 'pos'):
-            assert_equal(infer_method_sig('__%s__' % op), [])
+            assert_equal(infer_method_sig('__%s__' % op), [self_arg])
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output = []  # type: List[str]
