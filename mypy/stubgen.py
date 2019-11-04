@@ -1119,8 +1119,8 @@ def find_module_paths_using_imports(modules: List[str],
     py_modules = []  # type: List[StubSource]
     c_modules = []  # type: List[StubSource]
     found = list(walk_packages(packages, verbose))
-    found = remove_test_modules(found)  # We don't want to run any tests
     modules = modules + found
+    modules = [mod for mod in modules if not is_test_module(mod)]  # We don't want to run any tests
     for mod in modules:
         try:
             if pyversion[0] == 2:
@@ -1142,12 +1142,8 @@ def find_module_paths_using_imports(modules: List[str],
     return py_modules, c_modules
 
 
-def remove_test_modules(modules: List[str]) -> List[str]:
-    """Remove anything from modules that looks like a test."""
-    return [mod for mod in modules if not is_test_module(mod)]
-
-
 def is_test_module(module: str) -> bool:
+    """Does module look like a test module?"""
     return (module.endswith(('.tests', '.test'))
             or '.tests.' in module
             or '.test.' in module)
@@ -1177,6 +1173,9 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
             fail_missing(package)
         sources = [StubSource(m.module, m.path) for m in p_result]
         result.extend(sources)
+
+    result = [m for m in result if not is_test_module(m.module)]
+
     return result
 
 

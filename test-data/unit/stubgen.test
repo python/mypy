@@ -1709,3 +1709,47 @@ y: Any
 <out/p/vendored/requests.pyi was not generated>
 # p/sub/requests.pyi
 class Request2: ...
+
+[case testTestFiles]
+# modules: p p.x p.tests p.tests.test_foo
+
+[file p/__init__.py]
+def f(): pass
+
+[file p/x.py]
+def g(): pass
+
+[file p/tests/__init__.py]
+
+[file p/tests/test_foo.py]
+def test_thing(): pass
+
+[out]
+# p/__init__.pyi
+def f() -> None: ...
+# p/x.pyi
+def g() -> None: ...
+<out/p/tests.pyi was not generated>
+<out/p/tests/test_foo.pyi was not generated>
+
+[case testTestFiles_import]
+# modules: p p.x p.tests p.tests.test_foo
+
+[file p/__init__.py]
+def f(): pass
+
+[file p/x.py]
+def g(): pass
+
+[file p/tests/__init__.py]
+
+[file p/tests/test_foo.py]
+def test_thing(): pass
+
+[out]
+# p/__init__.pyi
+def f() -> None: ...
+# p/x.pyi
+def g() -> None: ...
+<out/p/tests.pyi was not generated>
+<out/p/tests/test_foo.pyi was not generated>
