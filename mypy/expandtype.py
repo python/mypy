@@ -4,8 +4,8 @@ from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType
-)
+    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType,
+    TypeAliasType)
 
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> ProperType:
@@ -131,6 +131,12 @@ class ExpandTypeVisitor(TypeVisitor[ProperType]):
         # here yet.
         item = t.item.accept(self)
         return TypeType.make_normalized(item)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        # Target of the type alias cannot contain type variables,
+        # so we just expand the arguments.
+        exp_t = t.copy_modified(args=self.expand_types(t.args))
+        return get_proper_type(exp_t)
 
     def expand_types(self, types: Iterable[Type]) -> List[Type]:
         a = []  # type: List[Type]

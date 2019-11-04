@@ -1859,6 +1859,31 @@ class PlaceholderType(ProperType):
         assert False, "Internal error: unresolved placeholder type {}".format(self.fullname)
 
 
+@overload
+def get_proper_type(typ: None) -> None: ...
+@overload
+def get_proper_type(typ: Type) -> ProperType: ...
+
+
+def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
+    if typ is None:
+        return None
+    while isinstance(typ, TypeAliasType):
+        typ = typ._expand_once()
+    assert isinstance(typ, ProperType), typ
+    return typ
+
+
+@overload
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
+@overload
+def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
+
+
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
+    return [get_proper_type(t) for t in it]
+
+
 # We split off the type visitor base classes to another module
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
@@ -2209,31 +2234,6 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
     if typ.fallback.type.fullname() != fallback_fullname:
         return False
     return typ.value == value
-
-
-@overload
-def get_proper_type(typ: None) -> None: ...
-@overload
-def get_proper_type(typ: Type) -> ProperType: ...
-
-
-def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
-    if typ is None:
-        return None
-    while isinstance(typ, TypeAliasType):
-        typ = typ._expand_once()
-    assert isinstance(typ, ProperType), typ
-    return typ
-
-
-@overload
-def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
-@overload
-def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
-
-
-def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
-    return [get_proper_type(t) for t in it]
 
 
 names = globals().copy()  # type: Final

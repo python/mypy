@@ -36,8 +36,7 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type
-)
+    get_proper_types, is_literal_type, TypeAliasType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes,
@@ -4627,6 +4626,11 @@ class SetNothingToAny(TypeTranslator):
         if t.ambiguous:
             return AnyType(TypeOfAny.from_error)
         return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Target of the alias cannot by an ambigous <nothing>, so we just
+        # replace the arguments.
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
 def is_node_static(node: Optional[Node]) -> Optional[bool]:
