@@ -223,7 +223,7 @@ class TypeAliasType(Type):
             assert isinstance(args_list, list)
             args = [deserialize_type(arg) for arg in args_list]
         alias = TypeAliasType(None, args)
-        alias.type_ref = data['type_ref']  # TODO: fix this up in fixup.py.
+        alias.type_ref = data['type_ref']
         return alias
 
     def copy_modified(self, *,
