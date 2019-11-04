@@ -3721,7 +3721,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for name, expr_ in self.ctns:
                 if refers_to_fullname(node.callee, name):
                     expr = node.args[0]
-                    if literal(expr_) == LITERAL_TYPE:
+                    if literal(expr) == LITERAL_TYPE:
                         vartype = type_map[node.args[0]]
                         type = get_isinstance_type(expr_, type_map)
                         break  # name is unique
