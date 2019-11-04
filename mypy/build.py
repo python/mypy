@@ -250,6 +250,21 @@ def default_data_dir() -> str:
     return os.path.dirname(__file__)
 
 
+def normpath(path: str, options: Options) -> str:
+    """Convert path to absolute; but to relative in bazel mode.
+
+    (Bazel's distributed cache doesn't like filesystem metadata to
+    end up in output files.)
+    """
+    # TODO: Could we always use relpath?  (A worry in non-bazel
+    # mode would be that a moved file may change its full module
+    # name without changing its size, mtime or hash.)
+    if options.bazel:
+        return os.path.relpath(path)
+    else:
+        return os.path.abspath(path)
+
+
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
@@ -563,9 +578,10 @@ class BuildManager:
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
         if options.sqlite_cache:
-            self.metastore = SqliteMetadataStore(_cache_dir_prefix(self))  # type: MetadataStore
+            self.metastore = SqliteMetadataStore(
+                _cache_dir_prefix(self.options))  # type: MetadataStore
         else:
-            self.metastore = FilesystemMetadataStore(_cache_dir_prefix(self))
+            self.metastore = FilesystemMetadataStore(_cache_dir_prefix(self.options))
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -631,13 +647,7 @@ class BuildManager:
         (Bazel's distributed cache doesn't like filesystem metadata to
         end up in output files.)
         """
-        # TODO: Could we always use relpath?  (A worry in non-bazel
-        # mode would be that a moved file may change its full module
-        # name without changing its size, mtime or hash.)
-        if self.options.bazel:
-            return os.path.relpath(path)
-        else:
-            return os.path.abspath(path)
+        return normpath(path, self.options)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -840,7 +850,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 
     for id in rdeps:
         if id != FAKE_ROOT_MODULE:
-            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager.options)
         else:
             deps_json = DEPS_ROOT_FILE
         assert deps_json
@@ -870,7 +880,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
         error = True
 
     if error:
-        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
         manager.errors.report(0, 0, "Error writing fine-grained dependencies cache",
                               blocker=True)
 
@@ -937,7 +947,7 @@ PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
     if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
-        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
         manager.errors.report(0, 0, "Error writing plugins snapshot",
                               blocker=True)
 
@@ -1047,18 +1057,18 @@ def _load_json_file(file: str, manager: BuildManager,
         return result
 
 
-def _cache_dir_prefix(manager: BuildManager) -> str:
+def _cache_dir_prefix(options: Options) -> str:
     """Get current cache directory (or file if id is given)."""
-    if manager.options.bazel:
+    if options.bazel:
         # This is needed so the cache map works.
         return os.curdir
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
+    cache_dir = options.cache_dir
+    pyversion = options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
     return base
 
 
-def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
+def get_cache_names(id: str, path: str, options: Options) -> Tuple[str, str, Optional[str]]:
     """Return the file names for the cache files.
 
     Args:
@@ -1071,8 +1081,8 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON, the
       data JSON, and the fine-grained deps JSON, respectively.
     """
-    if manager.options.cache_map:
-        pair = manager.options.cache_map.get(manager.normpath(path))
+    if options.cache_map:
+        pair = options.cache_map.get(normpath(path, options))
     else:
         pair = None
     if pair is not None:
@@ -1081,7 +1091,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
         # prefix directory.
         # Solve this by rewriting the paths as relative to the root dir.
         # This only makes sense when using the filesystem backed cache.
-        root = _cache_dir_prefix(manager)
+        root = _cache_dir_prefix(options)
         return (os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None)
     prefix = os.path.join(*id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
@@ -1089,7 +1099,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
         prefix = os.path.join(prefix, '__init__')
 
     deps_json = None
-    if manager.options.cache_fine_grained:
+    if options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
@@ -1107,7 +1117,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
@@ -1299,7 +1309,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
                 meta_str = json.dumps(meta_dict)
-            meta_json, _, _ = get_cache_names(id, path, manager)
+            meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
             t1 = time.time()
@@ -1362,7 +1372,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     bazel = manager.options.bazel
 
     # Obtain file paths.
-    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
     manager.log('Writing {} {} {} {}'.format(
         id, path, meta_json, data_json))
 
@@ -1465,7 +1475,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     # We don't delete .deps files on errors, since the dependencies
     # are mostly generated from other files and the metadata is
     # tracked separately.
-    meta_path, data_path, _ = get_cache_names(id, path, manager)
+    meta_path, data_path, _ = get_cache_names(id, path, manager.options)
     cache_paths = [meta_path, data_path]
     manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 
