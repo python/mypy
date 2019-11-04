@@ -485,7 +485,10 @@ class StubgenPythonSuite(DataSuite):
         mods = []  # Module names to process
         source = '\n'.join(testcase.input)
         for file, content in testcase.files + [('./main.py', source)]:
-            mod = os.path.basename(file)[:-3]
+            # Strip ./ prefix and .py suffix.
+            mod = file[2:-3].replace('/', '.')
+            if mod.endswith('.__init__'):
+                mod, _, _ = mod.rpartition('.')
             mods.append(mod)
             extra.extend(['-m', mod])
             with open(file, 'w') as f:
@@ -503,7 +506,7 @@ class StubgenPythonSuite(DataSuite):
                 generate_stubs(options)
                 a = []  # type: List[str]
                 for module in modules:
-                    fnam = os.path.join(out_dir, '{}.pyi'.format(module))
+                    fnam = os.path.join(out_dir, '{}.pyi'.format(module.replace('.', '/')))
                     self.add_file(fnam, a, header=len(modules) > 1)
             except CompileError as e:
                 a = e.messages
@@ -535,8 +538,11 @@ class StubgenPythonSuite(DataSuite):
             return ['main']
 
     def add_file(self, path: str, result: List[str], header: bool) -> None:
+        if not os.path.exists(path):
+            result.append('<%s was not generated>' % path)
+            return
         if header:
-            result.append('# {}'.format(os.path.basename(path)))
+            result.append('# {}'.format(path[4:]))
         with open(path, encoding='utf8') as file:
             result.extend(file.read().splitlines())
 

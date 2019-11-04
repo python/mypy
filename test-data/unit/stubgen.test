@@ -1677,3 +1677,35 @@ from six.moves import http_client, queue as queue
 
 class C(http_client.HTTPMessage): ...
 class D(six.Iterator): ...
+
+[case testVendoredPackage]
+# modules: main p.vendored.requests p.sub.requests
+from p.vendored.requests import Request
+from p.sub.requests import Request2
+
+x = Request()
+y = Request2()
+
+[file p/__init__.py]
+
+[file p/vendored/__init__.py]
+
+[file p/vendored/requests.py]
+class Request:
+    pass
+
+[file p/sub/__init__.py]
+
+[file p/sub/requests.py]
+class Request2:
+    pass
+
+[out]
+# main.pyi
+from typing import Any
+
+x: Any
+y: Any
+<out/p/vendored/requests.pyi was not generated>
+# p/sub/requests.pyi
+class Request2: ...
