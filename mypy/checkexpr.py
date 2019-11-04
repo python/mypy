@@ -61,6 +61,7 @@ from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
     function_type, callable_type, try_getting_str_literals
 )
+from mypy.semanal import refers_to_fullname
 import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
@@ -272,8 +273,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_typeddict_call(typeddict_type, e.arg_kinds, e.arg_names, e.args, e)
         if (isinstance(e.callee, NameExpr)
                 and ((e.callee.name in ('isinstance', 'issubclass') and len(e.args) == 2)
-                or e.callee.name == 'narrow_cast' and len(e.args) == 1)):
-            is_narrow_cast = e.callee.name == 'narrow_cast'
+                or refers_to_fullname(e.callee, 'mypy.extern.narrow_cast') and len(e.args) == 1)):
+            is_narrow_cast = refers_to_fullname(e.callee, 'mypy.extern.narrow_cast')
             arg = e.args[1] if not is_narrow_cast else e.args[0]
             for typ in mypy.checker.flatten(arg):
                 node = None
@@ -3316,7 +3317,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             return AnyType(TypeOfAny.from_error)
 
-        for base in mro[index+1:]:
+        for base in mro[index + 1:]:
             if e.name in base.names or base == mro[-1]:
                 if e.info and e.info.fallback_to_any and base == mro[-1]:
                     # There's an undefined base class, and we're at the end of the
