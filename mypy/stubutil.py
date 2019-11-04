@@ -192,6 +192,11 @@ def fail_missing(mod: str) -> None:
 
 
 def remove_misplaced_type_comments(source: AnyStr) -> AnyStr:
+    """Remove comments from source that could be understood as misplaced type comments.
+
+    Normal comments may look like misplaced type comments, and since they cause blocking
+    parse errors, we want to avoid them.
+    """
     if isinstance(source, bytes):
         # This gives us a 1-1 character code mapping, so it's roundtrippable.
         text = source.decode('latin1')
