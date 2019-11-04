@@ -1164,13 +1164,13 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log('Metadata abandoned for {}: plugins differ'.format(id))
             return None
-        # So that plugins can return data with tuples in it without
-        # things silently always invalidating modules, we round-trip
-        # the config data. This isn't beautiful.
-        plugin_data = json.loads(json.dumps(manager.plugin.report_config_data(id, path)))
-        if m.plugin_data != plugin_data:
-            manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
-            return None
+    # So that plugins can return data with tuples in it without
+    # things silently always invalidating modules, we round-trip
+    # the config data. This isn't beautiful.
+    plugin_data = json.loads(json.dumps(manager.plugin.report_config_data(id, path)))
+    if m.plugin_data != plugin_data:
+        manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
+        return None
 
     manager.add_stats(fresh_metas=1)
     return m
