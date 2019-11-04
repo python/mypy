@@ -270,9 +270,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typeddict_type = e.callee.node.typeddict_type.copy_modified(
                 fallback=Instance(e.callee.node, []))
             return self.check_typeddict_call(typeddict_type, e.arg_kinds, e.arg_names, e.args, e)
-        if (isinstance(e.callee, NameExpr) and e.callee.name in ('isinstance', 'issubclass')
-                and len(e.args) == 2):
-            for typ in mypy.checker.flatten(e.args[1]):
+        if (isinstance(e.callee, NameExpr)
+                and ((e.callee.name in ('isinstance', 'issubclass') and len(e.args) == 2)
+                or e.callee.name == 'narrow_cast' and len(e.args) == 1)):
+            is_narrow_cast = e.callee.name == 'narrow_cast'
+            arg = e.args[1] if not is_narrow_cast else e.args[0]
+            for typ in mypy.checker.flatten(arg):
                 node = None
                 if isinstance(typ, NameExpr):
                     try:
@@ -297,6 +300,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.msg.cannot_use_function_with_type(e.callee.name, "TypedDict", e)
                     elif typ.node.is_newtype:
                         self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
+            if is_narrow_cast:
+                ctn_name = self.chk.ctns_queue.pop()
+                if ctn_name not in self.chk.ctns_keys:
+                    self.chk.ctns.append((ctn_name, arg))
+                    self.chk.ctns_keys.add(ctn_name)
         self.try_infer_partial_type(e)
         type_context = None
         if isinstance(e.callee, LambdaExpr):
