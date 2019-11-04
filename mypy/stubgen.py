@@ -938,6 +938,8 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
         py_modules = [StubSource(m.module, m.path) for m in source_list]
         c_modules = []
 
+    py_modules = remove_blacklisted_modules(py_modules)
+
     return py_modules, c_modules
 
 
