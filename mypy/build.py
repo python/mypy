@@ -269,6 +269,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
                         ('ignore_all', bool),  # if errors were ignored
+                        ('plugin_data', Any),  # config data from plugins
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
@@ -303,6 +304,7 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         meta.get('interface_hash', ''),
         meta.get('version_id', sentinel),
         meta.get('ignore_all', True),
+        meta.get('plugin_data', None),
     )
 
 
@@ -1162,6 +1164,13 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log('Metadata abandoned for {}: plugins differ'.format(id))
             return None
+    # So that plugins can return data with tuples in it without
+    # things silently always invalidating modules, we round-trip
+    # the config data. This isn't beautiful.
+    plugin_data = json.loads(json.dumps(manager.plugin.report_config_data(id, path)))
+    if m.plugin_data != plugin_data:
+        manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
+        return None
 
     manager.add_stats(fresh_metas=1)
     return m
@@ -1284,6 +1293,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'interface_hash': meta.interface_hash,
                 'version_id': manager.version_id,
                 'ignore_all': meta.ignore_all,
+                'plugin_data': meta.plugin_data,
             }
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
@@ -1366,6 +1376,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     data_str = json_dumps(data, manager.options.debug_cache)
     interface_hash = compute_hash(data_str)
 
+    plugin_data = manager.plugin.report_config_data(id, path)
+
     # Obtain and set up metadata
     try:
         st = manager.get_stat(path)
@@ -1429,6 +1441,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
+            'plugin_data': plugin_data,
             }
 
     # Write meta cache file
