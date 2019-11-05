@@ -32,6 +32,8 @@ from mypy.main import process_options
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.build import BuildSource
+from mypy.fscache import FileSystemCache
+
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -80,14 +82,15 @@ def fail(message: str) -> NoReturn:
 
 def get_mypy_config(paths: List[str],
                     mypy_options: Optional[List[str]],
-                    compiler_options: CompilerOptions) -> Tuple[List[BuildSource], Options]:
+                    compiler_options: CompilerOptions,
+                    fscache: Optional[FileSystemCache]) -> Tuple[List[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
     # It is kind of silly to do this but oh well
     mypy_options = mypy_options or []
     mypy_options.append('--')
     mypy_options.extend(paths)
 
-    sources, options = process_options(mypy_options)
+    sources, options = process_options(mypy_options, fscache=fscache)
 
     # Override whatever python_version is inferred from the .ini file,
     # and set the python_version to be the currently used version.
@@ -170,6 +173,7 @@ def include_dir() -> str:
 def generate_c(sources: List[BuildSource],
                options: Options,
                groups: emitmodule.Groups,
+               fscache: FileSystemCache,
                compiler_options: Optional[CompilerOptions] = None
                ) -> Tuple[List[List[Tuple[str, str]]], str]:
     """Drive the actual core compilation step.
@@ -185,7 +189,8 @@ def generate_c(sources: List[BuildSource],
     # Do the actual work now
     t0 = time.time()
     try:
-        result = emitmodule.parse_and_typecheck(sources, options, compiler_options, groups)
+        result = emitmodule.parse_and_typecheck(
+            sources, options, compiler_options, groups, fscache)
     except CompileError as e:
         for line in e.messages:
             print(line)
@@ -426,7 +431,8 @@ def mypycify(
 
     build_dir = compiler_options.target_dir
 
-    sources, options = get_mypy_config(expanded_paths, mypy_options, compiler_options)
+    fscache = FileSystemCache()
+    sources, options = get_mypy_config(expanded_paths, mypy_options, compiler_options, fscache)
     # We generate a shared lib if there are multiple modules or if any
     # of the modules are in package. (Because I didn't want to fuss
     # around with making the single module code handle packages.)
@@ -437,7 +443,7 @@ def mypycify(
     # We let the test harness just pass in the c file contents instead
     # so that it can do a corner-cutting version without full stubs.
     if not skip_cgen_input:
-        group_cfiles, ops_text = generate_c(sources, options, groups,
+        group_cfiles, ops_text = generate_c(sources, options, groups, fscache,
                                             compiler_options=compiler_options)
         # TODO: unique names?
         write_file(os.path.join(build_dir, 'ops.txt'), ops_text)

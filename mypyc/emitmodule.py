@@ -17,6 +17,7 @@ from mypy.build import (
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
+from mypy.fscache import FileSystemCache
 
 from mypyc import genops
 from mypyc.common import (
@@ -153,15 +154,19 @@ class MypycPlugin(Plugin):
         return [(10, id, -1) for id in self.group_map.get(file.fullname(), (None, []))[1]]
 
 
-def parse_and_typecheck(sources: List[BuildSource],
-                        options: Options,
-                        compiler_options: CompilerOptions,
-                        groups: Groups,
-                        alt_lib_path: Optional[str] = None) -> BuildResult:
+def parse_and_typecheck(
+    sources: List[BuildSource],
+    options: Options,
+    compiler_options: CompilerOptions,
+    groups: Groups,
+    fscache: Optional[FileSystemCache] = None,
+    alt_lib_path: Optional[str] = None
+) -> BuildResult:
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
                    options=options,
                    alt_lib_path=alt_lib_path,
+                   fscache=fscache,
                    extra_plugins=[MypycPlugin(options, compiler_options, groups)])
     if result.errors:
         raise CompileError(result.errors)
