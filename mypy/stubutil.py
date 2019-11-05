@@ -69,7 +69,7 @@ def walk_packages(packages: List[str], verbose: bool = False) -> Iterator[str]:
             print('Trying to import %r for runtime introspection' % package_name)
         try:
             package = importlib.import_module(package_name)
-        except Exception:
+        except BaseException:
             report_missing(package_name)
             continue
         yield package.__name__
