@@ -578,7 +578,8 @@ class MessageBuilder:
         matching_type_args = []
         for i, kwarg_type in enumerate(callee.arg_types):
             callee_arg_name = callee.arg_names[i]
-            if callee_arg_name is not None and (is_same_type(arg_type, kwarg_type) or is_subtype(arg_type, kwarg_type)):
+            if (callee_arg_name is not None and
+                    (is_same_type(arg_type, kwarg_type) or is_subtype(arg_type, kwarg_type))):
                 matching_type_args.append(callee_arg_name)
         matches.extend(best_matches(name, matching_type_args))
         if not matches:
