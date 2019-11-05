@@ -204,10 +204,13 @@ def remove_misplaced_type_comments(source: AnyStr) -> AnyStr:
     # on a line, as it will often generate a parse error (unless it's # type: ignore).
     text = re.sub(r'^[ \t]*# +type: +["\'a-zA-Z_].*$', '', text, flags=re.MULTILINE)
 
-    # Remove something that looks like a function type annotation after docstring,
+    # Remove something that looks like a function type comment after docstring,
     # which will result in a parse error.
     text = re.sub(r'""" *\n[ \t\n]*# +type: +\(.*$', '"""\n', text, flags=re.MULTILINE)
     text = re.sub(r"''' *\n[ \t\n]*# +type: +\(.*$", "'''\n", text, flags=re.MULTILINE)
+
+    # Remove something that looks like a badly formed function type comment.
+    text = re.sub(r'^[ \t]*# +type: +\([^()]+(\)[ \t]*)?$', '', text, flags=re.MULTILINE)
 
     if isinstance(source, bytes):
         return text.encode('latin1')
