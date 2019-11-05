@@ -112,6 +112,7 @@ def compile_modules_to_c(
     modules = genops.build_ir(file_nodes, result.graph, result.types,
                               mapper,
                               compiler_options, errors)
+    errors.flush_errors()
     if errors.num_errors > 0:
         return modules, []
     # Insert uninit checks.
