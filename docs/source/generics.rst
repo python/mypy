@@ -312,6 +312,8 @@ or a deserialization method returns the actual type of self. Therefore
 you may need to silence mypy inside these methods (but not at the call site),
 possibly by making use of the ``Any`` type.
 
+For some advanced uses of self-types see :ref:`additional examples <advanced_self>`.
+
 .. _variance-of-generics:
 
 Variance of generic types

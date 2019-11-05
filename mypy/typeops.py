@@ -9,13 +9,13 @@ from typing import cast, Optional, List, Sequence, Set
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
-    TypeVarType, TypeType, UninhabitedType, FormalArgument, UnionType, NoneType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2, Expression,
-    StrExpr
+    StrExpr, ARG_POS
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
@@ -41,37 +41,50 @@ def type_object_type_from_function(signature: FunctionLike,
                                    def_info: TypeInfo,
                                    fallback: Instance,
                                    is_new: bool) -> FunctionLike:
-    # The __init__ method might come from a generic superclass
-    # (init_or_new.info) with type variables that do not map
-    # identically to the type variables of the class being constructed
-    # (info). For example
+    # We first need to record all non-trivial (explicit) self types in __init__,
+    # since they will not be available after we bind them. Note, we use explicit
+    # self-types only in the defining class, similar to __new__ (but not exactly the same,
+    # see comment in class_callable below). This is mostly useful for annotating library
+    # classes such as subprocess.Popen.
+    default_self = fill_typevars(info)
+    if not is_new and def_info == info and not info.is_newtype:
+        orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
+                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items()]
+    else:
+        orig_self_types = [None] * len(signature.items())
+
+    # The __init__ method might come from a generic superclass 'def_info'
+    # with type variables that do not map identically to the type variables of
+    # the class 'info' being constructed. For example:
     #
-    #   class A(Generic[T]): def __init__(self, x: T) -> None: pass
-    #   class B(A[List[T]], Generic[T]): pass
+    #   class A(Generic[T]):
+    #       def __init__(self, x: T) -> None: ...
+    #   class B(A[List[T]]):
+    #      ...
     #
-    # We need to first map B's __init__ to the type (List[T]) -> None.
-    signature = bind_self(signature, original_type=fill_typevars(info), is_classmethod=is_new)
-    signature = cast(FunctionLike,
-                     map_type_from_supertype(signature, info, def_info))
+    # We need to map B's __init__ to the type (List[T]) -> None.
+    signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
+    signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
+
     special_sig = None  # type: Optional[str]
     if def_info.fullname() == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'
 
     if isinstance(signature, CallableType):
-        return class_callable(signature, info, fallback, special_sig, is_new)
+        return class_callable(signature, info, fallback, special_sig, is_new, orig_self_types[0])
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items = []  # type: List[CallableType]
-        for item in signature.items():
-            items.append(class_callable(item, info, fallback, special_sig, is_new))
+        for item, orig_self in zip(signature.items(), orig_self_types):
+            items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
 
 
 def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
-                   is_new: bool) -> CallableType:
+                   is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
     variables = []  # type: List[TypeVarDef]
     variables.extend(info.defn.type_vars)
@@ -80,6 +93,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     from mypy.subtypes import is_subtype
 
     init_ret_type = get_proper_type(init_type.ret_type)
+    orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
     if (
         is_new
@@ -89,6 +103,8 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         and is_subtype(init_ret_type, default_ret_type, ignore_type_params=True)
     ):
         ret_type = init_ret_type  # type: Type
+    elif isinstance(orig_self_type, (Instance, TupleType)):
+        ret_type = orig_self_type
     else:
         ret_type = default_ret_type
 
@@ -108,8 +124,8 @@ def map_type_from_supertype(typ: Type,
 
     For example, assume
 
-    . class D(Generic[S]) ...
-    . class C(D[E[T]], Generic[T]) ...
+      class D(Generic[S]): ...
+      class C(D[E[T]], Generic[T]): ...
 
     Now S in the context of D would be mapped to E[T] in the context of C.
     """
@@ -128,6 +144,18 @@ def map_type_from_supertype(typ: Type,
     # in inst_type they are interpreted in subtype context. This works even if
     # the names of type variables in supertype and subtype overlap.
     return expand_type_by_instance(typ, inst_type)
+
+
+def supported_self_type(typ: ProperType) -> bool:
+    """Is this a supported kind of explicit self-types?
+
+    Currently, this means a X or Type[X], where X is an instance or
+    a type variable with an instance upper bound.
+    """
+    if isinstance(typ, TypeType):
+        return supported_self_type(typ.item)
+    return (isinstance(typ, TypeVarType) or
+            (isinstance(typ, Instance) and typ != fill_typevars(typ.type)))
 
 
 F = TypeVar('F', bound=FunctionLike)
@@ -164,7 +192,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
-        # invalid method. return something
+        # Invalid method, return something.
         return cast(F, func)
     if func.arg_kinds[0] == ARG_STAR:
         # The signature is of the form 'def foo(*args, ...)'.
@@ -174,23 +202,21 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         # TODO: infer bounds on the type of *args?
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
-    if func.variables and (isinstance(self_param_type, TypeVarType) or
-                           (isinstance(self_param_type, TypeType) and
-                            isinstance(self_param_type.item, TypeVarType))):
+    if func.variables and supported_self_type(self_param_type):
         if original_type is None:
-            # Type check method override
-            # XXX value restriction as union?
+            # TODO: type check method override (see #7861).
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
         ids = [x.id for x in func.variables]
-        typearg = get_proper_type(infer_type_arguments(ids, self_param_type, original_type)[0])
+        typearg = get_proper_type(infer_type_arguments(ids, self_param_type,
+                                                       original_type, is_supertype=True)[0])
         if (is_classmethod and isinstance(typearg, UninhabitedType)
                 and isinstance(original_type, (Instance, TypeVarType, TupleType))):
             # In case we call a classmethod through an instance x, fallback to type(x)
-            # TODO: handle Union
             typearg = get_proper_type(infer_type_arguments(ids, self_param_type,
-                                                           TypeType(original_type))[0])
+                                                           TypeType(original_type),
+                                                           is_supertype=True)[0])
 
         def expand(target: Type) -> Type:
             assert typearg is not None
@@ -217,6 +243,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
 
 def erase_to_bound(t: Type) -> Type:
+    # TODO: use value restrictions to produce a union?
     t = get_proper_type(t)
     if isinstance(t, TypeVarType):
         return t.upper_bound
@@ -270,8 +297,6 @@ def make_simplified_union(items: Sequence[Type],
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
     """
-    # TODO: Make this a function living somewhere outside mypy.types. Most other non-trivial
-    #       type operations are not static methods, so this is inconsistent.
     items = get_proper_types(items)
     while any(isinstance(typ, UnionType) for typ in items):
         all_items = []  # type: List[ProperType]

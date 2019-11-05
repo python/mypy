@@ -3173,4 +3173,4 @@ class User:
 
     def __init__(self, name: str) -> None:
         self.name = name  # E: Cannot assign to a method \
-                          # E: Incompatible types in assignment (expression has type "str", variable has type overloaded function)
+                          # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[..., Any]")
