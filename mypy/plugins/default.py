@@ -427,9 +427,15 @@ def int_neg_callback(ctx: MethodContext) -> Type:
     This is mainly used to infer the return type as LiteralType
     if the original underlying object is a LiteralType object
     """
-    if isinstance(ctx.type, Instance) and isinstance(ctx.type.last_known_value, LiteralType):
+    if isinstance(ctx.type, Instance) and ctx.type.last_known_value is not None:
         value = ctx.type.last_known_value.value
         fallback = ctx.type.last_known_value.fallback
+        if isinstance(value, int):
+            return Instance(ctx.type.type, ctx.type.args,
+                last_known_value=LiteralType(-value, fallback))
+    elif isinstance(ctx.type, LiteralType):
+        value = ctx.type.value
+        fallback = ctx.type.fallback
         if isinstance(value, int):
             return LiteralType(-value, fallback)
     return ctx.default_return_type
