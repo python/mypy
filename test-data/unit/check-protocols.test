@@ -2473,3 +2473,26 @@ class P(Protocol):
 
 p: P = N(lambda a, b, c: 'foo')
 [builtins fixtures/property.pyi]
+
+[case testLiteralsAgainstProtocols]
+from typing import SupportsInt, SupportsAbs, TypeVar
+from typing_extensions import Literal, Final
+
+T = TypeVar('T')
+def abs(x: SupportsAbs[T]) -> T: ...
+def foo(x: SupportsInt) -> None: ...
+
+ONE: Final = 1
+TWO: Literal[2]
+ALL: Literal[1, 2, 3]
+
+foo(ONE)
+foo(TWO)
+foo(3)
+
+reveal_type(abs(ONE))  # N: Revealed type is 'builtins.int*'
+reveal_type(abs(TWO))  # N: Revealed type is 'builtins.int*'
+reveal_type(abs(3))  # N: Revealed type is 'builtins.int*'
+reveal_type(abs(ALL))  # N: Revealed type is 'builtins.int*'
+[builtins fixtures/float.pyi]
+[typing fixtures/typing-full.pyi]
