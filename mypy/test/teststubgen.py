@@ -15,7 +15,7 @@ from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stubs, parse_options, Options, collect_build_targets,
-    mypy_options, is_blacklisted_path, is_test_module
+    mypy_options, is_blacklisted_path, is_non_library_module
 )
 from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
@@ -459,29 +459,34 @@ class StubgenHelpersSuite(Suite):
         assert is_blacklisted_path('foo/vendored/bar/thing.py')
         assert is_blacklisted_path('foo/six.py')
 
-    def test_is_test_module(self) -> None:
-        assert not is_test_module('foo')
-        assert not is_test_module('foo.bar')
+    def test_is_non_library_module(self) -> None:
+        assert not is_non_library_module('foo')
+        assert not is_non_library_module('foo.bar')
 
         # The following could be test modules, but we are very conservative and
         # don't treat them as such since they could plausibly be real modules.
-        assert not is_test_module('foo.bartest')
-        assert not is_test_module('foo.bartests')
-        assert not is_test_module('foo.testbar')
+        assert not is_non_library_module('foo.bartest')
+        assert not is_non_library_module('foo.bartests')
+        assert not is_non_library_module('foo.testbar')
 
-        assert is_test_module('foo.test')
-        assert is_test_module('foo.test.foo')
-        assert is_test_module('foo.tests')
-        assert is_test_module('foo.tests.foo')
-        assert is_test_module('foo.testing.foo')
+        assert is_non_library_module('foo.test')
+        assert is_non_library_module('foo.test.foo')
+        assert is_non_library_module('foo.tests')
+        assert is_non_library_module('foo.tests.foo')
+        assert is_non_library_module('foo.testing.foo')
+        assert is_non_library_module('foo.SelfTest.foo')
 
-        assert is_test_module('foo.test_bar')
-        assert is_test_module('foo.bar_tests')
-        assert is_test_module('foo.testing')
-        assert is_test_module('foo.conftest')
-        assert is_test_module('foo.bar_test_util')
-        assert is_test_module('foo.bar_test_utils')
-        assert is_test_module('foo.bar_test_base')
+        assert is_non_library_module('foo.test_bar')
+        assert is_non_library_module('foo.bar_tests')
+        assert is_non_library_module('foo.testing')
+        assert is_non_library_module('foo.conftest')
+        assert is_non_library_module('foo.bar_test_util')
+        assert is_non_library_module('foo.bar_test_utils')
+        assert is_non_library_module('foo.bar_test_base')
+
+        assert is_non_library_module('foo.setup')
+
+        assert is_non_library_module('foo.__main__')
 
 
 class StubgenPythonSuite(DataSuite):

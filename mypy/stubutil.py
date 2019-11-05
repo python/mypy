@@ -11,17 +11,14 @@ import re
 from types import ModuleType
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, Iterator, Union
+from typing import Optional, Tuple, List, Iterator, Union, Set
 from typing_extensions import overload
 
 from mypy.moduleinspect import ModuleInspect, InspectError, is_c_module
 
 
-# Modules that may fail when imported, or that may have side effects.
-NOT_IMPORTABLE_MODULES = {
-    'tensorflow.tools.pip_package.setup',
-    'tensorflow_core.tools.pip_package.setup',
-}
+# Modules that may fail when imported, or that may have side effects (fully qualified).
+NOT_IMPORTABLE_MODULES = ()
 
 
 class CantImport(Exception):
