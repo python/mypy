@@ -17,6 +17,7 @@ from typing import Optional, Tuple, List, IO, Iterator, AnyStr
 # Modules that may fail when imported, or that may have side effects.
 NOT_IMPORTABLE_MODULES = {
     'tensorflow.tools.pip_package.setup',
+    'tensorflow_core.compiler.jit.ops.xla_ops_grad',
 }
 
 
