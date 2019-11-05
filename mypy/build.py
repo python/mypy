@@ -50,7 +50,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, ChainedPlugin, plugin_types
+from mypy.plugin import Plugin, ChainedPlugin, plugin_types, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
@@ -1195,7 +1195,9 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # So that plugins can return data with tuples in it without
     # things silently always invalidating modules, we round-trip
     # the config data. This isn't beautiful.
-    plugin_data = json.loads(json.dumps(manager.plugin.report_config_data(id, path)))
+    plugin_data = json.loads(json.dumps(
+        manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True))
+    ))
     if m.plugin_data != plugin_data:
         manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
         return None
@@ -1404,7 +1406,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     data_str = json_dumps(data, manager.options.debug_cache)
     interface_hash = compute_hash(data_str)
 
-    plugin_data = manager.plugin.report_config_data(id, path)
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
 
     # Obtain and set up metadata
     try:
