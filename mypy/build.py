@@ -603,11 +603,7 @@ class BuildManager:
                               and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
-        if options.sqlite_cache:
-            self.metastore = SqliteMetadataStore(
-                _cache_dir_prefix(self.options))  # type: MetadataStore
-        else:
-            self.metastore = FilesystemMetadataStore(_cache_dir_prefix(self.options))
+        self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -1084,6 +1080,14 @@ def _cache_dir_prefix(options: Options) -> str:
     pyversion = options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
     return base
+
+
+def create_metastore(options: Options) -> MetadataStore:
+    """Create the appropriate metadata store."""
+    if options.sqlite_cache:
+        return SqliteMetadataStore(_cache_dir_prefix(options))
+    else:
+        return FilesystemMetadataStore(_cache_dir_prefix(options))
 
 
 def get_cache_names(id: str, path: str, options: Options) -> Tuple[str, str, Optional[str]]:
