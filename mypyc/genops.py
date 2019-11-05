@@ -2129,6 +2129,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Unreachable())
 
     def visit_expression_stmt(self, stmt: ExpressionStmt) -> None:
+        if isinstance(stmt.expr, StrExpr):
+            # Docstring. Ignore
+            return
         # ExpressionStmts do not need to be coerced like other Expressions.
         stmt.expr.accept(self)
 
