@@ -202,13 +202,14 @@ class TestRun(MypycDataSuite):
         groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
+            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
+                compiler_options=compiler_options,
                 groups=groups,
                 alt_lib_path='.')
             errors = Errors()
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result,
                 compiler_options=compiler_options,

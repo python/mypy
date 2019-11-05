@@ -20,7 +20,7 @@ from mypy.plugin import Plugin, ReportConfigContext
 
 from mypyc import genops
 from mypyc.common import (
-    BUILD_DIR, PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
+    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
@@ -86,7 +86,8 @@ class MypycPlugin(Plugin):
         recompile the module so we mark it as stale.
     """
 
-    def __init__(self, options: Options, groups: Groups) -> None:
+    def __init__(
+            self, options: Options, compiler_options: CompilerOptions, groups: Groups) -> None:
         super().__init__(options)
         self.group_map = {}  # type: Dict[str, Tuple[Optional[str], List[str]]]
         for sources, name in groups:
@@ -94,6 +95,7 @@ class MypycPlugin(Plugin):
             for id in modules:
                 self.group_map[id] = (name, modules)
 
+        self.compiler_options = compiler_options
         self.metastore = create_metastore(options)
 
     def report_config_data(
@@ -136,7 +138,7 @@ class MypycPlugin(Plugin):
         # .mypy_cache, which we should handle gracefully.
         for path, hash in ir_data['src_hashes'].items():
             try:
-                with open(os.path.join(BUILD_DIR, path), 'rb') as f:
+                with open(os.path.join(self.compiler_options.target_dir, path), 'rb') as f:
                     contents = f.read()
             except FileNotFoundError:
                 return None
@@ -151,14 +153,16 @@ class MypycPlugin(Plugin):
         return [(10, id, -1) for id in self.group_map.get(file.fullname(), (None, []))[1]]
 
 
-def parse_and_typecheck(sources: List[BuildSource], options: Options,
+def parse_and_typecheck(sources: List[BuildSource],
+                        options: Options,
+                        compiler_options: CompilerOptions,
                         groups: Groups,
                         alt_lib_path: Optional[str] = None) -> BuildResult:
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
                    options=options,
                    alt_lib_path=alt_lib_path,
-                   extra_plugins=[MypycPlugin(options, groups)])
+                   extra_plugins=[MypycPlugin(options, compiler_options, groups)])
     if result.errors:
         raise CompileError(result.errors)
     return result

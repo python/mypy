@@ -35,7 +35,7 @@ from mypy.build import BuildSource
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.common import BUILD_DIR, shared_lib_name
+from mypyc.common import shared_lib_name
 from mypyc.ops import format_modules
 
 from mypyc import emitmodule
@@ -185,7 +185,7 @@ def generate_c(sources: List[BuildSource],
     # Do the actual work now
     t0 = time.time()
     try:
-        result = emitmodule.parse_and_typecheck(sources, options, groups)
+        result = emitmodule.parse_and_typecheck(sources, options, compiler_options, groups)
     except CompileError as e:
         for line in e.messages:
             print(line)
@@ -293,6 +293,7 @@ def write_file(path: str, contents: str) -> None:
     except IOError:
         old_contents = None
     if old_contents != encoded_contents:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'wb') as f:
             f.write(encoded_contents)
 
@@ -370,7 +371,8 @@ def mypycify(
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
-    skip_cgen_input: Optional[Any] = None
+    skip_cgen_input: Optional[Any] = None,
+    target_dir: Optional[str] = None
 ) -> List['Extension']:
     """Main entry point to building using mypyc.
 
@@ -409,6 +411,7 @@ def mypycify(
         multi_file=multi_file,
         verbose=verbose,
         separate=separate is not False,
+        target_dir=target_dir,
     )
 
     # Create a compiler object so we can make decisions based on what
@@ -421,11 +424,7 @@ def mypycify(
     for path in paths:
         expanded_paths.extend(glob.glob(path))
 
-    build_dir = BUILD_DIR  # TODO: can this be overridden??
-    try:
-        os.mkdir(build_dir)
-    except FileExistsError:
-        pass
+    build_dir = compiler_options.target_dir
 
     sources, options = get_mypy_config(expanded_paths, mypy_options, compiler_options)
     # We generate a shared lib if there are multiple modules or if any
@@ -441,8 +440,7 @@ def mypycify(
         group_cfiles, ops_text = generate_c(sources, options, groups,
                                             compiler_options=compiler_options)
         # TODO: unique names?
-        with open(os.path.join(build_dir, 'ops.txt'), 'w') as f:
-            f.write(ops_text)
+        write_file(os.path.join(build_dir, 'ops.txt'), ops_text)
     else:
         group_cfiles = skip_cgen_input
 
