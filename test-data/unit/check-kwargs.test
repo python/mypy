@@ -86,13 +86,22 @@ def f(a: 'A') -> None: pass # N: "f" defined here
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
-[case testKeywordsMisspelling]
-def f(thing, other): ...
-f(otter='test') # E: Unexpected keyword argument "otter" for "f";  did you mean "other"?
+[case testKeywordMisspelling]
+def f(other: 'A') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f";  did you mean "other"?
+class A: pass
 
 [case testMultipleKeywordsForMisspelling]
-def f(thing, other, atter, btter): ...
-f(otter='test') # E: Unexpected keyword argument "otter" for "f";  did you mean "other", "btter", or "atter"?
+def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f";  did you mean "other" or "atter"?
+class A: pass
+class B: pass
+
+[case testKeywordMisspellingDifferentType]
+def f(other: 'A') -> None: pass # N: "f" defined here
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f";  did you mean "other"?
+class A: pass
+class B: pass
 
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any

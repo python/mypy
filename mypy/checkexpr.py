@@ -1284,7 +1284,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         assert actual_names, "Internal error: named kinds without names given"
                         act_name = actual_names[i]
                         assert act_name is not None
-                        messages.unexpected_keyword_argument(callee, act_name, context)
+                        act_type = actual_types[i]
+                        messages.unexpected_keyword_argument(callee, act_name, act_type, context)
                     is_unexpected_arg_error = True
             elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in callee.arg_kinds)
                   or kind == nodes.ARG_STAR2):
