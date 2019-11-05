@@ -613,7 +613,7 @@ class BuildManager:
         if not self.shadow_map:
             return path
 
-        path = self.normpath(path)
+        path = normpath(path, self.options)
 
         previously_checked = path in self.shadow_equivalence_map
         if not previously_checked:
@@ -640,14 +640,6 @@ class BuildManager:
             return 0
         else:
             return int(self.metastore.getmtime(path))
-
-    def normpath(self, path: str) -> str:
-        """Convert path to absolute; but to relative in bazel mode.
-
-        (Bazel's distributed cache doesn't like filesystem metadata to
-        end up in output files.)
-        """
-        return normpath(path, self.options)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -1221,7 +1213,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
-        path = manager.normpath(path)
+        path = normpath(path, manager.options)
     try:
         st = manager.get_stat(path)
     except OSError:
