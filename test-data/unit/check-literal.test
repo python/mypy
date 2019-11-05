@@ -3093,3 +3093,13 @@ def test() -> None:
     if x == 2:  # OK
         ...
 [builtins fixtures/bool.pyi]
+
+[case testNegativeIntLiteral]
+from typing_extensions import Literal
+
+a: Literal[-2] = -2  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[-2]")
+b: Literal[-1] = -1  # E: Incompatible types in assignment (expression has type "int", variable has type "Literal[-1]")
+c: Literal[0] = 0
+d: Literal[1] = 1
+e: Literal[2] = 2
+[out]
