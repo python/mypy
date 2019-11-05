@@ -1753,3 +1753,24 @@ def f() -> None: ...
 def g() -> None: ...
 <out/p/tests.pyi was not generated>
 <out/p/tests/test_foo.pyi was not generated>
+
+[case testImportedModuleExits_import]
+# modules: a b c
+
+[file a.py]
+def g(): pass
+
+[file b.py]
+import sys
+def f(): pass
+sys.exit(1)
+
+[file c.py]
+x = 0
+
+[out]
+# a.pyi
+def g() -> None: ...
+<out/b.pyi was not generated>
+# c.pyi
+x: int

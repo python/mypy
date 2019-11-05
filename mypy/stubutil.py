@@ -139,7 +139,7 @@ def find_module_path_and_all_py3(module: str,
         print('Trying to import %r for runtime introspection' % module)
     try:
         mod = importlib.import_module(module)
-    except Exception as e:
+    except BaseException as e:
         raise CantImport(module, str(e))
     if is_c_module(mod):
         return None
