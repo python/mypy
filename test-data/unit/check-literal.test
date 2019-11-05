@@ -3103,3 +3103,11 @@ c: Literal[0] = 0
 d: Literal[1] = 1
 e: Literal[2] = 2
 [out]
+[builtins fixtures/float.pyi]
+
+[case testNegativeIntLiteralWithFinal]
+from typing_extensions import Literal, Final
+
+ONE: Final = 1
+x: Literal[-1] = -ONE
+[builtins fixtures/float.pyi]
