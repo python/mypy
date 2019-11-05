@@ -170,7 +170,11 @@ def generate_guarded(mod: str, target: str,
             print('Created %s' % target)
 
 
-PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}
+PY2_MODULES = {
+    'cStringIO',
+    'urlparse',
+    'collections.UserDict',
+}
 
 
 def report_missing(mod: str, message: Optional[str] = '', traceback: str = '') -> None:
