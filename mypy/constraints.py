@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type
+    ProperType, get_proper_type, TypeAliasType
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -89,6 +89,22 @@ def infer_constraints(template: Type, actual: Type,
 
     The constraints are represented as Constraint objects.
     """
+    if (isinstance(template, TypeAliasType) and isinstance(actual, TypeAliasType) and
+            template.is_recursive and actual.is_recursive):
+        # This case requires special care because it may cause infinite recursion.
+        assert template.alias is not None
+        if any(mypy.sametypes.is_same_type(template, t) for t in template.alias.inferring):
+            return []
+        template.alias.inferring.append(template)
+        res = _infer_constraints(template, actual, direction)
+        template.alias.inferring.pop()
+        return res
+    return _infer_constraints(template, actual, direction)
+
+
+def _infer_constraints(template: Type, actual: Type,
+                       direction: int) -> List[Constraint]:
+
     template = get_proper_type(template)
     actual = get_proper_type(actual)
 
@@ -484,6 +500,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_union_type(self, template: UnionType) -> List[Constraint]:
         assert False, ("Unexpected UnionType in ConstraintBuilderVisitor"
                        " (should have been handled in infer_constraints)")
+
+    def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
+        assert False, "This should be never called, got {}".format(template)
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
         res = []  # type: List[Constraint]

@@ -1,13 +1,13 @@
 from contextlib import contextmanager
 
-from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast
+from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast, TypeVar
 from typing_extensions import Final
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type
+    FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type, TypeAliasType
 )
 import mypy.applytype
 import mypy.constraints
@@ -63,6 +63,33 @@ def is_subtype(left: Type, right: Type,
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
+            left.is_recursive and right.is_recursive):
+        # This case requires special care because it may cause infinite recursion.
+        assert right.alias is not None
+        for (l, r) in reversed(right.alias.assuming):
+            if (mypy.sametypes.is_same_type(l, left)
+                    and mypy.sametypes.is_same_type(r, right)):
+                return True
+        with pop_on_exit(right.alias.assuming, left, right):
+            return _is_subtype(left, right,
+                               ignore_type_params=ignore_type_params,
+                               ignore_pos_arg_names=ignore_pos_arg_names,
+                               ignore_declared_variance=ignore_declared_variance,
+                               ignore_promotions=ignore_promotions)
+    return _is_subtype(left, right,
+                       ignore_type_params=ignore_type_params,
+                       ignore_pos_arg_names=ignore_pos_arg_names,
+                       ignore_declared_variance=ignore_declared_variance,
+                       ignore_promotions=ignore_promotions)
+
+
+def _is_subtype(left: Type, right: Type,
+                *,
+                ignore_type_params: bool = False,
+                ignore_pos_arg_names: bool = False,
+                ignore_declared_variance: bool = False,
+                ignore_promotions: bool = False) -> bool:
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -433,10 +460,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return metaclass is not None and self._is_subtype(metaclass, right)
         return False
 
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        assert False, "This should be never called, got {}".format(left)
+
+
+T = TypeVar('T', Instance, TypeAliasType)
+
 
 @contextmanager
-def pop_on_exit(stack: List[Tuple[Instance, Instance]],
-                left: Instance, right: Instance) -> Iterator[None]:
+def pop_on_exit(stack: List[Tuple[T, T]],
+                left: T, right: T) -> Iterator[None]:
     stack.append((left, right))
     yield
     stack.pop()
@@ -1076,6 +1109,25 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
     If erase_instances is True, erase left instance *after* mapping it to supertype
     (this is useful for runtime isinstance() checks).
     """
+    if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
+            left.is_recursive and right.is_recursive):
+        # This case requires special care because it may cause infinite recursion.
+        assert right.alias is not None
+        for (l, r) in reversed(right.alias.assuming_proper):
+            if (mypy.sametypes.is_same_type(l, left)
+                    and mypy.sametypes.is_same_type(r, right)):
+                return True
+        with pop_on_exit(right.alias.assuming_proper, left, right):
+            return _is_proper_subtype(left, right,
+                                      ignore_promotions=ignore_promotions,
+                                      erase_instances=erase_instances)
+    return _is_proper_subtype(left, right,
+                              ignore_promotions=ignore_promotions,
+                              erase_instances=erase_instances)
+
+
+def _is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = False,
+                       erase_instances: bool = False) -> bool:
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -1280,6 +1332,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_proper_subtype(metaclass, right)
         return False
+
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        assert False, "This should be never called, got {}".format(left)
 
 
 def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False) -> bool:
