@@ -7,6 +7,7 @@ import importlib
 import inspect
 import os
 import pkgutil
+import queue
 
 
 ModuleProperties = NamedTuple('ModuleProperties', [
@@ -85,7 +86,10 @@ class ModuleInspect:
 
     Reuse the process for multiple modules for efficiency. However, if there is an
     error, retry using a fresh process to avoid cross-contamination of state between
-    modules (important for certain 3rd-party packages).
+    modules.
+
+    We use a separate process to isolate us from many side effects. For example, the
+    import of a module may kill the current process, and we want to recover from that.
 
     Always use in a with statement for proper clean-up:
 
@@ -113,7 +117,11 @@ class ModuleInspect:
         Raise InspectError if the target couldn't be imported.
         """
         self.q1.put(package_id)
-        res = self.q2.get()
+        res = self._get_from_queue()
+        if res is None:
+            # The process died; recover and report error.
+            self._start()
+            raise InspectError('Process died when importing %r' % package_id)
         if isinstance(res, str):
             # Error importing module
             if self.counter > 0:
@@ -125,6 +133,18 @@ class ModuleInspect:
             raise InspectError(res)
         self.counter += 1
         return res
+
+    def _get_from_queue(self) -> Union[ModuleProperties, str, None]:
+        """Get value from the queue.
+
+        Return the value read from the queue, or None if the process unexpectedly died.
+        """
+        while True:
+            try:
+                return self.q2.get(timeout=0.05)
+            except queue.Empty:
+                if not self.proc.is_alive():
+                    return None
 
     def __enter__(self) -> 'ModuleInspect':
         return self
