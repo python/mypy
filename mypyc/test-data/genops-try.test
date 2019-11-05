@@ -14,9 +14,8 @@ def g():
     r6 :: object
     r7 :: str
     r8, r9 :: object
-    r10 :: None
-    r11 :: bool
-    r12 :: None
+    r10 :: bool
+    r11 :: None
 L0:
 L1:
     r0 = builtins :: module
@@ -31,17 +30,16 @@ L2: (handler for L1)
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
-    r10 = unbox(None, r9)
 L3:
     restore_exc_info r4
     goto L5
 L4: (handler for L2)
     restore_exc_info r4
-    r11 = keep_propagating
+    r10 = keep_propagating
     unreachable
 L5:
-    r12 = None
-    return r12
+    r11 = None
+    return r11
 
 [case testTryExcept2]
 def g(b: bool) -> None:
@@ -64,9 +62,8 @@ def g(b):
     r8 :: object
     r9 :: str
     r10, r11 :: object
-    r12 :: None
-    r13 :: bool
-    r14 :: None
+    r12 :: bool
+    r13 :: None
 L0:
 L1:
     if b goto L2 else goto L3 :: bool
@@ -88,17 +85,16 @@ L5: (handler for L1, L2, L3, L4)
     r9 = unicode_4 :: static  ('print')
     r10 = getattr r8, r9
     r11 = py_call(r10, r7)
-    r12 = unbox(None, r11)
 L6:
     restore_exc_info r6
     goto L8
 L7: (handler for L5)
     restore_exc_info r6
-    r13 = keep_propagating
+    r12 = keep_propagating
     unreachable
 L8:
-    r14 = None
-    return r14
+    r13 = None
+    return r13
 
 [case testTryExcept3]
 def g() -> None:
@@ -115,31 +111,27 @@ def g():
     r0 :: str
     r1 :: object
     r2 :: str
-    r3, r4 :: object
-    r5 :: None
-    r6 :: object
-    r7 :: str
-    r8, r9 :: object
-    r10 :: tuple[object, object, object]
-    r11 :: object
-    r12 :: str
-    r13 :: object
-    r14 :: bool
-    e, r15 :: object
-    r16 :: str
-    r17 :: object
-    r18 :: str
-    r19, r20 :: object
-    r21 :: None
-    r22, r23 :: bool
-    r24 :: tuple[object, object, object]
+    r3, r4, r5 :: object
+    r6 :: str
+    r7, r8 :: object
+    r9 :: tuple[object, object, object]
+    r10 :: object
+    r11 :: str
+    r12 :: object
+    r13 :: bool
+    e, r14 :: object
+    r15 :: str
+    r16 :: object
+    r17 :: str
+    r18, r19 :: object
+    r20, r21 :: bool
+    r22 :: tuple[object, object, object]
+    r23 :: str
+    r24 :: object
     r25 :: str
-    r26 :: object
-    r27 :: str
-    r28, r29 :: object
-    r30 :: None
-    r31 :: bool
-    r32 :: None
+    r26, r27 :: object
+    r28 :: bool
+    r29 :: None
 L0:
 L1:
     r0 = unicode_1 :: static  ('a')
@@ -147,60 +139,57 @@ L1:
     r2 = unicode_2 :: static  ('print')
     r3 = getattr r1, r2
     r4 = py_call(r3, r0)
-    r5 = unbox(None, r4)
 L2:
-    r6 = builtins :: module
-    r7 = unicode_3 :: static  ('object')
-    r8 = getattr r6, r7
-    r9 = py_call(r8)
+    r5 = builtins :: module
+    r6 = unicode_3 :: static  ('object')
+    r7 = getattr r5, r6
+    r8 = py_call(r7)
     goto L8
 L3: (handler for L2)
-    r10 = error_catch
-    r11 = builtins :: module
-    r12 = unicode_4 :: static  ('AttributeError')
-    r13 = getattr r11, r12
-    r14 = exc_matches r13
-    if r14 goto L4 else goto L5 :: bool
+    r9 = error_catch
+    r10 = builtins :: module
+    r11 = unicode_4 :: static  ('AttributeError')
+    r12 = getattr r10, r11
+    r13 = exc_matches r12
+    if r13 goto L4 else goto L5 :: bool
 L4:
-    r15 = get_exc_value
-    e = r15
-    r16 = unicode_5 :: static  ('b')
-    r17 = builtins :: module
-    r18 = unicode_2 :: static  ('print')
-    r19 = getattr r17, r18
-    r20 = py_call(r19, r16, e)
-    r21 = unbox(None, r20)
+    r14 = get_exc_value
+    e = r14
+    r15 = unicode_5 :: static  ('b')
+    r16 = builtins :: module
+    r17 = unicode_2 :: static  ('print')
+    r18 = getattr r16, r17
+    r19 = py_call(r18, r15, e)
     goto L6
 L5:
-    reraise_exc; r22 = 0
+    reraise_exc; r20 = 0
     unreachable
 L6:
-    restore_exc_info r10
+    restore_exc_info r9
     goto L8
 L7: (handler for L3, L4, L5)
-    restore_exc_info r10
-    r23 = keep_propagating
+    restore_exc_info r9
+    r21 = keep_propagating
     unreachable
 L8:
     goto L12
 L9: (handler for L1, L6, L7, L8)
-    r24 = error_catch
-    r25 = unicode_6 :: static  ('weeee')
-    r26 = builtins :: module
-    r27 = unicode_2 :: static  ('print')
-    r28 = getattr r26, r27
-    r29 = py_call(r28, r25)
-    r30 = unbox(None, r29)
+    r22 = error_catch
+    r23 = unicode_6 :: static  ('weeee')
+    r24 = builtins :: module
+    r25 = unicode_2 :: static  ('print')
+    r26 = getattr r24, r25
+    r27 = py_call(r26, r23)
 L10:
-    restore_exc_info r24
+    restore_exc_info r22
     goto L12
 L11: (handler for L9)
-    restore_exc_info r24
-    r31 = keep_propagating
+    restore_exc_info r22
+    r28 = keep_propagating
     unreachable
 L12:
-    r32 = None
-    return r32
+    r29 = None
+    return r29
 
 [case testTryExcept4]
 def g() -> None:
@@ -220,19 +209,16 @@ def g():
     r5 :: str
     r6 :: object
     r7 :: str
-    r8, r9 :: object
-    r10 :: None
-    r11 :: object
-    r12 :: str
-    r13 :: object
-    r14 :: bool
-    r15 :: str
-    r16 :: object
-    r17 :: str
-    r18, r19 :: object
-    r20 :: None
-    r21, r22 :: bool
-    r23 :: None
+    r8, r9, r10 :: object
+    r11 :: str
+    r12 :: object
+    r13 :: bool
+    r14 :: str
+    r15 :: object
+    r16 :: str
+    r17, r18 :: object
+    r19, r20 :: bool
+    r21 :: None
 L0:
 L1:
     goto L9
@@ -249,35 +235,33 @@ L3:
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
-    r10 = unbox(None, r9)
     goto L7
 L4:
-    r11 = builtins :: module
-    r12 = unicode_4 :: static  ('IndexError')
-    r13 = getattr r11, r12
-    r14 = exc_matches r13
-    if r14 goto L5 else goto L6 :: bool
+    r10 = builtins :: module
+    r11 = unicode_4 :: static  ('IndexError')
+    r12 = getattr r10, r11
+    r13 = exc_matches r12
+    if r13 goto L5 else goto L6 :: bool
 L5:
-    r15 = unicode_5 :: static  ('yo')
-    r16 = builtins :: module
-    r17 = unicode_3 :: static  ('print')
-    r18 = getattr r16, r17
-    r19 = py_call(r18, r15)
-    r20 = unbox(None, r19)
+    r14 = unicode_5 :: static  ('yo')
+    r15 = builtins :: module
+    r16 = unicode_3 :: static  ('print')
+    r17 = getattr r15, r16
+    r18 = py_call(r17, r14)
     goto L7
 L6:
-    reraise_exc; r21 = 0
+    reraise_exc; r19 = 0
     unreachable
 L7:
     restore_exc_info r0
     goto L9
 L8: (handler for L2, L3, L4, L5, L6)
     restore_exc_info r0
-    r22 = keep_propagating
+    r20 = keep_propagating
     unreachable
 L9:
-    r23 = None
-    return r23
+    r21 = None
+    return r21
 
 [case testTryFinally]
 def a(b: bool) -> None:
@@ -299,9 +283,8 @@ def a(b):
     r10 :: object
     r11 :: str
     r12, r13 :: object
-    r14 :: None
-    r15, r16 :: bool
-    r17 :: None
+    r14, r15 :: bool
+    r16 :: None
 L0:
 L1:
     if b goto L2 else goto L3 :: bool
@@ -328,10 +311,9 @@ L7:
     r11 = unicode_4 :: static  ('print')
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)
-    r14 = unbox(None, r13)
     if is_error(r6) goto L9 else goto L8
 L8:
-    reraise_exc; r15 = 0
+    reraise_exc; r14 = 0
     unreachable
 L9:
     goto L13
@@ -340,11 +322,11 @@ L10: (handler for L7, L8)
 L11:
     restore_exc_info r6
 L12:
-    r16 = keep_propagating
+    r15 = keep_propagating
     unreachable
 L13:
-    r17 = None
-    return r17
+    r16 = None
+    return r16
 
 [case testWith]
 from typing import Any
@@ -364,16 +346,15 @@ def foo(x):
     r10 :: object
     r11 :: str
     r12, r13 :: object
-    r14 :: None
-    r15 :: tuple[object, object, object]
-    r16 :: bool
-    r17 :: tuple[object, object, object]
-    r18, r19, r20, r21 :: object
-    r22, r23, r24 :: bool
-    r25, r26, r27 :: tuple[object, object, object]
-    r28, r29 :: object
-    r30, r31 :: bool
-    r32 :: None
+    r14 :: tuple[object, object, object]
+    r15 :: bool
+    r16 :: tuple[object, object, object]
+    r17, r18, r19, r20 :: object
+    r21, r22, r23 :: bool
+    r24, r25, r26 :: tuple[object, object, object]
+    r27, r28 :: object
+    r29, r30 :: bool
+    r31 :: None
 L0:
     r0 = py_call(x)
     r1 = type r0 :: object
@@ -392,58 +373,58 @@ L2:
     r11 = unicode_6 :: static  ('print')
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)
-    r14 = unbox(None, r13)
     goto L8
 L3: (handler for L2)
-    r15 = error_catch
-    r16 = False
-    r8 = r16
-    r17 = get_exc_info
-    r18 = r17[0]
-    r19 = r17[1]
-    r20 = r17[2]
-    r21 = py_call(r3, r0, r18, r19, r20)
-    r22 = bool r21 :: object
-    if r22 goto L5 else goto L4 :: bool
+    r14 = error_catch
+    r15 = False
+    r8 = r15
+    r16 = get_exc_info
+    r17 = r16[0]
+    r18 = r16[1]
+    r19 = r16[2]
+    r20 = py_call(r3, r0, r17, r18, r19)
+    r21 = bool r20 :: object
+    if r21 goto L5 else goto L4 :: bool
 L4:
-    reraise_exc; r23 = 0
+    reraise_exc; r22 = 0
     unreachable
 L5:
 L6:
-    restore_exc_info r15
+    restore_exc_info r14
     goto L8
 L7: (handler for L3, L4, L5)
-    restore_exc_info r15
-    r24 = keep_propagating
+    restore_exc_info r14
+    r23 = keep_propagating
     unreachable
 L8:
 L9:
 L10:
-    r26 = <error> :: tuple[object, object, object]
-    r25 = r26
+    r25 = <error> :: tuple[object, object, object]
+    r24 = r25
     goto L12
 L11: (handler for L1, L6, L7, L8)
-    r27 = error_catch
-    r25 = r27
+    r26 = error_catch
+    r24 = r26
 L12:
     if r8 goto L13 else goto L14 :: bool
 L13:
-    r28 = builtins.None :: object
-    r29 = py_call(r3, r0, r28, r28, r28)
+    r27 = builtins.None :: object
+    r28 = py_call(r3, r0, r27, r27, r27)
 L14:
-    if is_error(r25) goto L16 else goto L15
+    if is_error(r24) goto L16 else goto L15
 L15:
-    reraise_exc; r30 = 0
+    reraise_exc; r29 = 0
     unreachable
 L16:
     goto L20
 L17: (handler for L12, L13, L14, L15)
-    if is_error(r25) goto L19 else goto L18
+    if is_error(r24) goto L19 else goto L18
 L18:
-    restore_exc_info r25
+    restore_exc_info r24
 L19:
-    r31 = keep_propagating
+    r30 = keep_propagating
     unreachable
 L20:
-    r32 = None
-    return r32
+    r31 = None
+    return r31
+
