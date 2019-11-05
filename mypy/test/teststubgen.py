@@ -465,13 +465,21 @@ class StubgenHelpersSuite(Suite):
         # don't treat them as such since they could plausibly be real modules.
         assert not is_test_module('foo.bartest')
         assert not is_test_module('foo.bartests')
-        assert not is_test_module('foo.test_bar')
         assert not is_test_module('foo.testbar')
 
         assert is_test_module('foo.test')
         assert is_test_module('foo.test.foo')
         assert is_test_module('foo.tests')
         assert is_test_module('foo.tests.foo')
+        assert is_test_module('foo.testing.foo')
+
+        assert is_test_module('foo.test_bar')
+        assert is_test_module('foo.bar_tests')
+        assert is_test_module('foo.testing')
+        assert is_test_module('foo.conftest')
+        assert is_test_module('foo.bar_test_util')
+        assert is_test_module('foo.bar_test_utils')
+        assert is_test_module('foo.bar_test_base')
 
 
 class StubgenPythonSuite(DataSuite):
