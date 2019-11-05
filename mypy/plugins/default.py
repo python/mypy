@@ -10,7 +10,7 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarType, TPDICT_FB_NAMES, get_proper_type
+    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
@@ -57,6 +57,8 @@ class DefaultPlugin(Plugin):
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
+        elif fullname == 'builtins.int.__neg__':
+            return int_neg_callback
         elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_callback
         elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
@@ -416,4 +418,18 @@ def int_pow_callback(ctx: MethodContext) -> Type:
             return ctx.api.named_generic_type('builtins.int', [])
         else:
             return ctx.api.named_generic_type('builtins.float', [])
+    return ctx.default_return_type
+
+
+def int_neg_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for int.__neg__.
+
+    This is mainly used to infer the return type as LiteralType
+    if the original underlying object is a LiteralType object
+    """
+    if isinstance(ctx.type, Instance) and isinstance(ctx.type.last_known_value, LiteralType):
+        value = ctx.type.last_known_value.value
+        fallback = ctx.type.last_known_value.fallback
+        if isinstance(value, int):
+            return LiteralType(-value, fallback)
     return ctx.default_return_type
