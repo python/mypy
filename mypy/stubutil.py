@@ -20,6 +20,8 @@ from mypy.moduleinspect import ModuleInspect, InspectError, is_c_module
 NOT_IMPORTABLE_MODULES = {
     'tensorflow.tools.pip_package.setup',
     'tensorflow_core.tools.pip_package.setup',
+    'tensorflow_core.compiler.jit.ops.xla_ops_grad',
+    'tensorflow_core.compiler.tf2xla.ops._xla_ops',
 }
 
 
