@@ -23,7 +23,7 @@ import sys
 import time
 import types
 
-from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
+from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
@@ -126,6 +126,7 @@ def build(sources: List[BuildSource],
           fscache: Optional[FileSystemCache] = None,
           stdout: Optional[TextIO] = None,
           stderr: Optional[TextIO] = None,
+          extra_plugins: Optional[Sequence[Plugin]] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -159,9 +160,12 @@ def build(sources: List[BuildSource],
     flush_errors = flush_errors or default_flush_errors
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
+    extra_plugins = extra_plugins or []
 
     try:
-        result = _build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
+        result = _build(
+            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
+        )
         result.errors = messages
         return result
     except CompileError as e:
@@ -182,6 +186,7 @@ def _build(sources: List[BuildSource],
            fscache: Optional[FileSystemCache],
            stdout: TextIO,
            stderr: TextIO,
+           extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(150 * 1000)
@@ -205,7 +210,7 @@ def _build(sources: List[BuildSource],
                     options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version),
                     options.show_absolute_path)
-    plugin, snapshot = load_plugins(options, errors, stdout)
+    plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -331,23 +336,20 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options,
-                 errors: Errors,
-                 stdout: TextIO,
-                 ) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins_from_config(
+    options: Options, errors: Errors, stdout: TextIO
+) -> Tuple[List[Plugin], Dict[str, str]]:
     """Load all configured plugins.
 
-    Return a plugin that encapsulates all plugins chained together. Always
-    at least include the default plugin (it's last in the chain).
+    Return a list of all the loaded plugins from the config file.
     The second return value is a snapshot of versions/hashes of loaded user
     plugins (for cache validation).
     """
     import importlib
     snapshot = {}  # type: Dict[str, str]
 
-    default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
-        return default_plugin, snapshot
+        return [], snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
@@ -417,6 +419,30 @@ def load_plugins(options: Options,
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
                   file=stdout)
             raise  # Propagate to display traceback
+
+    return custom_plugins, snapshot
+
+
+def load_plugins(options: Options,
+                 errors: Errors,
+                 stdout: TextIO,
+                 extra_plugins: Sequence[Plugin],
+                 ) -> Tuple[Plugin, Dict[str, str]]:
+    """Load all configured plugins.
+
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin (it's last in the chain).
+    The second return value is a snapshot of versions/hashes of loaded user
+    plugins (for cache validation).
+    """
+    custom_plugins, snapshot = load_plugins_from_config(options, errors, stdout)
+
+    custom_plugins += extra_plugins
+
+    default_plugin = DefaultPlugin(options)  # type: Plugin
+    if not custom_plugins:
+        return default_plugin, snapshot
+
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
 

@@ -315,9 +315,9 @@ class Server:
             if self.fine_grained_manager:
                 manager = self.fine_grained_manager.manager
                 start_plugins_snapshot = manager.plugins_snapshot
-                _, current_plugins_snapshot = mypy.build.load_plugins(options,
-                                                                      manager.errors,
-                                                                      sys.stdout)
+                _, current_plugins_snapshot = mypy.build.load_plugins(
+                    options, manager.errors, sys.stdout, extra_plugins=()
+                )
                 if current_plugins_snapshot != start_plugins_snapshot:
                     return {'restart': 'plugins changed'}
         except InvalidSourceList as err:
