@@ -476,6 +476,10 @@ class Plugin(CommonPluginApi):
         values and the returned will result in that module's cache
         being invalidated and the module being rechecked.
 
+        This can be called twice for each module, once after loading
+        the cache to check if it is valid and once while writing new
+        cache information.
+
         If is_check in the context is true, then the return of this
         call will be checked against the cached version. Otherwise the
         call is being made to determine what to put in the cache. This
