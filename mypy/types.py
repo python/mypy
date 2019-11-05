@@ -163,6 +163,7 @@ class TypeAliasType(Type):
         self.alias = alias
         self.args = args
         self.type_ref = None  # type: Optional[str]
+        self._is_recursive = None  # type: Optional[bool]
 
     def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
@@ -185,7 +186,11 @@ class TypeAliasType(Type):
 
     @property
     def is_recursive(self) -> bool:
-        return self.expand_all_if_possible() is None
+        if self._is_recursive is not None:
+            return self._is_recursive
+        is_recursive = self.expand_all_if_possible() is None
+        self._is_recursive = is_recursive
+        return is_recursive
 
     # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
