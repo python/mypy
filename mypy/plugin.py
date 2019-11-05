@@ -484,7 +484,6 @@ class Plugin(CommonPluginApi):
 
         This can be used to incorporate external configuration information
         that might require changes to typechecking.
-
         """
         return None
 
