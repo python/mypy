@@ -1120,7 +1120,9 @@ def find_module_paths_using_imports(modules: List[str],
         c_modules = []  # type: List[StubSource]
         found = list(walk_packages(inspect, packages, verbose))
         modules = modules + found
-        modules = [mod for mod in modules if not is_test_module(mod)]  # We don't want to run any tests
+        modules = [mod
+                   for mod in modules
+                   if not is_non_library_module(mod)]  # We don't want to run any tests or scripts
         for mod in modules:
             try:
                 if pyversion[0] == 2:
@@ -1142,17 +1144,18 @@ def find_module_paths_using_imports(modules: List[str],
         return py_modules, c_modules
 
 
-def is_test_module(module: str) -> bool:
-    """Does module look like a test module?"""
+def is_non_library_module(module: str) -> bool:
+    """Does module look like a test module or a script?"""
     if module.endswith((
             '.tests',
             '.test',
             '.testing',
             '_tests',
-            '.conftest',
             'test_util',
             'test_utils',
             'test_base',
+            '.conftest',  # Used by pytest
+            '.setup',  # Typically an install script
     )):
         return True
     if module.split('.')[-1].startswith('test_'):
@@ -1187,7 +1190,7 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
         sources = [StubSource(m.module, m.path) for m in p_result]
         result.extend(sources)
 
-    result = [m for m in result if not is_test_module(m.module)]
+    result = [m for m in result if not is_non_library_module(m.module)]
 
     return result
 
