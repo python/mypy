@@ -103,6 +103,18 @@ f(otter=B()) # E: Unexpected keyword argument "otter" for "f";  did you mean "ot
 class A: pass
 class B: pass
 
+[case testKeywordMisspellingInheritance]
+def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass # N: "f" defined here
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f";  did you mean "btter" or "atter"?
+class A: pass
+class B(A): pass
+class C: pass
+
+[case testKeywordMisspellingFloatInt]
+def f(atter: float, btter: int) -> None: pass # N: "f" defined here
+x: int = 5
+f(otter=x) # E: Unexpected keyword argument "otter" for "f";  did you mean "btter" or "atter"?
+
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
 f = None # type: Any
