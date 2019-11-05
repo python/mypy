@@ -43,8 +43,9 @@ def type_object_type_from_function(signature: FunctionLike,
                                    is_new: bool) -> FunctionLike:
     # We first need to record all non-trivial (explicit) self types in __init__,
     # since they will not be available after we bind them. Note, we use explicit
-    # self-types only in the defining class, similar to __new__ (see below).
-    # This is mostly useful for annotating library classes such as subprocess.Popen.
+    # self-types only in the defining class, similar to __new__ (but not exactly the same,
+    # see comment in class_callable below). This is mostly useful for annotating library
+    # classes such as subprocess.Popen.
     default_self = fill_typevars(info)
     if not is_new and def_info == info and not info.is_newtype:
         orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
@@ -154,7 +155,7 @@ def supported_self_type(typ: ProperType) -> bool:
     if isinstance(typ, TypeType):
         return supported_self_type(typ.item)
     return (isinstance(typ, TypeVarType) or
-            isinstance(typ, Instance) and typ != fill_typevars(typ.type))
+            (isinstance(typ, Instance) and typ != fill_typevars(typ.type)))
 
 
 F = TypeVar('F', bound=FunctionLike)

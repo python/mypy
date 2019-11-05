@@ -628,6 +628,10 @@ some tricky methods:
                return self.item
            return converter(self.item)
 
+In particular, an :py:meth:`~object.__init__` method overloaded on self-type
+may be useful to annotate generic class constructors where type arguments
+depend on constructor parameters in a non-trivial way, see e.g. :py:class:`~subprocess.Popen`.
+
 Mixin classes
 -------------
 
