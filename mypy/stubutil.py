@@ -62,11 +62,11 @@ def default_py2_interpreter() -> str:
 def walk_packages(inspect: ModuleInspect, packages: List[str], verbose: bool = False) -> Iterator[str]:
     """Iterates through all packages and sub-packages in the given list.
 
-    This uses runtime imports to find both Python and C modules. For Python packages
-    we simply pass the __path__ attribute to pkgutil.walk_packages() to get the content
-    of the package (all subpackages and modules).  However, packages in C extensions
-    do not have this attribute, so we have to roll out our own logic: recursively find
-    all modules imported in the package that have matching names.
+    This uses runtime imports (in another process) to find both Python and C modules. For
+    Python packages we simply pass the __path__ attribute to pkgutil.walk_packages() to
+    get the content of the package (all subpackages and modules).  However, packages in C
+    extensions do not have this attribute, so we have to roll out our own logic: recursively
+    find all modules imported in the package that have matching names.
     """
     for package_name in packages:
         if package_name in NOT_IMPORTABLE_MODULES:

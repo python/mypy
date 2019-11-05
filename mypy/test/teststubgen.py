@@ -96,24 +96,23 @@ class StubgenCmdLineSuite(Suite):
 
 class StubgenCliParseSuite(Suite):
     def test_walk_packages(self) -> None:
-        m = ModuleInspect()
-        assert_equal(
-            set(walk_packages(m, ["mypy.errors"])),
-            {"mypy.errors"})
+        with ModuleInspect() as m:
+            assert_equal(
+                set(walk_packages(m, ["mypy.errors"])),
+                {"mypy.errors"})
 
-        assert_equal(
-            set(walk_packages(m, ["mypy.errors", "mypy.stubgen"])),
-            {"mypy.errors", "mypy.stubgen"})
+            assert_equal(
+                set(walk_packages(m, ["mypy.errors", "mypy.stubgen"])),
+                {"mypy.errors", "mypy.stubgen"})
 
-        all_mypy_packages = set(walk_packages(m, ["mypy"]))
-        self.assertTrue(all_mypy_packages.issuperset({
-            "mypy",
-            "mypy.errors",
-            "mypy.stubgen",
-            "mypy.test",
-            "mypy.test.helpers",
-        }))
-        m.close()
+            all_mypy_packages = set(walk_packages(m, ["mypy"]))
+            self.assertTrue(all_mypy_packages.issuperset({
+                "mypy",
+                "mypy.errors",
+                "mypy.stubgen",
+                "mypy.test",
+                "mypy.test.helpers",
+            }))
 
 
 class StubgenUtilSuite(Suite):
@@ -802,44 +801,41 @@ class ArgSigSuite(Suite):
 
 class ModuleInspectSuite(Suite):
     def test_python_module(self) -> None:
-        m = ModuleInspect()
-        p = m.get_package_properties('inspect')
-        assert p is not None
-        assert p.name == 'inspect'
-        assert p.file
-        assert p.path is None
-        assert p.is_c_module == False
-        assert p.subpackages == []
-        m.close()
+        with ModuleInspect() as m:
+            p = m.get_package_properties('inspect')
+            assert p is not None
+            assert p.name == 'inspect'
+            assert p.file
+            assert p.path is None
+            assert p.is_c_module == False
+            assert p.subpackages == []
 
     def test_python_package(self) -> None:
-        m = ModuleInspect()
-        p = m.get_package_properties('unittest')
-        assert p is not None
-        assert p.name == 'unittest'
-        assert p.file
-        assert p.path
-        assert p.is_c_module == False
-        assert p.subpackages
-        assert all(sub.startswith('unittest.') for sub in p.subpackages)
-        m.close()
+        with ModuleInspect() as m:
+            p = m.get_package_properties('unittest')
+            assert p is not None
+            assert p.name == 'unittest'
+            assert p.file
+            assert p.path
+            assert p.is_c_module == False
+            assert p.subpackages
+            assert all(sub.startswith('unittest.') for sub in p.subpackages)
 
     def test_c_module(self) -> None:
-        m = ModuleInspect()
-        p = m.get_package_properties('math')
-        assert p is not None
-        assert p.name == 'math'
-        assert p.file
-        assert p.path is None
-        assert p.is_c_module == True
-        assert p.subpackages == []
-        m.close()
+        with ModuleInspect() as m:
+            p = m.get_package_properties('math')
+            assert p is not None
+            assert p.name == 'math'
+            assert p.file
+            assert p.path is None
+            assert p.is_c_module == True
+            assert p.subpackages == []
 
     def test_non_existent(self) -> None:
-        m = ModuleInspect()
-        with self.assertRaises(InspectError) as e:
-            m.get_package_properties('foobar-non-existent')
-        assert str(e.exception) == "No module named 'foobar-non-existent'"
+        with ModuleInspect() as m:
+            with self.assertRaises(InspectError) as e:
+                m.get_package_properties('foobar-non-existent')
+            assert str(e.exception) == "No module named 'foobar-non-existent'"
 
 
 def module_to_path(out_dir: str, module: str) -> str:
