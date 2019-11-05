@@ -375,6 +375,29 @@ class StubgenUtilSuite(Suite):
         """
         assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
 
+    def test_remove_misplaced_type_comments_5(self) -> None:
+        bad = """
+        def f(x):
+            # type: (int, List[Any],
+            #        float, bool) -> int
+            pass
+
+        def g(x):
+            # type: (int, List[Any])
+            pass
+        """
+        bad_fixed = """
+        def f(x):
+
+            #        float, bool) -> int
+            pass
+
+        def g(x):
+
+            pass
+        """
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
     def test_remove_misplaced_type_comments_bytes(self) -> None:
         original = b"""
         \xbf
