@@ -341,12 +341,10 @@ def lol() -> None:
     pass
 [out]
 def lol():
-    r0 :: str
-    r1 :: None
+    r0 :: None
 L0:
-    r0 = unicode_1 :: static  ('Hello')
-    r1 = None
-    return r1
+    r0 = None
+    return r0
 
 [case testExceptUndefined1]
 from typing import Any
