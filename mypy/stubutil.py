@@ -14,10 +14,13 @@ from contextlib import contextmanager
 from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
 
+from mypy.moduleinspect import ModuleInspect, InspectError, is_c_module
+
 
 # Modules that may fail when imported, or that may have side effects.
 NOT_IMPORTABLE_MODULES = {
     'tensorflow.tools.pip_package.setup',
+    'tensorflow_core.tools.pip_package.setup',
 }
 
 
@@ -25,14 +28,6 @@ class CantImport(Exception):
     def __init__(self, module: str, message: str):
         self.module = module
         self.message = message
-
-
-def is_c_module(module: ModuleType) -> bool:
-    if module.__dict__.get('__file__') is None:
-        # Could be a namespace package. These must be handled through
-        # introspection, since there is no source file.
-        return True
-    return os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd']
 
 
 def default_py2_interpreter() -> str:
@@ -52,14 +47,14 @@ def default_py2_interpreter() -> str:
                      "please use the --python-executable option")
 
 
-def walk_packages(packages: List[str], verbose: bool = False) -> Iterator[str]:
+def walk_packages(inspect: ModuleInspect, packages: List[str], verbose: bool = False) -> Iterator[str]:
     """Iterates through all packages and sub-packages in the given list.
 
-    This uses runtime imports to find both Python and C modules. For Python packages
-    we simply pass the __path__ attribute to pkgutil.walk_packages() to get the content
-    of the package (all subpackages and modules).  However, packages in C extensions
-    do not have this attribute, so we have to roll out our own logic: recursively find
-    all modules imported in the package that have matching names.
+    This uses runtime imports (in another process) to find both Python and C modules. For
+    Python packages we simply pass the __path__ attribute to pkgutil.walk_packages() to
+    get the content of the package (all subpackages and modules).  However, packages in C
+    extensions do not have this attribute, so we have to roll out our own logic: recursively
+    find all modules imported in the package that have matching names.
     """
     for package_name in packages:
         if package_name in NOT_IMPORTABLE_MODULES:
@@ -68,36 +63,22 @@ def walk_packages(packages: List[str], verbose: bool = False) -> Iterator[str]:
         if verbose:
             print('Trying to import %r for runtime introspection' % package_name)
         try:
-            package = importlib.import_module(package_name)
-        except BaseException:
+            prop = inspect.get_package_properties(package_name)
+        except InspectError:
             report_missing(package_name)
             continue
-        yield package.__name__
-        # get the path of the object (needed by pkgutil)
-        path = getattr(package, '__path__', None)
-        if path is None:
-            # Object has no path; this means it's either a module inside a package
-            # (and thus no sub-packages), or it could be a C extension package.
-            if is_c_module(package):
-                # This is a C extension module, now get the list of all sub-packages
-                # using the inspect module
-                subpackages = [package.__name__ + "." + name
-                               for name, val in inspect.getmembers(package)
-                               if inspect.ismodule(val)
-                               and val.__name__ == package.__name__ + "." + name]
-                # Recursively iterate through the subpackages
-                for submodule in walk_packages(subpackages, verbose):
-                    yield submodule
-            # It's a module inside a package.  There's nothing else to walk/yield.
+        yield prop.name
+        if prop.is_c_module:
+            # Recursively iterate through the subpackages
+            for submodule in walk_packages(inspect, prop.subpackages, verbose):
+                yield submodule
         else:
-            all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
-                                                 onerror=lambda r: None)
-            for importer, qualified_name, ispkg in all_packages:
-                yield qualified_name
+            for submodule in prop.subpackages:
+                yield submodule
 
 
 def find_module_path_and_all_py2(module: str,
-                                 interpreter: str) -> Optional[Tuple[str,
+                                 interpreter: str) -> Optional[Tuple[Optional[str],
                                                                      Optional[List[str]]]]:
     """Return tuple (module path, module __all__) for a Python 2 module.
 
@@ -124,8 +105,10 @@ def find_module_path_and_all_py2(module: str,
     return module_path, module_all
 
 
-def find_module_path_and_all_py3(module: str,
-                                 verbose: bool) -> Optional[Tuple[str, Optional[List[str]]]]:
+def find_module_path_and_all_py3(inspect: ModuleInspect,
+                                 module: str,
+                                 verbose: bool) -> Optional[Tuple[Optional[str],
+                                                                  Optional[List[str]]]]:
     """Find module and determine __all__ for a Python 3 module.
 
     Return None if the module is a C module. Return (module_path, __all__) if
@@ -138,15 +121,12 @@ def find_module_path_and_all_py3(module: str,
     if verbose:
         print('Trying to import %r for runtime introspection' % module)
     try:
-        mod = importlib.import_module(module)
-    except BaseException as e:
+        mod = inspect.get_package_properties(module)
+    except InspectError as e:
         raise CantImport(module, str(e))
-    if is_c_module(mod):
+    if mod.is_c_module:
         return None
-    module_all = getattr(mod, '__all__', None)
-    if module_all is not None:
-        module_all = list(module_all)
-    return mod.__file__, module_all
+    return mod.file, mod.all
 
 
 @contextmanager

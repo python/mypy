@@ -90,6 +90,7 @@ from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.traverser import has_return_statement
+from mypy.moduleinspect import ModuleInspect
 
 
 # Common ways of naming package containing vendored modules.
@@ -1134,30 +1135,31 @@ def find_module_paths_using_imports(modules: List[str],
 
     This function uses runtime Python imports to get the information.
     """
-    py_modules = []  # type: List[StubSource]
-    c_modules = []  # type: List[StubSource]
-    found = list(walk_packages(packages, verbose))
-    modules = modules + found
-    modules = [mod for mod in modules if not is_test_module(mod)]  # We don't want to run any tests
-    for mod in modules:
-        try:
-            if pyversion[0] == 2:
-                result = find_module_path_and_all_py2(mod, interpreter)
+    with ModuleInspect() as inspect:
+        py_modules = []  # type: List[StubSource]
+        c_modules = []  # type: List[StubSource]
+        found = list(walk_packages(inspect, packages, verbose))
+        modules = modules + found
+        modules = [mod for mod in modules if not is_test_module(mod)]  # We don't want to run any tests
+        for mod in modules:
+            try:
+                if pyversion[0] == 2:
+                    result = find_module_path_and_all_py2(mod, interpreter)
+                else:
+                    result = find_module_path_and_all_py3(inspect, mod, verbose)
+            except CantImport as e:
+                tb = traceback.format_exc()
+                if verbose:
+                    sys.stdout.write(tb)
+                if not quiet:
+                    report_missing(mod, e.message, tb)
+                continue
+            if not result:
+                c_modules.append(StubSource(mod))
             else:
-                result = find_module_path_and_all_py3(mod, verbose)
-        except CantImport as e:
-            tb = traceback.format_exc()
-            if verbose:
-                sys.stdout.write(tb)
-            if not quiet:
-                report_missing(mod, e.message, tb)
-            continue
-        if not result:
-            c_modules.append(StubSource(mod))
-        else:
-            path, runtime_all = result
-            py_modules.append(StubSource(mod, path, runtime_all))
-    return py_modules, c_modules
+                path, runtime_all = result
+                py_modules.append(StubSource(mod, path, runtime_all))
+        return py_modules, c_modules
 
 
 def is_test_module(module: str) -> bool:
