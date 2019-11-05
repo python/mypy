@@ -1246,10 +1246,14 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
 
 
 def generate_asts_for_modules(py_modules: List[StubSource],
-                              parse_only: bool, mypy_options: MypyOptions) -> None:
+                              parse_only: bool,
+                              mypy_options: MypyOptions,
+                              verbose: bool) -> None:
     """Use mypy to parse (and optionally analyze) source files."""
     if not py_modules:
         return  # Nothing to do here, but there may be C modules
+    if verbose:
+        print('Processing %d files...' % len(py_modules))
     if parse_only:
         for mod in py_modules:
             parse_source_file(mod, mypy_options)
@@ -1321,7 +1325,7 @@ def generate_stubs(options: Options) -> None:
         sigs, class_sigs = collect_docs_signatures(options.doc_dir)
 
     # Use parsed sources to generate stubs for Python modules.
-    generate_asts_for_modules(py_modules, options.parse_only, mypy_opts)
+    generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
     files = []
     for mod in py_modules:
         assert mod.path is not None, "Not found module was not skipped"
