@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types
+    ProperType, get_proper_types, TypeAliasType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -21,6 +21,7 @@ from mypy import state
 
 def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
     """Return a simple least upper bound given the declared type."""
+    # TODO: check infinite recursion for aliases here.
     declaration = get_proper_type(declaration)
     s = get_proper_type(s)
     t = get_proper_type(t)
@@ -63,6 +64,16 @@ def join_types(s: Type, t: Type) -> ProperType:
 
     For example, the join of 'int' and 'object' is 'object'.
     """
+    if (isinstance(s, TypeAliasType) and isinstance(t, TypeAliasType) and
+            s.is_recursive and t.is_recursive):
+        # This case can trigger an infinite recursion, general support for this will be
+        # tricky so we use a trivial join (like for protocols).
+        if is_subtype(s, t):
+            return get_proper_type(t)
+        elif is_subtype(t, s):
+            return get_proper_type(s)
+        else:
+            return object_or_any_from_type(get_proper_type(t))
     s = get_proper_type(s)
     t = get_proper_type(t)
 
@@ -292,6 +303,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        assert False, "This should be never called, got {}".format(t)
+
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)
 
@@ -452,6 +466,27 @@ def object_from_instance(instance: Instance) -> Instance:
     # Use the fact that 'object' is always the last class in the mro.
     res = Instance(instance.type.mro[-1], [])
     return res
+
+
+def object_or_any_from_type(typ: ProperType) -> ProperType:
+    # Similar to object_from_instance() but tries hard for all types.
+    # TODO: find a better way to get object, or make this more reliable.
+    if isinstance(typ, Instance):
+        return object_from_instance(typ)
+    elif isinstance(typ, (CallableType, TypedDictType)):
+        return object_from_instance(typ.fallback)
+    elif isinstance(typ, TupleType):
+        return object_from_instance(typ.partial_fallback)
+    elif isinstance(typ, TypeType):
+        return object_or_any_from_type(typ.item)
+    elif isinstance(typ, TypeVarType) and isinstance(typ.upper_bound, ProperType):
+        return object_or_any_from_type(typ.upper_bound)
+    elif isinstance(typ, UnionType):
+        for it in typ.items:
+            o = object_or_any_from_type(it)
+            if isinstance(o, Instance):
+                return object_from_instance(o)
+    return AnyType(TypeOfAny.special_form)
 
 
 def join_type_list(types: List[Type]) -> Type:

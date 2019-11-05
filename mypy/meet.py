@@ -8,7 +8,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types
+    ProperType, get_proper_type, get_proper_types, TypeAliasType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -21,6 +21,19 @@ from mypy import state
 
 def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
+    if (isinstance(s, TypeAliasType) and isinstance(t, TypeAliasType) and
+            s.is_recursive and t.is_recursive):
+        # This case can trigger an infinite recursion, general support for this will be
+        # tricky so we use a trivial meet (like for protocols).
+        if is_subtype(s, t):
+            return get_proper_type(s)
+        elif is_subtype(t, s):
+            return get_proper_type(t)
+        else:
+            if state.strict_optional:
+                return UninhabitedType()
+            else:
+                return NoneType()
     s = get_proper_type(s)
     t = get_proper_type(t)
 
@@ -35,6 +48,7 @@ def meet_types(s: Type, t: Type) -> ProperType:
 
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
+    # TODO: check infinite recursion for aliases here.
     declared = get_proper_type(declared)
     narrowed = get_proper_type(narrowed)
 
@@ -607,6 +621,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.meet(t, self.s)
         else:
             return self.default(self.s)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        assert False, "This should be never called, got {}".format(t)
 
     def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)

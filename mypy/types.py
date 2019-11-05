@@ -183,6 +183,10 @@ class TypeAliasType(Type):
         """
         raise NotImplementedError('TODO')
 
+    @property
+    def is_recursive(self) -> bool:
+        return self.expand_all_if_possible() is None
+
     # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
     def can_be_true(self) -> bool:  # type: ignore[override]
