@@ -181,7 +181,7 @@ def report_missing(mod: str, message: Optional[str] = '', traceback: str = '') -
     if m:
         missing_module = m.group(1)
         if missing_module in PY2_MODULES:
-            print('note: Try --py2 for Python 2 mode' % missing_module)
+            print('note: Try --py2 for Python 2 mode')
 
 
 def fail_missing(mod: str) -> None:
