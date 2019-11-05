@@ -1763,3 +1763,24 @@ def f(x, y): pass
 from typing import Any
 
 def f(x: Any, y: Any) -> None: ...
+
+[case testImportedModuleExits_import]
+# modules: a b c
+
+[file a.py]
+def g(): pass
+
+[file b.py]
+import sys
+def f(): pass
+sys.exit(1)
+
+[file c.py]
+x = 0
+
+[out]
+# a.pyi
+def g() -> None: ...
+<out/b.pyi was not generated>
+# c.pyi
+x: int
