@@ -20,19 +20,6 @@ from mypy.moduleinspect import ModuleInspect, InspectError, is_c_module
 NOT_IMPORTABLE_MODULES = {
     'tensorflow.tools.pip_package.setup',
     'tensorflow_core.tools.pip_package.setup',
-    'tensorflow_core.compiler.jit.ops.xla_ops_grad',
-    'tensorflow_core.compiler.tf2xla.ops._xla_ops',
-    'tensorflow_core.lite.experimental.microfrontend.ops.gen_audio_microfrontend_op',
-    'tensorflow_core.lite.experimental.microfrontend.ops.gen_audio_microfrontend_op',
-    'tensorflow_core.lite.experimental.microfrontend.python.ops._audio_microfrontend_op',
-    'tensorflow_core.lite.experimental.microfrontend.python.ops',
-    'tensorflow_core.lite.experimental.microfrontend.python.ops.audio_microfrontend_op',
-    'tensorflow_core.python.client.session',
-    'tensorflow_core.python.data.ops.dataset_ops',
-    'tensorflow_core.python.debug.lib.debug_gradients',
-    'tensorflow_core.python.debug.lib.debug_data',
-    'tensorflow_core.python.eager.context',
-    'tensorflow_core.python.eager.function',
 }
 
 
