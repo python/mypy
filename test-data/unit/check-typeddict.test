@@ -1937,3 +1937,53 @@ class DummyTypedDict(TypedDict):
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testTypedDictDoubleForwardClass]
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+class Foo(TypedDict):
+    bar: Bar
+    baz: Bar
+
+Bar = List[Any]
+
+foo: Foo
+reveal_type(foo['bar'])  # N: Revealed type is 'builtins.list[Any]'
+reveal_type(foo['baz'])  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictDoubleForwardFunc]
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+Foo = TypedDict('Foo', {'bar': Bar, 'baz': Bar})
+
+Bar = List[Any]
+
+foo: Foo
+reveal_type(foo['bar'])   # N: Revealed type is 'builtins.list[Any]'
+reveal_type(foo['baz'])  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypedDictDoubleForwardMixed]
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+Bar = List[Any]
+
+class Foo(TypedDict):
+    foo: Toto
+    bar: Bar
+    baz: Bar
+
+Toto = int
+
+foo: Foo
+reveal_type(foo['foo'])  # N: Revealed type is 'builtins.int'
+reveal_type(foo['bar'])  # N: Revealed type is 'builtins.list[Any]'
+reveal_type(foo['baz'])  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

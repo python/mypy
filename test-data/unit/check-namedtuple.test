@@ -871,3 +871,28 @@ b = (1, 2)
 if not b:
     ''()  # E: "str" not callable
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleDoubleForward]
+from typing import Union, Mapping, NamedTuple
+
+class MyBaseTuple(NamedTuple):
+    base_field_1: int
+    base_field_2: int
+
+MyBaseTupleMapping = Mapping[MyBaseTuple, int]
+MyTupleUnion = Union[MyTupleA, MyTupleB]
+
+class MyTupleA(NamedTuple):
+    field_1: MyBaseTupleMapping
+    field_2: MyBaseTuple
+
+
+class MyTupleB(NamedTuple):
+    field_1: MyBaseTupleMapping
+    field_2: MyBaseTuple
+
+u: MyTupleUnion
+reveal_type(u.field_1)  # N: Revealed type is 'typing.Mapping[Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]'
+reveal_type(u.field_2)  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]'
+reveal_type(u[0])  # N: Revealed type is 'typing.Mapping[Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]'
+reveal_type(u[1])  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]'
