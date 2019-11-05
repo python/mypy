@@ -351,6 +351,15 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
 
+# A context for querying for configuration data about a module for
+# cache invalidation purposes.
+ReportConfigContext = NamedTuple(
+    'DynamicClassDefContext', [
+        ('id', str),        # Module name
+        ('path', str),      # Module file path
+        ('is_check', bool)  # Is this invocation for checking whether the config matches
+    ])
+
 # A context for a function hook that infers the return type of a function with
 # a special signature.
 #
@@ -459,7 +468,7 @@ class Plugin(CommonPluginApi):
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
 
-    def report_config_data(self, id: str, path: str, is_check: bool) -> Any:
+    def report_config_data(self, ctx: ReportConfigContext) -> Any:
         """Get representation of configuration data for a module.
 
         The data must be encodable as JSON and will be stored in the
@@ -467,11 +476,11 @@ class Plugin(CommonPluginApi):
         values and the returned will result in that module's cache
         being invalidated and the module being rechecked.
 
-        If is_check is true, then the return of this call will be
-        checked against the cached version. Otherwise the call is
-        being made to determine what to put in the cache. This can be
-        used to allow consulting extra cache files in certain complex
-        situations.
+        If is_check in the context is true, then the return of this
+        call will be checked against the cached version. Otherwise the
+        call is being made to determine what to put in the cache. This
+        can be used to allow consulting extra cache files in certain
+        complex situations.
 
         This can be used to incorporate external configuration information
         that might require changes to typechecking.
@@ -686,8 +695,8 @@ class WrapperPlugin(Plugin):
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         return self.plugin.lookup_fully_qualified(fullname)
 
-    def report_config_data(self, id: str, path: str, is_check: bool) -> Any:
-        return self.plugin.report_config_data(id, path, is_check)
+    def report_config_data(self, ctx: ReportConfigContext) -> Any:
+        return self.plugin.report_config_data(ctx)
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         return self.plugin.get_additional_deps(file)
@@ -757,8 +766,8 @@ class ChainedPlugin(Plugin):
         for plugin in self._plugins:
             plugin.set_modules(modules)
 
-    def report_config_data(self, id: str, path: str, is_check: bool) -> Any:
-        config_data = [plugin.report_config_data(id, path, is_check) for plugin in self._plugins]
+    def report_config_data(self, ctx: ReportConfigContext) -> Any:
+        config_data = [plugin.report_config_data(ctx) for plugin in self._plugins]
         return config_data if any(x is not None for x in config_data) else None
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
