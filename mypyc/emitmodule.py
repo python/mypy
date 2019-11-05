@@ -415,16 +415,13 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
 
 def encode_as_c_string(s: str) -> Tuple[str, int]:
     """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
-    # This is a kind of abusive way to do this...
-    b = s.encode('utf-8')
-    escaped = str(b)[2:-1].replace('"', '\\"')
-    return '"{}"'.format(escaped), len(b)
+    return encode_bytes_as_c_string(s.encode('utf-8'))
 
 
 def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
     """Produce a single-escaped, quoted C string and its size from a bytes"""
     # This is a kind of abusive way to do this...
-    escaped = str(b)[2:-1].replace('"', '\\"')
+    escaped = repr(b)[2:-1].replace('"', '\\"')
     return '"{}"'.format(escaped), len(b)
 
 
