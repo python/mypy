@@ -1866,3 +1866,165 @@ os._exit(1)  # Kill process
 def ff() -> None: ...
 # p/a.pyi
 def gg() -> None: ...
+
+[case testExportInternalImportsByDefault]
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A, f
+from m import C
+
+a: A
+c: C
+f()
+
+[file p/a.py]
+class A: pass
+def f(): pass
+
+[file m.py]
+class C: pass
+
+[out]
+# p/__init__.pyi
+from m import C
+from p.a import A as A, f as f
+
+a: A
+c: C
+# p/a.pyi
+class A: ...
+
+def f() -> None: ...
+
+[case testNoExportOfInternalImportsIfAll_import]
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A
+
+__all__ = ['a']
+
+a: A
+b: int
+
+[file p/a.py]
+class A: pass
+
+[out]
+# p/__init__.pyi
+from p.a import A
+
+a: A
+# p/a.pyi
+class A: ...
+
+[case testExportInternalImportsByDefaultFromUnderscorePackage]
+# modules: p
+
+[file p.py]
+from _p import A
+from _m import B
+from _pm import C
+
+a: A
+b: B
+c: C
+
+[file _p.py]
+class A: pass
+
+[file _m.py]
+class B: pass
+
+[file _pm.py]
+class C: pass
+
+[out]
+from _m import B
+from _p import A as A
+from _pm import C
+
+a: A
+b: B
+c: C
+
+[case testDisableExportOfInternalImports]
+# flags: --export-less
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A, B
+from m import C
+
+a: A
+c: C
+
+[file p/a.py]
+class A: pass
+class B: pass
+
+[file m.py]
+class C: pass
+
+[out]
+# p/__init__.pyi
+from m import C
+from p.a import A, B as B
+
+a: A
+c: C
+# p/a.pyi
+class A: ...
+class B: ...
+
+[case testExportInternalImportsByDefaultUsingRelativeImport]
+# modules: p.a
+
+[file p/__init__.py]
+
+[file p/a.py]
+from .b import f
+f()
+
+[file p/b.py]
+def f(): pass
+
+[out]
+from .b import f as f
+
+[case testExportInternalImportsByDefaultSkipPrivate]
+# modules: p.a
+
+[file p/__init__.py]
+
+[file p/a.py]
+from .b import _f, _g as _g, _i
+from p.b import _h
+_f()
+_h()
+
+[file p/b.py]
+def _f(): pass
+def _g(): pass
+def _h(): pass
+def _i(): pass
+x = 0
+
+[out]
+
+[case testExportInternalImportsByDefaultIncludePrivate]
+# flags: --include-private
+# modules: p.a
+
+[file p/__init__.py]
+
+[file p/a.py]
+from .b import _f
+_f()
+
+[file p/b.py]
+def _f(): pass
+
+[out]
+from .b import _f as _f

@@ -116,7 +116,6 @@ EXTRA_EXPORTED = {
     'pyasn1_modules.rfc2437.univ',
     'pyasn1_modules.rfc2459.char',
     'pyasn1_modules.rfc2459.univ',
-    'elasticsearch.client.utils._make_path',
 }
 
 
@@ -139,7 +138,8 @@ class Options:
                  packages: List[str],
                  files: List[str],
                  verbose: bool,
-                 quiet: bool) -> None:
+                 quiet: bool,
+                 export_less: bool) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
         self.no_import = no_import
@@ -156,6 +156,7 @@ class Options:
         self.files = files
         self.verbose = verbose
         self.quiet = quiet
+        self.export_less = export_less
 
 
 class StubSource(BuildSource):
@@ -451,8 +452,11 @@ class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
 class StubGenerator(mypy.traverser.TraverserVisitor):
     """Generate stub text from a mypy AST."""
 
-    def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
-                 include_private: bool = False, analyzed: bool = False) -> None:
+    def __init__(self,
+                 _all_: Optional[List[str]], pyversion: Tuple[int, int],
+                 include_private: bool = False,
+                 analyzed: bool = False,
+                 export_less: bool = False) -> None:
         # Best known value of __all__.
         self._all_ = _all_
         self._output = []  # type: List[str]
@@ -470,6 +474,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
         self.analyzed = analyzed
+        # Disable implicit exports of package-internal imports?
+        self.export_less = export_less
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
         # Names in __all__ are required
@@ -478,7 +484,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.defined_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.module = o.fullname
+        self.module = o.fullname  # Current module being processed
+        self.path = o.path
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
         typing_imports = ["Any", "Optional", "TypeVar"]
@@ -840,6 +847,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         exported_names = set()  # type: Set[str]
         import_names = []
         module, relative = self.translate_module_name(o.id, o.relative)
+        if self.module:
+            full_module, ok = mypy.util.correct_relative_import(
+                self.module, relative, module, self.path.endswith('.__init__.py')
+            )
+            if not ok:
+                full_module = module
+        else:
+            full_module = module
         if module == '__future__':
             return  # Not preserved
         for name, as_name in o.names:
@@ -849,12 +864,28 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             exported = False
             if as_name is None and self.module and (self.module + '.' + name) in EXTRA_EXPORTED:
+                # Special case certain names that should be exported, against our general rules.
                 exported = True
-            if (as_name is None and name not in self.referenced_names and not self._all_
+            is_private = self.is_private_name(name, full_module + '.' + name)
+            if (as_name is None
+                    and name not in self.referenced_names
+                    and not self._all_
+                    and not is_private
                     and module not in ('abc', 'typing', 'asyncio')):
                 # An imported name that is never referenced in the module is assumed to be
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.
+                exported = True
+            top_level = full_module.split('.')[0]
+            if (as_name is None
+                    and not self.export_less
+                    and not self._all_
+                    and self.module
+                    and not is_private
+                    and top_level in (self.module.split('.')[0],
+                                      '_' + self.module.split('.')[0])):
+                # Export imports from the same package, since we can't reliably tell whether they
+                # are part of the public API.
                 exported = True
             if exported:
                 self.import_tracker.reexport(name)
@@ -870,15 +901,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None]
             exported_names.update(names)
-        else:
-            # Include import from targets that import from a submodule of a package.
-            if relative:
-                sub_names = [name for name, alias in o.names
-                             if alias is None]
-                exported_names.update(sub_names)
-                if module:
-                    for name in sub_names:
-                        self.import_tracker.require_name(name)
 
     def translate_module_name(self, module: str, relative: int) -> Tuple[str, int]:
         for pkg in VENDOR_PACKAGES:
@@ -1247,6 +1269,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     errors = Errors()
     mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
                                errors=errors, options=mypy_options)
+    mod.ast._fullname = mod.module
     if errors.is_blockers():
         # Syntax error!
         for m in errors.new_messages():
@@ -1284,7 +1307,8 @@ def generate_stub_from_ast(mod: StubSource,
                            target: str,
                            parse_only: bool = False,
                            pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                           include_private: bool = False) -> None:
+                           include_private: bool = False,
+                           export_less: bool = False) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
     If directory for target doesn't exist it will created. Existing stub
@@ -1293,7 +1317,8 @@ def generate_stub_from_ast(mod: StubSource,
     gen = StubGenerator(mod.runtime_all,
                         pyversion=pyversion,
                         include_private=include_private,
-                        analyzed=not parse_only)
+                        analyzed=not parse_only,
+                        export_less=export_less)
     assert mod.ast is not None, "This function must be used only with analyzed modules"
     mod.ast.accept(gen)
 
@@ -1348,7 +1373,8 @@ def generate_stubs(options: Options) -> None:
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(mod, target,
                                    options.parse_only, options.pyversion,
-                                   options.include_private)
+                                   options.include_private,
+                                   options.export_less)
 
     # Separately analyse C modules using different logic.
     for mod in c_modules:
@@ -1400,6 +1426,9 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument('--include-private', action='store_true',
                         help="generate stubs for objects and members considered private "
                              "(single leading underscore and no trailing underscores)")
+    parser.add_argument('--export-less', action='store_true',
+                        help=("don't implicitly export all names imported from other modules "
+                              "in the same package"))
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="show more verbose messages")
     parser.add_argument('-q', '--quiet', action='store_true',
@@ -1452,7 +1481,8 @@ def parse_options(args: List[str]) -> Options:
                    packages=ns.packages,
                    files=ns.files,
                    verbose=ns.verbose,
-                   quiet=ns.quiet)
+                   quiet=ns.quiet,
+                   export_less=ns.export_less)
 
 
 def main() -> None:
