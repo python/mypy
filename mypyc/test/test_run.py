@@ -163,6 +163,7 @@ class TestRun(MypycDataSuite):
         options.export_types = True
         options.preserve_asts = True
         options.incremental = self.separate
+        options.verbosity = 1
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -203,7 +204,8 @@ class TestRun(MypycDataSuite):
                 groups=groups,
                 alt_lib_path='.')
             errors = Errors()
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
+            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate,
+                                               verbose=True)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result,
                 compiler_options=compiler_options,
@@ -262,6 +264,7 @@ class TestRun(MypycDataSuite):
         if proc.returncode != 0:
             print()
             print('*** Exit status: %d' % proc.returncode)
+            print('*** Output:\n' + output)
 
         # Verify output.
         if bench:
