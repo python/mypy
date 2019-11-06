@@ -97,6 +97,7 @@ VENDOR_PACKAGES = [
     'vendor',
     'vendored',
     '_vendor',
+    '_vendored_packages',
 ]
 
 # Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
@@ -104,6 +105,8 @@ BLACKLIST = [
     '/six.py\n',  # Likely vendored six; too dynamic for us to handle
     '/vendored/',  # Vendored packages
     '/vendor/',  # Vendored packages
+    '/_vendor/',
+    '/_vendored_packages/',
 ]
 
 # Special-cased names that are implicitly exported from the stub (from m import y as y).
