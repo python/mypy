@@ -232,6 +232,7 @@ class Options:
         self.raise_exceptions = False
         self.dump_type_stats = False
         self.dump_inference_stats = False
+        self.dump_build_stats = False
 
         # -- test options --
         # Stop after the semantic analysis phase

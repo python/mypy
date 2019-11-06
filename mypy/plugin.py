@@ -216,6 +216,12 @@ class CheckerPluginInterface:
     options = None  # type: Options
     path = None  # type: str
 
+    # Type context for type inference
+    @abstractproperty
+    def type_context(self) -> List[Optional[Type]]:
+        """Return the type context of the plugin"""
+        raise NotImplementedError
+
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Emit an error message at given location."""
@@ -351,6 +357,15 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
 
+# A context for querying for configuration data about a module for
+# cache invalidation purposes.
+ReportConfigContext = NamedTuple(
+    'DynamicClassDefContext', [
+        ('id', str),        # Module name
+        ('path', str),      # Module file path
+        ('is_check', bool)  # Is this invocation for checking whether the config matches
+    ])
+
 # A context for a function hook that infers the return type of a function with
 # a special signature.
 #
@@ -458,6 +473,29 @@ class Plugin(CommonPluginApi):
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
+
+    def report_config_data(self, ctx: ReportConfigContext) -> Any:
+        """Get representation of configuration data for a module.
+
+        The data must be encodable as JSON and will be stored in the
+        cache metadata for the module. A mismatch between the cached
+        values and the returned will result in that module's cache
+        being invalidated and the module being rechecked.
+
+        This can be called twice for each module, once after loading
+        the cache to check if it is valid and once while writing new
+        cache information.
+
+        If is_check in the context is true, then the return of this
+        call will be checked against the cached version. Otherwise the
+        call is being made to determine what to put in the cache. This
+        can be used to allow consulting extra cache files in certain
+        complex situations.
+
+        This can be used to incorporate external configuration information
+        that might require changes to typechecking.
+        """
+        return None
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         """Customize dependencies for a module.
@@ -666,6 +704,9 @@ class WrapperPlugin(Plugin):
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         return self.plugin.lookup_fully_qualified(fullname)
 
+    def report_config_data(self, ctx: ReportConfigContext) -> Any:
+        return self.plugin.report_config_data(ctx)
+
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         return self.plugin.get_additional_deps(file)
 
@@ -733,6 +774,10 @@ class ChainedPlugin(Plugin):
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         for plugin in self._plugins:
             plugin.set_modules(modules)
+
+    def report_config_data(self, ctx: ReportConfigContext) -> Any:
+        config_data = [plugin.report_config_data(ctx) for plugin in self._plugins]
+        return config_data if any(x is not None for x in config_data) else None
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         deps = []

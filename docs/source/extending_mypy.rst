@@ -236,6 +236,14 @@ module. It is called before semantic analysis. For example, this can
 be used if a library has dependencies that are dynamically loaded
 based on configuration information.
 
+**report_config_data()** can be used if the plugin has some sort of
+per-module configuration that can affect typechecking. In that case,
+when the configuration for a module changes, we want to invalidate
+mypy's cache for that module so that it can be rechecked. This hook
+should be used to report to mypy any relevant configuration data,
+so that mypy knows to recheck the module if the configuration changes.
+The hooks hould return data encodable as JSON.
+
 Notes about the semantic analyzer
 *********************************
 

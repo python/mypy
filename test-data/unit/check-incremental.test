@@ -2072,8 +2072,27 @@ main:5: note: Revealed type is 'builtins.int'
 main:3: note: Revealed type is 'builtins.int'
 main:5: note: Revealed type is 'builtins.int'
 
--- TODO: Add another test for metaclass in import cycle (reversed from the above test).
---       This currently does not work.
+[case testSerializeMetaclassInImportCycle2]
+import b
+import c
+reveal_type(c.A.f())
+m: b.M = c.A
+reveal_type(c.a.f())
+[file b.py]
+from c import a
+class M(type):
+    def f(cls) -> int: return 0
+[file c.py]
+from typing import Type
+import b
+class A(metaclass=b.M): pass
+a: Type[A]
+[out]
+main:3: note: Revealed type is 'builtins.int'
+main:5: note: Revealed type is 'builtins.int'
+[out2]
+main:3: note: Revealed type is 'builtins.int'
+main:5: note: Revealed type is 'builtins.int'
 
 [case testDeleteFile]
 import n
@@ -4935,6 +4954,24 @@ python_version=3.6
 [out]
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testPluginConfigData]
+# flags: --config-file tmp/mypy.ini
+import a
+import b
+[file a.py]
+[file b.py]
+[file test.json]
+{"a": false, "b": false}
+[file test.json.2]
+{"a": true, "b": false}
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/config_data.py
+
+# The config change will force a to be rechecked but not b.
+[rechecked a]
 
 [case testLiteralIncrementalTurningIntoLiteral]
 import mod

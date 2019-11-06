@@ -315,6 +315,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
             actual = actual.as_anonymous().fallback
+        if isinstance(actual, LiteralType):
+            actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)

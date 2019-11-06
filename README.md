@@ -269,7 +269,7 @@ in the typing gitter instead: https://gitter.im/python/typing
 Compiled version of mypy
 ------------------------
 
-We have built an compiled version of mypy using the [mypyc
+We have built a compiled version of mypy using the [mypyc
 compiler](https://github.com/python/mypy/tree/master/mypyc) for
 mypy-annotated Python code. It is approximately 4 times faster than
 interpreted mypy and is available (and the default) for 64-bit

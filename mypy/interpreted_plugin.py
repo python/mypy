@@ -41,6 +41,9 @@ class InterpretedPlugin:
         assert self._modules is not None
         return lookup_fully_qualified(fullname, self._modules)
 
+    def report_config_data(self, ctx: 'mypy.plugin.ReportConfigContext') -> Any:
+        return None
+
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         return []
 

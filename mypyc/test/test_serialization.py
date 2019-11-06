@@ -46,7 +46,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
 
     assert type(x) is type(y), ("Type mismatch at {}".format(trail), type(x), type(y))
     if isinstance(x, (FuncDecl, FuncIR, ClassIR)):
-        assert x.fullname == y.fullname
+        assert x.fullname == y.fullname, "Name mismatch at {}".format(trail)
     elif isinstance(x, OrderedDict):
         assert len(x.keys()) == len(y.keys()), "Keys mismatch at {}".format(trail)
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):

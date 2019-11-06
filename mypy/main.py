@@ -742,6 +742,9 @@ def process_options(args: List[str],
     parser.add_argument(
         '--inferstats', action='store_true', dest='dump_inference_stats',
         help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--dump-build-stats', action='store_true',
+        help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
