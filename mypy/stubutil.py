@@ -119,7 +119,6 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
     try:
         mod = inspect.get_package_properties(module)
     except InspectError as e:
-        print(str(e))
         raise CantImport(module, str(e))
     if mod.is_c_module:
         return None
