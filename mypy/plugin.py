@@ -215,6 +215,8 @@ class CheckerPluginInterface:
     msg = None  # type: MessageBuilder
     options = None  # type: Options
     path = None  # type: str
+    # Type context for type inference
+    type_context = None  # type: List[Optional[Type]]
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:

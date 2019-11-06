@@ -14,6 +14,7 @@ from mypy.types import (
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
+from mypy.checkexpr import is_literal_type_like
 
 
 class DefaultPlugin(Plugin):
@@ -431,11 +432,18 @@ def int_neg_callback(ctx: MethodContext) -> Type:
         value = ctx.type.last_known_value.value
         fallback = ctx.type.last_known_value.fallback
         if isinstance(value, int):
-            return Instance(ctx.type.type, ctx.type.args,
-                last_known_value=LiteralType(-value, fallback))
+            if is_literal_type_like(ctx.api.type_context[-1]):
+                return LiteralType(value=-value, fallback=fallback)
+            else:
+                return ctx.type.copy_modified(last_known_value=LiteralType(
+                    value=-value,
+                    fallback=ctx.type,
+                    line=ctx.type.line,
+                    column=ctx.type.column,
+                ))
     elif isinstance(ctx.type, LiteralType):
         value = ctx.type.value
         fallback = ctx.type.fallback
         if isinstance(value, int):
-            return LiteralType(-value, fallback)
+            return LiteralType(value=-value, fallback=fallback)
     return ctx.default_return_type

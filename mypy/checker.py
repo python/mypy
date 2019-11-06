@@ -219,6 +219,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
+        self.type_context = self.expr_checker.type_context
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder()
