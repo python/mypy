@@ -79,7 +79,7 @@ class StubgenCmdLineSuite(Suite):
                 self.make_file(tmp, 'mymodule.py', content='import a')
                 opts = parse_options(['-m', 'mymodule'])
                 py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
-                self.assertRegex(captured_output.getvalue(), "No module named 'a'")
+                assert captured_output.getvalue() == ''
             finally:
                 sys.stdout = sys.__stdout__
                 os.chdir(current)
@@ -528,7 +528,8 @@ class StubgenPythonSuite(DataSuite):
             if mod.endswith('.__init__'):
                 mod, _, _ = mod.rpartition('.')
             mods.append(mod)
-            extra.extend(['-m', mod])
+            if '-p ' not in source:
+                extra.extend(['-m', mod])
             with open(file, 'w') as f:
                 f.write(content)
 
