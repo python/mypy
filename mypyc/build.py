@@ -285,22 +285,30 @@ def write_file(path: str, contents: str) -> None:
     """
     # We encode it ourselves and open the files as binary to avoid windows
     # newline translation
+    from stat import ST_MTIME
+
     encoded_contents = contents.encode('utf-8')
     try:
         with open(path, 'rb') as f:
             old_contents = f.read()  # type: Optional[bytes]
+            old_mtime = os.stat(path)[ST_MTIME]
     except IOError:
         old_contents = None
+        old_mtime = 0
     if old_contents != encoded_contents:
         with open(path, 'wb') as f:
             f.write(encoded_contents)
 
+
+        new_mtime = os.stat(path)[ST_MTIME]
+
+        print("Wrote", path, old_mtime, new_mtime)
         # Fudge the mtime forward because otherwise when two builds happen close
         # together (like in a test) setuptools might not realize the source is newer
         # than the new artifact.
         # XXX: This is bad though.
-        new_mtime = os.stat(path).st_mtime + 1
-        os.utime(path, times=(new_mtime, new_mtime))
+        #new_mtime = os.stat(path).st_mtime + 1
+        # os.utime(path, times=(new_mtime, new_mtime))
 
 
 def construct_groups(

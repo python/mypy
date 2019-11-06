@@ -7,7 +7,6 @@ import platform
 import re
 import subprocess
 import contextlib
-import time
 import shutil
 import sys
 from typing import Any, Iterator, List, cast
@@ -45,6 +44,7 @@ from distutils.core import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
+      verbose=True,
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
                            multi_file={}),
 )
@@ -100,6 +100,15 @@ def chdir_manager(target: str) -> Iterator[None]:
         os.chdir(dir)
 
 
+def fudge_dir_mtimes(dir: str, delta: int) -> None:
+    for dirpath, _, filenames in os.walk(dir):
+        for name in filenames:
+            # if name.endswith(('.c', '.h')): continue
+            path = os.path.join(dirpath, name)
+            new_mtime = os.stat(path).st_mtime + delta
+            os.utime(path, times=(new_mtime, new_mtime))
+
+
 class TestRun(MypycDataSuite):
     """Test cases that build a C extension and run code."""
     files = files
@@ -135,8 +144,10 @@ class TestRun(MypycDataSuite):
             steps = []
 
         for operations in steps:
-            if sys.platform.startswith('win'):
-                time.sleep(1)
+            # To make sure that any new changes get picked up as being
+            # new by distutils, shift the mtime of all of the
+            # generated artifacts back by a second.
+            fudge_dir_mtimes(WORKDIR, -2)
 
             step += 1
             with chdir_manager('..'):
@@ -232,7 +243,7 @@ class TestRun(MypycDataSuite):
         with open(setup_file, 'w', encoding='utf-8') as f:
             f.write(setup_format.format(module_paths, separate, cfiles, self.multi_file))
 
-        if not run_setup(setup_file, ['build_ext', '--inplace']):
+        if not run_setup(setup_file, ['--verbose', 'build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):
                 show_c(cfiles)
             assert False, "Compilation failed"
