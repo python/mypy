@@ -251,6 +251,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
 
+    @property
+    def type_context(self) -> List[Optional[Type]]:
+        return self.expr_checker.type_context
+
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
 

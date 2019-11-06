@@ -216,6 +216,12 @@ class CheckerPluginInterface:
     options = None  # type: Options
     path = None  # type: str
 
+    # Type context for type inference
+    @abstractproperty
+    def type_context(self) -> List[Optional[Type]]:
+        """Return the type context of the plugin"""
+        raise NotImplementedError
+
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Emit an error message at given location."""
