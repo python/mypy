@@ -573,17 +573,19 @@ class MessageBuilder:
     def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
-        # Suggest intended keyword, look for same type match else check for any match.
-        matches = []
+        # Suggest intended keyword, look for type match else fallback on any match.
         matching_type_args = []
+        not_matching_type_args = []
         for i, kwarg_type in enumerate(callee.arg_types):
             callee_arg_name = callee.arg_names[i]
-            if (callee_arg_name is not None and
-                    (is_same_type(arg_type, kwarg_type) or is_subtype(arg_type, kwarg_type))):
-                matching_type_args.append(callee_arg_name)
-        matches.extend(best_matches(name, matching_type_args))
+            if callee_arg_name is not None and callee.arg_kinds[i] != ARG_STAR:
+                if is_subtype(arg_type, kwarg_type):
+                    matching_type_args.append(callee_arg_name)
+                else:
+                    not_matching_type_args.append(callee_arg_name)
+        matches = best_matches(name, matching_type_args)
         if not matches:
-            matches.extend(best_matches(name, list(filter(None, callee.arg_names))))
+            matches = best_matches(name, not_matching_type_args)
         if matches:
             suggestion = ";  did you mean {}?".format(pretty_or(matches[:3]))
             msg += "{}".format(suggestion)
