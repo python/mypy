@@ -96,6 +96,7 @@ VENDOR_PACKAGES = [
     'packages',
     'vendor',
     'vendored',
+    '_vendor',
 ]
 
 # Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
