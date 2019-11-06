@@ -652,8 +652,6 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     base_idx = 1 if not ir.is_trait else 0
     if len(base_mro) > base_idx:
         ir.base = base_mro[base_idx]
-    if not all(base_mro[i].base == base_mro[i + 1] for i in range(len(base_mro) - 1)):
-        errors.error("Non-trait MRO must be linear", path, cdef.line)
     ir.mro = mro
     ir.base_mro = base_mro
 
@@ -1485,6 +1483,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         ir = self.mapper.type_to_ir[cdef.info]
+
+        # We do this check here because the base field of parent
+        # classes aren't necessarily populated yet at
+        # prepare_class_def time.
+        if any(ir.base_mro[i].base != ir. base_mro[i + 1] for i in range(len(ir.base_mro) - 1)):
+            self.error("Non-trait MRO must be linear", cdef.line)
+
         # Currently, we only create non-extension classes for classes that are
         # decorated or inherit from Enum. Classes decorated with @trait do not
         # apply here, and are handled in a different way.
