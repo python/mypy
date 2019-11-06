@@ -154,7 +154,12 @@ class TypeAliasType(Type):
     during semantic analysis, but create an instance of this type that records the target alias
     definition node (mypy.nodes.TypeAlias) and type arguments (for generic aliases).
 
-    This is very similar to how TypeInfo vs Instance interact.
+    This is very similar to how TypeInfo vs Instance interact, where a recursive class-based
+    structure like
+        class Node:
+            value: int
+            children: List[Node]
+    can be represented in a tree-like manner.
     """
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],

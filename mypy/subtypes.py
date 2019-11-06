@@ -66,6 +66,22 @@ def is_subtype(left: Type, right: Type,
     if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
             left.is_recursive and right.is_recursive):
         # This case requires special care because it may cause infinite recursion.
+        # Our view on recursive types is known under a fancy name of equirecursive mu-types.
+        # Roughly this means that a recursive type is defined as an alias where right hand side
+        # can refer to the type as a whole, for example:
+        #     A = Union[int, Tuple[A, ...]]
+        # and an alias unrolled once represents the *same type*, in our case all these represent
+        # the same type:
+        #    A
+        #    Union[int, Tuple[A, ...]]
+        #    Union[int, Tuple[Union[int, Tuple[A, ...]], ...]]
+        # The algorithm for subtyping is then essentially under the assumption that left <: right,
+        # check that get_proper_type(left) <: get_proper_type(right). On the example above,
+        # If we start with:
+        #     A = Union[int, Tuple[A, ...]]
+        #     B = Union[int, Tuple[B, ...]]
+        # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
+        # steps we come back to initial call is_subtype(A, B) and immediately return True.
         assert right.alias is not None
         for (l, r) in reversed(right.alias.assuming):
             if (mypy.sametypes.is_same_type(l, left)
@@ -1112,6 +1128,7 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
     if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
             left.is_recursive and right.is_recursive):
         # This case requires special care because it may cause infinite recursion.
+        # See is_subtype() for more info.
         assert right.alias is not None
         for (l, r) in reversed(right.alias.assuming_proper):
             if (mypy.sametypes.is_same_type(l, left)

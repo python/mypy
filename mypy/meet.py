@@ -13,27 +13,31 @@ from mypy.types import (
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.typeops import tuple_fallback, make_simplified_union
+from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
 from mypy import state
 
 # TODO Describe this module.
 
 
+def trivial_meet(s: Type, t: Type) -> ProperType:
+    """Return one of types (expanded) if it is a subtype of other, otherwise bottom type."""
+    if is_subtype(s, t):
+        return get_proper_type(s)
+    elif is_subtype(t, s):
+        return get_proper_type(t)
+    else:
+        if state.strict_optional:
+            return UninhabitedType()
+        else:
+            return NoneType()
+
+
 def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
-    if (isinstance(s, TypeAliasType) and isinstance(t, TypeAliasType) and
-            s.is_recursive and t.is_recursive):
+    if is_recursive_pair(s, t):
         # This case can trigger an infinite recursion, general support for this will be
         # tricky so we use a trivial meet (like for protocols).
-        if is_subtype(s, t):
-            return get_proper_type(s)
-        elif is_subtype(t, s):
-            return get_proper_type(t)
-        else:
-            if state.strict_optional:
-                return UninhabitedType()
-            else:
-                return NoneType()
+        return trivial_meet(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
 

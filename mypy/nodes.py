@@ -2738,8 +2738,13 @@ class TypeAlias(SymbolNode):
         self.alias_tvars = alias_tvars
         self.no_args = no_args
         self.normalized = normalized
+        # The two attributes below are assumption stacks for subtyping relationships between
+        # recursive type aliases. Normally, one would pass type assumptions as an additional
+        # arguments to is_subtype(), but this would mean updating dozens of related functions
+        # threading this through all callsites (see also comment for TypeInfo.assuming).
         self.assuming = []  # type: List[Tuple[TypeAliasType, TypeAliasType]]
         self.assuming_proper = []  # type: List[Tuple[TypeAliasType, TypeAliasType]]
+        # Ditto for inference of generic constraints against recursive type aliases.
         self.inferring = []  # type: List[TypeAliasType]
         super().__init__(line, column)
 

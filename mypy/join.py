@@ -59,21 +59,25 @@ def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
     return declaration
 
 
+def trivial_join(s: Type, t: Type) -> ProperType:
+    """Return one of types (expanded) if it is a supertype of other, otherwise top type."""
+    if is_subtype(s, t):
+        return get_proper_type(t)
+    elif is_subtype(t, s):
+        return get_proper_type(s)
+    else:
+        return object_or_any_from_type(get_proper_type(t))
+
+
 def join_types(s: Type, t: Type) -> ProperType:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
     """
-    if (isinstance(s, TypeAliasType) and isinstance(t, TypeAliasType) and
-            s.is_recursive and t.is_recursive):
+    if mypy.typeops.is_recursive_pair(s, t):
         # This case can trigger an infinite recursion, general support for this will be
         # tricky so we use a trivial join (like for protocols).
-        if is_subtype(s, t):
-            return get_proper_type(t)
-        elif is_subtype(t, s):
-            return get_proper_type(s)
-        else:
-            return object_or_any_from_type(get_proper_type(t))
+        return trivial_join(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
 
@@ -473,7 +477,7 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     # TODO: find a better way to get object, or make this more reliable.
     if isinstance(typ, Instance):
         return object_from_instance(typ)
-    elif isinstance(typ, (CallableType, TypedDictType)):
+    elif isinstance(typ, (CallableType, TypedDictType, LiteralType)):
         return object_from_instance(typ.fallback)
     elif isinstance(typ, TupleType):
         return object_from_instance(typ.partial_fallback)
@@ -482,19 +486,17 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     elif isinstance(typ, TypeVarType) and isinstance(typ.upper_bound, ProperType):
         return object_or_any_from_type(typ.upper_bound)
     elif isinstance(typ, UnionType):
-        for it in typ.items:
-            o = object_or_any_from_type(it)
-            if isinstance(o, Instance):
-                return object_from_instance(o)
-    return AnyType(TypeOfAny.special_form)
+        joined = join_type_list([it for it in typ.items if isinstance(it, ProperType)])
+        return object_or_any_from_type(joined)
+    return AnyType(TypeOfAny.implementation_artifact)
 
 
-def join_type_list(types: List[Type]) -> Type:
+def join_type_list(types: List[Type]) -> ProperType:
     if not types:
         # This is a little arbitrary but reasonable. Any empty tuple should be compatible
         # with all variable length tuples, and this makes it possible.
         return UninhabitedType()
-    joined = types[0]
+    joined = get_proper_type(types[0])
     for t in types[1:]:
         joined = join_types(joined, t)
     return joined
