@@ -1771,7 +1771,8 @@ x = 0
 [out]
 # a.pyi
 def g() -> None: ...
-<out/b.pyi was not generated>
+# b.pyi
+def f() -> None: ...
 # c.pyi
 x: int
 
@@ -1792,6 +1793,66 @@ x = 0
 [out]
 # a.pyi
 def g() -> None: ...
-<out/b.pyi was not generated>
+# b.pyi
+def f() -> None: ...
 # c.pyi
 x: int
+
+[case testImportedModuleHardExits2_import]
+# modules: p/a p/b p/c
+
+[file p/__init__.py]
+
+[file p/a.py]
+def g(): pass
+
+[file p/b.py]
+import os
+def f(): pass
+os._exit(1)  # Kill process
+
+[file p/c.py]
+x = 0
+
+[out]
+# p/a.pyi
+def g() -> None: ...
+# p/b.pyi
+def f() -> None: ...
+# p/c.pyi
+x: int
+
+[case testImportedModuleHardExits3_import]
+# modules: p p/a
+
+[file p/__init__.py]
+import os
+def f(): pass
+os._exit(1)  # Kill process
+
+[file p/a.py]
+def g(): pass
+
+[out]
+# p/__init__.pyi
+def f() -> None: ...
+# p/a.pyi
+def g() -> None: ...
+
+[case testImportedModuleHardExits4_import]
+# flags: -p p
+# modules: p p/a
+
+[file p/__init__.py]
+def ff(): pass
+
+[file p/a.py]
+import os
+def gg(): pass
+os._exit(1)  # Kill process
+
+[out]
+# p/__init__.pyi
+def ff() -> None: ...
+# p/a.pyi
+def gg() -> None: ...
