@@ -437,6 +437,11 @@ def pointerize(decl: str, name: str) -> str:
         return decl.replace(name, '*{}'.format(name))
 
 
+def group_dir(group_name: str) -> str:
+    """Given a group name, return the relative directory path for it. """
+    return os.sep.join(group_name.split('.')[:-1])
+
+
 class GroupGenerator:
     def __init__(self,
                  literals: LiteralsMap,
@@ -477,7 +482,11 @@ class GroupGenerator:
 
     @property
     def group_suffix(self) -> str:
-        return '_' + self.group_name if self.group_name else ''
+        return '_' + exported_name(self.group_name) if self.group_name else ''
+
+    @property
+    def short_group_suffix(self) -> str:
+        return '_' + exported_name(self.group_name.split('.')[-1]) if self.group_name else ''
 
     def generate_c_for_modules(self) -> List[Tuple[str, str]]:
         file_contents = []
@@ -489,8 +498,8 @@ class GroupGenerator:
         if self.compiler_options.include_runtime_files:
             base_emitter.emit_line('#include "CPy.c"')
             base_emitter.emit_line('#include "getargs.c"')
-        base_emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
-        base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.group_suffix))
+        base_emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
+        base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.short_group_suffix))
         emitter = base_emitter
 
         for (_, literal), identifier in self.literals.items():
@@ -503,8 +512,9 @@ class GroupGenerator:
         for module_name, module in self.modules:
             if multi_file:
                 emitter = Emitter(self.context)
-                emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
-                emitter.emit_line('#include "__native_internal{}.h"'.format(self.group_suffix))
+                emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
+                emitter.emit_line(
+                    '#include "__native_internal{}.h"'.format(self.short_group_suffix))
 
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
@@ -544,7 +554,7 @@ class GroupGenerator:
         declarations.emit_line('#define MYPYC_NATIVE_INTERNAL{}_H'.format(self.group_suffix))
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
-        declarations.emit_line('#include "__native{}.h"'.format(self.group_suffix))
+        declarations.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
         declarations.emit_line()
         declarations.emit_line('int CPyGlobalsInit(void);')
         declarations.emit_line()
@@ -557,9 +567,13 @@ class GroupGenerator:
                 generate_function_declaration(fn, declarations)
 
         for lib in sorted(self.context.group_deps):
+            elib = exported_name(lib)
+            short_lib = exported_name(lib.split('.')[-1])
             declarations.emit_lines(
-                '#include "__native_{}.h"'.format(lib),
-                'struct export_table_{} exports_{};'.format(lib, lib)
+                '#include <{}>'.format(
+                    os.path.join(group_dir(lib), "__native_{}.h".format(short_lib))
+                ),
+                'struct export_table_{} exports_{};'.format(elib, elib)
             )
 
         sorted_decls = self.toposort_declarations()
@@ -591,13 +605,15 @@ class GroupGenerator:
         ext_declarations.emit_line('#endif')
         declarations.emit_line('#endif')
 
-        return file_contents + [('__native{}.c'.format(self.group_suffix),
-                                 ''.join(emitter.fragments)),
-                                ('__native_internal{}.h'.format(self.group_suffix),
-                                 ''.join(declarations.fragments)),
-                                ('__native{}.h'.format(self.group_suffix),
-                                 ''.join(ext_declarations.fragments)),
-                                ]
+        output_dir = group_dir(self.group_name) if self.group_name else ''
+        return file_contents + [
+            (os.path.join(output_dir, '__native{}.c'.format(self.short_group_suffix)),
+             ''.join(emitter.fragments)),
+            (os.path.join(output_dir, '__native_internal{}.h'.format(self.short_group_suffix)),
+             ''.join(declarations.fragments)),
+            (os.path.join(output_dir, '__native{}.h'.format(self.short_group_suffix)),
+             ''.join(ext_declarations.fragments)),
+        ]
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -683,12 +699,14 @@ class GroupGenerator:
 
         emitter.emit_line()
         emitter.emit_lines(
-            'PyMODINIT_FUNC PyInit_{}(void)'.format(shared_lib_name(self.group_name)),
+            'PyMODINIT_FUNC PyInit_{}(void)'.format(
+                shared_lib_name(self.group_name).split('.')[-1]),
             '{',
             ('static PyModuleDef def = {{ PyModuleDef_HEAD_INIT, "{}", NULL, -1, NULL, NULL }};'
-             .format(self.group_name)),
+             .format(shared_lib_name(self.group_name))),
             'int res;',
             'PyObject *capsule;',
+            'PyObject *tmp;',
             'static PyObject *module;',
             'if (module) {',
             'Py_INCREF(module);',
@@ -733,14 +751,17 @@ class GroupGenerator:
             )
 
         for group in sorted(self.context.group_deps):
+            egroup = exported_name(group)
             emitter.emit_lines(
+                'tmp = PyImport_ImportModule("{}"); if (!tmp) goto fail; Py_DECREF(tmp);'.format(
+                    shared_lib_name(group)),
                 'struct export_table_{} *pexports_{} = PyCapsule_Import("{}.exports", 0);'.format(
-                    group, group, shared_lib_name(group)),
-                'if (!pexports_{}) {{'.format(group),
+                    egroup, egroup, shared_lib_name(group)),
+                'if (!pexports_{}) {{'.format(egroup),
                 'goto fail;',
                 '}',
                 'memcpy(&exports_{group}, pexports_{group}, sizeof(exports_{group}));'.format(
-                    group=group),
+                    group=egroup),
                 '',
             )
 

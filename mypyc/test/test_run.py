@@ -184,7 +184,7 @@ class TestRun(MypycDataSuite):
             fn = os.path.relpath(fn, test_temp_dir)
 
             if os.path.basename(fn).startswith('other') and fn.endswith('.py'):
-                name = os.path.basename(fn).split('.')[0]
+                name = fn.split('.')[0].replace(os.sep, '.')
                 module_names.append(name)
                 sources.append(build.BuildSource(fn, name, None))
                 to_delete.append(fn)

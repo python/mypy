@@ -92,6 +92,10 @@ def get_mypy_config(mypy_options: List[str],
     else:
         mypyc_sources = all_sources
 
+    if compiler_options.separate:
+        mypyc_sources = [src for src in mypyc_sources
+                         if src.path and not src.path.endswith('__init__.py')]
+
     if not mypyc_sources:
         return mypyc_sources, all_sources, options
 
@@ -126,7 +130,7 @@ def generate_c_extension_shim(
         dir_name: the directory to place source code
         group_name: the name of the group
     """
-    cname = '%s.c' % exported_name(full_module_name)
+    cname = '%s.c' % full_module_name.replace('.', os.sep)
     cpath = os.path.join(dir_name, cname)
 
     # We load the C extension shim template from a file.
@@ -146,7 +150,7 @@ def generate_c_extension_shim(
 def group_name(modules: List[str]) -> str:
     """Produce a probably unique name for a group from a list of module names."""
     if len(modules) == 1:
-        return exported_name(modules[0])
+        return modules[0]
 
     h = hashlib.sha1()
     h.update(','.join(modules).encode())
@@ -226,7 +230,7 @@ def build_using_shared_lib(sources: List[BuildSource],
     extensions = [get_extension()(
         shared_lib_name(group_name),
         sources=cfiles,
-        include_dirs=[include_dir()],
+        include_dirs=[include_dir(), build_dir],
         depends=deps,
         extra_compile_args=extra_compile_args,
     )]
