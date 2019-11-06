@@ -476,7 +476,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.defined_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.module = o.fullname()
+        self.module = o.fullname()  # Current module being processed
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
         typing_imports = ["Any", "Optional", "TypeVar"]
@@ -841,6 +841,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # An imported name that is never referenced in the module is assumed to be
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.
+                exported = True
+            top_level = module.split('.')[0]
+            if (as_name is None
+                    and not self._all_
+                    and self.module
+                    and top_level in (self.module.split('.')[0],
+                                      '_' + self.module.split('.')[0])):
+                # Export imports from the same package, since we can't reliably tell whether they
+                # are part of the public API.
                 exported = True
             if exported:
                 self.import_tracker.reexport(name)
@@ -1226,6 +1235,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     errors = Errors()
     mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
                                errors=errors, options=mypy_options)
+    mod.ast._fullname = mod.module
     if errors.is_blockers():
         # Syntax error!
         for m in errors.new_messages():

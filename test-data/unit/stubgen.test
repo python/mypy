@@ -1856,3 +1856,82 @@ os._exit(1)  # Kill process
 def ff() -> None: ...
 # p/a.pyi
 def gg() -> None: ...
+
+[case testExportInternalImportsByDefault]
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A
+from m import C
+
+a: A
+c: C
+
+[file p/a.py]
+class A: pass
+
+[file m.py]
+class C: pass
+
+[out]
+# p/__init__.pyi
+from m import C
+from p.a import A as A
+
+a: A
+c: C
+# p/a.pyi
+class A: ...
+
+[case testNoExportOfInternalImportsIfAll_import]
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A
+
+__all__ = ['a']
+
+a: A
+b: int
+
+[file p/a.py]
+class A: pass
+
+[out]
+# p/__init__.pyi
+from p.a import A
+
+a: A
+# p/a.pyi
+class A: ...
+
+[case testExportInternalImportsByDefaultFromUnderscorePackage]
+# modules: p
+
+[file p.py]
+from _p import A
+from _m import B
+from _pm import C
+
+a: A
+b: B
+c: C
+
+[file _p.py]
+class A: pass
+
+[file _m.py]
+class B: pass
+
+[file _pm.py]
+class C: pass
+
+[out]
+# p.pyi
+from _m import B
+from _p import A as A
+from _pm import C
+
+a: A
+b: B
+c: C
