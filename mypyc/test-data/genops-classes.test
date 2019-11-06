@@ -1077,3 +1077,10 @@ L0:
     r1 = None
     r2 = None
     return r2
+
+[case testNoSpuriousLinearity]
+# Make sure that the non-trait MRO linearity check isn't affected by processing order
+class A(B): pass
+class B(C): pass
+class C: pass
+[out]
