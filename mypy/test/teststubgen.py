@@ -474,6 +474,7 @@ class StubgenHelpersSuite(Suite):
         assert is_non_library_module('foo.tests')
         assert is_non_library_module('foo.tests.foo')
         assert is_non_library_module('foo.testing.foo')
+        assert is_non_library_module('foo.SelfTest.foo')
 
         assert is_non_library_module('foo.test_bar')
         assert is_non_library_module('foo.bar_tests')
@@ -484,6 +485,8 @@ class StubgenHelpersSuite(Suite):
         assert is_non_library_module('foo.bar_test_base')
 
         assert is_non_library_module('foo.setup')
+
+        assert is_non_library_module('foo.__main__')
 
 
 class StubgenPythonSuite(DataSuite):
