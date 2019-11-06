@@ -7,6 +7,7 @@ import platform
 import re
 import subprocess
 import contextlib
+import time
 import shutil
 import sys
 from typing import Any, Iterator, List, cast
@@ -134,6 +135,9 @@ class TestRun(MypycDataSuite):
             steps = []
 
         for operations in steps:
+            if sys.platform.startswith('win'):
+                time.sleep(1)
+
             step += 1
             with chdir_manager('..'):
                 for op in operations:
