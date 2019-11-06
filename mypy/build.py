@@ -624,9 +624,10 @@ class BuildManager:
         self.processed_targets = []  # type: List[str]
 
     def dump_stats(self) -> None:
-        self.log("Stats:")
-        for key, value in sorted(self.stats_summary().items()):
-            self.log("{:24}{}".format(key + ":", value))
+        if self.options.dump_build_stats:
+            print("Stats:")
+            for key, value in sorted(self.stats_summary().items()):
+                print("{:24}{}".format(key + ":", value))
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
