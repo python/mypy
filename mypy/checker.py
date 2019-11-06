@@ -219,7 +219,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
-        self.type_context = self.expr_checker.type_context
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder()
@@ -251,6 +250,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+    @property
+    def type_context(self) -> List[Optional[Type]]:
+        return self.expr_checker.type_context
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
