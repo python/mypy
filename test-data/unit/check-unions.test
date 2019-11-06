@@ -1004,3 +1004,9 @@ do_thing_with_enums(boop)  # E: Argument 1 to "do_thing_with_enums" has incompat
                            # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
                            # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/isinstancelist.pyi]
+
+[case testAssignUnionWithTenaryExprWithEmptyCollection]
+from typing import Dict, List, Union
+x: Union[int, List[int]] = 1 if "" else []
+y: Union[int, Dict[int, int]] = 1 if "" else {}
+[builtins fixtures/isinstancelist.pyi]
