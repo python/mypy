@@ -5,7 +5,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set
+from typing import cast, Optional, List, Sequence, Set, Dict
 import sys
 
 from mypy.types import (
@@ -300,6 +300,11 @@ def make_simplified_union(items: Sequence[Type],
     * [int, int] -> int
     * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
     * [Any, Any] -> Any
+    * [Literal[Foo.A], Literal[Foo.B]] -> Foo (assuming Foo is a enum with two variants A and B)
+
+    Note that we only collapse enum literals into the original enum when all literal variants
+    are present. Since enums are effectively final and there are a fixed number of possible
+    variants, it's safe to treat those two types as equivalent.
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
@@ -316,6 +321,8 @@ def make_simplified_union(items: Sequence[Type],
 
     from mypy.subtypes import is_proper_subtype
 
+    enums_found = {}  # type: Dict[str, int]
+    enum_max_members = {}  # type: Dict[str, int]
     removed = set()  # type: Set[int]
     for i, ti in enumerate(items):
         if i in removed: continue
@@ -327,13 +334,52 @@ def make_simplified_union(items: Sequence[Type],
                 removed.add(j)
                 cbt = cbt or tj.can_be_true
                 cbf = cbf or tj.can_be_false
+
         # if deleted subtypes had more general truthiness, use that
         if not ti.can_be_true and cbt:
-            items[i] = true_or_false(ti)
+            items[i] = ti = true_or_false(ti)
         elif not ti.can_be_false and cbf:
-            items[i] = true_or_false(ti)
+            items[i] = ti = true_or_false(ti)
 
-    simplified_set = [items[i] for i in range(len(items)) if i not in removed]
+        # Keep track of all enum Literal types we encounter, in case
+        # we can coalesce them together
+        if isinstance(ti, LiteralType) and ti.is_enum_literal():
+            enum_name = ti.fallback.type.fullname()
+            if enum_name not in enum_max_members:
+                enum_max_members[enum_name] = len(get_enum_values(ti.fallback))
+            enums_found[enum_name] = enums_found.get(enum_name, 0) + 1
+        if isinstance(ti, Instance) and ti.type.is_enum:
+            enum_name = ti.type.fullname()
+            if enum_name not in enum_max_members:
+                enum_max_members[enum_name] = len(get_enum_values(ti))
+            enums_found[enum_name] = enum_max_members[enum_name]
+
+    enums_to_compress = {n for (n, c) in enums_found.items() if c >= enum_max_members[n]}
+    enums_encountered = set()  # type: Set[str]
+    simplified_set = []  # type: List[ProperType]
+    for i, item in enumerate(items):
+        if i in removed:
+            continue
+
+        # Try seeing if this is an enum or enum literal, and if it's
+        # one we should be collapsing away.
+        if isinstance(item, LiteralType):
+            instance = item.fallback  # type: Optional[Instance]
+        elif isinstance(item, Instance):
+            instance = item
+        else:
+            instance = None
+
+        if instance and instance.type.is_enum:
+            enum_name = instance.type.fullname()
+            if enum_name in enums_encountered:
+                continue
+            if enum_name in enums_to_compress:
+                simplified_set.append(instance)
+                enums_encountered.add(enum_name)
+                continue
+        simplified_set.append(item)
+
     return UnionType.make_union(simplified_set, line, column)
 
 
