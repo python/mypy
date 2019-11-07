@@ -1122,7 +1122,7 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
     If erase_instances is True, erase left instance *after* mapping it to supertype
     (this is useful for runtime isinstance() checks).
     """
-    if TypeState.is_assumed_subtype(left, right):
+    if TypeState.is_assumed_proper_subtype(left, right):
         return True
     if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
             left.is_recursive and right.is_recursive):
