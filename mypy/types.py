@@ -2243,7 +2243,8 @@ def is_optional(t: Type) -> bool:
 def remove_optional(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(get_proper_type(t), NoneType)])
+        return UnionType.make_union([t for t in typ.items
+                                     if not isinstance(get_proper_type(t), NoneType)])
     else:
         return typ
 

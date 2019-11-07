@@ -16,8 +16,7 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
     CallableArgument, has_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType,
-    TypeAliasType
+    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, TypeAliasType
 )
 
 from mypy.nodes import (

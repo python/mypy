@@ -1,6 +1,6 @@
 """Test cases for mypy types and type operations."""
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
 from mypy.erasetype import erase_type
@@ -12,11 +12,9 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
     Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
-    LiteralType, TypeAliasType, get_proper_type
+    LiteralType, get_proper_type
 )
-from mypy.nodes import (
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT, TypeAlias
-)
+from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 from mypy.state import strict_optional_set
