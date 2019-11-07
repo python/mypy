@@ -137,7 +137,8 @@ class Options:
                  packages: List[str],
                  files: List[str],
                  verbose: bool,
-                 quiet: bool) -> None:
+                 quiet: bool,
+                 export_less: bool) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
         self.no_import = no_import
@@ -154,6 +155,7 @@ class Options:
         self.files = files
         self.verbose = verbose
         self.quiet = quiet
+        self.export_less = export_less
 
 
 class StubSource(BuildSource):
@@ -449,8 +451,11 @@ class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
 class StubGenerator(mypy.traverser.TraverserVisitor):
     """Generate stub text from a mypy AST."""
 
-    def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
-                 include_private: bool = False, analyzed: bool = False) -> None:
+    def __init__(self,
+                 _all_: Optional[List[str]], pyversion: Tuple[int, int],
+                 include_private: bool = False,
+                 analyzed: bool = False,
+                 export_less: bool = False) -> None:
         # Best known value of __all__.
         self._all_ = _all_
         self._output = []  # type: List[str]
@@ -468,6 +473,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
         self.analyzed = analyzed
+        # Disable implicit exports of package-internal imports?
+        self.export_less = export_less
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
         # Names in __all__ are required
@@ -844,6 +851,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 exported = True
             top_level = module.split('.')[0]
             if (as_name is None
+                    and not self.export_less
                     and not self._all_
                     and self.module
                     and top_level in (self.module.split('.')[0],
@@ -1273,7 +1281,8 @@ def generate_stub_from_ast(mod: StubSource,
                            target: str,
                            parse_only: bool = False,
                            pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                           include_private: bool = False) -> None:
+                           include_private: bool = False,
+                           export_less: bool = False) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
     If directory for target doesn't exist it will created. Existing stub
@@ -1282,7 +1291,8 @@ def generate_stub_from_ast(mod: StubSource,
     gen = StubGenerator(mod.runtime_all,
                         pyversion=pyversion,
                         include_private=include_private,
-                        analyzed=not parse_only)
+                        analyzed=not parse_only,
+                        export_less=export_less)
     assert mod.ast is not None, "This function must be used only with analyzed modules"
     mod.ast.accept(gen)
 
@@ -1337,7 +1347,8 @@ def generate_stubs(options: Options) -> None:
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(mod, target,
                                    options.parse_only, options.pyversion,
-                                   options.include_private)
+                                   options.include_private,
+                                   options.export_less)
 
     # Separately analyse C modules using different logic.
     for mod in c_modules:
@@ -1389,6 +1400,9 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument('--include-private', action='store_true',
                         help="generate stubs for objects and members considered private "
                              "(single leading underscore and no trailing underscores)")
+    parser.add_argument('--export-less', action='store_true',
+                        help=("don't implicitly export all names imported from other modules "
+                              "in the same package"))
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="show more verbose messages")
     parser.add_argument('-q', '--quiet', action='store_true',
@@ -1441,7 +1455,8 @@ def parse_options(args: List[str]) -> Options:
                    packages=ns.packages,
                    files=ns.files,
                    verbose=ns.verbose,
-                   quiet=ns.quiet)
+                   quiet=ns.quiet,
+                   export_less=ns.export_less)
 
 
 def main() -> None:

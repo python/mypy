@@ -1935,3 +1935,32 @@ from _pm import C
 a: A
 b: B
 c: C
+
+[case testDisableExportOfInternalImports]
+# flags: --export-less
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A, B
+from m import C
+
+a: A
+c: C
+
+[file p/a.py]
+class A: pass
+class B: pass
+
+[file m.py]
+class C: pass
+
+[out]
+# p/__init__.pyi
+from m import C
+from p.a import A, B as B
+
+a: A
+c: C
+# p/a.pyi
+class A: ...
+class B: ...
