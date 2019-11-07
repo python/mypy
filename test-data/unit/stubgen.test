@@ -2028,3 +2028,61 @@ def _f(): pass
 
 [out]
 from .b import _f as _f
+
+[case testHideDunderModuleAttributes]
+from m import (
+    __about__,
+    __author__,
+    __copyright__,
+    __email__,
+    __license__,
+    __summary__,
+    __title__,
+    __uri__,
+    __version__
+)
+
+class A:
+    __uri__ = 0
+
+[file m.py]
+__about__ = ''
+__author__ = ''
+__copyright__ = ''
+__email__ = ''
+__license__ = ''
+__summary__ = ''
+__title__ = ''
+__uri__ = ''
+__version__ = ''
+
+[out]
+class A: ...
+
+[case testHideDunderModuleAttributesWithAll_import]
+from m import (
+    __about__,
+    __author__,
+    __copyright__,
+    __email__,
+    __license__,
+    __summary__,
+    __title__,
+    __uri__,
+    __version__
+)
+
+__all__ = ['__about__', '__author__', '__version__']
+
+[file m.py]
+__about__ = ''
+__author__ = ''
+__copyright__ = ''
+__email__ = ''
+__license__ = ''
+__summary__ = ''
+__title__ = ''
+__uri__ = ''
+__version__ = ''
+
+[out]

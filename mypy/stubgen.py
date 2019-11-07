@@ -118,6 +118,25 @@ EXTRA_EXPORTED = {
     'pyasn1_modules.rfc2459.univ',
 }
 
+# These names should be omitted from generated stubs.
+IGNORED_DUNDERS = {
+    '__all__',
+    '__author__',
+    '__version__',
+    '__about__',
+    '__copyright__',
+    '__email__',
+    '__license__',
+    '__summary__',
+    '__title__',
+    '__uri__',
+    '__str__',
+    '__repr__',
+    '__getstate__',
+    '__setstate__',
+    '__slots__',
+}
+
 
 class Options:
     """Represents stubgen options.
@@ -480,7 +499,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
         # Names in __all__ are required
         for name in _all_ or ():
-            self.import_tracker.reexport(name)
+            if name not in IGNORED_DUNDERS:
+                self.import_tracker.reexport(name)
         self.defined_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
@@ -869,7 +889,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             is_private = self.is_private_name(name, full_module + '.' + name)
             if (as_name is None
                     and name not in self.referenced_names
-                    and not self._all_
+                    and (not self._all_ or name in IGNORED_DUNDERS)
                     and not is_private
                     and module not in ('abc', 'typing', 'asyncio')):
                 # An imported name that is never referenced in the module is assumed to be
@@ -879,7 +899,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             top_level = full_module.split('.')[0]
             if (as_name is None
                     and not self.export_less
-                    and not self._all_
+                    and (not self._all_ or name in IGNORED_DUNDERS)
                     and self.module
                     and not is_private
                     and top_level in (self.module.split('.')[0],
@@ -899,7 +919,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self._all_:
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
-                     if name in self._all_ and alias is None]
+                     if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)
 
     def translate_module_name(self, module: str, relative: int) -> Tuple[str, int]:
@@ -1008,14 +1028,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if fullname in EXTRA_EXPORTED:
             return False
         return name.startswith('_') and (not name.endswith('__')
-                                         or name in ('__all__',
-                                                     '__author__',
-                                                     '__version__',
-                                                     '__str__',
-                                                     '__repr__',
-                                                     '__getstate__',
-                                                     '__setstate__',
-                                                     '__slots__'))
+                                         or name in IGNORED_DUNDERS)
 
     def is_private_member(self, fullname: str) -> bool:
         parts = fullname.split('.')
