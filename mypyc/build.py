@@ -376,7 +376,8 @@ def mypycify(
     multi_file: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
     skip_cgen_input: Optional[Any] = None,
-    target_dir: Optional[str] = None
+    target_dir: Optional[str] = None,
+    include_runtime_files: Optional[None] = None
 ) -> List['Extension']:
     """Main entry point to building using mypyc.
 
@@ -410,6 +411,10 @@ def mypycify(
                   speed up compilation, but calls between groups can
                   be slower than calls within a group and can't be
                   inlined.
+        include_runtime_files: If not None, whether the mypyc runtime library
+                               should be directly #include'd instead of linked
+                               separately in order to reduce compiler invocations.
+                               Defaults to False in multi_file mode, True otherwise.
     """
 
     setup_mypycify_vars()
@@ -419,6 +424,7 @@ def mypycify(
         verbose=verbose,
         separate=separate is not False,
         target_dir=target_dir,
+        include_runtime_files=include_runtime_files,
     )
 
     # Create a compiler object so we can make decisions based on what
@@ -490,10 +496,11 @@ def mypycify(
                 '/wd9025',  # warning about overriding /GL
             ]
 
-    # In multi-file mode, copy the runtime library in.
-    # Otherwise it just gets #included to save on compiler invocations
+    # If configured to (defaults to yes in multi-file mode), copy the
+    # runtime library in. Otherwise it just gets #included to save on
+    # compiler invocations.
     shared_cfilenames = []
-    if multi_file:
+    if not compiler_options.include_runtime_files:
         for name in ['CPy.c', 'getargs.c']:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding='utf-8') as f:

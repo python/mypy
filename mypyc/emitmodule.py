@@ -282,8 +282,9 @@ def compile_ir_to_c(
             continue
         literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            literals, group_modules, source_paths, group_name, mapper.group_map, names,
-            compiler_options.multi_file
+            literals, group_modules, source_paths,
+            group_name, mapper.group_map, names,
+            compiler_options
         )
         ctext[group_name] = generator.generate_c_for_modules()
 
@@ -444,7 +445,7 @@ class GroupGenerator:
                  group_name: Optional[str],
                  group_map: Dict[str, Optional[str]],
                  names: NameGenerator,
-                 multi_file: bool) -> None:
+                 compiler_options: CompilerOptions) -> None:
         """Generator for C source for a compilation group.
 
         The code for a compilation group contains an internal and an
@@ -471,7 +472,8 @@ class GroupGenerator:
         self.simple_inits = []  # type: List[Tuple[str, str]]
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
-        self.multi_file = multi_file
+        self.compiler_options = compiler_options
+        self.multi_file = compiler_options.multi_file
 
     @property
     def group_suffix(self) -> str:
@@ -482,10 +484,9 @@ class GroupGenerator:
         multi_file = self.use_shared_lib and self.multi_file
 
         base_emitter = Emitter(self.context)
-        # When not in multi-file mode we just include the runtime
-        # library c files to reduce the number of compiler invocations
-        # needed
-        if not self.multi_file:
+        # Optionally just include the runtime library c files to
+        # reduce the number of compiler invocations needed
+        if self.compiler_options.include_runtime_files:
             base_emitter.emit_line('#include "CPy.c"')
             base_emitter.emit_line('#include "getargs.c"')
         base_emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
