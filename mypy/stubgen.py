@@ -114,7 +114,6 @@ EXTRA_EXPORTED = {
     'pyasn1_modules.rfc2437.univ',
     'pyasn1_modules.rfc2459.char',
     'pyasn1_modules.rfc2459.univ',
-    'elasticsearch.client.utils._make_path',
 }
 
 
