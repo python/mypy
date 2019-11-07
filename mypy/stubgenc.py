@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Stub generator for C modules.
 
 The public interface is via the mypy.stubgen module.
