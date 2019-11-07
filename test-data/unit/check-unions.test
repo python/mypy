@@ -1007,6 +1007,9 @@ do_thing_with_enums(boop)  # E: Argument 1 to "do_thing_with_enums" has incompat
 
 [case testAssignUnionWithTenaryExprWithEmptyCollection]
 from typing import Dict, List, Union
-x: Union[int, List[int]] = 1 if "" else []
-y: Union[int, Dict[int, int]] = 1 if "" else {}
+x: Union[int, List[int]] = 1 if bool() else []
+y: Union[int, Dict[int, int]] = 1 if bool() else {}
+
+u: Union[int, List[int]] = [] if bool() else 1
+v: Union[int, Dict[int, int]] = {} if bool() else 1
 [builtins fixtures/isinstancelist.pyi]
