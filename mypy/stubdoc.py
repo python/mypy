@@ -60,7 +60,8 @@ STATE_OPEN_BRACKET = 7  # type: Final  # For generic types.
 
 
 class DocStringParser:
-    """Parse function signstures in documentation."""
+    """Parse function signatures in documentation."""
+
     def __init__(self, function_name: str) -> None:
         # Only search for signatures of function with this name.
         self.function_name = function_name
@@ -76,7 +77,7 @@ class DocStringParser:
         self.signatures = []  # type: List[FunctionSig]
 
     def add_token(self, token: tokenize.TokenInfo) -> None:
-        """Process next token fro the token stream."""
+        """Process next token from the token stream."""
         if (token.type == tokenize.NAME and token.string == self.function_name and
                 self.state[-1] == STATE_INIT):
             self.state.append(STATE_FUNCTION_NAME)
@@ -129,6 +130,10 @@ class DocStringParser:
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
                 self.arg_name = self.accumulator
+                if not re.match(r'\**[A-Za-z_][A-Za-z0-9_]*$', self.arg_name):
+                    # Invalid argument name.
+                    self.reset()
+                    return
 
             if token.string == ')':
                 self.state.pop()
@@ -165,6 +170,12 @@ class DocStringParser:
             # Leave state as INIT.
         else:
             self.accumulator += token.string
+
+    def reset(self) -> None:
+        self.state = [STATE_INIT]
+        self.args = []
+        self.found = False
+        self.accumulator = ""
 
     def get_signatures(self) -> List[FunctionSig]:
         """Return sorted copy of the list of signatures found so far."""
