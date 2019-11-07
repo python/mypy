@@ -211,13 +211,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
         """return true if function argument names are unique"""
         return len(sig.args) == len(set((arg.name for arg in sig.args)))
 
-    # Warn about invalid signatures
-    invalid_sigs = [sig for sig in sigs if not is_unique_args(sig)]
-    if invalid_sigs:
-        print("Warning: Invalid signatures found:", file=sys.stderr)
-        print("\n".join(str(sig) for sig in invalid_sigs), file=sys.stderr)
-
-    # return only signatures, that have unique argument names. mypy fails on non-uqniue arg names
+    # Return only signatures that have unique argument names. Mypy fails on non-uniqnue arg names.
     return [sig for sig in sigs if is_unique_args(sig)]
 
 
