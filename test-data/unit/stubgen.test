@@ -1861,14 +1861,16 @@ def gg() -> None: ...
 # modules: p p/a
 
 [file p/__init__.py]
-from p.a import A
+from p.a import A, f
 from m import C
 
 a: A
 c: C
+f()
 
 [file p/a.py]
 class A: pass
+def f(): pass
 
 [file m.py]
 class C: pass
@@ -1876,12 +1878,14 @@ class C: pass
 [out]
 # p/__init__.pyi
 from m import C
-from p.a import A as A
+from p.a import A as A, f as f
 
 a: A
 c: C
 # p/a.pyi
 class A: ...
+
+def f() -> None: ...
 
 [case testNoExportOfInternalImportsIfAll_import]
 # modules: p p/a
@@ -1927,7 +1931,6 @@ class B: pass
 class C: pass
 
 [out]
-# p.pyi
 from _m import B
 from _p import A as A
 from _pm import C
