@@ -3534,9 +3534,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
+        # Analyze the right branch using full type context and store the type
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
+            else_type = full_context_else_type
 
             # If it would make a difference, re-analyze the left
             # branch using the right branch's type as context.
@@ -3556,7 +3558,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #
         # TODO: Always create a union or at least in more cases?
         if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res = make_simplified_union([if_type, else_type])
+            res = make_simplified_union([if_type, full_context_else_type])
         else:
             res = join.join_types(if_type, else_type)
 
