@@ -283,6 +283,12 @@ class StubgenUtilSuite(Suite):
                      'Tuple[int, int]')
         assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
 
+    def test_infer_sig_from_docstring_square_brackets(self) -> None:
+        assert infer_sig_from_docstring(
+            'fetch_row([maxrows, how]) -- Fetches stuff',
+            'fetch_row',
+        ) == []
+
     def test_remove_misplaced_type_comments_1(self) -> None:
         good = """
         \u1234
