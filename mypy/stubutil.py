@@ -89,7 +89,10 @@ def find_module_path_and_all_py2(module: str,
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError as e:
-        raise CantImport(module, str(e))
+        path = find_module_path_using_py2_sys_path(module, interpreter)
+        if path is None:
+            raise CantImport(module, str(e))
+        return path, None
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
     if not module_path.endswith(('.py', '.pyc', '.pyo')):
@@ -99,6 +102,28 @@ def find_module_path_and_all_py2(module: str,
         module_path = module_path[:-1]
     module_all = json.loads(output[1])
     return module_path, module_all
+
+
+def find_module_path_using_py2_sys_path(module: str,
+                                        interpreter: str) -> Optional[str]:
+    """Try to find the path of a .py file for a module using Python 2 sys.path.
+
+    Return None if no match was found.
+    """
+    out = subprocess.run([interpreter, '-c', 'import sys; import json; print(json.dumps(sys.path))'],
+                         check=True,
+                         stdout=subprocess.PIPE).stdout
+    sys_path = json.loads(out)
+    relative_candidates = (
+        module.replace('.', '/') + '.py',
+        os.path.join(module.replace('.', '/'), '__init__.py')
+    )
+    for base in sys_path:
+        for relative_path in relative_candidates:
+            path = os.path.join(base, relative_path)
+            if os.path.isfile(path):
+                return path
+    return None
 
 
 def find_module_path_and_all_py3(inspect: ModuleInspect,
@@ -120,7 +145,7 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
         mod = inspect.get_package_properties(module)
     except InspectError as e:
         # Fall back to finding the module using sys.path.
-        path = find_module_path_using_sys_path(module)
+        path = find_module_path_using_py3_sys_path(module)
         if path is None:
             raise CantImport(module, str(e))
         return path, None
@@ -129,7 +154,7 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
     return mod.file, mod.all
 
 
-def find_module_path_using_sys_path(module: str) -> Optional[str]:
+def find_module_path_using_py3_sys_path(module: str) -> Optional[str]:
     """Try to find the path of a .py file for a module using sys.path.
 
     Return None if no match was found.
