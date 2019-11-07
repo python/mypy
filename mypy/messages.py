@@ -587,8 +587,7 @@ class MessageBuilder:
         if not matches:
             matches = best_matches(name, not_matching_type_args)
         if matches:
-            suggestion = ";  did you mean {}?".format(pretty_or(matches[:3]))
-            msg += "{}".format(suggestion)
+            msg += "; did you mean {}?".format(pretty_or(matches[:3]))
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
