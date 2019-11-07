@@ -40,7 +40,7 @@ files = [
 ]
 
 setup_format = """\
-from distutils.core import setup
+from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
