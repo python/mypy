@@ -484,6 +484,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.module = o.fullname()  # Current module being processed
+        self.path = o.path
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
         typing_imports = ["Any", "Optional", "TypeVar"]
@@ -833,6 +834,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         exported_names = set()  # type: Set[str]
         import_names = []
         module, relative = self.translate_module_name(o.id, o.relative)
+        if self.module:
+            full_module, ok = mypy.util.correct_relative_import(
+                self.module, relative, module, self.path.endswith('.__init__.py')
+            )
+            if not ok:
+                full_module = module
+        else:
+            full_module = module
         if module == '__future__':
             return  # Not preserved
         for name, as_name in o.names:
@@ -842,18 +851,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 continue
             exported = False
             if as_name is None and self.module and (self.module + '.' + name) in EXTRA_EXPORTED:
+                # Special case certain names that should be exported, against our general rules.
                 exported = True
-            if (as_name is None and name not in self.referenced_names and not self._all_
+            is_private = self.is_private_name(name, full_module + '.' + name)
+            if (as_name is None
+                    and name not in self.referenced_names
+                    and not self._all_
+                    and not is_private
                     and module not in ('abc', 'typing', 'asyncio')):
                 # An imported name that is never referenced in the module is assumed to be
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.
                 exported = True
-            top_level = module.split('.')[0]
+            top_level = full_module.split('.')[0]
             if (as_name is None
                     and not self.export_less
                     and not self._all_
                     and self.module
+                    and not is_private
                     and top_level in (self.module.split('.')[0],
                                       '_' + self.module.split('.')[0])):
                 # Export imports from the same package, since we can't reliably tell whether they
