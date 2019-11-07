@@ -739,7 +739,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(trigger)
         elif isinstance(typ, UnionType):
             for item in typ.items:
-                self.add_operator_method_dependency_for_type(item, method)
+                self.add_operator_method_dependency_for_type(get_proper_type(item), method)
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
             self.add_operator_method_dependency_for_type(typ.fallback, method)
         elif isinstance(typ, TypeType):

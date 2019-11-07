@@ -308,7 +308,7 @@ def make_simplified_union(items: Sequence[Type],
         all_items = []  # type: List[ProperType]
         for typ in items:
             if isinstance(typ, UnionType):
-                all_items.extend(typ.items)
+                all_items.extend(get_proper_types(typ.items))
             else:
                 all_items.append(typ)
         items = all_items

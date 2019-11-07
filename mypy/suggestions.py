@@ -688,7 +688,7 @@ class SuggestionEngine:
         if arg_pos and isinstance(t, NoneType):
             return 20
         if isinstance(t, UnionType):
-            if any(isinstance(x, AnyType) for x in t.items):
+            if any(isinstance(get_proper_type(x), AnyType) for x in t.items):
                 return 20
             if any(has_any_type(x) for x in t.items):
                 return 15
@@ -716,7 +716,7 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
     if isinstance(t, NoneType) and arg_pos:
         return 0.5
     if isinstance(t, UnionType):
-        if any(isinstance(x, AnyType) for x in t.items):
+        if any(isinstance(get_proper_type(x), AnyType) for x in t.items):
             return 0.5
         if any(has_any_type(x) for x in t.items):
             return 0.25

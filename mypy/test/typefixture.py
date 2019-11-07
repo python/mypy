@@ -7,11 +7,12 @@ from typing import List, Optional
 
 from mypy.types import (
     Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarDef, TypeType,
-    UninhabitedType, TypeOfAny
+    UninhabitedType, TypeOfAny, TypeAliasType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
-    COVARIANT)
+    COVARIANT, TypeAlias
+)
 
 
 class TypeFixture:

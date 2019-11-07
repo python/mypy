@@ -2479,7 +2479,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # If this is an Optional type in non-strict Optional code, unwrap it.
             relevant_items = rvalue_type.relevant_items()
             if len(relevant_items) == 1:
-                rvalue_type = relevant_items[0]
+                rvalue_type = get_proper_type(relevant_items[0])
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -2586,7 +2586,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # If this is an Optional type in non-strict Optional code, unwrap it.
                     relevant_items = reinferred_rvalue_type.relevant_items()
                     if len(relevant_items) == 1:
-                        reinferred_rvalue_type = relevant_items[0]
+                        reinferred_rvalue_type = get_proper_type(relevant_items[0])
                 if isinstance(reinferred_rvalue_type, UnionType):
                     self.check_multi_assignment_from_union(lvalues, rvalue,
                                                            reinferred_rvalue_type, context,
@@ -3731,7 +3731,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     type = get_isinstance_type(node.args[1], type_map)
                     if isinstance(vartype, UnionType):
                         union_list = []
-                        for t in vartype.items:
+                        for t in get_proper_types(vartype.items):
                             if isinstance(t, TypeType):
                                 union_list.append(t.item)
                             else:

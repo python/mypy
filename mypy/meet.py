@@ -137,8 +137,7 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
-    left = get_proper_type(left)
-    right = get_proper_type(right)
+    left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         '''Encode the kind of overlapping check to perform.
@@ -174,6 +173,7 @@ def is_overlapping_types(left: Type,
             left = UnionType.make_union(left.relevant_items())
         if isinstance(right, UnionType):
             right = UnionType.make_union(right.relevant_items())
+        left, right = get_proper_types((left, right))
 
     # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
@@ -201,7 +201,8 @@ def is_overlapping_types(left: Type,
     # If both types are singleton variants (and are not TypeVars), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    def is_none_typevar_overlap(t1: ProperType, t2: ProperType) -> bool:
+    def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
+        t1, t2 = get_proper_types((t1, t2))
         return isinstance(t1, NoneType) and isinstance(t2, TypeVarType)
 
     if prohibit_none_typevar_overlap:
@@ -260,9 +261,10 @@ def is_overlapping_types(left: Type,
     if isinstance(left, TypeType) and isinstance(right, TypeType):
         return _is_overlapping_types(left.item, right.item)
 
-    def _type_object_overlap(left: ProperType, right: ProperType) -> bool:
+    def _type_object_overlap(left: Type, right: Type) -> bool:
         """Special cases for type object types overlaps."""
         # TODO: these checks are a bit in gray area, adjust if they cause problems.
+        left, right = get_proper_types((left, right))
         # 1. Type[C] vs Callable[..., C], where the latter is class object.
         if isinstance(left, TypeType) and isinstance(right, CallableType) and right.is_type_obj():
             return _is_overlapping_types(left.item, right.ret_type)
@@ -388,10 +390,11 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
     return True
 
 
-def are_tuples_overlapping(left: ProperType, right: ProperType, *,
+def are_tuples_overlapping(left: Type, right: Type, *,
                            ignore_promotions: bool = False,
                            prohibit_none_typevar_overlap: bool = False) -> bool:
     """Returns true if left and right are overlapping tuples."""
+    left, right = get_proper_types((left, right))
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
     assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
@@ -675,7 +678,7 @@ def meet_type_list(types: List[Type]) -> Type:
     return met
 
 
-def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
+def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
     """Is this a pair where one type is a TypedDict and another one is an instance of Mapping?
 
     This case requires a precise/principled consideration because there are two use cases
@@ -683,6 +686,7 @@ def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
     false positives for overloads, but we also need to avoid spuriously non-overlapping types
     to avoid false positives with --strict-equality.
     """
+    left, right = get_proper_types((left, right))
     assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
 
     if isinstance(left, TypedDictType):
@@ -694,7 +698,7 @@ def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
     return isinstance(other, Instance) and other.type.has_base('typing.Mapping')
 
 
-def typed_dict_mapping_overlap(left: ProperType, right: ProperType,
+def typed_dict_mapping_overlap(left: Type, right: Type,
                                overlapping: Callable[[Type, Type], bool]) -> bool:
     """Check if a TypedDict type is overlapping with a Mapping.
 
@@ -724,6 +728,7 @@ def typed_dict_mapping_overlap(left: ProperType, right: ProperType,
     Mapping[<nothing>, <nothing>]. This way we avoid false positives for overloads, and also
     avoid false positives for comparisons like SomeTypedDict == {} under --strict-equality.
     """
+    left, right = get_proper_types((left, right))
     assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
 
     if isinstance(left, TypedDictType):

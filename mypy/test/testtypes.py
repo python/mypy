@@ -1,6 +1,6 @@
 """Test cases for mypy types and type operations."""
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
 from mypy.erasetype import erase_type
@@ -11,9 +11,11 @@ from mypy.sametypes import is_same_type
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
     Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
-    LiteralType,
+    LiteralType, TypeAliasType, get_proper_type
 )
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
+from mypy.nodes import (
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT, TypeAlias
+)
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 from mypy.state import strict_optional_set
@@ -91,6 +93,17 @@ class TypesSuite(Suite):
              TypeVarDef('X', 'X', -2, [], self.fx.o)]
         c2 = CallableType([], [], [], NoneType(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
+
+    def test_type_alias_expand_once(self) -> None:
+        A = TypeAliasType(None, [])
+        target = Instance(self.fx.std_tuplei, [UnionType([self.fx.a, A])])  # tuple[Union[a, A]]
+        AN = TypeAlias(target, '__main__.A', -1, -1)
+        A.alias = AN
+        assert get_proper_type(A) == target
+        assert get_proper_type(target) == target  # type: ignore
+
+    def test_type_alias_expand_all(self) -> None:
+        pass
 
 
 class TypeOpsSuite(Suite):

@@ -162,13 +162,15 @@ class TypeAliasType(Type):
     can be represented in a tree-like manner.
     """
 
+    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref', '_is_recursive')
+
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
         self.alias = alias
         self.args = args
         self.type_ref = None  # type: Optional[str]
         self._is_recursive = None  # type: Optional[bool]
+        super().__init__(line, column)
 
     def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
@@ -187,7 +189,12 @@ class TypeAliasType(Type):
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
         return None.
         """
-
+        unroller = UnrollAliasVisitor({self})
+        unrolled = self.accept(unroller)
+        if unroller.recursed:
+            return None
+        assert isinstance(unrolled, ProperType)
+        return unrolled
 
     @property
     def is_recursive(self) -> bool:
@@ -197,17 +204,15 @@ class TypeAliasType(Type):
         self._is_recursive = is_recursive
         return is_recursive
 
-    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
-    @property
-    def can_be_true(self) -> bool:  # type: ignore[override]
-        assert self.alias is not None
-        return self.alias.target.can_be_true
+    def can_be_true_default(self) -> bool:
+        if self.alias is not None:
+            return self.alias.target.can_be_true
+        return super().can_be_true_default()
 
-    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
-    @property
-    def can_be_false(self) -> bool:  # type: ignore[override]
-        assert self.alias is not None
-        return self.alias.target.can_be_false
+    def can_be_false_default(self) -> bool:
+        if self.alias is not None:
+            return self.alias.target.can_be_false
+        return super().can_be_false_default()
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_alias_type(self)
@@ -1703,14 +1708,14 @@ class UnionType(ProperType):
         """
         return all((isinstance(x, UnionType) and x.has_readable_member(name)) or
                    (isinstance(x, Instance) and x.type.has_readable_member(name))
-                   for x in self.relevant_items())
+                   for x in get_proper_types(self.relevant_items()))
 
-    def relevant_items(self) -> List[ProperType]:
+    def relevant_items(self) -> List[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
         if state.strict_optional:
             return self.items
         else:
-            return [i for i in self.items if not isinstance(i, NoneType)]
+            return [i for i in get_proper_types(self.items) if not isinstance(i, NoneType)]
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
@@ -1886,6 +1891,7 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
     assert isinstance(typ, ProperType), typ
+    # TODO: store the name of original type alias on this type, so we can show it in errors.
     return typ
 
 
@@ -2096,12 +2102,19 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
 
 class UnrollAliasVisitor(TypeTranslator):
-    def __init__(self) -> None:
+    def __init__(self, initial_aliases: Set[TypeAliasType]) -> None:
         self.recursed = False
-        self.seen_aliases = set()  # type: Set[TypeAliasType]
+        self.initial_aliases = initial_aliases
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        pass
+        if t in self.initial_aliases:
+            self.recursed = True
+            return AnyType(TypeOfAny.special_form)
+        # Create a new visitor on encountering a new type alias, so that an alias like
+        #     A = Tuple[B, B]
+        #     B = int
+        # will not be detected as recursive on the second encounter of B.
+        return get_proper_type(t).accept(UnrollAliasVisitor(self.initial_aliases | {t}))
 
 
 def strip_type(typ: Type) -> ProperType:
@@ -2131,7 +2144,6 @@ def copy_type(t: TP) -> TP:
     return copy.copy(t)
 
 
-
 class InstantiateAliasVisitor(TypeTranslator):
     def __init__(self, vars: List[str], subs: List[Type]) -> None:
         self.replacements = {v: s for (v, s) in zip(vars, subs)}
@@ -2140,6 +2152,10 @@ class InstantiateAliasVisitor(TypeTranslator):
         return typ.copy_modified(args=[t.accept(self) for t in typ.args])
 
     def visit_unbound_type(self, typ: UnboundType) -> Type:
+        # TODO: stop using unbound type variables for type aliases.
+        # Now that type aliases are very similar to TypeInfos we should
+        # make type variable tracking similar as well. Maybe we can even support
+        # upper bounds etc. for generic type aliases.
         if typ.name in self.replacements:
             return self.replacements[typ.name]
         return typ
@@ -2175,15 +2191,24 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
-def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:
+def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
     """Flatten nested unions in a type list."""
     # This and similar functions on unions can cause infinite recursion
     # if passed a "pathological" alias like A = Union[int, A] or similar.
     # TODO: ban such aliases in semantic analyzer.
-    flat_items = []  # type: List[ProperType]
-    for tp in get_proper_types(types):
-        if isinstance(tp, UnionType):
+    flat_items = []  # type: List[Type]
+    for tp in types:
+        if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items))
+        elif isinstance(tp, TypeAliasType) and tp.alias is not None:
+            # We want to flatten all aliased unions, so that union items never contain
+            # nested unions. Some code might implicitly rely on this behavior that existed
+            # before recursive aliases.
+            exp_tp = get_proper_type(tp)
+            if isinstance(exp_tp, UnionType):
+                flat_items.extend(flatten_nested_unions(exp_tp.items))
+            else:
+                flat_items.append(tp)
         else:
             flat_items.append(tp)
     return flat_items
@@ -2211,13 +2236,14 @@ def is_generic_instance(tp: Type) -> bool:
 
 def is_optional(t: Type) -> bool:
     t = get_proper_type(t)
-    return isinstance(t, UnionType) and any(isinstance(e, NoneType) for e in t.items)
+    return isinstance(t, UnionType) and any(isinstance(get_proper_type(e), NoneType)
+                                            for e in t.items)
 
 
-def remove_optional(typ: Type) -> ProperType:
+def remove_optional(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
+        return UnionType.make_union([t for t in typ.items if not isinstance(get_proper_type(t), NoneType)])
     else:
         return typ
 
