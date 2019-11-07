@@ -104,5 +104,4 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return self._visit(t.item)
 
     def visit_type_alias_type(self, t: types.TypeAliasType) -> Set[str]:
-        # TODO: do we need to add alias definition module here?
         return self._visit(types.get_proper_type(t))

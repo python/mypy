@@ -377,7 +377,7 @@ def analyze_member_var_access(name: str,
                     function = function_type(method, mx.builtin_type('builtins.function'))
                     bound_method = bind_self(function, mx.self_type)
                     typ = map_instance_to_supertype(itype, method.info)
-                    getattr_type = expand_type_by_instance(bound_method, typ)
+                    getattr_type = get_proper_type(expand_type_by_instance(bound_method, typ))
                     if isinstance(getattr_type, CallableType):
                         result = getattr_type.ret_type
 
@@ -394,7 +394,7 @@ def analyze_member_var_access(name: str,
                 setattr_func = function_type(setattr_meth, mx.builtin_type('builtins.function'))
                 bound_type = bind_self(setattr_func, mx.self_type)
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
-                setattr_type = expand_type_by_instance(bound_type, typ)
+                setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
                     return setattr_type.arg_types[-1]
 
@@ -526,7 +526,7 @@ def analyze_var(name: str,
     if typ:
         if isinstance(typ, PartialType):
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
-        t = expand_type_by_instance(typ, itype)
+        t = get_proper_type(expand_type_by_instance(typ, itype))
         if mx.is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
             mx.msg.read_only_property(name, itype.type, mx.context)
@@ -578,7 +578,9 @@ def analyze_var(name: str,
     return result
 
 
-def freeze_type_vars(member_type: ProperType) -> None:
+def freeze_type_vars(member_type: Type) -> None:
+    if not isinstance(member_type, ProperType):
+        return
     if isinstance(member_type, CallableType):
         for v in member_type.variables:
             v.id.meta_level = 0
@@ -796,7 +798,7 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     info = itype.type  # type: TypeInfo
     if is_classmethod:
         assert isuper is not None
-        t = expand_type_by_instance(t, isuper)
+        t = get_proper_type(expand_type_by_instance(t, isuper))
     # We add class type variables if the class method is accessed on class object
     # without applied type arguments, this matches the behavior of __init__().
     # For example (continuing the example in docstring):

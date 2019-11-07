@@ -63,6 +63,8 @@ def is_subtype(left: Type, right: Type,
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    if TypeState.is_assumed_subtype(left, right):
+        return True
     if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
             left.is_recursive and right.is_recursive):
         # This case requires special care because it may cause infinite recursion.
@@ -82,12 +84,7 @@ def is_subtype(left: Type, right: Type,
         #     B = Union[int, Tuple[B, ...]]
         # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
         # steps we come back to initial call is_subtype(A, B) and immediately return True.
-        assert right.alias is not None
-        for (l, r) in reversed(right.alias.assuming):
-            if (mypy.sametypes.is_same_type(l, left)
-                    and mypy.sametypes.is_same_type(r, right)):
-                return True
-        with pop_on_exit(right.alias.assuming, left, right):
+        with pop_on_exit(TypeState._assuming, left, right):
             return _is_subtype(left, right,
                                ignore_type_params=ignore_type_params,
                                ignore_pos_arg_names=ignore_pos_arg_names,
@@ -1125,16 +1122,13 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
     If erase_instances is True, erase left instance *after* mapping it to supertype
     (this is useful for runtime isinstance() checks).
     """
+    if TypeState.is_assumed_subtype(left, right):
+        return True
     if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
             left.is_recursive and right.is_recursive):
         # This case requires special care because it may cause infinite recursion.
         # See is_subtype() for more info.
-        assert right.alias is not None
-        for (l, r) in reversed(right.alias.assuming_proper):
-            if (mypy.sametypes.is_same_type(l, left)
-                    and mypy.sametypes.is_same_type(r, right)):
-                return True
-        with pop_on_exit(right.alias.assuming_proper, left, right):
+        with pop_on_exit(TypeState._assuming_proper, left, right):
             return _is_proper_subtype(left, right,
                                       ignore_promotions=ignore_promotions,
                                       erase_instances=erase_instances)

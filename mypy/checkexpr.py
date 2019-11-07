@@ -900,7 +900,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = callee.copy_modified(ret_type=new_ret_type)
         return callee.ret_type, callee
 
-    def analyze_type_type_callee(self, item: ProperType, context: Context) -> ProperType:
+    def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
 
         Return a Y that we can pass to check_call(Y, ...).
@@ -921,6 +921,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(get_proper_type(item.upper_bound), context)
+            callee = get_proper_type(callee)
             if isinstance(callee, CallableType):
                 callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):

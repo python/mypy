@@ -16,6 +16,7 @@ import mypy.typeops
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
+from mypy.typestate import TypeState
 
 SUBTYPE_OF = 0  # type: Final[int]
 SUPERTYPE_OF = 1  # type: Final[int]
@@ -93,11 +94,11 @@ def infer_constraints(template: Type, actual: Type,
             template.is_recursive and actual.is_recursive):
         # This case requires special care because it may cause infinite recursion.
         assert template.alias is not None
-        if any(mypy.sametypes.is_same_type(template, t) for t in template.alias.inferring):
+        if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
             return []
-        template.alias.inferring.append(template)
+        TypeState._inferring.append(template)
         res = _infer_constraints(template, actual, direction)
-        template.alias.inferring.pop()
+        TypeState._inferring.pop()
         return res
     return _infer_constraints(template, actual, direction)
 

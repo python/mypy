@@ -183,17 +183,22 @@ class TypeAliasType(Type):
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
+    def _partial_expansion(self) -> Tuple['ProperType', bool]:
+        # Private method mostly for debugging and testing.
+        unroller = UnrollAliasVisitor(set())
+        unrolled = self.accept(unroller)
+        assert isinstance(unrolled, ProperType)
+        return unrolled, unroller.recursed
+
     def expand_all_if_possible(self) -> Optional['ProperType']:
         """Attempt a full expansion of the type alias (including nested aliases).
 
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
         return None.
         """
-        unroller = UnrollAliasVisitor({self})
-        unrolled = self.accept(unroller)
-        if unroller.recursed:
+        unrolled, recursed = self._partial_expansion()
+        if recursed:
             return None
-        assert isinstance(unrolled, ProperType)
         return unrolled
 
     @property
@@ -2114,7 +2119,11 @@ class UnrollAliasVisitor(TypeTranslator):
         #     A = Tuple[B, B]
         #     B = int
         # will not be detected as recursive on the second encounter of B.
-        return get_proper_type(t).accept(UnrollAliasVisitor(self.initial_aliases | {t}))
+        subvisitor = UnrollAliasVisitor(self.initial_aliases | {t})
+        result = get_proper_type(t).accept(subvisitor)
+        if subvisitor.recursed:
+            self.recursed = True
+        return result
 
 
 def strip_type(typ: Type) -> ProperType:
@@ -2200,15 +2209,6 @@ def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items))
-        elif isinstance(tp, TypeAliasType) and tp.alias is not None:
-            # We want to flatten all aliased unions, so that union items never contain
-            # nested unions. Some code might implicitly rely on this behavior that existed
-            # before recursive aliases.
-            exp_tp = get_proper_type(tp)
-            if isinstance(exp_tp, UnionType):
-                flat_items.extend(flatten_nested_unions(exp_tp.items))
-            else:
-                flat_items.append(tp)
         else:
             flat_items.append(tp)
     return flat_items
