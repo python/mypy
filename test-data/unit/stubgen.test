@@ -297,6 +297,9 @@ class A:
         return 1
     @f.setter
     def f(self, x): ...
+
+    def h(self):
+        self.f = 1
 [out]
 from typing import Any
 
@@ -305,6 +308,7 @@ class A:
     def f(self): ...
     @f.setter
     def f(self, x: Any) -> None: ...
+    def h(self) -> None: ...
 
 [case testStaticMethod]
 class A:

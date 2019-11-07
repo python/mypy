@@ -71,7 +71,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
     IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
-    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
+    Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
@@ -502,6 +502,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if name not in IGNORED_DUNDERS:
                 self.import_tracker.reexport(name)
         self.defined_names = set()  # type: Set[str]
+        # Short names of methods defined in the body of the current class
+        self.method_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.module = o.fullname  # Current module being processed
@@ -537,6 +539,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
             for init, value in self_inits:
+                if init in self.method_names:
+                    # Can't have both an attribute and a method/property.
+                    continue
                 init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
@@ -681,6 +686,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return is_abstract
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self.method_names = find_method_names(o.defs.body)
         sep = None  # type: Optional[int]
         if not self._indent and self._state != EMPTY:
             sep = len(self._output)
@@ -715,6 +721,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = EMPTY_CLASS
         else:
             self._state = CLASS
+        self.method_names = set()
 
     def get_base_types(self, cdef: ClassDef) -> List[str]:
         """Get list of base classes for a class."""
@@ -1079,6 +1086,21 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def is_recorded_name(self, name: str) -> bool:
         """Has this name been recorded previously?"""
         return self.is_top_level() and name in self._toplevel_names
+
+
+def find_method_names(defs: List[Statement]) -> Set[str]:
+    # TODO: Traverse into nested definitions
+    # TODO: Overloads
+    result = set()
+    for defn in defs:
+        if isinstance(defn, FuncDef):
+            result.add(defn.name())
+        elif isinstance(defn, Decorator):
+            result.add(defn.func.name())
+        elif isinstance(defn, OverloadedFuncDef):
+            for item in defn.items:
+                result.update(find_method_names([item]))
+    return result
 
 
 class SelfTraverser(mypy.traverser.TraverserVisitor):
