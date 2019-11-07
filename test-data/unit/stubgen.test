@@ -1989,16 +1989,19 @@ from .b import f as f
 [file p/__init__.py]
 
 [file p/a.py]
-from .b import _f, _g as _g
+from .b import _f, _g as _g, _i
+from p.b import _h
 _f()
+_h()
 
 [file p/b.py]
 def _f(): pass
 def _g(): pass
+def _h(): pass
+def _i(): pass
 x = 0
 
 [out]
-from .b import _f
 
 [case testExportInternalImportsByDefaultIncludePrivate]
 # flags: --include-private

@@ -888,15 +888,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None]
             exported_names.update(names)
-        else:
-            # Include import from targets that import from a submodule of a package.
-            if relative:
-                sub_names = [name for name, alias in o.names
-                             if alias is None]
-                exported_names.update(sub_names)
-                if module:
-                    for name in sub_names:
-                        self.import_tracker.require_name(name)
 
     def translate_module_name(self, module: str, relative: int) -> Tuple[str, int]:
         for pkg in VENDOR_PACKAGES:
