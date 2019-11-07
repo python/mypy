@@ -187,7 +187,7 @@ class TypeAliasType(Type):
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
         return None.
         """
-        raise NotImplementedError('TODO')
+
 
     @property
     def is_recursive(self) -> bool:
@@ -216,6 +216,7 @@ class TypeAliasType(Type):
         return hash((self.alias, tuple(self.args)))
 
     def __eq__(self, other: object) -> bool:
+        # Note: never use this to determine subtype relationships, use is_subtype().
         if not isinstance(other, TypeAliasType):
             return NotImplemented
         return (self.alias == other.alias
@@ -2094,6 +2095,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return ', '.join(res)
 
 
+class UnrollAliasVisitor(TypeTranslator):
+    def __init__(self) -> None:
+        self.recursed = False
+        self.seen_aliases = set()  # type: Set[TypeAliasType]
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        pass
+
+
 def strip_type(typ: Type) -> ProperType:
     """Make a copy of type without 'debugging info' (function name)."""
     typ = get_proper_type(typ)
@@ -2121,75 +2131,48 @@ def copy_type(t: TP) -> TP:
     return copy.copy(t)
 
 
+
+class InstantiateAliasVisitor(TypeTranslator):
+    def __init__(self, vars: List[str], subs: List[Type]) -> None:
+        self.replacements = {v: s for (v, s) in zip(vars, subs)}
+
+    def visit_type_alias_type(self, typ: TypeAliasType) -> Type:
+        return typ.copy_modified(args=[t.accept(self) for t in typ.args])
+
+    def visit_unbound_type(self, typ: UnboundType) -> Type:
+        if typ.name in self.replacements:
+            return self.replacements[typ.name]
+        return typ
+
+    def visit_type_var(self, typ: TypeVarType) -> Type:
+        if typ.name in self.replacements:
+            return self.replacements[typ.name]
+        return typ
+
+
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
-                        newline: int, newcolumn: int) -> ProperType:
+                        newline: int, newcolumn: int) -> Type:
     """Replace type variables in a generic type alias tp with substitutions subs
     resetting context. Length of subs should be already checked.
     """
-    typ_args = get_typ_args(tp)
-    new_args = typ_args[:]
-    for i, arg in enumerate(typ_args):
-        if isinstance(arg, (UnboundType, TypeVarType)):
-            tvar = arg.name  # type: Optional[str]
-        else:
-            tvar = None
-        if tvar and tvar in vars:
-            # Perform actual substitution...
-            new_args[i] = subs[vars.index(tvar)]
-        else:
-            # ...recursively, if needed.
-            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
-    return set_typ_args(tp, new_args, newline, newcolumn)
+    replacer = InstantiateAliasVisitor(vars, subs)
+    new_tp = tp.accept(replacer)
+    new_tp.line = newline
+    new_tp.column = newcolumn
+    return new_tp
 
 
-def get_typ_args(tp: Type) -> List[Type]:
-    """Get all type arguments from a parametrizable Type."""
-    # TODO: replace this and related functions with proper visitors.
-    tp = get_proper_type(tp)  # TODO: is this really needed?
+class HasTypeVars(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
 
-    if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
-        return []
-    typ_args = (tp.args if isinstance(tp, Instance) else
-                tp.items if not isinstance(tp, CallableType) else
-                tp.arg_types + [tp.ret_type])
-    return cast(List[Type], typ_args)
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return True
 
 
-def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> ProperType:
-    """Return a copy of a parametrizable Type with arguments set to new_args."""
-    tp = get_proper_type(tp)  # TODO: is this really needed?
-
-    if isinstance(tp, Instance):
-        return Instance(tp.type, new_args, line, column)
-    if isinstance(tp, TupleType):
-        return tp.copy_modified(items=new_args)
-    if isinstance(tp, UnionType):
-        return UnionType(new_args, line, column)
-    if isinstance(tp, CallableType):
-        return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
-                                line=line, column=column)
-    return tp
-
-
-def get_type_vars(typ: Type) -> List[TypeVarType]:
-    """Get all type variables that are present in an already analyzed type,
-    without duplicates, in order of textual appearance.
-    Similar to TypeAnalyser.get_type_var_names.
-    """
-    all_vars = []  # type: List[TypeVarType]
-    for t in get_typ_args(typ):
-        if isinstance(t, TypeVarType):
-            all_vars.append(t)
-        else:
-            all_vars.extend(get_type_vars(t))
-    # Remove duplicates while preserving order
-    included = set()  # type: Set[TypeVarId]
-    tvars = []
-    for var in all_vars:
-        if var.id not in included:
-            tvars.append(var)
-            included.add(var.id)
-    return tvars
+def has_type_vars(typ: Type) -> bool:
+    """Check if a type contains any type variables (recursively)."""
+    return typ.accept(HasTypeVars())
 
 
 def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:

@@ -20,19 +20,21 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def __init__(self) -> None:
         self.cache = {}  # type: Dict[types.Type, Set[str]]
-        self.seen = set()  # type: Set[types.Type]
+        self.seen_aliases = set()  # type: Set[types.TypeAliasType]
 
     def find_modules(self, typs: Iterable[types.Type]) -> Set[str]:
-        self.seen.clear()
+        self.seen_aliases.clear()
         return self._visit(typs)
 
     def _visit(self, typ_or_typs: Union[types.Type, Iterable[types.Type]]) -> Set[str]:
         typs = [typ_or_typs] if isinstance(typ_or_typs, types.Type) else typ_or_typs
         output = set()  # type: Set[str]
         for typ in typs:
-            if any(typ is s for s in self.seen):
-                continue
-            self.seen.add(typ)
+            if isinstance(typ, types.TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                if typ in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(typ)
             if typ in self.cache:
                 modules = self.cache[typ]
             else:
@@ -102,4 +104,5 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return self._visit(t.item)
 
     def visit_type_alias_type(self, t: types.TypeAliasType) -> Set[str]:
+        # TODO: do we need to add alias definition module here?
         return self._visit(types.get_proper_type(t))

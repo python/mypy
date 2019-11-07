@@ -6,7 +6,7 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
     Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, get_type_vars, get_proper_type, ProperType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
@@ -497,10 +497,11 @@ def instance_alias_type(alias: TypeAlias,
 
     As usual, we first erase any unbound type variables to Any.
     """
-    target = get_proper_type(alias.target)
-    assert isinstance(target, Instance), "Must be called only with aliases to classes"
+    target = get_proper_type(alias.target)  # type: Type
+    assert isinstance(get_proper_type(target),
+                      Instance), "Must be called only with aliases to classes"
     target = set_any_tvars(target, alias.alias_tvars, alias.line, alias.column)
-    assert isinstance(target, Instance)
+    assert isinstance(target, Instance)  # type: ignore[misc]
     tp = type_object_type(target.type, builtin_type)
     return expand_type_by_instance(tp, target)
 
@@ -713,7 +714,7 @@ def analyze_class_attribute_access(itype: Instance,
             #         x: T
             #     C.x  # Error, ambiguous access
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
-            if isinstance(t, TypeVarType) or get_type_vars(t):
+            if isinstance(t, TypeVarType) or has_type_vars(t):
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType):
                     mx.msg.fail(message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)

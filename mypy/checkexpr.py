@@ -2968,7 +2968,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # For example:
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
-        item = set_any_tvars(target, alias_tvars, ctx.line, ctx.column)
+        item = get_proper_type(set_any_tvars(target, alias_tvars, ctx.line, ctx.column))
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
