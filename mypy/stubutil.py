@@ -114,6 +114,10 @@ def find_module_path_using_py2_sys_path(module: str,
                          check=True,
                          stdout=subprocess.PIPE).stdout
     sys_path = json.loads(out)
+    return find_module_path_using_sys_path(module, sys_path)
+
+
+def find_module_path_using_sys_path(module: str, sys_path: List[str]) -> Optional[str]:
     relative_candidates = (
         module.replace('.', '/') + '.py',
         os.path.join(module.replace('.', '/'), '__init__.py')
@@ -145,30 +149,13 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
         mod = inspect.get_package_properties(module)
     except InspectError as e:
         # Fall back to finding the module using sys.path.
-        path = find_module_path_using_py3_sys_path(module)
+        path = find_module_path_using_sys_path(module, sys.path)
         if path is None:
             raise CantImport(module, str(e))
         return path, None
     if mod.is_c_module:
         return None
     return mod.file, mod.all
-
-
-def find_module_path_using_py3_sys_path(module: str) -> Optional[str]:
-    """Try to find the path of a .py file for a module using sys.path.
-
-    Return None if no match was found.
-    """
-    relative_candidates = (
-        module.replace('.', '/') + '.py',
-        os.path.join(module.replace('.', '/'), '__init__.py')
-    )
-    for base in sys.path:
-        for relative_path in relative_candidates:
-            path = os.path.join(base, relative_path)
-            if os.path.isfile(path):
-                return path
-    return None
 
 
 @contextmanager
