@@ -86,6 +86,57 @@ def f(a: 'A') -> None: pass # N: "f" defined here
 f(b=object()) # E: Unexpected keyword argument "b" for "f"
 class A: pass
 
+[case testKeywordMisspelling]
+def f(other: 'A') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
+class A: pass
+
+[case testMultipleKeywordsForMisspelling]
+def f(thing : 'A', other: 'A', atter: 'A', btter: 'B') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other" or "atter"?
+class A: pass
+class B: pass
+
+[case testKeywordMisspellingDifferentType]
+def f(other: 'A') -> None: pass # N: "f" defined here
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
+class A: pass
+class B: pass
+
+[case testKeywordMisspellingInheritance]
+def f(atter: 'A', btter: 'B', ctter: 'C') -> None: pass # N: "f" defined here
+f(otter=B()) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter" or "atter"?
+class A: pass
+class B(A): pass
+class C: pass
+
+[case testKeywordMisspellingFloatInt]
+def f(atter: float, btter: int) -> None: pass # N: "f" defined here
+x: int = 5
+f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter" or "atter"?
+
+[case testKeywordMisspellingVarArgs]
+def f(other: 'A', *atter: 'A') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
+class A: pass
+
+[case testKeywordMisspellingOnlyVarArgs]
+def f(*other: 'A') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"
+class A: pass
+
+[case testKeywordMisspellingVarArgsDifferentTypes]
+def f(other: 'B', *atter: 'A') -> None: pass # N: "f" defined here
+f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
+class A: pass
+class B: pass
+
+[case testKeywordMisspellingVarKwargs]
+def f(other: 'A', **atter: 'A') -> None: pass
+f(otter=A()) # E: Missing positional argument "other" in call to "f"
+class A: pass
+[builtins fixtures/dict.pyi]
+
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
 f = None # type: Any

@@ -140,7 +140,7 @@ if USE_MYPYC:
         del sys.modules['mypy.git']
         sys.path.insert(0, use_other_mypyc)
 
-    from mypyc.build import mypycify, MypycifyBuildExt
+    from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
@@ -151,7 +151,6 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
     )
-    cmdclass['build_ext'] = MypycifyBuildExt
 else:
     ext_modules = []
 

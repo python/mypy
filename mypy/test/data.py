@@ -5,7 +5,6 @@ import os
 import tempfile
 import posixpath
 import re
-from os import remove, rmdir
 import shutil
 from abc import abstractmethod
 import sys
@@ -178,9 +177,6 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     expected_rechecked_modules = None  # type: Dict[int, Set[str]]
     expected_fine_grained_targets = None  # type: Dict[int, List[str]]
 
-    # Files/directories to clean up after test case; (is directory, path) tuples
-    clean_up = None  # type: List[Tuple[bool, str]]
-
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
     normalize_output = True
@@ -209,7 +205,6 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.line = line
         self.old_cwd = None  # type: Optional[str]
         self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
-        self.clean_up = []
 
     def runtest(self) -> None:
         if self.skip:
@@ -237,88 +232,13 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
         os.mkdir(test_temp_dir)
-        encountered_files = set()
-        self.clean_up = []
-        for paths in self.deleted_paths.values():
-            for path in paths:
-                self.clean_up.append((False, path))
-                encountered_files.add(path)
         for path, content in self.files:
             dir = os.path.dirname(path)
-            for d in self.add_dirs(dir):
-                self.clean_up.append((True, d))
+            os.makedirs(dir, exist_ok=True)
             with open(path, 'w', encoding='utf8') as f:
                 f.write(content)
-            if path not in encountered_files:
-                self.clean_up.append((False, path))
-                encountered_files.add(path)
-            if re.search(r'\.[2-9]$', path):
-                # Make sure new files introduced in the second and later runs are accounted for
-                renamed_path = path[:-2]
-                if renamed_path not in encountered_files:
-                    encountered_files.add(renamed_path)
-                    self.clean_up.append((False, renamed_path))
-        for path, _ in self.output_files:
-            # Create directories for expected output and mark them to be cleaned up at the end
-            # of the test case.
-            dir = os.path.dirname(path)
-            for d in self.add_dirs(dir):
-                self.clean_up.append((True, d))
-            self.clean_up.append((False, path))
-
-    def add_dirs(self, dir: str) -> List[str]:
-        """Add all subdirectories required to create dir.
-
-        Return an array of the created directories in the order of creation.
-        """
-        if dir == '' or os.path.isdir(dir):
-            return []
-        else:
-            dirs = self.add_dirs(os.path.dirname(dir)) + [dir]
-            os.mkdir(dir)
-            return dirs
 
     def teardown(self) -> None:
-        # First remove files.
-        for is_dir, path in reversed(self.clean_up):
-            if not is_dir:
-                try:
-                    remove(path)
-                except FileNotFoundError:
-                    # Breaking early using Ctrl+C may happen before file creation. Also, some
-                    # files may be deleted by a test case.
-                    pass
-        # Then remove directories.
-        for is_dir, path in reversed(self.clean_up):
-            if is_dir:
-                pycache = os.path.join(path, '__pycache__')
-                if os.path.isdir(pycache):
-                    shutil.rmtree(pycache)
-                # As a somewhat nasty hack, ignore any dirs with .mypy_cache in the path,
-                # to allow test cases to intentionally corrupt the cache without provoking
-                # the test suite when there are still files left over.
-                # (Looking at / should be fine on windows because these are paths specified
-                # in the test cases.)
-                if '/.mypy_cache' in path:
-                    continue
-                try:
-                    rmdir(path)
-                except OSError as error:
-                    print(' ** Error removing directory %s -- contents:' % path)
-                    for item in os.listdir(path):
-                        print('  ', item)
-                    # Most likely, there are some files in the
-                    # directory. Use rmtree to nuke the directory, but
-                    # fail the test case anyway, since this seems like
-                    # a bug in a test case -- we shouldn't leave
-                    # garbage lying around. By nuking the directory,
-                    # the next test run hopefully passes.
-                    path = error.filename
-                    # Be defensive -- only call rmtree if we're sure we aren't removing anything
-                    # valuable.
-                    if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
-                        shutil.rmtree(path)
-                    raise
         assert self.old_cwd is not None and self.tmpdir is not None, \
             "test was not properly set up"
         os.chdir(self.old_cwd)

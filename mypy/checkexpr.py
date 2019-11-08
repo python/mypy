@@ -1285,7 +1285,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         assert actual_names, "Internal error: named kinds without names given"
                         act_name = actual_names[i]
                         assert act_name is not None
-                        messages.unexpected_keyword_argument(callee, act_name, context)
+                        act_type = actual_types[i]
+                        messages.unexpected_keyword_argument(callee, act_name, act_type, context)
                     is_unexpected_arg_error = True
             elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in callee.arg_kinds)
                   or kind == nodes.ARG_STAR2):
@@ -3536,9 +3537,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
+        # Analyze the right branch using full type context and store the type
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
+            else_type = full_context_else_type
 
             # If it would make a difference, re-analyze the left
             # branch using the right branch's type as context.
@@ -3558,7 +3561,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #
         # TODO: Always create a union or at least in more cases?
         if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res = make_simplified_union([if_type, else_type])
+            res = make_simplified_union([if_type, full_context_else_type])
         else:
             res = join.join_types(if_type, else_type)
 
@@ -3615,7 +3618,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 not always_allow_any and
                 not self.chk.is_stub and
                 self.chk.in_checked_function() and
-                has_any_type(typ)):
+                has_any_type(typ) and not self.chk.current_node_deferred):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:

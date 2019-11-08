@@ -570,9 +570,24 @@ class MessageBuilder:
         msg = 'Too many positional arguments' + for_function(callee)
         self.fail(msg, context)
 
-    def unexpected_keyword_argument(self, callee: CallableType, name: str,
+    def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
+        # Suggest intended keyword, look for type match else fallback on any match.
+        matching_type_args = []
+        not_matching_type_args = []
+        for i, kwarg_type in enumerate(callee.arg_types):
+            callee_arg_name = callee.arg_names[i]
+            if callee_arg_name is not None and callee.arg_kinds[i] != ARG_STAR:
+                if is_subtype(arg_type, kwarg_type):
+                    matching_type_args.append(callee_arg_name)
+                else:
+                    not_matching_type_args.append(callee_arg_name)
+        matches = best_matches(name, matching_type_args)
+        if not matches:
+            matches = best_matches(name, not_matching_type_args)
+        if matches:
+            msg += "; did you mean {}?".format(pretty_or(matches[:3]))
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
