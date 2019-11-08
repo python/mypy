@@ -1262,6 +1262,24 @@ class F:
 @t.coroutine
 def g(): ...
 
+[case testCoroutineSpecialCase_import]
+import asyncio
+
+__all__ = ['C']
+
+@asyncio.coroutine
+def f():
+    pass
+
+class C:
+    def f(self):
+        pass
+[out]
+import asyncio
+
+class C:
+    def f(self) -> None: ...
+
 -- Tests for stub generation from semantically analyzed trees.
 -- These tests are much slower, so use the `_semanal` suffix only when needed.
 
