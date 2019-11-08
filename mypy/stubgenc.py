@@ -200,16 +200,16 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         module: in which this type is used
         imports: list of import statements (may be modified during the call)
     """
-    arg_type = typ
-    if module and typ.startswith(module.__name__):
-        arg_type = typ[len(module.__name__) + 1:]
+    stripped_type = typ
+    if module and typ.startswith(module.__name__ + '.'):
+        stripped_type = typ[len(module.__name__) + 1:]
     elif '.' in typ:
-        arg_module = arg_type[:arg_type.rindex('.')]
+        arg_module = typ[:typ.rindex('.')]
         if arg_module == 'builtins':
-            arg_type = arg_type[len('builtins') + 1:]
+            stripped_type = typ[len('builtins') + 1:]
         else:
             imports.append('import %s' % (arg_module,))
-    return arg_type
+    return stripped_type
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
@@ -296,7 +296,7 @@ def generate_c_type_stub(module: ModuleType,
     if bases:
         bases_str = '(%s)' % ', '.join(
             strip_or_import(
-                '%s.%s' % (base.__module__, base.__name__),
+                get_type_fullname(base),
                 module,
                 imports
             ) for base in bases
@@ -313,6 +313,10 @@ def generate_c_type_stub(module: ModuleType,
             output.append('    %s' % method)
         for prop in properties:
             output.append('    %s' % prop)
+
+
+def get_type_fullname(typ: type) -> str:
+    return '%s.%s' % (typ.__module__, typ.__name__)
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:
