@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 # Script for downloading mypyc-compiled mypy wheels in preparation for a release
 
 import os
