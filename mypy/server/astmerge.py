@@ -59,7 +59,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType,
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -342,6 +342,12 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
             arg.accept(self)
         if typ.last_known_value:
             typ.last_known_value.accept(self)
+
+    def visit_type_alias_type(self, typ: TypeAliasType) -> None:
+        assert typ.alias is not None
+        typ.alias = self.fixup(typ.alias)
+        for arg in typ.args:
+            arg.accept(self)
 
     def visit_any(self, typ: AnyType) -> None:
         pass

@@ -96,8 +96,8 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType
-)
+    FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
+    TypeAliasType)
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
@@ -739,7 +739,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(trigger)
         elif isinstance(typ, UnionType):
             for item in typ.items:
-                self.add_operator_method_dependency_for_type(item, method)
+                self.add_operator_method_dependency_for_type(get_proper_type(item), method)
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
             self.add_operator_method_dependency_for_type(typ.fallback, method)
         elif isinstance(typ, TypeType):
@@ -876,6 +876,14 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
             triggers.extend(self.get_type_triggers(arg))
         if typ.last_known_value:
             triggers.extend(self.get_type_triggers(typ.last_known_value))
+        return triggers
+
+    def visit_type_alias_type(self, typ: TypeAliasType) -> List[str]:
+        assert typ.alias is not None
+        trigger = make_trigger(typ.alias.fullname())
+        triggers = [trigger]
+        for arg in typ.args:
+            triggers.extend(self.get_type_triggers(arg))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:

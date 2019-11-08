@@ -11,7 +11,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type
+    copy_type, TypeAliasType
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2, Expression,
@@ -24,6 +24,12 @@ from mypy.sharedparse import argument_elide_name
 from mypy.typevars import fill_typevars
 
 from mypy import state
+
+
+def is_recursive_pair(s: Type, t: Type) -> bool:
+    """Is this a pair of recursive type aliases?"""
+    return (isinstance(s, TypeAliasType) and isinstance(t, TypeAliasType) and
+            s.is_recursive and t.is_recursive)
 
 
 def tuple_fallback(typ: TupleType) -> Instance:
@@ -302,7 +308,7 @@ def make_simplified_union(items: Sequence[Type],
         all_items = []  # type: List[ProperType]
         for typ in items:
             if isinstance(typ, UnionType):
-                all_items.extend(typ.items)
+                all_items.extend(get_proper_types(typ.items))
             else:
                 all_items.append(typ)
         items = all_items

@@ -494,7 +494,7 @@ class MessageBuilder:
                 expected_types = list(expected_type.items)
             else:
                 expected_types = [expected_type]
-            for type in expected_types:
+            for type in get_proper_types(expected_types):
                 if isinstance(arg_type, Instance) and isinstance(type, Instance):
                     notes = append_invariance_notes(notes, arg_type, type)
         self.fail(msg, context, code=code)
@@ -1484,9 +1484,10 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, UnionType):
         # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
         print_as_optional = (len(typ.items) -
-                             sum(isinstance(t, NoneType) for t in typ.items) == 1)
+                             sum(isinstance(get_proper_type(t), NoneType)
+                                 for t in typ.items) == 1)
         if print_as_optional:
-            rest = [t for t in typ.items if not isinstance(t, NoneType)]
+            rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
             return 'Optional[{}]'.format(format(rest[0]))
         else:
             items = []

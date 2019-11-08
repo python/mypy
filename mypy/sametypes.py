@@ -4,8 +4,7 @@ from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type
-)
+    ProperType, get_proper_type, TypeAliasType)
 from mypy.typeops import tuple_fallback, make_simplified_union
 
 
@@ -84,6 +83,13 @@ class SameTypeVisitor(TypeVisitor[bool]):
                 left.type == self.right.type and
                 is_same_types(left.args, self.right.args) and
                 left.last_known_value == self.right.last_known_value)
+
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        # Similar to protocols, two aliases with the same targets return False here,
+        # but both is_subtype(t, s) and is_subtype(s, t) return True.
+        return (isinstance(self.right, TypeAliasType) and
+                left.alias == self.right.alias and
+                is_same_types(left.args, self.right.args))
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and

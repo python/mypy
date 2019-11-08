@@ -3,15 +3,16 @@
 It contains class TypeInfos and Type objects.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from mypy.types import (
     Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarDef, TypeType,
-    UninhabitedType, TypeOfAny
+    UninhabitedType, TypeOfAny, TypeAliasType, UnionType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
-    COVARIANT)
+    COVARIANT, TypeAlias
+)
 
 
 class TypeFixture:
@@ -237,6 +238,26 @@ class TypeFixture:
         info.bases = bases
 
         return info
+
+    def def_alias_1(self, base: Instance) -> Tuple[TypeAliasType, Type]:
+        A = TypeAliasType(None, [])
+        target = Instance(self.std_tuplei,
+                          [UnionType([base, A])])  # A = Tuple[Union[base, A], ...]
+        AN = TypeAlias(target, '__main__.A', -1, -1)
+        A.alias = AN
+        return A, target
+
+    def def_alias_2(self, base: Instance) -> Tuple[TypeAliasType, Type]:
+        A = TypeAliasType(None, [])
+        target = UnionType([base,
+                            Instance(self.std_tuplei, [A])])  # A = Union[base, Tuple[A, ...]]
+        AN = TypeAlias(target, '__main__.A', -1, -1)
+        A.alias = AN
+        return A, target
+
+    def non_rec_alias(self, target: Type) -> TypeAliasType:
+        AN = TypeAlias(target, '__main__.A', -1, -1)
+        return TypeAliasType(AN, [])
 
 
 class InterfaceTypeFixture(TypeFixture):

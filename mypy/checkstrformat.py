@@ -19,7 +19,7 @@ from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
-    CallableType, LiteralType
+    CallableType, LiteralType, get_proper_types
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
@@ -359,7 +359,8 @@ class StringFormatterChecker:
                 continue
 
             a_type = get_proper_type(actual_type)
-            actual_items = a_type.items if isinstance(a_type, UnionType) else [a_type]
+            actual_items = (get_proper_types(a_type.items) if isinstance(a_type, UnionType)
+                            else [a_type])
             for a_type in actual_items:
                 if custom_special_method(a_type, '__format__'):
                     continue

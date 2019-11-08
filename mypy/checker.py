@@ -36,8 +36,7 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type
-)
+    get_proper_types, is_literal_type, TypeAliasType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes,
@@ -2480,7 +2479,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # If this is an Optional type in non-strict Optional code, unwrap it.
             relevant_items = rvalue_type.relevant_items()
             if len(relevant_items) == 1:
-                rvalue_type = relevant_items[0]
+                rvalue_type = get_proper_type(relevant_items[0])
 
         if isinstance(rvalue_type, AnyType):
             for lv in lvalues:
@@ -2587,7 +2586,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # If this is an Optional type in non-strict Optional code, unwrap it.
                     relevant_items = reinferred_rvalue_type.relevant_items()
                     if len(relevant_items) == 1:
-                        reinferred_rvalue_type = relevant_items[0]
+                        reinferred_rvalue_type = get_proper_type(relevant_items[0])
                 if isinstance(reinferred_rvalue_type, UnionType):
                     self.check_multi_assignment_from_union(lvalues, rvalue,
                                                            reinferred_rvalue_type, context,
@@ -3732,7 +3731,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     type = get_isinstance_type(node.args[1], type_map)
                     if isinstance(vartype, UnionType):
                         union_list = []
-                        for t in vartype.items:
+                        for t in get_proper_types(vartype.items):
                             if isinstance(t, TypeType):
                                 union_list.append(t.item)
                             else:
@@ -4558,6 +4557,7 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
     # TODO: find a cleaner solution instead of this ad-hoc erasure.
     exp_signature = expand_type(signature, {tvar.id: erase_def_to_union_or_bound(tvar)
                                 for tvar in signature.variables})
+    assert isinstance(exp_signature, ProperType)
     assert isinstance(exp_signature, CallableType)
     return is_callable_compatible(exp_signature, other,
                                   is_compat=is_more_precise,
@@ -4640,6 +4640,11 @@ class SetNothingToAny(TypeTranslator):
         if t.ambiguous:
             return AnyType(TypeOfAny.from_error)
         return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Target of the alias cannot by an ambigous <nothing>, so we just
+        # replace the arguments.
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
 def is_node_static(node: Optional[Node]) -> Optional[bool]:

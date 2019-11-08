@@ -33,7 +33,7 @@ from mypy.types import (
     TypeVarType, FunctionLike,
     TypeStrVisitor, TypeTranslator,
     is_optional, remove_optional, ProperType, get_proper_type,
-    TypedDictType
+    TypedDictType, TypeAliasType
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -688,7 +688,7 @@ class SuggestionEngine:
         if arg_pos and isinstance(t, NoneType):
             return 20
         if isinstance(t, UnionType):
-            if any(isinstance(x, AnyType) for x in t.items):
+            if any(isinstance(get_proper_type(x), AnyType) for x in t.items):
                 return 20
             if any(has_any_type(x) for x in t.items):
                 return 15
@@ -716,7 +716,7 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
     if isinstance(t, NoneType) and arg_pos:
         return 0.5
     if isinstance(t, UnionType):
-        if any(isinstance(x, AnyType) for x in t.items):
+        if any(isinstance(get_proper_type(x), AnyType) for x in t.items):
             return 0.5
         if any(has_any_type(x) for x in t.items):
             return 0.25
@@ -824,6 +824,12 @@ class TypeFormatter(TypeStrVisitor):
 class StrToText(TypeTranslator):
     def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
         self.text_type = builtin_type('builtins.unicode')
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        exp_t = get_proper_type(t)
+        if isinstance(exp_t, Instance) and exp_t.type.fullname() == 'builtins.str':
+            return self.text_type
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
     def visit_instance(self, t: Instance) -> Type:
         if t.type.fullname() == 'builtins.str':
