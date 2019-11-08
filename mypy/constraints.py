@@ -90,12 +90,11 @@ def infer_constraints(template: Type, actual: Type,
 
     The constraints are represented as Constraint objects.
     """
+    if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
+        return []
     if (isinstance(template, TypeAliasType) and isinstance(actual, TypeAliasType) and
             template.is_recursive and actual.is_recursive):
         # This case requires special care because it may cause infinite recursion.
-        assert template.alias is not None
-        if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
-            return []
         TypeState._inferring.append(template)
         res = _infer_constraints(template, actual, direction)
         TypeState._inferring.pop()
