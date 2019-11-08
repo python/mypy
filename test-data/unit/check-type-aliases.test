@@ -635,3 +635,22 @@ except E as e:
     reveal_type(e)  # N: Revealed type is '__main__.E'
 [builtins fixtures/exception.pyi]
 [out]
+
+[case testTryFancyAliases]
+from typing import Sequence, TypeVar, List, Union, Tuple
+dummy: C
+T = TypeVar('T')
+
+Nested = Union[int, List[Nested]]
+
+x: Nested = [1, [2, [3]]]
+reveal_type(x)
+
+B = Tuple[int, B]
+y: B
+reveal_type(y)
+class C:
+    x: D
+
+class D: ...
+[builtins fixtures/list.pyi]
