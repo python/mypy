@@ -137,6 +137,18 @@ IGNORED_DUNDERS = {
     '__slots__',
 }
 
+# These methods are expected to always return a non-trivial value.
+METHODS_WITH_RETURN_VALUE = {
+    '__ne__',
+    '__eq__',
+    '__lt__',
+    '__le__',
+    '__gt__',
+    '__ge__',
+    '__hash__',
+    '__iter__',
+}
+
 
 class Options:
     """Represents stubgen options.
@@ -593,7 +605,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         retname = None
         if isinstance(o.unanalyzed_type, CallableType):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
-        elif isinstance(o, FuncDef) and o.is_abstract:
+        elif isinstance(o, FuncDef) and (o.is_abstract or o.name() in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated.
             retname = self.typing_name('Any')
             self.add_typing_import("Any")
