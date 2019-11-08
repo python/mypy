@@ -1672,6 +1672,8 @@ from p1.vendored import six
 from p1.vendor.six import foobar
 from p1.packages.six.moves import http_client
 from .packages.six.moves import queue
+from p1.vendored.six.moves.http_client import foo
+from p1.vendored.six.moves.urllib.parse import bar
 
 class C(http_client.HTTPMessage): pass
 class D(six.Iterator): pass
@@ -1680,6 +1682,8 @@ class D(six.Iterator): pass
 import six
 from six import foobar as foobar
 from six.moves import http_client, queue as queue
+from six.moves.http_client import foo as foo
+from six.moves.urllib.parse import bar as bar
 
 class C(http_client.HTTPMessage): ...
 class D(six.Iterator): ...
