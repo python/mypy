@@ -2100,3 +2100,14 @@ class C:
     def __le__(self, other: Any) -> Any: ...
     def __gt__(self, other: Any) -> Any: ...
     def __ge__(self, other: Any) -> Any: ...
+
+[case testNamedTupleInClass]
+from collections import namedtuple
+
+class C:
+    N = namedtuple('N', ['x', 'y'])
+[out]
+from collections import namedtuple
+
+class C:
+    N = namedtuple('N', ['x', 'y'])
