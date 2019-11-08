@@ -15,8 +15,8 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType
+    CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
+    PlaceholderType, Overloaded, get_proper_type, ProperType
 )
 
 from mypy.nodes import (
@@ -311,9 +311,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('ClassVar[...] must have at most one type argument', t)
                 return AnyType(TypeOfAny.from_error)
             item = self.anal_type(t.args[0])
-            if isinstance(item, TypeVarType) or get_type_vars(item):
-                self.fail('Invalid type: ClassVar cannot be generic', t)
-                return AnyType(TypeOfAny.from_error)
             return item
         elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
             return UninhabitedType(is_noreturn=True)
