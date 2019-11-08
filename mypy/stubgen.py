@@ -816,7 +816,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
             items = ERROR_MARKER
-        self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
+        self.add('%s%s = namedtuple(%s, %s)\n' % (self._indent, lvalue.name, name, items))
         self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
