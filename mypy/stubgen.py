@@ -927,10 +927,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def translate_module_name(self, module: str, relative: int) -> Tuple[str, int]:
         for pkg in VENDOR_PACKAGES:
-            for alt in 'six', 'six.moves':
-                if (module.endswith('.{}.{}'.format(pkg, alt))
-                        or (module == '{}.{}'.format(pkg, alt) and relative)):
+            for alt in 'six.moves', 'six':
+                substr = '{}.{}'.format(pkg, alt)
+                if (module.endswith('.' + substr)
+                        or (module == substr and relative)):
                     return alt, 0
+                if '.' + substr + '.' in module:
+                    return alt + '.' + module.partition('.' + substr + '.')[2], 0
         return module, relative
 
     def visit_import(self, o: Import) -> None:
