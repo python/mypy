@@ -6489,3 +6489,12 @@ reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
 class Foo:
     def bad():  # E: Method must have at least one argument
         self.x = 0  # E: Name 'self' is not defined
+
+[case testPropertyWithExtraMethod]
+class A:
+    @property
+    def x(self): ...
+    @x.setter
+    def x(self, value) -> None: ...
+    def x(self) -> None: ...  # E: Unexpected definition for property "x"
+[builtins fixtures/property.pyi]
