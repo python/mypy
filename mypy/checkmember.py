@@ -716,7 +716,11 @@ def analyze_class_attribute_access(itype: Instance,
             if isinstance(t, TypeVarType) or get_type_vars(t):
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if not isinstance(get_proper_type(mx.original_type), TypeType):
-                    mx.msg.fail(message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS, mx.context)
+                    if node.node.is_classvar:
+                        message = message_registry.GENERIC_CLASS_VAR_ACCESS
+                    else:
+                        message = message_registry.GENERIC_INSTANCE_VAR_CLASS_ACCESS
+                    mx.msg.fail(message, mx.context)
 
             # Erase non-mapped variables, but keep mapped ones, even if there is an error.
             # In the above example this means that we infer following types:
