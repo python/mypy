@@ -13,7 +13,7 @@ other modules refer to them.
 
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set
 from mypy_extensions import trait
 
 T = TypeVar('T')
@@ -253,7 +253,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
         self.strategy = strategy
-        self.seen = []  # type: List[Type]
+        self.seen_aliases = set()  # type: Set[TypeAliasType]
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -335,8 +335,10 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         """
         res = []  # type: List[T]
         for t in types:
-            if any(t is s for s in self.seen):
-                continue
-            self.seen.append(t)
+            if isinstance(t, TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                if t in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(t)
             res.append(t.accept(self))
         return self.strategy(res)

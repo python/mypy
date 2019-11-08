@@ -658,16 +658,19 @@ reveal_type(n) # N: Revealed type is 'Tuple[builtins.str, builtins.tuple[Any], f
 
 [case testSelfRefNT3]
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple, Tuple, Union
 
-class B(NamedTuple):
+class _B(NamedTuple):
     x: Tuple[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
     y: int
+B = Union[_B]
 
-A = NamedTuple('A', [
+_A = NamedTuple('_A', [
         ('x', str),
         ('y', 'B'),
     ])
+A = Union[_A]
+
 n: B
 m: A
 reveal_type(n.x) # N: Revealed type is 'Tuple[Any, builtins.int]'
