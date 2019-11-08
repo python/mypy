@@ -22,7 +22,7 @@ from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_fun
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring, FunctionSig, ArgSig,
-    infer_arg_sig_from_docstring
+    infer_arg_sig_from_docstring, is_valid_type
 )
 from mypy.moduleinspect import ModuleInspect, InspectError
 
@@ -811,6 +811,23 @@ class ArgSigSuite(Suite):
                      "ArgSig(name='func', type='str', default=False)")
         assert_equal(repr(ArgSig("func", 'str', default=True)),
                      "ArgSig(name='func', type='str', default=True)")
+
+
+class IsValidTypeSuite(Suite):
+    def test_is_valid_type(self) -> None:
+        assert is_valid_type('int')
+        assert is_valid_type('str')
+        assert is_valid_type('Foo_Bar234')
+        assert is_valid_type('foo.bar')
+        assert is_valid_type('List[int]')
+        assert is_valid_type('Dict[str, int]')
+        assert not is_valid_type('foo-bar')
+        assert not is_valid_type('x->y')
+        assert not is_valid_type('None')
+        assert not is_valid_type('True')
+        assert not is_valid_type('False')
+        assert not is_valid_type('x,y')
+        assert not is_valid_type('x, y')
 
 
 class ModuleInspectSuite(Suite):

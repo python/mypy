@@ -18,14 +18,25 @@ from typing_extensions import Final
 Sig = Tuple[str, str]
 
 
+_TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
+
+
+def is_valid_type(s: str) -> bool:
+    """Try to determine whether a string might be a valid type annotation."""
+    if s in ('None', 'True', 'False', 'retval'):
+        return False
+    if ',' in s and '[' not in s:
+        return False
+    return _TYPE_RE.match(s) is not None
+
+
 class ArgSig:
     """Signature info for a single argument."""
 
-    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
 
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name
-        if type and not self._TYPE_RE.match(type):
+        if type and not is_valid_type(type):
             raise ValueError("Invalid type: " + type)
         self.type = type
         # Does this argument have a default value?
@@ -157,6 +168,9 @@ class DocStringParser:
         elif (token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and
               self.state[-1] in (STATE_INIT, STATE_RETURN_VALUE)):
             if self.state[-1] == STATE_RETURN_VALUE:
+                if not is_valid_type(self.accumulator):
+                    self.reset()
+                    return
                 self.ret_type = self.accumulator
                 self.accumulator = ""
                 self.state.pop()
