@@ -538,11 +538,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add('#   %s\n' % name)
 
     def visit_func_def(self, o: FuncDef, is_abstract: bool = False) -> None:
-        if self.is_private_name(o.name(), o.fullname()):
-            return
-        if self.is_not_in_all(o.name()):
-            return
-        if self.is_recorded_name(o.name()):
+        if (self.is_private_name(o.name(), o.fullname())
+                or self.is_not_in_all(o.name())
+                or self.is_recorded_name(o.name())):
+            self.clear_decorators()
             return
         if not self._indent and self._state not in (EMPTY, FUNC) and not o.is_awaitable_coroutine:
             self.add('\n')
