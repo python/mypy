@@ -22,7 +22,10 @@ _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # typ
 
 
 def is_valid_type(s: str) -> bool:
-    if s in ('None', 'True', 'False'):
+    """Try to determine whether a string might be a valid type annotation."""
+    if s in ('None', 'True', 'False', 'retval'):
+        return False
+    if ',' in s and '[' not in s:
         return False
     return _TYPE_RE.match(s) is not None
 

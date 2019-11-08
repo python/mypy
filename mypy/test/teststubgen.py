@@ -824,6 +824,8 @@ class IsValidTypeSuite(Suite):
         assert not is_valid_type('None')
         assert not is_valid_type('True')
         assert not is_valid_type('False')
+        assert not is_valid_type('x,y')
+        assert not is_valid_type('x, y')
 
 
 class ModuleInspectSuite(Suite):

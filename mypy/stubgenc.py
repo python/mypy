@@ -169,7 +169,7 @@ def generate_c_function_stub(module: ModuleType,
                 else:
                     arg_def = arg.name
                     if arg_def == 'None':
-                        arg_def = '_none'
+                        arg_def = '_none'  # None is not a valid argument name
 
                     if arg.type:
                         arg_def += ": " + strip_or_import(arg.type, module, imports)
