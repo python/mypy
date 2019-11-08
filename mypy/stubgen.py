@@ -1227,6 +1227,7 @@ def is_non_library_module(module: str) -> bool:
             '.test',
             '.testing',
             '_tests',
+            '_test_suite',
             'test_util',
             'test_utils',
             'test_base',
