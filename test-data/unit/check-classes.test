@@ -6545,3 +6545,12 @@ class C3(Generic[TypeT1]):
         return 0
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testPropertyWithExtraMethod]
+class A:
+    @property
+    def x(self): ...
+    @x.setter
+    def x(self, value) -> None: ...
+    def x(self) -> None: ...  # E: Unexpected definition for property "x"
+[builtins fixtures/property.pyi]
