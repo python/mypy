@@ -143,6 +143,8 @@ METHODS_WITH_RETURN_VALUE = {
     '__le__',
     '__gt__',
     '__ge__',
+    '__hash__',
+    '__iter__',
 }
 
 
