@@ -791,7 +791,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 (isinstance(callee, MemberExpr) and callee.name == 'namedtuple'))
 
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
-        self.import_tracker.require_name('namedtuple')
         if self._state != EMPTY:
             self.add('\n')
         name = repr(getattr(rvalue.args[0], 'value', ERROR_MARKER))
@@ -801,7 +800,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
-            items = ERROR_MARKER
+            self.add('%s%s: Any' % (self._indent, lvalue.name))
+            self.import_tracker.require_name('Any')
+            return
+        self.import_tracker.require_name('namedtuple')
         self.add('%s%s = namedtuple(%s, %s)\n' % (self._indent, lvalue.name, name, items))
         self._state = CLASS
 

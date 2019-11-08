@@ -636,6 +636,14 @@ Y = namedtuple('Y', ['a'])
 
 Z = namedtuple('Z', ['a', 'b', 'c', 'd', 'e'])
 
+[case testDynamicNamedTuple]
+from collections import namedtuple
+N = namedtuple('N', ['x', 'y'] + ['z'])
+[out]
+from typing import Any
+
+N: Any
+
 [case testArbitraryBaseClass]
 import x
 class D(x.C): ...
