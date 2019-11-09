@@ -5,7 +5,8 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, TypeVar, Type as TypingType
+from typing import cast, Optional, List, Sequence, Set, TypeVar
+from typing_extensions import Type as TypingType
 import sys
 
 from mypy.types import (
