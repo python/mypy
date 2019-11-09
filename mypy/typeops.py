@@ -597,7 +597,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
 
     if isinstance(typ, UnionType):
         items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
-        return make_simplified_union(items)
+        return UnionType.make_union(items)
     elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname() == target_fullname:
         new_items = []
         for name, symbol in typ.type.names.items():
@@ -612,7 +612,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
         # only using CPython, but we might as well for the sake of full correctness.
         if sys.version_info < (3, 7):
             new_items.sort(key=lambda lit: lit.value)
-        return make_simplified_union(new_items)
+        return UnionType.make_union(new_items)
     else:
         return typ
 
@@ -624,7 +624,7 @@ def coerce_to_literal(typ: Type) -> ProperType:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         new_items = [coerce_to_literal(item) for item in typ.items]
-        return make_simplified_union(new_items)
+        return UnionType.make_union(new_items)
     elif isinstance(typ, Instance):
         if typ.last_known_value:
             return typ.last_known_value
