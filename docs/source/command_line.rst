@@ -151,6 +151,11 @@ imports.
     all modules. For more information on what the other options do,
     see :ref:`Following imports <follow-imports>`.
 
+.. option:: --no-follow-imports-for-stubs
+
+    This flag will have mypy to ignore the ``--follow-imports`` setting
+    for stub (``.pyi``) files.
+
 .. option:: --python-executable EXECUTABLE
 
     This flag will have mypy collect type information from :pep:`561`

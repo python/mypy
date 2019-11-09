@@ -211,7 +211,7 @@ section of the command line docs.
     match the name of the *imported* module, not the module containing the
     import statement.
 
-``follow_imports_for_stubs`` (bool, default False)
+``follow_imports_for_stubs`` (bool, default True)
     Determines whether to respect the ``follow_imports`` setting even for
     stub (``.pyi``) files.
 

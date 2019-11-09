@@ -459,6 +459,10 @@ def process_options(args: List[str],
     imports_group.add_argument(
         '--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
         default='normal', help="How to treat imports (default normal)")
+    add_invertible_flag(
+        '--no-follow-imports-for-stubs', dest='follow_imports_for_stubs', default=True,
+        help="Ignore the --follow-imports setting for stub (.pyi) files",
+        group=imports_group)
     imports_group.add_argument(
         '--python-executable', action='store', metavar='EXECUTABLE',
         help="Python executable used for finding PEP 561 compliant installed"
