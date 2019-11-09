@@ -638,19 +638,26 @@ except E as e:
 
 [case testTryFancyAliases]
 from typing import Sequence, TypeVar, List, Union, Tuple
-dummy: C
+
 T = TypeVar('T')
 
-Nested = Union[int, List[Nested]]
+NestedA = List[Union[T, NestedA[T]]]
+NestedB = Union[T, List[NestedB[T]]]
 
-x: Nested = [1, [2, [3]]]
-reveal_type(x)
+xa: NestedA[int] = [1, [2, [3]]]
+xb: NestedB[int] = [1, [2, [3]]]
+reveal_type(xa)
+reveal_type(xb)
 
-B = Tuple[int, B]
-y: B
-reveal_type(y)
-class C:
-    x: D
+def fun_a(x: NestedA[T]) -> T: ...
+def fun_b(x: NestedB[T]) -> T: ...
 
-class D: ...
+reveal_type(fun_a([1, 2, 3]))
+reveal_type(fun_b([1, 2, 3]))
+
+reveal_type(fun_a(xa))
+reveal_type(fun_b(xb))
+
+xbf: NestedB[float]
+reveal_type([xb, xbf])
 [builtins fixtures/list.pyi]

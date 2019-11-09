@@ -92,8 +92,7 @@ def infer_constraints(template: Type, actual: Type,
     """
     if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
         return []
-    if (isinstance(template, TypeAliasType) and isinstance(actual, TypeAliasType) and
-            template.is_recursive and actual.is_recursive):
+    if isinstance(template, TypeAliasType) and template.is_recursive:
         # This case requires special care because it may cause infinite recursion.
         TypeState._inferring.append(template)
         res = _infer_constraints(template, actual, direction)
@@ -105,6 +104,7 @@ def infer_constraints(template: Type, actual: Type,
 def _infer_constraints(template: Type, actual: Type,
                        direction: int) -> List[Constraint]:
 
+    orig_template = template
     template = get_proper_type(template)
     actual = get_proper_type(actual)
 
@@ -129,7 +129,7 @@ def _infer_constraints(template: Type, actual: Type,
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
         res = []
         for a_item in actual.items:
-            res.extend(infer_constraints(template, a_item, direction))
+            res.extend(infer_constraints(orig_template, a_item, direction))
         return res
 
     # Now the potential subtype is known not to be a Union or a type

@@ -10,8 +10,6 @@ from mypy.typeops import tuple_fallback, make_simplified_union
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
-    left = get_proper_type(left)
-    right = get_proper_type(right)
 
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
@@ -32,7 +30,6 @@ def is_same_type(left: Type, right: Type) -> bool:
 
 
 def simplify_union(t: Type) -> ProperType:
-    t = get_proper_type(t)
     if isinstance(t, UnionType):
         return make_simplified_union(t.items)
     return t

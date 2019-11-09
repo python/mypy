@@ -337,6 +337,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         for t in types:
             if isinstance(t, TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.
+                # TODO: Ideally we should fire subvisitors if we care about duplicates.
                 if t in self.seen_aliases:
                     continue
                 self.seen_aliases.add(t)

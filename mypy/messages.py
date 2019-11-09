@@ -23,7 +23,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    get_proper_types
+    get_proper_types, TypeAliasType
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -1413,6 +1413,8 @@ def format_type_inner(typ: Type,
         return format_type_inner(typ, verbosity, fullnames)
 
     # TODO: show type alias names in errors.
+    if isinstance(typ, TypeAliasType) and typ.is_recursive:
+        return str(typ)
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance):

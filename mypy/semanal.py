@@ -1911,14 +1911,18 @@ class SemanticAnalyzer(NodeVisitor[None],
             return
 
         tag = self.track_incomplete_refs()
+        self.no_applications = True
         s.rvalue.accept(self)
+        self.no_applications = False
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
+            s.rvalue.accept(self)
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
+        s.rvalue.accept(self)
 
         # The r.h.s. is now ready to be classified, first check if it is a special form:
         special_form = False
@@ -2510,9 +2514,6 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         if existing:
             # An alias gets updated.
-            if self.final_iteration:
-                self.cannot_resolve_name(lvalue.name, 'iiiname', s)
-                return True
             updated = False
             if isinstance(existing.node, TypeAlias):
                 if existing.node.target != res:
@@ -2527,9 +2528,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 existing.node = alias_node
                 updated = True
             if updated:
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer(s)
+                if self.final_iteration:
+                    self.cannot_resolve_name(lvalue.name, 'name', s)
+                    return True
+                else:
+                    self.progress = True
+                    # We need to defer so that this change can get propagated to base classes.
+                    self.defer(s)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -3645,8 +3650,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 and isinstance(base.node, TypeInfo)
                 and not base.node.is_generic()):
             expr.index.accept(self)
-        elif ((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
-              or refers_to_class_or_function(base)):
+        elif (((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
+              or refers_to_class_or_function(base)) and not getattr(self, 'no_applications', False)):
             # We need to do full processing on every iteration, since some type
             # arguments may contain placeholder types.
             self.analyze_type_application(expr)

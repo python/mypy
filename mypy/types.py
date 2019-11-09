@@ -2188,6 +2188,21 @@ class InstantiateAliasVisitor(TypeTranslator, SyntheticTypeVisitor[Type]):
     def visit_placeholder_type(self, typ: PlaceholderType) -> Type:
         return typ
 
+    def visit_callable_argument(self, t: CallableArgument) -> Type:
+        pass
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        pass
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
+        pass
+
+    def visit_star_type(self, t: StarType) -> Type:
+        pass
+
+    def visit_type_list(self, t: TypeList) -> Type:
+        pass
+
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
                         newline: int, newcolumn: int) -> Type:
