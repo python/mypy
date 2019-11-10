@@ -48,7 +48,7 @@ from mypy.checkmember import (
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound,
-    true_only, false_only, function_type, get_enum_values,
+    true_only, false_only, function_type,
 )
 from mypy import message_registry
 from mypy.subtypes import (
