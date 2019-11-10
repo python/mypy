@@ -187,12 +187,9 @@ Alias = Tuple[int, T]
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
-# A = Union[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
+A = Union[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
 B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
-# C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
-
-x: B
-reveal_type(x)
+C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
 
@@ -635,29 +632,3 @@ except E as e:
     reveal_type(e)  # N: Revealed type is '__main__.E'
 [builtins fixtures/exception.pyi]
 [out]
-
-[case testTryFancyAliases]
-from typing import Sequence, TypeVar, List, Union, Tuple
-
-T = TypeVar('T')
-
-NestedA = List[Union[T, NestedA[T]]]
-NestedB = Union[T, List[NestedB[T]]]
-
-xa: NestedA[int] = [1, [2, [3]]]
-xb: NestedB[int] = [1, [2, [3]]]
-reveal_type(xa)
-reveal_type(xb)
-
-def fun_a(x: NestedA[T]) -> T: ...
-def fun_b(x: NestedB[T]) -> T: ...
-
-reveal_type(fun_a([1, 2, 3]))
-reveal_type(fun_b([1, 2, 3]))
-
-reveal_type(fun_a(xa))
-reveal_type(fun_b(xb))
-
-xbf: NestedB[float]
-reveal_type([xb, xbf])
-[builtins fixtures/list.pyi]

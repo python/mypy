@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type, TypeAliasType
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
 )
 import mypy.applytype
 import mypy.constraints

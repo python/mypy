@@ -303,11 +303,12 @@ def make_simplified_union(items: Sequence[Type],
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
     """
+    items = get_proper_types(items)
     while any(isinstance(typ, UnionType) for typ in items):
-        all_items = []  # type: List[Type]
+        all_items = []  # type: List[ProperType]
         for typ in items:
             if isinstance(typ, UnionType):
-                all_items.extend(typ.items)
+                all_items.extend(get_proper_types(typ.items))
             else:
                 all_items.append(typ)
         items = all_items

@@ -14,7 +14,7 @@ from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType
 )
@@ -219,7 +219,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                         disallow_any=disallow_any)
                 # The only case where expand_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
-                if (isinstance(res, Instance) and len(res.args) != len(res.type.type_vars) and
+                if (isinstance(res, Instance) and  # type: ignore[misc]
+                        len(res.args) != len(res.type.type_vars) and
                         not self.defining_alias):
                     fix_instance(
                         res,
@@ -992,10 +993,12 @@ def expand_type_alias(node: TypeAlias, args: List[Type],
                              unexpanded_type=unexpanded_type)
     if exp_len == 0 and act_len == 0:
         if no_args:
-            assert isinstance(node.target, Instance)  # type: ignore
+            assert isinstance(node.target, Instance)  # type: ignore[misc]
             return Instance(node.target.type, [], line=ctx.line, column=ctx.column)
         return TypeAliasType(node, [], line=ctx.line, column=ctx.column)
-    if exp_len == 0 and act_len > 0 and isinstance(node.target, Instance) and no_args:  # type: ignore
+    if (exp_len == 0 and act_len > 0
+            and isinstance(node.target, Instance)  # type: ignore[misc]
+            and no_args):
         tp = Instance(node.target.type, args)
         tp.line = ctx.line
         tp.column = ctx.column

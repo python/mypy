@@ -1911,18 +1911,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             return
 
         tag = self.track_incomplete_refs()
-        self.no_applications = True
         s.rvalue.accept(self)
-        self.no_applications = False
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
             # added later in this scope, since an earlier definition should take precedence.
-            s.rvalue.accept(self)
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
-        s.rvalue.accept(self)
 
         # The r.h.s. is now ready to be classified, first check if it is a special form:
         special_form = False
@@ -2482,7 +2478,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
-            if self.found_incomplete_ref(tag) or isinstance(res, PlaceholderType):
+            # TODO: Maybe we only need to reject top-level placeholders, similar
+            #       to base classes.
+            if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
@@ -3651,7 +3649,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 and not base.node.is_generic()):
             expr.index.accept(self)
         elif (((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
-              or refers_to_class_or_function(base)) and not getattr(self, 'no_applications', False)):
+              or refers_to_class_or_function(base))):
             # We need to do full processing on every iteration, since some type
             # arguments may contain placeholder types.
             self.analyze_type_application(expr)

@@ -329,15 +329,14 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         """Perform a query for a list of types.
 
         Use the strategy to combine the results.
-        Skip types already visited types to avoid infinite recursion.
-        Note: types can be recursive until they are fully analyzed and "unentangled"
-        in patches after the semantic analysis.
+        Skip type aliases already visited types to avoid infinite recursion.
         """
         res = []  # type: List[T]
         for t in types:
             if isinstance(t, TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.
-                # TODO: Ideally we should fire subvisitors if we care about duplicates.
+                # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+                #       about duplicates.
                 if t in self.seen_aliases:
                     continue
                 self.seen_aliases.add(t)
