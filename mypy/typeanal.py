@@ -1007,11 +1007,14 @@ def expand_type_alias(node: TypeAlias, args: List[Type],
         fail('Bad number of arguments for type alias, expected: %s, given: %s'
              % (exp_len, act_len), ctx)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
-    typ = TypeAliasType(node, args, ctx.line, ctx.column)  # type: Type
+    typ = TypeAliasType(node, args, ctx.line, ctx.column)
+    assert typ.alias is not None
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
-    if (isinstance(typ, Instance)  # type: ignore
-            and typ.type.fullname() == 'mypy_extensions.FlexibleAlias'):
-        typ = typ.args[-1]
+    if (isinstance(typ.alias.target, Instance)  # type: ignore
+            and typ.alias.target.type.fullname() == 'mypy_extensions.FlexibleAlias'):
+        exp = get_proper_type(typ)
+        assert isinstance(exp, Instance)
+        return exp.args[-1]
     return typ
 
 
