@@ -228,16 +228,6 @@ if ok_mixture.key is Key.A:
 else:
     reveal_type(ok_mixture)             # N: Revealed type is 'Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]'
 
-# Each reveal_type below really ought to be a union -- e.g. we ought short-circuit
-# and skip inferring anything about the parents. Currently, we overreach in some
-# cases and infer something a bit non-sensical due to how we're normalizing
-# "lookup" operations.
-#
-# This is a bit confusing from a usability standpoint, but is probably fine:
-# we don't guarantee sensible results after errors anyways. (And making sure
-# these nonsensical lookups result in an error is the main purpose of this
-# test case).
-
 impossible_mixture: Union[KeyedObject, KeyedTypedDict]
 if impossible_mixture.key is Key.A:     # E: Item "KeyedTypedDict" of "Union[KeyedObject, KeyedTypedDict]" has no attribute "key"
     reveal_type(impossible_mixture)     # N: Revealed type is 'Union[__main__.KeyedObject, TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]})]'
