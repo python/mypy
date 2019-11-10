@@ -880,9 +880,11 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> List[str]:
         assert typ.alias is not None
-        triggers = []
+        trigger = make_trigger(typ.alias.fullname())
+        triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
+        # TODO: Add guard for infinite recursion here.
         triggers.extend(self.get_type_triggers(typ.alias.target))
         return triggers
 
