@@ -461,6 +461,6 @@ def f(x: Alias) -> None: pass
 def g() -> Literal[1]:
     return b
 [out]
-<m.Alias> -> m, m.f
+<m.Alias> -> <m.f>, m, m.f
 <m.a> -> m
 <m.b> -> m, m.g
