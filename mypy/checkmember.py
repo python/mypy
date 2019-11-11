@@ -501,7 +501,7 @@ def instance_alias_type(alias: TypeAlias,
     assert isinstance(get_proper_type(target),
                       Instance), "Must be called only with aliases to classes"
     target = get_proper_type(set_any_tvars(alias, alias.line, alias.column))
-    assert isinstance(target, Instance)  # type: ignore[misc]
+    assert isinstance(target, Instance)
     tp = type_object_type(target.type, builtin_type)
     return expand_type_by_instance(tp, target)
 
