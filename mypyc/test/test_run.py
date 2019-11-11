@@ -25,7 +25,7 @@ from mypyc.build import construct_groups
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
     use_custom_builtins, MypycDataSuite, assert_test_output,
-    show_c
+    show_c, fudge_dir_mtimes,
 )
 from mypyc.test.test_serialization import check_serialization_roundtrip
 
@@ -97,15 +97,6 @@ def chdir_manager(target: str) -> Iterator[None]:
         yield
     finally:
         os.chdir(dir)
-
-
-def fudge_dir_mtimes(dir: str, delta: int) -> None:
-    for dirpath, _, filenames in os.walk(dir):
-        for name in filenames:
-            # if name.endswith(('.c', '.h')): continue
-            path = os.path.join(dirpath, name)
-            new_mtime = os.stat(path).st_mtime + delta
-            os.utime(path, times=(new_mtime, new_mtime))
 
 
 class TestRun(MypycDataSuite):
