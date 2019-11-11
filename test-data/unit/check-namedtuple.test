@@ -664,7 +664,7 @@ class B(NamedTuple):
     x: Tuple[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
     y: int
 
-A = NamedTuple('_A', [
+A = NamedTuple('A', [
         ('x', str),
         ('y', 'B'),
     ])
