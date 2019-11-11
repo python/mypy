@@ -3648,8 +3648,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 and isinstance(base.node, TypeInfo)
                 and not base.node.is_generic()):
             expr.index.accept(self)
-        elif (((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
-              or refers_to_class_or_function(base))):
+        elif ((isinstance(base, RefExpr) and isinstance(base.node, TypeAlias))
+              or refers_to_class_or_function(base)):
             # We need to do full processing on every iteration, since some type
             # arguments may contain placeholder types.
             self.analyze_type_application(expr)
