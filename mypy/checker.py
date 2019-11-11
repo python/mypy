@@ -6,9 +6,9 @@ from contextlib import contextmanager
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
-    Mapping, Sequence
+    Mapping, Sequence, Callable
 )
-from typing_extensions import Final
+from typing_extensions import Final, Protocol, Type as TypingType
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
@@ -80,6 +80,8 @@ from mypy.errorcodes import ErrorCode
 
 T = TypeVar('T')
 
+T_contra = TypeVar('T_contra', contravariant=True)
+
 DEFAULT_LAST_PASS = 1  # type: Final  # Pass numbers start at 0
 
 DeferredNodeType = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
@@ -138,6 +140,10 @@ PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
                                                    ('is_function', bool),
                                                    ('is_local', bool),
                                                    ])
+
+
+class SupportsLookup(Protocol[T_contra]):
+    def get(self, key: T_contra) -> Optional[Type]: ...
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -3918,6 +3924,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         For more details about what a 'lookup operation' is and how we use the expr_type to refine
         the parent types of lookup_expr, see the docstring in 'propagate_up_typemap_info'.
         """
+        def make_indexing_replay_lookup_func(
+                target_type: TypingType[SupportsLookup[T]],
+                keys: List[T],
+        ) -> Callable[[ProperType], Optional[Type]]:
+            def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+                if not isinstance(new_parent_type, target_type):
+                    return None
+                member_types = []
+                for key in keys:
+                    member_type = new_parent_type.get(key)
+                    if member_type is None:
+                        return None
+                    member_types.append(member_type)
+                return make_simplified_union(member_types)
+            return replay_lookup
 
         output = {}  # type: Dict[Expression, Type]
 
@@ -3933,18 +3954,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 parent_type = existing_types.get(parent_expr)
                 member_name = expr.name
 
-                def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+                def replay_lookup(__new_parent_type: ProperType) -> Optional[Type]:
                     msg_copy = self.msg.clean_copy()
                     msg_copy.disable_count = 0
                     member_type = analyze_member_access(
                         name=member_name,
-                        typ=new_parent_type,
+                        typ=__new_parent_type,
                         context=parent_expr,
                         is_lvalue=False,
                         is_super=False,
                         is_operator=False,
                         msg=msg_copy,
-                        original_type=new_parent_type,
+                        original_type=__new_parent_type,
                         chk=self,
                         in_literal_context=False,
                     )
@@ -3962,27 +3983,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 str_literals = try_getting_str_literals_from_type(index_type)
                 if str_literals is not None:
-                    def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                        if not isinstance(new_parent_type, TypedDictType):
-                            return None
-                        try:
-                            assert str_literals is not None
-                            member_types = [new_parent_type.items[key] for key in str_literals]
-                        except KeyError:
-                            return None
-                        return make_simplified_union(member_types)
+                    replay_lookup = make_indexing_replay_lookup_func(TypedDictType, str_literals)
                 else:
                     int_literals = try_getting_int_literals_from_type(index_type)
                     if int_literals is not None:
-                        def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                            if not isinstance(new_parent_type, TupleType):
-                                return None
-                            try:
-                                assert int_literals is not None
-                                member_types = [new_parent_type.items[key] for key in int_literals]
-                            except IndexError:
-                                return None
-                            return make_simplified_union(member_types)
+                        replay_lookup = make_indexing_replay_lookup_func(TupleType, int_literals)
                     else:
                         return output
             else:

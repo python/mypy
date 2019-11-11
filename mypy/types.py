@@ -1328,6 +1328,12 @@ class TupleType(ProperType):
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.items) == 0
 
+    def get(self, index: int) -> Optional[Type]:
+        if index < 0 or index >= len(self.items):
+            return None
+        else:
+            return self.items[index]
+
     def length(self) -> int:
         return len(self.items)
 
@@ -1402,6 +1408,9 @@ class TypedDictType(ProperType):
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
+
+    def get(self, key: str) -> Optional[Type]:
+        return self.items.get(key)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_typeddict_type(self)
