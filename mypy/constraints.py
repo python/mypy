@@ -174,6 +174,7 @@ def infer_constraints_if_possible(template: Type, actual: Type,
         return None
     if (direction == SUPERTYPE_OF and isinstance(template, TypeVarType) and
             not mypy.subtypes.is_subtype(actual, erase_typevars(template.upper_bound))):
+        # This is not caught by the above branch because of the erase_typevars() call.
         return None
     return infer_constraints(template, actual, direction)
 

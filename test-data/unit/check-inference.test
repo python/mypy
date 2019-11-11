@@ -2787,13 +2787,13 @@ def q2(x: Union[Z[F], F]) -> F:
         return x
 
 b: B
-reveal_type(q1(z))
-reveal_type(q2(z))
+reveal_type(q1(z))  # N: Revealed type is '__main__.B*'
+reveal_type(q2(z))  # N: Revealed type is '__main__.B*'
 
 z: Z[B]
-reveal_type(q1(z))
-reveal_type(q2(z))
+reveal_type(q1(z))  # N: Revealed type is '__main__.B*'
+reveal_type(q2(z))  # N: Revealed type is '__main__.B*'
 
-reveal_type(q1(Z(b)))
-reveal_type(q2(Z(b)))
+reveal_type(q1(Z(b)))  # N: Revealed type is '__main__.B*'
+reveal_type(q2(Z(b)))  # N: Revealed type is '__main__.B*'
 [builtins fixtures/isinstancelist.pyi]
