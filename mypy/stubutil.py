@@ -11,7 +11,7 @@ import re
 from types import ModuleType
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, IO, Iterator, AnyStr
+from typing import Optional, Tuple, List, Iterator, AnyStr
 
 
 # Modules that may fail when imported, or that may have side effects.

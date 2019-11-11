@@ -70,7 +70,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
-    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
@@ -82,7 +82,8 @@ from mypy.stubutil import (
 from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance, AnyType
+    Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance,
+    AnyType
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -1110,7 +1111,7 @@ def find_module_paths_using_imports(modules: List[str],
                                     pyversion: Tuple[int, int],
                                     verbose: bool,
                                     quiet: bool) -> Tuple[List[StubSource],
-                                                                 List[StubSource]]:
+                                                          List[StubSource]]:
     """Find path and runtime value of __all__ (if possible) for modules and packages.
 
     This function uses runtime Python imports to get the information.
