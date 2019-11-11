@@ -4271,9 +4271,9 @@ reveal_type(A.g4)  # N: Revealed type is 'def () -> def () -> __main__.A'
 class B(metaclass=M):
     def foo(self): pass
 
-B.g1  # Should be error: Argument 0 to "g1" of "M" has incompatible type "B"; expected "Type[A]"
-B.g2  # Should be error: Argument 0 to "g2" of "M" has incompatible type "B"; expected "Type[TA]"
-B.g3  # Should be error: Argument 0 to "g3" of "M" has incompatible type "B"; expected "TTA"
+B.g1  # E: Invalid self argument "Type[B]" to attribute function "g1" with type "Callable[[Type[A]], A]"
+B.g2  # E: Invalid self argument "Type[B]" to attribute function "g2" with type "Callable[[Type[TA]], TA]"
+B.g3  # E: Invalid self argument "Type[B]" to attribute function "g3" with type "Callable[[TTA], TTA]"
 reveal_type(B.g4)  # N: Revealed type is 'def () -> def () -> __main__.B'
 
 # 4 examples of unsoundness - instantiation, classmethod, staticmethod and ClassVar:
@@ -4286,9 +4286,9 @@ reveal_type(ta.g3)  # N: Revealed type is 'def () -> Type[__main__.A]'
 reveal_type(ta.g4)  # N: Revealed type is 'def () -> Type[__main__.A]'
 
 x: M = ta
-x.g1  # should be error: Argument 0 to "g1" of "M" has incompatible type "M"; expected "Type[A]"
-x.g2  # should be error: Argument 0 to "g2" of "M" has incompatible type "M"; expected "Type[TA]"
-x.g3  # should be error: Argument 0 to "g3" of "M" has incompatible type "M"; expected "TTA"
+x.g1  # E: Invalid self argument "M" to attribute function "g1" with type "Callable[[Type[A]], A]"
+x.g2  # E: Invalid self argument "M" to attribute function "g2" with type "Callable[[Type[TA]], TA]"
+x.g3  # E: Invalid self argument "M" to attribute function "g3" with type "Callable[[TTA], TTA]"
 reveal_type(x.g4)  # N: Revealed type is 'def () -> __main__.M*'
 
 def r(ta: Type[TA], tta: TTA) -> None:
@@ -6489,3 +6489,26 @@ reveal_type(Foo().y)  # N: Revealed type is 'builtins.list[Any]'
 class Foo:
     def bad():  # E: Method must have at least one argument
         self.x = 0  # E: Name 'self' is not defined
+
+[case testTypeAfterAttributeAccessWithDisallowAnyExpr]
+# flags: --disallow-any-expr
+
+def access_before_declaration(self) -> None:
+    obj = Foo('bar')
+    obj.value
+    x = 1
+
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    x = x + 1
+
+class Foo:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def access_after_declaration(self) -> None:
+    obj = Foo('bar')
+    obj.value
+    x = 1
+
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    x = x + 1

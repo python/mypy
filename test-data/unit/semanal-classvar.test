@@ -206,21 +206,3 @@ class B:
         pass
 [out]
 main:4: error: ClassVar can only be used for assignments in class body
-
-[case testClassVarWithGeneric]
-from typing import ClassVar, Generic, TypeVar
-T = TypeVar('T')
-class A(Generic[T]):
-    x = None  # type: ClassVar[T]
-[out]
-main:4: error: Invalid type: ClassVar cannot be generic
-
-[case testClassVarWithNestedGeneric]
-from typing import ClassVar, Generic, List, TypeVar, Union
-T = TypeVar('T')
-U = TypeVar('U')
-class A(Generic[T, U]):
-    x = None  # type: ClassVar[Union[T, List[U]]]
-[builtins fixtures/list.pyi]
-[out]
-main:5: error: Invalid type: ClassVar cannot be generic

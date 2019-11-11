@@ -15,8 +15,8 @@ from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, replace_alias_tvars,
-    CallableArgument, get_type_vars, TypeQuery, union_items, TypeOfAny,
-    LiteralType, RawExpressionType, PlaceholderType, Overloaded, get_proper_type, ProperType
+    CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType
 )
 
 from mypy.nodes import (
@@ -310,11 +310,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) != 1:
                 self.fail('ClassVar[...] must have at most one type argument', t)
                 return AnyType(TypeOfAny.from_error)
-            item = self.anal_type(t.args[0])
-            if isinstance(item, TypeVarType) or get_type_vars(item):
-                self.fail('Invalid type: ClassVar cannot be generic', t)
-                return AnyType(TypeOfAny.from_error)
-            return item
+            return self.anal_type(t.args[0])
         elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
             return UninhabitedType(is_noreturn=True)
         elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
@@ -484,6 +480,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return AnyType(TypeOfAny.from_error)
 
     def visit_instance(self, t: Instance) -> Type:
+        return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         return t
 
     def visit_type_var(self, t: TypeVarType) -> Type:
@@ -1024,7 +1023,7 @@ def set_any_tvars(tp: Type, vars: List[str],
                   from_error: bool = False,
                   disallow_any: bool = False,
                   fail: Optional[MsgCallback] = None,
-                  unexpanded_type: Optional[Type] = None) -> ProperType:
+                  unexpanded_type: Optional[Type] = None) -> Type:
     if from_error or disallow_any:
         type_of_any = TypeOfAny.from_error
     else:

@@ -18,7 +18,7 @@ error codes that are enabled by default.
 Check that type arguments exist [type-arg]
 ------------------------------------------
 
-If you use ``--disallow-any-generics``, mypy requires that each generic
+If you use :option:`--disallow-any-generics <mypy --disallow-any-generics>`, mypy requires that each generic
 type has values for each type argument. For example, the types ``List`` or
 ``dict`` would be rejected. You should instead use types like ``List[int]`` or
 ``Dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
@@ -39,7 +39,7 @@ Example:
 Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
 
-If you use ``--disallow-untyped-defs``, mypy requires that all functions
+If you use :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`, mypy requires that all functions
 have annotations (either a Python 3 annotation or a type comment).
 
 Example:
@@ -67,7 +67,7 @@ Example:
 Check that cast is not redundant [redundant-cast]
 -------------------------------------------------
 
-If you use ``--warn-redundant-casts``, mypy will generate an error if the source
+If you use :option:`--warn-redundant-casts <mypy --warn-redundant-casts>`, mypy will generate an error if the source
 type of a cast is the same as the target type.
 
 Example:
@@ -87,7 +87,7 @@ Example:
 Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
 
-If you use ``--strict-equality``, mypy will generate an error if it
+If you use :option:`--strict-equality <mypy --strict-equality>`, mypy will generate an error if it
 thinks that a comparison operation is always true or false. These are
 often bugs. Sometimes mypy is too picky and the comparison can
 actually be useful. Instead of disabling strict equality checking
@@ -118,7 +118,7 @@ literal:
 Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------
 
-If you use ``--disallow-untyped-calls``, mypy generates an error when you
+If you use :option:`--disallow-untyped-calls <mypy --disallow-untyped-calls>`, mypy generates an error when you
 call an unannotated function in an annotated function.
 
 Example:
@@ -138,7 +138,7 @@ Example:
 Check that function does not return Any value [no-any-return]
 -------------------------------------------------------------
 
-If you use ``--warn-return-any``, mypy generates an error if you return a
+If you use :option:`--warn-return-any <mypy --warn-return-any>`, mypy generates an error if you return a
 value with an ``Any`` type in a function that is annotated to return a
 non-``Any`` value.
 
@@ -158,7 +158,7 @@ Example:
 Check that types have no Any components due to missing imports [no-any-unimported]
 ----------------------------------------------------------------------------------
 
-If you use ``--disallow-any-unimported``, mypy generates an error if a component of
+If you use :option:`--disallow-any-unimported <mypy --disallow-any-unimported>`, mypy generates an error if a component of
 a type becomes ``Any`` because mypy couldn't resolve an import. These "stealth"
 ``Any`` types can be surprising and accidentally cause imprecise type checking.
 

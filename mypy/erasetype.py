@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type
+    get_proper_type, TypeAliasType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -93,6 +93,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        raise RuntimeError("Type aliases should be expanded before accepting this visitor")
+
 
 def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
     """Replace all type variables in a type with any,
@@ -122,6 +125,11 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Type alias target can't contain bound type variables, so
+        # it is safe to just erase the arguments.
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
 
 def remove_instance_last_known_values(t: Type) -> Type:
     return t.accept(LastKnownValueEraser())
@@ -134,4 +142,9 @@ class LastKnownValueEraser(TypeTranslator):
     def visit_instance(self, t: Instance) -> Type:
         if t.last_known_value:
             return t.copy_modified(last_known_value=None)
+        return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Type aliases can't contain literal values, because they are
+        # always constructed as explicit types.
         return t

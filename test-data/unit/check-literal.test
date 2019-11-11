@@ -851,7 +851,7 @@ func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], 
 [case testLiteralDisallowAny]
 from typing import Any
 from typing_extensions import Literal
-from missing_module import BadAlias     # E: Cannot find module named 'missing_module' \
+from missing_module import BadAlias     # E: Cannot find implementation or library stub for module named 'missing_module' \
                                         # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 a: Literal[Any]                         # E: Parameter 1 of Literal[...] cannot be of type "Any"
@@ -3093,3 +3093,28 @@ def test() -> None:
     if x == 2:  # OK
         ...
 [builtins fixtures/bool.pyi]
+
+[case testNegativeIntLiteral]
+from typing_extensions import Literal
+
+a: Literal[-2] = -2
+b: Literal[-1] = -1
+c: Literal[0] = 0
+d: Literal[1] = 1
+e: Literal[2] = 2
+[out]
+[builtins fixtures/float.pyi]
+
+[case testNegativeIntLiteralWithFinal]
+from typing_extensions import Literal, Final
+
+ONE: Final = 1
+x: Literal[-1] = -ONE
+
+TWO: Final = 2
+THREE: Final = 3
+
+err_code = -TWO
+if bool():
+    err_code = -THREE
+[builtins fixtures/float.pyi]

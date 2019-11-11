@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type
+    ProperType, get_proper_type, TypeAliasType
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -16,6 +16,7 @@ import mypy.typeops
 from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
+from mypy.typestate import TypeState
 
 SUBTYPE_OF = 0  # type: Final[int]
 SUPERTYPE_OF = 1  # type: Final[int]
@@ -89,6 +90,21 @@ def infer_constraints(template: Type, actual: Type,
 
     The constraints are represented as Constraint objects.
     """
+    if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
+        return []
+    if (isinstance(template, TypeAliasType) and isinstance(actual, TypeAliasType) and
+            template.is_recursive and actual.is_recursive):
+        # This case requires special care because it may cause infinite recursion.
+        TypeState._inferring.append(template)
+        res = _infer_constraints(template, actual, direction)
+        TypeState._inferring.pop()
+        return res
+    return _infer_constraints(template, actual, direction)
+
+
+def _infer_constraints(template: Type, actual: Type,
+                       direction: int) -> List[Constraint]:
+
     template = get_proper_type(template)
     actual = get_proper_type(actual)
 
@@ -299,6 +315,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
             actual = actual.as_anonymous().fallback
+        if isinstance(actual, LiteralType):
+            actual = actual.fallback
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)
@@ -484,6 +502,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_union_type(self, template: UnionType) -> List[Constraint]:
         assert False, ("Unexpected UnionType in ConstraintBuilderVisitor"
                        " (should have been handled in infer_constraints)")
+
+    def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
+        assert False, "This should be never called, got {}".format(template)
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
         res = []  # type: List[Constraint]

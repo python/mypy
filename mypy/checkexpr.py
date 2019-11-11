@@ -900,7 +900,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = callee.copy_modified(ret_type=new_ret_type)
         return callee.ret_type, callee
 
-    def analyze_type_type_callee(self, item: ProperType, context: Context) -> ProperType:
+    def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
 
         Return a Y that we can pass to check_call(Y, ...).
@@ -913,7 +913,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res = res.copy_modified(from_type_type=True)
             return expand_type_by_instance(res, item)
         if isinstance(item, UnionType):
-            return UnionType([self.analyze_type_type_callee(tp, context)
+            return UnionType([self.analyze_type_type_callee(get_proper_type(tp), context)
                               for tp in item.relevant_items()], item.line)
         if isinstance(item, TypeVarType):
             # Pretend we're calling the typevar's upper bound,
@@ -921,6 +921,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(get_proper_type(item.upper_bound), context)
+            callee = get_proper_type(callee)
             if isinstance(callee, CallableType):
                 callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):
@@ -1284,7 +1285,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         assert actual_names, "Internal error: named kinds without names given"
                         act_name = actual_names[i]
                         assert act_name is not None
-                        messages.unexpected_keyword_argument(callee, act_name, context)
+                        act_type = actual_types[i]
+                        messages.unexpected_keyword_argument(callee, act_name, act_type, context)
                     is_unexpected_arg_error = True
             elif ((kind == nodes.ARG_STAR and nodes.ARG_STAR not in callee.arg_kinds)
                   or kind == nodes.ARG_STAR2):
@@ -2143,8 +2145,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not self.chk.options.strict_equality:
             return False
 
-        left = get_proper_type(left)
-        right = get_proper_type(right)
+        left, right = get_proper_types((left, right))
 
         if self.chk.binder.is_unreachable_warning_suppressed():
             # We are inside a function that contains type variables with value restrictions in
@@ -2164,6 +2165,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(left, UnionType) and isinstance(right, UnionType):
             left = remove_optional(left)
             right = remove_optional(right)
+            left, right = get_proper_types((left, right))
         py2 = self.chk.options.python_version < (3, 0)
         if (original_container and has_bytes_component(original_container, py2) and
                 has_bytes_component(left, py2)):
@@ -2793,7 +2795,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return [typ.value]
         if isinstance(typ, UnionType):
             out = []
-            for item in typ.items:
+            for item in get_proper_types(typ.items):
                 if isinstance(item, LiteralType) and isinstance(item.value, int):
                     out.append(item.value)
                 else:
@@ -2968,7 +2970,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # For example:
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
-        item = set_any_tvars(target, alias_tvars, ctx.line, ctx.column)
+        item = get_proper_type(set_any_tvars(target, alias_tvars, ctx.line, ctx.column))
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
@@ -3051,7 +3053,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         type_context = get_proper_type(self.type_context[-1])
         type_context_items = None
         if isinstance(type_context, UnionType):
-            tuples_in_context = [t for t in type_context.items
+            tuples_in_context = [t for t in get_proper_types(type_context.items)
                                  if (isinstance(t, TupleType) and len(t.items) == len(e.items)) or
                                  is_named_instance(t, 'builtins.tuple')]
             if len(tuples_in_context) == 1:
@@ -3239,7 +3241,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ctx = get_proper_type(self.type_context[-1])
 
         if isinstance(ctx, UnionType):
-            callables = [t for t in ctx.relevant_items() if isinstance(t, CallableType)]
+            callables = [t for t in get_proper_types(ctx.relevant_items())
+                         if isinstance(t, CallableType)]
             if len(callables) == 1:
                 ctx = callables[0]
 
@@ -3534,9 +3537,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
 
+        # Analyze the right branch using full type context and store the type
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
+            else_type = full_context_else_type
 
             # If it would make a difference, re-analyze the left
             # branch using the right branch's type as context.
@@ -3556,7 +3561,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #
         # TODO: Always create a union or at least in more cases?
         if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res = make_simplified_union([if_type, else_type])
+            res = make_simplified_union([if_type, full_context_else_type])
         else:
             res = join.join_types(if_type, else_type)
 
@@ -3613,7 +3618,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 not always_allow_any and
                 not self.chk.is_stub and
                 self.chk.in_checked_function() and
-                has_any_type(typ)):
+                has_any_type(typ) and not self.chk.current_node_deferred):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:

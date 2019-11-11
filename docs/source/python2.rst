@@ -8,7 +8,7 @@ annotations are given in comments, since the function annotation
 syntax was introduced in Python 3. The comment-based syntax is
 specified in :pep:`484`.
 
-Run mypy in Python 2 mode by using the ``--py2`` option::
+Run mypy in Python 2 mode by using the :option:`--py2 <mypy --py2>` option::
 
     $ mypy --py2 program.py
 

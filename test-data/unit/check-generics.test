@@ -1948,6 +1948,23 @@ class B(A[T], Generic[T, S]):
 reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
 [builtins fixtures/classmethod.pyi]
 
+[case testGenericClassAlternativeConstructorPrecise]
+from typing import Generic, TypeVar, Type, Tuple, Any
+
+T = TypeVar('T')
+Q = TypeVar('Q')
+
+class Base(Generic[T]):
+    def __init__(self, item: T) -> None: ...
+    @classmethod
+    def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]: ...
+class Sub(Base[T]):
+    ...
+
+reveal_type(Sub.make_pair('yes'))  # N: Revealed type is 'Tuple[__main__.Sub[builtins.str*], __main__.Sub[builtins.str*]]'
+Sub[int].make_pair('no')  # E: Argument 1 to "make_pair" of "Base" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
 [case testGenericClassAttrUnboundOnClass]
 from typing import Generic, TypeVar
 T = TypeVar('T')

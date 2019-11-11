@@ -31,7 +31,7 @@ flagged as an error.
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
   annotations. Where that isn't possible, functions without annotations
-  can be checked using ``--check-untyped-defs``.
+  can be checked using :option:`--check-untyped-defs <mypy --check-untyped-defs>`.
 
   Example:
 
@@ -73,17 +73,17 @@ flagged as an error.
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
 - **Some imports may be silently ignored**.  Another source of
-  unexpected ``Any`` values are the :ref:`"--ignore-missing-imports"
-  <ignore-missing-imports>` and :ref:`"--follow-imports=skip"
-  <follow-imports>` flags.  When you use ``--ignore-missing-imports``,
+  unexpected ``Any`` values are the :option:`--ignore-missing-imports
+  <mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
+  <mypy --follow-imports>` flags.  When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
   any imported module that cannot be found is silently replaced with
-  ``Any``.  When using ``--follow-imports=skip`` the same is true for
+  ``Any``.  When using :option:`--follow-imports=skip <mypy --follow-imports>` the same is true for
   modules for which a ``.py`` file is found but that are not specified
   on the command line.  (If a ``.pyi`` stub is found it is always
   processed normally, regardless of the value of
-  ``--follow-imports``.)  To help debug the former situation (no
-  module found at all) leave out ``--ignore-missing-imports``; to get
-  clarity about the latter use ``--follow-imports=error``.  You can
+  :option:`--follow-imports <mypy --follow-imports>`.)  To help debug the former situation (no
+  module found at all) leave out :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`; to get
+  clarity about the latter use :option:`--follow-imports=error <mypy --follow-imports>`.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
 - **A function annotated as returning a non-optional type returns 'None'
@@ -418,7 +418,7 @@ Example:
 
 Some other expressions exhibit similar behavior; in particular,
 :py:data:`~typing.TYPE_CHECKING`, variables named ``MYPY``, and any variable
-whose name is passed to ``--always-true`` or ``--always-false``.
+whose name is passed to :option:`--always-true <mypy --always-true>` or :option:`--always-false <mypy --always-false>`.
 (However, ``True`` and ``False`` are not treated specially!)
 
 .. note::
@@ -431,14 +431,14 @@ By default, mypy will use your current version of Python and your current
 operating system as default values for ``sys.version_info`` and
 ``sys.platform``.
 
-To target a different Python version, use the ``--python-version X.Y`` flag.
+To target a different Python version, use the :option:`--python-version X.Y <mypy --python-version>` flag.
 For example, to verify your code typechecks if were run using Python 2, pass
-in ``--python-version 2.7`` from the command line. Note that you do not need
+in :option:`--python-version 2.7 <mypy --python-version>` from the command line. Note that you do not need
 to have Python 2.7 installed to perform this check.
 
-To target a different operating system, use the ``--platform PLATFORM`` flag.
+To target a different operating system, use the :option:`--platform PLATFORM <mypy --platform>` flag.
 For example, to verify your code typechecks if it were run in Windows, pass
-in ``--platform win32``. See the documentation for :py:data:`sys.platform`
+in :option:`--platform win32 <mypy --platform>`. See the documentation for :py:data:`sys.platform`
 for examples of valid platform parameters.
 
 .. _reveal-type:

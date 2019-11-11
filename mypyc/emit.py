@@ -341,7 +341,7 @@ class Emitter:
 
         Somewhat strangely, this supports unboxed types but only
         operates on boxed versions.  This is necessary to properly
-        handle types such as Optional[int] in compatability glue.
+        handle types such as Optional[int] in compatibility glue.
 
         Assign NULL (error value) to dest if the value has an incompatible type.
 
@@ -428,18 +428,18 @@ class Emitter:
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             concrete = all_concrete_classes(typ.class_ir)
-            n_types = len(concrete)
             # If there are too many concrete subclasses or we can't find any
-            # (meaning the code ought to be dead), fall back to a normal typecheck.
+            # (meaning the code ought to be dead or we aren't doing global opts),
+            # fall back to a normal typecheck.
             # Otherwise check all the subclasses.
-            if n_types == 0 or n_types > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
+            if not concrete or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
                 check = '(PyObject_TypeCheck({}, {}))'.format(
                     src, self.type_struct_name(typ.class_ir))
             else:
                 full_str = '(Py_TYPE({src}) == {targets[0]})'
-                for i in range(1, n_types):
+                for i in range(1, len(concrete)):
                     full_str += ' || (Py_TYPE({src}) == {targets[%d]})' % i
-                if n_types > 1:
+                if len(concrete) > 1:
                     full_str = '(%s)' % full_str
                 check = full_str.format(
                     src=src, targets=[self.type_struct_name(ir) for ir in concrete])

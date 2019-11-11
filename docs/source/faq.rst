@@ -90,7 +90,7 @@ How do I type check my Python 2 code?
 
 You can use a :pep:`comment-based function annotation syntax
 <484#suggested-syntax-for-python-2-7-and-straddling-code>`
-and use the ``--py2`` command-line option to type check your Python 2 code.
+and use the :option:`--py2 <mypy --py2>` command-line option to type check your Python 2 code.
 You'll also need to install ``typing`` for Python 2 via ``pip install typing``.
 
 Is mypy free?

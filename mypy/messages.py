@@ -494,7 +494,7 @@ class MessageBuilder:
                 expected_types = list(expected_type.items)
             else:
                 expected_types = [expected_type]
-            for type in expected_types:
+            for type in get_proper_types(expected_types):
                 if isinstance(arg_type, Instance) and isinstance(type, Instance):
                     notes = append_invariance_notes(notes, arg_type, type)
         self.fail(msg, context, code=code)
@@ -570,9 +570,24 @@ class MessageBuilder:
         msg = 'Too many positional arguments' + for_function(callee)
         self.fail(msg, context)
 
-    def unexpected_keyword_argument(self, callee: CallableType, name: str,
+    def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
+        # Suggest intended keyword, look for type match else fallback on any match.
+        matching_type_args = []
+        not_matching_type_args = []
+        for i, kwarg_type in enumerate(callee.arg_types):
+            callee_arg_name = callee.arg_names[i]
+            if callee_arg_name is not None and callee.arg_kinds[i] != ARG_STAR:
+                if is_subtype(arg_type, kwarg_type):
+                    matching_type_args.append(callee_arg_name)
+                else:
+                    not_matching_type_args.append(callee_arg_name)
+        matches = best_matches(name, matching_type_args)
+        if not matches:
+            matches = best_matches(name, not_matching_type_args)
+        if matches:
+            msg += "; did you mean {}?".format(pretty_or(matches[:3]))
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
@@ -1469,9 +1484,10 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, UnionType):
         # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
         print_as_optional = (len(typ.items) -
-                             sum(isinstance(t, NoneType) for t in typ.items) == 1)
+                             sum(isinstance(get_proper_type(t), NoneType)
+                                 for t in typ.items) == 1)
         if print_as_optional:
-            rest = [t for t in typ.items if not isinstance(t, NoneType)]
+            rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
             return 'Optional[{}]'.format(format(rest[0]))
         else:
             items = []

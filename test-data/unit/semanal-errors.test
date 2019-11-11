@@ -199,21 +199,21 @@ main:2: error: Module 'm' has no attribute 'y'
 import typing
 import m
 [out]
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport]
@@ -222,7 +222,7 @@ import m
 [file m/__init__.py]
 from .x import y
 [out]
-tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
+tmp/m/__init__.py:1: error: Cannot find implementation or library stub for module named 'm.x'
 tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport2]
@@ -232,7 +232,7 @@ import m.a
 [file m/a.py]
 from .x import y
 [out]
-tmp/m/a.py:1: error: Cannot find module named 'm.x'
+tmp/m/a.py:1: error: Cannot find implementation or library stub for module named 'm.x'
 tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleNotImported]
@@ -281,18 +281,18 @@ main:4: error: Name 'n' is not defined
 import typing
 import m.n
 [out]
-main:2: error: Cannot find module named 'm.n'
+main:2: error: Cannot find implementation or library stub for module named 'm.n'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 
 [case testMissingPackage2]
 import typing
 from m.n import x
 from a.b import *
 [out]
-main:2: error: Cannot find module named 'm.n'
+main:2: error: Cannot find implementation or library stub for module named 'm.n'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:3: error: Cannot find module named 'a.b'
+main:3: error: Cannot find implementation or library stub for module named 'a.b'
 
 [case testErrorInImportedModule]
 import m
@@ -320,9 +320,9 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: Cannot find module named 'm.n'
+main:2: error: Cannot find implementation or library stub for module named 'm.n'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 
 [case testBreakOutsideLoop]
 break

@@ -3,11 +3,11 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, Set, Tuple, Optional
+from typing import Dict, Set, Tuple, Optional, List
 from typing_extensions import ClassVar, Final
 
 from mypy.nodes import TypeInfo
-from mypy.types import Instance
+from mypy.types import Instance, TypeAliasType, get_proper_type, Type
 from mypy.server.trigger import make_trigger
 from mypy import state
 
@@ -75,10 +75,35 @@ class TypeState:
     # a re-checked target) during the update.
     _rechecked_types = set()  # type: Final[Set[TypeInfo]]
 
+    # The two attributes below are assumption stacks for subtyping relationships between
+    # recursive type aliases. Normally, one would pass type assumptions as an additional
+    # arguments to is_subtype(), but this would mean updating dozens of related functions
+    # threading this through all callsites (see also comment for TypeInfo.assuming).
+    _assuming = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    _assuming_proper = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    # Ditto for inference of generic constraints against recursive type aliases.
+    _inferring = []  # type: Final[List[TypeAliasType]]
+
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
     # via the cls parameter, since mypyc can optimize accesses to
     # Final attributes of a directly referenced type.
+
+    @staticmethod
+    def is_assumed_subtype(left: Type, right: Type) -> bool:
+        for (l, r) in reversed(TypeState._assuming):
+            if (get_proper_type(l) == get_proper_type(left)
+                    and get_proper_type(r) == get_proper_type(right)):
+                return True
+        return False
+
+    @staticmethod
+    def is_assumed_proper_subtype(left: Type, right: Type) -> bool:
+        for (l, r) in reversed(TypeState._assuming_proper):
+            if (get_proper_type(l) == get_proper_type(left)
+                    and get_proper_type(r) == get_proper_type(right)):
+                return True
+        return False
 
     @staticmethod
     def reset_all_subtype_caches() -> None:

@@ -42,8 +42,8 @@ find or that don't have stub files:
 
 .. code-block:: text
 
-    core/config.py:7: error: Cannot find module named 'frobnicate'
-    core/model.py:9: error: Cannot find module named 'acme'
+    core/config.py:7: error: Cannot find implementation or library stub for module named 'frobnicate'
+    core/model.py:9: error: Cannot find implementation or library stub for module named 'acme'
     ...
 
 This is normal, and you can easily ignore these errors. For example,

@@ -31,6 +31,7 @@ else:
 
 [case testMultiModuleSameNames]
 # Use same names in both modules
+import other
 def f() -> int:
     return 0
 class C:
@@ -40,6 +41,10 @@ class C:
     def f(self, x: int) -> int:
         return self.x + x
 class D(C): pass
+
+def g(x: 'other.C') -> None:
+    pass
+
 [file other.py]
 def f(x: int) -> int:
     return x + 1
@@ -119,6 +124,10 @@ class C:
 
     def f(self) -> int:
         return 2
+
+    def check(self) -> None:
+        assert isinstance(self, C)
+
 [file driver.py]
 from native import f, D
 from other import C
@@ -132,6 +141,11 @@ except TypeError:
     pass
 else:
     assert False
+
+assert isinstance(D(10), C)
+
+c.check()
+D(10).check()
 
 [case testMultiModuleSpecialize]
 from other import A
@@ -219,6 +233,7 @@ Traceback (most recent call last):
   File "driver.py", line 6, in <module>
     other.fail2()
   File "other.py", line 3, in fail2
+    x[2] = 2
 IndexError: list assignment index out of range
 Traceback (most recent call last):
   File "driver.py", line 12, in <module>
@@ -226,6 +241,7 @@ Traceback (most recent call last):
   File "native.py", line 4, in fail
     fail2()
   File "other.py", line 3, in fail2
+    x[2] = 2
 IndexError: list assignment index out of range
 
 [case testMultiModuleCycle]
@@ -310,9 +326,11 @@ class Base2:
         self.y = 2
 
 [file other.py]
+from typing import Tuple
 import native
 
 class Base1:
+    a: Tuple[int, int]
     x: int
     def __init__(self) -> None:
         self.x = 1
@@ -516,3 +534,24 @@ x = 10
 [file driver.py]
 from native import foo
 foo()
+
+[case testTrivialIncremental]
+# separate: [(["other.py", "other_b.py"], "stuff")]
+from other import x
+from other_b import z
+y = x + z
+[file other.py]
+x = 1
+[file other.py.2]
+x = 2
+[file other_b.py]
+z = 1
+
+[file driver.py]
+from native import y
+print(y)
+[out]
+2
+[out2]
+3
+[rechecked other]

@@ -129,16 +129,18 @@ if USE_MYPYC:
     # order. Sort them so that the mypyc output is deterministic.
     mypyc_targets.sort()
 
-    # This bit is super unfortunate: we want to use the mypy packaged
-    # with mypyc. It will arrange for the path to be setup so it can
-    # find it, but we've already imported parts, so we remove the
-    # modules that we've imported already, which will let the right
-    # versions be imported by mypyc.
-    del sys.modules['mypy']
-    del sys.modules['mypy.version']
-    del sys.modules['mypy.git']
+    use_other_mypyc = os.getenv('ALTERNATE_MYPYC_PATH', None)
+    if use_other_mypyc:
+        # This bit is super unfortunate: we want to use a different
+        # mypy/mypyc version, but we've already imported parts, so we
+        # remove the modules that we've imported already, which will
+        # let the right versions be imported by mypyc.
+        del sys.modules['mypy']
+        del sys.modules['mypy.version']
+        del sys.modules['mypy.git']
+        sys.path.insert(0, use_other_mypyc)
 
-    from mypyc.build import mypycify, MypycifyBuildExt
+    from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
@@ -149,7 +151,6 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
     )
-    cmdclass['build_ext'] = MypycifyBuildExt
 else:
     ext_modules = []
 

@@ -296,16 +296,17 @@ class ConditionalTypeBinder:
         # (See discussion in #3526)
         elif (isinstance(type, AnyType)
               and isinstance(declared_type, UnionType)
-              and any(isinstance(item, NoneType) for item in declared_type.items)
+              and any(isinstance(get_proper_type(item), NoneType) for item in declared_type.items)
               and isinstance(get_proper_type(self.most_recent_enclosing_type(expr, NoneType())),
                              NoneType)):
             # Replace any Nones in the union type with Any
-            new_items = [type if isinstance(item, NoneType) else item
+            new_items = [type if isinstance(get_proper_type(item), NoneType) else item
                          for item in declared_type.items]
             self.put(expr, UnionType(new_items))
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
-                       and any(isinstance(item, AnyType) for item in declared_type.items))):
+                       and any(isinstance(get_proper_type(item), AnyType)
+                               for item in declared_type.items))):
             # Assigning an Any value doesn't affect the type to avoid false negatives, unless
             # there is an Any item in a declared union type.
             self.put(expr, declared_type)

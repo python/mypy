@@ -19,7 +19,7 @@ from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
-    CallableType, LiteralType
+    CallableType, LiteralType, get_proper_types
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
@@ -359,7 +359,8 @@ class StringFormatterChecker:
                 continue
 
             a_type = get_proper_type(actual_type)
-            actual_items = a_type.items if isinstance(a_type, UnionType) else [a_type]
+            actual_items = (get_proper_types(a_type.items) if isinstance(a_type, UnionType)
+                            else [a_type])
             for a_type in actual_items:
                 if custom_special_method(a_type, '__format__'):
                     continue
@@ -658,6 +659,12 @@ class StringFormatterChecker:
         elif isinstance(rhs_type, Instance) and rhs_type.type.fullname() == 'builtins.tuple':
             # Assume that an arbitrary-length tuple has the right number of items.
             rep_types = [rhs_type.args[0]] * len(checkers)
+        elif isinstance(rhs_type, UnionType):
+            for typ in rhs_type.relevant_items():
+                temp_node = TempNode(typ)
+                temp_node.line = replacements.line
+                self.check_simple_str_interpolation(specifiers, temp_node, expr)
+            return
         else:
             rep_types = [rhs_type]
 
