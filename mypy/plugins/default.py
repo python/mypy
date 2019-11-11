@@ -1,10 +1,11 @@
 from functools import partial
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, Tuple
 
 from mypy import message_registry
-from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
+from mypy.nodes import Context, Expression, StrExpr, IntExpr, DictExpr, UnaryExpr
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
+    CheckerPluginInterface,
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
@@ -24,6 +25,8 @@ class DefaultPlugin(Plugin):
 
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
+        elif fullname == 'builtins.open' and self.python_version[0] == 3:
+            return open_callback
         elif fullname == 'ctypes.Array':
             return ctypes.array_constructor_callback
         return None
@@ -64,6 +67,8 @@ class DefaultPlugin(Plugin):
             return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
             return ctypes.array_iter_callback
+        elif fullname == 'pathlib.Path.open':
+            return path_open_callback
         return None
 
     def get_attribute_hook(self, fullname: str
@@ -96,6 +101,68 @@ class DefaultPlugin(Plugin):
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
         return None
+
+
+def open_callback(ctx: FunctionContext) -> Type:
+    """Verify argument types for 'open'."""
+    _verify_open_signature(
+        arg_types=ctx.arg_types,
+        args=ctx.args,
+        arg_names=ctx.callee_arg_names,
+        mode_arg_index=1,
+        text_only_arg_indices=(3, 4, 5),
+        api=ctx.api,
+        context=ctx.context,
+    )
+    return ctx.default_return_type
+
+
+def path_open_callback(ctx: MethodContext) -> Type:
+    """Verify argument types for 'pathlib.Path.open'."""
+    _verify_open_signature(
+        arg_types=ctx.arg_types,
+        args=ctx.args,
+        arg_names=ctx.callee_arg_names,
+        mode_arg_index=0,
+        text_only_arg_indices=(2, 3, 4),
+        api=ctx.api,
+        context=ctx.context,
+    )
+    return ctx.default_return_type
+
+
+def _verify_open_signature(
+        arg_types: List[List[Type]],
+        args: List[List[Expression]],
+        arg_names: List[Optional[str]],
+        mode_arg_index: int,
+        text_only_arg_indices: Tuple[int, ...],
+        api: CheckerPluginInterface,
+        context: Context,
+) -> None:
+    """A helper for verifying any function that has approximately the same
+    signature as the builtin 'open(...)' function.
+
+    If mode is detected to be binary, verify that text-only arguments
+    (encoding, errors, newline) are None.
+    """
+    if not arg_types or len(arg_types[mode_arg_index]) != 1:
+        return None
+
+    mode_str = try_getting_str_literals(
+        args[mode_arg_index][0], arg_types[mode_arg_index][0]
+    )
+    if mode_str is None or len(mode_str) != 1 or 'b' not in mode_str[0]:
+        # mode cannot be found, or is not binary
+        return None
+
+    # Verify that text-only arguments are None if mode is binary
+    for arg_index in text_only_arg_indices:
+        if (len(arg_types[arg_index]) == 1
+                and not is_subtype(arg_types[arg_index][0], NoneType())):
+            api.fail("Binary mode doesn't take an argument for {}"
+                     .format(arg_names[arg_index]),
+                     context)
 
 
 def contextmanager_callback(ctx: FunctionContext) -> Type:

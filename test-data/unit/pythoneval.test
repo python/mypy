@@ -287,21 +287,32 @@ _program.py:3: note: Revealed type is 'typing.BinaryIO'
 _program.py:5: note: Revealed type is 'typing.IO[Any]'
 
 [case testOpenReturnTypeInferenceSpecialCases]
+from typing_extensions import Literal
 reveal_type(open())
 reveal_type(open(mode='rb', file='x'))
 reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
-reveal_type(open(mode=mode, file='r'))
+reveal_type(open(mode=mode, file='r', errors='replace'))
+open('x', mode='rb', errors='replace')
+open('x', errors='replace', mode='rb')
+errors: Literal['strict', 'ignore'] = 'ignore'
+open('x', 'rb', -1, 'UTF-8', errors, '\n')
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: All overload variants of "open" require at least one argument
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Possible overload variants:
-_testOpenReturnTypeInferenceSpecialCases.py:1: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: <union: 53 items> = ..., buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> TextIO
-_testOpenReturnTypeInferenceSpecialCases.py:1: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: <union: 38 items>, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> BinaryIO
-_testOpenReturnTypeInferenceSpecialCases.py:1: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: str, buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> IO[Any]
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'Any'
-_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:2: error: All overload variants of "open" require at least one argument
+_testOpenReturnTypeInferenceSpecialCases.py:2: note: Possible overload variants:
+_testOpenReturnTypeInferenceSpecialCases.py:2: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: <union: 53 items> = ..., buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> TextIO
+_testOpenReturnTypeInferenceSpecialCases.py:2: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: <union: 38 items>, buffering: int = ..., encoding: None = ..., errors: None = ..., newline: None = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> BinaryIO
+_testOpenReturnTypeInferenceSpecialCases.py:2: note:     def open(file: Union[str, bytes, int, _PathLike[Any]], mode: str, buffering: int = ..., encoding: Optional[str] = ..., errors: Optional[str] = ..., newline: Optional[str] = ..., closefd: bool = ..., opener: Optional[Callable[[str, int], int]] = ...) -> IO[Any]
+_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'Any'
 _testOpenReturnTypeInferenceSpecialCases.py:3: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:5: note: Revealed type is 'typing.IO[Any]'
+_testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:6: note: Revealed type is 'typing.IO[Any]'
+_testOpenReturnTypeInferenceSpecialCases.py:7: error: Binary mode doesn't take an argument for errors
+_testOpenReturnTypeInferenceSpecialCases.py:8: error: Binary mode doesn't take an argument for errors
+_testOpenReturnTypeInferenceSpecialCases.py:10: error: Binary mode doesn't take an argument for encoding
+_testOpenReturnTypeInferenceSpecialCases.py:10: error: Binary mode doesn't take an argument for errors
+_testOpenReturnTypeInferenceSpecialCases.py:10: error: Binary mode doesn't take an argument for newline
+
 
 [case testPathOpenReturnTypeInference]
 from pathlib import Path
@@ -319,15 +330,25 @@ _program.py:7: note: Revealed type is 'typing.IO[Any]'
 
 [case testPathOpenReturnTypeInferenceSpecialCases]
 from pathlib import Path
+from typing import Optional
+from typing_extensions import Literal
 p = Path("x")
-reveal_type(p.open(mode='rb', errors='replace'))
-reveal_type(p.open(errors='replace', mode='rb'))
+p.open(mode='rb', errors='replace')
+p.open(errors='replace', mode='rb')
 mode = 'rb'
 reveal_type(p.open(mode=mode, errors='replace'))
+mode2: Literal['rb'] = 'rb'
+p.open(mode=mode2, errors='replace')
+errors: Optional[Literal['strict', 'ignore']] = None
+p.open('rb', -1, 'UTF-8', errors, '\n')
 [out]
-_program.py:3: note: Revealed type is 'typing.IO[Any]'
-_program.py:4: note: Revealed type is 'typing.IO[Any]'
-_program.py:6: note: Revealed type is 'typing.IO[Any]'
+_program.py:5: error: Binary mode doesn't take an argument for errors
+_program.py:6: error: Binary mode doesn't take an argument for errors
+_program.py:8: note: Revealed type is 'typing.IO[Any]'
+_program.py:10: error: Binary mode doesn't take an argument for errors
+_program.py:12: error: Binary mode doesn't take an argument for encoding
+_program.py:12: error: Binary mode doesn't take an argument for errors
+_program.py:12: error: Binary mode doesn't take an argument for newline
 
 [case testGenericPatterns]
 from typing import Pattern
