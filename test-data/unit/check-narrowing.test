@@ -35,6 +35,13 @@ class NamedTuple2(NamedTuple):
 Tuple1 = Tuple[Literal[Key.A], int]
 Tuple2 = Tuple[Literal[Key.B], str]
 
+class TypedDict1(TypedDict):
+    key: Literal[Key.A]
+    foo: int
+class TypedDict2(TypedDict):
+    key: Literal[Key.B]
+    foo: str
+
 x1: Union[Object1, Object2]
 if x1.key is Key.A:
     reveal_type(x1)         # N: Revealed type is '__main__.Object1'
@@ -73,6 +80,12 @@ else:
     reveal_type(x4)         # N: Revealed type is 'Tuple[Literal[__main__.Key.B], builtins.str]'
     reveal_type(x4[0])      # N: Revealed type is 'Literal[__main__.Key.B]'
 
+x5: Union[TypedDict1, TypedDict2]
+if x5["key"] is Key.A:
+    reveal_type(x5)         # N: Revealed type is 'TypedDict('__main__.TypedDict1', {'key': Literal[__main__.Key.A], 'foo': builtins.int})'
+else:
+    reveal_type(x5)         # N: Revealed type is 'TypedDict('__main__.TypedDict2', {'key': Literal[__main__.Key.B], 'foo': builtins.str})'
+
 [case testNarrowingParentWithIsInstanceBasic]
 from dataclasses import dataclass
 from typing import NamedTuple, Tuple, Union
@@ -97,6 +110,11 @@ class NamedTuple2(NamedTuple):
 
 Tuple1 = Tuple[int]
 Tuple2 = Tuple[str]
+
+class TypedDict1(TypedDict):
+    key: int
+class TypedDict2(TypedDict):
+    key: str
 
 x1: Union[Object1, Object2]
 if isinstance(x1.key, int):
@@ -125,6 +143,12 @@ if isinstance(x4[0], int):
     reveal_type(x4)         # N: Revealed type is 'Tuple[builtins.int]'
 else:
     reveal_type(x4)         # N: Revealed type is 'Tuple[builtins.str]'
+
+x5: Union[TypedDict1, TypedDict2]
+if isinstance(x5["key"], int):
+    reveal_type(x5)         # N: Revealed type is 'TypedDict('__main__.TypedDict1', {'key': builtins.int})'
+else:
+    reveal_type(x5)         # N: Revealed type is 'TypedDict('__main__.TypedDict2', {'key': builtins.str})'
 [builtins fixtures/isinstance.pyi]
 
 [case testNarrowingParentMultipleKeys]
@@ -302,4 +326,81 @@ if x.key is Key.A:
 else:
     # TODO: Is this a bug? Should we skip inferring Any for singleton types?
     reveal_type(x.key)  # N: Revealed type is 'Union[Any, Literal[__main__.Key.B]]'
-    reveal_type(x    )  # N: Revealed type is 'Union[__main__.Object1, __main__.Object2, Any]'
+    reveal_type(x)      # N: Revealed type is 'Union[__main__.Object1, __main__.Object2, Any]'
+
+[case testNarrowingParentsHierarchy]
+from typing import Union
+from typing_extensions import Literal
+from enum import Enum
+
+class Key(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+class Parent1:
+    child: Union[Child1, Child2]
+class Parent2:
+    child: Union[Child2, Child3]
+class Parent3:
+    child: Union[Child3, Child1]
+
+class Child1:
+    main: Literal[Key.A]
+    same_for_1_and_2: Literal[Key.A]
+class Child2:
+    main: Literal[Key.B]
+    same_for_1_and_2: Literal[Key.A]
+class Child3:
+    main: Literal[Key.C]
+    same_for_1_and_2: Literal[Key.B]
+
+x: Union[Parent1, Parent2, Parent3]
+if x.child.main is Key.A:
+    reveal_type(x)          # N: Revealed type is 'Union[__main__.Parent1, __main__.Parent3]'
+    reveal_type(x.child)    # N: Revealed type is '__main__.Child1'
+else:
+    reveal_type(x)          # N: Revealed type is 'Union[__main__.Parent1, __main__.Parent2, __main__.Parent3]'
+    reveal_type(x.child)    # N: Revealed type is 'Union[__main__.Child2, __main__.Child3]'
+
+if x.child.same_for_1_and_2 is Key.A:
+    reveal_type(x)          # N: Revealed type is 'Union[__main__.Parent1, __main__.Parent2, __main__.Parent3]'
+    reveal_type(x.child)    # N: Revealed type is 'Union[__main__.Child1, __main__.Child2]'
+else:
+    reveal_type(x)          # N: Revealed type is 'Union[__main__.Parent2, __main__.Parent3]'
+    reveal_type(x.child)    # N: Revealed type is '__main__.Child3'
+
+y: Union[Parent1, Parent2]
+if y.child.main is Key.A:
+    reveal_type(y)          # N: Revealed type is '__main__.Parent1'
+    reveal_type(y.child)    # N: Revealed type is '__main__.Child1'
+else:
+    reveal_type(y)          # N: Revealed type is 'Union[__main__.Parent1, __main__.Parent2]'
+    reveal_type(y.child)    # N: Revealed type is 'Union[__main__.Child2, __main__.Child3]'
+
+if y.child.same_for_1_and_2 is Key.A:
+    reveal_type(y)          # N: Revealed type is 'Union[__main__.Parent1, __main__.Parent2]'
+    reveal_type(y.child)    # N: Revealed type is 'Union[__main__.Child1, __main__.Child2]'
+else:
+    reveal_type(y)          # N: Revealed type is '__main__.Parent2'
+    reveal_type(y.child)    # N: Revealed type is '__main__.Child3'
+
+[case testNarrowingParentsHierarchyGenerics]
+from typing import Generic, TypeVar, Union
+
+T = TypeVar('T')
+class Model(Generic[T]):
+    attr: T
+class A:
+    model: Model[int]
+class B:
+    model: Model[str]
+
+x: Union[A, B]
+if isinstance(x.model.attr, int):
+    reveal_type(x)          # N: Revealed type is '__main__.A'
+    reveal_type(x.model)    # N: Revealed type is '__main__.Model[builtins.int]'
+else:
+    reveal_type(x)          # N: Revealed type is '__main__.B'
+    reveal_type(x.model)    # N: Revealed type is '__main__.Model[builtins.str]'
+[builtins fixtures/isinstance.pyi]

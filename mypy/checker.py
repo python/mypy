@@ -3894,15 +3894,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # The original inferred type should always be present in the output map, of course
             output_map[expr] = expr_type
 
-            # Next, try using this information to refine the parent type, if applicable.
-            # Note that we currently refine just the immediate parent.
-            #
-            # TODO: Should we also try recursively refining any parents of the parents?
-            #
-            # One quick-and-dirty way of doing this would be to have the caller repeatedly run
-            # this function until we reach fixpoint; another way would be to modify
-            # 'refine_parent_type' to run in a loop. Both approaches seem expensive though.
-            new_mapping = self.refine_parent_type(existing_types, expr, expr_type)
+            # Next, try using this information to refine the parent types, if applicable.
+            new_mapping = self.refine_parent_types(existing_types, expr, expr_type)
             for parent_expr, proposed_parent_type in new_mapping.items():
                 # We don't try inferring anything if we've already inferred something for
                 # the parent expression.
@@ -3912,112 +3905,126 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 output_map[parent_expr] = proposed_parent_type
         return output_map
 
-    def refine_parent_type(self,
-                           existing_types: Mapping[Expression, Type],
-                           expr: Expression,
-                           expr_type: Type) -> Mapping[Expression, Type]:
-        """Checks if the given expr is a 'lookup operation' into a union and refines the parent type
-        based on the 'expr_type'.
+    def refine_parent_types(self,
+                            existing_types: Mapping[Expression, Type],
+                            expr: Expression,
+                            expr_type: Type) -> Mapping[Expression, Type]:
+        """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
+        the parent types based on the 'expr_type'.
+
+        For example, if 'expr' is an expression like 'a.b.c.d', we'll potentially return refined
+        types for expressions 'a', 'a.b', and 'a.b.c'.
 
         For more details about what a 'lookup operation' is and how we use the expr_type to refine
-        the parent type, see the docstring in 'propagate_up_typemap_info'.
+        the parent types of lookup_expr, see the docstring in 'propagate_up_typemap_info'.
         """
 
-        # First, check if this expression is one that's attempting to
-        # "lookup" some key in the parent type. If so, save the parent type
-        # and create function that will try replaying the same lookup
-        # operation against arbitrary types.
-        if isinstance(expr, MemberExpr):
-            parent_expr = expr.expr
-            parent_type = existing_types.get(parent_expr)
-            member_name = expr.name
+        output = {}  # type: Dict[Expression, Type]
 
-            def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                msg_copy = self.msg.clean_copy()
-                msg_copy.disable_count = 0
-                member_type = analyze_member_access(
-                    name=member_name,
-                    typ=new_parent_type,
-                    context=parent_expr,
-                    is_lvalue=False,
-                    is_super=False,
-                    is_operator=False,
-                    msg=msg_copy,
-                    original_type=new_parent_type,
-                    chk=self,
-                    in_literal_context=False,
-                )
-                if msg_copy.is_errors():
-                    return None
-                else:
-                    return member_type
-        elif isinstance(expr, IndexExpr):
-            parent_expr = expr.base
-            parent_type = existing_types.get(parent_expr)
+        # Note: parent_expr and parent_type are progressively refined as we crawl up the
+        # parent lookup chain.
+        while True:
+            # First, check if this expression is one that's attempting to
+            # "lookup" some key in the parent type. If so, save the parent type
+            # and create function that will try replaying the same lookup
+            # operation against arbitrary types.
+            if isinstance(expr, MemberExpr):
+                parent_expr = expr.expr
+                parent_type = existing_types.get(parent_expr)
+                member_name = expr.name
 
-            index_type = existing_types.get(expr.index)
-            if index_type is None:
-                return {}
-
-            str_literals = try_getting_str_literals_from_type(index_type)
-            if str_literals is not None:
                 def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                    if not isinstance(new_parent_type, TypedDictType):
+                    msg_copy = self.msg.clean_copy()
+                    msg_copy.disable_count = 0
+                    member_type = analyze_member_access(
+                        name=member_name,
+                        typ=new_parent_type,
+                        context=parent_expr,
+                        is_lvalue=False,
+                        is_super=False,
+                        is_operator=False,
+                        msg=msg_copy,
+                        original_type=new_parent_type,
+                        chk=self,
+                        in_literal_context=False,
+                    )
+                    if msg_copy.is_errors():
                         return None
-                    try:
-                        assert str_literals is not None
-                        member_types = [new_parent_type.items[key] for key in str_literals]
-                    except KeyError:
-                        return None
-                    return make_simplified_union(member_types)
-            else:
-                int_literals = try_getting_int_literals_from_type(index_type)
-                if int_literals is not None:
+                    else:
+                        return member_type
+            elif isinstance(expr, IndexExpr):
+                parent_expr = expr.base
+                parent_type = existing_types.get(parent_expr)
+
+                index_type = existing_types.get(expr.index)
+                if index_type is None:
+                    return output
+
+                str_literals = try_getting_str_literals_from_type(index_type)
+                if str_literals is not None:
                     def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                        if not isinstance(new_parent_type, TupleType):
+                        if not isinstance(new_parent_type, TypedDictType):
                             return None
                         try:
-                            assert int_literals is not None
-                            member_types = [new_parent_type.items[key] for key in int_literals]
-                        except IndexError:
+                            assert str_literals is not None
+                            member_types = [new_parent_type.items[key] for key in str_literals]
+                        except KeyError:
                             return None
                         return make_simplified_union(member_types)
                 else:
-                    return {}
-        else:
-            return {}
+                    int_literals = try_getting_int_literals_from_type(index_type)
+                    if int_literals is not None:
+                        def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+                            if not isinstance(new_parent_type, TupleType):
+                                return None
+                            try:
+                                assert int_literals is not None
+                                member_types = [new_parent_type.items[key] for key in int_literals]
+                            except IndexError:
+                                return None
+                            return make_simplified_union(member_types)
+                    else:
+                        return output
+            else:
+                return output
 
-        # If we somehow didn't previously derive the parent type, abort:
-        # something went wrong at an earlier stage.
-        if parent_type is None:
-            return {}
+            # If we somehow didn't previously derive the parent type, abort completely
+            # with what we have so far: something went wrong at an earlier stage.
+            if parent_type is None:
+                return output
 
-        # We currently only try refining the parent type if it's a Union.
-        parent_type = get_proper_type(parent_type)
-        if not isinstance(parent_type, UnionType):
-            return {}
+            # We currently only try refining the parent type if it's a Union.
+            # If not, there's no point in trying to refine any further parents
+            # since we have no further information we can use to refine the lookup
+            # chain, so we end early as an optimization.
+            parent_type = get_proper_type(parent_type)
+            if not isinstance(parent_type, UnionType):
+                return output
 
-        # Take each element in the parent union and replay the original lookup procedure
-        # to figure out which parents are compatible.
-        new_parent_types = []
-        for item in parent_type.items:
-            item = get_proper_type(item)
-            member_type = replay_lookup(item)
-            if member_type is None:
-                # We were unable to obtain the member type. So, we give up on refining this
-                # parent type entirely.
-                return {}
+            # Take each element in the parent union and replay the original lookup procedure
+            # to figure out which parents are compatible.
+            new_parent_types = []
+            for item in parent_type.items:
+                item = get_proper_type(item)
+                member_type = replay_lookup(item)
+                if member_type is None:
+                    # We were unable to obtain the member type. So, we give up on refining this
+                    # parent type entirely and abort.
+                    return output
 
-            if is_overlapping_types(member_type, expr_type):
-                new_parent_types.append(item)
+                if is_overlapping_types(member_type, expr_type):
+                    new_parent_types.append(item)
 
-        # If none of the parent types overlap (if we derived an empty union), something
-        # went wrong. We should never hit this case, but deriving the uninhabited type or
-        # reporting an error both seem unhelpful. So we abort.
-        if not new_parent_types:
-            return {}
+            # If none of the parent types overlap (if we derived an empty union), something
+            # went wrong. We should never hit this case, but deriving the uninhabited type or
+            # reporting an error both seem unhelpful. So we abort.
+            if not new_parent_types:
+                return output
 
-        return {parent_expr: make_simplified_union(new_parent_types)}
+            expr = parent_expr
+            expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
+
+        return output
 
     #
     # Helpers
