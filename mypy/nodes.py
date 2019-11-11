@@ -2721,7 +2721,8 @@ class TypeAlias(SymbolNode):
         Python runtime limitation.
     line and column: Line an column on the original alias definition.
     """
-    __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized', 'line', 'column')
+    __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
+                 'line', 'column', 'assuming', 'assuming_proper', 'inferring')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,

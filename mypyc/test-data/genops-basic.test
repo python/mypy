@@ -612,7 +612,7 @@ def f(x):
     r2 :: object
     r3 :: short_int
     r4, r5 :: object
-    r6, r7 :: None
+    r6 :: None
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
@@ -620,9 +620,8 @@ L0:
     r3 = 5
     r4 = box(short_int, r3)
     r5 = py_call(r2, r4)
-    r6 = unbox(None, r5)
-    r7 = None
-    return r7
+    r6 = None
+    return r6
 
 [case testPrint]
 import builtins
@@ -635,7 +634,7 @@ def f(x):
     r1 :: object
     r2 :: str
     r3, r4, r5 :: object
-    r6, r7 :: None
+    r6 :: None
 L0:
     r0 = 5
     r1 = builtins :: module
@@ -643,9 +642,8 @@ L0:
     r3 = getattr r1, r2
     r4 = box(short_int, r0)
     r5 = py_call(r3, r4)
-    r6 = unbox(None, r5)
-    r7 = None
-    return r7
+    r6 = None
+    return r6
 
 [case testUnicodeLiteral]
 def f() -> str:
@@ -1116,16 +1114,14 @@ def call_python_method_with_keyword_args(xs, first, second):
     r6 :: object
     r7 :: dict
     r8 :: object
-    r9 :: None
-    r10 :: short_int
-    r11 :: str
-    r12 :: object
-    r13, r14 :: str
-    r15 :: tuple
-    r16, r17 :: object
-    r18 :: dict
-    r19 :: object
-    r20 :: None
+    r9 :: short_int
+    r10 :: str
+    r11 :: object
+    r12, r13 :: str
+    r14 :: tuple
+    r15, r16 :: object
+    r17 :: dict
+    r18 :: object
 L0:
     r0 = 0
     r1 = unicode_4 :: static  ('insert')
@@ -1136,18 +1132,16 @@ L0:
     r6 = box(int, first)
     r7 = {r3: r6}
     r8 = py_call_with_kwargs(r2, r5, r7)
-    r9 = unbox(None, r8)
-    r10 = 1
-    r11 = unicode_4 :: static  ('insert')
-    r12 = getattr xs, r11
-    r13 = unicode_5 :: static  ('x')
-    r14 = unicode_6 :: static  ('i')
-    r15 = () :: tuple
-    r16 = box(int, second)
-    r17 = box(short_int, r10)
-    r18 = {r13: r16, r14: r17}
-    r19 = py_call_with_kwargs(r12, r15, r18)
-    r20 = unbox(None, r19)
+    r9 = 1
+    r10 = unicode_4 :: static  ('insert')
+    r11 = getattr xs, r10
+    r12 = unicode_5 :: static  ('x')
+    r13 = unicode_6 :: static  ('i')
+    r14 = () :: tuple
+    r15 = box(int, second)
+    r16 = box(short_int, r9)
+    r17 = {r12: r15, r13: r16}
+    r18 = py_call_with_kwargs(r11, r14, r17)
     return xs
 
 [case testObjectAsBoolean]
@@ -1357,7 +1351,7 @@ def f():
     r4 :: object
     r5 :: str
     r6, r7, r8 :: object
-    r9, r10 :: None
+    r9 :: None
 L0:
     r0 = __main__.globals :: static
     r1 = unicode_1 :: static  ('x')
@@ -1368,9 +1362,8 @@ L0:
     r6 = getattr r4, r5
     r7 = box(int, r3)
     r8 = py_call(r6, r7)
-    r9 = unbox(None, r8)
-    r10 = None
-    return r10
+    r9 = None
+    return r9
 def __top_level__():
     r0, r1 :: object
     r2 :: bool
@@ -1388,7 +1381,7 @@ def __top_level__():
     r14 :: object
     r15 :: str
     r16, r17, r18 :: object
-    r19, r20 :: None
+    r19 :: None
 L0:
     r0 = builtins :: module
     r1 = builtins.None :: object
@@ -1413,9 +1406,8 @@ L2:
     r16 = getattr r14, r15
     r17 = box(int, r13)
     r18 = py_call(r16, r17)
-    r19 = unbox(None, r18)
-    r20 = None
-    return r20
+    r19 = None
+    return r19
 
 [case testCallOverloaded]
 import m
@@ -2674,15 +2666,12 @@ def g_a_obj.__call__(__mypyc_self__):
     r2 :: str
     r3 :: object
     r4 :: str
-    r5, r6 :: object
-    r7 :: None
-    r8, r9 :: object
-    r10 :: None
+    r5, r6, r7, r8 :: object
+    r9 :: str
+    r10 :: object
     r11 :: str
-    r12 :: object
-    r13 :: str
-    r14, r15 :: object
-    r16, r17 :: None
+    r12, r13 :: object
+    r14 :: None
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.g
@@ -2692,18 +2681,15 @@ L0:
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
-    r7 = unbox(None, r6)
-    r8 = r0.f
-    r9 = py_call(r8)
-    r10 = unbox(None, r9)
-    r11 = unicode_5 :: static  ('Exited')
-    r12 = builtins :: module
-    r13 = unicode_4 :: static  ('print')
-    r14 = getattr r12, r13
-    r15 = py_call(r14, r11)
-    r16 = unbox(None, r15)
-    r17 = None
-    return r17
+    r7 = r0.f
+    r8 = py_call(r7)
+    r9 = unicode_5 :: static  ('Exited')
+    r10 = builtins :: module
+    r11 = unicode_4 :: static  ('print')
+    r12 = getattr r10, r11
+    r13 = py_call(r12, r9)
+    r14 = None
+    return r14
 def a(f):
     f :: object
     r0 :: __main__.a_env
@@ -2739,15 +2725,12 @@ def g_b_obj.__call__(__mypyc_self__):
     r2 :: str
     r3 :: object
     r4 :: str
-    r5, r6 :: object
-    r7 :: None
-    r8, r9 :: object
-    r10 :: None
+    r5, r6, r7, r8 :: object
+    r9 :: str
+    r10 :: object
     r11 :: str
-    r12 :: object
-    r13 :: str
-    r14, r15 :: object
-    r16, r17 :: None
+    r12, r13 :: object
+    r14 :: None
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.g
@@ -2757,18 +2740,15 @@ L0:
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
-    r7 = unbox(None, r6)
-    r8 = r0.f
-    r9 = py_call(r8)
-    r10 = unbox(None, r9)
-    r11 = unicode_6 :: static  ('---')
-    r12 = builtins :: module
-    r13 = unicode_4 :: static  ('print')
-    r14 = getattr r12, r13
-    r15 = py_call(r14, r11)
-    r16 = unbox(None, r15)
-    r17 = None
-    return r17
+    r7 = r0.f
+    r8 = py_call(r7)
+    r9 = unicode_6 :: static  ('---')
+    r10 = builtins :: module
+    r11 = unicode_4 :: static  ('print')
+    r12 = getattr r10, r11
+    r13 = py_call(r12, r9)
+    r14 = None
+    return r14
 def b(f):
     f :: object
     r0 :: __main__.b_env
@@ -2805,7 +2785,7 @@ def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__myp
     r3 :: object
     r4 :: str
     r5, r6 :: object
-    r7, r8 :: None
+    r7 :: None
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.d
@@ -2815,9 +2795,8 @@ L0:
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
-    r7 = unbox(None, r6)
-    r8 = None
-    return r8
+    r7 = None
+    return r7
 def __mypyc_c_decorator_helper__():
     r0 :: __main__.__mypyc_c_decorator_helper___env
     r1 :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
@@ -2832,10 +2811,8 @@ def __mypyc_c_decorator_helper__():
     r12 :: str
     r13 :: object
     r14 :: str
-    r15, r16 :: object
-    r17 :: None
-    r18, r19 :: object
-    r20, r21 :: None
+    r15, r16, r17, r18 :: object
+    r19 :: None
 L0:
     r0 = __mypyc_c_decorator_helper___env()
     r1 = __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj()
@@ -2854,12 +2831,10 @@ L0:
     r14 = unicode_4 :: static  ('print')
     r15 = getattr r13, r14
     r16 = py_call(r15, r12)
-    r17 = unbox(None, r16)
-    r18 = r0.d
-    r19 = py_call(r18)
-    r20 = unbox(None, r19)
-    r21 = None
-    return r21
+    r17 = r0.d
+    r18 = py_call(r17)
+    r19 = None
+    return r19
 def __top_level__():
     r0, r1 :: object
     r2 :: bool
@@ -2959,15 +2934,12 @@ def g_a_obj.__call__(__mypyc_self__):
     r2 :: str
     r3 :: object
     r4 :: str
-    r5, r6 :: object
-    r7 :: None
-    r8, r9 :: object
-    r10 :: None
+    r5, r6, r7, r8 :: object
+    r9 :: str
+    r10 :: object
     r11 :: str
-    r12 :: object
-    r13 :: str
-    r14, r15 :: object
-    r16, r17 :: None
+    r12, r13 :: object
+    r14 :: None
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.g
@@ -2977,18 +2949,15 @@ L0:
     r4 = unicode_4 :: static  ('print')
     r5 = getattr r3, r4
     r6 = py_call(r5, r2)
-    r7 = unbox(None, r6)
-    r8 = r0.f
-    r9 = py_call(r8)
-    r10 = unbox(None, r9)
-    r11 = unicode_5 :: static  ('Exited')
-    r12 = builtins :: module
-    r13 = unicode_4 :: static  ('print')
-    r14 = getattr r12, r13
-    r15 = py_call(r14, r11)
-    r16 = unbox(None, r15)
-    r17 = None
-    return r17
+    r7 = r0.f
+    r8 = py_call(r7)
+    r9 = unicode_5 :: static  ('Exited')
+    r10 = builtins :: module
+    r11 = unicode_4 :: static  ('print')
+    r12 = getattr r10, r11
+    r13 = py_call(r12, r9)
+    r14 = None
+    return r14
 def a(f):
     f :: object
     r0 :: __main__.a_env
@@ -3404,14 +3373,13 @@ def f(x):
     r0 :: object
     r1 :: str
     r2, r3, r4 :: object
-    r5 :: int
-    r6 :: None
+    r5 :: None
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('reveal_type')
     r2 = getattr r0, r1
     r3 = box(int, x)
     r4 = py_call(r2, r3)
-    r5 = unbox(int, r4)
-    r6 = None
-    return r6
+    r5 = None
+    return r5
+

@@ -468,15 +468,335 @@ class B(A[Q]):
 a: A[int]
 b: B[str]
 reveal_type(a.g)  # N: Revealed type is 'builtins.int'
---reveal_type(a.gt)  # N: Revealed type is 'builtins.int'
+reveal_type(a.gt)  # N: Revealed type is 'builtins.int*'
 reveal_type(a.f())  # N: Revealed type is 'builtins.int'
 reveal_type(a.ft())  # N: Revealed type is '__main__.A*[builtins.int]'
 reveal_type(b.g)  # N: Revealed type is 'builtins.int'
---reveal_type(b.gt)  # N: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(b.gt)  # N: Revealed type is 'builtins.str*'
 reveal_type(b.f())  # N: Revealed type is 'builtins.int'
 reveal_type(b.ft())  # N: Revealed type is '__main__.B*[builtins.str]'
-
 [builtins fixtures/property.pyi]
+
+[case testSelfTypeRestrictedMethod]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class C(Generic[T]):
+    def from_item(self: C[str]) -> None: ...
+
+i: C[int]
+s: C[str]
+
+i.from_item()  # E: Invalid self argument "C[int]" to attribute function "from_item" with type "Callable[[C[str]], None]"
+s.from_item()
+
+[case testSelfTypeRestrictedClassMethod]
+from typing import TypeVar, Generic, Type
+
+T = TypeVar('T')
+class C(Generic[T]):
+    @classmethod
+    def from_item(cls: Type[C[str]]) -> None: ...
+
+class DI(C[int]): ...
+class DS(C[str]): ...
+
+DI().from_item()  # E: Invalid self argument "Type[DI]" to class attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DS().from_item()
+DI.from_item()  # E: Invalid self argument "Type[DI]" to attribute function "from_item" with type "Callable[[Type[C[str]]], None]"
+DS.from_item()
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeRestrictedMethodOverload]
+from typing import TypeVar, Generic, overload, Tuple
+
+T = TypeVar('T')
+class C(Generic[T]):
+    @overload
+    def from_item(self: C[str], item: str) -> None: ...
+    @overload
+    def from_item(self: C[int], item: Tuple[int]) -> None: ...
+    def from_item(self, item):
+        ...
+
+ci: C[int]
+cs: C[str]
+reveal_type(ci.from_item)  # N: Revealed type is 'def (item: Tuple[builtins.int])'
+reveal_type(cs.from_item)  # N: Revealed type is 'def (item: builtins.str)'
+
+[case testSelfTypeRestrictedMethodOverloadFallback]
+from typing import TypeVar, Generic, overload, Callable
+
+T = TypeVar('T')
+class C(Generic[T]):
+    @overload
+    def from_item(self: C[str]) -> str: ...
+    @overload
+    def from_item(self, converter: Callable[[T], str]) -> str: ...
+    def from_item(self, converter):
+        ...
+
+ci: C[int]
+cs: C[str]
+reveal_type(cs.from_item())  # N: Revealed type is 'builtins.str'
+ci.from_item()  # E: Too few arguments for "from_item" of "C"
+
+def conv(x: int) -> str: ...
+def bad(x: str) -> str: ...
+reveal_type(ci.from_item(conv))  # N: Revealed type is 'builtins.str'
+ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
+
+[case testSelfTypeRestrictedMethodOverloadInit]
+from typing import TypeVar
+from lib import P, C
+
+reveal_type(P)  # N: Revealed type is 'Overload(def [T] (use_str: Literal[True]) -> lib.P[builtins.str], def [T] (use_str: Literal[False]) -> lib.P[builtins.int])'
+reveal_type(P(use_str=True))  # N: Revealed type is 'lib.P[builtins.str]'
+reveal_type(P(use_str=False))  # N: Revealed type is 'lib.P[builtins.int]'
+
+reveal_type(C)  # N: Revealed type is 'Overload(def [T] (item: T`1, use_tuple: Literal[False]) -> lib.C[T`1], def [T] (item: T`1, use_tuple: Literal[True]) -> lib.C[builtins.tuple[T`1]])'
+reveal_type(C(0, use_tuple=False))  # N: Revealed type is 'lib.C[builtins.int*]'
+reveal_type(C(0, use_tuple=True))  # N: Revealed type is 'lib.C[builtins.tuple[builtins.int*]]'
+
+T = TypeVar('T')
+class SubP(P[T]):
+    pass
+
+SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
+            # N: Possible overload variants: \
+            # N:     def [T] __init__(self, use_str: Literal[True]) -> SubP[T] \
+            # N:     def [T] __init__(self, use_str: Literal[False]) -> SubP[T]
+
+# This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
+x = SubP(use_str=True)  # E: Need type annotation for 'x'
+reveal_type(x)  # N: Revealed type is '__main__.SubP[Any]'
+y: SubP[str] = SubP(use_str=True)
+
+[file lib.pyi]
+from typing import TypeVar, Generic, overload, Tuple
+from typing_extensions import Literal
+
+T = TypeVar('T')
+class P(Generic[T]):
+    @overload
+    def __init__(self: P[str], use_str: Literal[True]) -> None: ...
+    @overload
+    def __init__(self: P[int], use_str: Literal[False]) -> None: ...
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[T], item: T, use_tuple: Literal[False]) -> None: ...
+    @overload
+    def __init__(self: C[Tuple[T, ...]], item: T, use_tuple: Literal[True]) -> None: ...
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeRestrictedMethodOverloadInitFallBacks]
+from lib import PFallBack, PFallBackAny
+
+t: bool
+xx = PFallBack(t)  # E: Need type annotation for 'xx'
+yy = PFallBackAny(t)  # OK
+
+[file lib.pyi]
+from typing import TypeVar, Generic, overload, Tuple, Any
+from typing_extensions import Literal
+
+class PFallBack(Generic[T]):
+    @overload
+    def __init__(self: PFallBack[str], use_str: Literal[True]) -> None: ...
+    @overload
+    def __init__(self: PFallBack[int], use_str: Literal[False]) -> None: ...
+    @overload
+    def __init__(self, use_str: bool) -> None: ...
+
+class PFallBackAny(Generic[T]):
+    @overload
+    def __init__(self: PFallBackAny[str], use_str: Literal[True]) -> None: ...
+    @overload
+    def __init__(self: PFallBackAny[int], use_str: Literal[False]) -> None: ...
+    @overload
+    def __init__(self: PFallBackAny[Any], use_str: bool) -> None: ...
+[builtins fixtures/bool.pyi]
+
+[case testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash]
+from lib import P
+P(0)
+[file lib.pyi]
+from typing import overload
+
+class P:
+    @overload
+    def __init__(self: Bad, x: int) -> None: ...  # E: Name 'Bad' is not defined
+    @overload
+    def __init__(self) -> None: ...
+
+[case testSelfTypeNarrowBinding]
+from typing import TypeVar, List, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Base(Generic[T]):
+    def get_item(self: Base[List[S]]) -> S: ...
+
+class Sub(Base[List[int]]): ...
+class BadSub(Base[int]): ...
+
+reveal_type(Sub().get_item())  # N: Revealed type is 'builtins.int'
+BadSub().get_item()  # E: Invalid self argument "BadSub" to attribute function "get_item" with type "Callable[[Base[List[S]]], S]"
+[builtins fixtures/list.pyi]
+
+[case testMixinAllowedWithProtocol]
+from typing import TypeVar
+from typing_extensions import Protocol
+
+class Resource(Protocol):
+    def close(self) -> int: ...
+
+class AtomicClose:
+    def atomic_close(self: Resource) -> int:
+        return self.close()
+
+T = TypeVar('T', bound=Resource)
+class Copyable:
+    def copy(self: T) -> T: ...
+
+class File(AtomicClose, Copyable):
+    def close(self) -> int:
+       ...
+
+class Bad(AtomicClose, Copyable):
+    ...
+
+f: File
+b: Bad
+f.atomic_close()  # OK
+b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic_close" with type "Callable[[Resource], int]"
+
+reveal_type(f.copy())  # N: Revealed type is '__main__.File*'
+b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
+
+[case testBadClassLevelDecoratorHack]
+from typing_extensions import Protocol
+from typing import TypeVar, Any
+
+class FuncLike(Protocol):
+    __call__: Any
+F = TypeVar('F', bound=FuncLike)
+
+class Test:
+    def _deco(func: F) -> F: ...
+
+    @_deco
+    def meth(self, x: str) -> int: ...
+
+reveal_type(Test().meth)  # N: Revealed type is 'def (x: builtins.str) -> builtins.int'
+Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
+
+[case testSelfTypeTrickyExample]
+from typing import *
+
+In = TypeVar('In')
+Out = TypeVar('Out')
+Mid = TypeVar('Mid')
+NewOut = TypeVar('NewOut')
+
+class Lnk(Generic[In, Out]):
+    def test(self: Lnk[In, Mid], other: Lnk[Mid, NewOut]) -> Lnk[In, NewOut]: ...
+
+class X: pass
+class Y: pass
+class Z: pass
+
+a: Lnk[X, Y] = Lnk()
+b: Lnk[Y, Z] = Lnk()
+
+a.test(b)
+b.test(a)  # E: Argument 1 to "test" of "Lnk" has incompatible type "Lnk[X, Y]"; expected "Lnk[Z, Y]"
+
+[case testSelfTypeReallyTrickyExample]
+from typing import *
+
+In = TypeVar('In')
+Out = TypeVar('Out')
+Other = TypeVar('Other')
+
+_1 = TypeVar('_1')
+_2 = TypeVar('_2')
+__1 = TypeVar('__1')
+__2 = TypeVar('__2')
+
+class Lnk(Generic[In, Out]):
+    @overload
+    def __rshift__(self, other: Lnk[Out, Other]) -> Lnk[In,Other]: ...
+    @overload
+    def __rshift__(self: Lnk[In, Tuple[_1, _2]],
+                   other: Tuple[Lnk[_1, __1], Lnk[_2, __2]]) -> Lnk[In, Tuple[__1, __2]]: ...
+    def __rshift__(self: Any, other: Any) -> Any:
+        ...
+
+a: Lnk[str, Tuple[str, int]] = Lnk()
+b: Lnk[str, int] = Lnk()
+c: Lnk[int, float] = Lnk()
+
+d: Lnk[str, float] = b >> c  # OK
+e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
+f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
+
+[case testSelfTypeMutuallyExclusiveRestrictions]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def f1(self: Foo[str]) -> None:
+        self.f2()  # E: Invalid self argument "Foo[str]" to attribute function "f2" with type "Callable[[Foo[int]], None]"
+    def f2(self: Foo[int]) -> None:
+        self.f1()  # E: Invalid self argument "Foo[int]" to attribute function "f1" with type "Callable[[Foo[str]], None]"
+
+[case testSelfTypeStructureMetaclassMatch]
+from typing import TypeVar, Type, Generic, cast
+
+Cls = TypeVar('Cls')
+T = TypeVar('T')
+
+class Manager(Generic[Cls]):
+    def create(self: Manager[Type[T]]) -> T: ...
+
+class ModelMeta(type):
+    @property
+    def objects(cls: T) -> Manager[T]: ...
+
+class Model(metaclass=ModelMeta):
+    pass
+
+class Dog(Model): ...
+class Cat(Model): ...
+
+c: Cat = Dog.objects.create()  # E: Incompatible types in assignment (expression has type "Dog", variable has type "Cat")
+d: Dog = Dog.objects.create()
+[builtins fixtures/property.pyi]
+
+[case testSelfTypeProtocolMetaclassMatch]
+from typing import Type, TypeVar, Protocol
+
+class HasX(Protocol):
+    x: int
+
+T = TypeVar('T', bound=HasX)
+
+class Meta(type):
+    def do_x(cls: Type[T]) -> T:
+        cls.x
+        return cls()
+
+class Good(metaclass=Meta):
+    x: int
+class Bad(metaclass=Meta):
+    pass
+
+Good.do_x()
+Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "Callable[[Type[T]], T]"
 
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950

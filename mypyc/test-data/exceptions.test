@@ -189,9 +189,8 @@ def g():
     r6 :: object
     r7 :: str
     r8, r9 :: object
-    r10 :: None
-    r11 :: bool
-    r12, r13 :: None
+    r10 :: bool
+    r11, r12 :: None
 L0:
 L1:
     r0 = builtins :: module
@@ -201,42 +200,41 @@ L1:
 L2:
     r3 = py_call(r2)
     dec_ref r2
-    if is_error(r3) goto L3 (error at g:3) else goto L11
+    if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
     r4 = error_catch
     r5 = unicode_2 :: static  ('weeee')
     r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
-    if is_error(r8) goto L7 (error at g:5) else goto L4
+    if is_error(r8) goto L6 (error at g:5) else goto L4
 L4:
     r9 = py_call(r8, r5)
     dec_ref r8
-    if is_error(r9) goto L7 (error at g:5) else goto L5
+    if is_error(r9) goto L6 (error at g:5) else goto L11
 L5:
-    r10 = unbox(None, r9)
-    dec_ref r9
-    if is_error(r10) goto L7 (error at g:5) else goto L6
+    restore_exc_info r4
+    dec_ref r4
+    goto L8
 L6:
     restore_exc_info r4
     dec_ref r4
-    goto L9
+    r10 = keep_propagating
+    if not r10 goto L9 else goto L7 :: bool
 L7:
-    restore_exc_info r4
-    dec_ref r4
-    r11 = keep_propagating
-    if not r11 goto L10 else goto L8 :: bool
-L8:
     unreachable
+L8:
+    r11 = None
+    return r11
 L9:
-    r12 = None
+    r12 = <error> :: None
     return r12
 L10:
-    r13 = <error> :: None
-    return r13
-L11:
     dec_ref r3
-    goto L9
+    goto L8
+L11:
+    dec_ref r9
+    goto L5
 
 [case testGenopsTryFinally]
 def a() -> str:
@@ -250,96 +248,92 @@ def a():
     r0 :: object
     r1 :: str
     r2, r3 :: object
-    r4 :: None
-    r5, r6 :: str
-    r7 :: tuple[object, object, object]
-    r8 :: str
-    r9 :: tuple[object, object, object]
-    r10 :: str
-    r11 :: tuple[object, object, object]
-    r12 :: str
-    r13 :: object
-    r14 :: str
-    r15, r16 :: object
-    r17 :: None
-    r18, r19 :: bool
-    r20 :: str
+    r4, r5 :: str
+    r6 :: tuple[object, object, object]
+    r7 :: str
+    r8 :: tuple[object, object, object]
+    r9 :: str
+    r10 :: tuple[object, object, object]
+    r11 :: str
+    r12 :: object
+    r13 :: str
+    r14, r15 :: object
+    r16, r17 :: bool
+    r18 :: str
 L0:
 L1:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
-    if is_error(r2) goto L6 (error at a:3) else goto L2
+    if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
     r3 = py_call(r2)
     dec_ref r2
-    if is_error(r3) goto L6 (error at a:3) else goto L3
+    if is_error(r3) goto L5 (error at a:3) else goto L20
 L3:
-    r4 = unbox(None, r3)
-    dec_ref r3
-    if is_error(r4) goto L6 (error at a:3) else goto L4
+    r4 = unicode_2 :: static  ('hi')
+    inc_ref r4
+    r5 = r4
 L4:
-    r5 = unicode_2 :: static  ('hi')
-    inc_ref r5
-    r6 = r5
+    r8 = <error> :: tuple[object, object, object]
+    r6 = r8
+    goto L6
 L5:
-    r9 = <error> :: tuple[object, object, object]
-    r7 = r9
-    goto L7
-L6:
-    r10 = <error> :: str
+    r9 = <error> :: str
+    r5 = r9
+    r10 = error_catch
     r6 = r10
-    r11 = error_catch
-    r7 = r11
+L6:
+    r11 = unicode_3 :: static  ('goodbye!')
+    r12 = builtins :: module
+    r13 = unicode_1 :: static  ('print')
+    r14 = getattr r12, r13
+    if is_error(r14) goto L13 (error at a:6) else goto L7
 L7:
-    r12 = unicode_3 :: static  ('goodbye!')
-    r13 = builtins :: module
-    r14 = unicode_1 :: static  ('print')
-    r15 = getattr r13, r14
-    if is_error(r15) goto L15 (error at a:6) else goto L8
+    r15 = py_call(r14, r11)
+    dec_ref r14
+    if is_error(r15) goto L13 (error at a:6) else goto L21
 L8:
-    r16 = py_call(r15, r12)
-    dec_ref r15
-    if is_error(r16) goto L15 (error at a:6) else goto L9
+    if is_error(r6) goto L11 else goto L9
 L9:
-    r17 = unbox(None, r16)
-    dec_ref r16
-    if is_error(r17) goto L15 (error at a:6) else goto L10
+    reraise_exc; r16 = 0
+    if not r16 goto L13 else goto L22 :: bool
 L10:
-    if is_error(r7) goto L13 else goto L11
+    unreachable
 L11:
-    reraise_exc; r18 = 0
-    if not r18 goto L15 else goto L22 :: bool
+    if is_error(r5) goto L18 else goto L12
 L12:
-    unreachable
+    return r5
 L13:
-    if is_error(r6) goto L20 else goto L14
+    if is_error(r5) goto L14 else goto L23
 L14:
-    return r6
+    if is_error(r6) goto L16 else goto L15
 L15:
-    if is_error(r6) goto L16 else goto L23
+    restore_exc_info r6
+    dec_ref r6
 L16:
-    if is_error(r7) goto L18 else goto L17
+    r17 = keep_propagating
+    if not r17 goto L19 else goto L17 :: bool
 L17:
-    restore_exc_info r7
-    dec_ref r7
+    unreachable
 L18:
-    r19 = keep_propagating
-    if not r19 goto L21 else goto L19 :: bool
+    unreachable
 L19:
-    unreachable
+    r18 = <error> :: str
+    return r18
 L20:
-    unreachable
+    dec_ref r3
+    goto L3
 L21:
-    r20 = <error> :: str
-    return r20
+    dec_ref r15
+    goto L8
 L22:
+    dec_ref r5
     dec_ref r6
-    dec_ref r7
-    goto L12
+    goto L10
 L23:
-    dec_ref r6
-    goto L16
+    dec_ref r5
+    goto L14
 
 [case testDocstring1]
 def lol() -> None:
@@ -347,12 +341,10 @@ def lol() -> None:
     pass
 [out]
 def lol():
-    r0 :: str
-    r1 :: None
+    r0 :: None
 L0:
-    r0 = unicode_1 :: static  ('Hello')
-    r1 = None
-    return r1
+    r0 = None
+    return r0
 
 [case testExceptUndefined1]
 from typing import Any
@@ -483,58 +475,58 @@ def f(b):
     r4 :: object
     r5 :: str
     r6, r7 :: object
-    r8, r9 :: None
-    r10 :: bool
-    r11 :: None
+    r8 :: None
+    r9 :: bool
+    r10 :: None
 L0:
     r0 = unicode_1 :: static  ('a')
     inc_ref r0
     u = r0
 L1:
-    if b goto L11 else goto L12 :: bool
+    if b goto L10 else goto L11 :: bool
 L2:
     r1 = unicode_2 :: static  ('b')
     inc_ref r1
     v = r1
     r2 = v is u
     r3 = !r2
-    if r3 goto L12 else goto L1 :: bool
+    if r3 goto L11 else goto L1 :: bool
 L3:
     r4 = builtins :: module
     r5 = unicode_3 :: static  ('print')
     r6 = getattr r4, r5
-    if is_error(r6) goto L13 (error at f:7) else goto L4
+    if is_error(r6) goto L12 (error at f:7) else goto L4
 L4:
-    if is_error(v) goto L14 else goto L7
+    if is_error(v) goto L13 else goto L7
 L5:
     raise UnboundLocalError("local variable 'v' referenced before assignment")
-    if not r10 goto L10 (error at f:7) else goto L6 :: bool
+    if not r9 goto L9 (error at f:7) else goto L6 :: bool
 L6:
     unreachable
 L7:
     r7 = py_call(r6, v)
     dec_ref r6
     xdec_ref v
-    if is_error(r7) goto L10 (error at f:7) else goto L8
+    if is_error(r7) goto L9 (error at f:7) else goto L14
 L8:
-    r8 = unbox(None, r7)
-    dec_ref r7
-    if is_error(r8) goto L10 (error at f:7) else goto L9
+    r8 = None
+    return r8
 L9:
-    r9 = None
-    return r9
+    r10 = <error> :: None
+    return r10
 L10:
-    r11 = <error> :: None
-    return r11
-L11:
     xdec_ref v
     goto L2
-L12:
+L11:
     dec_ref u
     goto L3
-L13:
+L12:
     xdec_ref v
-    goto L10
-L14:
+    goto L9
+L13:
     dec_ref r6
     goto L5
+L14:
+    dec_ref r7
+    goto L8
+

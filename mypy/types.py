@@ -154,15 +154,23 @@ class TypeAliasType(Type):
     during semantic analysis, but create an instance of this type that records the target alias
     definition node (mypy.nodes.TypeAlias) and type arguments (for generic aliases).
 
-    This is very similar to how TypeInfo vs Instance interact.
+    This is very similar to how TypeInfo vs Instance interact, where a recursive class-based
+    structure like
+        class Node:
+            value: int
+            children: List[Node]
+    can be represented in a tree-like manner.
     """
+
+    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref', '_is_recursive')
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
         self.alias = alias
         self.args = args
         self.type_ref = None  # type: Optional[str]
+        self._is_recursive = None  # type: Optional[bool]
+        super().__init__(line, column)
 
     def _expand_once(self) -> Type:
         """Expand to the target type exactly once.
@@ -175,25 +183,41 @@ class TypeAliasType(Type):
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
+    def _partial_expansion(self) -> Tuple['ProperType', bool]:
+        # Private method mostly for debugging and testing.
+        unroller = UnrollAliasVisitor(set())
+        unrolled = self.accept(unroller)
+        assert isinstance(unrolled, ProperType)
+        return unrolled, unroller.recursed
+
     def expand_all_if_possible(self) -> Optional['ProperType']:
         """Attempt a full expansion of the type alias (including nested aliases).
 
         If the expansion is not possible, i.e. the alias is (mutually-)recursive,
         return None.
         """
-        raise NotImplementedError('TODO')
+        unrolled, recursed = self._partial_expansion()
+        if recursed:
+            return None
+        return unrolled
 
-    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
     @property
-    def can_be_true(self) -> bool:  # type: ignore[override]
-        assert self.alias is not None
-        return self.alias.target.can_be_true
+    def is_recursive(self) -> bool:
+        if self._is_recursive is not None:
+            return self._is_recursive
+        is_recursive = self.expand_all_if_possible() is None
+        self._is_recursive = is_recursive
+        return is_recursive
 
-    # TODO: remove ignore caused by https://github.com/python/mypy/issues/6759
-    @property
-    def can_be_false(self) -> bool:  # type: ignore[override]
-        assert self.alias is not None
-        return self.alias.target.can_be_false
+    def can_be_true_default(self) -> bool:
+        if self.alias is not None:
+            return self.alias.target.can_be_true
+        return super().can_be_true_default()
+
+    def can_be_false_default(self) -> bool:
+        if self.alias is not None:
+            return self.alias.target.can_be_false
+        return super().can_be_false_default()
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_alias_type(self)
@@ -202,6 +226,7 @@ class TypeAliasType(Type):
         return hash((self.alias, tuple(self.args)))
 
     def __eq__(self, other: object) -> bool:
+        # Note: never use this to determine subtype relationships, use is_subtype().
         if not isinstance(other, TypeAliasType):
             return NotImplemented
         return (self.alias == other.alias
@@ -223,7 +248,7 @@ class TypeAliasType(Type):
             assert isinstance(args_list, list)
             args = [deserialize_type(arg) for arg in args_list]
         alias = TypeAliasType(None, args)
-        alias.type_ref = data['type_ref']  # TODO: fix this up in fixup.py.
+        alias.type_ref = data['type_ref']
         return alias
 
     def copy_modified(self, *,
@@ -1688,14 +1713,14 @@ class UnionType(ProperType):
         """
         return all((isinstance(x, UnionType) and x.has_readable_member(name)) or
                    (isinstance(x, Instance) and x.type.has_readable_member(name))
-                   for x in self.relevant_items())
+                   for x in get_proper_types(self.relevant_items()))
 
-    def relevant_items(self) -> List[ProperType]:
+    def relevant_items(self) -> List[Type]:
         """Removes NoneTypes from Unions when strict Optional checking is off."""
         if state.strict_optional:
             return self.items
         else:
-            return [i for i in self.items if not isinstance(i, NoneType)]
+            return [i for i in get_proper_types(self.items) if not isinstance(i, NoneType)]
 
     def serialize(self) -> JsonDict:
         return {'.class': 'UnionType',
@@ -1857,6 +1882,32 @@ class PlaceholderType(ProperType):
         # We should never get here since all placeholders should be replaced
         # during semantic analysis.
         assert False, "Internal error: unresolved placeholder type {}".format(self.fullname)
+
+
+@overload
+def get_proper_type(typ: None) -> None: ...
+@overload
+def get_proper_type(typ: Type) -> ProperType: ...
+
+
+def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
+    if typ is None:
+        return None
+    while isinstance(typ, TypeAliasType):
+        typ = typ._expand_once()
+    assert isinstance(typ, ProperType), typ
+    # TODO: store the name of original type alias on this type, so we can show it in errors.
+    return typ
+
+
+@overload
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
+@overload
+def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
+
+
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
+    return [get_proper_type(t) for t in it]
 
 
 # We split off the type visitor base classes to another module
@@ -2055,6 +2106,26 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return ', '.join(res)
 
 
+class UnrollAliasVisitor(TypeTranslator):
+    def __init__(self, initial_aliases: Set[TypeAliasType]) -> None:
+        self.recursed = False
+        self.initial_aliases = initial_aliases
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        if t in self.initial_aliases:
+            self.recursed = True
+            return AnyType(TypeOfAny.special_form)
+        # Create a new visitor on encountering a new type alias, so that an alias like
+        #     A = Tuple[B, B]
+        #     B = int
+        # will not be detected as recursive on the second encounter of B.
+        subvisitor = UnrollAliasVisitor(self.initial_aliases | {t})
+        result = get_proper_type(t).accept(subvisitor)
+        if subvisitor.recursed:
+            self.recursed = True
+        return result
+
+
 def strip_type(typ: Type) -> ProperType:
     """Make a copy of type without 'debugging info' (function name)."""
     typ = get_proper_type(typ)
@@ -2082,85 +2153,61 @@ def copy_type(t: TP) -> TP:
     return copy.copy(t)
 
 
+class InstantiateAliasVisitor(TypeTranslator):
+    def __init__(self, vars: List[str], subs: List[Type]) -> None:
+        self.replacements = {v: s for (v, s) in zip(vars, subs)}
+
+    def visit_type_alias_type(self, typ: TypeAliasType) -> Type:
+        return typ.copy_modified(args=[t.accept(self) for t in typ.args])
+
+    def visit_unbound_type(self, typ: UnboundType) -> Type:
+        # TODO: stop using unbound type variables for type aliases.
+        # Now that type aliases are very similar to TypeInfos we should
+        # make type variable tracking similar as well. Maybe we can even support
+        # upper bounds etc. for generic type aliases.
+        if typ.name in self.replacements:
+            return self.replacements[typ.name]
+        return typ
+
+    def visit_type_var(self, typ: TypeVarType) -> Type:
+        if typ.name in self.replacements:
+            return self.replacements[typ.name]
+        return typ
+
+
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
-                        newline: int, newcolumn: int) -> ProperType:
+                        newline: int, newcolumn: int) -> Type:
     """Replace type variables in a generic type alias tp with substitutions subs
     resetting context. Length of subs should be already checked.
     """
-    typ_args = get_typ_args(tp)
-    new_args = typ_args[:]
-    for i, arg in enumerate(typ_args):
-        if isinstance(arg, (UnboundType, TypeVarType)):
-            tvar = arg.name  # type: Optional[str]
-        else:
-            tvar = None
-        if tvar and tvar in vars:
-            # Perform actual substitution...
-            new_args[i] = subs[vars.index(tvar)]
-        else:
-            # ...recursively, if needed.
-            new_args[i] = replace_alias_tvars(arg, vars, subs, newline, newcolumn)
-    return set_typ_args(tp, new_args, newline, newcolumn)
+    replacer = InstantiateAliasVisitor(vars, subs)
+    new_tp = tp.accept(replacer)
+    new_tp.line = newline
+    new_tp.column = newcolumn
+    return new_tp
 
 
-def get_typ_args(tp: Type) -> List[Type]:
-    """Get all type arguments from a parametrizable Type."""
-    # TODO: replace this and related functions with proper visitors.
-    tp = get_proper_type(tp)  # TODO: is this really needed?
+class HasTypeVars(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
 
-    if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
-        return []
-    typ_args = (tp.args if isinstance(tp, Instance) else
-                tp.items if not isinstance(tp, CallableType) else
-                tp.arg_types + [tp.ret_type])
-    return cast(List[Type], typ_args)
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return True
 
 
-def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> ProperType:
-    """Return a copy of a parametrizable Type with arguments set to new_args."""
-    tp = get_proper_type(tp)  # TODO: is this really needed?
-
-    if isinstance(tp, Instance):
-        return Instance(tp.type, new_args, line, column)
-    if isinstance(tp, TupleType):
-        return tp.copy_modified(items=new_args)
-    if isinstance(tp, UnionType):
-        return UnionType(new_args, line, column)
-    if isinstance(tp, CallableType):
-        return tp.copy_modified(arg_types=new_args[:-1], ret_type=new_args[-1],
-                                line=line, column=column)
-    return tp
+def has_type_vars(typ: Type) -> bool:
+    """Check if a type contains any type variables (recursively)."""
+    return typ.accept(HasTypeVars())
 
 
-def get_type_vars(typ: Type) -> List[TypeVarType]:
-    """Get all type variables that are present in an already analyzed type,
-    without duplicates, in order of textual appearance.
-    Similar to TypeAnalyser.get_type_var_names.
-    """
-    all_vars = []  # type: List[TypeVarType]
-    for t in get_typ_args(typ):
-        if isinstance(t, TypeVarType):
-            all_vars.append(t)
-        else:
-            all_vars.extend(get_type_vars(t))
-    # Remove duplicates while preserving order
-    included = set()  # type: Set[TypeVarId]
-    tvars = []
-    for var in all_vars:
-        if var.id not in included:
-            tvars.append(var)
-            included.add(var.id)
-    return tvars
-
-
-def flatten_nested_unions(types: Iterable[Type]) -> List[ProperType]:
+def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
     """Flatten nested unions in a type list."""
     # This and similar functions on unions can cause infinite recursion
     # if passed a "pathological" alias like A = Union[int, A] or similar.
     # TODO: ban such aliases in semantic analyzer.
-    flat_items = []  # type: List[ProperType]
-    for tp in get_proper_types(types):
-        if isinstance(tp, UnionType):
+    flat_items = []  # type: List[Type]
+    for tp in types:
+        if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items))
         else:
             flat_items.append(tp)
@@ -2189,13 +2236,15 @@ def is_generic_instance(tp: Type) -> bool:
 
 def is_optional(t: Type) -> bool:
     t = get_proper_type(t)
-    return isinstance(t, UnionType) and any(isinstance(e, NoneType) for e in t.items)
+    return isinstance(t, UnionType) and any(isinstance(get_proper_type(e), NoneType)
+                                            for e in t.items)
 
 
-def remove_optional(typ: Type) -> ProperType:
+def remove_optional(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
-        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneType)])
+        return UnionType.make_union([t for t in typ.items
+                                     if not isinstance(get_proper_type(t), NoneType)])
     else:
         return typ
 
@@ -2209,31 +2258,6 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
     if typ.fallback.type.fullname() != fallback_fullname:
         return False
     return typ.value == value
-
-
-@overload
-def get_proper_type(typ: None) -> None: ...
-@overload
-def get_proper_type(typ: Type) -> ProperType: ...
-
-
-def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
-    if typ is None:
-        return None
-    while isinstance(typ, TypeAliasType):
-        typ = typ._expand_once()
-    assert isinstance(typ, ProperType), typ
-    return typ
-
-
-@overload
-def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
-@overload
-def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
-
-
-def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
-    return [get_proper_type(t) for t in it]
 
 
 names = globals().copy()  # type: Final

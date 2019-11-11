@@ -26,9 +26,7 @@ import time
 import re
 
 from typing import List, Tuple, Any, Optional, Dict, Union, Set, cast
-MYPY = False
-if MYPY:
-    from typing import NoReturn
+from typing_extensions import TYPE_CHECKING, NoReturn, Type
 
 from mypy.main import process_options
 from mypy.errors import CompileError
@@ -42,21 +40,23 @@ from mypyc.ops import format_modules
 
 from mypyc import emitmodule
 
-
-# We can work with either setuptools or distutils, and pick setuptools
-# if it has been imported.
-assert 'setuptools' in sys.modules or 'distutils' in sys.modules, (
-    "'setuptools' or 'distutils' must be imported before mypyc.build")
-USE_SETUPTOOLS = 'setuptools' in sys.modules
-
-if not USE_SETUPTOOLS:
-    from distutils.core import setup, Extension
-    from distutils.command.build_ext import build_ext  # type: ignore
-else:
-    from setuptools import setup, Extension  # type: ignore  # noqa
-    from setuptools.command.build_ext import build_ext  # type: ignore
+if TYPE_CHECKING:
+    from distutils.core import Extension  # noqa
 
 from distutils import sysconfig, ccompiler
+
+
+def get_extension() -> Type['Extension']:
+    # We can work with either setuptools or distutils, and pick setuptools
+    # if it has been imported.
+    use_setuptools = 'setuptools' in sys.modules
+
+    if not use_setuptools:
+        from distutils.core import Extension
+    else:
+        from setuptools import Extension  # type: ignore  # noqa
+
+    return Extension
 
 
 def setup_mypycify_vars() -> None:
@@ -73,7 +73,7 @@ def setup_mypycify_vars() -> None:
         vars['CFLAGS'] = vars['CFLAGS'].replace('-arch i386', '')
 
 
-def fail(message: str) -> 'NoReturn':
+def fail(message: str) -> NoReturn:
     # TODO: Is there something else we should do to fail?
     sys.exit(message)
 
@@ -221,7 +221,7 @@ def build_using_shared_lib(sources: List[BuildSource],
                            deps: List[str],
                            build_dir: str,
                            extra_compile_args: List[str],
-                           ) -> List[Extension]:
+                           ) -> List['Extension']:
     """Produce the list of extension modules when a shared library is needed.
 
     This creates one shared library extension module that all of the
@@ -233,7 +233,7 @@ def build_using_shared_lib(sources: List[BuildSource],
     extension module that exports the real initialization functions in
     Capsules stored in module attributes.
     """
-    extensions = [Extension(
+    extensions = [get_extension()(
         shared_lib_name(group_name),
         sources=cfiles,
         include_dirs=[include_dir()],
@@ -251,7 +251,7 @@ def build_using_shared_lib(sources: List[BuildSource],
         assert source.path
         if os.path.split(source.path)[1] == '__init__.py':
             full_module_name += '.__init__'
-        extensions.append(Extension(
+        extensions.append(get_extension()(
             full_module_name,
             sources=[shim_file],
             extra_compile_args=extra_compile_args,
@@ -263,12 +263,12 @@ def build_using_shared_lib(sources: List[BuildSource],
 def build_single_module(sources: List[BuildSource],
                         cfiles: List[str],
                         extra_compile_args: List[str],
-                        ) -> List[Extension]:
+                        ) -> List['Extension']:
     """Produce the list of extension modules for a standalone extension.
 
     This contains just one module, since there is no need for a shared module.
     """
-    return [Extension(
+    return [get_extension()(
         sources[0].module,
         sources=cfiles,
         include_dirs=[include_dir()],
@@ -291,6 +291,13 @@ def write_file(path: str, contents: str) -> None:
     if old_contents != contents:
         with open(path, 'w', encoding='utf-8') as f:
             f.write(contents)
+
+        # Fudge the mtime forward because otherwise when two builds happen close
+        # together (like in a test) setuptools might not realize the source is newer
+        # than the new artifact.
+        # XXX: This is bad though.
+        new_mtime = os.stat(path).st_mtime + 1
+        os.utime(path, times=(new_mtime, new_mtime))
 
 
 def construct_groups(
@@ -360,7 +367,7 @@ def mypycify(
     multi_file: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
     skip_cgen_input: Optional[Any] = None
-) -> List[Extension]:
+) -> List['Extension']:
     """Main entry point to building using mypyc.
 
     This produces a list of Extension objects that should be passed as the
@@ -493,9 +500,3 @@ def mypycify(
                 group_sources, cfilenames + shared_cfilenames, cflags))
 
     return extensions
-
-
-# For backwards compatibility we define this as an alias.  Previous
-# versions used to require using it, and it is conceivable that future
-# versions will need it also.
-MypycifyBuildExt = build_ext

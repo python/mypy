@@ -23,7 +23,7 @@ import sys
 import time
 import types
 
-from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
+from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
@@ -50,7 +50,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, ChainedPlugin, plugin_types
+from mypy.plugin import Plugin, ChainedPlugin, plugin_types, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
@@ -126,6 +126,7 @@ def build(sources: List[BuildSource],
           fscache: Optional[FileSystemCache] = None,
           stdout: Optional[TextIO] = None,
           stderr: Optional[TextIO] = None,
+          extra_plugins: Optional[Sequence[Plugin]] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -159,9 +160,12 @@ def build(sources: List[BuildSource],
     flush_errors = flush_errors or default_flush_errors
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
+    extra_plugins = extra_plugins or []
 
     try:
-        result = _build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
+        result = _build(
+            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
+        )
         result.errors = messages
         return result
     except CompileError as e:
@@ -182,6 +186,7 @@ def _build(sources: List[BuildSource],
            fscache: Optional[FileSystemCache],
            stdout: TextIO,
            stderr: TextIO,
+           extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(150 * 1000)
@@ -205,7 +210,7 @@ def _build(sources: List[BuildSource],
                     options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version),
                     options.show_absolute_path)
-    plugin, snapshot = load_plugins(options, errors, stdout)
+    plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -250,6 +255,21 @@ def default_data_dir() -> str:
     return os.path.dirname(__file__)
 
 
+def normpath(path: str, options: Options) -> str:
+    """Convert path to absolute; but to relative in bazel mode.
+
+    (Bazel's distributed cache doesn't like filesystem metadata to
+    end up in output files.)
+    """
+    # TODO: Could we always use relpath?  (A worry in non-bazel
+    # mode would be that a moved file may change its full module
+    # name without changing its size, mtime or hash.)
+    if options.bazel:
+        return os.path.relpath(path)
+    else:
+        return os.path.abspath(path)
+
+
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
@@ -269,6 +289,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
                         ('ignore_all', bool),  # if errors were ignored
+                        ('plugin_data', Any),  # config data from plugins
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
@@ -303,6 +324,7 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         meta.get('interface_hash', ''),
         meta.get('version_id', sentinel),
         meta.get('ignore_all', True),
+        meta.get('plugin_data', None),
     )
 
 
@@ -329,23 +351,20 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options,
-                 errors: Errors,
-                 stdout: TextIO,
-                 ) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins_from_config(
+    options: Options, errors: Errors, stdout: TextIO
+) -> Tuple[List[Plugin], Dict[str, str]]:
     """Load all configured plugins.
 
-    Return a plugin that encapsulates all plugins chained together. Always
-    at least include the default plugin (it's last in the chain).
+    Return a list of all the loaded plugins from the config file.
     The second return value is a snapshot of versions/hashes of loaded user
     plugins (for cache validation).
     """
     import importlib
     snapshot = {}  # type: Dict[str, str]
 
-    default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
-        return default_plugin, snapshot
+        return [], snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
@@ -415,6 +434,30 @@ def load_plugins(options: Options,
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
                   file=stdout)
             raise  # Propagate to display traceback
+
+    return custom_plugins, snapshot
+
+
+def load_plugins(options: Options,
+                 errors: Errors,
+                 stdout: TextIO,
+                 extra_plugins: Sequence[Plugin],
+                 ) -> Tuple[Plugin, Dict[str, str]]:
+    """Load all configured plugins.
+
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin (it's last in the chain).
+    The second return value is a snapshot of versions/hashes of loaded user
+    plugins (for cache validation).
+    """
+    custom_plugins, snapshot = load_plugins_from_config(options, errors, stdout)
+
+    custom_plugins += extra_plugins
+
+    default_plugin = DefaultPlugin(options)  # type: Plugin
+    if not custom_plugins:
+        return default_plugin, snapshot
+
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
 
@@ -560,10 +603,7 @@ class BuildManager:
                               and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
-        if options.sqlite_cache:
-            self.metastore = SqliteMetadataStore(_cache_dir_prefix(self))  # type: MetadataStore
-        else:
-            self.metastore = FilesystemMetadataStore(_cache_dir_prefix(self))
+        self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -584,9 +624,10 @@ class BuildManager:
         self.processed_targets = []  # type: List[str]
 
     def dump_stats(self) -> None:
-        self.log("Stats:")
-        for key, value in sorted(self.stats_summary().items()):
-            self.log("{:24}{}".format(key + ":", value))
+        if self.options.dump_build_stats:
+            print("Stats:")
+            for key, value in sorted(self.stats_summary().items()):
+                print("{:24}{}".format(key + ":", value))
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -595,7 +636,7 @@ class BuildManager:
         if not self.shadow_map:
             return path
 
-        path = self.normpath(path)
+        path = normpath(path, self.options)
 
         previously_checked = path in self.shadow_equivalence_map
         if not previously_checked:
@@ -622,20 +663,6 @@ class BuildManager:
             return 0
         else:
             return int(self.metastore.getmtime(path))
-
-    def normpath(self, path: str) -> str:
-        """Convert path to absolute; but to relative in bazel mode.
-
-        (Bazel's distributed cache doesn't like filesystem metadata to
-        end up in output files.)
-        """
-        # TODO: Could we always use relpath?  (A worry in non-bazel
-        # mode would be that a moved file may change its full module
-        # name without changing its size, mtime or hash.)
-        if self.options.bazel:
-            return os.path.relpath(path)
-        else:
-            return os.path.abspath(path)
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -838,7 +865,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 
     for id in rdeps:
         if id != FAKE_ROOT_MODULE:
-            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager.options)
         else:
             deps_json = DEPS_ROOT_FILE
         assert deps_json
@@ -868,7 +895,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
         error = True
 
     if error:
-        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
         manager.errors.report(0, 0, "Error writing fine-grained dependencies cache",
                               blocker=True)
 
@@ -935,7 +962,7 @@ PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
     if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
-        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
         manager.errors.report(0, 0, "Error writing plugins snapshot",
                               blocker=True)
 
@@ -1045,18 +1072,26 @@ def _load_json_file(file: str, manager: BuildManager,
         return result
 
 
-def _cache_dir_prefix(manager: BuildManager) -> str:
+def _cache_dir_prefix(options: Options) -> str:
     """Get current cache directory (or file if id is given)."""
-    if manager.options.bazel:
+    if options.bazel:
         # This is needed so the cache map works.
         return os.curdir
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
+    cache_dir = options.cache_dir
+    pyversion = options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
     return base
 
 
-def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
+def create_metastore(options: Options) -> MetadataStore:
+    """Create the appropriate metadata store."""
+    if options.sqlite_cache:
+        return SqliteMetadataStore(_cache_dir_prefix(options))
+    else:
+        return FilesystemMetadataStore(_cache_dir_prefix(options))
+
+
+def get_cache_names(id: str, path: str, options: Options) -> Tuple[str, str, Optional[str]]:
     """Return the file names for the cache files.
 
     Args:
@@ -1069,8 +1104,8 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON, the
       data JSON, and the fine-grained deps JSON, respectively.
     """
-    if manager.options.cache_map:
-        pair = manager.options.cache_map.get(manager.normpath(path))
+    if options.cache_map:
+        pair = options.cache_map.get(normpath(path, options))
     else:
         pair = None
     if pair is not None:
@@ -1079,7 +1114,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
         # prefix directory.
         # Solve this by rewriting the paths as relative to the root dir.
         # This only makes sense when using the filesystem backed cache.
-        root = _cache_dir_prefix(manager)
+        root = _cache_dir_prefix(options)
         return (os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None)
     prefix = os.path.join(*id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
@@ -1087,7 +1122,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
         prefix = os.path.join(prefix, '__init__')
 
     deps_json = None
-    if manager.options.cache_fine_grained:
+    if options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
@@ -1105,7 +1140,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
@@ -1162,6 +1197,15 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log('Metadata abandoned for {}: plugins differ'.format(id))
             return None
+    # So that plugins can return data with tuples in it without
+    # things silently always invalidating modules, we round-trip
+    # the config data. This isn't beautiful.
+    plugin_data = json.loads(json.dumps(
+        manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True))
+    ))
+    if m.plugin_data != plugin_data:
+        manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
+        return None
 
     manager.add_stats(fresh_metas=1)
     return m
@@ -1202,7 +1246,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
-        path = manager.normpath(path)
+        path = normpath(path, manager.options)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1284,12 +1328,13 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'interface_hash': meta.interface_hash,
                 'version_id': manager.version_id,
                 'ignore_all': meta.ignore_all,
+                'plugin_data': meta.plugin_data,
             }
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
                 meta_str = json.dumps(meta_dict)
-            meta_json, _, _ = get_cache_names(id, path, manager)
+            meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
             t1 = time.time()
@@ -1352,7 +1397,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     bazel = manager.options.bazel
 
     # Obtain file paths.
-    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
     manager.log('Writing {} {} {} {}'.format(
         id, path, meta_json, data_json))
 
@@ -1365,6 +1410,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     data = tree.serialize()
     data_str = json_dumps(data, manager.options.debug_cache)
     interface_hash = compute_hash(data_str)
+
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
 
     # Obtain and set up metadata
     try:
@@ -1429,6 +1476,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
+            'plugin_data': plugin_data,
             }
 
     # Write meta cache file
@@ -1452,7 +1500,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     # We don't delete .deps files on errors, since the dependencies
     # are mostly generated from other files and the metadata is
     # tracked separately.
-    meta_path, data_path, _ = get_cache_names(id, path, manager)
+    meta_path, data_path, _ = get_cache_names(id, path, manager.options)
     cache_paths = [meta_path, data_path]
     manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 

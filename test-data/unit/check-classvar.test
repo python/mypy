@@ -280,3 +280,48 @@ class A:
 [out]
 main:2: note: Revealed type is 'builtins.int'
 main:3: error: Cannot assign to class variable "x" via instance
+
+[case testClassVarWithGeneric]
+from typing import ClassVar, Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    x: ClassVar[T]
+    @classmethod
+    def foo(cls) -> T:
+        return cls.x  # OK
+
+A.x  # E: Access to generic class variables is ambiguous
+A.x = 1  # E: Access to generic class variables is ambiguous
+A[int].x  # E: Access to generic class variables is ambiguous
+
+class Bad(A[int]):
+    pass
+Bad.x  # E: Access to generic class variables is ambiguous
+
+class Good(A[int]):
+    x = 42
+reveal_type(Good.x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassVarWithNestedGeneric]
+from typing import ClassVar, Generic, Tuple, TypeVar, Union, Type
+T = TypeVar('T')
+U = TypeVar('U')
+class A(Generic[T, U]):
+    x: ClassVar[Union[T, Tuple[U, Type[U]]]]
+    @classmethod
+    def foo(cls) -> Union[T, Tuple[U, Type[U]]]:
+        return cls.x  # OK
+
+A.x  # E: Access to generic class variables is ambiguous
+A.x = 1  # E: Access to generic class variables is ambiguous
+A[int, str].x  # E: Access to generic class variables is ambiguous
+
+class Bad(A[int, str]):
+    pass
+Bad.x  # E: Access to generic class variables is ambiguous
+
+class Good(A[int, str]):
+    x = 42
+reveal_type(Good.x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]

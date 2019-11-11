@@ -3093,3 +3093,28 @@ def test() -> None:
     if x == 2:  # OK
         ...
 [builtins fixtures/bool.pyi]
+
+[case testNegativeIntLiteral]
+from typing_extensions import Literal
+
+a: Literal[-2] = -2
+b: Literal[-1] = -1
+c: Literal[0] = 0
+d: Literal[1] = 1
+e: Literal[2] = 2
+[out]
+[builtins fixtures/float.pyi]
+
+[case testNegativeIntLiteralWithFinal]
+from typing_extensions import Literal, Final
+
+ONE: Final = 1
+x: Literal[-1] = -ONE
+
+TWO: Final = 2
+THREE: Final = 3
+
+err_code = -TWO
+if bool():
+    err_code = -THREE
+[builtins fixtures/float.pyi]
