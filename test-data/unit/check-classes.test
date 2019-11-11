@@ -3715,7 +3715,7 @@ class A: pass
 class B(A): pass
 class C(B): pass
 class D(A, B): pass # E: Cannot determine consistent method resolution order (MRO) for "D"
-class E(C, D): pass # E: Cannot determine consistent method resolution order (MRO) for "E"
+class E(C, D): pass
 
 [case testInconsistentMroLocalRef]
 class A: pass
