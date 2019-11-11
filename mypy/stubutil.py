@@ -11,7 +11,7 @@ import re
 from types import ModuleType
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, Iterator, AnyStr, Union, overload
+from typing import Optional, Tuple, List, Iterator, Union, overload
 
 
 # Modules that may fail when imported, or that may have side effects.
@@ -191,8 +191,10 @@ def fail_missing(mod: str) -> None:
 @overload
 def remove_misplaced_type_comments(source: bytes) -> bytes: ...
 
+
 @overload
 def remove_misplaced_type_comments(source: str) -> str: ...
+
 
 def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, bytes]:
     """Remove comments from source that could be understood as misplaced type comments.
