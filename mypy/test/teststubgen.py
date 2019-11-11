@@ -570,7 +570,7 @@ class StubgenPythonSuite(DataSuite):
 
     def add_file(self, path: str, result: List[str], header: bool) -> None:
         if not os.path.exists(path):
-            result.append('<%s was not generated>' % path)
+            result.append('<%s was not generated>' % path.replace('\\', '/'))
             return
         if header:
             result.append('# {}'.format(path[4:]))

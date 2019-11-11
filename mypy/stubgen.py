@@ -1066,8 +1066,14 @@ def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
 
 
 def is_blacklisted_path(path: str) -> bool:
-    return any(substr in (path + '\n')
+    return any(substr in (normalize_path_separators(path) + '\n')
                for substr in BLACKLIST)
+
+
+def normalize_path_separators(path: str) -> str:
+    if sys.platform == 'win32':
+        return path.replace('\\', '/')
+    return path
 
 
 def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[List[StubSource],
