@@ -937,3 +937,35 @@ t: Type[Union[B, C]]
 x = t.meth()[0]
 reveal_type(x)  # N: Revealed type is 'Union[__main__.B*, __main__.C*]'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testSelfTypeClassMethodOverloadedOnInstance]
+from typing import Optional, Type, TypeVar, overload, Union
+
+Id = int
+
+A = TypeVar("A", bound=AClass)
+
+class AClass:
+    @overload
+    @classmethod
+    def delete(cls: Type[A], id: Id, id2: Id) -> Optional[int]: ...
+
+    @overload
+    @classmethod
+    def delete(cls: Type[A], id: A, id2: None = None) -> Optional[int]: ...
+
+    @classmethod
+    def delete(cls: Type[A], id: Union[A, Id], id2: Optional[Id] = None) -> Optional[int]:
+        ...
+
+def foo(x: Type[AClass]) -> None:
+    reveal_type(x.delete)  # N: Revealed type is 'Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass*, id2: None =) -> builtins.int)'
+    y = x()
+    reveal_type(y.delete)  # N: Revealed type is 'Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass*, id2: None =) -> builtins.int)'
+    y.delete(10, 20)
+    y.delete(y)
+
+def bar(x: AClass) -> None:
+    reveal_type(x.delete)  # N: Revealed type is 'Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass*, id2: None =) -> builtins.int)'
+    x.delete(10, 20)
+[builtins fixtures/classmethod.pyi]
