@@ -32,6 +32,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.build import BuildSource
 from mypy.fscache import FileSystemCache
+from mypy.util import write_junit_xml
 
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
@@ -166,7 +167,7 @@ def generate_c(sources: List[BuildSource],
                options: Options,
                groups: emitmodule.Groups,
                fscache: FileSystemCache,
-               compiler_options: Optional[CompilerOptions] = None
+               compiler_options: CompilerOptions,
                ) -> Tuple[List[List[Tuple[str, str]]], str]:
     """Drive the actual core compilation step.
 
@@ -176,35 +177,48 @@ def generate_c(sources: List[BuildSource],
 
     Returns the C source code and (for debugging) the pretty printed IR.
     """
-    compiler_options = compiler_options or CompilerOptions()
+    t0 = time.time()
 
     # Do the actual work now
-    t0 = time.time()
+    serious = False
+    result = None
     try:
         result = emitmodule.parse_and_typecheck(
             sources, options, compiler_options, groups, fscache)
+        messages = result.errors
     except CompileError as e:
-        for line in e.messages:
-            print(line)
-        fail('Typechecking failure')
+        messages = e.messages
+        if not e.use_stdout:
+            serious = True
 
     t1 = time.time()
     if compiler_options.verbose:
         print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
 
-    errors = Errors()
+    if not messages and result:
+        errors = Errors()
+        modules, ctext = emitmodule.compile_modules_to_c(
+            result, compiler_options=compiler_options, errors=errors, groups=groups)
 
-    modules, ctext = emitmodule.compile_modules_to_c(result,
-                                                     compiler_options=compiler_options,
-                                                     errors=errors,
-                                                     groups=groups)
-    if errors.num_errors:
-        errors.flush_errors()
-        sys.exit(1)
+        if errors.num_errors:
+            messages.extend(errors.new_messages())
 
     t2 = time.time()
     if compiler_options.verbose:
         print("Compiled to C in {:.3f}s".format(t2 - t1))
+
+    # ... you know, just in case.
+    if options.junit_xml:
+        py_version = "{}_{}".format(
+            options.python_version[0], options.python_version[1]
+        )
+        write_junit_xml(
+            t2 - t0, serious, messages, options.junit_xml, py_version, options.platform
+        )
+
+    if messages:
+        print("\n".join(messages))
+        sys.exit(1)
 
     return ctext, '\n'.join(format_modules(modules))
 
