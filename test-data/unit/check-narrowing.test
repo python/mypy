@@ -404,3 +404,44 @@ else:
     reveal_type(x)          # N: Revealed type is '__main__.B'
     reveal_type(x.model)    # N: Revealed type is '__main__.Model[builtins.str]'
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowingParentsHierarchyTypedDict]
+# flags: --warn-unreachable
+from typing import Union
+from typing_extensions import TypedDict, Literal
+from enum import Enum
+
+class Key(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+class Parent1(TypedDict):
+    model: Model1
+    foo: int
+
+class Parent2(TypedDict):
+    model: Model2
+    bar: str
+
+class Model1(TypedDict):
+    key: Literal[Key.A]
+
+class Model2(TypedDict):
+    key: Literal[Key.B]
+
+x: Union[Parent1, Parent2]
+if x["model"]["key"] is Key.A:
+    reveal_type(x)              # N: Revealed type is 'TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int})'
+    reveal_type(x["model"])     # N: Revealed type is 'TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]})'
+else:
+    reveal_type(x)              # N: Revealed type is 'TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})'
+    reveal_type(x["model"])     # N: Revealed type is 'TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})'
+
+y: Union[Parent1, Parent2]
+if y["model"]["key"] is Key.C:
+    reveal_type(y)              # E: Statement is unreachable
+    reveal_type(y["model"])
+else:
+    reveal_type(y)              # N: Revealed type is 'Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]'
+    reveal_type(y["model"])     # N: Revealed type is 'Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]'

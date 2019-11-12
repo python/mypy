@@ -79,7 +79,6 @@ from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode
 
 T = TypeVar('T')
-
 T_contra = TypeVar('T_contra', contravariant=True)
 
 DEFAULT_LAST_PASS = 1  # type: Final  # Pass numbers start at 0
@@ -3888,8 +3887,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         'foo' can be further refined from Union[A, B] into just B.
 
         We perform this kind of "parent narrowing" for member lookup expressions and indexing
-        expressions into tuples, namedtuples, and typeddicts. This narrowing is also performed
-        only once, for the immediate parents of any "lookup" expressions in `new_types`.
+        expressions into tuples, namedtuples, and typeddicts. We repeat this narrowing
+        recursively if the parent is also a "lookup expression". So for example, if we have
+        the expression "foo['bar'].baz[0]", we'd potentially end up refining types for the
+        expressions "foo", "foo['bar']", and "foo['bar'].baz".
 
         We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
         """
@@ -3928,7 +3929,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 target_type: TypingType[SupportsLookup[T]],
                 keys: List[T],
         ) -> Callable[[ProperType], Optional[Type]]:
-            def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+            # For more details on why this accepts 'object' instead of Type
+            # or ProperType, see https://github.com/python/mypy/issues/7932
+            def replay_lookup(new_parent_type: object) -> Optional[Type]:
                 if not isinstance(new_parent_type, target_type):
                     return None
                 member_types = []
