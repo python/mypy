@@ -460,8 +460,8 @@ def process_options(args: List[str],
         '--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
         default='normal', help="How to treat imports (default normal)")
     add_invertible_flag(
-        '--no-follow-imports-for-stubs', dest='follow_imports_for_stubs', default=True,
-        help="Ignore the --follow-imports setting for stub (.pyi) files",
+        '--follow-imports-for-stubs', default=False,
+        help="Respect the --follow-imports setting even for stub (.pyi) files",
         group=imports_group)
     imports_group.add_argument(
         '--python-executable', action='store', metavar='EXECUTABLE',
