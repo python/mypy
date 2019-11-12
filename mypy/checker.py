@@ -3745,6 +3745,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     elif (isinstance(vartype, Instance) and
                             vartype.type.fullname() == 'builtins.type'):
                         vartype = self.named_type('builtins.object')
+                    elif (isinstance(vartype, TypeVarType)):
+                        vartype = vartype.upper_bound
                     else:
                         # Any other object whose type we don't know precisely
                         # for example, Any or a custom metaclass.
