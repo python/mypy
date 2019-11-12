@@ -1979,6 +1979,33 @@ def foo(x: T, y: int) -> T:
     C(y)  # OK
     C[T](y)  # E: Argument 1 to "C" has incompatible type "int"; expected "T"
     C[T].f(y)  # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "T"
+    C[T].f(x)  # OK
+    return x
+[builtins fixtures/classmethod.pyi]
+
+# TODO: enable this when #7935 is fixed.
+[case testGenericClassInGenericFunctionOverloadedConstructor-skip]
+from typing import TypeVar, Generic, overload
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @overload
+    def __new__(cls) -> C[None]: ...
+    @overload
+    def __new__(cls, item: T) -> C[T]: ...
+    def __new__(cls, item=None):
+        ...
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+def foo(x: T, y: int) -> T:
+    C.f(y)
+    C(y)  # OK
+    C[T](y)  # E: Argument 1 to "C" has incompatible type "int"; expected "T"
+    C[T].f(y)  # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "T"
+    C[T].f(x)  # OK
     return x
 [builtins fixtures/classmethod.pyi]
 
@@ -1995,7 +2022,7 @@ class C(Generic[T]):
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAlternativeConstructorPrecise]
-from typing import Generic, TypeVar, Type, Tuple, Any
+from typing import Generic, TypeVar, Type, Tuple
 
 T = TypeVar('T')
 
@@ -2009,6 +2036,55 @@ class Base(Generic[T]):
         if bool():
             return cls(0), cls(0)  # E: Argument 1 to "Base" has incompatible type "int"; expected "T"
         return cls(item), cls(item)
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAlternativeConstructorPreciseOverloaded]
+from typing import Generic, TypeVar, Type, Tuple, overload, Union
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    Q = TypeVar('Q', bound=Base[T])
+
+    def __init__(self, item: T) -> None: ...
+
+    @overload
+    @classmethod
+    def make_some(cls: Type[Q], item: T) -> Q: ...
+
+    @overload
+    @classmethod
+    def make_some(cls: Type[Q], item: T, n: int) -> Tuple[Q, ...]: ...
+
+    @classmethod
+    def make_some(cls: Type[Q], item: T, n: int = 0) -> Union[Q, Tuple[Q, ...]]:
+        if n:
+            return (cls(item),)
+        return cls(item)
+
+reveal_type(Base.make_some)  # N: Revealed type is 'Overload(def [T] (item: T`1) -> __main__.Base*[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base*[T`1]])'
+reveal_type(Base.make_some(1))  # N: Revealed type is '__main__.Base[builtins.int*]'
+reveal_type(Base.make_some(1, 1))  # N: Revealed type is 'builtins.tuple[__main__.Base[builtins.int*]]'
+
+class Sub(Base[str]): ...
+Sub.make_some(1)  # E: No overload variant of "make_some" of "Base" matches argument type "int" \
+                  # N: Possible overload variant: \
+                  # N:     def make_some(cls, item: str) -> Sub \
+                  # N:     <1 more non-matching overload not shown>
+[builtins fixtures/classmethod.pyi]
+
+[case testNoGenericAccessOnImplicitAttributes]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    @classmethod
+    def meth(cls) -> None:
+        cls.x  # E: Access to generic instance variables via class is ambiguous
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric]

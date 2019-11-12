@@ -240,6 +240,7 @@ def analyze_type_callable_member_access(name: str,
             # This check makes sure that when we encounter an operator, we skip looking up
             # the corresponding method in the current instance to avoid this edge case.
             # See https://github.com/python/mypy/pull/1787 for more info.
+            # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(ret_type, name, mx,
                                                     original_vars=typ.items()[0].variables)
             if result:
@@ -653,7 +654,12 @@ def analyze_class_attribute_access(itype: Instance,
                                    override_info: Optional[TypeInfo] = None,
                                    original_vars: Optional[List[TypeVarDef]] = None
                                    ) -> Optional[Type]:
-    """original_type is the type of E in the expression E.var"""
+    """Analyze access to an attribute on a class object.
+
+    itype is the return type of the class object callable, original_type is the type
+    of E in the expression E.var, original_vars are type variables of the class callable
+    (for generic classes).
+    """
     info = itype.type
     if override_info:
         info = override_info
@@ -721,7 +727,7 @@ def analyze_class_attribute_access(itype: Instance,
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
             if isinstance(t, TypeVarType) or has_type_vars(t):
                 # Exception: access on Type[...], including first argument of class methods is OK.
-                if not isinstance(get_proper_type(mx.original_type), TypeType):
+                if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
                         message = message_registry.GENERIC_CLASS_VAR_ACCESS
                     else:
@@ -800,7 +806,8 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     B.foo()
 
     original_type is the value of the type B in the expression B.foo() or the corresponding
-    component in case if a union (this is used to bind the self-types).
+    component in case if a union (this is used to bind the self-types); original_vars are type
+    variables of the class callable on which the method was accessed.
     """
     # TODO: verify consistency between Q and T
     if is_classmethod:
