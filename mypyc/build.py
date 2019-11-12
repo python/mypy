@@ -411,6 +411,7 @@ def mypycify(
                   speed up compilation, but calls between groups can
                   be slower than calls within a group and can't be
                   inlined.
+        target_dir: The directory to write C output files. Defaults to 'build'.
         include_runtime_files: If not None, whether the mypyc runtime library
                                should be directly #include'd instead of linked
                                separately in order to reduce compiler invocations.
