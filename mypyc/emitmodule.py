@@ -119,6 +119,9 @@ class MypycPlugin(Plugin):
             meta_json = self.metastore.read(meta_path)
             ir_json = self.metastore.read(ir_path)
         except FileNotFoundError:
+            # This could happen if mypyc failed after mypy succeeded
+            # in the previous run or if some cache files got
+            # deleted. No big deal, just fail to load the cache.
             return None
 
         ir_data = json.loads(ir_json)
@@ -127,7 +130,10 @@ class MypycPlugin(Plugin):
         if compute_hash(meta_json) != ir_data['meta_hash']:
             return None
 
-        # Check that all of the source files are present and as expected
+        # Check that all of the source files are present and as
+        # expected. The main situation where this would come up is the
+        # user deleting the build directory without deleting
+        # .mypy_cache, which we should handle gracefully.
         for path, hash in ir_data['src_hashes'].items():
             try:
                 with open(os.path.join(BUILD_DIR, path), 'rb') as f:
@@ -290,7 +296,25 @@ def write_cache(
     group_map: Dict[str, Optional[str]],
     ctext: Dict[Optional[str], List[Tuple[str, str]]],
 ) -> None:
-    """Write out the cache information for modules."""
+    """Write out the cache information for modules.
+
+    Each module has the following cache information written (which is
+    in addition to the cache information written by mypy itself):
+      * A serialized version of its mypyc IR, minus the bodies of
+        functions. This allows code that depends on it to use
+        these serialized data structures when compiling against it
+        instead of needing to recompile it. (Compiling against a
+        module requires access to both its mypy and mypyc data
+        structures.)
+      * The hash of the mypy metadata cache file for the module.
+        This is used to ensure that the mypyc cache and the mypy
+        cache are in sync and refer to the same version of the code.
+        This is particularly important if mypyc crashes/errors/is
+        stopped after mypy has written its cache but before mypyc has.
+      * The hashes of all of the source file outputs for the group
+        the module is in. This is so that the module will be
+        recompiled if the source outputs are missing.
+     """
 
     hashes = {}
     for name, files in ctext.items():

@@ -2870,6 +2870,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.load_static_bytes(value)
 
     def is_native_module(self, module: str) -> bool:
+        """Is the given module one compiled by mypyc?"""
         return module in self.mapper.group_map
 
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
