@@ -357,7 +357,8 @@ def mypyc_build(
     *,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
     only_compile_paths: Optional[Iterable[str]] = None,
-    skip_cgen_input: Optional[Any] = None
+    skip_cgen_input: Optional[Any] = None,
+    always_use_shared_lib: bool = False
 ) -> Tuple[emitmodule.Groups, List[Tuple[List[str], List[str]]]]:
     """Do the front and middle end of mypyc building, producing and writing out C source."""
     fscache = FileSystemCache()
@@ -368,7 +369,9 @@ def mypyc_build(
     # of the modules are in package. (Because I didn't want to fuss
     # around with making the single module code handle packages.)
     use_shared_lib = (
-        len(mypyc_sources) > 1 or any('.' in x.module for x in mypyc_sources) or bool(separate)
+        len(mypyc_sources) > 1
+        or any('.' in x.module for x in mypyc_sources)
+        or always_use_shared_lib
     )
 
     groups = construct_groups(mypyc_sources, separate, use_shared_lib)
