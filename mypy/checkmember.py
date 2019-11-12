@@ -204,9 +204,9 @@ def analyze_instance_member_access(name: str,
                 # TODO: use proper treatment of special methods on unions instead
                 #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)
-                signature = check_self_arg(signature, dispatched_type, False, mx.context,
-                                           name, mx.msg)
-            signature = bind_self(signature, mx.self_type)
+                signature = check_self_arg(signature, dispatched_type, method.is_class,
+                                           mx.context, name, mx.msg)
+            signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
         freeze_type_vars(member_type)
@@ -625,6 +625,8 @@ def check_self_arg(functype: FunctionLike,
     if not items:
         return functype
     new_items = []
+    if is_classmethod:
+        dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
@@ -634,8 +636,6 @@ def check_self_arg(functype: FunctionLike,
             return functype
         else:
             selfarg = item.arg_types[0]
-            if is_classmethod:
-                dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
                 new_items.append(item)
     if not new_items:
