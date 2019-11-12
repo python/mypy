@@ -377,7 +377,7 @@ def mypycify(
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
     skip_cgen_input: Optional[Any] = None,
     target_dir: Optional[str] = None,
-    include_runtime_files: Optional[None] = None
+    include_runtime_files: Optional[bool] = None
 ) -> List['Extension']:
     """Main entry point to building using mypyc.
 
