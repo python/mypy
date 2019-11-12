@@ -5,14 +5,14 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set
+from typing import cast, Optional, List, Sequence, Set, Iterable
 import sys
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType
+    copy_type, TypeAliasType, TypeQuery
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -215,23 +215,29 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
-        ids = [x.id for x in func.variables]
-        typearg = get_proper_type(infer_type_arguments(ids, self_param_type,
-                                                       original_type, is_supertype=True)[0])
-        if (is_classmethod and isinstance(typearg, UninhabitedType)
+        all_ids = [x.id for x in func.variables]
+        typeargs = infer_type_arguments(all_ids, self_param_type, original_type,
+                                        is_supertype=True)
+        if (is_classmethod
+                # TODO: why do we need the extra guards here?
+                and any(isinstance(get_proper_type(t), UninhabitedType) for t in typeargs)
                 and isinstance(original_type, (Instance, TypeVarType, TupleType))):
             # In case we call a classmethod through an instance x, fallback to type(x)
-            typearg = get_proper_type(infer_type_arguments(ids, self_param_type,
-                                                           TypeType(original_type),
-                                                           is_supertype=True)[0])
+            typeargs = infer_type_arguments(all_ids, self_param_type, TypeType(original_type),
+                                            is_supertype=True)
+
+        ids = [tid for tid in all_ids
+               if any(tid == t.id for t in get_type_vars(self_param_type))]
+
+        # Technically, some constrains might be unsolvable, make them <nothing>.
+        to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
 
         def expand(target: Type) -> Type:
-            assert typearg is not None
-            return expand_type(target, {func.variables[0].id: typearg})
+            return expand_type(target, {id: to_apply[all_ids.index(id)] for id in ids})
 
         arg_types = [expand(x) for x in func.arg_types[1:]]
         ret_type = expand(func.ret_type)
-        variables = func.variables[1:]
+        variables = [v for v in func.variables if v.id not in ids]
     else:
         arg_types = func.arg_types[1:]
         ret_type = func.ret_type
@@ -587,3 +593,21 @@ def coerce_to_literal(typ: Type) -> ProperType:
             if len(enum_values) == 1:
                 return LiteralType(value=enum_values[0], fallback=typ)
     return typ
+
+
+def get_type_vars(tp: Type) -> List[TypeVarType]:
+    return tp.accept(TypeVarExtractor())
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
+    def __init__(self) -> None:
+        super().__init__(self._merge)
+
+    def _merge(self, iter: Iterable[List[TypeVarType]]) -> List[TypeVarType]:
+        out = []
+        for item in iter:
+            out.extend(item)
+        return out
+
+    def visit_type_var(self, t: TypeVarType) -> List[TypeVarType]:
+        return [t]
