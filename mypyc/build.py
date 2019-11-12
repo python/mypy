@@ -116,26 +116,6 @@ def get_mypy_config(mypy_options: List[str],
     return mypyc_sources, all_sources, options
 
 
-shim_template = """\
-#include <Python.h>
-
-PyMODINIT_FUNC
-PyInit_{modname}(void)
-{{
-    if (!PyImport_ImportModule("{libname}")) return NULL;
-    void *init_func = PyCapsule_Import("{libname}.init_{full_modname}", 0);
-    if (!init_func) {{
-        return NULL;
-    }}
-    return ((PyObject *(*)(void))init_func)();
-}}
-
-// distutils sometimes spuriously tells cl to export CPyInit___init__,
-// so provide that so it chills out
-PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}
-"""
-
-
 def generate_c_extension_shim(
         full_module_name: str, module_name: str, dir_name: str, group_name: str) -> str:
     """Create a C extension shim with a passthrough PyInit function.
@@ -148,6 +128,11 @@ def generate_c_extension_shim(
     """
     cname = '%s.c' % exported_name(full_module_name)
     cpath = os.path.join(dir_name, cname)
+
+    # We load the C extension shim template from a file.
+    # (So that the file could be reused as a bazel template also.)
+    with open(os.path.join(include_dir(), 'module_shim.tmpl')) as f:
+        shim_template = f.read()
 
     write_file(
         cpath,
