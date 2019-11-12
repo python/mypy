@@ -17,10 +17,11 @@ from mypy.build import (
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
+from mypy.fscache import FileSystemCache
 
 from mypyc import genops
 from mypyc.common import (
-    BUILD_DIR, PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
+    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
@@ -86,7 +87,8 @@ class MypycPlugin(Plugin):
         recompile the module so we mark it as stale.
     """
 
-    def __init__(self, options: Options, groups: Groups) -> None:
+    def __init__(
+            self, options: Options, compiler_options: CompilerOptions, groups: Groups) -> None:
         super().__init__(options)
         self.group_map = {}  # type: Dict[str, Tuple[Optional[str], List[str]]]
         for sources, name in groups:
@@ -94,6 +96,7 @@ class MypycPlugin(Plugin):
             for id in modules:
                 self.group_map[id] = (name, modules)
 
+        self.compiler_options = compiler_options
         self.metastore = create_metastore(options)
 
     def report_config_data(
@@ -136,7 +139,7 @@ class MypycPlugin(Plugin):
         # .mypy_cache, which we should handle gracefully.
         for path, hash in ir_data['src_hashes'].items():
             try:
-                with open(os.path.join(BUILD_DIR, path), 'rb') as f:
+                with open(os.path.join(self.compiler_options.target_dir, path), 'rb') as f:
                     contents = f.read()
             except FileNotFoundError:
                 return None
@@ -151,14 +154,20 @@ class MypycPlugin(Plugin):
         return [(10, id, -1) for id in self.group_map.get(file.fullname(), (None, []))[1]]
 
 
-def parse_and_typecheck(sources: List[BuildSource], options: Options,
-                        groups: Groups,
-                        alt_lib_path: Optional[str] = None) -> BuildResult:
+def parse_and_typecheck(
+    sources: List[BuildSource],
+    options: Options,
+    compiler_options: CompilerOptions,
+    groups: Groups,
+    fscache: Optional[FileSystemCache] = None,
+    alt_lib_path: Optional[str] = None
+) -> BuildResult:
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
                    options=options,
                    alt_lib_path=alt_lib_path,
-                   extra_plugins=[MypycPlugin(options, groups)])
+                   fscache=fscache,
+                   extra_plugins=[MypycPlugin(options, compiler_options, groups)])
     if result.errors:
         raise CompileError(result.errors)
     return result
@@ -273,8 +282,9 @@ def compile_ir_to_c(
             continue
         literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            literals, group_modules, source_paths, group_name, mapper.group_map, names,
-            compiler_options.multi_file
+            literals, group_modules, source_paths,
+            group_name, mapper.group_map, names,
+            compiler_options
         )
         ctext[group_name] = generator.generate_c_for_modules()
 
@@ -406,16 +416,13 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
 
 def encode_as_c_string(s: str) -> Tuple[str, int]:
     """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
-    # This is a kind of abusive way to do this...
-    b = s.encode('utf-8')
-    escaped = str(b)[2:-1].replace('"', '\\"')
-    return '"{}"'.format(escaped), len(b)
+    return encode_bytes_as_c_string(s.encode('utf-8'))
 
 
 def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
     """Produce a single-escaped, quoted C string and its size from a bytes"""
     # This is a kind of abusive way to do this...
-    escaped = str(b)[2:-1].replace('"', '\\"')
+    escaped = repr(b)[2:-1].replace('"', '\\"')
     return '"{}"'.format(escaped), len(b)
 
 
@@ -438,7 +445,7 @@ class GroupGenerator:
                  group_name: Optional[str],
                  group_map: Dict[str, Optional[str]],
                  names: NameGenerator,
-                 multi_file: bool) -> None:
+                 compiler_options: CompilerOptions) -> None:
         """Generator for C source for a compilation group.
 
         The code for a compilation group contains an internal and an
@@ -465,7 +472,8 @@ class GroupGenerator:
         self.simple_inits = []  # type: List[Tuple[str, str]]
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
-        self.multi_file = multi_file
+        self.compiler_options = compiler_options
+        self.multi_file = compiler_options.multi_file
 
     @property
     def group_suffix(self) -> str:
@@ -476,10 +484,9 @@ class GroupGenerator:
         multi_file = self.use_shared_lib and self.multi_file
 
         base_emitter = Emitter(self.context)
-        # When not in multi-file mode we just include the runtime
-        # library c files to reduce the number of compiler invocations
-        # needed
-        if not self.multi_file:
+        # Optionally just include the runtime library c files to
+        # reduce the number of compiler invocations needed
+        if self.compiler_options.include_runtime_files:
             base_emitter.emit_line('#include "CPy.c"')
             base_emitter.emit_line('#include "getargs.c"')
         base_emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
