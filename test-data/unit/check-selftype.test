@@ -824,6 +824,46 @@ ab: Union[A, B, C]
 reveal_type(ab.x)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
 
+[case testSelfTypeNoTypeVars]
+from typing import Generic, List, Optional, TypeVar, Any
+
+Q = TypeVar("Q")
+T = TypeVar("T", bound=Super[Any])
+
+class Super(Generic[Q]):
+    @classmethod
+    def meth(cls, arg: List[T]) -> List[T]:
+        pass
+
+class Sub(Super[int]): ...
+
+def test(x: List[Sub]) -> None:
+    reveal_type(Sub.meth(x))  # N: Revealed type is 'builtins.list[__main__.Sub*]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testSelfTypeNoTypeVarsRestrict]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class C(Generic[T]):
+    def limited(self: C[str], arg: S) -> S: ...
+
+reveal_type(C[str]().limited(0))  # N: Revealed type is 'builtins.int*'
+
+[case testSelfTypeMultipleTypeVars]
+from typing import Generic, TypeVar, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+U = TypeVar('U')
+
+class C(Generic[T]):
+    def magic(self: C[Tuple[S, U]]) -> Tuple[T, S, U]: ...
+
+reveal_type(C[Tuple[int, str]]().magic())  # N: Revealed type is 'Tuple[Tuple[builtins.int, builtins.str], builtins.int, builtins.str]'
+
 [case testSelfTypeOnUnion]
 from typing import TypeVar, Union
 
