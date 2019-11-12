@@ -192,6 +192,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
     """
     from mypy.infer import infer_type_arguments
+
     if isinstance(method, Overloaded):
         return cast(F, Overloaded([bind_self(c, original_type, is_classmethod)
                                    for c in method.items()]))
