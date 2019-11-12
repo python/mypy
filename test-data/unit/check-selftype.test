@@ -468,13 +468,13 @@ class B(A[Q]):
 a: A[int]
 b: B[str]
 reveal_type(a.g)  # N: Revealed type is 'builtins.int'
-reveal_type(a.gt)  # N: Revealed type is 'builtins.int*'
+reveal_type(a.gt)  # N: Revealed type is 'builtins.int'
 reveal_type(a.f())  # N: Revealed type is 'builtins.int'
-reveal_type(a.ft())  # N: Revealed type is '__main__.A*[builtins.int]'
+reveal_type(a.ft())  # N: Revealed type is '__main__.A[builtins.int]'
 reveal_type(b.g)  # N: Revealed type is 'builtins.int'
-reveal_type(b.gt)  # N: Revealed type is 'builtins.str*'
+reveal_type(b.gt)  # N: Revealed type is 'builtins.str'
 reveal_type(b.f())  # N: Revealed type is 'builtins.int'
-reveal_type(b.ft())  # N: Revealed type is '__main__.B*[builtins.str]'
+reveal_type(b.ft())  # N: Revealed type is '__main__.B[builtins.str]'
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeRestrictedMethod]
