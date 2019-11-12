@@ -25,7 +25,7 @@ from mypyc.build import construct_groups
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
     use_custom_builtins, MypycDataSuite, assert_test_output,
-    show_c
+    show_c, fudge_dir_mtimes,
 )
 from mypyc.test.test_serialization import check_serialization_roundtrip
 
@@ -40,7 +40,7 @@ files = [
 ]
 
 setup_format = """\
-from distutils.core import setup
+from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
@@ -134,6 +134,11 @@ class TestRun(MypycDataSuite):
             steps = []
 
         for operations in steps:
+            # To make sure that any new changes get picked up as being
+            # new by distutils, shift the mtime of all of the
+            # generated artifacts back by a second.
+            fudge_dir_mtimes(WORKDIR, -1)
+
             step += 1
             with chdir_manager('..'):
                 for op in operations:
@@ -162,7 +167,7 @@ class TestRun(MypycDataSuite):
         options.python_version = max(sys.version_info[:2], (3, 6))
         options.export_types = True
         options.preserve_asts = True
-        options.incremental = False
+        options.incremental = self.separate
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -200,6 +205,7 @@ class TestRun(MypycDataSuite):
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
+                groups=groups,
                 alt_lib_path='.')
             errors = Errors()
             compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)

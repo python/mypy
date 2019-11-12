@@ -195,3 +195,11 @@ def show_c(cfiles: List[List[Tuple[str, str]]]) -> None:
             print('== {} =='.format(cfile))
             print_with_line_numbers(ctext)
     heading('End C')
+
+
+def fudge_dir_mtimes(dir: str, delta: int) -> None:
+    for dirpath, _, filenames in os.walk(dir):
+        for name in filenames:
+            path = os.path.join(dirpath, name)
+            new_mtime = os.stat(path).st_mtime + delta
+            os.utime(path, times=(new_mtime, new_mtime))
