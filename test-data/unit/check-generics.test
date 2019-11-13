@@ -2130,7 +2130,7 @@ class B(A):
 [builtins fixtures/classmethod.pyi]
 
 [case testAbstractGenericMethodInference]
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Callable, Generic, TypeVar
 
 A = TypeVar('A')
@@ -2142,7 +2142,7 @@ class TwoTypes(Generic[A, B]):
   def __call__(self) -> B: pass
 
 # TODO - This should extend ABC but test errors that ABC not in abc on import
-class MakeTwoAbstract(Generic[A]):
+class MakeTwoAbstract(ABC, Generic[A]):
 
   @abstractmethod
   def __call__(self, b: B) -> TwoTypes[A, B]: pass
@@ -2152,11 +2152,11 @@ class MakeTwoConcrete(Generic[A]):
   def __call__(self, b: B) -> TwoTypes[A, B]: pass
 
 
-class MakeTwoAbstractSubAbstract(Generic[C], MakeTwoAbstract[C]):
+class MakeTwoGenericSubAbstract(Generic[C], MakeTwoAbstract[C]):
 
   def __call__(self, b: B) -> TwoTypes[C, B]: pass
 
-class MakeTwoConcreteSubAbstract(MakeTwoAbstract[str]):
+class MakeTwoAppliedSubAbstract(MakeTwoAbstract[str]):
 
   def __call__(self, b: B) -> TwoTypes[str, B]: pass
 
@@ -2165,13 +2165,13 @@ class Test():
   def make_two(self,
                 mts: MakeTwoAbstract[A],
                 mte: MakeTwoConcrete[A],
-                mtasa: MakeTwoAbstractSubAbstract[A],
-                mtcsa: MakeTwoConcreteSubAbstract) -> None:
+                mtgsa: MakeTwoGenericSubAbstract[A],
+                mtasa: MakeTwoAppliedSubAbstract) -> None:
     reveal_type(mts.__call__) # N: Revealed type is 'def [B] (b: B`1) -> __main__.TwoTypes[A`-1, B`1]'
     reveal_type(mts(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
     reveal_type(mte.__call__) # N: Revealed type is 'def [B] (b: B`4) -> __main__.TwoTypes[A`-1, B`4]'
     reveal_type(mte(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
-    reveal_type(mtasa.__call__) # N: Revealed type is 'def [B] (b: B`7) -> __main__.TwoTypes[A`-1, B`7]'
-    reveal_type(mtasa(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
-    reveal_type(mtcsa.__call__) # N: Revealed type is 'def [B] (b: B`10) -> __main__.TwoTypes[builtins.str, B`10]'
-    reveal_type(mtcsa(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(mtgsa.__call__) # N: Revealed type is 'def [B] (b: B`7) -> __main__.TwoTypes[A`-1, B`7]'
+    reveal_type(mtgsa(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mtasa.__call__) # N: Revealed type is 'def [B] (b: B`10) -> __main__.TwoTypes[builtins.str, B`10]'
+    reveal_type(mtasa(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
