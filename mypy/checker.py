@@ -5,8 +5,8 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
-    Mapping, Sequence
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Sequence,
+    Iterable, Mapping,
 )
 from typing_extensions import Final
 
@@ -50,7 +50,7 @@ from mypy.typeops import (
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
-    true_only, false_only, function_type,
+    true_only, false_only, function_type, TypeVarExtractor,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -4698,20 +4698,6 @@ def detach_callable(typ: CallableType) -> CallableType:
         ret_type=type_list[-1],
     )
     return out
-
-
-class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
-    def __init__(self) -> None:
-        super().__init__(self._merge)
-
-    def _merge(self, iter: Iterable[List[TypeVarType]]) -> List[TypeVarType]:
-        out = []
-        for item in iter:
-            out.extend(item)
-        return out
-
-    def visit_type_var(self, t: TypeVarType) -> List[TypeVarType]:
-        return [t]
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:

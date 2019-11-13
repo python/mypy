@@ -25,7 +25,7 @@ from mypyc.build import construct_groups
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
     use_custom_builtins, MypycDataSuite, assert_test_output,
-    show_c
+    show_c, fudge_dir_mtimes,
 )
 from mypyc.test.test_serialization import check_serialization_roundtrip
 
@@ -40,7 +40,7 @@ files = [
 ]
 
 setup_format = """\
-from distutils.core import setup
+from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
@@ -134,6 +134,11 @@ class TestRun(MypycDataSuite):
             steps = []
 
         for operations in steps:
+            # To make sure that any new changes get picked up as being
+            # new by distutils, shift the mtime of all of the
+            # generated artifacts back by a second.
+            fudge_dir_mtimes(WORKDIR, -1)
+
             step += 1
             with chdir_manager('..'):
                 for op in operations:
@@ -162,7 +167,7 @@ class TestRun(MypycDataSuite):
         options.python_version = max(sys.version_info[:2], (3, 6))
         options.export_types = True
         options.preserve_asts = True
-        options.incremental = False
+        options.incremental = self.separate
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
@@ -179,7 +184,7 @@ class TestRun(MypycDataSuite):
             fn = os.path.relpath(fn, test_temp_dir)
 
             if os.path.basename(fn).startswith('other') and fn.endswith('.py'):
-                name = os.path.basename(fn).split('.')[0]
+                name = fn.split('.')[0].replace(os.sep, '.')
                 module_names.append(name)
                 sources.append(build.BuildSource(fn, name, None))
                 to_delete.append(fn)
@@ -197,12 +202,14 @@ class TestRun(MypycDataSuite):
         groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
+            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
+                compiler_options=compiler_options,
+                groups=groups,
                 alt_lib_path='.')
             errors = Errors()
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result,
                 compiler_options=compiler_options,

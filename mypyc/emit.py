@@ -15,7 +15,7 @@ from mypyc.ops import (
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
     FuncDecl, int_rprimitive, is_optional_type, optional_value_type, all_concrete_classes
 )
-from mypyc.namegen import NameGenerator
+from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
 
 
@@ -167,7 +167,7 @@ class Emitter:
         target_group_name = groups.get(module_name)
         if target_group_name and target_group_name != self.context.group_name:
             self.context.group_deps.add(target_group_name)
-            return 'exports_{}.'.format(target_group_name)
+            return 'exports_{}.'.format(exported_name(target_group_name))
         else:
             return ''
 
