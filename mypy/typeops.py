@@ -74,7 +74,7 @@ def type_object_type_from_function(signature: FunctionLike,
     # see comment in class_callable below). This is mostly useful for annotating library
     # classes such as subprocess.Popen.
     default_self = fill_typevars(info)
-    if not is_new and def_info == info and not info.is_newtype:
+    if not is_new and not info.is_newtype:
         orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
                             and it.arg_kinds[0] == ARG_POS else None) for it in signature.items()]
     else:
@@ -122,16 +122,14 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     init_ret_type = get_proper_type(init_type.ret_type)
     orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
+    explicit_type = init_ret_type if is_new else orig_self_type
     if (
-        is_new
-        and isinstance(init_ret_type, (Instance, TupleType))
-        # Only use the return type from __new__ if it is actually returning
-        # a subtype of what we would return otherwise.
-        and is_subtype(init_ret_type, default_ret_type, ignore_type_params=True)
+        isinstance(explicit_type, (Instance, TupleType))
+        # Only use the declared return type from __new__ or declared self in __init__
+        # if it is actually returning a subtype of what we would return otherwise.
+        and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
-        ret_type = init_ret_type  # type: Type
-    elif isinstance(orig_self_type, (Instance, TupleType)):
-        ret_type = orig_self_type
+        ret_type = explicit_type  # type: Type
     else:
         ret_type = default_ret_type
 
