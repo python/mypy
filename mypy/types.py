@@ -181,8 +181,9 @@ class TypeAliasType(Type):
         """
         assert self.alias is not None
         if self.alias.no_args:
-            assert isinstance(self.alias.target, ProperType)
-            assert isinstance(self.alias.target, Instance)
+            # We know that no_args=True aliases like L = List must have an instance
+            # as their target.
+            assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
             return self.alias.target.copy_modified(args=self.args)
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)

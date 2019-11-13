@@ -246,13 +246,20 @@ class TypeTranslator(TypeVisitor[Type]):
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 
-    strategy is used to combine results for a series of types
+    strategy is used to combine results for a series of types,
+    common use cases involve a boolean query using `any` or `all`.
 
-    Common use cases involve a boolean query using `any` or `all`
+    Note: this visitor keeps an internal state (tracks type aliases to avoid
+    recursion), so it should *never* be re-used for querying different types,
+    create a new visitor instance instead.
+
+    # TODO: check that we don't have existing violations of this rule.
     """
 
     def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
         self.strategy = strategy
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]].
         self.seen_aliases = set()  # type: Set[TypeAliasType]
 
     def visit_unbound_type(self, t: UnboundType) -> T:

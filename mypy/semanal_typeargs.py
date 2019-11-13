@@ -29,6 +29,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.scope = Scope()
         # Should we also analyze function definitions, or only module top-levels?
         self.recurse_into_functions = True
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]].
         self.seen_aliases = set()  # type: Set[TypeAliasType]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
@@ -54,6 +56,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         super().visit_type_alias_type(t)
         if t in self.seen_aliases:
+            # Avoid infinite recursion on recursive type aliases.
+            # Note: it is fine to skip the aliases we have already seen in non-recursive types,
+            # since errors there have already already reported.
             return
         self.seen_aliases.add(t)
         get_proper_type(t).accept(self)

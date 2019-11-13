@@ -994,6 +994,8 @@ def expand_type_alias(node: TypeAlias, args: List[Type],
     if exp_len == 0 and act_len == 0:
         if no_args:
             assert isinstance(node.target, Instance)  # type: ignore[misc]
+            # Note: this is the only case where we use an eager expansion. See more info about
+            # no_args aliases like L = List in the docstring for TypeAlias class.
             return Instance(node.target.type, [], line=ctx.line, column=ctx.column)
         return TypeAliasType(node, [], line=ctx.line, column=ctx.column)
     if (exp_len == 0 and act_len > 0
