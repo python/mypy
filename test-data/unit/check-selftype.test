@@ -1009,3 +1009,49 @@ def bar(x: AClass) -> None:
     reveal_type(x.delete)  # N: Revealed type is 'Overload(def (id: builtins.int, id2: builtins.int) -> builtins.int, def (id: __main__.AClass*, id2: None =) -> builtins.int)'
     x.delete(10, 20)
 [builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeBadTypeIgnoredInConstructor]
+class Base: ...
+class Sub(Base):
+    def __init__(self: Base) -> None: ...
+
+reveal_type(Sub())  # N: Revealed type is '__main__.Sub'
+
+[case testSelfTypeBadTypeIgnoredInConstructorGeneric]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class Base(Generic[T]): ...
+class Sub(Base[T]):
+    def __init__(self: Base[T], item: T) -> None: ...
+
+reveal_type(Sub(42))  # N: Revealed type is '__main__.Sub[builtins.int*]'
+
+[case testSelfTypeBadTypeIgnoredInConstructorOverload]
+from typing import overload
+
+class Base: ...
+class Sub(Base):
+    @overload
+    def __init__(self: Sub, item: int) -> None: ...
+    @overload
+    def __init__(self: Base) -> None: ...
+    def __init__(self, item=None):
+        ...
+
+reveal_type(Sub)  # N: Revealed type is 'Overload(def (item: builtins.int) -> __main__.Sub, def () -> __main__.Sub)'
+
+[case testSelfTypeBadTypeIgnoredInConstructorAbstract]
+from abc import abstractmethod
+from typing import Protocol
+
+class Blah(Protocol):
+    @abstractmethod
+    def something(self) -> None: ...
+
+class Concrete(Blah):
+    def __init__(self: Blah) -> None: ...
+    def something(self) -> None: ...
+
+Concrete()  # OK
