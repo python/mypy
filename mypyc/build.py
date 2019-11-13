@@ -87,7 +87,7 @@ def get_mypy_config(mypy_options: List[str],
                     ) -> Tuple[List[BuildSource], List[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
     all_sources, options = process_options(mypy_options, fscache=fscache)
-    if only_compile_paths:
+    if only_compile_paths is not None:
         paths_set = set(only_compile_paths)
         mypyc_sources = [s for s in all_sources if s.path in paths_set]
     else:
