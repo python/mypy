@@ -6514,19 +6514,14 @@ def access_after_declaration(self) -> None:
     x = x + 1
 
 [case testIsSubClassNarrowDownTypesOfTypeVariables]
-from typing import TypeVar, Generic
-
-class Foo:
-    int_val: int = 42
-    str_val: str = "hello"
-
-TypeT = TypeVar("TypeT", bound=type)
-
-TypeT1 = TypeVar("TypeT1", bound=Foo)
+from typing import Type, TypeVar, Generic
 
 class Base:
     field: int = 42
 
+TypeT = TypeVar("TypeT", bound=type)
+
+TypeT1 = TypeVar("TypeT1", bound=Type[Base])
 
 class C1:
     def method(self, other: type) -> int:
@@ -6543,9 +6538,9 @@ class C2(Generic[TypeT]):
         return 0
 
 class C3(Generic[TypeT1]):
-    def method(self, other: TypeT) -> int:
+    def method(self, other: TypeT1) -> int:
         if issubclass(other, Base):
-            reveal_type(other)  # N: Revealed type is 'Type[__main__.Base]'
+            reveal_type(other)  # N: Revealed type is 'TypeT1`1'
             return other.field
         return 0
 

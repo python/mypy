@@ -3728,7 +3728,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
-                    return self.infer_issubclass_maps_literal_type(node, expr, type_map)
+                    return self.infer_issubclass_maps(node, expr, type_map)
             elif refers_to_fullname(node.callee, 'builtins.callable'):
                 if len(node.args) != 1:  # the error will be reported elsewhere
                     return {}, {}
@@ -4171,11 +4171,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for expr, type in type_map.items():
                 self.binder.put(expr, type)
 
-    def infer_issubclass_maps_literal_type(self, node: CallExpr,
-                                           expr: Expression,
-                                           type_map: Dict[Expression, Type]
-                                           ) -> Tuple[TypeMap, TypeMap]:
-        """Infer type maps for issubclass calls on literal type."""
+    def infer_issubclass_maps(self, node: CallExpr,
+                              expr: Expression,
+                              type_map: Dict[Expression, Type]
+                              ) -> Tuple[TypeMap, TypeMap]:
+        """Infer type restrictions for an expression in issubclass call."""
         vartype = type_map[expr]
         type = get_isinstance_type(node.args[1], type_map)
         if (isinstance(vartype, TypeVarType)):
