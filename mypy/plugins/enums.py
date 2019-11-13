@@ -92,7 +92,7 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
         # TODO: Consider using the return type of `Enum._generate_next_value_` here?
         return ctx.default_attr_type
 
-    if isinstance(underlying_type, Instance) and underlying_type.type.fullname() == 'enum.auto':
+    if isinstance(underlying_type, Instance) and underlying_type.type.fullname == 'enum.auto':
         # TODO: Deduce the correct inferred type when the user uses 'enum.auto'.
         # We should use the same strategy we end up picking up above.
         return ctx.default_attr_type

@@ -177,7 +177,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.api.defer()
                     else:
                         self.api.record_incomplete_ref()
-                    return PlaceholderType(node.fullname(), self.anal_array(t.args), t.line)
+                    return PlaceholderType(node.fullname, self.anal_array(t.args), t.line)
                 else:
                     if self.api.final_iteration:
                         self.cannot_resolve_type(t)
@@ -189,7 +189,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if node is None:
                 self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
                 return AnyType(TypeOfAny.special_form)
-            fullname = node.fullname()
+            fullname = node.fullname
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
@@ -329,7 +329,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         This handles simple cases like 'int', 'modname.UserClass[str]', etc.
         """
 
-        if len(args) > 0 and info.fullname() == 'builtins.tuple':
+        if len(args) > 0 and info.fullname == 'builtins.tuple':
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
         # Analyze arguments and (usually) construct Instance type. The
@@ -374,7 +374,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         name = sym.fullname
         if name is None:
             assert sym.node is not None
-            name = sym.node.name()
+            name = sym.node.name
         # Option 1:
         # Something with an Any type -- make it an alias for Any in a type
         # context. This is slightly problematic as it allows using the type 'Any'
@@ -403,8 +403,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # `def foo(x: Color.RED) -> None: ...`, we can remove that
         # check entirely.
         if isinstance(sym.node, Var) and sym.node.info and sym.node.info.is_enum:
-            value = sym.node.name()
-            base_enum_short_name = sym.node.info.name()
+            value = sym.node.name
+            base_enum_short_name = sym.node.info.name
             if not defining_literal:
                 msg = message_registry.INVALID_TYPE_RAW_ENUM_VALUE.format(
                     base_enum_short_name, value)
@@ -827,10 +827,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if not self.is_defined_type_var(name, defn)]
         defs = []  # type: List[TypeVarDef]
         for name, tvar in typevars:
-            if not self.tvar_scope.allow_binding(tvar.fullname()):
+            if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
             self.tvar_scope.bind_new(name, tvar)
-            binding = self.tvar_scope.get_binding(tvar.fullname())
+            binding = self.tvar_scope.get_binding(tvar.fullname)
             assert binding is not None
             defs.append(binding)
 
@@ -947,7 +947,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
         if use_generic_error:
             fullname = None  # type: Optional[str]
         else:
-            fullname = t.type.fullname()
+            fullname = t.type.fullname
         any_type = get_omitted_any(disallow_any, fail, note, t, fullname, unexpanded_type)
         t.args = [any_type] * len(t.type.type_vars)
         return
@@ -962,7 +962,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
     if act == '0':
         act = 'none'
     fail('"{}" expects {}, but {} given'.format(
-        t.type.name(), s, act), t, code=codes.TYPE_ARG)
+        t.type.name, s, act), t, code=codes.TYPE_ARG)
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
     # things to be right.
@@ -1013,7 +1013,7 @@ def expand_type_alias(node: TypeAlias, args: List[Type],
     assert typ.alias is not None
     # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
     if (isinstance(typ.alias.target, Instance)  # type: ignore
-            and typ.alias.target.type.fullname() == 'mypy_extensions.FlexibleAlias'):
+            and typ.alias.target.type.fullname == 'mypy_extensions.FlexibleAlias'):
         exp = get_proper_type(typ)
         assert isinstance(exp, Instance)
         return exp.args[-1]

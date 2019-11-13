@@ -126,7 +126,7 @@ def semantic_analysis_for_targets(
             # Already done above.
             continue
         process_top_level_function(analyzer, state, state.id,
-                                   n.node.fullname(), n.node, n.active_typeinfo, patches)
+                                   n.node.fullname, n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)

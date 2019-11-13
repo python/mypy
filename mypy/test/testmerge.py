@@ -181,7 +181,7 @@ class ASTMergeSuite(DataSuite):
         else:
             s = '? ({})'.format(type(node.node))
         if (isinstance(node.node, Var) and node.node.type and
-                not node.node.fullname().startswith('typing.')):
+                not node.node.fullname.startswith('typing.')):
             typestr = self.format_type(node.node.type)
             s += '({})'.format(typestr)
         return s
@@ -203,7 +203,7 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_typeinfo(self, info: TypeInfo) -> List[str]:
-        if info.fullname() == 'enum.Enum':
+        if info.fullname == 'enum.Enum':
             # Avoid noise
             return []
         s = info.dump(str_conv=self.str_conv,

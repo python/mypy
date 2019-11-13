@@ -656,7 +656,7 @@ class StringFormatterChecker:
             rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
             return
-        elif isinstance(rhs_type, Instance) and rhs_type.type.fullname() == 'builtins.tuple':
+        elif isinstance(rhs_type, Instance) and rhs_type.type.fullname == 'builtins.tuple':
             # Assume that an arbitrary-length tuple has the right number of items.
             rep_types = [rhs_type.args[0]] * len(checkers)
         elif isinstance(rhs_type, UnionType):
@@ -974,7 +974,7 @@ def custom_special_method(typ: Type, name: str,
         method = typ.type.get(name)
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
             if method.node.info:
-                return not method.node.info.fullname().startswith('builtins.')
+                return not method.node.info.fullname.startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
         if check_all:

@@ -60,14 +60,14 @@ class TypeVarScope:
             self.func_id -= 1
             i = self.func_id
         tvar_def = TypeVarDef(name,
-                              tvar_expr.fullname(),
+                              tvar_expr.fullname,
                               i,
                               values=tvar_expr.values,
                               upper_bound=tvar_expr.upper_bound,
                               variance=tvar_expr.variance,
                               line=tvar_expr.line,
                               column=tvar_expr.column)
-        self.scope[tvar_expr.fullname()] = tvar_def
+        self.scope[tvar_expr.fullname] = tvar_def
         return tvar_def
 
     def bind_existing(self, tvar_def: TypeVarDef) -> None:

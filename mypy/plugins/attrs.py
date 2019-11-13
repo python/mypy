@@ -346,7 +346,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     for super_info in ctx.cls.info.mro[1:-1]:
         if 'attrs' in super_info.metadata:
             # Each class depends on the set of attributes in its attrs ancestors.
-            ctx.api.add_plugin_dependency(make_wildcard_trigger(super_info.fullname()))
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(super_info.fullname))
 
             for data in super_info.metadata['attrs']['attributes']:
                 # Only add an attribute if it hasn't been defined before.  This
@@ -538,12 +538,12 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
             if (isinstance(converter.node, FuncDef)
                     and converter.node.type
                     and isinstance(converter.node.type, FunctionLike)):
-                return Converter(converter.node.fullname())
+                return Converter(converter.node.fullname)
             elif (isinstance(converter.node, OverloadedFuncDef)
                     and is_valid_overloaded_converter(converter.node)):
-                return Converter(converter.node.fullname())
+                return Converter(converter.node.fullname)
             elif isinstance(converter.node, TypeInfo):
-                return Converter(converter.node.fullname())
+                return Converter(converter.node.fullname)
 
         if (isinstance(converter, CallExpr)
                 and isinstance(converter.callee, RefExpr)
@@ -606,10 +606,10 @@ def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef(SELF_TVAR_NAME, ctx.cls.info.fullname() + '.' + SELF_TVAR_NAME,
+    tvd = TypeVarDef(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
                      -1, [], object_type)
     tvd_type = TypeVarType(tvd)
-    self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, ctx.cls.info.fullname() + '.' + SELF_TVAR_NAME,
+    self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
                                  [], object_type)
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
@@ -631,8 +631,8 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
             # can modify it.
             var = Var(attribute.name, ctx.cls.info[attribute.name].type)
             var.info = ctx.cls.info
-            var._fullname = '%s.%s' % (ctx.cls.info.fullname(), var.name())
-            ctx.cls.info.names[var.name()] = SymbolTableNode(MDEF, var)
+            var._fullname = '%s.%s' % (ctx.cls.info.fullname, var.name)
+            ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)
             var.is_property = True
 
 

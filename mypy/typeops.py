@@ -39,7 +39,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
     from mypy.join import join_type_list
 
     info = typ.partial_fallback.type
-    if info.fullname() != 'builtins.tuple':
+    if info.fullname != 'builtins.tuple':
         return typ.partial_fallback
     return Instance(info, [join_type_list(typ.items)])
 
@@ -94,7 +94,7 @@ def type_object_type_from_function(signature: FunctionLike,
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
     special_sig = None  # type: Optional[str]
-    if def_info.fullname() == 'builtins.dict':
+    if def_info.fullname == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'
 
@@ -136,7 +136,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     callable_type = init_type.copy_modified(
         ret_type=ret_type, fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
-    c = callable_type.with_name(info.name())
+    c = callable_type.with_name(info.name)
     return c
 
 
@@ -468,7 +468,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
         self_type = fill_typevars(fdef.info)  # type: Type
-        if fdef.is_class or fdef.name() == '__new__':
+        if fdef.is_class or fdef.name == '__new__':
             self_type = TypeType.make_normalized(self_type)
         args = [self_type] + [AnyType(TypeOfAny.unannotated)] * (len(fdef.arg_names)-1)
     else:
@@ -480,7 +480,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         [None if argument_elide_name(n) else n for n in fdef.arg_names],
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
-        name=fdef.name(),
+        name=fdef.name,
         line=fdef.line,
         column=fdef.column,
         implicit=True,
@@ -550,7 +550,7 @@ def try_getting_literals_from_type(typ: Type,
 
     literals = []  # type: List[T]
     for lit in get_proper_types(possible_literals):
-        if isinstance(lit, LiteralType) and lit.fallback.type.fullname() == target_fullname:
+        if isinstance(lit, LiteralType) and lit.fallback.type.fullname == target_fullname:
             val = lit.value
             if isinstance(val, target_literal_type):
                 literals.append(val)
@@ -615,7 +615,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
     if isinstance(typ, UnionType):
         items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
         return make_simplified_union(items)
-    elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname() == target_fullname:
+    elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname == target_fullname:
         new_items = []
         for name, symbol in typ.type.names.items():
             if not isinstance(symbol.node, Var):

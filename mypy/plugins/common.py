@@ -106,7 +106,7 @@ def add_method(
     for arg in args:
         assert arg.type_annotation, 'All arguments must be fully typed.'
         arg_types.append(arg.type_annotation)
-        arg_names.append(arg.variable.name())
+        arg_names.append(arg.variable.name)
         arg_kinds.append(arg.kind)
 
     signature = CallableType(arg_types, arg_kinds, arg_names, return_type, function_type)
@@ -116,7 +116,7 @@ def add_method(
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info
     func.type = set_callable_name(signature, func)
-    func._fullname = info.fullname() + '.' + name
+    func._fullname = info.fullname + '.' + name
     func.line = info.line
 
     # NOTE: we would like the plugin generated node to dominate, but we still

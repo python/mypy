@@ -266,7 +266,7 @@ def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
         # Looks like a missing TypeInfo during an initial daemon load, put something there
         assert allow_missing, "Should never get here in normal mode," \
                               " got {}:{} instead of TypeInfo".format(type(node).__name__,
-                                                                      node.fullname() if node
+                                                                      node.fullname if node
                                                                       else '')
         return missing_info(modules)
 
@@ -280,7 +280,7 @@ def lookup_qualified_alias(modules: Dict[str, MypyFile], name: str,
         # Looks like a missing TypeAlias during an initial daemon load, put something there
         assert allow_missing, "Should never get here in normal mode," \
                               " got {}:{} instead of TypeAlias".format(type(node).__name__,
-                                                                       node.fullname() if node
+                                                                       node.fullname if node
                                                                        else '')
         return missing_alias()
 

@@ -132,7 +132,7 @@ def build_type_map(mapper: 'Mapper',
     # Collect all class mappings so that we can bind arbitrary class name
     # references even if there are import cycles.
     for module, cdef in classes:
-        class_ir = ClassIR(cdef.name, module.fullname(), is_trait(cdef),
+        class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
                            is_abstract=cdef.info.is_abstract)
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
@@ -146,16 +146,16 @@ def build_type_map(mapper: 'Mapper',
     for module, cdef in classes:
         with catch_errors(module.path, cdef.line):
             if mapper.type_to_ir[cdef.info].is_ext_class:
-                prepare_class_def(module.path, module.fullname(), cdef, errors, mapper)
+                prepare_class_def(module.path, module.fullname, cdef, errors, mapper)
             else:
-                prepare_non_ext_class_def(module.path, module.fullname(), cdef, errors, mapper)
+                prepare_non_ext_class_def(module.path, module.fullname, cdef, errors, mapper)
 
     # Collect all the functions also. We collect from the symbol table
     # so that we can easily pick out the right copy of a function that
     # is conditionally defined.
     for module in modules:
         for func in get_module_func_defs(module):
-            prepare_func_def(module.fullname(), None, func, mapper)
+            prepare_func_def(module.fullname, None, func, mapper)
             # TODO: what else?
 
 
@@ -170,7 +170,7 @@ def load_type_map(mapper: 'Mapper',
 
     for module in modules:
         for func in get_module_func_defs(module):
-            mapper.func_to_decl[func] = deser_ctx.functions[func.fullname()].decl
+            mapper.func_to_decl[func] = deser_ctx.functions[func.fullname].decl
 
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
@@ -195,17 +195,17 @@ def build_ir(modules: List[MypyFile],
 
         # Second pass.
         builder = IRBuilder(
-            module.fullname(), types, graph, errors, mapper, pbv, options
+            module.fullname, types, graph, errors, mapper, pbv, options
         )
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
-            module.fullname(),
+            module.fullname,
             list(builder.imports),
             builder.functions,
             builder.classes,
             builder.final_names
         )
-        result[module.fullname()] = module_ir
+        result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
 
     # Compute vtables.
@@ -244,7 +244,7 @@ def is_extension_class(cdef: ClassDef) -> bool:
     if any(not is_trait_decorator(d) and not is_dataclass_decorator(d)
            for d in cdef.decorators):
         return False
-    elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname() not in (
+    elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False
     return True
@@ -299,7 +299,7 @@ def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
         # aliases.  The best way to do this seems to be by
         # checking that the fullname matches.
         if (isinstance(node.node, (FuncDef, Decorator, OverloadedFuncDef))
-                and node.fullname == module.fullname() + '.' + name):
+                and node.fullname == module.fullname + '.' + name):
             yield get_func_def(node.node)
 
 
@@ -412,24 +412,24 @@ class Mapper:
 
         typ = get_proper_type(typ)
         if isinstance(typ, Instance):
-            if typ.type.fullname() == 'builtins.int':
+            if typ.type.fullname == 'builtins.int':
                 return int_rprimitive
-            elif typ.type.fullname() == 'builtins.float':
+            elif typ.type.fullname == 'builtins.float':
                 return float_rprimitive
-            elif typ.type.fullname() == 'builtins.str':
+            elif typ.type.fullname == 'builtins.str':
                 return str_rprimitive
-            elif typ.type.fullname() == 'builtins.bool':
+            elif typ.type.fullname == 'builtins.bool':
                 return bool_rprimitive
-            elif typ.type.fullname() == 'builtins.list':
+            elif typ.type.fullname == 'builtins.list':
                 return list_rprimitive
             # Dict subclasses are at least somewhat common and we
             # specifically support them, so make sure that dict operations
             # get optimized on them.
-            elif any(cls.fullname() == 'builtins.dict' for cls in typ.type.mro):
+            elif any(cls.fullname == 'builtins.dict' for cls in typ.type.mro):
                 return dict_rprimitive
-            elif typ.type.fullname() == 'builtins.set':
+            elif typ.type.fullname == 'builtins.set':
                 return set_rprimitive
-            elif typ.type.fullname() == 'builtins.tuple':
+            elif typ.type.fullname == 'builtins.tuple':
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type in self.type_to_ir:
                 return RInstance(self.type_to_ir[typ.type])
@@ -438,7 +438,7 @@ class Mapper:
         elif isinstance(typ, TupleType):
             # Use our unboxed tuples for raw tuples but fall back to
             # being boxed for NamedTuple.
-            if typ.partial_fallback.type.fullname() == 'builtins.tuple':
+            if typ.partial_fallback.type.fullname == 'builtins.tuple':
                 return RTuple([self.type_to_rtype(t) for t in typ.items])
             else:
                 return tuple_rprimitive
@@ -492,13 +492,13 @@ class Mapper:
             arg_types = [object_rprimitive for arg in fdef.arguments]
             ret = object_rprimitive
 
-        args = [RuntimeArg(arg.variable.name(), arg_type, arg.kind)
+        args = [RuntimeArg(arg.variable.name, arg_type, arg.kind)
                 for arg, arg_type in zip(fdef.arguments, arg_types)]
 
         # We force certain dunder methods to return objects to support letting them
         # return NotImplemented. It also avoids some pointless boxing and unboxing,
         # since tp_richcompare needs an object anyways.
-        if fdef.name() in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
+        if fdef.name in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
             ret = object_rprimitive
         return FuncSignature(args, ret)
 
@@ -523,7 +523,7 @@ def prepare_func_def(module_name: str, class_name: Optional[str],
                      fdef: FuncDef, mapper: Mapper) -> FuncDecl:
     kind = FUNC_STATICMETHOD if fdef.is_static else (
         FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
-    decl = FuncDecl(fdef.name(), class_name, module_name, mapper.fdef_to_sig(fdef), kind)
+    decl = FuncDecl(fdef.name, class_name, module_name, mapper.fdef_to_sig(fdef), kind)
     mapper.func_to_decl[fdef] = decl
     return decl
 
@@ -531,25 +531,25 @@ def prepare_func_def(module_name: str, class_name: Optional[str],
 def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Mapper,
                        node: Union[FuncDef, Decorator]) -> None:
     if isinstance(node, FuncDef):
-        ir.method_decls[node.name()] = prepare_func_def(module_name, cdef.name, node, mapper)
+        ir.method_decls[node.name] = prepare_func_def(module_name, cdef.name, node, mapper)
     elif isinstance(node, Decorator):
         # TODO: do something about abstract methods here. Currently, they are handled just like
         # normal methods.
         decl = prepare_func_def(module_name, cdef.name, node.func, mapper)
         if not node.decorators:
-            ir.method_decls[node.name()] = decl
+            ir.method_decls[node.name] = decl
         elif isinstance(node.decorators[0], MemberExpr) and node.decorators[0].name == 'setter':
             # Make property setter name different than getter name so there are no
             # name clashes when generating C code, and property lookup at the IR level
             # works correctly.
             decl.name = PROPSET_PREFIX + decl.name
             decl.is_prop_setter = True
-            ir.method_decls[PROPSET_PREFIX + node.name()] = decl
+            ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
         if node.func.is_property:
             assert node.func.type
             decl.is_prop_getter = True
-            ir.property_types[node.name()] = decl.sig.ret_type
+            ir.property_types[node.name] = decl.sig.ret_type
 
 
 def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
@@ -609,12 +609,12 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     for cls in info.mro:
         # Special case exceptions and dicts
         # XXX: How do we handle *other* things??
-        if cls.fullname() == 'builtins.BaseException':
+        if cls.fullname == 'builtins.BaseException':
             ir.builtin_base = 'PyBaseExceptionObject'
-        elif cls.fullname() == 'builtins.dict':
+        elif cls.fullname == 'builtins.dict':
             ir.builtin_base = 'PyDictObject'
-        elif cls.fullname().startswith('builtins.'):
-            if not can_subclass_builtin(cls.fullname()):
+        elif cls.fullname.startswith('builtins.'):
+            if not can_subclass_builtin(cls.fullname):
                 # Note that if we try to subclass a C extension class that
                 # isn't in builtins, bad things will happen and we won't
                 # catch it here! But this should catch a lot of the most
@@ -636,7 +636,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
         # **kwargs so it can call tp_init.
         if ((defining_ir is None or not defining_ir.is_ext_class
              or cdef.info['__init__'].plugin_generated)
-                and init_node.info.fullname() != 'builtins.object'):
+                and init_node.info.fullname != 'builtins.object'):
             init_sig = FuncSignature(
                 [init_sig.args[0],
                  RuntimeArg("args", tuple_rprimitive, ARG_STAR),
@@ -658,7 +658,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     base_mro = []
     for cls in info.mro:
         if cls not in mapper.type_to_ir:
-            if cls.fullname() != 'builtins.object':
+            if cls.fullname != 'builtins.object':
                 ir.inherits_python = True
             continue
         base_ir = mapper.type_to_ir[cls]
@@ -1119,13 +1119,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.imports = OrderedDict()  # type: OrderedDict[str, None]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
-        if mypyfile.fullname() in ('typing', 'abc'):
+        if mypyfile.fullname in ('typing', 'abc'):
             # These module are special; their contents are currently all
             # built-in primitives.
             return
 
         self.module_path = mypyfile.path
-        self.module_name = mypyfile.fullname()
+        self.module_name = mypyfile.fullname
 
         classes = [node for node in mypyfile.defs if isinstance(node, ClassDef)]
 
@@ -1153,14 +1153,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def handle_ext_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
         # Perform the function of visit_method for methods inside extension classes.
-        name = fdef.name()
+        name = fdef.name
         class_ir = self.mapper.type_to_ir[cdef.info]
         func_ir, func_reg = self.gen_func_item(fdef, name, self.mapper.fdef_to_sig(fdef), cdef)
         self.functions.append(func_ir)
 
         if self.is_decorated(fdef):
             # Obtain the the function name in order to construct the name of the helper function.
-            _, _, name = fdef.fullname().rpartition('.')
+            _, _, name = fdef.fullname.rpartition('.')
             helper_name = decorator_helper_name(name)
             # Read the PyTypeObject representing the class, get the callable object
             # representing the non-decorated method
@@ -1213,7 +1213,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def handle_non_ext_method(
             self, non_ext: NonExtClassInfo, cdef: ClassDef, fdef: FuncDef) -> None:
         # Perform the function of visit_method for methods inside non-extension classes.
-        name = fdef.name()
+        name = fdef.name
         func_ir, func_reg = self.gen_func_item(fdef, name, self.mapper.fdef_to_sig(fdef), cdef)
         assert func_reg is not None
         self.functions.append(func_ir)
@@ -1375,7 +1375,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         ir = self.mapper.type_to_ir[cdef.info]
         bases = []
         for cls in cdef.info.mro[1:]:
-            if cls.fullname() == 'builtins.object':
+            if cls.fullname == 'builtins.object':
                 continue
             # Add the current class to the base classes list of concrete subclasses
             if cls in self.mapper.type_to_ir:
@@ -1383,7 +1383,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 if base_ir.children is not None:
                     base_ir.children.append(ir)
 
-            base = self.load_global_str(cls.name(), cdef.line)
+            base = self.load_global_str(cls.name, cdef.line)
             bases.append(base)
         return self.primitive_op(new_tuple_op, bases, cdef.line)
 
@@ -1415,7 +1415,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_to_non_ext_dict(non_ext, lvalue.name, rvalue, stmt.line)
             # We cache enum attributes to speed up enum attribute lookup since they
             # are final.
-            if cdef.info.bases and cdef.info.bases[0].type.fullname() == 'enum.Enum':
+            if cdef.info.bases and cdef.info.bases[0].type.fullname == 'enum.Enum':
                 attr_to_cache.append(lvalue)
 
     def setup_non_ext_dict(self, cdef: ClassDef, bases: Value) -> Value:
@@ -1543,7 +1543,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # Ignore plugin generated methods (since they have no
                 # bodies to compile and will need to have the bodies
                 # provided by some other mechanism.)
-                if cdef.info.names[stmt.name()].plugin_generated:
+                if cdef.info.names[stmt.name].plugin_generated:
                     continue
                 with self.catch_errors(stmt.line):
                     self.visit_method(cdef, non_ext, get_func_def(stmt))
@@ -1874,11 +1874,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 value = self.coerce(self.accept(arg.initializer),
                                     env.lookup(arg.variable).type, arg.line)
                 if not fn_info.is_nested:
-                    name = fitem.fullname() + '.' + arg.variable.name()
+                    name = fitem.fullname + '.' + arg.variable.name
                     self.add(InitStatic(value, name, self.module_name))
                 else:
                     assert func_reg is not None
-                    self.add(SetAttr(func_reg, arg.variable.name(), value, arg.line))
+                    self.add(SetAttr(func_reg, arg.variable.name, value, arg.line))
 
     def gen_arg_defaults(self) -> None:
         """Generate blocks for arguments that have default values.
@@ -1901,11 +1901,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     # Because gen_arg_defaults runs before calculate_arg_defaults, we
                     # add the static/attribute to final_names/the class here.
                     elif not self.fn_info.is_nested:
-                        name = fitem.fullname() + '.' + arg.variable.name()
+                        name = fitem.fullname + '.' + arg.variable.name
                         self.final_names.append((name, target.type))
                         return self.add(LoadStatic(target.type, name, self.module_name))
                     else:
-                        name = arg.variable.name()
+                        name = arg.variable.name
                         self.fn_info.callable_class.ir.attributes[name] = target.type
                         return self.add(
                             GetAttr(self.fn_info.callable_class.self_reg, name, arg.line))
@@ -2019,7 +2019,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         if self.fn_info.fitem in self.free_variables:
             # Sort the variables to keep things deterministic
-            for var in sorted(self.free_variables[self.fn_info.fitem], key=lambda x: x.name()):
+            for var in sorted(self.free_variables[self.fn_info.fitem], key=lambda x: x.name):
                 if isinstance(var, Var):
                     rtype = self.type_to_rtype(var.type)
                     self.add_var_to_env_class(var, rtype, env_for_func, reassign=False)
@@ -2081,10 +2081,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 class_name = None if cdef is None else cdef.name
                 func_decl = FuncDecl(fn_info.name, class_name, self.module_name, sig)
                 func_ir = FuncIR(func_decl, blocks, env, fn_info.fitem.line,
-                                 traceback_name=fn_info.fitem.name())
+                                 traceback_name=fn_info.fitem.name)
             else:
                 func_ir = FuncIR(self.mapper.func_to_decl[fn_info.fitem], blocks, env,
-                                 fn_info.fitem.line, traceback_name=fn_info.fitem.name())
+                                 fn_info.fitem.line, traceback_name=fn_info.fitem.name)
         return (func_ir, func_reg)
 
     def load_decorated_func(self, fdef: FuncDef, orig_func_reg: Value) -> Value:
@@ -2114,7 +2114,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_implicit_unreachable()
 
     def visit_func_def(self, fdef: FuncDef) -> None:
-        func_ir, func_reg = self.gen_func_item(fdef, fdef.name(), self.mapper.fdef_to_sig(fdef))
+        func_ir, func_reg = self.gen_func_item(fdef, fdef.name, self.mapper.fdef_to_sig(fdef))
 
         # If the function that was visited was a nested function, then either look it up in our
         # current environment or define it if it was not already defined.
@@ -2876,8 +2876,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         if expr.node is None:
             return False
-        if '.' in expr.node.fullname():
-            return self.is_native_module(expr.node.fullname().rpartition('.')[0])
+        if '.' in expr.node.fullname:
+            return self.is_native_module(expr.node.fullname.rpartition('.')[0])
         return True
 
     def is_native_module_ref_expr(self, expr: RefExpr) -> bool:
@@ -2909,17 +2909,17 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             sym = expr.expr.node.get(expr.name)
             if sym and isinstance(sym.node, Var):
                 # Enum attribute are treated as final since they are added to the global cache
-                expr_fullname = expr.expr.node.bases[0].type.fullname()
+                expr_fullname = expr.expr.node.bases[0].type.fullname
                 is_final = sym.node.is_final or expr_fullname == 'enum.Enum'
                 if is_final:
                     final_var = sym.node
-                    fullname = '{}.{}'.format(sym.node.info.fullname(), final_var.name())
+                    fullname = '{}.{}'.format(sym.node.info.fullname, final_var.name)
                     native = self.is_native_module(expr.expr.node.module_name)
         elif self.is_module_member_expr(expr):
             # a module attribute
             if isinstance(expr.node, Var) and expr.node.is_final:
                 final_var = expr.node
-                fullname = expr.node.fullname()
+                fullname = expr.node.fullname
                 native = self.is_native_ref_expr(expr)
         if final_var is not None:
             return fullname, final_var, native
@@ -2947,7 +2947,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_name_expr(self, expr: NameExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
-        fullname = expr.node.fullname()
+        fullname = expr.node.fullname
         if fullname in name_ref_ops:
             # Use special access op for this particular name.
             desc = name_ref_ops[fullname]
@@ -2961,8 +2961,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if value is not None:
                 return value
 
-        if isinstance(expr.node, MypyFile) and expr.node.fullname() in self.imports:
-            return self.load_module(expr.node.fullname())
+        if isinstance(expr.node, MypyFile) and expr.node.fullname in self.imports:
+            return self.load_module(expr.node.fullname)
 
         # If the expression is locally defined, then read the result from the corresponding
         # assignment target and return it. Otherwise if the expression is a global, load it from
@@ -2976,7 +2976,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     and expr.node.is_inferred):
                 self.error(
                     "Local variable '{}' has inferred type None; add an annotation".format(
-                        expr.node.name()),
+                        expr.node.name),
                     expr.node.line)
 
             # TODO: Behavior currently only defined for Var and FuncDef node types.
@@ -2992,13 +2992,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         final = self.get_final_ref(expr)
         if final is not None:
             fullname, final_var, native = final
-            value = self.emit_load_final(final_var, fullname, final_var.name(), native,
+            value = self.emit_load_final(final_var, fullname, final_var.name, native,
                                          self.types[expr], expr.line)
             if value is not None:
                 return value
 
-        if isinstance(expr.node, MypyFile) and expr.node.fullname() in self.imports:
-            return self.load_module(expr.node.fullname())
+        if isinstance(expr.node, MypyFile) and expr.node.fullname in self.imports:
+            return self.load_module(expr.node.fullname)
 
         obj = self.accept(expr.expr)
         return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
@@ -3283,7 +3283,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
             # Add the class argument for class methods in extension classes
             if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
-                args.append(self.load_native_type_object(callee.expr.node.fullname()))
+                args.append(self.load_native_type_object(callee.expr.node.fullname))
                 arg_kinds.insert(0, ARG_POS)
                 arg_names.insert(0, None)
             args += [self.accept(arg) for arg in expr.args]
@@ -4023,7 +4023,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for arg, arg_type in zip(expr.arguments, typ.arg_types):
             arg.variable.type = arg_type
             runtime_args.append(
-                RuntimeArg(arg.variable.name(), self.type_to_rtype(arg_type), arg.kind))
+                RuntimeArg(arg.variable.name, self.type_to_rtype(arg_type), arg.kind))
         ret_type = self.type_to_rtype(typ.ret_type)
 
         fsig = FuncSignature(runtime_args, ret_type)
@@ -4163,7 +4163,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         handle_loop(loop_params)
 
     def visit_decorator(self, dec: Decorator) -> None:
-        func_ir, func_reg = self.gen_func_item(dec.func, dec.func.name(),
+        func_ir, func_reg = self.gen_func_item(dec.func, dec.func.name,
                                                self.mapper.fdef_to_sig(dec.func))
 
         if dec.func in self.nested_fitems:
@@ -4173,7 +4173,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             func_reg = decorated_func
         else:
             # Obtain the the function name in order to construct the name of the helper function.
-            name = dec.func.fullname().split('.')[-1]
+            name = dec.func.fullname.split('.')[-1]
             helper_name = decorator_helper_name(name)
 
             # Load the callable object representing the non-decorated function, and decorate it.
@@ -4183,7 +4183,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Set the callable object representing the decorated function as a global.
             self.primitive_op(dict_set_item_op,
                               [self.load_globals_dict(),
-                               self.load_static_unicode(dec.func.name()), decorated_func],
+                               self.load_static_unicode(dec.func.name), decorated_func],
                               decorated_func.line)
 
         self.functions.append(func_ir)
@@ -4219,7 +4219,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             args = [self.accept(arg) for arg in o.call.args]
         else:
             assert o.info is not None
-            typ = self.load_native_type_object(o.info.fullname())
+            typ = self.load_native_type_object(o.info.fullname)
             ir = self.mapper.type_to_ir[o.info]
             iter_env = iter(self.environment.indexes)
             vself = next(iter_env)  # grab first argument
@@ -4776,8 +4776,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         assert isinstance(env.type, RInstance), '{} must be of type RInstance'.format(env)
 
         for symbol, target in outer_env.symtable.items():
-            env.type.class_ir.attributes[symbol.name()] = target.type
-            symbol_target = AssignmentTargetAttr(env, symbol.name())
+            env.type.class_ir.attributes[symbol.name] = target.type
+            symbol_target = AssignmentTargetAttr(env, symbol.name)
             self.environment.add_target(symbol, symbol_target)
 
         return env
@@ -4829,14 +4829,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                              reassign: bool = False) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
-        self.fn_info.env_class.attributes[var.name()] = rtype
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name())
+        self.fn_info.env_class.attributes[var.name] = rtype
+        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
             # the environment class' variable to be that value.
             reg = self.read(self.environment.lookup(var), self.fn_info.fitem.line)
-            self.add(SetAttr(base.curr_env_reg, var.name(), reg, self.fn_info.fitem.line))
+            self.add(SetAttr(base.curr_env_reg, var.name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
         # the environment class.
@@ -4850,7 +4850,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """
         # First, set the attribute of the environment class so that GetAttr can be called on it.
         prev_env = self.fn_infos[-2].env_class
-        prev_env.attributes[fdef.name()] = self.type_to_rtype(fdef.type)
+        prev_env.attributes[fdef.name] = self.type_to_rtype(fdef.type)
 
         if isinstance(base, GeneratorClass):
             # If we are dealing with a generator class, then we need to first get the register
@@ -4862,7 +4862,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Obtain the instance of the callable class representing the FuncDef, and add it to the
         # current environment.
-        val = self.add(GetAttr(prev_env_reg, fdef.name(), -1))
+        val = self.add(GetAttr(prev_env_reg, fdef.name, -1))
         target = self.environment.add_local_reg(fdef, object_rprimitive)
         self.assign(target, val, -1)
 
@@ -4987,7 +4987,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
         call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, self.module_name, sig)
         call_fn_ir = FuncIR(call_fn_decl, blocks, env,
-                            fn_info.fitem.line, traceback_name=fn_info.fitem.name())
+                            fn_info.fitem.line, traceback_name=fn_info.fitem.name)
         fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
         return call_fn_ir
 
@@ -5137,7 +5137,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         helper_fn_decl = FuncDecl('__mypyc_generator_helper__', fn_info.generator_class.ir.name,
                                   self.module_name, sig)
         helper_fn_ir = FuncIR(helper_fn_decl, blocks, env,
-                              fn_info.fitem.line, traceback_name=fn_info.fitem.name())
+                              fn_info.fitem.line, traceback_name=fn_info.fitem.name)
         fn_info.generator_class.ir.methods['__mypyc_generator_helper__'] = helper_fn_ir
         self.functions.append(helper_fn_ir)
         return helper_fn_decl
@@ -5342,7 +5342,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
         assert expr.node, "RefExpr not resolved"
-        return '.' in expr.node.fullname() and expr.node.fullname().split('.')[0] == 'builtins'
+        return '.' in expr.node.fullname and expr.node.fullname.split('.')[0] == 'builtins'
 
     def load_global(self, expr: NameExpr) -> Value:
         """Loads a Python-level global.
@@ -5353,7 +5353,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # If the global is from 'builtins', turn it into a module attr load instead
         if self.is_builtin_ref_expr(expr):
             assert expr.node, "RefExpr not resolved"
-            return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
+            return self.load_module_attr_by_fullname(expr.node.fullname, expr.line)
         if (self.is_native_module_ref_expr(expr) and isinstance(expr.node, TypeInfo)
                 and not self.is_synthetic_type(expr.node)):
             assert expr.fullname is not None
