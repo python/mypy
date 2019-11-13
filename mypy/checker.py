@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Sequence,
-    Iterable, Mapping,
+    Mapping,
 )
 from typing_extensions import Final
 
