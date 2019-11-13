@@ -6518,22 +6518,21 @@ from typing import TypeVar, Generic
 
 TypeT = TypeVar("TypeT", bound=type)
 
-class IntBase:
+class Base:
     field: int = 42
 
-class IntFoo(Generic[TypeT]):
-    def method(self, other: TypeT) -> int:
-        if issubclass(other, IntBase):
+class C1:
+    def method(self, other: type) -> int:
+        if issubclass(other, Base):
+            reveal_type(other)  # N: Revealed type is 'Type[__main__.Base]'
             return other.field
         return 0
 
-class StrBase:
-    field: str = "hello"
-
-class StrFoo(Generic[TypeT]):
-    def method(self, other: TypeT) -> str:
-        if issubclass(other, StrBase):
+class C2(Generic[TypeT]):
+    def method(self, other: TypeT) -> int:
+        if issubclass(other, Base):
+            reveal_type(other)  # N: Revealed type is 'Type[__main__.Base]'
             return other.field
-        return "hi"
+        return 0
 
 [builtins fixtures/isinstancelist.pyi]

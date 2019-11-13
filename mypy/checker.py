@@ -3730,6 +3730,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     vartype = get_proper_type(type_map[expr])
                     type = get_isinstance_type(node.args[1], type_map)
+                    if (isinstance(vartype, TypeVarType)):
+                        vartype = vartype.upper_bound
+                    vartype = get_proper_type(vartype)
                     if isinstance(vartype, UnionType):
                         union_list = []
                         for t in get_proper_types(vartype.items):
@@ -3745,8 +3748,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     elif (isinstance(vartype, Instance) and
                             vartype.type.fullname() == 'builtins.type'):
                         vartype = self.named_type('builtins.object')
-                    elif (isinstance(vartype, TypeVarType)):
-                        vartype = vartype.upper_bound
                     else:
                         # Any other object whose type we don't know precisely
                         # for example, Any or a custom metaclass.
