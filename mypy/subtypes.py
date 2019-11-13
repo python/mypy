@@ -240,7 +240,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if base._promote and self._is_subtype(base._promote, self.right):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
-            rname = right.type.fullname()
+            rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             if ((left.type.has_base(rname) or rname == 'builtins.object') and
@@ -463,7 +463,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # This is unsound, we don't check the __init__ signature.
             return self._is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
-            if right.type.fullname() in ['builtins.object', 'builtins.type']:
+            if right.type.fullname in ['builtins.object', 'builtins.type']:
                 return True
             item = left.item
             if isinstance(item, TypeVarType):
@@ -606,7 +606,7 @@ def find_member(name: str,
                 # many false negatives, then this could be prohibited for
                 # structural subtyping.
                 method = info.get_method(method_name)
-                if method and method.info.fullname() != 'builtins.object':
+                if method and method.info.fullname != 'builtins.object':
                     getattr_type = get_proper_type(find_node_type(method, itype, subtype))
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
@@ -1106,7 +1106,7 @@ def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> b
             return True
     if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if supertype.type.fullname() == 'builtins.dict':
+        if supertype.type.fullname == 'builtins.dict':
             return True
     # TODO: Add more special cases.
     return False
@@ -1209,7 +1209,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
 
-            if left.type.has_base(right.type.fullname()):
+            if left.type.has_base(right.type.fullname):
                 def check_argument(leftarg: Type, rightarg: Type, variance: int) -> bool:
                     if variance == COVARIANT:
                         return self._is_proper_subtype(leftarg, rightarg)
@@ -1328,13 +1328,13 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             # This is also unsound because of __init__.
             return right.is_type_obj() and self._is_proper_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
-            if right.type.fullname() == 'builtins.type':
+            if right.type.fullname == 'builtins.type':
                 # TODO: Strictly speaking, the type builtins.type is considered equivalent to
                 #       Type[Any]. However, this would break the is_proper_subtype check in
                 #       conditional_type_map for cases like isinstance(x, type) when the type
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
-            if right.type.fullname() == 'builtins.object':
+            if right.type.fullname == 'builtins.object':
                 return True
             item = left.item
             if isinstance(item, TypeVarType):

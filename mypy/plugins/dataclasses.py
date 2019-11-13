@@ -114,7 +114,7 @@ class DataclassTransformer:
                 decorator_arguments['order']):
             # Type variable for self types in generated methods.
             obj_type = ctx.api.named_type('__builtins__.object')
-            self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+            self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                          [], obj_type)
             info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
@@ -125,7 +125,7 @@ class DataclassTransformer:
                 # the same type as self (covariant).  Note the
                 # "self_type" parameter to add_method.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                cmp_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+                cmp_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                           -1, [], obj_type)
                 cmp_other_type = TypeVarType(cmp_tvar_def)
                 cmp_return_type = ctx.api.named_type('__builtins__.bool')
@@ -148,7 +148,7 @@ class DataclassTransformer:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                order_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+                order_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                             -1, [], obj_type)
                 order_other_type = TypeVarType(order_tvar_def)
                 order_return_type = ctx.api.named_type('__builtins__.bool')
@@ -247,7 +247,7 @@ class DataclassTransformer:
             is_init_var = False
             node_type = get_proper_type(node.type)
             if (isinstance(node_type, Instance) and
-                    node_type.type.fullname() == 'dataclasses.InitVar'):
+                    node_type.type.fullname == 'dataclasses.InitVar'):
                 is_init_var = True
                 node.type = node_type.args[0]
 
@@ -297,7 +297,7 @@ class DataclassTransformer:
 
             super_attrs = []
             # Each class depends on the set of attributes in its dataclass ancestors.
-            ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname()))
+            ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
 
             for data in info.metadata['dataclass']['attributes']:
                 name = data['name']  # type: str
@@ -363,8 +363,8 @@ class DataclassTransformer:
                 var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
-                var._fullname = info.fullname() + '.' + var.name()
-                info.names[var.name()] = SymbolTableNode(MDEF, var)
+                var._fullname = info.fullname + '.' + var.name
+                info.names[var.name] = SymbolTableNode(MDEF, var)
 
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:

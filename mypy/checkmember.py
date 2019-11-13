@@ -180,7 +180,7 @@ def analyze_instance_member_access(name: str,
         info = override_info
 
     if (state.find_occurrences and
-            info.name() == state.find_occurrences[0] and
+            info.name == state.find_occurrences[0] and
             name == state.find_occurrences[1]):
         mx.msg.note("Occurrence of '{}.{}'".format(*state.find_occurrences), mx.context)
 
@@ -375,7 +375,7 @@ def analyze_member_var_access(name: str,
                 # __getattribute__ is defined on builtins.object and returns Any, so without
                 # the guard this search will always find object.__getattribute__ and conclude
                 # that the attribute exists
-                if method and method.info.fullname() != 'builtins.object':
+                if method and method.info.fullname != 'builtins.object':
                     function = function_type(method, mx.builtin_type('builtins.function'))
                     bound_method = bind_self(function, mx.self_type)
                     typ = map_instance_to_supertype(itype, method.info)
@@ -384,7 +384,7 @@ def analyze_member_var_access(name: str,
                         result = getattr_type.ret_type
 
                         # Call the attribute hook before returning.
-                        fullname = '{}.{}'.format(method.info.fullname(), name)
+                        fullname = '{}.{}'.format(method.info.fullname, name)
                         hook = mx.chk.plugin.get_attribute_hook(fullname)
                         if hook:
                             result = hook(AttributeContext(get_proper_type(mx.original_type),
@@ -392,7 +392,7 @@ def analyze_member_var_access(name: str,
                         return result
         else:
             setattr_meth = info.get_method('__setattr__')
-            if setattr_meth and setattr_meth.info.fullname() != 'builtins.object':
+            if setattr_meth and setattr_meth.info.fullname != 'builtins.object':
                 setattr_func = function_type(setattr_meth, mx.builtin_type('builtins.function'))
                 bound_type = bind_self(setattr_func, mx.self_type)
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
@@ -566,10 +566,10 @@ def analyze_var(name: str,
                     result = signature
     else:
         if not var.is_ready:
-            mx.not_ready_callback(var.name(), mx.context)
+            mx.not_ready_callback(var.name, mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
-    fullname = '{}.{}'.format(var.info.fullname(), name)
+    fullname = '{}.{}'.format(var.info.fullname, name)
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:
         result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
@@ -682,7 +682,7 @@ def analyze_class_attribute_access(itype: Instance,
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
         mx.msg.fail(message_registry.CANNOT_ACCESS_FINAL_INSTANCE_ATTR
-                    .format(node.node.name()), mx.context)
+                    .format(node.node.name), mx.context)
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
@@ -757,7 +757,7 @@ def analyze_class_attribute_access(itype: Instance,
 
     if isinstance(node.node, TypeVarExpr):
         mx.msg.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
-                    info.name(), name), mx.context)
+                    info.name, name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
@@ -878,7 +878,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         method = new_method.node
         is_new = True
     else:
-        if init_method.node.info.fullname() == 'builtins.object':
+        if init_method.node.info.fullname == 'builtins.object':
             # Both are defined by object.  But if we've got a bogus
             # base class, we can't know for sure, so check for that.
             if info.fallback_to_any:

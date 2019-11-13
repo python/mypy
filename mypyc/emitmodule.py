@@ -151,7 +151,7 @@ class MypycPlugin(Plugin):
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         # Report dependency on modules in the module's group
-        return [(10, id, -1) for id in self.group_map.get(file.fullname(), (None, []))[1]]
+        return [(10, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
 
 
 def parse_and_typecheck(
@@ -196,7 +196,7 @@ def compile_scc_to_ir(
     """
 
     if compiler_options.verbose:
-        print("Compiling {}".format(", ".join(x.name() for x in scc)))
+        print("Compiling {}".format(", ".join(x.name for x in scc)))
 
     # Generate basic IR, with missing exception and refcount handling.
     modules = genops.build_ir(
@@ -359,8 +359,8 @@ def load_scc_from_cache(
     Arguments and return are as compile_scc_to_ir.
     """
     cache_data = {
-        k.fullname(): json.loads(
-            result.manager.metastore.read(get_state_ir_cache_name(result.graph[k.fullname()]))
+        k.fullname: json.loads(
+            result.manager.metastore.read(get_state_ir_cache_name(result.graph[k.fullname]))
         )['ir'] for k in scc
     }
     modules = deserialize_modules(cache_data, ctx)

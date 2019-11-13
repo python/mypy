@@ -431,7 +431,7 @@ class ASTConverter:
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
-                    and stmt.name() == current_overload_name):
+                    and stmt.name == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -441,7 +441,7 @@ class ASTConverter:
 
                 if isinstance(stmt, Decorator):
                     current_overload = [stmt]
-                    current_overload_name = stmt.name()
+                    current_overload_name = stmt.name
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -509,7 +509,7 @@ class ASTConverter:
 
         posonlyargs = [arg.arg for arg in getattr(n.args, "posonlyargs", [])]
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [arg.variable.name for arg in args]  # type: List[Optional[str]]
         arg_names = [None if argument_elide_name(name) or name in posonlyargs else name
                      for name in arg_names]
         if special_function_elide_names(n.name):
@@ -610,7 +610,7 @@ class ASTConverter:
                 # existing "# type: ignore" comments working:
                 end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
 
-            var = Var(func_def.name())
+            var = Var(func_def.name)
             var.is_ready = False
             var.set_line(lineno)
 
@@ -676,7 +676,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([arg.variable.name() for arg in new_args], names, self.fail_arg)
+        check_arg_names([arg.variable.name for arg in new_args], names, self.fail_arg)
 
         return new_args
 

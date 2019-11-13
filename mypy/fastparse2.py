@@ -303,7 +303,7 @@ class ASTConverter:
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
-                    and stmt.name() == current_overload_name):
+                    and stmt.name == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -313,7 +313,7 @@ class ASTConverter:
 
                 if isinstance(stmt, Decorator):
                     current_overload = [stmt]
-                    current_overload_name = stmt.name()
+                    current_overload_name = stmt.name
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -369,7 +369,7 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [arg.variable.name for arg in args]  # type: List[Optional[str]]
         arg_names = [None if argument_elide_name(name) else name for name in arg_names]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
@@ -449,7 +449,7 @@ class ASTConverter:
             func_type.line = lineno
 
         if n.decorator_list:
-            var = Var(func_def.name())
+            var = Var(func_def.name)
             var.is_ready = False
             var.set_line(n.decorator_list[0].lineno)
 

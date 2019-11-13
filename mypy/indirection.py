@@ -79,7 +79,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_callable_type(self, t: types.CallableType) -> Set[str]:
         out = self._visit(t.arg_types) | self._visit(t.ret_type)
         if t.definition is not None:
-            out.update(extract_module_names(t.definition.fullname()))
+            out.update(extract_module_names(t.definition.fullname))
         return out
 
     def visit_overloaded(self, t: types.Overloaded) -> Set[str]:

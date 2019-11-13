@@ -376,11 +376,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add('#   %s\n' % name)
 
     def visit_func_def(self, o: FuncDef, is_abstract: bool = False) -> None:
-        if self.is_private_name(o.name()):
+        if self.is_private_name(o.name):
             return
-        if self.is_not_in_all(o.name()):
+        if self.is_not_in_all(o.name):
             return
-        if self.is_recorded_name(o.name()):
+        if self.is_recorded_name(o.name):
             return
         if not self._indent and self._state not in (EMPTY, FUNC) and not o.is_awaitable_coroutine:
             self.add('\n')
@@ -394,13 +394,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         for s in self._decorators:
             self.add(s)
         self.clear_decorators()
-        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name()))
-        self.record_name(o.name())
+        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name))
+        self.record_name(o.name)
         args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
             kind = arg_.kind
-            name = var.name()
+            name = var.name
             annotated_type = (o.unanalyzed_type.arg_types[i]
                               if isinstance(o.unanalyzed_type, CallableType) else None)
             # I think the name check is incorrect: there are libraries which
@@ -442,7 +442,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated.
             retname = 'Any'
             self.add_typing_import("Any")
-        elif o.name() == '__init__' or not has_return_statement(o) and not is_abstract:
+        elif o.name == '__init__' or not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -453,7 +453,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = FUNC
 
     def visit_decorator(self, o: Decorator) -> None:
-        if self.is_private_name(o.func.name()):
+        if self.is_private_name(o.func.name):
             return
         is_abstract = False
         for decorator in o.original_decorators:
@@ -641,7 +641,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Also add function and module aliases.
             return ((top_level and isinstance(expr.node, (FuncDef, Decorator, MypyFile))
                      or isinstance(expr.node, TypeInfo)) and
-                    not self.is_private_member(expr.node.fullname()))
+                    not self.is_private_member(expr.node.fullname))
         elif (isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr) and
               not self.is_private_name(expr.base.name)):
             if isinstance(expr.index, TupleExpr):
