@@ -676,7 +676,7 @@ class BuildManager:
 
         def correct_rel_imp(imp: Union[ImportFrom, ImportAll]) -> str:
             """Function to correct for relative imports."""
-            file_id = file.fullname()
+            file_id = file.fullname
             rel = imp.relative
             if rel == 0:
                 return imp.id
@@ -687,7 +687,7 @@ class BuildManager:
             new_id = file_id + "." + imp.id if imp.id else file_id
 
             if not new_id:
-                self.errors.set_file(file.path, file.name())
+                self.errors.set_file(file.path, file.name)
                 self.errors.report(imp.line, 0,
                                    "No parent module -- cannot perform relative import",
                                    blocker=True)

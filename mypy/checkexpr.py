@@ -230,7 +230,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                         or lvalue)
         else:
             if isinstance(node, PlaceholderNode):
-                assert False, 'PlaceholderNode %r leaked to checker' % node.fullname()
+                assert False, 'PlaceholderNode %r leaked to checker' % node.fullname
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)
@@ -243,12 +243,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(var_type, Instance):
                 if self.is_literal_context() and var_type.last_known_value is not None:
                     return var_type.last_known_value
-                if var.name() in {'True', 'False'}:
-                    return self.infer_literal_expr_type(var.name() == 'True', 'builtins.bool')
+                if var.name in {'True', 'False'}:
+                    return self.infer_literal_expr_type(var.name == 'True', 'builtins.bool')
             return var.type
         else:
             if not var.is_ready and self.chk.in_checked_function():
-                self.chk.handle_cannot_determine_type(var.name(), context)
+                self.chk.handle_cannot_determine_type(var.name, context)
             # Implicit 'Any' type.
             return AnyType(TypeOfAny.special_form)
 
@@ -328,7 +328,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(e.callee.node, TypeAlias):
                 target = get_proper_type(e.callee.node.target)
                 if isinstance(target, Instance):
-                    fullname = target.type.fullname()
+                    fullname = target.type.fullname
             # * Call to a method on object that has a full name (see
             #   method_fullname() for details on supported objects);
             #   get_method_hook() and get_method_signature_hook() will
@@ -386,12 +386,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         type_name = None
         if isinstance(object_type, Instance):
-            type_name = object_type.type.fullname()
+            type_name = object_type.type.fullname
         elif isinstance(object_type, (TypedDictType, LiteralType)):
             info = object_type.fallback.type.get_containing_type_info(method_name)
-            type_name = info.fullname() if info is not None else None
+            type_name = info.fullname if info is not None else None
         elif isinstance(object_type, TupleType):
-            type_name = tuple_fallback(object_type).type.fullname()
+            type_name = tuple_fallback(object_type).type.fullname
 
         if type_name is not None:
             return '{}.{}'.format(type_name, method_name)
@@ -558,7 +558,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         partial_type.type is None):
                     # A partial None type -> can't infer anything.
                     return
-                typename = partial_type.type.fullname()
+                typename = partial_type.type.fullname
                 methodname = e.callee.name
                 # Sometimes we can infer a full type for a partial List, Dict or Set type.
                 # TODO: Don't infer argument expression twice.
@@ -575,7 +575,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                       and e.arg_kinds == [ARG_POS]):
                     arg_type = get_proper_type(self.accept(e.args[0]))
                     if isinstance(arg_type, Instance):
-                        arg_typename = arg_type.type.fullname()
+                        arg_typename = arg_type.type.fullname
                         if arg_typename in self.container_args[typename][methodname]:
                             full_item_types = [
                                 make_simplified_union([item_type, prev_type])
@@ -801,7 +801,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                   is_super=False, is_operator=True, msg=self.msg,
                                                   original_type=callee, chk=self.chk,
                                                   in_literal_context=self.is_literal_context())
-            callable_name = callee.type.fullname() + ".__call__"
+            callable_name = callee.type.fullname + ".__call__"
             # Apply method signature hook, if one exists
             call_function = self.transform_callee_type(
                 callable_name, call_function, args, arg_kinds, context, arg_names, callee)
@@ -840,7 +840,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_name = callee.name
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
-            callable_name = ret_type.type.fullname()
+            callable_name = ret_type.type.fullname
         if (isinstance(callable_node, RefExpr)
             and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
                                            'enum.Flag', 'enum.IntFlag')):
@@ -853,13 +853,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and not callee.type_object().fallback_to_any):
             type = callee.type_object()
             self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name(), type.abstract_attributes,
+                callee.type_object().name, type.abstract_attributes,
                 context)
         elif (callee.is_type_obj() and callee.type_object().is_protocol
               # Exception for Type[...]
               and not callee.from_type_type):
             self.chk.fail(message_registry.CANNOT_INSTANTIATE_PROTOCOL
-                          .format(callee.type_object().name()), context)
+                          .format(callee.type_object().name), context)
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds, arg_names,
@@ -935,7 +935,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return callee
         # We support Type of namedtuples but not of tuples in general
         if (isinstance(item, TupleType)
-                and tuple_fallback(item).type.fullname() != 'builtins.tuple'):
+                and tuple_fallback(item).type.fullname != 'builtins.tuple'):
             return self.analyze_type_type_callee(tuple_fallback(item), context)
 
         self.msg.unsupported_type_type(item, context)
@@ -2180,8 +2180,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
         if isinstance(left, Instance) and isinstance(right, Instance):
             # Special case some builtin implementations of AbstractSet.
-            if (left.type.fullname() in OVERLAPPING_TYPES_WHITELIST and
-                    right.type.fullname() in OVERLAPPING_TYPES_WHITELIST):
+            if (left.type.fullname in OVERLAPPING_TYPES_WHITELIST and
+                    right.type.fullname in OVERLAPPING_TYPES_WHITELIST):
                 abstract_set = self.chk.lookup_typeinfo('typing.AbstractSet')
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
@@ -2334,7 +2334,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             """
             for cls in typ.type.mro:
                 if cls.names.get(attr_name):
-                    return cls.fullname()
+                    return cls.fullname
             return None
 
         left_type = get_proper_type(left_type)
@@ -2899,7 +2899,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # calculated at semantic analysis time. Use it to pull out the
                 # corresponding subset of variables in self.chk.type_map
                 names_to_types = {
-                    var_node.name(): var_node.type for var_node in expr.local_nodes
+                    var_node.name: var_node.type for var_node in expr.local_nodes
                 } if expr.local_nodes is not None else {}
 
                 self.msg.reveal_locals(names_to_types, expr)
@@ -2988,7 +2988,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
         elif (isinstance(item, TupleType) and
               # Tuple[str, int]() fails at runtime, only named tuples and subclasses work.
-              tuple_fallback(item).type.fullname() != 'builtins.tuple'):
+              tuple_fallback(item).type.fullname != 'builtins.tuple'):
             return type_object_type(tuple_fallback(item).type, self.named_type)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
@@ -3793,7 +3793,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Determine the type of the entire yield from expression.
         iter_type = get_proper_type(iter_type)
         if (isinstance(iter_type, Instance) and
-                iter_type.type.fullname() == 'typing.Generator'):
+                iter_type.type.fullname == 'typing.Generator'):
             expr_type = self.chk.get_generator_return_type(iter_type, False)
         else:
             # Non-Generators don't return anything from `yield from` expressions.
@@ -3906,7 +3906,7 @@ class HasAnyType(types.TypeQuery[bool]):
 def has_coroutine_decorator(t: Type) -> bool:
     """Whether t came from a function decorated with `@coroutine`."""
     t = get_proper_type(t)
-    return isinstance(t, Instance) and t.type.fullname() == 'typing.AwaitableGenerator'
+    return isinstance(t, Instance) and t.type.fullname == 'typing.AwaitableGenerator'
 
 
 def is_async_def(t: Type) -> bool:
@@ -3925,10 +3925,10 @@ def is_async_def(t: Type) -> bool:
     # decorations.)
     t = get_proper_type(t)
     if (isinstance(t, Instance)
-            and t.type.fullname() == 'typing.AwaitableGenerator'
+            and t.type.fullname == 'typing.AwaitableGenerator'
             and len(t.args) >= 4):
         t = get_proper_type(t.args[3])
-    return isinstance(t, Instance) and t.type.fullname() == 'typing.Coroutine'
+    return isinstance(t, Instance) and t.type.fullname == 'typing.Coroutine'
 
 
 def is_non_empty_tuple(t: Type) -> bool:
@@ -4025,7 +4025,7 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
     def is_typetype_like(typ: ProperType) -> bool:
         return (isinstance(typ, TypeType)
                 or (isinstance(typ, FunctionLike) and typ.is_type_obj())
-                or (isinstance(typ, Instance) and typ.type.fullname() == "builtins.type"))
+                or (isinstance(typ, Instance) and typ.type.fullname == "builtins.type"))
 
     if isinstance(formal, CallableType):
         if isinstance(actual, (CallableType, Overloaded, TypeType)):
@@ -4205,7 +4205,7 @@ def custom_equality_method(typ: Type) -> bool:
         method = typ.type.get('__eq__')
         if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
             if method.node.info:
-                return not method.node.info.fullname().startswith('builtins.')
+                return not method.node.info.fullname.startswith('builtins.')
         return False
     if isinstance(typ, UnionType):
         return any(custom_equality_method(t) for t in typ.items)
@@ -4230,7 +4230,7 @@ def has_bytes_component(typ: Type, py2: bool = False) -> bool:
         byte_types = {'builtins.bytes', 'builtins.bytearray'}
     if isinstance(typ, UnionType):
         return any(has_bytes_component(t) for t in typ.items)
-    if isinstance(typ, Instance) and typ.type.fullname() in byte_types:
+    if isinstance(typ, Instance) and typ.type.fullname in byte_types:
         return True
     return False
 

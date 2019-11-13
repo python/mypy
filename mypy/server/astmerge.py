@@ -77,11 +77,11 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
     will be the new symbol table. 'new' and 'old_symbols' will no longer be
     valid.
     """
-    assert new.fullname() == old.fullname()
+    assert new.fullname == old.fullname
     # Find the mapping from new to old node identities for all nodes
     # whose identities should be preserved.
     replacement_map = replacement_map_from_symbol_table(
-        old_symbols, new_symbols, prefix=old.fullname())
+        old_symbols, new_symbols, prefix=old.fullname)
     # Also replace references to the new MypyFile node.
     replacement_map[new] = old
     # Perform replacements to everywhere within the new AST (not including symbol
@@ -106,11 +106,11 @@ def replacement_map_from_symbol_table(
     replacements = {}  # type: Dict[SymbolNode, SymbolNode]
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
-                             or node.node and get_prefix(node.node.fullname()) == prefix)):
+                             or node.node and get_prefix(node.node.fullname) == prefix)):
             new_node = new[name]
             if (type(new_node.node) == type(node.node)  # noqa
                     and new_node.node and node.node and
-                    new_node.node.fullname() == node.node.fullname() and
+                    new_node.node.fullname == node.node.fullname and
                     new_node.kind == node.kind):
                 replacements[new_node.node] = node.node
                 if isinstance(node.node, TypeInfo) and isinstance(new_node.node, TypeInfo):

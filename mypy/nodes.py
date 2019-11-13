@@ -200,14 +200,14 @@ class SymbolNode(Node):
 
     __slots__ = ()
 
-    # TODO do not use methods for these
-
+    @property
     @abstractmethod
     def name(self) -> str: pass
 
     # fullname can often be None even though the type system
     # disagrees. We mark this with Bogus to let mypyc know not to
     # worry about it.
+    @property
     @abstractmethod
     def fullname(self) -> Bogus[str]: pass
 
@@ -280,11 +280,13 @@ class MypyFile(SymbolNode):
 
         This doesn't include imported definitions.
         """
-        return local_definitions(self.names, self.fullname())
+        return local_definitions(self.names, self.fullname)
 
+    @property
     def name(self) -> str:
         return '' if not self._fullname else self._fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -399,9 +401,11 @@ class ImportedName(SymbolNode):
         super().__init__()
         self.target_fullname = target_fullname
 
+    @property
     def name(self) -> str:
         return self.target_fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> str:
         return self.target_fullname
 
@@ -463,9 +467,11 @@ class FuncBase(Node):
         # TODO: Type should be Optional[str]
         self._fullname = cast(Bogus[str], None)
 
+    @property
     @abstractmethod
     def name(self) -> str: pass
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -496,13 +502,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
+    @property
     def name(self) -> str:
         if self.items:
-            return self.items[0].name()
+            return self.items[0].name
         else:
             # This may happen for malformed overload
             assert self.impl is not None
-            return self.impl.name()
+            return self.impl.name
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
@@ -596,7 +603,7 @@ class FuncItem(FuncBase):
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__()
         self.arguments = arguments
-        self.arg_names = [arg.variable.name() for arg in self.arguments]
+        self.arg_names = [arg.variable.name for arg in self.arguments]
         self.arg_kinds = [arg.kind for arg in self.arguments]  # type: List[int]
         self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.body = body
@@ -661,6 +668,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
+    @property
     def name(self) -> str:
         return self._name
 
@@ -734,11 +742,13 @@ class Decorator(SymbolNode, Statement):
         self.var = var
         self.is_overload = False
 
+    @property
     def name(self) -> str:
-        return self.func.name()
+        return self.func.name
 
+    @property
     def fullname(self) -> Bogus[str]:
-        return self.func.fullname()
+        return self.func.fullname
 
     @property
     def is_final(self) -> bool:
@@ -852,9 +862,11 @@ class Var(SymbolNode):
         # If True, this is an implicit Var created due to module-level __getattr__.
         self.from_module_getattr = False
 
+    @property
     def name(self) -> str:
         return self._name
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -1818,6 +1830,7 @@ class SuperExpr(Expression):
 class LambdaExpr(FuncItem, Expression):
     """Lambda expression"""
 
+    @property
     def name(self) -> str:
         return '<lambda>'
 
@@ -2059,9 +2072,11 @@ class TypeVarExpr(SymbolNode, Expression):
         self.upper_bound = upper_bound
         self.variance = variance
 
+    @property
     def name(self) -> str:
         return self._name
 
+    @property
     def fullname(self) -> str:
         return self._fullname
 
@@ -2388,10 +2403,12 @@ class TypeInfo(SymbolNode):
             for vd in self.defn.type_vars:
                 self.type_vars.append(vd.fullname)
 
+    @property
     def name(self) -> str:
         """Short name."""
         return self.defn.name
 
+    @property
     def fullname(self) -> Bogus[str]:
         return self._fullname
 
@@ -2432,7 +2449,7 @@ class TypeInfo(SymbolNode):
             raise KeyError(name)
 
     def __repr__(self) -> str:
-        return '<TypeInfo %s>' % self.fullname()
+        return '<TypeInfo %s>' % self.fullname
 
     def __bool__(self) -> bool:
         # We defined this here instead of just overriding it in
@@ -2469,7 +2486,7 @@ class TypeInfo(SymbolNode):
         return None
 
     def is_metaclass(self) -> bool:
-        return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
+        return (self.has_base('builtins.type') or self.fullname == 'abc.ABCMeta' or
                 self.fallback_to_any)
 
     def has_base(self, fullname: str) -> bool:
@@ -2478,7 +2495,7 @@ class TypeInfo(SymbolNode):
         This can be either via extension or via implementation.
         """
         for cls in self.mro:
-            if cls.fullname() == fullname:
+            if cls.fullname == fullname:
                 return True
         return False
 
@@ -2513,7 +2530,7 @@ class TypeInfo(SymbolNode):
         if self.bases:
             base = 'Bases({})'.format(', '.join(type_str(base)
                                                 for base in self.bases))
-        mro = 'Mro({})'.format(', '.join(item.fullname() + str_conv.format_id(item)
+        mro = 'Mro({})'.format(', '.join(item.fullname + str_conv.format_id(item)
                                          for item in self.mro))
         names = []
         for name in sorted(self.names):
@@ -2523,7 +2540,7 @@ class TypeInfo(SymbolNode):
                 description += ' ({})'.format(type_str(node.type))
             names.append(description)
         items = [
-            'Name({})'.format(self.fullname()),
+            'Name({})'.format(self.fullname),
             base,
             mro,
             ('Names', names),
@@ -2541,13 +2558,13 @@ class TypeInfo(SymbolNode):
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
-                'fullname': self.fullname(),
-                'names': self.names.serialize(self.fullname()),
+                'fullname': self.fullname,
+                'names': self.names.serialize(self.fullname),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
-                'mro': [c.fullname() for c in self.mro],
+                'mro': [c.fullname for c in self.mro],
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
@@ -2738,9 +2755,11 @@ class TypeAlias(SymbolNode):
         self.normalized = normalized
         super().__init__(line, column)
 
+    @property
     def name(self) -> str:
         return self._fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> str:
         return self._fullname
 
@@ -2829,9 +2848,11 @@ class PlaceholderNode(SymbolNode):
         self.becomes_typeinfo = becomes_typeinfo
         self.line = line
 
+    @property
     def name(self) -> str:
         return self._fullname.split('.')[-1]
 
+    @property
     def fullname(self) -> str:
         return self._fullname
 
@@ -2933,7 +2954,7 @@ class SymbolTableNode:
     @property
     def fullname(self) -> Optional[str]:
         if self.node is not None:
-            return self.node.fullname()
+            return self.node.fullname
         else:
             return None
 
@@ -2959,7 +2980,7 @@ class SymbolTableNode:
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
         if isinstance(self.node, SymbolNode):
-            s += ' ({})'.format(self.node.fullname())
+            s += ' ({})'.format(self.node.fullname)
         # Include declared type of variables and functions.
         if self.type is not None:
             s += ' : {}'.format(self.type)
@@ -2984,11 +3005,11 @@ class SymbolTableNode:
         if self.plugin_generated:
             data['plugin_generated'] = True
         if isinstance(self.node, MypyFile):
-            data['cross_ref'] = self.node.fullname()
+            data['cross_ref'] = self.node.fullname
         else:
             assert self.node is not None, '%s:%s' % (prefix, name)
             if prefix is not None:
-                fullname = self.node.fullname()
+                fullname = self.node.fullname
                 if (fullname is not None and '.' in fullname
                         and fullname != prefix + '.' + name
                         and not (isinstance(self.node, Var)
@@ -3173,7 +3194,7 @@ def local_definitions(names: SymbolTable,
             shortname = name.split('-redef')[0]
         fullname = name_prefix + '.' + shortname
         node = symnode.node
-        if node and node.fullname() == fullname:
+        if node and node.fullname == fullname:
             yield fullname, symnode, info
             if isinstance(node, TypeInfo):
                 yield from local_definitions(node.names, fullname, node)

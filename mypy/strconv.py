@@ -126,7 +126,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> str:
         a = self.func_helper(o)
-        a.insert(0, o.name())
+        a.insert(0, o.name)
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
@@ -159,7 +159,7 @@ class StrConv(NodeVisitor[str]):
         if o.base_type_exprs:
             if o.info and o.info.bases:
                 if (len(o.info.bases) != 1
-                        or o.info.bases[0].type.fullname() != 'builtins.object'):
+                        or o.info.bases[0].type.fullname != 'builtins.object'):
                     a.insert(1, ('BaseType', o.info.bases))
             else:
                 a.insert(1, ('BaseTypeExpr', o.base_type_exprs))
@@ -183,7 +183,7 @@ class StrConv(NodeVisitor[str]):
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
             lst = ':nil'
-        return 'Var' + lst + '(' + o.name() + ')'
+        return 'Var' + lst + '(' + o.name + ')'
 
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> str:
         return self.dump([o.names], o)
@@ -472,15 +472,15 @@ class StrConv(NodeVisitor[str]):
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> str:
         return 'NamedTupleExpr:{}({}, {})'.format(o.line,
-                                                  o.info.name(),
+                                                  o.info.name,
                                                   o.info.tuple_type)
 
     def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> str:
-        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name(), o.items)
+        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name, o.items)
 
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
         return 'TypedDictExpr:{}({})'.format(o.line,
-                                             o.info.name())
+                                             o.info.name)
 
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
         return 'PromoteExpr:{}({})'.format(o.line, o.type)

@@ -28,7 +28,7 @@ def linearize_hierarchy(info: TypeInfo,
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
-    if (not bases and info.fullname() != 'builtins.object' and
+    if (not bases and info.fullname != 'builtins.object' and
             obj_type is not None):
         # Second pass in import cycle, add a dummy `object` base class,
         # otherwise MRO calculation may spuriously fail.
@@ -36,7 +36,7 @@ def linearize_hierarchy(info: TypeInfo,
         bases = [obj_type().type]
     lin_bases = []
     for base in bases:
-        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
+        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname, bases)
         lin_bases.append(linearize_hierarchy(base, obj_type))
     lin_bases.append(bases)
     return [info] + merge(lin_bases)
