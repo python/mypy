@@ -2164,7 +2164,7 @@ def copy_type(t: TP) -> TP:
     return copy.copy(t)
 
 
-class InstantiateAliasVisitor(TypeTranslator, SyntheticTypeVisitor[Type]):
+class InstantiateAliasVisitor(TypeTranslator):
     def __init__(self, vars: List[str], subs: List[Type]) -> None:
         self.replacements = {v: s for (v, s) in zip(vars, subs)}
 
@@ -2183,9 +2183,6 @@ class InstantiateAliasVisitor(TypeTranslator, SyntheticTypeVisitor[Type]):
     def visit_type_var(self, typ: TypeVarType) -> Type:
         if typ.name in self.replacements:
             return self.replacements[typ.name]
-        return typ
-
-    def visit_placeholder_type(self, typ: PlaceholderType) -> Type:
         return typ
 
 

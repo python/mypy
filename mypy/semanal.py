@@ -2478,7 +2478,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.analyze_alias(rvalue, allow_placeholder=True)
             if not res:
                 return False
-            if self.found_incomplete_ref(tag) or isinstance(res, PlaceholderType):
+            # TODO: Maybe we only need to reject top-level placeholders, similar
+            #       to base classes.
+            if self.found_incomplete_ref(tag) or has_placeholder(res):
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
@@ -2510,9 +2512,6 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         if existing:
             # An alias gets updated.
-            if self.final_iteration:
-                self.cannot_resolve_name(lvalue.name, 'iiiname', s)
-                return True
             updated = False
             if isinstance(existing.node, TypeAlias):
                 if existing.node.target != res:
@@ -2527,9 +2526,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 existing.node = alias_node
                 updated = True
             if updated:
-                self.progress = True
-                # We need to defer so that this change can get propagated to base classes.
-                self.defer(s)
+                if self.final_iteration:
+                    self.cannot_resolve_name(lvalue.name, 'name', s)
+                    return True
+                else:
+                    self.progress = True
+                    # We need to defer so that this change can get propagated to base classes.
+                    self.defer(s)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):

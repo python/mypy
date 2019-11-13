@@ -444,7 +444,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m.f
+<m.A> -> <m.f>, m.f
 <mod.D.__init__> -> m
 <mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
@@ -467,7 +467,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<a.A> -> m.f
+<a.A> -> <m.f>, m.f
 <a> -> m
 <mod.D> -> <m.f>, m.f
 <mod.I> -> <m.f>, m.f
@@ -621,7 +621,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.x>, m
 <m.B> -> m
 <m.x> -> m
 <mod.D.__init__> -> m
@@ -650,7 +650,7 @@ class S: pass
 [out]
 <m.B> -> m
 <m.x> -> m
-<a.A> -> m
+<a.A> -> <m.x>, m
 <a> -> m
 <mod.D.__init__> -> m, a
 <mod.D.__new__> -> m, a
@@ -675,8 +675,8 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
-<m.B> -> m.f
+<m.A> -> <m.f>, m, m.f
+<m.B> -> <m.f>, m.f
 <mod.D.__init__> -> m
 <mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
@@ -702,8 +702,8 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.B> -> m.f
-<a.A> -> m
+<m.B> -> <m.f>, m.f
+<a.A> -> <m.f>, m, m.f
 <a> -> m
 <mod.D.__init__> -> m, a
 <mod.D.__new__> -> m, a
@@ -728,7 +728,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m.f
+<m.A> -> <m.f>, m.f
 <m.E> -> m.f
 <mod.D.__init__> -> m
 <mod.D.__new__> -> m
@@ -753,7 +753,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.C.x>, m
 <m.B> -> m
 <m.C> -> m.C
 <mod.D.__init__> -> m
