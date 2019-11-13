@@ -533,6 +533,7 @@ def analyze_var(name: str,
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = get_proper_type(expand_type_by_instance(typ, itype))
         result = t  # type: Type
+        typ = get_proper_type(typ)
         if var.is_initialized_in_class and isinstance(typ, FunctionLike) and not typ.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
@@ -557,12 +558,13 @@ def analyze_var(name: str,
                                           mx.context, name, mx.msg)
                 signature = freshen_function_type_vars(functype)
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
+                expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
-                    assert isinstance(signature, CallableType)
-                    result = signature.ret_type
+                    assert isinstance(expanded_signature, CallableType)
+                    result = expanded_signature.ret_type
                 else:
-                    result = get_proper_type(expand_type_by_instance(signature, itype))
+                    result = expanded_signature
     else:
         if not var.is_ready:
             mx.not_ready_callback(var.name(), mx.context)
