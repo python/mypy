@@ -369,6 +369,58 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
     return sorted(headers)
 
 
+def mypyc_build(
+    paths: List[str],
+    compiler_options: CompilerOptions,
+    *,
+    separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
+    only_compile_paths: Optional[Iterable[str]] = None,
+    skip_cgen_input: Optional[Any] = None,
+    always_use_shared_lib: bool = False
+) -> Tuple[emitmodule.Groups, List[Tuple[List[str], List[str]]]]:
+    """Do the front and middle end of mypyc building, producing and writing out C source."""
+    fscache = FileSystemCache()
+    mypyc_sources, all_sources, options = get_mypy_config(
+        paths, only_compile_paths, compiler_options, fscache)
+
+    # We generate a shared lib if there are multiple modules or if any
+    # of the modules are in package. (Because I didn't want to fuss
+    # around with making the single module code handle packages.)
+    use_shared_lib = (
+        len(mypyc_sources) > 1
+        or any('.' in x.module for x in mypyc_sources)
+        or always_use_shared_lib
+    )
+
+    groups = construct_groups(mypyc_sources, separate, use_shared_lib)
+
+    # We let the test harness just pass in the c file contents instead
+    # so that it can do a corner-cutting version without full stubs.
+    if not skip_cgen_input:
+        group_cfiles, ops_text = generate_c(all_sources, options, groups, fscache,
+                                            compiler_options=compiler_options)
+        # TODO: unique names?
+        write_file(os.path.join(compiler_options.target_dir, 'ops.txt'), ops_text)
+    else:
+        group_cfiles = skip_cgen_input
+
+    # Write out the generated C and collect the files for each group
+    # Should this be here??
+    group_cfilenames = []  # type: List[Tuple[List[str], List[str]]]
+    for cfiles in group_cfiles:
+        cfilenames = []
+        for cfile, ctext in cfiles:
+            cfile = os.path.join(compiler_options.target_dir, cfile)
+            write_file(cfile, ctext)
+            if os.path.splitext(cfile)[1] == '.c':
+                cfilenames.append(cfile)
+
+        deps = [os.path.join(compiler_options.target_dir, dep) for dep in get_header_deps(cfiles)]
+        group_cfilenames.append((cfilenames, deps))
+
+    return groups, group_cfilenames
+
+
 def mypycify(
     paths: List[str],
     *,
@@ -421,7 +473,7 @@ def mypycify(
                                Defaults to False in multi_file mode, True otherwise.
     """
 
-    setup_mypycify_vars()
+    # Figure out our configuration
     compiler_options = CompilerOptions(
         strip_asserts=strip_asserts,
         multi_file=multi_file,
@@ -431,6 +483,18 @@ def mypycify(
         include_runtime_files=include_runtime_files,
     )
 
+    # Generate all the actual important C code
+    groups, group_cfilenames = mypyc_build(
+        paths,
+        only_compile_paths=only_compile_paths,
+        compiler_options=compiler_options,
+        separate=separate,
+        skip_cgen_input=skip_cgen_input,
+    )
+
+    # Mess around with setuptools and actually get the thing built
+    setup_mypycify_vars()
+
     # Create a compiler object so we can make decisions based on what
     # compiler is being used. typeshed is missing some attribues on the
     # compiler object so we give it type Any
@@ -438,39 +502,6 @@ def mypycify(
     sysconfig.customize_compiler(compiler)
 
     build_dir = compiler_options.target_dir
-
-    fscache = FileSystemCache()
-    mypyc_sources, all_sources, options = get_mypy_config(
-        paths, only_compile_paths, compiler_options, fscache)
-    # We generate a shared lib if there are multiple modules or if any
-    # of the modules are in package. (Because I didn't want to fuss
-    # around with making the single module code handle packages.)
-    use_shared_lib = len(mypyc_sources) > 1 or any('.' in x.module for x in mypyc_sources)
-
-    groups = construct_groups(mypyc_sources, separate, use_shared_lib)
-
-    # We let the test harness just pass in the c file contents instead
-    # so that it can do a corner-cutting version without full stubs.
-    if not skip_cgen_input:
-        group_cfiles, ops_text = generate_c(all_sources, options, groups, fscache,
-                                            compiler_options=compiler_options)
-        # TODO: unique names?
-        write_file(os.path.join(build_dir, 'ops.txt'), ops_text)
-    else:
-        group_cfiles = skip_cgen_input
-
-    # Write out the generated C and collect the files for each group
-    group_cfilenames = []  # type: List[Tuple[List[str], List[str]]]
-    for cfiles in group_cfiles:
-        cfilenames = []
-        for cfile, ctext in cfiles:
-            cfile = os.path.join(build_dir, cfile)
-            write_file(cfile, ctext)
-            if os.path.splitext(cfile)[1] == '.c':
-                cfilenames.append(cfile)
-
-        deps = [os.path.join(build_dir, dep) for dep in get_header_deps(cfiles)]
-        group_cfilenames.append((cfilenames, deps))
 
     cflags = []  # type: List[str]
     if compiler.compiler_type == 'unix':
@@ -513,8 +544,7 @@ def mypycify(
 
     extensions = []
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
-        if use_shared_lib:
-            assert lib_name
+        if lib_name:
             extensions.extend(build_using_shared_lib(
                 group_sources, lib_name, cfilenames + shared_cfilenames, deps, build_dir, cflags))
         else:
