@@ -5,17 +5,18 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable
+from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar
+from typing_extensions import Type as TypingType
 import sys
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
-    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery
 )
 from mypy.nodes import (
-    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, TypeVar, ARG_STAR, ARG_STAR2, ARG_POS,
+    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
     Expression, StrExpr, Var
 )
 from mypy.maptype import map_instance_to_supertype
@@ -41,6 +42,25 @@ def tuple_fallback(typ: TupleType) -> Instance:
     if info.fullname() != 'builtins.tuple':
         return typ.partial_fallback
     return Instance(info, [join_type_list(typ.items)])
+
+
+def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
+    """Returns the Instance fallback for this type if one exists.
+
+    Otherwise, returns None.
+    """
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, TupleType):
+        return tuple_fallback(typ)
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    else:
+        return None
 
 
 def type_object_type_from_function(signature: FunctionLike,
@@ -481,10 +501,47 @@ def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]
     2. 'typ' is a LiteralType containing a string
     3. 'typ' is a UnionType containing only LiteralType of strings
     """
-    typ = get_proper_type(typ)
-
     if isinstance(expr, StrExpr):
         return [expr.value]
+
+    # TODO: See if we can eliminate this function and call the below one directly
+    return try_getting_str_literals_from_type(typ)
+
+
+def try_getting_str_literals_from_type(typ: Type) -> Optional[List[str]]:
+    """If the given expression or type corresponds to a string Literal
+    or a union of string Literals, returns a list of the underlying strings.
+    Otherwise, returns None.
+
+    For example, if we had the type 'Literal["foo", "bar"]' as input, this function
+    would return a list of strings ["foo", "bar"].
+    """
+    return try_getting_literals_from_type(typ, str, "builtins.str")
+
+
+def try_getting_int_literals_from_type(typ: Type) -> Optional[List[int]]:
+    """If the given expression or type corresponds to an int Literal
+    or a union of int Literals, returns a list of the underlying ints.
+    Otherwise, returns None.
+
+    For example, if we had the type 'Literal[1, 2, 3]' as input, this function
+    would return a list of ints [1, 2, 3].
+    """
+    return try_getting_literals_from_type(typ, int, "builtins.int")
+
+
+T = TypeVar('T')
+
+
+def try_getting_literals_from_type(typ: Type,
+                                   target_literal_type: TypingType[T],
+                                   target_fullname: str) -> Optional[List[T]]:
+    """If the given expression or type corresponds to a Literal or
+    union of Literals where the underlying values corresponds to the given
+    target type, returns a list of those underlying values. Otherwise,
+    returns None.
+    """
+    typ = get_proper_type(typ)
 
     if isinstance(typ, Instance) and typ.last_known_value is not None:
         possible_literals = [typ.last_known_value]  # type: List[Type]
@@ -493,15 +550,17 @@ def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]
     else:
         possible_literals = [typ]
 
-    strings = []
+    literals = []  # type: List[T]
     for lit in get_proper_types(possible_literals):
-        if isinstance(lit, LiteralType) and lit.fallback.type.fullname() == 'builtins.str':
+        if isinstance(lit, LiteralType) and lit.fallback.type.fullname() == target_fullname:
             val = lit.value
-            assert isinstance(val, str)
-            strings.append(val)
+            if isinstance(val, target_literal_type):
+                literals.append(val)
+            else:
+                return None
         else:
             return None
-    return strings
+    return literals
 
 
 def get_enum_values(typ: Instance) -> List[str]:

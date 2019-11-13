@@ -5,7 +5,8 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Sequence
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Sequence,
+    Mapping,
 )
 from typing_extensions import Final
 
@@ -42,12 +43,14 @@ from mypy.messages import (
 )
 import mypy.checkexpr
 from mypy.checkmember import (
-    analyze_descriptor_access, type_object_type,
+    analyze_member_access, analyze_descriptor_access, type_object_type,
 )
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
-    erase_def_to_union_or_bound, erase_to_union_or_bound,
-    true_only, false_only, function_type, TypeVarExtractor
+    erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
+    try_getting_str_literals_from_type, try_getting_int_literals_from_type,
+    tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
+    true_only, false_only, function_type, TypeVarExtractor,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -71,9 +74,6 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
-from mypy.typeops import (
-    tuple_fallback, coerce_to_literal, is_singleton_type, try_expanding_enum_to_union
-)
 from mypy import state, errorcodes as codes
 from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode
@@ -3708,6 +3708,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Guaranteed to not return None, None. (But may return {}, {})
         """
+        if_map, else_map = self.find_isinstance_check_helper(node)
+        new_if_map = self.propagate_up_typemap_info(self.type_map, if_map)
+        new_else_map = self.propagate_up_typemap_info(self.type_map, else_map)
+        return new_if_map, new_else_map
+
+    def find_isinstance_check_helper(self, node: Expression) -> Tuple[TypeMap, TypeMap]:
         type_map = self.type_map
         if is_true_literal(node):
             return {}, None
@@ -3834,27 +3840,195 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else None)
             return if_map, else_map
         elif isinstance(node, OpExpr) and node.op == 'and':
-            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
 
             # (e1 and e2) is true if both e1 and e2 are true,
             # and false if at least one of e1 and e2 is false.
             return (and_conditional_maps(left_if_vars, right_if_vars),
                     or_conditional_maps(left_else_vars, right_else_vars))
         elif isinstance(node, OpExpr) and node.op == 'or':
-            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
 
             # (e1 or e2) is true if at least one of e1 or e2 is true,
             # and false if both e1 and e2 are false.
             return (or_conditional_maps(left_if_vars, right_if_vars),
                     and_conditional_maps(left_else_vars, right_else_vars))
         elif isinstance(node, UnaryExpr) and node.op == 'not':
-            left, right = self.find_isinstance_check(node.expr)
+            left, right = self.find_isinstance_check_helper(node.expr)
             return right, left
 
         # Not a supported isinstance check
         return {}, {}
+
+    def propagate_up_typemap_info(self,
+                                  existing_types: Mapping[Expression, Type],
+                                  new_types: TypeMap) -> TypeMap:
+        """Attempts refining parent expressions of any MemberExpr or IndexExprs in new_types.
+
+        Specifically, this function accepts two mappings of expression to original types:
+        the original mapping (existing_types), and a new mapping (new_types) intended to
+        update the original.
+
+        This function iterates through new_types and attempts to use the information to try
+        refining any parent types that happen to be unions.
+
+        For example, suppose there are two types "A = Tuple[int, int]" and "B = Tuple[str, str]".
+        Next, suppose that 'new_types' specifies the expression 'foo[0]' has a refined type
+        of 'int' and that 'foo' was previously deduced to be of type Union[A, B].
+
+        Then, this function will observe that since A[0] is an int and B[0] is not, the type of
+        'foo' can be further refined from Union[A, B] into just B.
+
+        We perform this kind of "parent narrowing" for member lookup expressions and indexing
+        expressions into tuples, namedtuples, and typeddicts. We repeat this narrowing
+        recursively if the parent is also a "lookup expression". So for example, if we have
+        the expression "foo['bar'].baz[0]", we'd potentially end up refining types for the
+        expressions "foo", "foo['bar']", and "foo['bar'].baz".
+
+        We return the newly refined map. This map is guaranteed to be a superset of 'new_types'.
+        """
+        if new_types is None:
+            return None
+        output_map = {}
+        for expr, expr_type in new_types.items():
+            # The original inferred type should always be present in the output map, of course
+            output_map[expr] = expr_type
+
+            # Next, try using this information to refine the parent types, if applicable.
+            new_mapping = self.refine_parent_types(existing_types, expr, expr_type)
+            for parent_expr, proposed_parent_type in new_mapping.items():
+                # We don't try inferring anything if we've already inferred something for
+                # the parent expression.
+                # TODO: Consider picking the narrower type instead of always discarding this?
+                if parent_expr in new_types:
+                    continue
+                output_map[parent_expr] = proposed_parent_type
+        return output_map
+
+    def refine_parent_types(self,
+                            existing_types: Mapping[Expression, Type],
+                            expr: Expression,
+                            expr_type: Type) -> Mapping[Expression, Type]:
+        """Checks if the given expr is a 'lookup operation' into a union and iteratively refines
+        the parent types based on the 'expr_type'.
+
+        For example, if 'expr' is an expression like 'a.b.c.d', we'll potentially return refined
+        types for expressions 'a', 'a.b', and 'a.b.c'.
+
+        For more details about what a 'lookup operation' is and how we use the expr_type to refine
+        the parent types of lookup_expr, see the docstring in 'propagate_up_typemap_info'.
+        """
+        output = {}  # type: Dict[Expression, Type]
+
+        # Note: parent_expr and parent_type are progressively refined as we crawl up the
+        # parent lookup chain.
+        while True:
+            # First, check if this expression is one that's attempting to
+            # "lookup" some key in the parent type. If so, save the parent type
+            # and create function that will try replaying the same lookup
+            # operation against arbitrary types.
+            if isinstance(expr, MemberExpr):
+                parent_expr = expr.expr
+                parent_type = existing_types.get(parent_expr)
+                member_name = expr.name
+
+                def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+                    msg_copy = self.msg.clean_copy()
+                    msg_copy.disable_count = 0
+                    member_type = analyze_member_access(
+                        name=member_name,
+                        typ=new_parent_type,
+                        context=parent_expr,
+                        is_lvalue=False,
+                        is_super=False,
+                        is_operator=False,
+                        msg=msg_copy,
+                        original_type=new_parent_type,
+                        chk=self,
+                        in_literal_context=False,
+                    )
+                    if msg_copy.is_errors():
+                        return None
+                    else:
+                        return member_type
+            elif isinstance(expr, IndexExpr):
+                parent_expr = expr.base
+                parent_type = existing_types.get(parent_expr)
+
+                index_type = existing_types.get(expr.index)
+                if index_type is None:
+                    return output
+
+                str_literals = try_getting_str_literals_from_type(index_type)
+                if str_literals is not None:
+                    # Refactoring these two indexing replay functions is surprisingly
+                    # tricky -- see https://github.com/python/mypy/pull/7917, which
+                    # was blocked by https://github.com/mypyc/mypyc/issues/586
+                    def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+                        if not isinstance(new_parent_type, TypedDictType):
+                            return None
+                        try:
+                            assert str_literals is not None
+                            member_types = [new_parent_type.items[key] for key in str_literals]
+                        except KeyError:
+                            return None
+                        return make_simplified_union(member_types)
+                else:
+                    int_literals = try_getting_int_literals_from_type(index_type)
+                    if int_literals is not None:
+                        def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
+                            if not isinstance(new_parent_type, TupleType):
+                                return None
+                            try:
+                                assert int_literals is not None
+                                member_types = [new_parent_type.items[key] for key in int_literals]
+                            except IndexError:
+                                return None
+                            return make_simplified_union(member_types)
+                    else:
+                        return output
+            else:
+                return output
+
+            # If we somehow didn't previously derive the parent type, abort completely
+            # with what we have so far: something went wrong at an earlier stage.
+            if parent_type is None:
+                return output
+
+            # We currently only try refining the parent type if it's a Union.
+            # If not, there's no point in trying to refine any further parents
+            # since we have no further information we can use to refine the lookup
+            # chain, so we end early as an optimization.
+            parent_type = get_proper_type(parent_type)
+            if not isinstance(parent_type, UnionType):
+                return output
+
+            # Take each element in the parent union and replay the original lookup procedure
+            # to figure out which parents are compatible.
+            new_parent_types = []
+            for item in parent_type.items:
+                item = get_proper_type(item)
+                member_type = replay_lookup(item)
+                if member_type is None:
+                    # We were unable to obtain the member type. So, we give up on refining this
+                    # parent type entirely and abort.
+                    return output
+
+                if is_overlapping_types(member_type, expr_type):
+                    new_parent_types.append(item)
+
+            # If none of the parent types overlap (if we derived an empty union), something
+            # went wrong. We should never hit this case, but deriving the uninhabited type or
+            # reporting an error both seem unhelpful. So we abort.
+            if not new_parent_types:
+                return output
+
+            expr = parent_expr
+            expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
+
+        return output
 
     #
     # Helpers

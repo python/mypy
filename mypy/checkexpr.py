@@ -2709,6 +2709,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         index = e.index
         left_type = get_proper_type(left_type)
 
+        # Visit the index, just to make sure we have a type for it available
+        self.accept(index)
+
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
             return make_simplified_union([self.visit_index_with_type(typ, e,
