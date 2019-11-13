@@ -2167,11 +2167,11 @@ class Test():
                 mte: MakeTwoConcrete[A],
                 mtgsa: MakeTwoGenericSubAbstract[A],
                 mtasa: MakeTwoAppliedSubAbstract) -> None:
-    reveal_type(mts.__call__) # N: Revealed type is 'def [B] (b: B`1) -> __main__.TwoTypes[A`-1, B`1]'
+    reveal_type(mts.__call__) # N: Revealed type is 'def [B] (b: B`33) -> __main__.TwoTypes[A`-33, B`33]'
     reveal_type(mts(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
-    reveal_type(mte.__call__) # N: Revealed type is 'def [B] (b: B`4) -> __main__.TwoTypes[A`-1, B`4]'
+    reveal_type(mte.__call__) # N: Revealed type is 'def [B] (b: B`36) -> __main__.TwoTypes[A`-1, B`36]'
     reveal_type(mte(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
-    reveal_type(mtgsa.__call__) # N: Revealed type is 'def [B] (b: B`7) -> __main__.TwoTypes[A`-1, B`7]'
+    reveal_type(mtgsa.__call__) # N: Revealed type is 'def [B] (b: B`39) -> __main__.TwoTypes[A`-1, B`39]'
     reveal_type(mtgsa(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
-    reveal_type(mtasa.__call__) # N: Revealed type is 'def [B] (b: B`10) -> __main__.TwoTypes[builtins.str, B`10]'
+    reveal_type(mtasa.__call__) # N: Revealed type is 'def [B] (b: B`42) -> __main__.TwoTypes[builtins.str, B`42]'
     reveal_type(mtasa(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
