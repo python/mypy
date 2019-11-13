@@ -3,15 +3,26 @@
 # FIXME: Basically nothing in this file operates on the level of a
 # single module and it should be renamed.
 
+import os
+import hashlib
+import json
 from collections import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
-from mypy.build import BuildSource, BuildResult, build
+from mypy.nodes import MypyFile
+from mypy.build import (
+    BuildSource, BuildResult, State, build, sorted_components, get_cache_names,
+    create_metastore, compute_hash,
+)
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.plugin import Plugin, ReportConfigContext
+from mypy.fscache import FileSystemCache
 
 from mypyc import genops
-from mypyc.common import PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name
+from mypyc.common import (
+    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
+)
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
@@ -19,7 +30,8 @@ from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
 from mypyc.ops import (
-    FuncIR, ClassIR, ModuleIR, ModuleIRs, LiteralsMap, RType, RTuple
+    FuncIR, ClassIR, ModuleIR, ModuleIRs, LiteralsMap, RType, RTuple,
+    DeserMaps, deserialize_modules,
 )
 from mypyc.options import CompilerOptions
 from mypyc.uninit import insert_uninit_checks
@@ -63,15 +75,297 @@ class MarkedDeclaration:
         self.mark = False
 
 
-def parse_and_typecheck(sources: List[BuildSource], options: Options,
-                        alt_lib_path: Optional[str] = None) -> BuildResult:
+class MypycPlugin(Plugin):
+    """Plugin for making mypyc interoperate properly with mypy incremental mode.
+
+    Basically the point of this plugin is to force mypy to recheck things
+    based on the demands of mypyc in a couple situations:
+      * Any modules in the same group must be compiled together, so we
+        tell mypy that modules depend on all their groupmates.
+      * If the IR metadata is missing or stale or any of the generated
+        C source files associated missing or stale, then we need to
+        recompile the module so we mark it as stale.
+    """
+
+    def __init__(
+            self, options: Options, compiler_options: CompilerOptions, groups: Groups) -> None:
+        super().__init__(options)
+        self.group_map = {}  # type: Dict[str, Tuple[Optional[str], List[str]]]
+        for sources, name in groups:
+            modules = sorted(source.module for source in sources)
+            for id in modules:
+                self.group_map[id] = (name, modules)
+
+        self.compiler_options = compiler_options
+        self.metastore = create_metastore(options)
+
+    def report_config_data(
+            self, ctx: ReportConfigContext) -> Optional[Tuple[Optional[str], List[str]]]:
+        # The config data we report is the group map entry for the module.
+        # If the data is being used to check validity, we do additional checks
+        # that the IR cache exists and matches the metadata cache and all
+        # output source files exist and are up to date.
+
+        id, path, is_check = ctx.id, ctx.path, ctx.is_check
+
+        if id not in self.group_map:
+            return None
+
+        # If we aren't doing validity checks, just return the cache data
+        if not is_check:
+            return self.group_map[id]
+
+        # Load the metadata and IR cache
+        meta_path, _, _ = get_cache_names(id, path, self.options)
+        ir_path = get_ir_cache_name(id, path, self.options)
+        try:
+            meta_json = self.metastore.read(meta_path)
+            ir_json = self.metastore.read(ir_path)
+        except FileNotFoundError:
+            # This could happen if mypyc failed after mypy succeeded
+            # in the previous run or if some cache files got
+            # deleted. No big deal, just fail to load the cache.
+            return None
+
+        ir_data = json.loads(ir_json)
+
+        # Check that the IR cache matches the metadata cache
+        if compute_hash(meta_json) != ir_data['meta_hash']:
+            return None
+
+        # Check that all of the source files are present and as
+        # expected. The main situation where this would come up is the
+        # user deleting the build directory without deleting
+        # .mypy_cache, which we should handle gracefully.
+        for path, hash in ir_data['src_hashes'].items():
+            try:
+                with open(os.path.join(self.compiler_options.target_dir, path), 'rb') as f:
+                    contents = f.read()
+            except FileNotFoundError:
+                return None
+            real_hash = hashlib.md5(contents).hexdigest()
+            if hash != real_hash:
+                return None
+
+        return self.group_map[id]
+
+    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+        # Report dependency on modules in the module's group
+        return [(10, id, -1) for id in self.group_map.get(file.fullname(), (None, []))[1]]
+
+
+def parse_and_typecheck(
+    sources: List[BuildSource],
+    options: Options,
+    compiler_options: CompilerOptions,
+    groups: Groups,
+    fscache: Optional[FileSystemCache] = None,
+    alt_lib_path: Optional[str] = None
+) -> BuildResult:
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
                    options=options,
-                   alt_lib_path=alt_lib_path)
+                   alt_lib_path=alt_lib_path,
+                   fscache=fscache,
+                   extra_plugins=[MypycPlugin(options, compiler_options, groups)])
     if result.errors:
         raise CompileError(result.errors)
     return result
+
+
+def compile_scc_to_ir(
+    scc: List[MypyFile],
+    result: BuildResult,
+    mapper: genops.Mapper,
+    compiler_options: CompilerOptions,
+    errors: Errors,
+) -> ModuleIRs:
+    """Compile an SCC into ModuleIRs.
+
+    Any modules that this SCC depends on must have either compiled or
+    loaded from a cache into mapper.
+
+    Arguments:
+        scc: The list of MypyFiles to compile
+        result: The BuildResult from the mypy front-end
+        mapper: The Mapper object mapping mypy ASTs to class and func IRs
+        compiler_options: The compilation options
+        errors: Where to report any errors encountered
+
+    Returns the IR of the modules.
+    """
+
+    if compiler_options.verbose:
+        print("Compiling {}".format(", ".join(x.name() for x in scc)))
+
+    # Generate basic IR, with missing exception and refcount handling.
+    modules = genops.build_ir(
+        scc, result.graph, result.types, mapper, compiler_options, errors
+    )
+    if errors.num_errors > 0:
+        return modules
+
+    # Insert uninit checks.
+    for module in modules.values():
+        for fn in module.functions:
+            insert_uninit_checks(fn)
+    # Insert exception handling.
+    for module in modules.values():
+        for fn in module.functions:
+            insert_exception_handling(fn)
+    # Insert refcount handling.
+    for module in modules.values():
+        for fn in module.functions:
+            insert_ref_count_opcodes(fn)
+
+    return modules
+
+
+def compile_modules_to_ir(
+    result: BuildResult,
+    mapper: genops.Mapper,
+    compiler_options: CompilerOptions,
+    errors: Errors,
+) -> ModuleIRs:
+    """Compile a collection of modules into ModuleIRs.
+
+    The modules to compile are specified as part of mapper's group_map.
+
+    Returns the IR of the modules.
+    """
+    deser_ctx = DeserMaps({}, {})
+    modules = {}
+
+    # Process the graph by SCC in topological order, like we do in mypy.build
+    for scc in sorted_components(result.graph):
+        scc_states = [result.graph[id] for id in scc]
+        trees = [st.tree for st in scc_states if st.id in mapper.group_map and st.tree]
+
+        if not trees:
+            continue
+
+        fresh = all(id not in result.manager.rechecked_modules for id in scc)
+        if fresh:
+            load_scc_from_cache(trees, result, mapper, deser_ctx)
+        else:
+            scc_ir = compile_scc_to_ir(trees, result, mapper, compiler_options, errors)
+            modules.update(scc_ir)
+
+    return modules
+
+
+def compile_ir_to_c(
+    groups: Groups,
+    modules: ModuleIRs,
+    result: BuildResult,
+    mapper: genops.Mapper,
+    compiler_options: CompilerOptions,
+) -> Dict[Optional[str], List[Tuple[str, str]]]:
+    """Compile a collection of ModuleIRs to C source text.
+
+    Returns a dictionary mapping group names to a list of (file name,
+    file text) pairs.
+    """
+    source_paths = {source.module: result.graph[source.module].xpath
+                    for sources, _ in groups for source in sources}
+
+    names = NameGenerator([[source.module for source in sources] for sources, _ in groups])
+
+    # Generate C code for each compilation group. Each group will be
+    # compiled into a separate extension module.
+    ctext = {}  # type: Dict[Optional[str], List[Tuple[str, str]]]
+    for group_sources, group_name in groups:
+        group_modules = [(source.module, modules[source.module]) for source in group_sources
+                         if source.module in modules]
+        if not group_modules:
+            ctext[group_name] = []
+            continue
+        literals = mapper.literals[group_name]
+        generator = GroupGenerator(
+            literals, group_modules, source_paths,
+            group_name, mapper.group_map, names,
+            compiler_options
+        )
+        ctext[group_name] = generator.generate_c_for_modules()
+
+    return ctext
+
+
+def get_ir_cache_name(id: str, path: str, options: Options) -> str:
+    meta_path, _, _ = get_cache_names(id, path, options)
+    return meta_path.replace('.meta.json', '.ir.json')
+
+
+def get_state_ir_cache_name(state: State) -> str:
+    return get_ir_cache_name(state.id, state.xpath, state.options)
+
+
+def write_cache(
+    modules: ModuleIRs,
+    result: BuildResult,
+    group_map: Dict[str, Optional[str]],
+    ctext: Dict[Optional[str], List[Tuple[str, str]]],
+) -> None:
+    """Write out the cache information for modules.
+
+    Each module has the following cache information written (which is
+    in addition to the cache information written by mypy itself):
+      * A serialized version of its mypyc IR, minus the bodies of
+        functions. This allows code that depends on it to use
+        these serialized data structures when compiling against it
+        instead of needing to recompile it. (Compiling against a
+        module requires access to both its mypy and mypyc data
+        structures.)
+      * The hash of the mypy metadata cache file for the module.
+        This is used to ensure that the mypyc cache and the mypy
+        cache are in sync and refer to the same version of the code.
+        This is particularly important if mypyc crashes/errors/is
+        stopped after mypy has written its cache but before mypyc has.
+      * The hashes of all of the source file outputs for the group
+        the module is in. This is so that the module will be
+        recompiled if the source outputs are missing.
+     """
+
+    hashes = {}
+    for name, files in ctext.items():
+        hashes[name] = {file: compute_hash(data) for file, data in files}
+
+    # Write out cache data
+    for id, module in modules.items():
+        st = result.graph[id]
+
+        meta_path, _, _ = get_cache_names(id, st.xpath, result.manager.options)
+
+        newpath = get_state_ir_cache_name(st)
+        ir_data = {
+            'ir': module.serialize(),
+            'meta_hash': compute_hash(result.manager.metastore.read(meta_path)),
+            'src_hashes': hashes[group_map[id]],
+        }
+
+        result.manager.metastore.write(newpath, json.dumps(ir_data))
+
+    result.manager.metastore.commit()
+
+
+def load_scc_from_cache(
+    scc: List[MypyFile],
+    result: BuildResult,
+    mapper: genops.Mapper,
+    ctx: DeserMaps,
+) -> ModuleIRs:
+    """Load IR for an SCC of modules from the cache.
+
+    Arguments and return are as compile_scc_to_ir.
+    """
+    cache_data = {
+        k.fullname(): json.loads(
+            result.manager.metastore.read(get_state_ir_cache_name(result.graph[k.fullname()]))
+        )['ir'] for k in scc
+    }
+    modules = deserialize_modules(cache_data, ctx)
+    genops.load_type_map(mapper, scc, ctx)
+    return modules
 
 
 def compile_modules_to_c(
@@ -98,52 +392,17 @@ def compile_modules_to_c(
 
     Returns the IR of the modules and a list containing the generated files for each group.
     """
-    module_names = [source.module for group_sources, _ in groups for source in group_sources]
-    file_nodes = [result.files[name] for name in module_names]
-
     # Construct a map from modules to what group they belong to
-    group_map = {}
-    for group, lib_name in groups:
-        for source in group:
-            group_map[source.module] = lib_name
-
-    # Generate basic IR, with missing exception and refcount handling.
+    group_map = {source.module: lib_name for group, lib_name in groups for source in group}
     mapper = genops.Mapper(group_map)
-    modules = genops.build_ir(file_nodes, result.graph, result.types,
-                              mapper,
-                              compiler_options, errors)
-    if errors.num_errors > 0:
-        return modules, []
-    # Insert uninit checks.
-    for module in modules.values():
-        for fn in module.functions:
-            insert_uninit_checks(fn)
-    # Insert exception handling.
-    for module in modules.values():
-        for fn in module.functions:
-            insert_exception_handling(fn)
-    # Insert refcount handling.
-    for module in modules.values():
-        for fn in module.functions:
-            insert_ref_count_opcodes(fn)
 
-    source_paths = {module_name: result.files[module_name].path
-                    for module_name in module_names}
+    modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
+    ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
 
-    names = NameGenerator([[source.module for source in sources] for sources, _ in groups])
+    if errors.num_errors == 0:
+        write_cache(modules, result, group_map, ctext)
 
-    # Generate C code for each compilation group. Each group will be
-    # compiled into a separate extension module.
-    ctext = []
-    for group_sources, group_name in groups:
-        group_modules = [(source.module, modules[source.module]) for source in group_sources]
-        literals = mapper.literals[group_name]
-        generator = GroupGenerator(
-            literals, group_modules, source_paths, group_name, group_map, names,
-            compiler_options.multi_file
-        )
-        ctext.append(generator.generate_c_for_modules())
-    return modules, ctext
+    return modules, [ctext[name] for _, name in groups]
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
@@ -157,16 +416,13 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
 
 def encode_as_c_string(s: str) -> Tuple[str, int]:
     """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
-    # This is a kind of abusive way to do this...
-    b = s.encode('utf-8')
-    escaped = str(b)[2:-1].replace('"', '\\"')
-    return '"{}"'.format(escaped), len(b)
+    return encode_bytes_as_c_string(s.encode('utf-8'))
 
 
 def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
     """Produce a single-escaped, quoted C string and its size from a bytes"""
     # This is a kind of abusive way to do this...
-    escaped = str(b)[2:-1].replace('"', '\\"')
+    escaped = repr(b)[2:-1].replace('"', '\\"')
     return '"{}"'.format(escaped), len(b)
 
 
@@ -181,6 +437,11 @@ def pointerize(decl: str, name: str) -> str:
         return decl.replace(name, '*{}'.format(name))
 
 
+def group_dir(group_name: str) -> str:
+    """Given a group name, return the relative directory path for it. """
+    return os.sep.join(group_name.split('.')[:-1])
+
+
 class GroupGenerator:
     def __init__(self,
                  literals: LiteralsMap,
@@ -189,7 +450,7 @@ class GroupGenerator:
                  group_name: Optional[str],
                  group_map: Dict[str, Optional[str]],
                  names: NameGenerator,
-                 multi_file: bool) -> None:
+                 compiler_options: CompilerOptions) -> None:
         """Generator for C source for a compilation group.
 
         The code for a compilation group contains an internal and an
@@ -216,25 +477,29 @@ class GroupGenerator:
         self.simple_inits = []  # type: List[Tuple[str, str]]
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
-        self.multi_file = multi_file
+        self.compiler_options = compiler_options
+        self.multi_file = compiler_options.multi_file
 
     @property
     def group_suffix(self) -> str:
-        return '_' + self.group_name if self.group_name else ''
+        return '_' + exported_name(self.group_name) if self.group_name else ''
+
+    @property
+    def short_group_suffix(self) -> str:
+        return '_' + exported_name(self.group_name.split('.')[-1]) if self.group_name else ''
 
     def generate_c_for_modules(self) -> List[Tuple[str, str]]:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
 
         base_emitter = Emitter(self.context)
-        # When not in multi-file mode we just include the runtime
-        # library c files to reduce the number of compiler invocations
-        # needed
-        if not self.multi_file:
+        # Optionally just include the runtime library c files to
+        # reduce the number of compiler invocations needed
+        if self.compiler_options.include_runtime_files:
             base_emitter.emit_line('#include "CPy.c"')
             base_emitter.emit_line('#include "getargs.c"')
-        base_emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
-        base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.group_suffix))
+        base_emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
+        base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.short_group_suffix))
         emitter = base_emitter
 
         for (_, literal), identifier in self.literals.items():
@@ -247,8 +512,9 @@ class GroupGenerator:
         for module_name, module in self.modules:
             if multi_file:
                 emitter = Emitter(self.context)
-                emitter.emit_line('#include "__native{}.h"'.format(self.group_suffix))
-                emitter.emit_line('#include "__native_internal{}.h"'.format(self.group_suffix))
+                emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
+                emitter.emit_line(
+                    '#include "__native_internal{}.h"'.format(self.short_group_suffix))
 
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
@@ -288,7 +554,7 @@ class GroupGenerator:
         declarations.emit_line('#define MYPYC_NATIVE_INTERNAL{}_H'.format(self.group_suffix))
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
-        declarations.emit_line('#include "__native{}.h"'.format(self.group_suffix))
+        declarations.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
         declarations.emit_line()
         declarations.emit_line('int CPyGlobalsInit(void);')
         declarations.emit_line()
@@ -301,9 +567,13 @@ class GroupGenerator:
                 generate_function_declaration(fn, declarations)
 
         for lib in sorted(self.context.group_deps):
+            elib = exported_name(lib)
+            short_lib = exported_name(lib.split('.')[-1])
             declarations.emit_lines(
-                '#include "__native_{}.h"'.format(lib),
-                'struct export_table_{} exports_{};'.format(lib, lib)
+                '#include <{}>'.format(
+                    os.path.join(group_dir(lib), "__native_{}.h".format(short_lib))
+                ),
+                'struct export_table_{} exports_{};'.format(elib, elib)
             )
 
         sorted_decls = self.toposort_declarations()
@@ -335,13 +605,15 @@ class GroupGenerator:
         ext_declarations.emit_line('#endif')
         declarations.emit_line('#endif')
 
-        return file_contents + [('__native{}.c'.format(self.group_suffix),
-                                 ''.join(emitter.fragments)),
-                                ('__native_internal{}.h'.format(self.group_suffix),
-                                 ''.join(declarations.fragments)),
-                                ('__native{}.h'.format(self.group_suffix),
-                                 ''.join(ext_declarations.fragments)),
-                                ]
+        output_dir = group_dir(self.group_name) if self.group_name else ''
+        return file_contents + [
+            (os.path.join(output_dir, '__native{}.c'.format(self.short_group_suffix)),
+             ''.join(emitter.fragments)),
+            (os.path.join(output_dir, '__native_internal{}.h'.format(self.short_group_suffix)),
+             ''.join(declarations.fragments)),
+            (os.path.join(output_dir, '__native{}.h'.format(self.short_group_suffix)),
+             ''.join(ext_declarations.fragments)),
+        ]
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -427,12 +699,14 @@ class GroupGenerator:
 
         emitter.emit_line()
         emitter.emit_lines(
-            'PyMODINIT_FUNC PyInit_{}(void)'.format(shared_lib_name(self.group_name)),
+            'PyMODINIT_FUNC PyInit_{}(void)'.format(
+                shared_lib_name(self.group_name).split('.')[-1]),
             '{',
             ('static PyModuleDef def = {{ PyModuleDef_HEAD_INIT, "{}", NULL, -1, NULL, NULL }};'
-             .format(self.group_name)),
+             .format(shared_lib_name(self.group_name))),
             'int res;',
             'PyObject *capsule;',
+            'PyObject *tmp;',
             'static PyObject *module;',
             'if (module) {',
             'Py_INCREF(module);',
@@ -477,14 +751,17 @@ class GroupGenerator:
             )
 
         for group in sorted(self.context.group_deps):
+            egroup = exported_name(group)
             emitter.emit_lines(
+                'tmp = PyImport_ImportModule("{}"); if (!tmp) goto fail; Py_DECREF(tmp);'.format(
+                    shared_lib_name(group)),
                 'struct export_table_{} *pexports_{} = PyCapsule_Import("{}.exports", 0);'.format(
-                    group, group, shared_lib_name(group)),
-                'if (!pexports_{}) {{'.format(group),
+                    egroup, egroup, shared_lib_name(group)),
+                'if (!pexports_{}) {{'.format(egroup),
                 'goto fail;',
                 '}',
                 'memcpy(&exports_{group}, pexports_{group}, sizeof(exports_{group}));'.format(
-                    group=group),
+                    group=egroup),
                 '',
             )
 

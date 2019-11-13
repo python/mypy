@@ -21,7 +21,8 @@ class function: pass
 class ellipsis: pass
 
 # We need int and slice for indexing tuples.
-class int: pass
+class int:
+    def __neg__(self) -> 'int': pass
 class slice: pass
 class bool: pass
 class str: pass # For convenience

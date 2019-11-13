@@ -269,6 +269,11 @@ class DataclassTransformer:
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
+            if not has_default:
+                # Make all non-default attributes implicit because they are de-facto set
+                # on self in the generated __init__(), not in the class body.
+                sym.implicit = True
+
             known_attrs.add(lhs.name)
             attrs.append(DataclassAttribute(
                 name=lhs.name,
