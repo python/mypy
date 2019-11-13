@@ -1216,3 +1216,85 @@ test(b, 20)
 test(d, 30)
 test(B, -1)
 test(D, -2)
+
+[case testInterpretedInherit]
+from mypy_extensions import mypyc_attr, trait
+
+@mypyc_attr(allow_interpreted_children=True)
+class Top:
+    def spam(self) -> str:
+        return "grandparent"
+
+@mypyc_attr(allow_interpreted_children=True)
+@trait
+class Trait:
+    def trait_method(self) -> str:
+        return "trait"
+
+@mypyc_attr(allow_interpreted_children=True)
+class Foo(Top, Trait):
+    def __init__(self, x: int) -> None:
+        self.x = 10
+
+    def foo(self) -> str:
+        return "parent foo: " + self.bar(self.x)
+
+    def bar(self, x: int) -> str:
+        return "parent bar: {}".format(x + self.x)
+
+    @property
+    def read_property(self) -> str:
+        return "parent prop"
+
+def foo(x: Foo) -> str:
+    return x.foo()
+
+def bar(x: Foo, y: int) -> str:
+    return x.bar(y)
+
+def spam(x: Top) -> str:
+    return x.spam()
+
+def prop(x: Foo) -> str:
+    return x.read_property
+
+def trait_method(x: Trait) -> str:
+    return x.trait_method()
+
+[file interp.py]
+from native import Foo
+
+class Bar(Foo):
+    def bar(self, x: int) -> str:
+        return "child bar: {}".format(x + self.x)
+
+    def spam(self) -> str:
+        return "child"
+
+    @property
+    def read_property(self) -> str:
+        return "child prop"
+
+    def trait_method(self) -> str:
+        return "child"
+
+[file driver.py]
+from native import Foo, foo, bar, spam, prop, trait_method
+from interp import Bar
+
+x = Foo(10)
+y = Bar(20)
+
+assert isinstance(y, Bar)
+assert y.x == 10
+assert y.bar(10) == "child bar: 20"
+assert y.foo() == "parent foo: child bar: 20"
+assert foo(y) == "parent foo: child bar: 20"
+assert bar(y, 30) == "child bar: 40"
+assert spam(y) == "child"
+assert y.read_property == "child prop"
+assert prop(x) == "parent prop"
+assert prop(y) == "child prop"
+
+assert y.trait_method() == "child"
+assert trait_method(y) == "child"
