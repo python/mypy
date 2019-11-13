@@ -2167,7 +2167,7 @@ class Test():
                 mte: MakeTwoConcrete[A],
                 mtgsa: MakeTwoGenericSubAbstract[A],
                 mtasa: MakeTwoAppliedSubAbstract) -> None:
-    reveal_type(mts.__call__) # N: Revealed type is 'def [B] (b: B`33) -> __main__.TwoTypes[A`-33, B`33]'
+    reveal_type(mts.__call__) # N: Revealed type is 'def [B] (b: B`33) -> __main__.TwoTypes[A`-1, B`33]'
     reveal_type(mts(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
     reveal_type(mte.__call__) # N: Revealed type is 'def [B] (b: B`36) -> __main__.TwoTypes[A`-1, B`36]'
     reveal_type(mte(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
