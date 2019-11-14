@@ -554,9 +554,9 @@ def analyze_var(name: str,
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
                 # and similarly for B1 when checking agains B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
-                functype = check_self_arg(functype, dispatched_type, var.is_classmethod,
-                                          mx.context, name, mx.msg)
                 signature = freshen_function_type_vars(functype)
+                signature = check_self_arg(signature, dispatched_type, var.is_classmethod,
+                                          mx.context, name, mx.msg)
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
                 expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
                 if var.is_property:
