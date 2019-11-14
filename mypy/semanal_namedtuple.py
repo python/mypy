@@ -384,8 +384,8 @@ class NamedTupleAnalyzer:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            var._fullname = '%s.%s' % (info.fullname(), var.name())
-            info.names[var.name()] = SymbolTableNode(MDEF, var)
+            var._fullname = '%s.%s' % (info.fullname, var.name)
+            info.names[var.name] = SymbolTableNode(MDEF, var)
 
         fields = [Var(item, typ) for item, typ in zip(items, types)]
         for var in fields:
@@ -404,7 +404,7 @@ class NamedTupleAnalyzer:
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
-        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
@@ -421,7 +421,7 @@ class NamedTupleAnalyzer:
             args = first + args
 
             types = [arg.type_annotation for arg in args]
-            items = [arg.variable.name() for arg in args]
+            items = [arg.variable.name for arg in args]
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
@@ -431,7 +431,7 @@ class NamedTupleAnalyzer:
             func.info = info
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
-            func._fullname = info.fullname() + '.' + funcname
+            func._fullname = info.fullname + '.' + funcname
             func.line = line
             if is_classmethod:
                 v = Var(funcname, func.type)
@@ -451,7 +451,7 @@ class NamedTupleAnalyzer:
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
 
         def make_init_arg(var: Var) -> Argument:
-            default = default_items.get(var.name(), None)
+            default = default_items.get(var.name, None)
             kind = ARG_POS if default is None else ARG_OPT
             return Argument(var, var.type, default, kind)
 
@@ -465,7 +465,7 @@ class NamedTupleAnalyzer:
                          Argument(Var('new'), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
                          Argument(Var('len'), special_form_any, EllipsisExpr(), ARG_NAMED_OPT)])
 
-        self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+        self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                      [], info.tuple_type)
         info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
         return info

@@ -172,6 +172,11 @@ def infer_constraints_if_possible(template: Type, actual: Type,
     if (direction == SUPERTYPE_OF and
             not mypy.subtypes.is_subtype(actual, erase_typevars(template))):
         return None
+    if (direction == SUPERTYPE_OF and isinstance(template, TypeVarType) and
+            not mypy.subtypes.is_subtype(actual, erase_typevars(template.upper_bound))):
+        # This is not caught by the above branch because of the erase_typevars() call,
+        # that would return 'Any' for a type variable.
+        return None
     return infer_constraints(template, actual, direction)
 
 
@@ -324,7 +329,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if (self.direction == SUBTYPE_OF and
-                    template.type.has_base(instance.type.fullname())):
+                    template.type.has_base(instance.type.fullname)):
                 mapped = map_instance_to_supertype(template, instance.type)
                 tvars = mapped.type.defn.type_vars
                 for i in range(len(instance.args)):
@@ -338,7 +343,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             mapped.args[i], instance.args[i], neg_op(self.direction)))
                 return res
             elif (self.direction == SUPERTYPE_OF and
-                    instance.type.has_base(template.type.fullname())):
+                    instance.type.has_base(template.type.fullname)):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
                 for j in range(len(template.args)):

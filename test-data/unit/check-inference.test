@@ -2761,3 +2761,39 @@ def f() -> None:
 class C:
     def __init__(self, a: int) -> None:
         self.a = a
+
+[case testUnionGenericWithBoundedVariable]
+from typing import Generic, TypeVar, Union
+
+T = TypeVar('T', bound=A)
+class Z(Generic[T]):
+    def __init__(self, y: T) -> None:
+        self.y = y
+
+class A: ...
+class B(A): ...
+F = TypeVar('F', bound=A)
+
+def q1(x: Union[F, Z[F]]) -> F:
+    if isinstance(x, Z):
+        return x.y
+    else:
+        return x
+
+def q2(x: Union[Z[F], F]) -> F:
+    if isinstance(x, Z):
+        return x.y
+    else:
+        return x
+
+b: B
+reveal_type(q1(b))  # N: Revealed type is '__main__.B*'
+reveal_type(q2(b))  # N: Revealed type is '__main__.B*'
+
+z: Z[B]
+reveal_type(q1(z))  # N: Revealed type is '__main__.B*'
+reveal_type(q2(z))  # N: Revealed type is '__main__.B*'
+
+reveal_type(q1(Z(b)))  # N: Revealed type is '__main__.B*'
+reveal_type(q2(Z(b)))  # N: Revealed type is '__main__.B*'
+[builtins fixtures/isinstancelist.pyi]

@@ -78,7 +78,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if (narrowed.type.fullname() == 'builtins.dict' and
+        if (narrowed.type.fullname == 'builtins.dict' and
                 all(isinstance(t, AnyType) for t in get_proper_types(narrowed.args))):
             return declared
         return meet_types(declared, narrowed)
@@ -317,9 +317,9 @@ def is_overlapping_types(left: Type,
             return True
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.
-        if left.type.has_base(right.type.fullname()):
+        if left.type.has_base(right.type.fullname):
             left = map_instance_to_supertype(left, right.type)
-        elif right.type.has_base(left.type.fullname()):
+        elif right.type.has_base(left.type.fullname):
             right = map_instance_to_supertype(right, left.type)
         else:
             return False
@@ -409,7 +409,7 @@ def are_tuples_overlapping(left: Type, right: Type, *,
 
 def adjust_tuple(left: ProperType, r: ProperType) -> Optional[TupleType]:
     """Find out if `left` is a Tuple[A, ...], and adjust its length to `right`"""
-    if isinstance(left, Instance) and left.type.fullname() == 'builtins.tuple':
+    if isinstance(left, Instance) and left.type.fullname == 'builtins.tuple':
         n = r.length() if isinstance(r, TupleType) else 1
         return TupleType([left.args[0]] * n, left)
     return None
@@ -418,7 +418,7 @@ def adjust_tuple(left: ProperType, r: ProperType) -> Optional[TupleType]:
 def is_tuple(typ: Type) -> bool:
     typ = get_proper_type(typ)
     return (isinstance(typ, TupleType)
-            or (isinstance(typ, Instance) and typ.type.fullname() == 'builtins.tuple'))
+            or (isinstance(typ, Instance) and typ.type.fullname == 'builtins.tuple'))
 
 
 class TypeMeetVisitor(TypeVisitor[ProperType]):
@@ -453,7 +453,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, NoneType) or (isinstance(self.s, Instance) and
-                                               self.s.type.fullname() == 'builtins.object'):
+                                               self.s.type.fullname == 'builtins.object'):
                 return t
             else:
                 return UninhabitedType()
@@ -577,7 +577,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
-            if self.s.type.fullname() == 'builtins.tuple' and self.s.args:
+            if self.s.type.fullname == 'builtins.tuple' and self.s.args:
                 return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
@@ -626,7 +626,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             if not isinstance(typ, NoneType):
                 typ = TypeType.make_normalized(typ, line=t.line)
             return typ
-        elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
+        elif isinstance(self.s, Instance) and self.s.type.fullname == 'builtins.type':
             return t
         elif isinstance(self.s, CallableType):
             return self.meet(t, self.s)
@@ -657,7 +657,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
-    if t.fallback.type.fullname() != 'builtins.function':
+    if t.fallback.type.fullname != 'builtins.function':
         fallback = t.fallback
     else:
         fallback = s.fallback
@@ -739,7 +739,7 @@ def typed_dict_mapping_overlap(left: Type, right: Type,
         assert isinstance(right, TypedDictType)
         typed, other = right, left
 
-    mapping = next(base for base in other.type.mro if base.fullname() == 'typing.Mapping')
+    mapping = next(base for base in other.type.mro if base.fullname == 'typing.Mapping')
     other = map_instance_to_supertype(other, mapping)
     key_type, value_type = get_proper_types(other.args)
 

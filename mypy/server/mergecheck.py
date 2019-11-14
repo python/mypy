@@ -21,7 +21,7 @@ def check_consistency(o: object) -> None:
 
     m = {}  # type: Dict[str, SymbolNode]
     for sym in syms:
-        fn = sym.fullname()
+        fn = sym.fullname
         # Skip None names, since they are ambiguous.
         # TODO: Everything should have a proper full name?
         if fn is None:
@@ -33,7 +33,7 @@ def check_consistency(o: object) -> None:
             continue
 
         if fn not in m:
-            m[sym.fullname()] = sym
+            m[sym.fullname] = sym
             continue
 
         # We have trouble and need to decide what to do about it.
@@ -58,7 +58,7 @@ def check_consistency(o: object) -> None:
             print('---')
             print(id(sym2), sym2)
 
-        assert sym.fullname() not in m
+        assert sym.fullname not in m
 
 
 def path_to_str(path: List[Tuple[object, object]]) -> str:
@@ -69,7 +69,7 @@ def path_to_str(path: List[Tuple[object, object]]) -> str:
             result += '[%s]' % repr(attr)
         else:
             if isinstance(obj, Var):
-                result += '.%s(%s:%s)' % (attr, t, obj.name())
+                result += '.%s(%s:%s)' % (attr, t, obj.name)
             elif t in ('BuildManager', 'FineGrainedBuildManager'):
                 # Omit class name for some classes that aren't part of a class
                 # hierarchy since there isn't much ambiguity.

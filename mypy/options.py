@@ -275,7 +275,7 @@ class Options:
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         d = dict(getattr(self, '__dict__', ()))
         for k in get_class_descriptors(Options):
-            if hasattr(self, k):
+            if hasattr(self, k) and k != "new_semantic_analyzer":
                 d[k] = getattr(self, k)
         del d['per_module_cache']
         return d

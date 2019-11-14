@@ -889,9 +889,9 @@ def reprocess_nodes(manager: BuildManager,
         return set()
 
     file_node = manager.modules[module_id]
-    old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    old_symbols = find_symbol_tables_recursive(file_node.fullname, file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
-    old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
+    old_symbols_snapshot = snapshot_symbol_table(file_node.fullname, file_node.names)
 
     def key(node: FineGrainedDeferredNode) -> int:
         # Unlike modules which are sorted by name within SCC,
@@ -922,13 +922,13 @@ def reprocess_nodes(manager: BuildManager,
     # Strip semantic analysis information.
     saved_attrs = {}  # type: SavedAttributes
     for deferred in nodes:
-        processed_targets.append(deferred.node.fullname())
+        processed_targets.append(deferred.node.fullname)
         strip_target(deferred.node, saved_attrs)
     semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
-    new_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    new_symbols = find_symbol_tables_recursive(file_node.fullname, file_node.names)
     for name in old_symbols:
         if name in new_symbols:
             merge_asts(file_node, old_symbols[name], file_node, new_symbols[name])
@@ -948,9 +948,9 @@ def reprocess_nodes(manager: BuildManager,
     if manager.options.export_types:
         manager.all_types.update(graph[module_id].type_map())
 
-    new_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
+    new_symbols_snapshot = snapshot_symbol_table(file_node.fullname, file_node.names)
     # Check if any attribute types were changed and need to be propagated further.
-    changed = compare_symbol_table_snapshots(file_node.fullname(),
+    changed = compare_symbol_table_snapshots(file_node.fullname,
                                              old_symbols_snapshot,
                                              new_symbols_snapshot)
     new_triggered = {make_trigger(name) for name in changed}
@@ -979,7 +979,7 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str,
     result = {}
     result[prefix] = symbols
     for name, node in symbols.items():
-        if isinstance(node.node, TypeInfo) and node.node.fullname().startswith(prefix + '.'):
+        if isinstance(node.node, TypeInfo) and node.node.fullname.startswith(prefix + '.'):
             more = find_symbol_tables_recursive(prefix + '.' + name, node.node.names)
             result.update(more)
     return result
@@ -1049,7 +1049,7 @@ def lookup_target(manager: BuildManager,
         # typically a module top-level, since we don't support processing class
         # bodies as separate entitites for simplicity.
         assert file is not None
-        if node.fullname() != target:
+        if node.fullname != target:
             # This is a reference to a different TypeInfo, likely due to a stale dependency.
             # Processing them would spell trouble -- for example, we could be refreshing
             # a deserialized TypeInfo with missing attributes.
@@ -1075,7 +1075,7 @@ def lookup_target(manager: BuildManager,
         # changed to another type and we have a stale dependency pointing to it.
         not_found()
         return [], None
-    if node.fullname() != target:
+    if node.fullname != target:
         # Stale reference points to something unexpected. We shouldn't process since the
         # context will be wrong and it could be a partially initialized deserialized node.
         not_found()
@@ -1099,12 +1099,12 @@ def target_from_node(module: str,
     module (for example, if it's actually defined in another module).
     """
     if isinstance(node, MypyFile):
-        if module != node.fullname():
+        if module != node.fullname:
             # Actually a reference to another module -- likely a stale dependency.
             return None
         return module
     else:  # OverloadedFuncDef or FuncDef
         if node.info:
-            return '%s.%s' % (node.info.fullname(), node.name())
+            return '%s.%s' % (node.info.fullname, node.name)
         else:
-            return '%s.%s' % (module, node.name())
+            return '%s.%s' % (module, node.name)
