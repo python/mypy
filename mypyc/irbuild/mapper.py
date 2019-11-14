@@ -67,7 +67,14 @@ class Mapper:
             elif typ.type.fullname == 'builtins.tuple':
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type in self.type_to_ir:
-                return RInstance(self.type_to_ir[typ.type])
+                inst = RInstance(self.type_to_ir[typ.type])
+                # Treat protocols as Union[protocol, object], so that we can do fast
+                # method calls in the cases where the protocol is explicitly inherited from
+                # and fall back to generic operations when it isn't.
+                if typ.type.is_protocol:
+                    return RUnion([inst, object_rprimitive])
+                else:
+                    return inst
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):
