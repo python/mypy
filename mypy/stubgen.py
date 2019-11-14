@@ -551,7 +551,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self_inits = find_self_initializers(o)
             for init, value in self_inits:
                 if init in self.method_names:
-                    # Can't have both an attribute and a method/property.
+                    # Can't have both an attribute and a method/property with the same name.
                     continue
                 init_code = self.get_init(init, value)
                 if init_code:
@@ -605,7 +605,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(o.unanalyzed_type, CallableType):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and (o.is_abstract or o.name() in METHODS_WITH_RETURN_VALUE):
-            # Always assume abstract methods return Any unless explicitly annotated.
+            # Always assume abstract methods return Any unless explicitly annotated. Also
+            # some dunder methods should not have a None return type.
             retname = self.typing_name('Any')
             self.add_typing_import("Any")
         elif o.name == '__init__' or not has_return_statement(o) and not is_abstract:

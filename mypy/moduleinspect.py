@@ -11,10 +11,10 @@ import queue
 
 
 ModuleProperties = NamedTuple('ModuleProperties', [
-    ('name', str),
-    ('file', Optional[str]),
-    ('path', Optional[str]),
-    ('all', Optional[List[str]]),
+    ('name', str),  # __name__ attribute
+    ('file', Optional[str]),  # __file__ attribute
+    ('path', Optional[str]),  # __path__ attribute
+    ('all', Optional[List[str]]),  # __all__ attribute
     ('is_c_module', bool),
     ('subpackages', List[str]),
 ])
@@ -33,6 +33,7 @@ class InspectError(Exception):
 
 
 def get_package_properties(package_id: str) -> ModuleProperties:
+    """Use runtime introspection to get information about a module/package."""
     try:
         package = importlib.import_module(package_id)
     except BaseException as e:
@@ -71,6 +72,7 @@ def get_package_properties(package_id: str) -> ModuleProperties:
 
 
 def worker(queue1: 'Queue[str]', queue2: 'Queue[Union[str, ModuleProperties]]') -> None:
+    """The main loop of a worker introspection process."""
     while True:
         mod = queue1.get()
         try:
@@ -94,7 +96,7 @@ class ModuleInspect:
     Always use in a with statement for proper clean-up:
 
       with ModuleInspect() as m:
-          p = inspect.get_package_properties('urllib.parse')
+          p = m.get_package_properties('urllib.parse')
     """
 
     def __init__(self) -> None:
