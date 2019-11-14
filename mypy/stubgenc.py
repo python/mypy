@@ -11,7 +11,7 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import write_header, is_c_module
+from mypy.stubutil import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
     infer_arg_sig_from_docstring, FunctionSig
@@ -20,7 +20,6 @@ from mypy.stubdoc import (
 
 def generate_stub_for_c_module(module_name: str,
                                target: str,
-                               add_header: bool = True,
                                sigs: Optional[Dict[str, str]] = None,
                                class_sigs: Optional[Dict[str, str]] = None) -> None:
     """Generate stub for C module.
@@ -76,8 +75,6 @@ def generate_stub_for_c_module(module_name: str,
         output.append(line)
     output = add_typing_import(output)
     with open(target, 'w') as file:
-        if add_header:
-            write_header(file, module_name)
         for line in output:
             file.write('%s\n' % line)
 
@@ -339,33 +336,52 @@ def is_skipped_attribute(attr: str) -> bool:
 
 
 def infer_method_sig(name: str) -> List[ArgSig]:
+    args = None  # type: Optional[List[ArgSig]]
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
         if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',
-                    'int', 'float', 'trunc', 'complex', 'bool'):
-            return []
-        if name == 'getitem':
-            return [ArgSig(name='index')]
-        if name == 'setitem':
-            return [ArgSig(name='index'),
+                    'int', 'float', 'trunc', 'complex', 'bool', 'abs', 'bytes', 'dir', 'len',
+                    'reversed', 'round', 'index', 'enter'):
+            args = []
+        elif name == 'getitem':
+            args = [ArgSig(name='index')]
+        elif name == 'setitem':
+            args = [ArgSig(name='index'),
                     ArgSig(name='object')]
-        if name in ('delattr', 'getattr'):
-            return [ArgSig(name='name')]
-        if name == 'setattr':
-            return [ArgSig(name='name'),
+        elif name in ('delattr', 'getattr'):
+            args = [ArgSig(name='name')]
+        elif name == 'setattr':
+            args = [ArgSig(name='name'),
                     ArgSig(name='value')]
-        if name == 'getstate':
-            return []
-        if name == 'setstate':
-            return [ArgSig(name='state')]
-        if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
-                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
-                    'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
-                    'divmod', 'rdivmod', 'pow', 'rpow'):
-            return [ArgSig(name='other')]
-        if name in ('neg', 'pos'):
-            return []
-    return [
-        ArgSig(name='*args'),
-        ArgSig(name='**kwargs')
-    ]
+        elif name == 'getstate':
+            args = []
+        elif name == 'setstate':
+            args = [ArgSig(name='state')]
+        elif name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
+                      'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
+                      'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
+                      'divmod', 'rdivmod', 'pow', 'rpow',
+                      'xor', 'rxor', 'or', 'ror', 'and', 'rand', 'lshift', 'rlshift',
+                      'rshift', 'rrshift',
+                      'contains', 'delitem',
+                      'iadd', 'iand', 'ifloordiv', 'ilshift', 'imod', 'imul', 'ior',
+                      'ipow', 'irshift', 'isub', 'itruediv', 'ixor'):
+            args = [ArgSig(name='other')]
+        elif name in ('neg', 'pos', 'invert'):
+            args = []
+        elif name == 'get':
+            args = [ArgSig(name='instance'),
+                    ArgSig(name='owner')]
+        elif name == 'set':
+            args = [ArgSig(name='instance'),
+                    ArgSig(name='value')]
+        elif name == 'reduce_ex':
+            args = [ArgSig(name='protocol')]
+        elif name == 'exit':
+            args = [ArgSig(name='type'),
+                    ArgSig(name='value'),
+                    ArgSig(name='traceback')]
+    if args is None:
+        args = [ArgSig(name='*args'),
+                ArgSig(name='**kwargs')]
+    return [ArgSig(name='self')] + args

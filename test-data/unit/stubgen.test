@@ -1,3 +1,5 @@
+-- Test cases for stubgen that generate stubs from Python code
+
 [case testEmptyFile]
 [out]
 
@@ -580,8 +582,9 @@ from collections import namedtuple
 X = namedtuple('X', ['a', 'b'])
 
 [case testNamedtupleAltSyntax]
-from collections import namedtuple, x
+from collections import namedtuple, xx
 X = namedtuple('X', 'a b')
+xx
 [out]
 from collections import namedtuple
 
@@ -613,10 +616,11 @@ _X = namedtuple('_X', ['a', 'b'])
 class Y(_X): ...
 
 [case testNamedtupleAltSyntaxFieldsTuples]
-from collections import namedtuple, x
+from collections import namedtuple, xx
 X = namedtuple('X', ())
 Y = namedtuple('Y', ('a',))
 Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
+xx
 [out]
 from collections import namedtuple
 
@@ -701,15 +705,16 @@ class A:
 [case testExportViaRelativeImport]
 from .api import get
 [out]
-from .api import get
+from .api import get as get
 
 [case testExportViaRelativePackageImport]
 from .packages.urllib3.contrib import parse
 [out]
-from .packages.urllib3.contrib import parse
+from .packages.urllib3.contrib import parse as parse
 
 [case testNoExportViaRelativeImport]
 from . import get
+get()
 [out]
 
 [case testRelativeImportAndBase]
@@ -754,35 +759,35 @@ class A:
 
 [case testAnnotationImportsFrom]
 import foo
-from collection import defaultdict
+from collections import defaultdict
 x: defaultdict
 
 [out]
-from collection import defaultdict
+from collections import defaultdict
 
 x: defaultdict
 
 [case testAnnotationImports]
 import foo
-import collection
-x: collection.defaultdict
+import collections
+x: collections.defaultdict
 
 [out]
-import collection
+import collections
 
-x: collection.defaultdict
+x: collections.defaultdict
 
 
 [case testAnnotationImports]
 from typing import List
-import collection
-x: List[collection.defaultdict]
+import collections
+x: List[collections.defaultdict]
 
 [out]
-import collection
+import collections
 from typing import List
 
-x: List[collection.defaultdict]
+x: List[collections.defaultdict]
 
 
 [case testAnnotationFwRefs]
@@ -1427,7 +1432,7 @@ class A(metaclass=abc.ABCMeta):
     def meth(self): ...
 
 [case testABCMeta_semanal]
-from base import base
+from base import Base
 from abc import abstractmethod
 
 class C(Base):
@@ -1445,6 +1450,7 @@ class Base(metaclass=ABCMeta):
 [out]
 import abc
 from abc import abstractmethod
+from base import Base
 from typing import Any
 
 class C(Base, metaclass=abc.ABCMeta):
@@ -1511,3 +1517,249 @@ class B:
     y: str = ...
     @x.setter
     def x(self, value: Any) -> None: ...
+
+[case testMisplacedTypeComment]
+def f():
+    x = 0
+
+    # type: str
+    y = ''
+
+[out]
+def f() -> None: ...
+
+[case testConditionalImportAll_semanal]
+__all__ = ['cookielib']
+
+if object():
+    from http import cookiejar as cookielib
+else:
+    import cookielib
+
+[out]
+import FIXME as cookielib
+
+[case testCannotCalculateMRO_semanal]
+class X: pass
+
+class int(int, X):  # Cycle
+    pass
+
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(A, B): pass # No consistent method resolution order
+class E(C, D): pass # Ditto
+
+[out]
+class X: ...
+class int(int, X): ...
+class A: ...
+class B(A): ...
+class C(B): ...
+class D(A, B): ...
+class E(C, D): ...
+
+[case testUnreachableCode_semanal]
+MYPY = False
+class A: pass
+if MYPY:
+    class C(A):
+        def f(self) -> None: pass
+else:
+    def f(i):
+        return i
+
+    class C(A):
+        def g(self) -> None: pass
+[out]
+MYPY: bool
+
+class A: ...
+
+class C(A):
+    def f(self) -> None: ...
+
+[case testAbstractProperty1_semanal]
+import other
+import abc
+
+class A:
+    @abc.abstractproperty
+    def x(self): pass
+
+[out]
+import abc
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractproperty
+    def x(self) -> Any: ...
+
+[case testAbstractProperty2_semanal]
+import other
+from abc import abstractproperty
+
+class A:
+    @abstractproperty
+    def x(self): pass
+
+[out]
+import abc
+from abc import abstractproperty
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @abstractproperty
+    def x(self) -> Any: ...
+
+[case testClassWithNameAnyOrOptional]
+def f(x=object()):
+    return 1
+
+def g(x=None): pass
+
+x = g()
+
+class Any:
+    pass
+
+def Optional():
+    return 0
+
+[out]
+from typing import Any as _Any, Optional as _Optional
+
+def f(x: _Any = ...): ...
+def g(x: _Optional[_Any] = ...) -> None: ...
+
+x: _Any
+
+class Any: ...
+
+def Optional(): ...
+
+[case testExportedNameImported]
+# modules: main a b
+from a import C
+
+class D(C): pass
+
+[file a.py]
+from b import C
+
+[file b.py]
+class C: pass
+
+[out]
+# main.pyi
+from a import C
+
+class D(C): ...
+# a.pyi
+from b import C as C
+# b.pyi
+class C: ...
+
+[case testVendoredSix]
+from p1.vendored import six
+from p1.vendor.six import foobar
+from p1.packages.six.moves import http_client
+from .packages.six.moves import queue
+
+class C(http_client.HTTPMessage): pass
+class D(six.Iterator): pass
+
+[out]
+import six
+from six import foobar as foobar
+from six.moves import http_client, queue as queue
+
+class C(http_client.HTTPMessage): ...
+class D(six.Iterator): ...
+
+[case testVendoredPackage]
+# modules: main p.vendored.requests p.sub.requests
+from p.vendored.requests import Request
+from p.sub.requests import Request2
+
+x = Request()
+y = Request2()
+
+[file p/__init__.py]
+
+[file p/vendored/__init__.py]
+
+[file p/vendored/requests.py]
+class Request:
+    pass
+
+[file p/sub/__init__.py]
+
+[file p/sub/requests.py]
+class Request2:
+    pass
+
+[out]
+# main.pyi
+from typing import Any
+
+x: Any
+y: Any
+<out/p/vendored/requests.pyi was not generated>
+# p/sub/requests.pyi
+class Request2: ...
+
+[case testTestFiles]
+# modules: p p.x p.tests p.tests.test_foo
+
+[file p/__init__.py]
+def f(): pass
+
+[file p/x.py]
+def g(): pass
+
+[file p/tests/__init__.py]
+
+[file p/tests/test_foo.py]
+def test_thing(): pass
+
+[out]
+# p/__init__.pyi
+def f() -> None: ...
+# p/x.pyi
+def g() -> None: ...
+<out/p/tests.pyi was not generated>
+<out/p/tests/test_foo.pyi was not generated>
+
+[case testTestFiles_import]
+# modules: p p.x p.tests p.tests.test_foo
+
+[file p/__init__.py]
+def f(): pass
+
+[file p/x.py]
+def g(): pass
+
+[file p/tests/__init__.py]
+
+[file p/tests/test_foo.py]
+def test_thing(): pass
+
+[out]
+# p/__init__.pyi
+def f() -> None: ...
+# p/x.pyi
+def g() -> None: ...
+<out/p/tests.pyi was not generated>
+<out/p/tests/test_foo.pyi was not generated>
+
+[case testVerboseFlag]
+# Just test that --verbose does not break anything in a basic test case.
+# flags: --verbose
+
+def f(x, y): pass
+[out]
+from typing import Any
+
+def f(x: Any, y: Any) -> None: ...

@@ -15,9 +15,9 @@ from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stubs, parse_options, Options, collect_build_targets,
-    mypy_options
+    mypy_options, is_blacklisted_path, is_test_module
 )
-from mypy.stubutil import walk_packages
+from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -27,6 +27,8 @@ from mypy.stubdoc import (
 
 
 class StubgenCmdLineSuite(Suite):
+    """Test cases for processing command-line options and finding files."""
+
     def test_files_found(self) -> None:
         current = os.getcwd()
         with tempfile.TemporaryDirectory() as tmp:
@@ -112,6 +114,8 @@ class StubgenCliParseSuite(Suite):
 
 
 class StubgenUtilSuite(Suite):
+    """Unit tests for stubgen utility functions."""
+
     def test_parse_signature(self) -> None:
         self.assert_parse_signature('func()', ('func', [], []))
 
@@ -253,6 +257,13 @@ class StubgenUtilSuite(Suite):
                      [FunctionSig(name='func', args=[ArgSig(name='x'), ArgSig(name='y')],
                                   ret_type='int')])
 
+    def test_infer_sig_from_docstring_bad_indentation(self) -> None:
+        assert_equal(infer_sig_from_docstring("""
+            x
+              x
+             x
+            """, 'func'), None)
+
     def test_infer_arg_sig_from_docstring(self) -> None:
         assert_equal(infer_arg_sig_from_docstring("(*args, **kwargs)"),
                      [ArgSig(name='*args'), ArgSig(name='**kwargs')])
@@ -270,8 +281,228 @@ class StubgenUtilSuite(Suite):
                      'Tuple[int, int]')
         assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
 
+    def test_remove_misplaced_type_comments_1(self) -> None:
+        good = """
+        \u1234
+        def f(x):  # type: (int) -> int
+
+        def g(x):
+            # type: (int) -> int
+
+        def h():
+
+            # type: () int
+
+        x = 1  # type: int
+        """
+
+        assert_equal(remove_misplaced_type_comments(good), good)
+
+    def test_remove_misplaced_type_comments_2(self) -> None:
+        bad = """
+        def f(x):
+            # type: Callable[[int], int]
+            pass
+
+        #  type:  "foo"
+        #  type:  'bar'
+        x = 1
+        # type: int
+        """
+        bad_fixed = """
+        def f(x):
+
+            pass
+
+
+
+        x = 1
+
+        """
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_3(self) -> None:
+        bad = '''
+        def f(x):
+            """docstring"""
+            # type: (int) -> int
+            pass
+
+        def g(x):
+            """docstring
+            """
+            # type: (int) -> int
+            pass
+        '''
+        bad_fixed = '''
+        def f(x):
+            """docstring"""
+
+            pass
+
+        def g(x):
+            """docstring
+            """
+
+            pass
+        '''
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_4(self) -> None:
+        bad = """
+        def f(x):
+            '''docstring'''
+            # type: (int) -> int
+            pass
+
+        def g(x):
+            '''docstring
+            '''
+            # type: (int) -> int
+            pass
+        """
+        bad_fixed = """
+        def f(x):
+            '''docstring'''
+
+            pass
+
+        def g(x):
+            '''docstring
+            '''
+
+            pass
+        """
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_5(self) -> None:
+        bad = """
+        def f(x):
+            # type: (int, List[Any],
+            #        float, bool) -> int
+            pass
+
+        def g(x):
+            # type: (int, List[Any])
+            pass
+        """
+        bad_fixed = """
+        def f(x):
+
+            #        float, bool) -> int
+            pass
+
+        def g(x):
+
+            pass
+        """
+        assert_equal(remove_misplaced_type_comments(bad), bad_fixed)
+
+    def test_remove_misplaced_type_comments_bytes(self) -> None:
+        original = b"""
+        \xbf
+        def f(x):  # type: (int) -> int
+
+        def g(x):
+            # type: (int) -> int
+            pass
+
+        def h():
+            # type: int
+            pass
+
+        x = 1  # type: int
+        """
+
+        dest = b"""
+        \xbf
+        def f(x):  # type: (int) -> int
+
+        def g(x):
+            # type: (int) -> int
+            pass
+
+        def h():
+
+            pass
+
+        x = 1  # type: int
+        """
+
+        assert_equal(remove_misplaced_type_comments(original), dest)
+
+    def test_common_dir_prefix(self) -> None:
+        assert common_dir_prefix([]) == '.'
+        assert common_dir_prefix(['x.pyi']) == '.'
+        assert common_dir_prefix(['./x.pyi']) == '.'
+        assert common_dir_prefix(['foo/bar/x.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi',
+                                  'foo/bar/y.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/x.pyi', 'foo/bar/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo'
+        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
+
+
+class StubgenHelpersSuite(Suite):
+    def test_is_blacklisted_path(self) -> None:
+        assert not is_blacklisted_path('foo/bar.py')
+        assert not is_blacklisted_path('foo.py')
+        assert not is_blacklisted_path('foo/xvendor/bar.py')
+        assert not is_blacklisted_path('foo/vendorx/bar.py')
+        assert is_blacklisted_path('foo/vendor/bar.py')
+        assert is_blacklisted_path('foo/vendored/bar.py')
+        assert is_blacklisted_path('foo/vendored/bar/thing.py')
+        assert is_blacklisted_path('foo/six.py')
+
+    def test_is_test_module(self) -> None:
+        assert not is_test_module('foo')
+        assert not is_test_module('foo.bar')
+
+        # The following could be test modules, but we are very conservative and
+        # don't treat them as such since they could plausibly be real modules.
+        assert not is_test_module('foo.bartest')
+        assert not is_test_module('foo.bartests')
+        assert not is_test_module('foo.testbar')
+
+        assert is_test_module('foo.test')
+        assert is_test_module('foo.test.foo')
+        assert is_test_module('foo.tests')
+        assert is_test_module('foo.tests.foo')
+        assert is_test_module('foo.testing.foo')
+
+        assert is_test_module('foo.test_bar')
+        assert is_test_module('foo.bar_tests')
+        assert is_test_module('foo.testing')
+        assert is_test_module('foo.conftest')
+        assert is_test_module('foo.bar_test_util')
+        assert is_test_module('foo.bar_test_utils')
+        assert is_test_module('foo.bar_test_base')
+
 
 class StubgenPythonSuite(DataSuite):
+    """Data-driven end-to-end test cases that generate stub files.
+
+    You can use these magic test case name suffixes:
+
+    *_semanal
+        Run semantic analysis (slow as this uses real stubs -- only use
+        when necessary)
+    *_import
+        Import module and perform runtime introspection (in the current
+        process!)
+
+    You can use these magic comments:
+
+    # flags: --some-stubgen-option ...
+        Specify custom stubgen options
+
+    # modules: module1 module2 ...
+        Specify which modules to output (by default only 'main')
+    """
+
     required_out_section = True
     base_path = '.'
     files = ['stubgen.test']
@@ -281,17 +512,21 @@ class StubgenPythonSuite(DataSuite):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        extra = []
-        mods = []
+        extra = []  # Extra command-line args
+        mods = []  # Module names to process
         source = '\n'.join(testcase.input)
         for file, content in testcase.files + [('./main.py', source)]:
-            mod = os.path.basename(file)[:-3]
+            # Strip ./ prefix and .py suffix.
+            mod = file[2:-3].replace('/', '.')
+            if mod.endswith('.__init__'):
+                mod, _, _ = mod.rpartition('.')
             mods.append(mod)
             extra.extend(['-m', mod])
             with open(file, 'w') as f:
                 f.write(content)
 
         options = self.parse_flags(source, extra)
+        modules = self.parse_modules(source)
         out_dir = 'out'
         try:
             try:
@@ -299,9 +534,11 @@ class StubgenPythonSuite(DataSuite):
                     options.no_import = True
                 if not testcase.name.endswith('_semanal'):
                     options.parse_only = True
-                generate_stubs(options, quiet=True, add_header=False)
+                generate_stubs(options)
                 a = []  # type: List[str]
-                self.add_file(os.path.join(out_dir, 'main.pyi'), a)
+                for module in modules:
+                    fnam = module_to_path(out_dir, module)
+                    self.add_file(fnam, a, header=len(modules) > 1)
             except CompileError as e:
                 a = e.messages
             assert_string_arrays_equal(testcase.output, a,
@@ -319,32 +556,57 @@ class StubgenPythonSuite(DataSuite):
             flag_list = flags.group(1).split()
         else:
             flag_list = []
-        return parse_options(flag_list + extra)
+        options = parse_options(flag_list + extra)
+        if '--verbose' not in flag_list:
+            options.quiet = True
+        else:
+            options.verbose = True
+        return options
 
-    def add_file(self, path: str, result: List[str]) -> None:
+    def parse_modules(self, program_text: str) -> List[str]:
+        modules = re.search('# modules: (.*)$', program_text, flags=re.MULTILINE)
+        if modules:
+            return modules.group(1).split()
+        else:
+            return ['main']
+
+    def add_file(self, path: str, result: List[str], header: bool) -> None:
+        if not os.path.exists(path):
+            result.append('<%s was not generated>' % path.replace('\\', '/'))
+            return
+        if header:
+            result.append('# {}'.format(path[4:]))
         with open(path, encoding='utf8') as file:
             result.extend(file.read().splitlines())
 
 
+self_arg = ArgSig(name='self')
+
+
 class StubgencSuite(Suite):
+    """Unit tests for stub generation from C modules using introspection.
+
+    Note that these don't cover a lot!
+    """
+
     def test_infer_hash_sig(self) -> None:
-        assert_equal(infer_method_sig('__hash__'), [])
+        assert_equal(infer_method_sig('__hash__'), [self_arg])
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_sig('__getitem__'), [ArgSig(name='index')])
+        assert_equal(infer_method_sig('__getitem__'), [self_arg, ArgSig(name='index')])
 
     def test_infer_setitem_sig(self) -> None:
         assert_equal(infer_method_sig('__setitem__'),
-                     [ArgSig(name='index'), ArgSig(name='object')])
+                     [self_arg, ArgSig(name='index'), ArgSig(name='object')])
 
     def test_infer_binary_op_sig(self) -> None:
         for op in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul'):
-            assert_equal(infer_method_sig('__%s__' % op), [ArgSig(name='other')])
+            assert_equal(infer_method_sig('__%s__' % op), [self_arg, ArgSig(name='other')])
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ('neg', 'pos'):
-            assert_equal(infer_method_sig('__%s__' % op), [])
+            assert_equal(infer_method_sig('__%s__' % op), [self_arg])
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output = []  # type: List[str]
@@ -535,3 +797,12 @@ class ArgSigSuite(Suite):
                      "ArgSig(name='func', type='str', default=False)")
         assert_equal(repr(ArgSig("func", 'str', default=True)),
                      "ArgSig(name='func', type='str', default=True)")
+
+
+def module_to_path(out_dir: str, module: str) -> str:
+    fnam = os.path.join(out_dir, '{}.pyi'.format(module.replace('.', '/')))
+    if not os.path.exists(fnam):
+        alt_fnam = fnam.replace('.pyi', '/__init__.pyi')
+        if os.path.exists(alt_fnam):
+            return alt_fnam
+    return fnam
