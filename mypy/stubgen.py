@@ -395,7 +395,7 @@ class DefinitionFinder(mypy.traverser.TraverserVisitor):
 
     def visit_func_def(self, o: FuncDef) -> None:
         # Don't recurse, as we only keep track of top-level definitions.
-        self.names.add(o.name())
+        self.names.add(o.name)
 
 
 def find_referenced_names(file: MypyFile) -> Set[str]:
@@ -421,7 +421,7 @@ class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
         self.refs.add(e.name)
 
     def visit_instance(self, t: Instance) -> None:
-        self.add_ref(t.type.fullname())
+        self.add_ref(t.type.fullname)
         super().visit_instance(t)
 
     def visit_unbound_type(self, t: UnboundType) -> None:
@@ -473,7 +473,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.defined_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.module = o.fullname()
+        self.module = o.fullname
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
         typing_imports = ["Any", "Optional", "TypeVar"]
