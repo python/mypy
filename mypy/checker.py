@@ -3733,30 +3733,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
-                    vartype = get_proper_type(type_map[expr])
-                    type = get_isinstance_type(node.args[1], type_map)
-                    if isinstance(vartype, UnionType):
-                        union_list = []
-                        for t in get_proper_types(vartype.items):
-                            if isinstance(t, TypeType):
-                                union_list.append(t.item)
-                            else:
-                                # This is an error that should be reported earlier
-                                # if we reach here, we refuse to do any type inference.
-                                return {}, {}
-                        vartype = UnionType(union_list)
-                    elif isinstance(vartype, TypeType):
-                        vartype = vartype.item
-                    elif (isinstance(vartype, Instance) and
-                            vartype.type.fullname == 'builtins.type'):
-                        vartype = self.named_type('builtins.object')
-                    else:
-                        # Any other object whose type we don't know precisely
-                        # for example, Any or a custom metaclass.
-                        return {}, {}  # unknown type
-                    yes_map, no_map = conditional_type_map(expr, vartype, type)
-                    yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
-                    return yes_map, no_map
+                    return self.infer_issubclass_maps(node, expr, type_map)
             elif refers_to_fullname(node.callee, 'builtins.callable'):
                 if len(node.args) != 1:  # the error will be reported elsewhere
                     return {}, {}
@@ -4366,6 +4343,39 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             for expr, type in type_map.items():
                 self.binder.put(expr, type)
+
+    def infer_issubclass_maps(self, node: CallExpr,
+                              expr: Expression,
+                              type_map: Dict[Expression, Type]
+                              ) -> Tuple[TypeMap, TypeMap]:
+        """Infer type restrictions for an expression in issubclass call."""
+        vartype = type_map[expr]
+        type = get_isinstance_type(node.args[1], type_map)
+        if isinstance(vartype, TypeVarType):
+            vartype = vartype.upper_bound
+        vartype = get_proper_type(vartype)
+        if isinstance(vartype, UnionType):
+            union_list = []
+            for t in get_proper_types(vartype.items):
+                if isinstance(t, TypeType):
+                    union_list.append(t.item)
+                else:
+                    # This is an error that should be reported earlier
+                    # if we reach here, we refuse to do any type inference.
+                    return {}, {}
+            vartype = UnionType(union_list)
+        elif isinstance(vartype, TypeType):
+            vartype = vartype.item
+        elif (isinstance(vartype, Instance) and
+                vartype.type.fullname == 'builtins.type'):
+            vartype = self.named_type('builtins.object')
+        else:
+            # Any other object whose type we don't know precisely
+            # for example, Any or a custom metaclass.
+            return {}, {}  # unknown type
+        yes_map, no_map = conditional_type_map(expr, vartype, type)
+        yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
+        return yes_map, no_map
 
 
 def conditional_type_map(expr: Expression,
