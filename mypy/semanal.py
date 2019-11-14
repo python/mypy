@@ -880,7 +880,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.fail("Decorated property not supported", item)
                 item.func.accept(self)
             else:
-                self.fail('Unexpected definition for property "{}"'.format(first_item.func.name()), item)
+                self.fail('Unexpected definition for property "{}"'.format(first_item.func.name), item)
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
             del items[i]

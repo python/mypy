@@ -604,7 +604,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         retname = None
         if isinstance(o.unanalyzed_type, CallableType):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
-        elif isinstance(o, FuncDef) and (o.is_abstract or o.name() in METHODS_WITH_RETURN_VALUE):
+        elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = self.typing_name('Any')
@@ -1111,9 +1111,9 @@ def find_method_names(defs: List[Statement]) -> Set[str]:
     result = set()
     for defn in defs:
         if isinstance(defn, FuncDef):
-            result.add(defn.name())
+            result.add(defn.name)
         elif isinstance(defn, Decorator):
-            result.add(defn.func.name())
+            result.add(defn.func.name)
         elif isinstance(defn, OverloadedFuncDef):
             for item in defn.items:
                 result.update(find_method_names([item]))
