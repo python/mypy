@@ -4178,7 +4178,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Infer type restrictions for an expression in issubclass call."""
         vartype = type_map[expr]
         type = get_isinstance_type(node.args[1], type_map)
-        if (isinstance(vartype, TypeVarType)):
+        if isinstance(vartype, TypeVarType):
             vartype = vartype.upper_bound
         vartype = get_proper_type(vartype)
         if isinstance(vartype, UnionType):
