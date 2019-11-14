@@ -132,7 +132,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     for name, symbol in table.items():
         node = symbol.node
         # TODO: cross_ref?
-        fullname = node.fullname() if node else None
+        fullname = node.fullname if node else None
         common = (fullname, symbol.kind, symbol.module_public)
         if isinstance(node, MypyFile):
             # This is a cross-reference to another module.
@@ -153,7 +153,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
                             snapshot_optional_type(node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
-            if node and get_prefix(node.fullname()) != name_prefix:
+            if node and get_prefix(node.fullname) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
                 result[name] = ('CrossRef', common)
             else:
@@ -204,7 +204,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  snapshot_optional_type(node.metaclass_type),
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
-                 [base.fullname() for base in node.mro],
+                 [base.fullname for base in node.mro],
                  # Note that the structure of type variables is a part of the external interface,
                  # since creating instances might fail, for example:
                  #     T = TypeVar('T', bound=int)
@@ -216,7 +216,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
-        prefix = node.fullname()
+        prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)
         # Special dependency for abstract attribute handling.
         symbol_table['(abstract)'] = ('Abstract', tuple(sorted(node.abstract_attributes)))
@@ -292,7 +292,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
         return ('Instance',
-                encode_optional_str(typ.type.fullname()),
+                encode_optional_str(typ.type.fullname),
                 snapshot_types(typ.args),
                 ('None',) if typ.last_known_value is None else snapshot_type(typ.last_known_value))
 
@@ -348,7 +348,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> SnapshotItem:
         assert typ.alias is not None
-        return ('TypeAliasType', typ.alias.fullname(), snapshot_types(typ.args))
+        return ('TypeAliasType', typ.alias.fullname, snapshot_types(typ.args))
 
 
 def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tuple[object, ...]:

@@ -89,7 +89,7 @@ class EnumCallAnalyzer:
             var = Var(item)
             var.info = info
             var.is_property = True
-            var._fullname = '{}.{}'.format(info.fullname(), item)
+            var._fullname = '{}.{}'.format(info.fullname, item)
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 

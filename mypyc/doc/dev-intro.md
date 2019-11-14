@@ -8,13 +8,8 @@ message.
 
 Here are some major things that aren't supported in compiled code:
 
-* Functions that take `*args` or `**kwargs`
 * Many dunder methods (only some work, such as `__init__` and `__eq__`)
 * Monkey patching compiled functions or classes
-* Metaclasses
-* Class decorators
-* Async features
-* Generally Python 3.5+ only features
 * General multiple inheritance (a limited form is supported)
 * Named tuple defined using the class-based syntax
 * Defining protocols

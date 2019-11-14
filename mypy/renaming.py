@@ -92,11 +92,11 @@ class VariableRenameVisitor(TraverserVisitor):
         self.enter_block()
 
         for arg in fdef.arguments:
-            name = arg.variable.name()
+            name = arg.variable.name
             # 'self' can't be redefined since it's special as it allows definition of
             # attributes. 'cls' can't be used to define attributes so we can ignore it.
             can_be_redefined = name != 'self'  # TODO: Proper check
-            self.record_assignment(arg.variable.name(), can_be_redefined)
+            self.record_assignment(arg.variable.name, can_be_redefined)
             self.handle_arg(name)
 
         for stmt in fdef.body.body:

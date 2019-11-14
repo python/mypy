@@ -201,19 +201,19 @@ class AnyExpressionsReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         visitor = stats.StatisticsVisitor(inferred=True,
-                                          filename=tree.fullname(),
+                                          filename=tree.fullname,
                                           modules=modules,
                                           typemap=type_map,
                                           all_nodes=True,
                                           visit_untyped_defs=False)
         tree.accept(visitor)
-        self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
+        self.any_types_counter[tree.fullname] = visitor.type_of_any_counter
         num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
         # count each line of dead code as one expression of type "Any"
         num_any = visitor.num_any_exprs + num_unanalyzed_lines
         num_total = visitor.num_imprecise_exprs + visitor.num_precise_exprs + num_any
         if num_total > 0:
-            self.counts[tree.fullname()] = (num_any, num_total)
+            self.counts[tree.fullname] = (num_any, num_total)
 
     def on_finish(self) -> None:
         self._report_any_exprs()
@@ -464,7 +464,7 @@ class MemoryXmlReporter(AbstractReporter):
             return
 
         visitor = stats.StatisticsVisitor(inferred=True,
-                                          filename=tree.fullname(),
+                                          filename=tree.fullname,
                                           modules=modules,
                                           typemap=type_map,
                                           all_nodes=True)
@@ -586,7 +586,7 @@ class CoberturaXmlReporter(AbstractReporter):
                 options: Options) -> None:
         path = os.path.relpath(tree.path)
         visitor = stats.StatisticsVisitor(inferred=True,
-                                          filename=tree.fullname(),
+                                          filename=tree.fullname,
                                           modules=modules,
                                           typemap=type_map,
                                           all_nodes=True)
@@ -818,7 +818,7 @@ class LinePrecisionReporter(AbstractReporter):
             return
 
         visitor = stats.StatisticsVisitor(inferred=True,
-                                          filename=tree.fullname(),
+                                          filename=tree.fullname,
                                           modules=modules,
                                           typemap=type_map,
                                           all_nodes=True)

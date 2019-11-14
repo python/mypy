@@ -593,7 +593,7 @@ class Plugin(CommonPluginApi):
         """Adjust type of a class attribute.
 
         This method is called with attribute full name using the class where the attribute was
-        defined (or Var.info.fullname() for generated attributes).
+        defined (or Var.info.fullname for generated attributes).
 
         For classes without __getattr__ or __getattribute__, this hook is only called for
         names of fields/properties (but not methods) that exist in the instance MRO.

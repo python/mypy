@@ -484,9 +484,12 @@ class A(Generic[T]):
   @classmethod
   def foo(cls) -> None:
       reveal_type(cls)  # N: Revealed type is 'Type[__main__.A[T`1]]'
-      reveal_type(cls(1))  # N: Revealed type is '__main__.A[builtins.int*]'
-      reveal_type(cls('wooooo'))  # N: Revealed type is '__main__.A[builtins.str*]'
+      cls.x  # E: Access to generic instance variables via class is ambiguous
 
+  @classmethod
+  def other(cls, x: T) -> A[T]: ...
+
+reveal_type(A(0).other)  # N: Revealed type is 'def (x: builtins.int*) -> __main__.A[builtins.int*]'
 [builtins fixtures/classmethod.pyi]
 
 [case testDataclassesForwardRefs]
