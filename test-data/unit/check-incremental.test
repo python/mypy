@@ -2472,7 +2472,7 @@ A = Dict[str, int]
 [builtins fixtures/dict.pyi]
 [out]
 
--- Some crazy selef-referential named tuples, types dicts, and aliases
+-- Some crazy self-referential named tuples, types dicts, and aliases
 -- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
 

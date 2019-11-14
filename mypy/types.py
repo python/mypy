@@ -180,6 +180,11 @@ class TypeAliasType(Type):
         its public wrapper mypy.types.get_proper_type() is preferred.
         """
         assert self.alias is not None
+        if self.alias.no_args:
+            # We know that no_args=True aliases like L = List must have an instance
+            # as their target.
+            assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
+            return self.alias.target.copy_modified(args=self.args)
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
@@ -1936,6 +1941,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
+        self.any_as_dots = False
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
@@ -1954,6 +1960,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "{}({}, {})".format(t.constructor, typ, t.name)
 
     def visit_any(self, t: AnyType) -> str:
+        if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
+            return '...'
         return 'Any'
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -2093,7 +2101,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> str:
         if t.alias is not None:
-            return '<alias {}>'.format(t.alias.fullname)
+            unrolled, recursed = t._partial_expansion()
+            self.any_as_dots = recursed
+            type_str = unrolled.accept(self)
+            self.any_as_dots = False
+            return type_str
         return '<alias (unfixed)>'
 
     def list_str(self, a: Iterable[Type]) -> str:

@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type, TypeAliasType
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
 )
 import mypy.applytype
 import mypy.constraints
@@ -103,6 +103,8 @@ def _is_subtype(left: Type, right: Type,
                 ignore_pos_arg_names: bool = False,
                 ignore_declared_variance: bool = False,
                 ignore_promotions: bool = False) -> bool:
+    orig_right = right
+    orig_left = left
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -113,7 +115,7 @@ def _is_subtype(left: Type, right: Type,
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
-        is_subtype_of_item = any(is_subtype(left, item,
+        is_subtype_of_item = any(is_subtype(orig_left, item,
                                             ignore_type_params=ignore_type_params,
                                             ignore_pos_arg_names=ignore_pos_arg_names,
                                             ignore_declared_variance=ignore_declared_variance,
@@ -130,7 +132,7 @@ def _is_subtype(left: Type, right: Type,
         elif is_subtype_of_item:
             return True
         # otherwise, fall through
-    return left.accept(SubtypeVisitor(right,
+    return left.accept(SubtypeVisitor(orig_right,
                                       ignore_type_params=ignore_type_params,
                                       ignore_pos_arg_names=ignore_pos_arg_names,
                                       ignore_declared_variance=ignore_declared_variance,
@@ -155,13 +157,14 @@ def is_equivalent(a: Type, b: Type,
 
 class SubtypeVisitor(TypeVisitor[bool]):
 
-    def __init__(self, right: ProperType,
+    def __init__(self, right: Type,
                  *,
                  ignore_type_params: bool,
                  ignore_pos_arg_names: bool = False,
                  ignore_declared_variance: bool = False,
                  ignore_promotions: bool = False) -> None:
-        self.right = right
+        self.right = get_proper_type(right)
+        self.orig_right = right
         self.ignore_type_params = ignore_type_params
         self.ignore_pos_arg_names = ignore_pos_arg_names
         self.ignore_declared_variance = ignore_declared_variance
@@ -449,7 +452,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all(self._is_subtype(item, self.right) for item in left.items)
+        return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
@@ -1083,7 +1086,8 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     s = get_proper_type(s)
 
     if isinstance(t, UnionType):
-        new_items = [item for item in t.relevant_items()
+        new_items = [restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
+                     for item in t.relevant_items()
                      if (isinstance(get_proper_type(item), AnyType) or
                          not covers_at_runtime(item, s, ignore_promotions))]
         return UnionType.make_union(new_items)
@@ -1139,22 +1143,26 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
 
 def _is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = False,
                        erase_instances: bool = False) -> bool:
+    orig_left = left
+    orig_right = right
     left = get_proper_type(left)
     right = get_proper_type(right)
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any([is_proper_subtype(left, item, ignore_promotions=ignore_promotions,
+        return any([is_proper_subtype(orig_left, item, ignore_promotions=ignore_promotions,
                                       erase_instances=erase_instances)
                     for item in right.items])
-    return left.accept(ProperSubtypeVisitor(right, ignore_promotions=ignore_promotions,
+    return left.accept(ProperSubtypeVisitor(orig_right,
+                                            ignore_promotions=ignore_promotions,
                                             erase_instances=erase_instances))
 
 
 class ProperSubtypeVisitor(TypeVisitor[bool]):
-    def __init__(self, right: ProperType, *,
+    def __init__(self, right: Type, *,
                  ignore_promotions: bool = False,
                  erase_instances: bool = False) -> None:
-        self.right = right
+        self.right = get_proper_type(right)
+        self.orig_right = right
         self.ignore_promotions = ignore_promotions
         self.erase_instances = erase_instances
         self._subtype_kind = ProperSubtypeVisitor.build_subtype_kind(
@@ -1313,7 +1321,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all([self._is_proper_subtype(item, self.right) for item in left.items])
+        return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?

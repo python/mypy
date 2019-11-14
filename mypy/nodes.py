@@ -2116,11 +2116,12 @@ class TypeAliasExpr(Expression):
     #     A = List[Any]
     no_args = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type', tvars: List[str], no_args: bool) -> None:
+    def __init__(self, node: 'TypeAlias') -> None:
         super().__init__()
-        self.type = type
-        self.tvars = tvars
-        self.no_args = no_args
+        self.type = node.target
+        self.tvars = node.alias_tvars
+        self.no_args = node.no_args
+        self.node = node
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)

@@ -884,6 +884,10 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
+        # TODO: Add guard for infinite recursion here. Moreover, now that type aliases
+        # are its own kind of types we can simplify the logic to rely on intermediate
+        # dependencies (like for instance types).
+        triggers.extend(self.get_type_triggers(typ.alias.target))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:

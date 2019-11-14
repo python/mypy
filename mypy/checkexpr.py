@@ -224,8 +224,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Something that refers to a type alias appears in runtime context.
             # Note that we suppress bogus errors for alias redefinitions,
             # they are already reported in semanal.py.
-            result = self.alias_type_in_runtime_context(node.target, node.alias_tvars,
-                                                        node.no_args, e,
+            result = self.alias_type_in_runtime_context(node, node.no_args, e,
                                                         alias_definition=e.is_alias_rvalue
                                                         or lvalue)
         else:
@@ -2917,9 +2916,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             # Subscription of a (generic) alias in runtime context, expand the alias.
-            target = tapp.expr.node.target
-            all_vars = tapp.expr.node.alias_tvars
-            item = expand_type_alias(target, all_vars, tapp.types, self.chk.fail,
+            item = expand_type_alias(tapp.expr.node, tapp.types, self.chk.fail,
                                      tapp.expr.node.no_args, tapp)
             item = get_proper_type(item)
             if isinstance(item, Instance):
@@ -2951,10 +2948,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
         Note that type variables are implicitly substituted with `Any`.
         """
-        return self.alias_type_in_runtime_context(alias.type, alias.tvars, alias.no_args,
+        return self.alias_type_in_runtime_context(alias.node, alias.no_args,
                                                   alias, alias_definition=True)
 
-    def alias_type_in_runtime_context(self, target: Type, alias_tvars: List[str],
+    def alias_type_in_runtime_context(self, alias: TypeAlias,
                                       no_args: bool, ctx: Context,
                                       *,
                                       alias_definition: bool = False) -> Type:
@@ -2971,14 +2968,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
-        if isinstance(target, Instance) and target.invalid:  # type: ignore
+        if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
         # If this is a generic alias, we set all variables to `Any`.
         # For example:
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
-        item = get_proper_type(set_any_tvars(target, alias_tvars, ctx.line, ctx.column))
+        item = get_proper_type(set_any_tvars(alias, ctx.line, ctx.column))
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor

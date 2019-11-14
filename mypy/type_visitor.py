@@ -13,7 +13,7 @@ other modules refer to them.
 
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set
 from mypy_extensions import trait
 
 T = TypeVar('T')
@@ -246,14 +246,21 @@ class TypeTranslator(TypeVisitor[Type]):
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 
-    strategy is used to combine results for a series of types
+    strategy is used to combine results for a series of types,
+    common use cases involve a boolean query using `any` or `all`.
 
-    Common use cases involve a boolean query using `any` or `all`
+    Note: this visitor keeps an internal state (tracks type aliases to avoid
+    recursion), so it should *never* be re-used for querying different types,
+    create a new visitor instance instead.
+
+    # TODO: check that we don't have existing violations of this rule.
     """
 
     def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
         self.strategy = strategy
-        self.seen = []  # type: List[Type]
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]].
+        self.seen_aliases = set()  # type: Set[TypeAliasType]
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -329,14 +336,16 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         """Perform a query for a list of types.
 
         Use the strategy to combine the results.
-        Skip types already visited types to avoid infinite recursion.
-        Note: types can be recursive until they are fully analyzed and "unentangled"
-        in patches after the semantic analysis.
+        Skip type aliases already visited types to avoid infinite recursion.
         """
         res = []  # type: List[T]
         for t in types:
-            if any(t is s for s in self.seen):
-                continue
-            self.seen.append(t)
+            if isinstance(t, TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+                #       about duplicates.
+                if t in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(t)
             res.append(t.accept(self))
         return self.strategy(res)

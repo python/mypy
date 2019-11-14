@@ -2495,18 +2495,20 @@ class SemanticAnalyzer(NodeVisitor[None],
                                context=s)
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
-        res = make_any_non_explicit(res)
+        if not has_placeholder(res):
+            res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args  # type: ignore
         fix_instance_types(res, self.fail, self.note)
+        alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
+                               alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
-            s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
+            s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors
             s.rvalue.analyzed.column = res.column
         elif isinstance(s.rvalue, RefExpr):
             s.rvalue.is_alias_rvalue = True
-        alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
-                               alias_tvars=alias_tvars, no_args=no_args)
+
         if existing:
             # An alias gets updated.
             updated = False
