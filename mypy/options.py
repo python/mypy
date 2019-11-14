@@ -263,6 +263,7 @@ class Options:
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = False
         # Used to transform source code before parsing if not None
+        # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source = None  # type: Optional[Callable[[Any], Any]]
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool

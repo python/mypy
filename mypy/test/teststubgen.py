@@ -559,6 +559,8 @@ class StubgenPythonSuite(DataSuite):
         options = parse_options(flag_list + extra)
         if '--verbose' not in flag_list:
             options.quiet = True
+        else:
+            options.verbose = True
         return options
 
     def parse_modules(self, program_text: str) -> List[str]:

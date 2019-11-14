@@ -1753,3 +1753,13 @@ def f() -> None: ...
 def g() -> None: ...
 <out/p/tests.pyi was not generated>
 <out/p/tests/test_foo.pyi was not generated>
+
+[case testVerboseFlag]
+# Just test that --verbose does not break anything in a basic test case.
+# flags: --verbose
+
+def f(x, y): pass
+[out]
+from typing import Any
+
+def f(x: Any, y: Any) -> None: ...

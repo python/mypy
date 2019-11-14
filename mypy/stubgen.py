@@ -584,6 +584,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.visit_func_def(o.func, is_abstract=is_abstract)
 
     def process_name_expr_decorator(self, expr: NameExpr, context: Decorator) -> bool:
+        """Process a function decorator of form @foo.
+
+        Only preserve certain special decorators such as @abstractmethod.
+
+        Return True if the decorator makes a method abstract.
+        """
         is_abstract = False
         name = expr.name
         if name in ('property', 'staticmethod', 'classmethod'):
@@ -606,6 +612,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                  self.import_tracker.reverse_alias.get(name) == short))
 
     def process_member_expr_decorator(self, expr: MemberExpr, context: Decorator) -> bool:
+        """Process a function decorator of form @foo.bar.
+
+        Only preserve certain special decorators such as @abstractmethod.
+
+        Return True if the decorator makes a method abstract.
+        """
         is_abstract = False
         if expr.name == 'setter' and isinstance(expr.expr, NameExpr):
             self.add_decorator('%s.setter' % expr.expr.name)
