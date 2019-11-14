@@ -369,7 +369,7 @@ class SuggestionEngine:
         """Find all call sites of a function."""
         new_type = self.get_starting_type(func)
 
-        collector_plugin = SuggestionPlugin(func.fullname())
+        collector_plugin = SuggestionPlugin(func.fullname)
 
         self.plugin._plugins.insert(0, collector_plugin)
         try:
@@ -486,7 +486,7 @@ class SuggestionEngine:
                 raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
             line_number = int(line)
             modname, node = self.find_node_by_file_and_line(file, line_number)
-            tail = node.fullname()[len(modname) + 1:]  # add one to account for '.'
+            tail = node.fullname[len(modname) + 1:]  # add one to account for '.'
         else:
             target = split_target(self.fgmanager.graph, key)
             if not target:
@@ -605,7 +605,7 @@ class SuggestionEngine:
         func.type = None
         func.unanalyzed_type = typ
         try:
-            res = self.fgmanager.trigger(func.fullname())
+            res = self.fgmanager.trigger(func.fullname)
             # if res:
             #     print('===', typ)
             #     print('\n'.join(res))
@@ -696,7 +696,7 @@ class SuggestionEngine:
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
-        if self.try_text and isinstance(t, Instance) and t.type.fullname() == 'builtins.str':
+        if self.try_text and isinstance(t, Instance) and t.type.fullname == 'builtins.str':
             return 1
         return 0
 
@@ -757,7 +757,7 @@ class TypeFormatter(TypeStrVisitor):
         self.graph = graph
 
     def visit_instance(self, t: Instance) -> str:
-        s = t.type.fullname() or t.type.name() or None
+        s = t.type.fullname or t.type.name or None
         if s is None:
             return '<???>'
         if s in reverse_builtin_aliases:
@@ -791,7 +791,7 @@ class TypeFormatter(TypeStrVisitor):
 
     def visit_tuple_type(self, t: TupleType) -> str:
         if t.partial_fallback and t.partial_fallback.type:
-            fallback_name = t.partial_fallback.type.fullname()
+            fallback_name = t.partial_fallback.type.fullname
             if fallback_name != 'builtins.tuple':
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
@@ -827,12 +827,12 @@ class StrToText(TypeTranslator):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         exp_t = get_proper_type(t)
-        if isinstance(exp_t, Instance) and exp_t.type.fullname() == 'builtins.str':
+        if isinstance(exp_t, Instance) and exp_t.type.fullname == 'builtins.str':
             return self.text_type
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 
     def visit_instance(self, t: Instance) -> Type:
-        if t.type.fullname() == 'builtins.str':
+        if t.type.fullname == 'builtins.str':
             return self.text_type
         else:
             return super().visit_instance(t)

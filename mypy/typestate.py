@@ -152,9 +152,9 @@ class TypeState:
         assert right_type.is_protocol
         TypeState._rechecked_types.add(left_type)
         TypeState._attempted_protocols.setdefault(
-            left_type.fullname(), set()).add(right_type.fullname())
+            left_type.fullname, set()).add(right_type.fullname)
         TypeState._checked_against_members.setdefault(
-            left_type.fullname(),
+            left_type.fullname,
             set()).update(right_type.protocol_members)
 
     @staticmethod
@@ -189,18 +189,18 @@ class TypeState:
         """
         deps = {}  # type: Dict[str, Set[str]]
         for info in TypeState._rechecked_types:
-            for attr in TypeState._checked_against_members[info.fullname()]:
+            for attr in TypeState._checked_against_members[info.fullname]:
                 # The need for full MRO here is subtle, during an update, base classes of
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
                 for base_info in info.mro[:-1]:
-                    trigger = make_trigger('%s.%s' % (base_info.fullname(), attr))
+                    trigger = make_trigger('%s.%s' % (base_info.fullname, attr))
                     if 'typing' in trigger or 'builtins' in trigger:
                         # TODO: avoid everything from typeshed
                         continue
-                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            for proto in TypeState._attempted_protocols[info.fullname()]:
-                trigger = make_trigger(info.fullname())
+                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname))
+            for proto in TypeState._attempted_protocols[info.fullname]:
+                trigger = make_trigger(info.fullname)
                 if 'typing' in trigger or 'builtins' in trigger:
                     continue
                 # If any class that was checked against a protocol changes,

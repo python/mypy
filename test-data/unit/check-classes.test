@@ -6512,3 +6512,36 @@ def access_after_declaration(self) -> None:
 
     reveal_type(x)  # N: Revealed type is 'builtins.int'
     x = x + 1
+
+[case testIsSubClassNarrowDownTypesOfTypeVariables]
+from typing import Type, TypeVar, Generic
+
+class Base:
+    field: int = 42
+
+TypeT = TypeVar("TypeT", bound=type)
+
+TypeT1 = TypeVar("TypeT1", bound=Type[Base])
+
+class C1:
+    def method(self, other: type) -> int:
+        if issubclass(other, Base):
+            reveal_type(other)  # N: Revealed type is 'Type[__main__.Base]'
+            return other.field
+        return 0
+
+class C2(Generic[TypeT]):
+    def method(self, other: TypeT) -> int:
+        if issubclass(other, Base):
+            reveal_type(other)  # N: Revealed type is 'Type[__main__.Base]'
+            return other.field
+        return 0
+
+class C3(Generic[TypeT1]):
+    def method(self, other: TypeT1) -> int:
+        if issubclass(other, Base):
+            reveal_type(other)  # N: Revealed type is 'TypeT1`1'
+            return other.field
+        return 0
+
+[builtins fixtures/isinstancelist.pyi]

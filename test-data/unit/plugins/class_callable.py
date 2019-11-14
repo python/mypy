@@ -10,12 +10,12 @@ class AttrPlugin(Plugin):
 
 def attr_hook(ctx):
     assert isinstance(ctx.default_return_type, Instance)
-    if ctx.default_return_type.type.fullname() == 'mod.Attr':
+    if ctx.default_return_type.type.fullname == 'mod.Attr':
         attr_base = ctx.default_return_type
     else:
         attr_base = None
     for base in ctx.default_return_type.type.bases:
-        if base.type.fullname() == 'mod.Attr':
+        if base.type.fullname == 'mod.Attr':
             attr_base = base
             break
     assert attr_base is not None

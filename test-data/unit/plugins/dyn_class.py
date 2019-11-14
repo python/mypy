@@ -34,7 +34,7 @@ def replace_col_hook(ctx):
     for sym in info.names.values():
         node = sym.node
         if isinstance(node, Var) and isinstance(node.type, Instance):
-            if node.type.type.fullname() == 'mod.Column':
+            if node.type.type.fullname == 'mod.Column':
                 new_sym = ctx.api.lookup_fully_qualified_or_none('mod.Instr')
                 if new_sym:
                     new_info = new_sym.node

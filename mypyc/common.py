@@ -36,6 +36,6 @@ def decorator_helper_name(func_name: str) -> str:
 def shared_lib_name(group_name: str) -> str:
     """Given a group name, return the actual name of its extension module.
 
-    (This just adds a prefix.)
+    (This just adds a suffix to the final component.)
     """
-    return 'mypyc_{}'.format(group_name)
+    return '{}__mypyc'.format(group_name)

@@ -8,11 +8,7 @@ import sys
 import time
 
 from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
-try:
-    from typing import NoReturn
-except ImportError:  # Python 3.5.1
-    NoReturn = None  # type: ignore
-from typing_extensions import Final
+from typing_extensions import Final, NoReturn
 
 from mypy import build
 from mypy import defaults

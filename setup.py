@@ -144,8 +144,7 @@ if USE_MYPYC:
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
-        mypyc_targets,
-        ['--config-file=mypy_bootstrap.ini'],
+        mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
         # Use multi-file compliation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.

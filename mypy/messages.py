@@ -226,7 +226,7 @@ class MessageBuilder:
             self.fail('Unsupported target for indexed assignment', context, code=codes.INDEX)
         elif member == '__call__':
             if isinstance(original_type, Instance) and \
-                    (original_type.type.fullname() == 'builtins.function'):
+                    (original_type.type.fullname == 'builtins.function'):
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.
                 self.fail('Cannot call function of unknown type', context, code=codes.OPERATOR)
@@ -862,7 +862,7 @@ class MessageBuilder:
                                             context: Context) -> None:
         self.fail('Definition of "{}" in base class "{}" is incompatible '
                   'with definition in base class "{}"'.format(
-                      name, base1.name(), base2.name()), context)
+                      name, base1.name, base2.name), context)
 
     def cant_assign_to_method(self, context: Context) -> None:
         self.fail(message_registry.CANNOT_ASSIGN_TO_METHOD, context,
@@ -895,7 +895,7 @@ class MessageBuilder:
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
-            name, type.name()), context)
+            name, type.name), context)
 
     def incompatible_typevar_value(self,
                                    callee: CallableType,
@@ -958,7 +958,7 @@ class MessageBuilder:
             forward_method: str, context: Context) -> None:
         self.fail('Signatures of "{}" of "{}" and "{}" of {} '
                   'are unsafely overlapping'.format(
-                      reverse_method, reverse_class.name(),
+                      reverse_method, reverse_class.name,
                       forward_method, format_type(forward_class)),
                   context)
 
@@ -1012,23 +1012,23 @@ class MessageBuilder:
         has_variable_annotations = not python_version or python_version >= (3, 6)
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
         if (python_version and isinstance(node, Var) and isinstance(node.type, PartialType) and
-                node.type.type and node.type.type.fullname() in reverse_builtin_aliases):
-            alias = reverse_builtin_aliases[node.type.type.fullname()]
+                node.type.type and node.type.type.fullname in reverse_builtin_aliases):
+            alias = reverse_builtin_aliases[node.type.type.fullname]
             alias = alias.split('.')[-1]
             type_dec = '<type>'
             if alias == 'Dict':
                 type_dec = '{}, {}'.format(type_dec, type_dec)
             if has_variable_annotations:
-                hint = ' (hint: "{}: {}[{}] = ...")'.format(node.name(), alias, type_dec)
+                hint = ' (hint: "{}: {}[{}] = ...")'.format(node.name, alias, type_dec)
             else:
-                hint = ' (hint: "{} = ...  # type: {}[{}]")'.format(node.name(), alias, type_dec)
+                hint = ' (hint: "{} = ...  # type: {}[{}]")'.format(node.name, alias, type_dec)
 
         if has_variable_annotations:
             needed = 'annotation'
         else:
             needed = 'comment'
 
-        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name()), hint), context,
+        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name), hint), context,
                   code=codes.VAR_ANNOTATED)
 
     def explicit_any(self, ctx: Context) -> None:
@@ -1175,7 +1175,7 @@ class MessageBuilder:
         if len(members) < 3:
             attrs = ', '.join(members)
             self.note('Protocol "{}" has non-method member(s): {}'
-                      .format(tp.name(), attrs), context)
+                      .format(tp.name, attrs), context)
 
     def note_call(self,
                   subtype: Type,
@@ -1236,7 +1236,7 @@ class MessageBuilder:
         exclusions = {TypedDictType: ['typing.Mapping'],
                       TupleType: ['typing.Iterable', 'typing.Sequence'],
                       Instance: []}  # type: Dict[type, List[str]]
-        if supertype.type.fullname() in exclusions[type(subtype)]:
+        if supertype.type.fullname in exclusions[type(subtype)]:
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
             # We don't want to add notes for failed inference (e.g. Iterable[<nothing>]).
@@ -1257,7 +1257,7 @@ class MessageBuilder:
         if (missing and len(missing) < len(supertype.type.protocol_members) and
                 len(missing) <= MAX_ITEMS):
             self.note("'{}' is missing following '{}' protocol member{}:"
-                      .format(subtype.type.name(), supertype.type.name(), plural_s(missing)),
+                      .format(subtype.type.name, supertype.type.name, plural_s(missing)),
                       context,
                       code=code)
             self.note(', '.join(missing), context, offset=OFFSET, code=code)
@@ -1304,22 +1304,22 @@ class MessageBuilder:
         for name, subflags, superflags in conflict_flags[:MAX_ITEMS]:
             if IS_CLASSVAR in subflags and IS_CLASSVAR not in superflags:
                 self.note('Protocol member {}.{} expected instance variable,'
-                          ' got class variable'.format(supertype.type.name(), name),
+                          ' got class variable'.format(supertype.type.name, name),
                           context,
                           code=code)
             if IS_CLASSVAR in superflags and IS_CLASSVAR not in subflags:
                 self.note('Protocol member {}.{} expected class variable,'
-                          ' got instance variable'.format(supertype.type.name(), name),
+                          ' got instance variable'.format(supertype.type.name, name),
                           context,
                           code=code)
             if IS_SETTABLE in superflags and IS_SETTABLE not in subflags:
                 self.note('Protocol member {}.{} expected settable variable,'
-                          ' got read-only attribute'.format(supertype.type.name(), name),
+                          ' got read-only attribute'.format(supertype.type.name, name),
                           context,
                           code=code)
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 self.note('Protocol member {}.{} expected class or static method'
-                          .format(supertype.type.name(), name),
+                          .format(supertype.type.name, name),
                           context,
                           code=code)
         self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS, code=code)
@@ -1418,22 +1418,21 @@ def format_type_inner(typ: Type,
     if isinstance(typ, Instance):
         itype = typ
         # Get the short name of the type.
-        if itype.type.fullname() in ('types.ModuleType',
-                                     '_importlib_modulespec.ModuleType'):
+        if itype.type.fullname in ('types.ModuleType', '_importlib_modulespec.ModuleType'):
             # Make some common error messages simpler and tidier.
             return 'Module'
-        if verbosity >= 2 or (fullnames and itype.type.fullname() in fullnames):
-            base_str = itype.type.fullname()
+        if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
+            base_str = itype.type.fullname
         else:
-            base_str = itype.type.name()
+            base_str = itype.type.name
         if itype.args == []:
             # No type arguments, just return the type name
             return base_str
-        elif itype.type.fullname() == 'builtins.tuple':
+        elif itype.type.fullname == 'builtins.tuple':
             item_type_str = format(itype.args[0])
             return 'Tuple[{}, ...]'.format(item_type_str)
-        elif itype.type.fullname() in reverse_builtin_aliases:
-            alias = reverse_builtin_aliases[itype.type.fullname()]
+        elif itype.type.fullname in reverse_builtin_aliases:
+            alias = reverse_builtin_aliases[itype.type.fullname]
             alias = alias.split('.')[-1]
             items = [format(arg) for arg in itype.args]
             return '{}[{}]'.format(alias, ', '.join(items))
@@ -1453,7 +1452,7 @@ def format_type_inner(typ: Type,
         return typ.name
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
-        if typ.partial_fallback.type.fullname() != 'builtins.tuple':
+        if typ.partial_fallback.type.fullname != 'builtins.tuple':
             return format(typ.partial_fallback)
         items = []
         for t in typ.items:
@@ -1584,7 +1583,7 @@ def find_type_overlaps(*types: Type) -> Set[str]:
     d = {}  # type: Dict[str, Set[str]]
     for type in types:
         for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name(), set()).add(inst.type.fullname())
+            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
 
     overlaps = set()  # type: Set[str]
     for fullnames in d.values():
@@ -1674,14 +1673,14 @@ def pretty_callable(tp: CallableType) -> str:
             s += ' = ...'
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    if isinstance(tp.definition, FuncDef) and tp.definition.name() is not None:
+    if isinstance(tp.definition, FuncDef) and tp.definition.name is not None:
         definition_args = tp.definition.arg_names
         if definition_args and tp.arg_names != definition_args \
                 and len(definition_args) > 0:
             if s:
                 s = ', ' + s
             s = definition_args[0] + s
-        s = '{}({})'.format(tp.definition.name(), s)
+        s = '{}({})'.format(tp.definition.name, s)
     elif tp.name:
         first_arg = tp.def_extras.get('first_arg')
         if first_arg:
@@ -1698,7 +1697,7 @@ def pretty_callable(tp: CallableType) -> str:
         for tvar in tp.variables:
             upper_bound = get_proper_type(tvar.upper_bound)
             if (isinstance(upper_bound, Instance) and
-                    upper_bound.type.fullname() != 'builtins.object'):
+                    upper_bound.type.fullname != 'builtins.object'):
                 tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
             elif tvar.values:
                 tvars.append('{} in ({})'
@@ -1844,7 +1843,7 @@ def for_function(callee: CallableType) -> str:
 def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Optional[MypyFile]:
     if not typ.definition:
         return None
-    fullname = typ.definition.fullname()
+    fullname = typ.definition.fullname
     if fullname is not None and '.' in fullname:
         for i in range(fullname.count('.')):
             module_name = fullname.rsplit('.', i + 1)[0]
@@ -1887,13 +1886,13 @@ def append_invariance_notes(notes: List[str], arg_type: Instance,
     """Explain that the type is invariant and give notes for how to solve the issue."""
     invariant_type = ''
     covariant_suggestion = ''
-    if (arg_type.type.fullname() == 'builtins.list' and
-            expected_type.type.fullname() == 'builtins.list' and
+    if (arg_type.type.fullname == 'builtins.list' and
+            expected_type.type.fullname == 'builtins.list' and
             is_subtype(arg_type.args[0], expected_type.args[0])):
         invariant_type = 'List'
         covariant_suggestion = 'Consider using "Sequence" instead, which is covariant'
-    elif (arg_type.type.fullname() == 'builtins.dict' and
-          expected_type.type.fullname() == 'builtins.dict' and
+    elif (arg_type.type.fullname == 'builtins.dict' and
+          expected_type.type.fullname == 'builtins.dict' and
           is_same_type(arg_type.args[0], expected_type.args[0]) and
           is_subtype(arg_type.args[1], expected_type.args[1])):
         invariant_type = 'Dict'
@@ -1922,7 +1921,7 @@ def make_inferred_type_note(context: Context,
     supertype = get_proper_type(supertype)
     if (isinstance(subtype, Instance) and
             isinstance(supertype, Instance) and
-            subtype.type.fullname() == supertype.type.fullname() and
+            subtype.type.fullname == supertype.type.fullname and
             subtype.args and
             supertype.args and
             isinstance(context, ReturnStmt) and

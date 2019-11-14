@@ -104,7 +104,7 @@ class TransformVisitor(NodeVisitor[Node]):
         for stmt in node.body.body:
             stmt.accept(init)
 
-        new = FuncDef(node.name(),
+        new = FuncDef(node.name,
                       [self.copy_argument(arg) for arg in node.arguments],
                       self.block(node.body),
                       cast(Optional[FunctionLike], self.optional_type(node.type)))
@@ -200,7 +200,7 @@ class TransformVisitor(NodeVisitor[Node]):
         # Note that a Var must be transformed to a Var.
         if node in self.var_map:
             return self.var_map[node]
-        new = Var(node.name(), self.optional_type(node.type))
+        new = Var(node.name, self.optional_type(node.type))
         new.line = node.line
         new._fullname = node._fullname
         new.info = node.info
@@ -492,12 +492,12 @@ class TransformVisitor(NodeVisitor[Node]):
         return BackquoteExpr(self.expr(node.expr))
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> TypeVarExpr:
-        return TypeVarExpr(node.name(), node.fullname(),
+        return TypeVarExpr(node.name, node.fullname,
                            self.types(node.values),
                            self.type(node.upper_bound), variance=node.variance)
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
-        return TypeAliasExpr(node.type, node.tvars, node.no_args)
+        return TypeAliasExpr(node.node)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
         res = NewTypeExpr(node.name, node.old_type, line=node.line, column=node.column)
@@ -615,5 +615,5 @@ class FuncMapInitializer(TraverserVisitor):
         if node not in self.transformer.func_placeholder_map:
             # Haven't seen this FuncDef before, so create a placeholder node.
             self.transformer.func_placeholder_map[node] = FuncDef(
-                node.name(), node.arguments, node.body, None)
+                node.name, node.arguments, node.body, None)
         super().visit_func_def(node)

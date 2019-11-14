@@ -4,7 +4,7 @@ recursive-include extensions *
 recursive-include docs *
 recursive-include mypy/typeshed *.py *.pyi
 recursive-include mypy/xml *.xsd *.xslt *.css
-recursive-include mypyc/lib-rt *.c *.h
+recursive-include mypyc/lib-rt *.c *.h *.tmpl
 include mypy_bootstrap.ini
 include mypy_self_check.ini
 include LICENSE

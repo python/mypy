@@ -180,6 +180,11 @@ class TypeAliasType(Type):
         its public wrapper mypy.types.get_proper_type() is preferred.
         """
         assert self.alias is not None
+        if self.alias.no_args:
+            # We know that no_args=True aliases like L = List must have an instance
+            # as their target.
+            assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
+            return self.alias.target.copy_modified(args=self.args)
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
@@ -235,7 +240,7 @@ class TypeAliasType(Type):
     def serialize(self) -> JsonDict:
         assert self.alias is not None
         data = {'.class': 'TypeAliasType',
-                'type_ref': self.alias.fullname(),
+                'type_ref': self.alias.fullname,
                 'args': [arg.serialize() for arg in self.args]}  # type: JsonDict
         return data
 
@@ -794,7 +799,7 @@ class Instance(ProperType):
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None
-        type_ref = self.type.fullname()
+        type_ref = self.type.fullname
         if not self.args and not self.last_known_value:
             return type_ref
         data = {'.class': 'Instance',
@@ -1437,7 +1442,7 @@ class TypedDictType(ProperType):
                              Instance.deserialize(data['fallback']))
 
     def is_anonymous(self) -> bool:
-        return self.fallback.type.fullname() in TPDICT_FB_NAMES
+        return self.fallback.type.fullname in TPDICT_FB_NAMES
 
     def as_anonymous(self) -> 'TypedDictType':
         if self.is_anonymous():
@@ -1606,7 +1611,7 @@ class LiteralType(ProperType):
         where the value is a string, byte string, a unicode string, or an enum.
         """
         raw = repr(self.value)
-        fallback_name = self.fallback.type.fullname()
+        fallback_name = self.fallback.type.fullname
 
         # If this is backed by an enum,
         if self.is_enum_literal():
@@ -1891,6 +1896,14 @@ def get_proper_type(typ: Type) -> ProperType: ...
 
 
 def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
+    """Get the expansion of a type alias type.
+
+    If the type is already a proper type, this is a no-op. Use this function
+    wherever a decision is made on a call like e.g. 'if isinstance(typ, UnionType): ...',
+    because 'typ' in this case may be an alias to union. Note: if after making the decision
+    on the isinstance() call you pass on the original type (and not one of its components)
+    it is recommended to *always* pass on the unexpanded alias.
+    """
     if typ is None:
         return None
     while isinstance(typ, TypeAliasType):
@@ -1936,6 +1949,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
+        self.any_as_dots = False
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
@@ -1954,6 +1968,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "{}({}, {})".format(t.constructor, typ, t.name)
 
     def visit_any(self, t: AnyType) -> str:
+        if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
+            return '...'
         return 'Any'
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -1972,7 +1988,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t: Instance) -> str:
-        s = t.type.fullname() or t.type.name() or '<???>'
+        s = t.type.fullname or t.type.name or '<???>'
         if t.erased:
             s += '*'
         if t.args != []:
@@ -2041,7 +2057,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)
         if t.partial_fallback and t.partial_fallback.type:
-            fallback_name = t.partial_fallback.type.fullname()
+            fallback_name = t.partial_fallback.type.fullname
             if fallback_name != 'builtins.tuple':
                 return 'Tuple[{}, fallback={}]'.format(s, t.partial_fallback.accept(self))
         return 'Tuple[{}]'.format(s)
@@ -2057,8 +2073,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                             for name, typ in t.items.items()) + '}'
         prefix = ''
         if t.fallback and t.fallback.type:
-            if t.fallback.type.fullname() not in TPDICT_FB_NAMES:
-                prefix = repr(t.fallback.type.fullname()) + ', '
+            if t.fallback.type.fullname not in TPDICT_FB_NAMES:
+                prefix = repr(t.fallback.type.fullname) + ', '
         return 'TypedDict({}{})'.format(prefix, s)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> str:
@@ -2079,7 +2095,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.type is None:
             return '<partial None>'
         else:
-            return '<partial {}[{}]>'.format(t.type.name(),
+            return '<partial {}[{}]>'.format(t.type.name,
                                              ', '.join(['?'] * len(t.type.type_vars)))
 
     def visit_ellipsis_type(self, t: EllipsisType) -> str:
@@ -2093,7 +2109,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> str:
         if t.alias is not None:
-            return '<alias {}>'.format(t.alias.fullname())
+            unrolled, recursed = t._partial_expansion()
+            self.any_as_dots = recursed
+            type_str = unrolled.accept(self)
+            self.any_as_dots = False
+            return type_str
         return '<alias (unfixed)>'
 
     def list_str(self, a: Iterable[Type]) -> str:
@@ -2140,7 +2160,7 @@ def strip_type(typ: Type) -> ProperType:
 
 def is_named_instance(t: Type, fullname: str) -> bool:
     t = get_proper_type(t)
-    return isinstance(t, Instance) and t.type.fullname() == fullname
+    return isinstance(t, Instance) and t.type.fullname == fullname
 
 
 TP = TypeVar('TP', bound=Type)
@@ -2255,7 +2275,7 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
         typ = typ.last_known_value
     if not isinstance(typ, LiteralType):
         return False
-    if typ.fallback.type.fullname() != fallback_fullname:
+    if typ.fallback.type.fullname != fallback_fullname:
         return False
     return typ.value == value
 
