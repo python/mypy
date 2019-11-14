@@ -830,13 +830,14 @@ class Instance(ProperType):
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
+                      erased: Bogus[bool] = _dummy,
                       last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            self.erased,
+            erased if erased is not _dummy else self.erased,
             last_known_value if last_known_value is not _dummy else self.last_known_value,
         )
 
@@ -1988,7 +1989,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t: Instance) -> str:
-        s = t.type.fullname or t.type.name or '<???>'
+        if t.last_known_value and not t.args:
+            # Instances with a literal fallback should never be generic. If they are,
+            # something went wrong so we fall back to showing the full Instance repr.
+            s = '{}?'.format(t.last_known_value)
+        else:
+            s = t.type.fullname or t.type.name or '<???>'
+
         if t.erased:
             s += '*'
         if t.args != []:

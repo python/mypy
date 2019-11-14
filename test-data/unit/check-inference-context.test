@@ -620,8 +620,8 @@ x : str = (lambda x: x + 1)(1)  # E: Incompatible types in assignment (expressio
 reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is 'builtins.int'
 (lambda x, y: x + y)(1, "")  # E: Unsupported operand types for + ("int" and "str")
 (lambda *, x, y: x + y)(x=1, y="")  # E: Unsupported operand types for + ("int" and "str")
-reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is 'builtins.str'
-reveal_type((lambda s, i: i)(i=0, s='x')) # N: Revealed type is 'builtins.int'
+reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is 'Literal['x']?'
+reveal_type((lambda s, i: i)(i=0, s='x')) # N: Revealed type is 'Literal[0]?'
 reveal_type((lambda x, s, i: x)(1.0, i=0, s='x')) # N: Revealed type is 'builtins.float'
 (lambda x, s, i: x)() # E: Too few arguments
 (lambda: 0)(1) # E: Too many arguments
@@ -643,7 +643,7 @@ f(list_a, lambda a: a.x)
 
 [case testLambdaWithoutContext]
 reveal_type(lambda x: x)  # N: Revealed type is 'def (x: Any) -> Any'
-reveal_type(lambda x: 1)  # N: Revealed type is 'def (x: Any) -> builtins.int'
+reveal_type(lambda x: 1)  # N: Revealed type is 'def (x: Any) -> Literal[1]?'
 
 [case testLambdaContextVararg]
 from typing import Callable

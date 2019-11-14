@@ -1583,8 +1583,8 @@ b: B
 
 reveal_type(a.pop('x')) # N: Revealed type is 'builtins.int'
 reveal_type(a.pop('y', [])) # N: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(a.pop('x', '')) # N: Revealed type is 'Union[builtins.int, builtins.str]'
-reveal_type(a.pop('x', (1, 2))) # N: Revealed type is 'Union[builtins.int, Tuple[builtins.int, builtins.int]]'
+reveal_type(a.pop('x', '')) # N: Revealed type is 'Union[builtins.int, Literal['']?]'
+reveal_type(a.pop('x', (1, 2))) # N: Revealed type is 'Union[builtins.int, Tuple[Literal[1]?, Literal[2]?]]'
 a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
 b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
 x = ''

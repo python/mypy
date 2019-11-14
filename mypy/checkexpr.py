@@ -39,7 +39,7 @@ from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.erasetype import replace_meta_vars, erase_type
+from mypy.erasetype import replace_meta_vars, erase_type, remove_instance_last_known_values
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy import message_registry
@@ -3045,12 +3045,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.named_type('builtins.function'),
             name=tag,
             variables=[tvdef])
-        return self.check_call(constructor,
-                               [(i.expr if isinstance(i, StarExpr) else i)
-                                for i in items],
-                               [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS)
-                                for i in items],
-                               context)[0]
+        out = self.check_call(constructor,
+                              [(i.expr if isinstance(i, StarExpr) else i)
+                               for i in items],
+                              [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS)
+                               for i in items],
+                              context)[0]
+        return remove_instance_last_known_values(out)
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
         """Type check a tuple expression."""
