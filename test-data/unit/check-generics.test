@@ -2141,7 +2141,6 @@ class TwoTypes(Generic[A, B]):
 
   def __call__(self) -> B: pass
 
-# TODO - This should extend ABC but test errors that ABC not in abc on import
 class MakeTwoAbstract(ABC, Generic[A]):
 
   def __init__(self) -> None: pass
