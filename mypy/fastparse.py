@@ -321,12 +321,15 @@ class ASTConverter:
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
         return node
 
-    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
-        res = []  # type: List[Expression]
+    def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:
+        res = []  # type: List[Optional[Expression]]
         for e in l:
             exp = self.visit(e)
             res.append(exp)
         return res
+
+    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
+        return cast(List[Expression], self.translate_opt_expr_list(l))
 
     def get_lineno(self, node: Union[ast3.expr, ast3.stmt]) -> int:
         if (isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
@@ -988,7 +991,7 @@ class ASTConverter:
 
     # Dict(expr* keys, expr* values)
     def visit_Dict(self, n: ast3.Dict) -> DictExpr:
-        e = DictExpr(list(zip(self.translate_expr_list(n.keys),
+        e = DictExpr(list(zip(self.translate_opt_expr_list(n.keys),
                               self.translate_expr_list(n.values))))
         return self.set_line(e, n)
 
