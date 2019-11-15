@@ -11,7 +11,7 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import is_c_module
+from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
     infer_arg_sig_from_docstring, FunctionSig

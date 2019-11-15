@@ -2,19 +2,15 @@
 
 import sys
 import os.path
-import inspect
 import json
-import pkgutil
-import importlib
 import subprocess
 import re
-from types import ModuleType
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, Iterator, Union, Set
+from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
 
-from mypy.moduleinspect import ModuleInspect, InspectError, is_c_module
+from mypy.moduleinspect import ModuleInspect, InspectError
 
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
@@ -44,11 +40,13 @@ def default_py2_interpreter() -> str:
                      "please use the --python-executable option")
 
 
-def walk_packages(inspect: ModuleInspect, packages: List[str], verbose: bool = False) -> Iterator[str]:
+def walk_packages(inspect: ModuleInspect,
+                  packages: List[str],
+                  verbose: bool = False) -> Iterator[str]:
     """Iterates through all packages and sub-packages in the given list.
 
-    This uses runtime imports (in another process) to find both Python and C modules. For
-    Python packages we simply pass the __path__ attribute to pkgutil.walk_packages() to
+    This uses runtime imports (in another process) to find both Python and C modules.
+    For Python packages we simply pass the __path__ attribute to pkgutil.walk_packages() to
     get the content of the package (all subpackages and modules).  However, packages in C
     extensions do not have this attribute, so we have to roll out our own logic: recursively
     find all modules imported in the package that have matching names.
@@ -111,9 +109,11 @@ def find_module_path_using_py2_sys_path(module: str,
 
     Return None if no match was found.
     """
-    out = subprocess.run([interpreter, '-c', 'import sys; import json; print(json.dumps(sys.path))'],
-                         check=True,
-                         stdout=subprocess.PIPE).stdout
+    out = subprocess.run(
+        [interpreter, '-c', 'import sys; import json; print(json.dumps(sys.path))'],
+        check=True,
+        stdout=subprocess.PIPE
+    ).stdout
     sys_path = json.loads(out)
     return find_module_path_using_sys_path(module, sys_path)
 

@@ -5,7 +5,6 @@ docstrings and Sphinx docs (.rst files).
 """
 import re
 import io
-import sys
 import contextlib
 import tokenize
 
@@ -32,7 +31,6 @@ def is_valid_type(s: str) -> bool:
 
 class ArgSig:
     """Signature info for a single argument."""
-
 
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name

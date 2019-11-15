@@ -838,7 +838,7 @@ class ModuleInspectSuite(Suite):
             assert p.name == 'inspect'
             assert p.file
             assert p.path is None
-            assert p.is_c_module == False
+            assert p.is_c_module is False
             assert p.subpackages == []
 
     def test_python_package(self) -> None:
@@ -848,7 +848,7 @@ class ModuleInspectSuite(Suite):
             assert p.name == 'unittest'
             assert p.file
             assert p.path
-            assert p.is_c_module == False
+            assert p.is_c_module is False
             assert p.subpackages
             assert all(sub.startswith('unittest.') for sub in p.subpackages)
 
@@ -859,7 +859,7 @@ class ModuleInspectSuite(Suite):
             assert p.name == 'math'
             assert p.file
             assert p.path is None
-            assert p.is_c_module == True
+            assert p.is_c_module is True
             assert p.subpackages == []
 
     def test_non_existent(self) -> None:
