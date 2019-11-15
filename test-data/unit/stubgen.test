@@ -1941,8 +1941,8 @@ from p.a import A
 
 __all__ = ['a']
 
-a: A
-b: int
+a = None  # type: A
+b = 0  # type: int
 
 [file p/a.py]
 class A: pass
