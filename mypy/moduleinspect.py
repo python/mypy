@@ -1,6 +1,6 @@
 """Basic introspection of modules."""
 
-from typing import NamedTuple, List, Optional, Union
+from typing import List, Optional, Union
 from types import ModuleType
 from multiprocessing import Process, Queue
 import importlib
