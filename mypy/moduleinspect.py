@@ -14,7 +14,7 @@ class ModuleProperties:
     def __init__(self,
                  name: str,
                  file: Optional[str],
-                 path: Optional[str],
+                 path: Optional[List[str]],
                  all: Optional[List[str]],
                  is_c_module: bool,
                  subpackages: List[str]) -> None:
@@ -46,10 +46,8 @@ def get_package_properties(package_id: str) -> ModuleProperties:
         raise InspectError(str(e))
     name = getattr(package, '__name__', None)
     file = getattr(package, '__file__', None)
-    path = getattr(package, '__path__', None)
-    if isinstance(path, list) and path:
-        path = path[0]
-    if not isinstance(path, str):
+    path = getattr(package, '__path__', None)  # type: Optional[List[str]]
+    if not isinstance(path, list):
         path = None
     pkg_all = getattr(package, '__all__', None)
     if pkg_all is not None:
