@@ -1911,7 +1911,7 @@ from typing import Union
 reveal_type(1 if bool() else 2) # N: Revealed type is 'builtins.int'
 reveal_type(1 if bool() else '') # N: Revealed type is 'builtins.object'
 x: Union[int, str] = reveal_type(1 if bool() else '') \
-    # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    # N: Revealed type is 'Union[Literal[1]?, Literal['']?]'
 class A:
     pass
 class B(A):
@@ -1934,7 +1934,7 @@ reveal_type(d if bool() else b) # N: Revealed type is '__main__.A'
 [case testConditionalExpressionUnionWithAny]
 from typing import Union, Any
 a: Any
-x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, builtins.int]'
+x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, Literal[1]?]'
 reveal_type(a if int() else 1)  # N: Revealed type is 'Any'
 
 
@@ -2207,7 +2207,7 @@ d() # E: "D[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testRevealType]
-reveal_type(1) # N: Revealed type is 'builtins.int'
+reveal_type(1) # N: Revealed type is 'Literal[1]?'
 
 [case testRevealLocals]
 x = 1

@@ -422,12 +422,12 @@ def f(a: A) -> None:
     1
 [out]
 ## target
-IntExpr:3: builtins.int<0>
+IntExpr:3: Literal[1]?<0>
 NameExpr:4: target.A<1>
 ==>
 ## target
 NameExpr:3: target.A<1>
-IntExpr:4: builtins.int<0>
+IntExpr:4: Literal[1]?<0>
 
 [case testClassAttribute_types]
 import target
@@ -453,14 +453,14 @@ NameExpr:3: def () -> target.A<0>
 NameExpr:3: target.A<0>
 MemberExpr:4: target.A<0>
 NameExpr:4: target.A<0>
-IntExpr:5: builtins.int<1>
+IntExpr:5: Literal[1]?<1>
 MemberExpr:5: builtins.int<1>
 NameExpr:5: target.A<0>
 MemberExpr:6: builtins.int<1>
 NameExpr:6: target.A<0>
 ==>
 ## target
-IntExpr:3: builtins.int<1>
+IntExpr:3: Literal[1]?<1>
 MemberExpr:3: builtins.int<1>
 NameExpr:3: target.A<0>
 MemberExpr:4: builtins.int<1>

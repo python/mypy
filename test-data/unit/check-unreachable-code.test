@@ -662,20 +662,20 @@ class Child(Parent):
 
 [case testUnreachableAfterToplevelAssert]
 import sys
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 assert sys.platform == 'lol'
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert2]
 import sys
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 assert sys.version_info[0] == 1
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert3]
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 MYPY = False
 assert not MYPY
 reveal_type('')  # No error here :-)
@@ -683,7 +683,7 @@ reveal_type('')  # No error here :-)
 
 [case testUnreachableAfterToplevelAssert4]
 # flags: --always-false NOPE
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 NOPE = False
 assert NOPE
 reveal_type('')  # No error here :-)
@@ -712,8 +712,8 @@ def bar() -> None: pass
 import sys
 if sys.version_info[0] >= 2:
     assert sys.platform == 'lol'
-    reveal_type('')  # N: Revealed type is 'builtins.str'
-reveal_type('')  # N: Revealed type is 'builtins.str'
+    reveal_type('')  # N: Revealed type is 'Literal['']?'
+reveal_type('')  # N: Revealed type is 'Literal['']?'
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagWithBadControlFlow]

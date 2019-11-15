@@ -2285,9 +2285,9 @@ bad_keys: Literal["a", "bad"]
 
 reveal_type(test[good_keys])                      # N: Revealed type is 'Union[__main__.A, __main__.B]'
 reveal_type(test.get(good_keys))                  # N: Revealed type is 'Union[__main__.A, __main__.B]'
-reveal_type(test.get(good_keys, 3))               # N: Revealed type is 'Union[__main__.A, builtins.int, __main__.B]'
+reveal_type(test.get(good_keys, 3))               # N: Revealed type is 'Union[__main__.A, Literal[3]?, __main__.B]'
 reveal_type(test.pop(optional_keys))              # N: Revealed type is 'Union[__main__.D, __main__.E]'
-reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is 'Union[__main__.D, __main__.E, builtins.int]'
+reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is 'Union[__main__.D, __main__.E, Literal[3]?]'
 reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is 'Union[__main__.A, __main__.B]'
 del test[optional_keys]
 
@@ -2390,7 +2390,7 @@ x.get(bad_keys, 3)  # E: TypedDict "D1" has no key 'd' \
 
 reveal_type(x[good_keys])           # N: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __main__.C]'
-reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, builtins.int, __main__.C]'
+reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, Literal[3]?, __main__.C]'
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
@@ -2424,18 +2424,18 @@ def force2(x: Literal["foo"]) -> None: pass
 def force3(x: Literal[True]) -> None: pass
 def force4(x: Literal[None]) -> None: pass
 
-reveal_type(var1)                    # N: Revealed type is 'builtins.int'
-reveal_type(var2)                    # N: Revealed type is 'builtins.str'
-reveal_type(var3)                    # N: Revealed type is 'builtins.bool'
+reveal_type(var1)                    # N: Revealed type is 'Literal[1]?'
+reveal_type(var2)                    # N: Revealed type is 'Literal['foo']?'
+reveal_type(var3)                    # N: Revealed type is 'Literal[True]?'
 reveal_type(var4)                    # N: Revealed type is 'None'
 force1(reveal_type(var1))            # N: Revealed type is 'Literal[1]'
 force2(reveal_type(var2))            # N: Revealed type is 'Literal['foo']'
 force3(reveal_type(var3))            # N: Revealed type is 'Literal[True]'
 force4(reveal_type(var4))            # N: Revealed type is 'None'
 
-reveal_type(Foo.classvar1)           # N: Revealed type is 'builtins.int'
-reveal_type(Foo.classvar2)           # N: Revealed type is 'builtins.str'
-reveal_type(Foo.classvar3)           # N: Revealed type is 'builtins.bool'
+reveal_type(Foo.classvar1)           # N: Revealed type is 'Literal[1]?'
+reveal_type(Foo.classvar2)           # N: Revealed type is 'Literal['foo']?'
+reveal_type(Foo.classvar3)           # N: Revealed type is 'Literal[True]?'
 reveal_type(Foo.classvar4)           # N: Revealed type is 'None'
 force1(reveal_type(Foo.classvar1))   # N: Revealed type is 'Literal[1]'
 force2(reveal_type(Foo.classvar2))   # N: Revealed type is 'Literal['foo']'
@@ -2443,9 +2443,9 @@ force3(reveal_type(Foo.classvar3))   # N: Revealed type is 'Literal[True]'
 force4(reveal_type(Foo.classvar4))   # N: Revealed type is 'None'
 
 f = Foo()
-reveal_type(f.instancevar1)          # N: Revealed type is 'builtins.int'
-reveal_type(f.instancevar2)          # N: Revealed type is 'builtins.str'
-reveal_type(f.instancevar3)          # N: Revealed type is 'builtins.bool'
+reveal_type(f.instancevar1)          # N: Revealed type is 'Literal[1]?'
+reveal_type(f.instancevar2)          # N: Revealed type is 'Literal['foo']?'
+reveal_type(f.instancevar3)          # N: Revealed type is 'Literal[True]?'
 reveal_type(f.instancevar4)          # N: Revealed type is 'None'
 force1(reveal_type(f.instancevar1))  # N: Revealed type is 'Literal[1]'
 force2(reveal_type(f.instancevar2))  # N: Revealed type is 'Literal['foo']'
@@ -2564,6 +2564,35 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is 'None'
 [builtins fixtures/primitives.pyi]
 [out]
 
+[case testLiteralFinalErasureInMutableDatastructures1]
+# flags: --strict-optional
+from typing_extensions import Final
+
+var1: Final = [0, None]
+var2: Final = (0, None)
+
+reveal_type(var1)  # N: Revealed type is 'builtins.list[Union[builtins.int, None]]'
+reveal_type(var2)  # N: Revealed type is 'Tuple[Literal[0]?, None]'
+[builtins fixtures/tuple.pyi]
+
+[case testLiteralFinalErasureInMutableDatastructures2]
+from typing_extensions import Final, Literal
+
+var1: Final = []
+var1.append(0)
+reveal_type(var1)  # N: Revealed type is 'builtins.list[builtins.int]'
+
+var2 = []
+var2.append(0)
+reveal_type(var2)  # N: Revealed type is 'builtins.list[builtins.int]'
+
+x: Literal[0] = 0
+var3 = []
+var3.append(x)
+reveal_type(var3)  # N: Revealed type is 'builtins.list[Literal[0]]'
+
+[builtins fixtures/list.pyi]
+
 [case testLiteralFinalMismatchCausesError]
 from typing_extensions import Final, Literal
 
@@ -2604,12 +2633,14 @@ b: Final = (1, 2)
 def force1(x: Literal[1]) -> None: pass
 def force2(x: Tuple[Literal[1], Literal[2]]) -> None: pass
 
-reveal_type(a)          # N: Revealed type is 'builtins.int'
-reveal_type(b)          # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(a)          # N: Revealed type is 'Literal[1]?'
+reveal_type(b)          # N: Revealed type is 'Tuple[Literal[1]?, Literal[2]?]'
 
+# TODO: This test seems somewhat broken and might need a rewrite (and a fix somewhere in mypy).
+# See https://github.com/python/mypy/issues/7399#issuecomment-554188073 for more context.
 force1(reveal_type(a))  # N: Revealed type is 'Literal[1]'
 force2(reveal_type(b))  # E: Argument 1 to "force2" has incompatible type "Tuple[int, int]"; expected "Tuple[Literal[1], Literal[2]]" \
-                        # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+                        # N: Revealed type is 'Tuple[Literal[1]?, Literal[2]?]'
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -3061,11 +3092,11 @@ expects_foo(Test3.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible t
 expects_foo(Test4.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
 expects_foo(Test5.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
 
-reveal_type(Test1.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test2.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test3.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test4.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test5.FOO.name)  # N: Revealed type is 'builtins.str'
+reveal_type(Test1.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test2.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test3.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test4.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test5.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
 [out]
 
 [case testLiteralBinderLastValueErased]

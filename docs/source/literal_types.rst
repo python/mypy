@@ -121,13 +121,16 @@ you can instead change the variable to be ``Final`` (see :ref:`final_attrs`):
 
     c: Final = 19
 
-    reveal_type(c)          # Revealed type is 'int'
-    expects_literal(c)      # ...but this type checks!
+    reveal_type(c)          # Revealed type is 'Literal[19]?'
+    expects_literal(c)      # ...and this type checks!
 
 If you do not provide an explicit type in the ``Final``, the type of ``c`` becomes
-context-sensitive: mypy will basically try "substituting" the original assigned
-value whenever it's used before performing type checking. So, mypy will type-check
-the above program almost as if it were written like so:
+*context-sensitive*: mypy will basically try "substituting" the original assigned
+value whenever it's used before performing type checking. This is why the revealed
+type of ``c`` is ``Literal[19]?``: the question mark at the end reflects this
+context-sensitive nature.
+
+For example, mypy will type check the above program almost as if it were written like so:
 
 .. code-block:: python
 
@@ -138,11 +141,32 @@ the above program almost as if it were written like so:
     reveal_type(19)
     expects_literal(19)
 
-This is why ``expects_literal(19)`` type-checks despite the fact that ``reveal_type(c)``
-reports ``int``.
+This means that while changing a variable to be ``Final`` is not quite the same thing
+as adding an explicit ``Literal[...]`` annotation, it often leads to the same effect
+in practice.
 
-So while changing a variable to be ``Final`` is not quite the same thing as adding
-an explicit ``Literal[...]`` annotation, it often leads to the same effect in practice.
+The main cases where the behavior of context-sensitive vs true literal types differ are
+when you try using those types in places that are not explicitly expecting a ``Literal[...]``. 
+For example, compare and contrast what happens when you try appending these types to a list:
+
+.. code-block:: python
+
+    from typing_extensions import Final, Literal
+
+    a: Final = 19
+    b: Literal[19] = 19
+
+    # Mypy will chose to infer List[int] here.
+    list_of_ints = []
+    list_of_ints.append(a)
+    reveal_type(list_of_ints)  # Revealed type is 'List[int]'
+
+    # But if the variable you're appending is an explicit Literal, mypy
+    # will infer List[Literal[19]].
+    list_of_lits = []
+    list_of_lits.append(b)
+    reveal_type(list_of_lits)  # Revealed type is 'List[Literal[19]]'
+
 
 Limitations
 ***********

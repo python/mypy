@@ -639,8 +639,8 @@ from typing import TypeVar
 T = TypeVar('T')
 
 def f(*args: T) -> T: ...
-reveal_type(f(*(1, None)))  # N: Revealed type is 'Union[builtins.int, None]'
-reveal_type(f(1, *(None, 1)))  # N: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(*(1, None)))  # N: Revealed type is 'Union[Literal[1]?, None]'
+reveal_type(f(1, *(None, 1)))  # N: Revealed type is 'Union[Literal[1]?, None]'
 reveal_type(f(1, *(1, None)))  # N: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/tuple.pyi]
 

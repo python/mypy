@@ -150,8 +150,8 @@ def b1() -> str: pass
 reveal_type(b3()) # N: Revealed type is 'builtins.str'
 
 [case testNewAnalyzerBool]
-reveal_type(True) # N: Revealed type is 'builtins.bool'
-reveal_type(False) # N: Revealed type is 'builtins.bool'
+reveal_type(True) # N: Revealed type is 'Literal[True]?'
+reveal_type(False) # N: Revealed type is 'Literal[False]?'
 
 [case testNewAnalyzerNewTypeMultiplePasses]
 import b
