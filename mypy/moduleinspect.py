@@ -10,14 +10,20 @@ import pkgutil
 import queue
 
 
-ModuleProperties = NamedTuple('ModuleProperties', [
-    ('name', str),  # __name__ attribute
-    ('file', Optional[str]),  # __file__ attribute
-    ('path', Optional[str]),  # __path__ attribute
-    ('all', Optional[List[str]]),  # __all__ attribute
-    ('is_c_module', bool),
-    ('subpackages', List[str]),
-])
+class ModuleProperties:
+    def __init__(self,
+                 name: str,
+                 file: Optional[str],
+                 path: Optional[str],
+                 all: Optional[List[str]],
+                 is_c_module: bool,
+                 subpackages: List[str]) -> None:
+        self.name = name  # __name__ attribute
+        self.file = file  # __file__ attribute
+        self.path = path  # __path__ attribute
+        self.all = all  # __all__ attribute
+        self.is_c_module = is_c_module
+        self.subpackages = subpackages
 
 
 def is_c_module(module: ModuleType) -> bool:
