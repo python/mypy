@@ -114,7 +114,7 @@ def find_module_path_using_py2_sys_path(module: str,
         check=True,
         stdout=subprocess.PIPE
     ).stdout
-    sys_path = json.loads(out)
+    sys_path = json.loads(out.decode('utf-8'))
     return find_module_path_using_sys_path(module, sys_path)
 
 
