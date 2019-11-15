@@ -8,6 +8,7 @@ import inspect
 import os
 import pkgutil
 import queue
+import sys
 
 
 class ModuleProperties:
@@ -79,8 +80,11 @@ def get_package_properties(package_id: str) -> ModuleProperties:
                             subpackages=subpackages)
 
 
-def worker(queue1: 'Queue[str]', queue2: 'Queue[Union[str, ModuleProperties]]') -> None:
+def worker(queue1: 'Queue[str]',
+           queue2: 'Queue[Union[str, ModuleProperties]]',
+           sys_path: List[str]) -> None:
     """The main loop of a worker introspection process."""
+    sys.path = sys_path
     while True:
         mod = queue1.get()
         try:
@@ -113,7 +117,7 @@ class ModuleInspect:
     def _start(self) -> None:
         self.q1 = Queue()  # type: Queue[str]
         self.q2 = Queue()  # type: Queue[Union[ModuleProperties, str]]
-        self.proc = Process(target=worker, args=(self.q1, self.q2))
+        self.proc = Process(target=worker, args=(self.q1, self.q2, sys.path))
         self.proc.start()
         self.counter = 0  # Number of successfull roundtrips
 
