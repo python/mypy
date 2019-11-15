@@ -149,15 +149,14 @@ The main cases where the behavior of context-sensitive vs true literal types dif
 when you try using those types in places that are not explicitly expecting a ``Literal[...]``. 
 For example, compare and contrast what happens when you try appending these types to a list:
 
-..code-block:: python
+.. code-block:: python
 
     from typing_extensions import Final, Literal
 
     a: Final = 19
     b: Literal[19] = 19
 
-    # Mypy will chose to infer List[int] instead of List[Literal[19]?] or
-    # List[Literal[19]] since the former is most likely more useful.
+    # Mypy will chose to infer List[int] here.
     list_of_ints = []
     list_of_ints.append(a)
     reveal_type(list_of_ints)  # Revealed type is 'List[int]'
