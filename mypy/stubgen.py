@@ -100,7 +100,7 @@ VENDOR_PACKAGES = [
     'vendored',
     '_vendor',
     '_vendored_packages',
-]
+]  # type: Final
 
 # Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
 BLACKLIST = [
@@ -109,14 +109,14 @@ BLACKLIST = [
     '/vendor/',  # Vendored packages
     '/_vendor/',
     '/_vendored_packages/',
-]
+]  # type: Final
 
 # Special-cased names that are implicitly exported from the stub (from m import y as y).
 EXTRA_EXPORTED = {
     'pyasn1_modules.rfc2437.univ',
     'pyasn1_modules.rfc2459.char',
     'pyasn1_modules.rfc2459.univ',
-}
+}  # type: Final
 
 # These names should be omitted from generated stubs.
 IGNORED_DUNDERS = {
@@ -135,7 +135,7 @@ IGNORED_DUNDERS = {
     '__getstate__',
     '__setstate__',
     '__slots__',
-}
+}  # type: Final
 
 # These methods are expected to always return a non-trivial value.
 METHODS_WITH_RETURN_VALUE = {
@@ -147,7 +147,7 @@ METHODS_WITH_RETURN_VALUE = {
     '__ge__',
     '__hash__',
     '__iter__',
-}
+}  # type: Final
 
 
 class Options:
@@ -887,7 +887,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def visit_import_from(self, o: ImportFrom) -> None:
         exported_names = set()  # type: Set[str]
         import_names = []
-        module, relative = self.translate_module_name(o.id, o.relative)
+        module, relative = translate_module_name(o.id, o.relative)
         if self.module:
             full_module, ok = mypy.util.correct_relative_import(
                 self.module, relative, module, self.path.endswith('.__init__.py')
@@ -942,17 +942,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)
-
-    def translate_module_name(self, module: str, relative: int) -> Tuple[str, int]:
-        for pkg in VENDOR_PACKAGES:
-            for alt in 'six.moves', 'six':
-                substr = '{}.{}'.format(pkg, alt)
-                if (module.endswith('.' + substr)
-                        or (module == substr and relative)):
-                    return alt, 0
-                if '.' + substr + '.' in module:
-                    return alt + '.' + module.partition('.' + substr + '.')[2], 0
-        return module, relative
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -1107,7 +1096,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
 def find_method_names(defs: List[Statement]) -> Set[str]:
     # TODO: Traverse into nested definitions
-    # TODO: Overloads
     result = set()
     for defn in defs:
         if isinstance(defn, FuncDef):
@@ -1266,6 +1254,18 @@ def is_non_library_module(module: str) -> bool:
             or '.SelfTest.' in module):
         return True
     return False
+
+
+def translate_module_name(module: str, relative: int) -> Tuple[str, int]:
+    for pkg in VENDOR_PACKAGES:
+        for alt in 'six.moves', 'six':
+            substr = '{}.{}'.format(pkg, alt)
+            if (module.endswith('.' + substr)
+                    or (module == substr and relative)):
+                return alt, 0
+            if '.' + substr + '.' in module:
+                return alt + '.' + module.partition('.' + substr + '.')[2], 0
+    return module, relative
 
 
 def find_module_paths_using_search(modules: List[str], packages: List[str],

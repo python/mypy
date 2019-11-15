@@ -52,7 +52,10 @@ def get_package_properties(package_id: str) -> ModuleProperties:
         path = None
     pkg_all = getattr(package, '__all__', None)
     if pkg_all is not None:
-        pkg_all = list(pkg_all)
+        try:
+            pkg_all = list(pkg_all)
+        except Exception:
+            pkg_all = None
     is_c = is_c_module(package)
 
     if path is None:
@@ -80,19 +83,19 @@ def get_package_properties(package_id: str) -> ModuleProperties:
                             subpackages=subpackages)
 
 
-def worker(queue1: 'Queue[str]',
-           queue2: 'Queue[Union[str, ModuleProperties]]',
+def worker(tasks: 'Queue[str]',
+           results: 'Queue[Union[str, ModuleProperties]]',
            sys_path: List[str]) -> None:
     """The main loop of a worker introspection process."""
     sys.path = sys_path
     while True:
-        mod = queue1.get()
+        mod = tasks.get()
         try:
             prop = get_package_properties(mod)
         except InspectError as e:
-            queue2.put(str(e))
+            results.put(str(e))
             continue
-        queue2.put(prop)
+        results.put(prop)
 
 
 class ModuleInspect:
@@ -115,9 +118,9 @@ class ModuleInspect:
         self._start()
 
     def _start(self) -> None:
-        self.q1 = Queue()  # type: Queue[str]
-        self.q2 = Queue()  # type: Queue[Union[ModuleProperties, str]]
-        self.proc = Process(target=worker, args=(self.q1, self.q2, sys.path))
+        self.tasks = Queue()  # type: Queue[str]
+        self.results = Queue()  # type: Queue[Union[ModuleProperties, str]]
+        self.proc = Process(target=worker, args=(self.tasks, self.results, sys.path))
         self.proc.start()
         self.counter = 0  # Number of successfull roundtrips
 
@@ -130,7 +133,7 @@ class ModuleInspect:
 
         Raise InspectError if the target couldn't be imported.
         """
-        self.q1.put(package_id)
+        self.tasks.put(package_id)
         res = self._get_from_queue()
         if res is None:
             # The process died; recover and report error.
@@ -159,7 +162,7 @@ class ModuleInspect:
             if n == max_iter:
                 raise RuntimeError('Timeout waiting for subprocess')
             try:
-                return self.q2.get(timeout=0.05)
+                return self.results.get(timeout=0.05)
             except queue.Empty:
                 if not self.proc.is_alive():
                     return None

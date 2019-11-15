@@ -18,6 +18,7 @@ Sig = Tuple[str, str]
 
 
 _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
+_ARG_NAME_RE = re.compile(r'\**[A-Za-z_][A-Za-z0-9_]*$')  # type: Final
 
 
 def is_valid_type(s: str) -> bool:
@@ -139,7 +140,7 @@ class DocStringParser:
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
                 self.arg_name = self.accumulator
-                if not re.match(r'\**[A-Za-z_][A-Za-z0-9_]*$', self.arg_name):
+                if not _ARG_NAME_RE.match(self.arg_name):
                     # Invalid argument name.
                     self.reset()
                     return
