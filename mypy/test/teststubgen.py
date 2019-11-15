@@ -854,9 +854,9 @@ class ModuleInspectSuite(Suite):
 
     def test_c_module(self) -> None:
         with ModuleInspect() as m:
-            p = m.get_package_properties('math')
+            p = m.get_package_properties('_socket')
             assert p is not None
-            assert p.name == 'math'
+            assert p.name == '_socket'
             assert p.file
             assert p.path is None
             assert p.is_c_module is True
