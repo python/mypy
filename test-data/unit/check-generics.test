@@ -2287,3 +2287,54 @@ class B(A):
     def from_config(cls) -> B:
         return B()
 [builtins fixtures/classmethod.pyi]
+
+[case testAbstractGenericMethodInference]
+from abc import ABC, abstractmethod
+from typing import Callable, Generic, TypeVar
+
+A = TypeVar('A')
+B = TypeVar('B')
+C = TypeVar('C')
+
+class TwoTypes(Generic[A, B]):
+
+  def __call__(self) -> B: pass
+
+class MakeTwoAbstract(ABC, Generic[A]):
+
+  def __init__(self) -> None: pass
+
+  @abstractmethod
+  def __call__(self, b: B) -> TwoTypes[A, B]: pass
+
+class MakeTwoConcrete(Generic[A]):
+
+  def __call__(self, b: B) -> TwoTypes[A, B]: pass
+
+
+class MakeTwoGenericSubAbstract(Generic[C], MakeTwoAbstract[C]):
+
+  def __call__(self, b: B) -> TwoTypes[C, B]: pass
+
+class MakeTwoAppliedSubAbstract(MakeTwoAbstract[str]):
+
+  def __call__(self, b: B) -> TwoTypes[str, B]: pass
+
+class Test():
+
+  def make_two(self,
+                mts: MakeTwoAbstract[A],
+                mte: MakeTwoConcrete[A],
+                mtgsa: MakeTwoGenericSubAbstract[A],
+                mtasa: MakeTwoAppliedSubAbstract) -> None:
+    reveal_type(mts(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mte(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mtgsa(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mtasa(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(MakeTwoConcrete[int]()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.int, builtins.str*]'
+    reveal_type(MakeTwoConcrete[str]()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(MakeTwoAppliedSubAbstract()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.str*]'
+    reveal_type(MakeTwoAppliedSubAbstract()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(MakeTwoGenericSubAbstract[str]()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.str*]'
+    reveal_type(MakeTwoGenericSubAbstract[str]()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+
