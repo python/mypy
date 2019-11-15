@@ -47,6 +47,10 @@ def get_package_properties(package_id: str) -> ModuleProperties:
     name = getattr(package, '__name__', None)
     file = getattr(package, '__file__', None)
     path = getattr(package, '__path__', None)
+    if isinstance(path, list) and path:
+        path = path[0]
+    if not isinstance(path, str):
+        path = None
     pkg_all = getattr(package, '__all__', None)
     if pkg_all is not None:
         pkg_all = list(pkg_all)
