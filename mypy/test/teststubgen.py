@@ -4,12 +4,13 @@ import shutil
 import sys
 import tempfile
 import re
+import unittest
 from types import ModuleType
 
 from typing import Any, List, Tuple, Optional
 
 from mypy.test.helpers import (
-    Suite, assert_equal, assert_string_arrays_equal, local_sys_path_set
+    assert_equal, assert_string_arrays_equal, local_sys_path_set
 )
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
@@ -27,7 +28,7 @@ from mypy.stubdoc import (
 from mypy.moduleinspect import ModuleInspect, InspectError
 
 
-class StubgenCmdLineSuite(Suite):
+class StubgenCmdLineSuite(unittest.TestCase):
     """Test cases for processing command-line options and finding files."""
 
     def test_files_found(self) -> None:
@@ -69,6 +70,7 @@ class StubgenCmdLineSuite(Suite):
             finally:
                 os.chdir(current)
 
+    @unittest.skipIf(sys.platform == 'win32', "clean up fails on Windows")
     def test_module_not_found(self) -> None:
         current = os.getcwd()
         captured_output = io.StringIO()
@@ -94,7 +96,7 @@ class StubgenCmdLineSuite(Suite):
             return super().run(result)
 
 
-class StubgenCliParseSuite(Suite):
+class StubgenCliParseSuite(unittest.TestCase):
     def test_walk_packages(self) -> None:
         with ModuleInspect() as m:
             assert_equal(
@@ -115,7 +117,7 @@ class StubgenCliParseSuite(Suite):
             }))
 
 
-class StubgenUtilSuite(Suite):
+class StubgenUtilSuite(unittest.TestCase):
     """Unit tests for stubgen utility functions."""
 
     def test_parse_signature(self) -> None:
@@ -454,7 +456,7 @@ class StubgenUtilSuite(Suite):
         assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
 
 
-class StubgenHelpersSuite(Suite):
+class StubgenHelpersSuite(unittest.TestCase):
     def test_is_blacklisted_path(self) -> None:
         assert not is_blacklisted_path('foo/bar.py')
         assert not is_blacklisted_path('foo.py')
@@ -597,7 +599,7 @@ class StubgenPythonSuite(DataSuite):
 self_arg = ArgSig(name='self')
 
 
-class StubgencSuite(Suite):
+class StubgencSuite(unittest.TestCase):
     """Unit tests for stub generation from C modules using introspection.
 
     Note that these don't cover a lot!
@@ -801,7 +803,7 @@ class StubgencSuite(Suite):
         assert_equal(set(imports), {'from typing import overload'})
 
 
-class ArgSigSuite(Suite):
+class ArgSigSuite(unittest.TestCase):
     def test_repr(self) -> None:
         assert_equal(repr(ArgSig(name='asd"dsa')),
                      "ArgSig(name='asd\"dsa', type=None, default=False)")
@@ -813,7 +815,7 @@ class ArgSigSuite(Suite):
                      "ArgSig(name='func', type='str', default=True)")
 
 
-class IsValidTypeSuite(Suite):
+class IsValidTypeSuite(unittest.TestCase):
     def test_is_valid_type(self) -> None:
         assert is_valid_type('int')
         assert is_valid_type('str')
@@ -830,7 +832,7 @@ class IsValidTypeSuite(Suite):
         assert not is_valid_type('x, y')
 
 
-class ModuleInspectSuite(Suite):
+class ModuleInspectSuite(unittest.TestCase):
     def test_python_module(self) -> None:
         with ModuleInspect() as m:
             p = m.get_package_properties('inspect')
