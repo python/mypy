@@ -11,7 +11,7 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import is_c_module
+from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
     infer_arg_sig_from_docstring, FunctionSig
@@ -169,6 +169,8 @@ def generate_c_function_stub(module: ModuleType,
                     arg_def = self_var
                 else:
                     arg_def = arg.name
+                    if arg_def == 'None':
+                        arg_def = '_none'  # None is not a valid argument name
 
                     if arg.type:
                         arg_def += ": " + strip_or_import(arg.type, module, imports)
@@ -198,16 +200,16 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         module: in which this type is used
         imports: list of import statements (may be modified during the call)
     """
-    arg_type = typ
-    if module and typ.startswith(module.__name__):
-        arg_type = typ[len(module.__name__) + 1:]
+    stripped_type = typ
+    if module and typ.startswith(module.__name__ + '.'):
+        stripped_type = typ[len(module.__name__) + 1:]
     elif '.' in typ:
-        arg_module = arg_type[:arg_type.rindex('.')]
+        arg_module = typ[:typ.rindex('.')]
         if arg_module == 'builtins':
-            arg_type = arg_type[len('builtins') + 1:]
+            stripped_type = typ[len('builtins') + 1:]
         else:
             imports.append('import %s' % (arg_module,))
-    return arg_type
+    return stripped_type
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
@@ -250,11 +252,6 @@ def generate_c_type_stub(module: ModuleType,
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
             if not is_skipped_attribute(attr):
-                if is_c_classmethod(value):
-                    methods.append('@classmethod')
-                    self_var = 'cls'
-                else:
-                    self_var = 'self'
                 if attr == '__new__':
                     # TODO: We should support __new__.
                     if '__init__' in obj_dict:
@@ -263,6 +260,11 @@ def generate_c_type_stub(module: ModuleType,
                         # better signature than __init__() ?
                         continue
                     attr = '__init__'
+                if is_c_classmethod(value):
+                    methods.append('@classmethod')
+                    self_var = 'cls'
+                else:
+                    self_var = 'self'
                 generate_c_function_stub(module, attr, value, methods, imports=imports,
                                          self_var=self_var, sigs=sigs, class_name=class_name,
                                          class_sigs=class_sigs)
@@ -294,7 +296,7 @@ def generate_c_type_stub(module: ModuleType,
     if bases:
         bases_str = '(%s)' % ', '.join(
             strip_or_import(
-                '%s.%s' % (base.__module__, base.__name__),
+                get_type_fullname(base),
                 module,
                 imports
             ) for base in bases
@@ -311,6 +313,10 @@ def generate_c_type_stub(module: ModuleType,
             output.append('    %s' % method)
         for prop in properties:
             output.append('    %s' % prop)
+
+
+def get_type_fullname(typ: type) -> str:
+    return '%s.%s' % (typ.__module__, typ.__name__)
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:

@@ -865,19 +865,26 @@ class SemanticAnalyzer(NodeVisitor[None],
         defn.is_property = True
         items = defn.items
         first_item = cast(Decorator, defn.items[0])
-        for item in items[1:]:
-            if isinstance(item, Decorator) and len(item.decorators) == 1:
-                node = item.decorators[0]
-                if isinstance(node, MemberExpr):
-                    if node.name == 'setter':
-                        # The first item represents the entire property.
-                        first_item.var.is_settable_property = True
-                        # Get abstractness from the original definition.
-                        item.func.is_abstract = first_item.func.is_abstract
-            else:
-                self.fail("Decorated property not supported", item)
+        deleted_items = []
+        for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
+                if len(item.decorators) == 1:
+                    node = item.decorators[0]
+                    if isinstance(node, MemberExpr):
+                        if node.name == 'setter':
+                            # The first item represents the entire property.
+                            first_item.var.is_settable_property = True
+                            # Get abstractness from the original definition.
+                            item.func.is_abstract = first_item.func.is_abstract
+                else:
+                    self.fail("Decorated property not supported", item)
                 item.func.accept(self)
+            else:
+                self.fail('Unexpected definition for property "{}"'.format(first_item.func.name),
+                          item)
+                deleted_items.append(i + 1)
+        for i in reversed(deleted_items):
+            del items[i]
 
     def add_function_to_symbol_table(self, func: Union[FuncDef, OverloadedFuncDef]) -> None:
         if self.is_class_scope():

@@ -4,29 +4,31 @@ import shutil
 import sys
 import tempfile
 import re
+import unittest
 from types import ModuleType
 
 from typing import Any, List, Tuple, Optional
 
 from mypy.test.helpers import (
-    Suite, assert_equal, assert_string_arrays_equal, local_sys_path_set
+    assert_equal, assert_string_arrays_equal, local_sys_path_set
 )
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import (
     generate_stubs, parse_options, Options, collect_build_targets,
-    mypy_options, is_blacklisted_path, is_test_module
+    mypy_options, is_blacklisted_path, is_non_library_module
 )
 from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring, FunctionSig, ArgSig,
-    infer_arg_sig_from_docstring
+    infer_arg_sig_from_docstring, is_valid_type
 )
+from mypy.moduleinspect import ModuleInspect, InspectError
 
 
-class StubgenCmdLineSuite(Suite):
+class StubgenCmdLineSuite(unittest.TestCase):
     """Test cases for processing command-line options and finding files."""
 
     def test_files_found(self) -> None:
@@ -68,6 +70,7 @@ class StubgenCmdLineSuite(Suite):
             finally:
                 os.chdir(current)
 
+    @unittest.skipIf(sys.platform == 'win32', "clean up fails on Windows")
     def test_module_not_found(self) -> None:
         current = os.getcwd()
         captured_output = io.StringIO()
@@ -78,7 +81,7 @@ class StubgenCmdLineSuite(Suite):
                 self.make_file(tmp, 'mymodule.py', content='import a')
                 opts = parse_options(['-m', 'mymodule'])
                 py_mods, c_mods = collect_build_targets(opts, mypy_options(opts))
-                self.assertRegex(captured_output.getvalue(), "No module named 'a'")
+                assert captured_output.getvalue() == ''
             finally:
                 sys.stdout = sys.__stdout__
                 os.chdir(current)
@@ -93,27 +96,28 @@ class StubgenCmdLineSuite(Suite):
             return super().run(result)
 
 
-class StubgenCliParseSuite(Suite):
+class StubgenCliParseSuite(unittest.TestCase):
     def test_walk_packages(self) -> None:
-        assert_equal(
-            set(walk_packages(["mypy.errors"])),
-            {"mypy.errors"})
+        with ModuleInspect() as m:
+            assert_equal(
+                set(walk_packages(m, ["mypy.errors"])),
+                {"mypy.errors"})
 
-        assert_equal(
-            set(walk_packages(["mypy.errors", "mypy.stubgen"])),
-            {"mypy.errors", "mypy.stubgen"})
+            assert_equal(
+                set(walk_packages(m, ["mypy.errors", "mypy.stubgen"])),
+                {"mypy.errors", "mypy.stubgen"})
 
-        all_mypy_packages = set(walk_packages(["mypy"]))
-        self.assertTrue(all_mypy_packages.issuperset({
-            "mypy",
-            "mypy.errors",
-            "mypy.stubgen",
-            "mypy.test",
-            "mypy.test.helpers",
-        }))
+            all_mypy_packages = set(walk_packages(m, ["mypy"]))
+            self.assertTrue(all_mypy_packages.issuperset({
+                "mypy",
+                "mypy.errors",
+                "mypy.stubgen",
+                "mypy.test",
+                "mypy.test.helpers",
+            }))
 
 
-class StubgenUtilSuite(Suite):
+class StubgenUtilSuite(unittest.TestCase):
     """Unit tests for stubgen utility functions."""
 
     def test_parse_signature(self) -> None:
@@ -281,6 +285,12 @@ class StubgenUtilSuite(Suite):
                      'Tuple[int, int]')
         assert_equal(infer_prop_type_from_docstring('\nstr: A string.'), None)
 
+    def test_infer_sig_from_docstring_square_brackets(self) -> None:
+        assert infer_sig_from_docstring(
+            'fetch_row([maxrows, how]) -- Fetches stuff',
+            'fetch_row',
+        ) == []
+
     def test_remove_misplaced_type_comments_1(self) -> None:
         good = """
         \u1234
@@ -446,7 +456,7 @@ class StubgenUtilSuite(Suite):
         assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
 
 
-class StubgenHelpersSuite(Suite):
+class StubgenHelpersSuite(unittest.TestCase):
     def test_is_blacklisted_path(self) -> None:
         assert not is_blacklisted_path('foo/bar.py')
         assert not is_blacklisted_path('foo.py')
@@ -457,29 +467,34 @@ class StubgenHelpersSuite(Suite):
         assert is_blacklisted_path('foo/vendored/bar/thing.py')
         assert is_blacklisted_path('foo/six.py')
 
-    def test_is_test_module(self) -> None:
-        assert not is_test_module('foo')
-        assert not is_test_module('foo.bar')
+    def test_is_non_library_module(self) -> None:
+        assert not is_non_library_module('foo')
+        assert not is_non_library_module('foo.bar')
 
         # The following could be test modules, but we are very conservative and
         # don't treat them as such since they could plausibly be real modules.
-        assert not is_test_module('foo.bartest')
-        assert not is_test_module('foo.bartests')
-        assert not is_test_module('foo.testbar')
+        assert not is_non_library_module('foo.bartest')
+        assert not is_non_library_module('foo.bartests')
+        assert not is_non_library_module('foo.testbar')
 
-        assert is_test_module('foo.test')
-        assert is_test_module('foo.test.foo')
-        assert is_test_module('foo.tests')
-        assert is_test_module('foo.tests.foo')
-        assert is_test_module('foo.testing.foo')
+        assert is_non_library_module('foo.test')
+        assert is_non_library_module('foo.test.foo')
+        assert is_non_library_module('foo.tests')
+        assert is_non_library_module('foo.tests.foo')
+        assert is_non_library_module('foo.testing.foo')
+        assert is_non_library_module('foo.SelfTest.foo')
 
-        assert is_test_module('foo.test_bar')
-        assert is_test_module('foo.bar_tests')
-        assert is_test_module('foo.testing')
-        assert is_test_module('foo.conftest')
-        assert is_test_module('foo.bar_test_util')
-        assert is_test_module('foo.bar_test_utils')
-        assert is_test_module('foo.bar_test_base')
+        assert is_non_library_module('foo.test_bar')
+        assert is_non_library_module('foo.bar_tests')
+        assert is_non_library_module('foo.testing')
+        assert is_non_library_module('foo.conftest')
+        assert is_non_library_module('foo.bar_test_util')
+        assert is_non_library_module('foo.bar_test_utils')
+        assert is_non_library_module('foo.bar_test_base')
+
+        assert is_non_library_module('foo.setup')
+
+        assert is_non_library_module('foo.__main__')
 
 
 class StubgenPythonSuite(DataSuite):
@@ -521,7 +536,8 @@ class StubgenPythonSuite(DataSuite):
             if mod.endswith('.__init__'):
                 mod, _, _ = mod.rpartition('.')
             mods.append(mod)
-            extra.extend(['-m', mod])
+            if '-p ' not in source:
+                extra.extend(['-m', mod])
             with open(file, 'w') as f:
                 f.write(content)
 
@@ -583,7 +599,7 @@ class StubgenPythonSuite(DataSuite):
 self_arg = ArgSig(name='self')
 
 
-class StubgencSuite(Suite):
+class StubgencSuite(unittest.TestCase):
     """Unit tests for stub generation from C modules using introspection.
 
     Note that these don't cover a lot!
@@ -787,7 +803,7 @@ class StubgencSuite(Suite):
         assert_equal(set(imports), {'from typing import overload'})
 
 
-class ArgSigSuite(Suite):
+class ArgSigSuite(unittest.TestCase):
     def test_repr(self) -> None:
         assert_equal(repr(ArgSig(name='asd"dsa')),
                      "ArgSig(name='asd\"dsa', type=None, default=False)")
@@ -797,6 +813,62 @@ class ArgSigSuite(Suite):
                      "ArgSig(name='func', type='str', default=False)")
         assert_equal(repr(ArgSig("func", 'str', default=True)),
                      "ArgSig(name='func', type='str', default=True)")
+
+
+class IsValidTypeSuite(unittest.TestCase):
+    def test_is_valid_type(self) -> None:
+        assert is_valid_type('int')
+        assert is_valid_type('str')
+        assert is_valid_type('Foo_Bar234')
+        assert is_valid_type('foo.bar')
+        assert is_valid_type('List[int]')
+        assert is_valid_type('Dict[str, int]')
+        assert is_valid_type('None')
+        assert not is_valid_type('foo-bar')
+        assert not is_valid_type('x->y')
+        assert not is_valid_type('True')
+        assert not is_valid_type('False')
+        assert not is_valid_type('x,y')
+        assert not is_valid_type('x, y')
+
+
+class ModuleInspectSuite(unittest.TestCase):
+    def test_python_module(self) -> None:
+        with ModuleInspect() as m:
+            p = m.get_package_properties('inspect')
+            assert p is not None
+            assert p.name == 'inspect'
+            assert p.file
+            assert p.path is None
+            assert p.is_c_module is False
+            assert p.subpackages == []
+
+    def test_python_package(self) -> None:
+        with ModuleInspect() as m:
+            p = m.get_package_properties('unittest')
+            assert p is not None
+            assert p.name == 'unittest'
+            assert p.file
+            assert p.path
+            assert p.is_c_module is False
+            assert p.subpackages
+            assert all(sub.startswith('unittest.') for sub in p.subpackages)
+
+    def test_c_module(self) -> None:
+        with ModuleInspect() as m:
+            p = m.get_package_properties('_socket')
+            assert p is not None
+            assert p.name == '_socket'
+            assert p.file
+            assert p.path is None
+            assert p.is_c_module is True
+            assert p.subpackages == []
+
+    def test_non_existent(self) -> None:
+        with ModuleInspect() as m:
+            with self.assertRaises(InspectError) as e:
+                m.get_package_properties('foobar-non-existent')
+            assert str(e.exception) == "No module named 'foobar-non-existent'"
 
 
 def module_to_path(out_dir: str, module: str) -> str:

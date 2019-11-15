@@ -6545,3 +6545,24 @@ class C3(Generic[TypeT1]):
         return 0
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testPropertyWithExtraMethod]
+def dec(f):
+    return f
+
+class A:
+    @property
+    def x(self): ...
+    @x.setter
+    def x(self, value) -> None: ...
+    def x(self) -> None: ...  # E: Unexpected definition for property "x"
+
+    @property
+    def y(self) -> int: ...
+    @y.setter
+    def y(self, value: int) -> None: ...
+    @dec
+    def y(self) -> None: ...  # TODO: This should generate an error
+
+reveal_type(A().y)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]
