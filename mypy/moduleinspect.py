@@ -141,12 +141,17 @@ class ModuleInspect:
 
         Return the value read from the queue, or None if the process unexpectedly died.
         """
+        max_iter = 100
+        n = 0
         while True:
+            if n == max_iter:
+                raise RuntimeError('Timeout waiting for subprocess')
             try:
                 return self.q2.get(timeout=0.05)
             except queue.Empty:
                 if not self.proc.is_alive():
                     return None
+            n += 1
 
     def __enter__(self) -> 'ModuleInspect':
         return self
