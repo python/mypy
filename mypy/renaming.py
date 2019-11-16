@@ -156,7 +156,7 @@ class VariableRenameVisitor(TraverserVisitor):
         # convenience.  This is unsafe since with statements can affect control
         # flow by catching exceptions, but this is rare except for
         # assertRaises() and other similar functions, where the exception is
-        # raised by the last statement in the body, which usuaully isn't a
+        # raised by the last statement in the body, which usually isn't a
         # problem.
         stmt.body.accept(self)
 
