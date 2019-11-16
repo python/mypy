@@ -1196,3 +1196,199 @@ test(b, 20)
 test(d, 30)
 test(B, -1)
 test(D, -2)
+
+[case testCompiledProtocolsBasicsRun]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    x: int
+    def add(self, x: int) -> int: ...
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def add(self, x: int) -> int:
+        return self.x + x
+
+def func(arg: P) -> int:
+    arg.x += 1
+    return arg.add(2)
+
+def test(arg: int) -> int:
+    return func(C(arg))
+
+[file driver.py]
+from native import test
+
+assert test(0) == 3
+assert test(5) == 8
+
+[case testCompiledProtocolsBasicsRunPython]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    x: int
+    def add(self, x: int) -> int: ...
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def add(self, x: int) -> int:
+        return self.x + x
+
+def func(arg: P) -> int:
+    arg.x += 1
+    return arg.add(2)
+
+[file driver.py]
+from native import func, C, P
+
+def test(arg: int) -> int:
+    return func(C(arg))
+
+assert test(0) == 3
+assert test(5) == 8
+
+[case testCompiledProtocolsBasicsRunNoInstantiation]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    x: int
+    def add(self, x: int) -> int: ...
+
+[file driver.py]
+from native import P
+try:
+    p = P()
+except TypeError as e:
+    assert str(e) == 'Protocols cannot be instantiated', str(e)
+else:
+    assert False, type(p)
+
+[case testCompiledProtocolsBasicsRunIgnoredTypeError]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    x: int
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+x: P = C(0)
+x + 1  # type: ignore
+
+[file driver.py]
+try:
+    import native
+except Exception as e:
+    assert isinstance(e, TypeError)
+
+[case testCompiledProtocolsBasicsRunIgnoredAttributeError]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    x: int
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+x: P = C(0)
+x.no_way  # type: ignore
+
+[file driver.py]
+try:
+    import native
+except Exception as e:
+    assert isinstance(e, AttributeError)
+
+[case testCompiledProtocolsBasicsRunCallback]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    def __call__(self, x: int, y: int) -> int: ...
+
+def add(x: int, y: int) -> int:
+    return x + y
+
+def func(cb: P, x: int, y: int) -> int:
+    return cb(x, y=y)
+
+def test(arg: int) -> int:
+    return func(add, arg, 1)
+
+[file driver.py]
+from native import test
+
+assert test(0) == 1
+assert test(2) == 3
+
+[case testCompiledProtocolsBasicsRunCallbackPython]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    def __call__(self, x: int, y: int) -> int: ...
+
+def add(x: int, y: int) -> int:
+    return x + y
+
+def func(cb: P, x: int, y: int) -> int:
+    return cb(x, y=y)
+
+[file driver.py]
+from native import func, add
+
+def test(arg: int) -> int:
+    return func(add, arg, 1)
+
+assert test(0) == 1
+assert test(2) == 3
+
+[case testCompiledProtocolsBasicsRunIter]
+from typing_extensions import Protocol
+from typing import Iterator
+
+class MyIter(Protocol):
+    def __iter__(self) -> Iterator[int]: ...
+
+class C:
+    def __iter__(self) -> Iterator[int]:
+        return iter([1, 2, 3])
+
+def func(it: MyIter) -> int:
+    for v in it:
+        return v
+    return 0
+
+def test() -> int:
+    return func(C())
+
+[file driver.py]
+from native import test
+
+assert test() == 1
+
+[case testCompiledProtocolsBasicsRunIterPython]
+from typing_extensions import Protocol
+from typing import Iterator
+
+class MyIter(Protocol):
+    def __iter__(self) -> Iterator[int]: ...
+
+class C:
+    def __iter__(self) -> Iterator[int]:
+        return iter([1, 2, 3])
+
+def func(it: MyIter) -> int:
+    for v in it:
+        return v
+    return 0
+
+[file driver.py]
+from native import C, func
+
+def test() -> int:
+    return func(C())
+
+assert test() == 1

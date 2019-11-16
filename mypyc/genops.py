@@ -133,7 +133,8 @@ def build_type_map(mapper: 'Mapper',
     # references even if there are import cycles.
     for module, cdef in classes:
         class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
-                           is_abstract=cdef.info.is_abstract)
+                           is_abstract=cdef.info.is_abstract,
+                           is_protocol=cdef.info.is_protocol)
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None
@@ -246,6 +247,8 @@ def is_extension_class(cdef: ClassDef) -> bool:
         return False
     elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
+        return False
+    elif cdef.info.is_protocol:
         return False
     return True
 
@@ -1385,6 +1388,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             base = self.load_global_str(cls.name, cdef.line)
             bases.append(base)
+        if cdef.info.is_protocol:
+            for expr in cdef.removed_base_type_exprs:
+                bases.append(self.accept(expr))
         return self.primitive_op(new_tuple_op, bases, cdef.line)
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,

@@ -432,7 +432,10 @@ class Emitter:
             # (meaning the code ought to be dead or we aren't doing global opts),
             # fall back to a normal typecheck.
             # Otherwise check all the subclasses.
-            if not concrete or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
+            if typ.class_ir.is_protocol:
+                # Protocol types trigger Python calls everywhere, so no need to cast.
+                check = '(1)'
+            elif not concrete or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
                 check = '(PyObject_TypeCheck({}, {}))'.format(
                     src, self.type_struct_name(typ.class_ir))
             else:

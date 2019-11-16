@@ -1084,3 +1084,204 @@ class A(B): pass
 class B(C): pass
 class C: pass
 [out]
+
+[case testCompiledProtocolsBasicsIR]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    x: int
+    def add(self, x: int) -> int: ...
+
+class C:
+    x: int
+    def add(self, x: int) -> int: ...
+
+def func(arg: P) -> int:
+    arg.x += 1
+    return arg.add(2)
+[out]
+def add_P_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def add_P_obj.__call__(__mypyc_self__, self, x):
+    __mypyc_self__ :: __main__.add_P_obj
+    self :: __main__.P
+    x :: int
+    r0 :: object
+L0:
+    r0 = ...
+    unreachable
+def C.add(self, x):
+    self :: __main__.C
+    x :: int
+    r0 :: object
+L0:
+    r0 = ...
+    unreachable
+def func(arg):
+    arg :: __main__.P
+    r0 :: str
+    r1 :: object
+    r2 :: short_int
+    r3, r4 :: object
+    r5 :: str
+    r6 :: bool
+    r7 :: short_int
+    r8 :: str
+    r9, r10 :: object
+    r11 :: int
+L0:
+    r0 = unicode_5 :: static  ('x')
+    r1 = getattr arg, r0
+    r2 = 1
+    r3 = box(short_int, r2)
+    r4 = r1 += r3
+    r5 = unicode_5 :: static  ('x')
+    r6 = setattr arg, r5, r4
+    r7 = 2
+    r8 = unicode_6 :: static  ('add')
+    r9 = box(short_int, r7)
+    r10 = py_method_call(arg, r8, r9)
+    r11 = unbox(int, r10)
+    return r11
+
+[case testCompiledProtocolsBasicsIRCallback]
+from typing_extensions import Protocol
+
+class P(Protocol):
+    def __call__(self, x: int, y: int) -> int: ...
+
+def add(x: int, y: int) -> int: ...
+
+def func(cb: P, x: int, y: int) -> int:
+    return cb(x, y=y)
+[out]
+def __call___P_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def __call___P_obj.__call__(__mypyc_self__, self, x, y):
+    __mypyc_self__ :: __main__.__call___P_obj
+    self :: __main__.P
+    x, y :: int
+    r0 :: object
+L0:
+    r0 = ...
+    unreachable
+def add(x, y):
+    x, y :: int
+    r0 :: object
+L0:
+    r0 = ...
+    unreachable
+def func(cb, x, y):
+    cb :: __main__.P
+    x, y :: int
+    r0 :: str
+    r1 :: object
+    r2 :: tuple
+    r3 :: object
+    r4 :: dict
+    r5 :: object
+    r6 :: int
+L0:
+    r0 = unicode_11 :: static  ('y')
+    r1 = box(int, x)
+    r2 = (r1) :: tuple
+    r3 = box(int, y)
+    r4 = {r0: r3}
+    r5 = py_call_with_kwargs(cb, r2, r4)
+    r6 = unbox(int, r5)
+    return r6
+
+
+[case testCompiledProtocolsBasicsIRIter]
+from typing_extensions import Protocol
+from typing import Iterator
+
+class MyIter(Protocol):
+    def __iter__(self) -> Iterator[int]: ...
+
+class C:
+    def __iter__(self) -> Iterator[int]: ...
+
+def func(it: MyIter) -> int:
+    for v in it:
+        return v
+    return 0
+[out]
+def __iter___MyIter_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def __iter___MyIter_obj.__call__(__mypyc_self__, self):
+    __mypyc_self__ :: __main__.__iter___MyIter_obj
+    self :: __main__.MyIter
+    r0 :: object
+    r1 :: None
+    r2 :: object
+L0:
+    r0 = ...
+    r1 = None
+    r2 = box(None, r1)
+    return r2
+def C.__iter__(self):
+    self :: __main__.C
+    r0 :: object
+    r1 :: None
+    r2 :: object
+L0:
+    r0 = ...
+    r1 = None
+    r2 = box(None, r1)
+    return r2
+def func(it):
+    it :: __main__.MyIter
+    r0, r1 :: object
+    r2, v :: int
+    r3 :: bool
+    r4 :: short_int
+L0:
+    r0 = iter it :: object
+L1:
+    r1 = next r0 :: object
+    if is_error(r1) goto L4 else goto L2
+L2:
+    r2 = unbox(int, r1)
+    v = r2
+    return v
+L3:
+    goto L1
+L4:
+    r3 = no_err_occurred
+L5:
+    r4 = 0
+    return r4
