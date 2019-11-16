@@ -281,6 +281,7 @@ class Options:
             if hasattr(self, k) and k != "new_semantic_analyzer":
                 d[k] = getattr(self, k)
         del d['per_module_cache']
+        del d['glob_options']
         return d
 
     def __repr__(self) -> str:
