@@ -31,8 +31,8 @@ jobs:
     python: 3.6    # 3.6.3  pip  9.0.1
   - name: "run test suite with python 3.7"
     python: 3.7    # 3.7.0  pip 10.0.1
-  - name: "run test suite with python 3.8-dev"
-    python: 3.8-dev
+  - name: "run test suite with python 3.8"
+    python: 3.8
   - name: "run mypyc runtime tests with python 3.6 debug build"
     language: generic
     env:
