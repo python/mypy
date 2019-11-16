@@ -1915,12 +1915,13 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
 
 
 @overload
-def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...  # type: ignore[misc]
 @overload
-def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
 
 
-def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
+def get_proper_types(it: Iterable[Optional[Type]]
+                     ) -> Union[List[ProperType], List[Optional[ProperType]]]:
     return [get_proper_type(t) for t in it]
 
 
