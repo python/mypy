@@ -48,7 +48,7 @@ bar.py:8: (**typing.Dict[str, str])
 # suggest: foo.foo
 # suggest: --max-guesses=2 foo.foo
 [file foo.py]
-# This idea here is that we can only find the union type with more guesses.
+# The idea here is that we can only find the union type with more guesses.
 def foo(x, y):
     if not isinstance(x, int):
         x+'1'
