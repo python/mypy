@@ -73,8 +73,8 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def has_future_annotations(self) -> bool:
-        """Is __future__.annotations imported"""
+    def is_future_flag_set(self, flag: str) -> bool:
+        """Is the specific __future__ feature imported"""
         raise NotImplementedError
 
 

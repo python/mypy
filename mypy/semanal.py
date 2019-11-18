@@ -4823,8 +4823,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         if module_name in FUTURE_IMPORTS:
             self.future_import_flags.add(FUTURE_IMPORTS[module_name])
 
-    def has_future_annotations(self) -> bool:
-        return "annotations" in self.future_import_flags
+    def is_future_flag_set(self, flag: str) -> bool:
+        return flag in self.future_import_flags
 
 
 class HasPlaceholders(TypeQuery[bool]):
