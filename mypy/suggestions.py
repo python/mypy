@@ -213,7 +213,9 @@ class SuggestionEngine:
                  no_any: bool = False,
                  try_text: bool = False,
                  flex_any: Optional[float] = None,
-                 use_fixme: Optional[str] = None) -> None:
+                 use_fixme: Optional[str] = None,
+                 max_guesses: Optional[int] = None
+                 ) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
@@ -227,7 +229,7 @@ class SuggestionEngine:
         if no_any:
             self.flex_any = 1.0
 
-        self.max_guesses = 64
+        self.max_guesses = max_guesses or 64
         self.use_fixme = use_fixme
 
     def suggest(self, function: str) -> str:
@@ -362,8 +364,10 @@ class SuggestionEngine:
         """
         options = self.get_args(is_method, base, defaults, callsites, uses)
         options = [self.add_adjustments(tps) for tps in options]
-        return [refine_callable(base, base.copy_modified(arg_types=list(x)))
-                for x in itertools.product(*options)]
+
+        # Take the first `max_guesses` guesses.
+        product = itertools.islice(itertools.product(*options), 0, self.max_guesses)
+        return [refine_callable(base, base.copy_modified(arg_types=list(x))) for x in product]
 
     def get_callsites(self, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
         """Find all call sites of a function."""
@@ -414,9 +418,6 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        if len(node.arg_names) >= 10:
-            raise SuggestionFailure("Too many arguments")
-
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
@@ -426,8 +427,6 @@ class SuggestionEngine:
                 uses,
             )
         guesses = self.filter_options(guesses, is_method)
-        if len(guesses) > self.max_guesses:
-            raise SuggestionFailure("Too many possibilities!")
         best, _ = self.find_best(node, guesses)
 
         # Now try to find the return type!

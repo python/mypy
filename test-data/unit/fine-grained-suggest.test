@@ -44,6 +44,23 @@ bar.py:4: (arg=str)
 bar.py:6: (*typing.List[str])
 bar.py:8: (**typing.Dict[str, str])
 
+[case testMaxGuesses]
+# suggest: foo.foo
+# suggest: --max-guesses=2 foo.foo
+[file foo.py]
+# The idea here is that we can only find the union type with more guesses.
+def foo(x, y):
+    if not isinstance(x, int):
+        x+'1'
+
+foo(1, 2)
+foo('3', '4')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[int, str], object) -> None
+(object, object) -> None
+==
+
 [case testSuggestInferFunc1]
 # flags: --strict-optional
 # suggest: foo.foo
