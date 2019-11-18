@@ -418,9 +418,6 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        if len(node.arg_names) >= 10:
-            raise SuggestionFailure("Too many arguments")
-
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
