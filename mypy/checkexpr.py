@@ -1902,10 +1902,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # This is a reference to a non-module attribute.
             original_type = self.accept(e.expr)
+            base = e.expr
+            module_members = None
+
+            if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
+                module_members = [key for key in base.node.names.keys() if not base.node.names.get(key).module_hidden]
+
             member_type = analyze_member_access(
                 e.name, original_type, e, is_lvalue, False, False,
                 self.msg, original_type=original_type, chk=self.chk,
-                in_literal_context=self.is_literal_context())
+                in_literal_context=self.is_literal_context(), module_members=module_members)
             return member_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,

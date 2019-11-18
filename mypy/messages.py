@@ -175,7 +175,12 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
 
-    def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
+    def has_no_attr(self,
+                    original_type: Type,
+                    typ: Type,
+                    member: str,
+                    context: Context,
+                    module_members: Optional[List[str]] = None) -> Type:
         """Report a missing or non-accessible member.
 
         original_type is the top-level type on which the error occurred.
@@ -244,6 +249,15 @@ class MessageBuilder:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
+
+                    if module_members is not None:
+                        alternatives |= set(module_members)
+
+                    # in some situations, the member is in the alternatives set
+                    # but since we're in this function, we shouldn't suggest it
+                    if member in alternatives:
+                        alternatives.remove(member)
+
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == '__aiter__' and matches == ['__iter__']:

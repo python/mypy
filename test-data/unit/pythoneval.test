@@ -926,8 +926,8 @@ collections.Deque()
 typing.deque()
 
 [out]
-_testDequeWrongCase.py:4: error: Module has no attribute "Deque"
-_testDequeWrongCase.py:5: error: Module has no attribute "deque"
+_testDequeWrongCase.py:4: error: Module has no attribute "Deque"; maybe "deque"?
+_testDequeWrongCase.py:5: error: Module has no attribute "deque"; maybe "Deque"?
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
