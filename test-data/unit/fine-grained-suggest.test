@@ -684,10 +684,11 @@ No guesses that match criteria!
 () -> None
 ==
 
-[case testSuggestInferClassMethod]
+[case testSuggestClassMethod]
 # flags: --strict-optional
 # suggest: foo.F.bar
 # suggest: foo.F.baz
+# suggest: foo.F.eggs
 [file foo.py]
 class F:
     @classmethod
@@ -697,6 +698,15 @@ class F:
     @staticmethod
     def baz(x, y):
         return x
+
+    @classmethod
+    def spam(cls):
+        # type: () -> None
+        cls.eggs(4)
+
+    @classmethod
+    def eggs(cls, x):
+        pass
 
 [file bar.py]
 from foo import F
@@ -709,6 +719,7 @@ def bar(iany) -> None:
 [out]
 (int, int) -> int
 (str, int) -> str
+(int) -> None
 ==
 
 [case testSuggestColonBasic]
