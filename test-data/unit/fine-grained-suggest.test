@@ -908,6 +908,41 @@ z = foo(f(), g())
 (foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
 ==
 
+[case testSuggestDict]
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+# suggest: foo.spam
+[file foo.py]
+from typing import List, Any
+
+def foo():
+    return {'x': 5}
+
+def bar():
+    return {}
+
+def baz() -> List[Any]:
+    return [{'x': 5}]
+
+def quux() -> List[Any]:
+    return [1]
+
+def spam(x):
+    pass
+
+spam({'x': 5})
+
+[builtins fixtures/dict.pyi]
+[out]
+() -> typing.Dict[str, int]
+() -> typing.Dict[Any, Any]
+() -> foo:List[typing.Dict[str, int]]
+() -> foo.List[int]
+(typing.Dict[str, int]) -> None
+==
+
 [case testSuggestWithErrors]
 # suggest: foo.foo
 [file foo.py]
