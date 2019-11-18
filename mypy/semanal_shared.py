@@ -72,6 +72,11 @@ class SemanticAnalyzerCoreInterface:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
+    @abstractmethod
+    def has_future_annotations(self) -> bool:
+        """Is __future__.annotations imported"""
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):

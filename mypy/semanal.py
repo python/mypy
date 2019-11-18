@@ -150,6 +150,18 @@ TYPES_FOR_UNIMPORTED_HINTS = {
     'typing.cast',
 }  # type: Final
 
+FUTURE_IMPORTS = {
+    '__future__.nested_scopes': 'nested_scopes',
+    '__future__.generators': 'generators',
+    '__future__.division': 'division',
+    '__future__.absolute_import': 'absolute_import',
+    '__future__.with_statement': 'with_statement',
+    '__future__.print_function': 'print_function',
+    '__future__.unicode_literals': 'unicode_literals',
+    '__future__.barry_as_FLUFL': 'barry_as_FLUFL',
+    '__future__.generator_stop': 'generator_stop',
+    '__future__.annotations': 'annotations',
+}  # type: Final
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
@@ -227,6 +239,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
     statement = None  # type: Optional[Statement]  # Statement/definition being analyzed
+    future_import_flags = None  # type: Set[str]
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
@@ -280,6 +293,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Trace line numbers for every file where deferral happened during analysis of
         # current SCC or top-level function.
         self.deferral_debug_context = []  # type: List[Tuple[str, int]]
+
+        self.future_import_flags = set()  # type: Set[str]
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -1719,6 +1734,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         module = self.modules.get(module_id)
         for id, as_id in imp.names:
             fullname = module_id + '.' + id
+            self.set_future_import_flags(fullname)
             if module is None:
                 node = None
             elif module_id == self.cur_mod_id and fullname in self.modules:
@@ -1881,6 +1897,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # namespace is incomplete.
                 self.mark_incomplete('*', i)
             for name, node in m.names.items():
+                fullname = i_id + '.' + name
+                self.set_future_import_flags(fullname)
                 if node is None:
                     continue
                 # if '__all__' exists, all nodes not included have had module_public set to
@@ -4800,6 +4818,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             if expr.fullname == 'builtins.False':
                 return False
         return None
+
+    def set_future_import_flags(self, module_name: str) -> None:
+        if module_name in FUTURE_IMPORTS:
+            self.future_import_flags.add(FUTURE_IMPORTS[module_name])
+
+    def has_future_annotations(self) -> bool:
+        return "annotations" in self.future_import_flags
 
 
 class HasPlaceholders(TypeQuery[bool]):

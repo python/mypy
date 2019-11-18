@@ -195,7 +195,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins
                     and t.args and
-                    not self.allow_unnormalized):
+                    not self.allow_unnormalized and not self.api.has_future_annotations()):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
             tvar_def = self.tvar_scope.get_binding(sym)
