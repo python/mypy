@@ -102,16 +102,18 @@ def plugin(version): return Dummy
 [case testDaemonRunRestartGlobs]
 -- Ensure dmypy is not restarted if the configuration doesn't change and it contains globs
 -- Note: Backslash path separator in output is replaced with forward slash so the same test succeeds on Windows as well
-$ dmypy run -- foo --follow-imports=error --python-version=3.6 | {python} -c 'import sys; sys.stdout.write(sys.stdin.read().replace("\\", "/"))'
+$ dmypy run -- foo --follow-imports=error --python-version=3.6
 Daemon started
 foo/lol.py:1: error: Name 'fail' is not defined
 Found 1 error in 1 file (checked 3 source files)
-$ dmypy run -- foo --follow-imports=error --python-version=3.6 | {python} -c 'import sys; sys.stdout.write(sys.stdin.read().replace("\\", "/"))'
+== Return code: 1
+$ dmypy run -- foo --follow-imports=error --python-version=3.6
 foo/lol.py:1: error: Name 'fail' is not defined
 Found 1 error in 1 file (checked 3 source files)
+== Return code: 1
 $ {python} -c "print('[mypy]')" >mypy.ini
 $ {python} -c "print('ignore_errors=True')" >>mypy.ini
-$ dmypy run -- foo --follow-imports=error --python-version=3.6 | {python} -c 'import sys; sys.stdout.write(sys.stdin.read().replace("\\", "/"))'
+$ dmypy run -- foo --follow-imports=error --python-version=3.6
 Restarting: configuration changed
 Daemon stopped
 Daemon started
