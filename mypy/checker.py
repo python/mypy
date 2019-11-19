@@ -4027,7 +4027,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-
+        if self.check_tuple_assignment(subtype, supertype, context, msg,
+                                       subtype_label, supertype_label, code=code):
+            return False
         if self.should_suppress_optional_error([subtype]):
             return False
         extra_info = []  # type: List[str]
@@ -4377,6 +4379,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yes_map, no_map = conditional_type_map(expr, vartype, type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
+
+    def check_tuple_assignment(self,
+                               subtype: ProperType,
+                               supertype: ProperType,
+                               context: Context,
+                               msg: str = message_registry.INCOMPATIBLE_TYPES,
+                               subtype_label: Optional[str] = None,
+                               supertype_label: Optional[str] = None,
+                               code: Optional[ErrorCode] = None) -> bool:
+        if (isinstance(subtype, TupleType)
+            and isinstance(supertype, Instance)
+                and supertype.type.fullname == 'builtins.tuple'):
+            # TODO:
+            self.fail("error message", context, code=code)
+            return True
+        return False
 
 
 def conditional_type_map(expr: Expression,
