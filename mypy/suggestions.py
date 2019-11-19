@@ -489,7 +489,7 @@ class SuggestionEngine:
         else:
             target = split_target(self.fgmanager.graph, key)
             if not target:
-                raise SuggestionFailure("Cannot find module for %s" % (key,))
+                raise SuggestionFailure("Cannot find module type information for %s" % (key,))
             modname, tail = target
             node = self.find_node_by_module_and_name(modname, tail)
 
