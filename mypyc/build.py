@@ -507,7 +507,7 @@ def mypycify(
     if compiler.compiler_type == 'unix':
         cflags += [
             '-O{}'.format(opt_level), '-Werror', '-Wno-unused-function', '-Wno-unused-label',
-            '-Wno-unreachable-code', '-Wno-unused-variable', '-Wno-trigraphs',
+            '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
         if 'gcc' in compiler.compiler[0]:

@@ -23,6 +23,7 @@ from mypyc import genops
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
+from mypyc.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
@@ -412,18 +413,6 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     if fn.name != TOP_LEVEL_NAME:
         emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
             '{};'.format(wrapper_function_header(fn, emitter.names)))
-
-
-def encode_as_c_string(s: str) -> Tuple[str, int]:
-    """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
-    return encode_bytes_as_c_string(s.encode('utf-8'))
-
-
-def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
-    """Produce a single-escaped, quoted C string and its size from a bytes"""
-    # This is a kind of abusive way to do this...
-    escaped = repr(b)[2:-1].replace('"', '\\"')
-    return '"{}"'.format(escaped), len(b)
 
 
 def pointerize(decl: str, name: str) -> str:
