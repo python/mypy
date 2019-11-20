@@ -1,0 +1,8 @@
+-- Test cases for __future__ imports
+
+[case testImportFutureAnnotations]
+# flags: --python-version 3.7
+from __future__ import annotations
+from collections import defaultdict
+
+squares: defaultdict[tuple, int] = defaultdict(lambda: 999999)

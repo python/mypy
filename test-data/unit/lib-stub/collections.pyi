@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Union, Optional
+from typing import Any, Iterable, Union, Optional, TypeVar, Dict, Generic
 
 def namedtuple(
     typename: str,
@@ -9,3 +9,9 @@ def namedtuple(
     module: Optional[str] = ...,
     defaults: Optional[Iterable[Any]] = ...
 ) -> Any: ...
+
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
+
+class defaultdict(Dict[_KT, _VT], Generic[_KT, _VT]):
+    pass

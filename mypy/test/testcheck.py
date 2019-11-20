@@ -65,6 +65,7 @@ typecheck_files = [
     'check-selftype.test',
     'check-python2.test',
     'check-columns.test',
+    'check-future.test',
     'check-functions.test',
     'check-tuples.test',
     'check-expressions.test',
