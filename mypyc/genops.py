@@ -1373,7 +1373,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for non-extension classes.
         """
         ir = self.mapper.type_to_ir[cdef.info]
-        bases = []
         for cls in cdef.info.mro[1:]:
             if cls.fullname == 'builtins.object':
                 continue
@@ -1383,8 +1382,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 if base_ir.children is not None:
                     base_ir.children.append(ir)
 
-            base = self.load_global_str(cls.name, cdef.line)
-            bases.append(base)
+        bases = [self.load_global(expr) for expr in cdef.base_type_exprs]
         return self.primitive_op(new_tuple_op, bases, cdef.line)
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
