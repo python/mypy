@@ -30,6 +30,41 @@ except TypeError:
 else:
     assert False
 
+[case testMultiModuleFastpaths]
+[file other_main.py]
+
+[file other_main.py.2]
+from other_b import A, func
+
+class B(A):
+    pass
+
+def test() -> None:
+    a = A()
+    assert func() == 12
+    assert a.method() == "test"
+
+test()
+
+[file other_b.py]
+class A:
+    def method(self) -> str:
+        return "test"
+
+def func() -> int:
+    return 12
+
+# Remove all the methods and functions from globals to ensure that
+# they get called via the fastpaths even when doing incremental
+# compilation.
+setattr(A, 'method', None)
+setattr(A, '__init__', None)
+globals()['func'] = None
+globals()['A'] = None
+
+[file driver.py]
+import other_main
+
 [case testMultiModuleSameNames]
 # Use same names in both modules
 import other

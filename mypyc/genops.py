@@ -162,9 +162,11 @@ def load_type_map(mapper: 'Mapper',
                   deser_ctx: DeserMaps) -> None:
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
-        for node in module.defs:
-            if isinstance(node, ClassDef):
-                mapper.type_to_ir[node.info] = deser_ctx.classes[node.fullname]
+        for name, node in module.names.items():
+            if isinstance(node.node, TypeInfo):
+                ir = deser_ctx.classes[node.node.fullname]
+                mapper.type_to_ir[node.node] = ir
+                mapper.func_to_decl[node.node] = ir.ctor
 
     for module in modules:
         for func in get_module_func_defs(module):
@@ -457,8 +459,8 @@ class Mapper:
             arg_types = [object_rprimitive for arg in fdef.arguments]
             ret = object_rprimitive
 
-        args = [RuntimeArg(arg.variable.name, arg_type, arg.kind)
-                for arg, arg_type in zip(fdef.arguments, arg_types)]
+        args = [RuntimeArg(arg_name, arg_type, arg_kind)
+                for arg_name, arg_kind, arg_type in zip(fdef.arg_names, fdef.arg_kinds, arg_types)]
 
         # We force certain dunder methods to return objects to support letting them
         # return NotImplemented. It also avoids some pointless boxing and unboxing,
