@@ -408,6 +408,23 @@ class SuggestionEngine:
                    key=lambda s: (count_errors(errors[s]), self.score_callable(s)))
         return best, count_errors(errors[best])
 
+    def get_guesses_from_parent(self, node: FuncDef) -> List[CallableType]:
+        """Try to get a guess of a method type from a parent class."""
+        if not node.info:
+            return []
+
+        for parent in node.info.mro[1:]:
+            pnode = parent.names.get(node.name)
+            if pnode and isinstance(pnode.node, (FuncDef, Decorator)):
+                typ = get_proper_type(pnode.node.type)
+                # FIXME: Doesn't work right with generic tyeps
+                if isinstance(typ, CallableType) and len(typ.arg_types) == len(node.arguments):
+                    # Return the first thing we find, since it probably doesn't make sense
+                    # to grab things further up in the chain if an earlier parent has it.
+                    return [typ]
+
+        return []
+
     def get_suggestion(self, mod: str, node: FuncDef) -> PyAnnotateSignature:
         """Compute a suggestion for a function.
 
@@ -430,6 +447,7 @@ class SuggestionEngine:
                 callsites,
                 uses,
             )
+        guesses += self.get_guesses_from_parent(node)
         guesses = self.filter_options(guesses, is_method, ignore_return=True)
         best, _ = self.find_best(node, guesses)
 
