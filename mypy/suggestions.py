@@ -23,14 +23,14 @@ Other things:
 """
 
 from typing import (
-    List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator,
+    List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator, cast,
 )
 from typing_extensions import TypedDict
 
 from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
-    TypeVarType, FunctionLike,
+    TypeVarType, FunctionLike, UninhabitedType,
     TypeStrVisitor, TypeTranslator,
     is_optional, remove_optional, ProperType, get_proper_type,
     TypedDictType, TypeAliasType
@@ -282,17 +282,19 @@ class SuggestionEngine:
 
     def get_trivial_type(self, fdef: FuncDef) -> CallableType:
         """Generate a trivial callable type from a func def, with all Anys"""
+        # The Anys are marked as being from the suggestion engine
+        # since they need some special treatment (specifically,
+        # constraint generation ignores them.)
         return CallableType(
-            [AnyType(TypeOfAny.unannotated) for a in fdef.arg_kinds],
+            [AnyType(TypeOfAny.suggestion_engine) for a in fdef.arg_kinds],
             fdef.arg_kinds,
             fdef.arg_names,
-            # We call this a special form so that has_any_type doesn't consider it to be a real any
-            AnyType(TypeOfAny.special_form),
+            AnyType(TypeOfAny.suggestion_engine),
             self.builtin_type('builtins.function'))
 
     def get_starting_type(self, fdef: FuncDef) -> CallableType:
         if isinstance(fdef.type, CallableType):
-            return fdef.type
+            return make_suggestion_anys(fdef.type)
         else:
             return self.get_trivial_type(fdef)
 
@@ -304,9 +306,8 @@ class SuggestionEngine:
         types = []  # type: List[List[Type]]
         for i in range(len(base.arg_kinds)):
             # Make self args Any but this will get overriden somewhere in the checker
-            # We call this a special form so that has_any_type doesn't consider it to be a real any
             if i == 0 and is_method:
-                types.append([AnyType(TypeOfAny.special_form)])
+                types.append([AnyType(TypeOfAny.suggestion_engine)])
                 continue
 
             all_arg_types = []
@@ -383,13 +384,16 @@ class SuggestionEngine:
 
         return collector_plugin.mystery_hits, errors
 
-    def filter_options(self, guesses: List[CallableType], is_method: bool) -> List[CallableType]:
+    def filter_options(
+        self, guesses: List[CallableType], is_method: bool, ignore_return: bool
+    ) -> List[CallableType]:
         """Apply any configured filters to the possible guesses.
 
         Currently the only option is filtering based on Any prevalance."""
         return [
             t for t in guesses
-            if self.flex_any is None or any_score_callable(t, is_method) >= self.flex_any
+            if self.flex_any is None
+            or any_score_callable(t, is_method, ignore_return) >= self.flex_any
         ]
 
     def find_best(self, func: FuncDef, guesses: List[CallableType]) -> Tuple[CallableType, int]:
@@ -426,7 +430,7 @@ class SuggestionEngine:
                 callsites,
                 uses,
             )
-        guesses = self.filter_options(guesses, is_method)
+        guesses = self.filter_options(guesses, is_method, ignore_return=True)
         best, _ = self.find_best(node, guesses)
 
         # Now try to find the return type!
@@ -439,7 +443,7 @@ class SuggestionEngine:
                 ret_types = [NoneType()]
 
         guesses = [best.copy_modified(ret_type=refine_type(best.ret_type, t)) for t in ret_types]
-        guesses = self.filter_options(guesses, is_method)
+        guesses = self.filter_options(guesses, is_method, ignore_return=False)
         best, errors = self.find_best(node, guesses)
 
         if self.no_errors and errors:
@@ -710,7 +714,7 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
     Higher is better, 1.0 is max
     """
     t = get_proper_type(ut)
-    if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.special_form:
+    if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.suggestion_engine:
         return 0
     if isinstance(t, NoneType) and arg_pos:
         return 0.5
@@ -727,14 +731,14 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
     return 1.0
 
 
-def any_score_callable(t: CallableType, is_method: bool) -> float:
+def any_score_callable(t: CallableType, is_method: bool, ignore_return: bool) -> float:
     # Ignore the first argument of methods
     scores = [any_score_type(x, arg_pos=True) for x in t.arg_types[int(is_method):]]
     # Return type counts twice (since it spreads type information), unless it is
     # None in which case it does not count at all. (Though it *does* still count
     # if there are no arguments.)
     if not isinstance(get_proper_type(t.ret_type), NoneType) or not scores:
-        ret = any_score_type(t.ret_type, arg_pos=False)
+        ret = 1.0 if ignore_return else any_score_type(t.ret_type, arg_pos=False)
         scores += [ret, ret]
 
     return sum(scores) / len(scores)
@@ -796,6 +800,9 @@ class TypeFormatter(TypeStrVisitor):
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
 
+    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
+        return "Any"
+
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         return t.fallback.accept(self)
 
@@ -835,6 +842,26 @@ class StrToText(TypeTranslator):
             return self.text_type
         else:
             return super().visit_instance(t)
+
+
+TType = TypeVar('TType', bound=Type)
+
+
+def make_suggestion_anys(t: TType) -> TType:
+    """Make all anys in the type as coming from the suggestion engine.
+
+    This keeps those Anys from influencing constraint generation,
+    which allows us to do better when refining types.
+    """
+    return cast(TType, t.accept(MakeSuggestionAny()))
+
+
+class MakeSuggestionAny(TypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        return t.copy_modified(type_of_any=TypeOfAny.suggestion_engine)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:

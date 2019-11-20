@@ -103,6 +103,10 @@ class TypeOfAny:
     from_another_any = 7  # type: Final
     # Does this Any come from an implementation limitation/bug?
     implementation_artifact = 8  # type: Final
+    # Does this Any come from use in the suggestion engine?  This is
+    # used to ignore Anys inserted by the suggestion engine when
+    # generating constraints.
+    suggestion_engine = 9  # type: Final
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':

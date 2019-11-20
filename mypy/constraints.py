@@ -108,6 +108,13 @@ def _infer_constraints(template: Type, actual: Type,
     template = get_proper_type(template)
     actual = get_proper_type(actual)
 
+    # Ignore Any types from the type suggestion engine to avoid them
+    # causing us to infer Any in situations where a better job could
+    # be done otherwise. (This can produce false positives but that
+    # doesn't really matter because it is all heuristic anyway.)
+    if isinstance(actual, AnyType) and actual.type_of_any == TypeOfAny.suggestion_engine:
+        return []
+
     # If the template is simply a type variable, emit a Constraint directly.
     # We need to handle this case before handling Unions for two reasons:
     #  1. "T <: Union[U1, U2]" is not equivalent to "T <: U1 or T <: U2",
