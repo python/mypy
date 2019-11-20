@@ -416,11 +416,12 @@ class SuggestionEngine:
         for parent in node.info.mro[1:]:
             pnode = parent.names.get(node.name)
             if pnode and isinstance(pnode.node, (FuncDef, Decorator)):
-                typ = pnode.node.type
+                typ = get_proper_type(pnode.node.type)
+                # FIXME: Doesn't work right with generic tyeps
                 if isinstance(typ, CallableType) and len(typ.arg_types) == len(node.arguments):
                     # Return the first thing we find, since it probably doesn't make sense
                     # to grab things further up in the chain if an earlier parent has it.
-                    return [pnode.node.type]
+                    return [typ]
 
         return []
 
