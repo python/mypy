@@ -148,6 +148,10 @@ class Concrete2:
 class Trait2(Concrete2):
     pass
 
+@decorator
+class NonExt(Concrete1):  # E: Non-extension classes may not inherit from extension classes
+    pass
+
 class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent list  # E: Non-trait MRO must be linear
     pass
 
