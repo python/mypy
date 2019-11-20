@@ -63,3 +63,39 @@ reveal_type(x)  # N: Revealed type is 'Any'
 [case testAnnotatedNoImport]
 x: Annotated[int, ...]  # E: Name 'Annotated' is not defined
 reveal_type(x)  # N: Revealed type is 'Any'
+
+[case testAnnotatedDifferentName]
+from typing_extensions import Annotated as An
+x: An[int, ...]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+[case testAnnotatedAliasSimple]
+from typing import Tuple
+from typing_extensions import Annotated
+Alias = Annotated[Tuple[int, ...], ...]
+x: Alias
+reveal_type(x)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+[case testAnnotatedAliasTypeVar]
+from typing import TypeVar
+from typing_extensions import Annotated
+T = TypeVar('T')
+Alias = Annotated[T, ...]
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+[case testAnnotatedAliasGenericTuple]
+from typing import TypeVar, Tuple
+from typing_extensions import Annotated
+T = TypeVar('T')
+Alias = Annotated[Tuple[T, T], ...]
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+
+[case testAnnotatedAliasGenericUnion]
+from typing import TypeVar, Union
+from typing_extensions import Annotated
+T = TypeVar('T')
+Alias = Annotated[Union[T, str], ...]
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
