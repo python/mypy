@@ -64,6 +64,18 @@ reveal_type(x)  # N: Revealed type is 'Any'
 x: Annotated[int, ...]  # E: Name 'Annotated' is not defined
 reveal_type(x)  # N: Revealed type is 'Any'
 
+[case testAnnotatedDifferentName]
+from typing_extensions import Annotated as An
+x: An[int, ...]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+
+[case testAnnotatedAliasSimple]
+from typing import Tuple
+from typing_extensions import Annotated
+Alias = Annotated[Tuple[int, ...], ...]
+x: Alias
+reveal_type(x)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
 [case testAnnotatedAliasTypeVar]
 from typing import TypeVar
 from typing_extensions import Annotated
