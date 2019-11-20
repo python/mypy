@@ -790,6 +790,42 @@ def baz():
 () -> str
 ==
 
+[case testSuggestParent]
+# suggest: foo.B.foo
+# suggest: foo.B.bar
+# suggest: foo.C.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+def deco(f: F) -> F: ...
+
+class A:
+    def foo(self, x: int) -> float:
+        return 0.0
+
+    @deco
+    def bar(self, x: int) -> float:
+        return 0.0
+
+
+class B(A):
+    def foo(self, x):
+        return 0.0
+
+    @deco
+    def bar(self, x):
+        return 0.0
+
+class C(B):
+    def foo(self, x):
+        return 0.0
+
+[out]
+(int) -> float
+(int) -> float
+(int) -> float
+==
+
 [case testSuggestColonBadLocation]
 # suggest: tmp/foo.py:7:8:9
 [file foo.py]
