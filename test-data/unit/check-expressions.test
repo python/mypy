@@ -343,6 +343,15 @@ b = bool()
 reveal_type(s and b or b)  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
+[case testRestrictedBoolAndOrWithGenerics]
+from typing import List
+
+def f(a: List[str], b: bool) -> bool:
+    x = a and b
+    y: bool
+    return reveal_type(x or y)  # N: Revealed type is 'builtins.bool'
+[builtins fixtures/list.pyi]
+
 [case testNonBooleanOr]
 c, d, b = None, None, None # type: (C, D, bool)
 if int():

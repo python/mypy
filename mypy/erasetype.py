@@ -142,10 +142,13 @@ class LastKnownValueEraser(TypeTranslator):
     def visit_instance(self, t: Instance) -> Type:
         if not t.last_known_value and not t.args:
             return t
-        return t.copy_modified(
+        new_t = t.copy_modified(
             args=[a.accept(self) for a in t.args],
             last_known_value=None,
         )
+        new_t.can_be_true = t.can_be_true
+        new_t.can_be_false = t.can_be_false
+        return new_t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type aliases can't contain literal values, because they are
