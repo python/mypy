@@ -4027,7 +4027,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-        if self.check_tuple_assignment(subtype, supertype, context, msg,
+        if self.check_long_tuple_assignment(subtype, supertype, context, msg,
                                        subtype_label, supertype_label, code=code):
             return False
         if self.should_suppress_optional_error([subtype]):
@@ -4388,32 +4388,49 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                subtype_label: Optional[str] = None,
                                supertype_label: Optional[str] = None,
                                code: Optional[ErrorCode] = None) -> bool:
+
+        def format_error_msg(msg: str, lhs_types: List[Type], rhs_types: List[Type]) -> str:
+            error_msg = ""
+            error_cnt = 0
+            for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
+                if not is_subtype(lhs_t, rhs_t):
+                    if error_cnt < 3:
+                        error_msg += 'expression Tuple item {} has type "{}"; "{}" expected; '\
+                            .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t))
+                    error_cnt += 1
+            error_msg += 'Total {} items are incompatible; {} items are omitted'.format(
+                        str(error_cnt), str(max(0, error_cnt - 3)))
+            return msg + ' (' + error_msg + ')'
+
+        def format_long_tuple_type(typ: TupleType) -> str:
+            item_cnt = len(typ.items)
+            if item_cnt > 10:
+                return 'Tuple[{}, {}, ... <{} more items>]'\
+                        .format(format_type_bare(typ.items[0]),
+                            format_type_bare(typ.items[1]), str(item_cnt - 2))
+            else:
+                return format_type_bare(typ)
+
         if isinstance(subtype, TupleType):
-            if isinstance(supertype, Instance) and supertype.type.fullname == 'builtins.tuple' and subtype:
+            if (len(subtype.items) > 10 and
+                isinstance(supertype, Instance) and
+                    supertype.type.fullname == 'builtins.tuple'):
                 lhs_type = supertype.args[0]
-                error_msg = ""
-                error_cnt = 0
-                for i, t in enumerate(subtype.items):
-                    if not is_subtype(t, lhs_type):
-                        if error_cnt < 3: 
-                            error_msg += 'Tuple item {} has type "{}"; "{}" expected; '.format(
-                                                    str(i), format_type_bare(t), format_type_bare(lhs_type))
-                        error_cnt += 1
-                error_msg += 'Total {} items are incompatible; {} items are omitted'.format(str(error_cnt), str(max(0, error_cnt - 3)))
-                self.fail(msg + ' (' + error_msg + ')', context, code=code)
+                lhs_types = [lhs_type] * len(subtype.items)
+                error_msg = format_error_msg(msg, lhs_types, subtype.items)
+                self.fail(error_msg, context, code=code)
                 return True
-            elif isinstance(supertype, TupleType):
-                lhs_types = supertype.items
-                rhs_types = subtype.items
-                error_msg = ""
-                error_cnt = 0
-                for i, l_t, r_t in enumerate(zip(lhs_types, rhs_types)):
-                    if not is_subtype(l_t, r_t):
-                        if error_cnt < 3:
-                            error_msg += 'Tuple item {} has type "{}"; "{}" expected; '.format(
-                                                    str(i), format_type_bare(t), format_type_bare(lhs_type))
-                        error_cnt += 1
-                self.fail("error message", context, code=code)
+            elif (isinstance(supertype, TupleType) and
+                    (len(subtype.items) > 10 or len(supertype.items) > 10)):
+                if len(subtype.items) != len(supertype.items):
+                    if supertype_label is not None and subtype_label is not None:
+                        error_msg = "{} ({} {}, {} {})".format(msg, subtype_label,
+                                        format_long_tuple_type(subtype), supertype_label,
+                                        format_long_tuple_type(supertype))
+                        self.fail(error_msg, context, code=code)
+                        return True
+                error_msg = format_error_msg(msg, supertype.items, subtype.items)
+                self.fail(error_msg, context, code=code)
                 return True
         return False
 
