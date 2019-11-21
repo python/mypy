@@ -1349,7 +1349,7 @@ Z = TypeVar('Z')
 class OO: pass
 a = None # type: A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]
 
-f(a) # E: Argument 1 to "f" has incompatible type "A[...]"; expected "OO"
+f(a) # E: Argument 1 to "f" has incompatible type "A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]"; expected "OO"
 
 def f(a: OO) -> None:
     pass
@@ -2337,4 +2337,3 @@ class Test():
     reveal_type(MakeTwoAppliedSubAbstract()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
     reveal_type(MakeTwoGenericSubAbstract[str]()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.str*]'
     reveal_type(MakeTwoGenericSubAbstract[str]()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
-
