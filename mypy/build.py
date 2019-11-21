@@ -50,7 +50,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, ChainedPlugin, plugin_types, ReportConfigContext
+from mypy.plugin import Plugin, ChainedPlugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
@@ -423,7 +423,7 @@ def load_plugins_from_config(
             plugin_error(
                 'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
                     plugin_type, plugin_path))
-        if not issubclass(plugin_type, plugin_types):
+        if not issubclass(plugin_type, Plugin):
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))

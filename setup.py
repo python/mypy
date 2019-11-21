@@ -91,9 +91,6 @@ if USE_MYPYC:
         'sitepkgs.py',
         os.path.join('dmypy', '__main__.py'),
 
-        # Needs to be interpreted to provide a hook to interpreted plugins
-        'interpreted_plugin.py',
-
         # Uses __getattr__/__setattr__
         'split_namespace.py',
 
