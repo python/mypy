@@ -4380,7 +4380,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
 
-    def check_tuple_assignment(self,
+    def check_long_tuple_assignment(self,
                                subtype: ProperType,
                                supertype: ProperType,
                                context: Context,
@@ -4388,12 +4388,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                subtype_label: Optional[str] = None,
                                supertype_label: Optional[str] = None,
                                code: Optional[ErrorCode] = None) -> bool:
-        if (isinstance(subtype, TupleType)
-            and isinstance(supertype, Instance)
-                and supertype.type.fullname == 'builtins.tuple'):
-            # TODO:
-            self.fail("error message", context, code=code)
-            return True
+        if isinstance(subtype, TupleType):
+            if isinstance(supertype, Instance) and supertype.type.fullname == 'builtins.tuple' and subtype:
+                lhs_type = supertype.args[0]
+                error_msg = ""
+                error_cnt = 0
+                for i, t in enumerate(subtype.items):
+                    if not is_subtype(t, lhs_type):
+                        if error_cnt < 3: 
+                            error_msg += 'Tuple item {} has type "{}"; "{}" expected; '.format(
+                                                    str(i), format_type_bare(t), format_type_bare(lhs_type))
+                        error_cnt += 1
+                error_msg += 'Total {} items are incompatible; {} items are omitted'.format(str(error_cnt), str(max(0, error_cnt - 3)))
+                self.fail(msg + ' (' + error_msg + ')', context, code=code)
+                return True
+            elif isinstance(supertype, TupleType):
+                lhs_types = supertype.items
+                rhs_types = subtype.items
+                error_msg = ""
+                error_cnt = 0
+                for i, l_t, r_t in enumerate(zip(lhs_types, rhs_types)):
+                    if not is_subtype(l_t, r_t):
+                        if error_cnt < 3:
+                            error_msg += 'Tuple item {} has type "{}"; "{}" expected; '.format(
+                                                    str(i), format_type_bare(t), format_type_bare(lhs_type))
+                        error_cnt += 1
+                self.fail("error message", context, code=code)
+                return True
         return False
 
 
