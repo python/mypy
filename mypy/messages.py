@@ -1438,15 +1438,11 @@ def format_type_inner(typ: Type,
             return '{}[{}]'.format(alias, ', '.join(items))
         else:
             # There are type arguments. Convert the arguments to strings.
-            # If the result is too long, replace arguments with [...].
             a = []  # type: List[str]
             for arg in itype.args:
                 a.append(format(arg))
             s = ', '.join(a)
-            if len((base_str + s)) < 150:
-                return '{}[{}]'.format(base_str, s)
-            else:
-                return '{}[...]'.format(base_str)
+            return '{}[{}]'.format(base_str, s)
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
