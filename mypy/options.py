@@ -62,7 +62,7 @@ class Options:
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
-        self.per_module_cache = None  # type: Optional[Dict[str, Options]]
+        self._per_module_cache = None  # type: Optional[Dict[str, Options]]
 
         # -- build options --
         self.build_type = BuildType.STANDARD
@@ -222,7 +222,7 @@ class Options:
 
         # Per-module options (raw)
         self.per_module_options = OrderedDict()  # type: OrderedDict[str, Dict[str, object]]
-        self.glob_options = []  # type: List[Tuple[str, Pattern[str]]]
+        self._glob_options = []  # type: List[Tuple[str, Pattern[str]]]
         self.unused_configs = set()  # type: Set[str]
 
         # -- development options --
@@ -280,7 +280,8 @@ class Options:
         for k in get_class_descriptors(Options):
             if hasattr(self, k) and k != "new_semantic_analyzer":
                 d[k] = getattr(self, k)
-        del d['per_module_cache']
+        # Remove private attributes from snapshot
+        d = {k: v for k, v in d.items() if not k.startswith('_')}
         return d
 
     def __repr__(self) -> str:
@@ -295,7 +296,7 @@ class Options:
         return new_options
 
     def build_per_module_cache(self) -> None:
-        self.per_module_cache = {}
+        self._per_module_cache = {}
 
         # Config precedence is as follows:
         #  1. Concrete section names: foo.bar.baz
@@ -320,7 +321,7 @@ class Options:
         concrete = [k for k in structured_keys if not k.endswith('.*')]
 
         for glob in unstructured_glob_keys:
-            self.glob_options.append((glob, self.compile_glob(glob)))
+            self._glob_options.append((glob, self.compile_glob(glob)))
 
         # We (for ease of implementation) treat unstructured glob
         # sections as used if any real modules use them or if any
@@ -333,7 +334,7 @@ class Options:
             # on inheriting from parent configs.
             options = self.clone_for_module(key)
             # And then update it with its per-module options.
-            self.per_module_cache[key] = options.apply_changes(self.per_module_options[key])
+            self._per_module_cache[key] = options.apply_changes(self.per_module_options[key])
 
         # Add the more structured sections into unused configs, since
         # they only count as used if actually used by a real module.
@@ -345,14 +346,14 @@ class Options:
         NOTE: Once this method is called all Options objects should be
         considered read-only, else the caching might be incorrect.
         """
-        if self.per_module_cache is None:
+        if self._per_module_cache is None:
             self.build_per_module_cache()
-        assert self.per_module_cache is not None
+        assert self._per_module_cache is not None
 
         # If the module just directly has a config entry, use it.
-        if module in self.per_module_cache:
+        if module in self._per_module_cache:
             self.unused_configs.discard(module)
-            return self.per_module_cache[module]
+            return self._per_module_cache[module]
 
         # If not, search for glob paths at all the parents. So if we are looking for
         # options for foo.bar.baz, we search foo.bar.baz.*, foo.bar.*, foo.*,
@@ -363,15 +364,15 @@ class Options:
         path = module.split('.')
         for i in range(len(path), 0, -1):
             key = '.'.join(path[:i] + ['*'])
-            if key in self.per_module_cache:
+            if key in self._per_module_cache:
                 self.unused_configs.discard(key)
-                options = self.per_module_cache[key]
+                options = self._per_module_cache[key]
                 break
 
         # OK and *now* we need to look for unstructured glob matches.
         # We only do this for concrete modules, not structured wildcards.
         if not module.endswith('.*'):
-            for key, pattern in self.glob_options:
+            for key, pattern in self._glob_options:
                 if pattern.match(module):
                     self.unused_configs.discard(key)
                     options = options.apply_changes(self.per_module_options[key])
