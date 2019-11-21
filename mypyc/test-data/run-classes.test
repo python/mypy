@@ -63,6 +63,7 @@ from typing import Any
 def decorator(cls) -> Any:
     return cls
 
+@decorator
 class C:
     def __init__(self) -> None:
         self.c = 3
@@ -70,6 +71,7 @@ class C:
     def get_c(self) -> int:
         return self.c
 
+@decorator
 class B(C):
     def __init__(self) -> None:
         super().__init__()

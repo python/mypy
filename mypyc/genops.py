@@ -134,13 +134,11 @@ def build_type_map(mapper: 'Mapper',
     for module, cdef in classes:
         class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
                            is_abstract=cdef.info.is_abstract)
+        class_ir.is_ext_class = is_extension_class(cdef)
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None
         mapper.type_to_ir[cdef.info] = class_ir
-
-    # Figure out which classes need to be compiled as non-extension classes.
-    mark_non_ext_classes(mapper.type_to_ir)
 
     # Populate structural information in class IR for extension classes.
     for module, cdef in classes:
@@ -248,39 +246,6 @@ def is_extension_class(cdef: ClassDef) -> bool:
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False
     return True
-
-
-def mark_non_ext_classes(class_map: Dict[TypeInfo, ClassIR]) -> None:
-    """
-    Mark which classes should be compiled as non-extension classes.
-    Classes in the chain of base classes of a non-extension class
-    will all be marked as non-extension because currently
-    non-extension classes cannot inherit from extension classes.
-    """
-    visit_first = list(class_map.keys())
-    visit_second = []  # type: List[TypeInfo]
-    # First pass to gather all non-extension classes without
-    # considering base class chains
-    for typ in visit_first:
-        ir = class_map[typ]
-        ir.is_ext_class = is_extension_class(typ.defn)
-        if not ir.is_ext_class:
-            visit_second.append(typ)
-
-    # FIXME: Just reject these?
-    # Second pass to propagate non-extension markings up the base class
-    # chains of classes marked as non-extension classes during the first pass.
-    for typ in visit_second:
-        todo = [typ]
-        while todo:
-            child = todo.pop()
-            for parent in child.bases:
-                if parent.type in class_map:
-                    parent_ir = class_map[parent.type]
-                    if not parent_ir.is_ext_class:
-                        continue
-                    parent_ir.is_ext_class = False
-                    todo.append(parent.type)
 
 
 def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
@@ -699,8 +664,14 @@ def prepare_non_ext_class_def(path: str, module_name: str, cdef: ClassDef,
                              path, cdef.line)
             # Handle case for regular function overload
             else:
-                errors.error("Non-extension classes do not support overlaoded functions",
+                errors.error("Non-extension classes do not support overloaded functions",
                              path, cdef.line)
+
+    if any(
+        cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro
+    ):
+        errors.error(
+            "Non-extension classes may not inherit from extension classes", path, cdef.line)
 
 
 def concrete_arg_kind(kind: int) -> int:
