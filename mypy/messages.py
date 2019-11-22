@@ -189,6 +189,11 @@ class MessageBuilder:
         will be the specific item in the union that does not have the member
         attribute.
 
+        'module_symbol_table' is passed to this function if the type for which we
+        are trying to get a member was originally a module. The SymbolTable allows
+        us to look up and suggests attributes of the module since they are not
+        directly available on original_type
+
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
         """

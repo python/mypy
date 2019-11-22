@@ -109,6 +109,10 @@ def analyze_member_access(name: str,
     the initial, non-recursive call. The 'self_type' is a component of 'original_type'
     to which generic self should be bound (a narrower type that has a fallback to instance).
     Currently this is used only for union types.
+
+    'module_symbol_table' is passed to this function if 'typ' is actually a module
+    and we want to keep track of the available attributes of the module (since they
+    are not available via the type object directly)
     """
     mx = MemberContext(is_lvalue,
                        is_super,
