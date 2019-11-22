@@ -4388,6 +4388,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                subtype_label: Optional[str] = None,
                                supertype_label: Optional[str] = None,
                                code: Optional[ErrorCode] = None) -> bool:
+        """Check if assignment error using long tuple initializers."""
 
         def format_error_msg(msg: str, lhs_types: List[Type], rhs_types: List[Type]) -> str:
             error_msg = ""
