@@ -4381,59 +4381,73 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return yes_map, no_map
 
     def check_long_tuple_assignment(self,
-                               subtype: ProperType,
-                               supertype: ProperType,
-                               context: Context,
-                               msg: str = message_registry.INCOMPATIBLE_TYPES,
-                               subtype_label: Optional[str] = None,
-                               supertype_label: Optional[str] = None,
-                               code: Optional[ErrorCode] = None) -> bool:
+                                    subtype: ProperType,
+                                    supertype: ProperType,
+                                    context: Context,
+                                    msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                    subtype_label: Optional[str] = None,
+                                    supertype_label: Optional[str] = None,
+                                    code: Optional[ErrorCode] = None) -> bool:
         """Check if assignment error using long tuple initializers."""
-
-        def format_error_msg(msg: str, lhs_types: List[Type], rhs_types: List[Type]) -> str:
-            error_msg = ""
-            error_cnt = 0
-            for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
-                if not is_subtype(lhs_t, rhs_t):
-                    if error_cnt < 3:
-                        error_msg += 'expression Tuple item {} has type "{}"; "{}" expected; '\
-                            .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t))
-                    error_cnt += 1
-            error_msg += 'Total {} items are incompatible; {} items are omitted'.format(
-                        str(error_cnt), str(max(0, error_cnt - 3)))
-            return msg + ' (' + error_msg + ')'
-
-        def format_long_tuple_type(typ: TupleType) -> str:
-            item_cnt = len(typ.items)
-            if item_cnt > 10:
-                return 'Tuple[{}, {}, ... <{} more items>]'\
-                        .format(format_type_bare(typ.items[0]),
-                            format_type_bare(typ.items[1]), str(item_cnt - 2))
-            else:
-                return format_type_bare(typ)
-
         if isinstance(subtype, TupleType):
             if (len(subtype.items) > 10 and
                 isinstance(supertype, Instance) and
                     supertype.type.fullname == 'builtins.tuple'):
                 lhs_type = supertype.args[0]
                 lhs_types = [lhs_type] * len(subtype.items)
-                error_msg = format_error_msg(msg, lhs_types, subtype.items)
-                self.fail(error_msg, context, code=code)
+                self.generate_imcompatiable_tuple_error(lhs_types,
+                                    subtype.items, context, msg, code)
                 return True
             elif (isinstance(supertype, TupleType) and
                     (len(subtype.items) > 10 or len(supertype.items) > 10)):
                 if len(subtype.items) != len(supertype.items):
                     if supertype_label is not None and subtype_label is not None:
                         error_msg = "{} ({} {}, {} {})".format(msg, subtype_label,
-                                        format_long_tuple_type(subtype), supertype_label,
-                                        format_long_tuple_type(supertype))
+                                        self.format_long_tuple_type(subtype), supertype_label,
+                                        self.format_long_tuple_type(supertype))
                         self.fail(error_msg, context, code=code)
                         return True
-                error_msg = format_error_msg(msg, supertype.items, subtype.items)
-                self.fail(error_msg, context, code=code)
+                self.generate_imcompatiable_tuple_error(supertype.items,
+                                    subtype.items, context, msg, code)
                 return True
         return False
+
+    def format_long_tuple_type(self, typ: TupleType) -> str:
+        """Format very long tuple type using in ellipsis notation"""
+        item_cnt = len(typ.items)
+        if item_cnt > 10:
+            return 'Tuple[{}, {}, ... <{} more items>]'\
+                    .format(format_type_bare(typ.items[0]),
+                        format_type_bare(typ.items[1]), str(item_cnt - 2))
+        else:
+            return format_type_bare(typ)
+
+    def generate_imcompatiable_tuple_error(self,
+                                           lhs_types: List[Type],
+                                           rhs_types: List[Type],
+                                           context: Context,
+                                           msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                           code: Optional[ErrorCode] = None) -> None:
+        """Generate error message for individual imcompatiable tuple pairs"""
+        error_cnt = 0
+        notes = []  # List[str]
+        notes_items = []  # List[Type]
+        for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
+            if not is_subtype(lhs_t, rhs_t):
+                if error_cnt < 3:
+                    notes.append('Expression Tuple item {} has type "{}"; "{}" expected; '
+                        .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
+                    notes_items.append(rhs_t)
+                error_cnt += 1
+
+        error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
+        if error_cnt - 3 > 0:
+            error_msg += '; {} items are omitted)'.format(str(error_cnt - 3))
+        else:
+            error_msg += ')'
+        self.fail(error_msg, context, code=code)
+        for note, item in zip(notes, notes_items):
+            self.note(note, context, code=code)
 
 
 def conditional_type_map(expr: Expression,
