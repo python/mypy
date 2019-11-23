@@ -2194,9 +2194,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not isinstance(lval, NameExpr) or not isinstance(s.rvalue, CallExpr):
             return
         call = s.rvalue
-        if not isinstance(call.callee, RefExpr):
-            return
-        fname = call.callee.fullname
+        fname = None
+        if isinstance(call.callee, RefExpr):
+            fname = call.callee.fullname
+        # check if method call
+        if fname is None and isinstance(call.callee, MemberExpr):
+            callee_expr = call.callee.expr
+            if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
+                method_name = call.callee.name
+                fname = callee_expr.fullname + '.' + method_name
         if fname:
             hook = self.plugin.get_dynamic_class_hook(fname)
             if hook:

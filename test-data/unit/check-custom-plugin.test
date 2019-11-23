@@ -516,6 +516,35 @@ class Instr(Generic[T]): ...
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 
+[case testDynamicClassHookFromClassMethod]
+# flags: --config-file tmp/mypy.ini
+
+from mod import QuerySet, Manager
+
+MyManager = Manager.from_queryset(QuerySet)
+
+reveal_type(MyManager())  # N: Revealed type is '__main__.MyManager'
+reveal_type(MyManager().attr)  # N: Revealed type is 'builtins.str'
+
+def func(manager: MyManager) -> None:
+    reveal_type(manager)   # N: Revealed type is '__main__.MyManager'
+    reveal_type(manager.attr)   # N: Revealed type is 'builtins.str'
+
+func(MyManager())
+
+[file mod.py]
+from typing import Generic, TypeVar, Type
+class QuerySet:
+    attr: str
+class Manager:
+    @classmethod
+    def from_queryset(cls, queryset_cls: Type[QuerySet]): ...
+
+[builtins fixtures/classmethod.pyi]
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class_from_method.py
+
 [case testBaseClassPluginHookWorksIncremental]
 # flags: --config-file tmp/mypy.ini
 import a
