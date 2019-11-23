@@ -31,7 +31,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr
+    CallExpr, SymbolTable
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -175,7 +175,12 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
 
-    def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
+    def has_no_attr(self,
+                    original_type: Type,
+                    typ: Type,
+                    member: str,
+                    context: Context,
+                    module_symbol_table: Optional[SymbolTable] = None) -> Type:
         """Report a missing or non-accessible member.
 
         original_type is the top-level type on which the error occurred.
@@ -183,6 +188,11 @@ class MessageBuilder:
         different, e.g., in a union, original_type will be the union and typ
         will be the specific item in the union that does not have the member
         attribute.
+
+        'module_symbol_table' is passed to this function if the type for which we
+        are trying to get a member was originally a module. The SymbolTable allows
+        us to look up and suggests attributes of the module since they are not
+        directly available on original_type
 
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
@@ -244,6 +254,15 @@ class MessageBuilder:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
+
+                    if module_symbol_table is not None:
+                        alternatives |= {key for key in module_symbol_table.keys()}
+
+                    # in some situations, the member is in the alternatives set
+                    # but since we're in this function, we shouldn't suggest it
+                    if member in alternatives:
+                        alternatives.remove(member)
+
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == '__aiter__' and matches == ['__iter__']:

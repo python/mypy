@@ -9,9 +9,10 @@ from mypy.types import (
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType
 )
 from mypy.nodes import (
-    TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
-    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias, TempNode,
-    is_final_node, SYMBOL_FUNCBASE_TYPES,
+    TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
+    MypyFile, TypeVarExpr, ARG_POS, ARG_STAR, ARG_STAR2, Decorator,
+    OverloadedFuncDef, TypeAlias, TempNode, is_final_node,
+    SYMBOL_FUNCBASE_TYPES,
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -47,7 +48,8 @@ class MemberContext:
                  context: Context,
                  msg: MessageBuilder,
                  chk: 'mypy.checker.TypeChecker',
-                 self_type: Optional[Type]) -> None:
+                 self_type: Optional[Type],
+                 module_symbol_table: Optional[SymbolTable] = None) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
         self.is_operator = is_operator
@@ -56,6 +58,7 @@ class MemberContext:
         self.context = context  # Error context
         self.msg = msg
         self.chk = chk
+        self.module_symbol_table = module_symbol_table
 
     def builtin_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -67,7 +70,7 @@ class MemberContext:
                       self_type: Optional[Type] = None) -> 'MemberContext':
         mx = MemberContext(self.is_lvalue, self.is_super, self.is_operator,
                            self.original_type, self.context, self.msg, self.chk,
-                           self.self_type)
+                           self.self_type, self.module_symbol_table)
         if messages is not None:
             mx.msg = messages
         if self_type is not None:
@@ -86,7 +89,8 @@ def analyze_member_access(name: str,
                           chk: 'mypy.checker.TypeChecker',
                           override_info: Optional[TypeInfo] = None,
                           in_literal_context: bool = False,
-                          self_type: Optional[Type] = None) -> Type:
+                          self_type: Optional[Type] = None,
+                          module_symbol_table: Optional[SymbolTable] = None) -> Type:
     """Return the type of attribute 'name' of 'typ'.
 
     The actual implementation is in '_analyze_member_access' and this docstring
@@ -105,6 +109,10 @@ def analyze_member_access(name: str,
     the initial, non-recursive call. The 'self_type' is a component of 'original_type'
     to which generic self should be bound (a narrower type that has a fallback to instance).
     Currently this is used only for union types.
+
+    'module_symbol_table' is passed to this function if 'typ' is actually a module
+    and we want to keep track of the available attributes of the module (since they
+    are not available via the type object directly)
     """
     mx = MemberContext(is_lvalue,
                        is_super,
@@ -113,7 +121,8 @@ def analyze_member_access(name: str,
                        context,
                        msg,
                        chk=chk,
-                       self_type=self_type)
+                       self_type=self_type,
+                       module_symbol_table=module_symbol_table)
     result = _analyze_member_access(name, typ, mx, override_info)
     possible_literal = get_proper_type(result)
     if (in_literal_context and isinstance(possible_literal, Instance) and
@@ -156,7 +165,7 @@ def _analyze_member_access(name: str,
         return AnyType(TypeOfAny.from_error)
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
-    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context)
+    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context, mx.module_symbol_table)
 
 
 # The several functions that follow implement analyze_member_access for various
@@ -410,7 +419,9 @@ def analyze_member_var_access(name: str,
     else:
         if mx.chk and mx.chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
-        return mx.msg.has_no_attr(mx.original_type, itype, name, mx.context)
+        return mx.msg.has_no_attr(
+            mx.original_type, itype, name, mx.context, mx.module_symbol_table
+        )
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:

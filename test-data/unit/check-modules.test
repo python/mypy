@@ -2765,3 +2765,22 @@ x: alias.NonExistent  # E: Name 'alias.NonExistent' is not defined
 [file pack/__init__.py]
 [file pack/mod.py]
 class Existent: pass
+
+[case testModuleAttributeTwoSuggestions]
+import m
+m.aaaa # E: Module has no attribute "aaaa"; maybe "aaaaa" or "aaa"?
+
+[file m.py]
+aaa: int
+aaaaa: int
+[builtins fixtures/module.pyi]
+
+[case testModuleAttributeThreeSuggestions]
+import m
+m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aabaa", "aaaba", or "aaaab"?
+
+[file m.py]
+aaaab: int
+aaaba: int
+aabaa: int
+[builtins fixtures/module.pyi]

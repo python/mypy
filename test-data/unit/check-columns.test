@@ -126,7 +126,7 @@ import m
 if int():
     from m import foobaz # E:5: Module 'm' has no attribute 'foobaz'; maybe "foobar"?
 (1).x # E:2: "int" has no attribute "x"
-(m.foobaz()) # E:2: Module has no attribute "foobaz"
+(m.foobaz()) # E:2: Module has no attribute "foobaz"; maybe "foobar"?
 
 [file m.py]
 def foobar(): pass
