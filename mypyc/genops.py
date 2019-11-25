@@ -1216,20 +1216,17 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # If this overrides a parent class method with a different type, we need
         # to generate a glue method to mediate between them.
-        for cls in class_ir.mro[1:]:
-            if (name in cls.method_decls and name != '__init__'
+        for base in class_ir.mro[1:]:
+            if (name in base.method_decls and name != '__init__'
                     and not is_same_method_signature(class_ir.method_decls[name].sig,
-                                                     cls.method_decls[name].sig)):
-
-                if cls is class_ir and not cls.allow_interpreted_children:
-                    continue
+                                                     base.method_decls[name].sig)):
 
                 # TODO: Support contravariant subtyping in the input argument for
                 # property setters. Need to make a special glue method for handling this,
                 # similar to gen_glue_property.
 
-                f = self.gen_glue(cls.method_decls[name].sig, func_ir, class_ir, cls, fdef)
-                class_ir.glue_methods[(cls, name)] = f
+                f = self.gen_glue(base.method_decls[name].sig, func_ir, class_ir, base, fdef)
+                class_ir.glue_methods[(base, name)] = f
                 self.functions.append(f)
 
         # If the class allows interpreted children, create glue
@@ -1776,13 +1773,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  do_py_ops: bool = False
                  ) -> FuncIR:
         if fdef.is_property:
-            return self.gen_glue_property(
-                cls.method_decls[fdef.name].sig, target, cls, base, fdef.line, do_py_ops
-            )
+            return self.gen_glue_property(sig, target, cls, base, fdef.line, do_py_ops)
         else:
-            return self.gen_glue_method(
-                cls.method_decls[fdef.name].sig, target, cls, base, fdef.line, do_py_ops
-            )
+            return self.gen_glue_method(sig, target, cls, base, fdef.line, do_py_ops)
 
     def gen_glue_method(self, sig: FuncSignature, target: FuncIR,
                         cls: ClassIR, base: ClassIR, line: int,
