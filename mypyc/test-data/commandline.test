@@ -155,6 +155,16 @@ class NonExt(Concrete1):  # E: Non-extension classes may not inherit from extens
 class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent list  # E: Non-trait MRO must be linear
     pass
 
+@decorator
+class NonExt2:
+    @property  # E: Property setters not supported in non-extension classes
+    def test(self) -> int:
+        pass
+
+    @test.setter
+    def test(self, x: int) -> None:
+        pass
+
 iterator_warning = (i+1 for i in range(10))  # W: Treating generator comprehension as list
 
 # But we don't want warnings for these cases:

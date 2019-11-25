@@ -57,8 +57,8 @@ assert hasattr(c, 'x')
 1000000000000000000000000000001
 1000000000000000000000000000002
 
-[case testNonExtInheritance]
-from typing import Any
+[case testNonExtMisc]
+from typing import Any, overload
 
 def decorator(cls) -> Any:
     return cls
@@ -93,8 +93,22 @@ class A(B):
     def get_a(self) -> int:
         return self.a
 
+@decorator
+class Overload:
+    @overload
+    def get(self, index: int) -> int: ...
+
+    @overload
+    def get(self, index: str) -> str: ...
+
+    def get(self, index: Any) -> Any:
+        return index
+
+def get(c: Overload, s: str) -> str:
+    return c.get(s)
+
 [file driver.py]
-from native import A
+from native import A, Overload, get
 a = A()
 assert a.a == 1
 assert a.b == 2
@@ -103,6 +117,10 @@ assert a.get_a() == 1
 assert a.get_b() == 2
 assert a.get_c() == 3
 assert A.constant() == 4
+
+o = Overload()
+assert get(o, "test") == "test"
+assert o.get(20) == 20
 
 [case testEnum]
 from enum import Enum
