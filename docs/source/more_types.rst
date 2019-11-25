@@ -582,7 +582,7 @@ for certain values of type arguments:
 
    class Tag(Generic[T]):
        item: T
-       def uppercase_item(self: C[str]) -> str:
+       def uppercase_item(self: Tag[str]) -> str:
            return self.item.upper()
 
    def label(ti: Tag[int], ts: Tag[str]) -> None:
@@ -621,7 +621,7 @@ some tricky methods:
        @overload
        def export(self: Tag[str]) -> str: ...
        @overload
-       def export(self, converter: Callable[[T], str]) -> T: ...
+       def export(self, converter: Callable[[T], str]) -> str: ...
 
        def export(self, converter=None):
            if isinstance(self.item, str):
