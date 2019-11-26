@@ -3971,8 +3971,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 elif isinstance(node, TypeAlias) and node.no_args:
                     assert isinstance(node.target, ProperType)
                     if isinstance(node.target, Instance):
-                        node = node.target.type
-                        nextsym = node.get(part)
+                        nextsym = node.target.type.get(part)
                 else:
                     if isinstance(node, Var):
                         typ = get_proper_type(node.type)

@@ -3150,7 +3150,7 @@ if bool():
     err_code = -THREE
 [builtins fixtures/float.pyi]
 
-[case testAliasAsLiteral]
+[case testNestedClassOnAliasAsType]
 from typing_extensions import Literal
 
 class Out:
