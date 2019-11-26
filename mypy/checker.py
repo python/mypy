@@ -3036,7 +3036,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and not self.current_node_deferred
                         and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
                         and not (defn.name in BINARY_MAGIC_METHODS and
-                                 is_literal_not_implemented(s.expr))):
+                                 is_literal_not_implemented(s.expr))
+                        and not (isinstance(return_type, Instance) and
+                                 return_type.type.fullname == 'builtins.object')):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
 
