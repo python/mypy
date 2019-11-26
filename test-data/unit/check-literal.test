@@ -3149,3 +3149,17 @@ err_code = -TWO
 if bool():
     err_code = -THREE
 [builtins fixtures/float.pyi]
+
+[case testAliasForEnumTypeAsLiteral]
+from typing_extensions import Literal
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+
+F = Foo
+
+x: Literal[Foo.A]
+y: Literal[F.A]
+reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
