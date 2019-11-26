@@ -662,12 +662,13 @@ def prepare_non_ext_class_def(path: str, module_name: str, cdef: ClassDef,
         elif isinstance(node.node, OverloadedFuncDef):
             # Handle case for property with both a getter and a setter
             if node.node.is_property:
-                errors.error("Non-extension classes do not support property setters",
-                             path, cdef.line)
+                if not is_valid_multipart_property_def(node.node):
+                    errors.error("Unsupported property decorator semantics", path, cdef.line)
+                for item in node.node.items:
+                    prepare_method_def(ir, module_name, cdef, mapper, item)
             # Handle case for regular function overload
             else:
-                errors.error("Non-extension classes do not support overloaded functions",
-                             path, cdef.line)
+                prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node))
 
     if any(
         cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro
@@ -1507,7 +1508,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 if not ir.is_ext_class:
                     # properties with both getters and setters in non_extension
                     # classes not supported
-                    self.error("Property setters not supported in non-exstension classes",
+                    self.error("Property setters not supported in non-extension classes",
                                stmt.line)
                 for item in stmt.items:
                     with self.catch_errors(stmt.line):
