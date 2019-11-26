@@ -3149,3 +3149,15 @@ err_code = -TWO
 if bool():
     err_code = -THREE
 [builtins fixtures/float.pyi]
+
+[case testAliasForEnumTypeAsLiteral]
+from typing_extensions import Literal
+
+class Out:
+    class In:
+        class Inner:
+            pass
+
+O = Out
+z: O.In
+zz: O.In.Inner

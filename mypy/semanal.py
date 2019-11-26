@@ -3969,6 +3969,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                     namespace = node.fullname
                 elif isinstance(node, PlaceholderNode):
                     return sym
+                elif (isinstance(node, TypeAlias) and
+                      isinstance(get_proper_type(node.target), Instance)):
+                    target_typ = get_proper_type(node.target)
+                    assert isinstance(target_typ, Instance)
+                    node = target_typ.type
+                    nextsym = node.get(part)
                 else:
                     if isinstance(node, Var):
                         typ = get_proper_type(node.type)
