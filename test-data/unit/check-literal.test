@@ -3150,29 +3150,6 @@ if bool():
     err_code = -THREE
 [builtins fixtures/float.pyi]
 
-[case testNestedClassOnAliasAsType]
-from typing_extensions import Literal
-
-class Out:
-    class In:
-        class Inner:
-            pass
-
-O = Out
-I = Out.In
-OI = O.In
-A = Out
-B = A
-
-w: O.In
-x: I.Inner
-y: OI.Inner
-z: B.In
-reveal_type(w)  # N: Revealed type is '__main__.Out.In'
-reveal_type(x)  # N: Revealed type is '__main__.Out.In.Inner'
-reveal_type(y)  # N: Revealed type is '__main__.Out.In.Inner'
-reveal_type(z)  # N: Revealed type is '__main__.Out.In'
-
 [case testAliasForEnumTypeAsLiteral]
 from typing_extensions import Literal
 from enum import Enum
