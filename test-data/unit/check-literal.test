@@ -3159,5 +3159,8 @@ class Out:
             pass
 
 O = Out
-z: O.In
-zz: O.In.Inner
+I = Out.In
+OI = O.In
+x: O.In
+y: I.Inner
+z: OI.Inner
