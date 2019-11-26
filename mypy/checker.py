@@ -3038,7 +3038,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and not (defn.name in BINARY_MAGIC_METHODS and
                                  is_literal_not_implemented(s.expr))
                         and not (isinstance(return_type, Instance) and
-                                return_type.type.fullname == 'builtins.object')):
+                                 return_type.type.fullname == 'builtins.object')):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
 
