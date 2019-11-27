@@ -625,8 +625,7 @@ f(tuple())
 [out]
 ()
 
-[case testMapWithLambdaSpecialCase-skip]
-# TODO: Fix this; this was broken at some point but not sure why.
+[case testMapWithLambdaSpecialCase]
 from typing import List, Iterator
 a = [[1], [3]]
 b = map(lambda y: y[0], a)

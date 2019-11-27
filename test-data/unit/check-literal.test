@@ -3015,11 +3015,7 @@ expects_int(c)
 expects_int(d)  # E: Argument 1 to "expects_int" has incompatible type "Literal[D.FOO]"; expected "int"
 [out]
 
-[case testLiteralWithEnumsAliases-skip]
-# TODO: Fix this test once https://github.com/python/mypy/issues/6667 is resolved.
-#
-# The linked issue is about nested classes, but the same root bug prevents aliases
-# to enums from working.
+[case testLiteralWithEnumsAliases]
 from typing_extensions import Literal
 from enum import Enum
 

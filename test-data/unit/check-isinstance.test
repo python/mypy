@@ -48,7 +48,7 @@ def f(x: Union[int, str, List]) -> None:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str, builtins.list[Any]]'
 [builtins fixtures/isinstancelist.pyi]
 
-[case testClassAttributeInitialization-skip]
+[case testClassAttributeInitialization]
 class A:
     x = None # type: int
     def __init__(self) -> None:
@@ -56,18 +56,19 @@ class A:
         z = self.x
         w = self.y
 
-[case testAssignmentSubtypes-skip]
+[case testAssignmentSubtypes]
 from typing import Union
 
 def foo(x: Union[str, int]):
     if isinstance(x, int):
         x = 'a'
-    x + 'a'         # Works in the current code
-    z = x           # We probably want this to be of type str.
-    y = [x]         # But what type should this be?
-    y[0] + 'a'      #  (1) Should this work?
-    y + [1]         #  (2) Or this?
-    z = 1           # Also, is this valid?
+    x + 'a'
+    z = x
+    y = [x]
+    y[0] + 'a'
+    # TODO: should we allow these two lines?
+    y + [1]  # E: List item 0 has incompatible type "int"; expected "str"
+    z = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 x = None # type: int
 y = [x]
@@ -116,9 +117,9 @@ if int():
     x.z          # E: "A" has no attribute "z"
     x.y
 
-[case testSingleMultiAssignment-skip]
+[case testSingleMultiAssignment]
 x = 'a'
-(x, ) = ('a',)
+(x,) = ('a',)
 
 [case testUnionMultiAssignment]
 from typing import Union
@@ -595,7 +596,7 @@ assert isinstance(b, (A, B, C))
 reveal_type(b)  # N: Revealed type is 'Union[__main__.A, __main__.B]'
 [builtins fixtures/isinstance.pyi]
 
-[case testMemberAssignmentChanges-skip]
+[case testMemberAssignmentChanges]
 from typing import Union
 
 class Dog:
@@ -603,14 +604,15 @@ class Dog:
 
 pet = Dog()
 
-pet.paws + 'a'  # E: moo
+pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
+                # N: Left operand is of type "Union[int, str]"
 pet.paws = 'a'
 pet.paws + 'a'
 pet.paws = 1
 pet.paws + 1
 [builtins fixtures/isinstancelist.pyi]
 
-[case testIsInstanceSubClassMemberHard-skip]
+[case testIsInstanceSubClassMemberHard]
 from typing import Union
 
 class Animal:
@@ -630,7 +632,9 @@ h.pet = Dog()
 if isinstance(h.pet, Dog):
     if isinstance(h.pet.paws, str):
         for i in [1]:
-            h.pet.paws + 'a'
+            # TODO: should we allow this if iterable is of length one or zero?
+            h.pet.paws + 'a'  # E: Unsupported operand types for + ("int" and "str") \
+                              # N: Left operand is of type "Union[int, str]"
             if bool():
                 break
             h.pet.paws = 1
@@ -1314,7 +1318,7 @@ def f(x: Union[A, B]) -> None:
 [builtins fixtures/isinstance.pyi]
 
 [case testIsinstanceWithOverlappingPromotionTypes-skip]
-# Currently disabled: see https://github.com/python/mypy/issues/6180 for context
+# Currently disabled: see https://github.com/python/mypy/issues/6060 for context
 from typing import Union
 
 class FloatLike: pass

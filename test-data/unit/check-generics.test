@@ -1608,7 +1608,7 @@ def g3(f: Callable[[object], object]) -> None: pass
 g3(f) # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; \
            expected "Callable[[object], object]"
 
-[case testSubtypingWithGenericFunctionUsingTypevarWithValues2-skip]
+[case testSubtypingWithGenericFunctionUsingTypevarWithValues2]
 from typing import TypeVar, Callable
 T = TypeVar('T', int, str)
 def f(x: T) -> T: pass
