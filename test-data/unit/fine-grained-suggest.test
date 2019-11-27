@@ -944,6 +944,17 @@ z = foo(f(), g())
 (foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
 ==
 
+[case testSuggestBadImport]
+# suggest: foo.foo
+[file foo.py]
+from nothing import Foo  # type: ignore
+
+def foo(x: Foo):
+    return 10
+[out]
+(foo.Foo) -> int
+==
+
 [case testSuggestDict]
 # suggest: foo.foo
 # suggest: foo.bar
