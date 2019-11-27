@@ -2062,7 +2062,7 @@ class Base(Generic[T]):
             return (cls(item),)
         return cls(item)
 
-reveal_type(Base.make_some)  # N: Revealed type is 'Overload(def [T] (item: T`1) -> __main__.Base*[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base*[T`1]])'
+reveal_type(Base.make_some)  # N: Revealed type is 'Overload(def [T] (item: T`1) -> __main__.Base[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base[T`1]])'
 reveal_type(Base.make_some(1))  # N: Revealed type is '__main__.Base[builtins.int*]'
 reveal_type(Base.make_some(1, 1))  # N: Revealed type is 'builtins.tuple[__main__.Base[builtins.int*]]'
 
@@ -2100,11 +2100,11 @@ class A(Generic[T]):
 
 class B(A[T], Generic[T, S]):
     def meth(self) -> None:
-        reveal_type(A[T].foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.A*[T`1]]'
+        reveal_type(A[T].foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.A[T`1]]'
     @classmethod
     def other(cls) -> None:
-        reveal_type(cls.foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
-reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
+        reveal_type(cls.foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.B[T`1, S`2]]'
+reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B[T`1, S`2]]'
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAlternativeConstructorPrecise]
@@ -2171,8 +2171,8 @@ class C(Generic[T]):
 
 class D(C[str]): ...
 
-reveal_type(D.get())  # N: Revealed type is 'builtins.str'
-reveal_type(D.get(42))  # N: Revealed type is 'builtins.tuple[builtins.str]'
+reveal_type(D.get())  # N: Revealed type is 'builtins.str*'
+reveal_type(D.get(42))  # N: Revealed type is 'builtins.tuple[builtins.str*]'
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodAnnotation]
