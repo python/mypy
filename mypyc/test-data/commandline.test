@@ -185,10 +185,10 @@ def f(l: List[object]) -> None:
         if x is None:
             x = i
 
-@mypyc_attr(allow_interpreted_children=True)
-class AllowInterp1(Concrete1):  # E: Parents must allow interpreted children also
+@mypyc_attr(allow_interpreted_subclasses=True)
+class AllowInterp1(Concrete1):  # E: Base class "test.Concrete1" does not allow interpreted subclasses
     pass
 
-@mypyc_attr(allow_interpreted_children=True)
-class AllowInterp2(PureTrait):  # E: Parents must allow interpreted children also
+@mypyc_attr(allow_interpreted_subclasses=True)
+class AllowInterp2(PureTrait):  # E: Base class "test.PureTrait" does not allow interpreted subclasses
     pass

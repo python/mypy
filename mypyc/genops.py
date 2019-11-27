@@ -596,8 +596,8 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     info = cdef.info
 
     attrs = get_mypyc_attrs(cdef)
-    if attrs.get("allow_interpreted_children") is True:
-        ir.allow_interpreted_children = True
+    if attrs.get("allow_interpreted_subclasses") is True:
+        ir.allow_interpreted_subclasses = True
 
     # We sort the table for determinism here on Python 3.5
     for name, node in sorted(info.names.items()):
@@ -1235,7 +1235,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # methods that dispatch via the Python API. These will go in a
         # "shadow vtable" that will be assigned to interpreted
         # children.
-        if class_ir.allow_interpreted_children:
+        if class_ir.allow_interpreted_subclasses:
             f = self.gen_glue(func_ir.sig, func_ir, class_ir, class_ir, fdef, do_py_ops=True)
             class_ir.glue_methods[(class_ir, name)] = f
             self.functions.append(f)
@@ -1538,10 +1538,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if any(ir.base_mro[i].base != ir. base_mro[i + 1] for i in range(len(ir.base_mro) - 1)):
             self.error("Non-trait MRO must be linear", cdef.line)
 
-        if ir.allow_interpreted_children and any(
-            not parent.allow_interpreted_children for parent in ir.mro
-        ):
-            self.error("Parents must allow interpreted children also", cdef.line)
+        if ir.allow_interpreted_subclasses:
+            for parent in ir.mro:
+                if not parent.allow_interpreted_subclasses:
+                    self.error(
+                        'Base class "{}" does not allow interpreted subclasses'.format(
+                            parent.fullname), cdef.line)
 
         # Currently, we only create non-extension classes for classes that are
         # decorated or inherit from Enum. Classes decorated with @trait do not

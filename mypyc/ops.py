@@ -1763,7 +1763,7 @@ class ClassIR:
         self.inherits_python = False
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
-        self.allow_interpreted_children = False
+        self.allow_interpreted_subclasses = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -1896,7 +1896,7 @@ class ClassIR:
         Return None if it is impossible to identify all subclasses, for example
         because we are performing separate compilation.
         """
-        if self.children is None or self.allow_interpreted_children:
+        if self.children is None or self.allow_interpreted_subclasses:
             return None
         result = set(self.children)
         for child in self.children:
@@ -1932,7 +1932,7 @@ class ClassIR:
             'is_augmented': self.is_augmented,
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
-            'allow_interpreted_children': self.allow_interpreted_children,
+            'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
@@ -1982,7 +1982,7 @@ class ClassIR:
         ir.is_augmented = data['is_augmented']
         ir.inherits_python = data['inherits_python']
         ir.has_dict = data['has_dict']
-        ir.allow_interpreted_children = data['allow_interpreted_children']
+        ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(

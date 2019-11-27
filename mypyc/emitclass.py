@@ -220,7 +220,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_native_getters_and_setters(cl, emitter)
 
-        if cl.allow_interpreted_children:
+        if cl.allow_interpreted_subclasses:
             shadow_vtable_name = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
             )  # type: Optional[str]
@@ -394,7 +394,7 @@ def generate_vtables(base: ClassIR,
     emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, vtable_setup_name))
     emitter.emit_line('{')
 
-    if base.allow_interpreted_children and not shadow:
+    if base.allow_interpreted_subclasses and not shadow:
         emitter.emit_line('{}{}_shadow();'.format(NATIVE_PREFIX, vtable_setup_name))
 
     subtables = []
@@ -557,7 +557,7 @@ def generate_new_for_class(cl: ClassIR,
         '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
     emitter.emit_line('{')
     # TODO: Check and unbox arguments
-    if not cl.allow_interpreted_children:
+    if not cl.allow_interpreted_subclasses:
         emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
         emitter.emit_line(
             'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
