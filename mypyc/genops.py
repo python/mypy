@@ -392,6 +392,8 @@ def compute_vtable(cls: ClassIR) -> None:
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name):
                 cls.vtable[fn.name] = len(entries)
+                # If the class contains a glue method referring to itself, that is a
+                # shadow glue method to support interpreted subclasses.
                 shadow = cls.glue_methods.get((cls, fn.name))
                 entries.append(VTableMethod(t, fn.name, fn, shadow))
 
@@ -1772,6 +1774,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  *,
                  do_py_ops: bool = False
                  ) -> FuncIR:
+        """Generate glue methods that mediate between different method types in subclasses.
+
+        Works on both properties and methods. See gen_glue_methods below for more details.
+
+        If do_py_ops is True, then the glue methods should use generic
+        C API operations instead of direct calls, to enable generating
+        "shadow" glue methods that work with interpreted subclasses.
+        """
         if fdef.is_property:
             return self.gen_glue_property(sig, target, cls, base, fdef.line, do_py_ops)
         else:
@@ -1802,6 +1812,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         we need to generate glue methods that mediate between the
         different versions by coercing the arguments and return
         values.
+
+        If do_pycall is True, then make the call using the C API
+        instead of a native call.
         """
         self.enter(FuncInfo())
         self.ret_types[-1] = sig.ret_type
@@ -1836,9 +1849,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def gen_glue_property(self, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR,
                           line: int,
                           do_pygetattr: bool) -> FuncIR:
-        """Similarly to methods, properties of derived types can be covariantly subtyped. Thus,
+        """Generate glue methods for properties that mediate between different subclass types.
+
+        Similarly to methods, properties of derived types can be covariantly subtyped. Thus,
         properties also require glue. However, this only requires the return type to change.
-        Further, instead of a method call, an attribute get is performed."""
+        Further, instead of a method call, an attribute get is performed.
+
+        If do_pygetattr is True, then get the attribute using the C
+        API instead of a native call.
+        """
         self.enter(FuncInfo())
 
         rt_arg = RuntimeArg(SELF_NAME, RInstance(cls))

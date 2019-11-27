@@ -1762,6 +1762,7 @@ class ClassIR:
         self.is_augmented = False
         self.inherits_python = False
         self.has_dict = False
+        # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_children = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
@@ -1890,7 +1891,11 @@ class ClassIR:
         return res[0] if res else None
 
     def subclasses(self) -> Optional[Set['ClassIR']]:
-        """Return all subclassses of this class, both direct and indirect."""
+        """Return all subclassses of this class, both direct and indirect.
+
+        Return None if it is impossible to identify all subclasses, for example
+        because we are performing separate compilation.
+        """
         if self.children is None or self.allow_interpreted_children:
             return None
         result = set(self.children)

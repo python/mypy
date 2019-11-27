@@ -202,6 +202,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields['tp_basicsize'] = base_size
 
     if generate_full:
+        # Declare setup method that allocates and initializes an object. type is the
+        # type of the class being initialized, which could be another class if there
+        # is an interpreted subclass.
         emitter.emit_line('static PyObject *{}(PyTypeObject *type);'.format(setup_name))
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
@@ -364,8 +367,12 @@ def generate_vtables(base: ClassIR,
     emit empty array definitions to store the vtables and a function to
     populate them.
 
+    If shadow is True, generate "shadow vtables" that point to the
+    shadow glue methods (which should dispatch via the Python C-API).
+
     Returns the expression to use to refer to the vtable, which might be
     different than the name, if there are trait vtables.
+
     """
 
     def trait_vtable_name(trait: ClassIR) -> str:
