@@ -590,8 +590,7 @@ class C:
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testIgnoredAttrReprocessedModule-skip]
-# See https://github.com/python/mypy/issues/4782
+[case testIgnoredAttrReprocessedModule]
 import a
 [file a.py]
 import b
@@ -6860,7 +6859,7 @@ from typing import overload
 ==
 main:3: error: Module has no attribute "f"
 
-[case testOverloadsUpdatedTypeRecheckImplementation-skip]
+[case testOverloadsUpdatedTypeRecheckImplementation]
 from typing import overload
 import mod
 class Outer:
