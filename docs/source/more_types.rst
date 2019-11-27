@@ -896,7 +896,7 @@ dictionary value depends on the key:
 
 .. code-block:: python
 
-   from mypy_extensions import TypedDict
+   from typing_extensions import TypedDict
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
@@ -972,17 +972,17 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
 .. note::
 
-   You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
+   You need to install ``typing_extensions`` using pip to use ``TypedDict``:
 
    .. code-block:: text
 
-       python3 -m pip install --upgrade mypy-extensions
+       python3 -m pip install --upgrade typing-extensions
 
    Or, if you are using Python 2:
 
    .. code-block:: text
 
-       pip install --upgrade mypy-extensions
+       pip install --upgrade typing-extensions
 
 Totality
 --------
@@ -1071,7 +1071,7 @@ in Python 3.6 and later:
 
 .. code-block:: python
 
-   from mypy_extensions import TypedDict
+   from typing_extensions import TypedDict
 
    class Movie(TypedDict):
        name: str
