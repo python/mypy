@@ -937,7 +937,7 @@ def refine_type(ti: Type, si: Type) -> Type:
     s = get_proper_type(si)
 
     if isinstance(t, AnyType):
-        # If s is also an any, we return t in case it is a missing_import any
+        # If s is also an Any, we return t in case it is a missing_import Any
         return s if not isinstance(s, AnyType) else t
 
     if isinstance(t, Instance) and isinstance(s, Instance) and t.type == s.type:
