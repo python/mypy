@@ -375,7 +375,6 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         if flags2:
             flags = flags2
 
-    flag_list = None
     if flags:
         flag_list = flags.group(1).split()
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
@@ -384,6 +383,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
+        flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
