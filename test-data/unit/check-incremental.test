@@ -3600,8 +3600,7 @@ x = 1
 [file b.py.2]
 x = '2'
 
--- TODO: Fails due to #4856
-[case testImportUnusedIgnore2-skip]
+[case testImportUnusedIgnore2]
 # flags: --warn-unused-ignores
 import a
 [file a.py]
@@ -3616,7 +3615,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:1: note: unused 'type: ignore' comment
+tmp/a.py:2: error: unused 'type: ignore' comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]
