@@ -959,7 +959,7 @@ class A(Generic[T]):
 
 t: Type[Union[A[int], A[str]]]
 x = t.meth()
-reveal_type(x)  # N: Revealed type is 'Union[__main__.A*[builtins.int], __main__.A*[builtins.str]]'
+reveal_type(x)  # N: Revealed type is 'Union[__main__.A[builtins.int], __main__.A[builtins.str]]'
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeClassMethodOnUnionList]
@@ -1055,3 +1055,79 @@ class Concrete(Blah):
     def something(self) -> None: ...
 
 Concrete()  # OK
+
+[case testSelfTypeGenericClassNoClashInstanceMethod]
+from typing import TypeVar, Generic
+
+M = TypeVar("M")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Descriptor(Generic[M]): ...
+
+class BaseWrapper(Generic[M]):
+    def create_wrapper(self: T, metric_descriptor: Descriptor[M]) -> T: ...
+class SubWrapper(BaseWrapper[M]): ...
+
+def build_wrapper(descriptor: Descriptor[M]) -> BaseWrapper[M]:
+    wrapper: BaseWrapper[M]
+    return wrapper.create_wrapper(descriptor)
+
+def build_sub_wrapper(descriptor: Descriptor[S]) -> SubWrapper[S]:
+    wrapper: SubWrapper[S]
+    x = wrapper.create_wrapper(descriptor)
+    reveal_type(x)  # N: Revealed type is '__main__.SubWrapper[S`-1]'
+    return x
+
+[case testSelfTypeGenericClassNoClashClassMethod]
+from typing import TypeVar, Generic, Type
+
+M = TypeVar("M")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Descriptor(Generic[M]): ...
+
+class BaseWrapper(Generic[M]):
+    @classmethod
+    def create_wrapper(cls: Type[T], metric_descriptor: Descriptor[M]) -> T: ...
+class SubWrapper(BaseWrapper[M]): ...
+
+def build_wrapper(descriptor: Descriptor[M]) -> BaseWrapper[M]:
+    wrapper_cls: Type[BaseWrapper[M]]
+    return wrapper_cls.create_wrapper(descriptor)
+
+def build_sub_wrapper(descriptor: Descriptor[S]) -> SubWrapper[S]:
+    wrapper_cls: Type[SubWrapper[S]]
+    x = wrapper_cls.create_wrapper(descriptor)
+    reveal_type(x)  # N: Revealed type is '__main__.SubWrapper[S`-1]'
+    return x
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeGenericClassNoClashClassMethodClassObject]
+from typing import TypeVar, Generic, Type
+
+M = TypeVar("M")
+T = TypeVar("T")
+
+class Descriptor(Generic[M]): ...
+
+class BaseWrapper(Generic[M]):
+    @classmethod
+    def create_wrapper(cls: Type[T], metric_descriptor: Descriptor[M]) -> T: ...
+class SubWrapper(BaseWrapper[M]): ...
+
+def build_wrapper(descriptor: Descriptor[M]) -> BaseWrapper[M]:
+    return BaseWrapper.create_wrapper(descriptor)
+
+def build_sub_wrapper(descriptor: Descriptor[M]) -> SubWrapper[M]:
+    x = SubWrapper.create_wrapper(descriptor)
+    reveal_type(x)  # N: Revealed type is '__main__.SubWrapper[M`-1]'
+    return x
+
+def build_wrapper_non_gen(descriptor: Descriptor[int]) -> BaseWrapper[str]:
+    return BaseWrapper.create_wrapper(descriptor)  # E: Argument 1 to "create_wrapper" of "BaseWrapper" has incompatible type "Descriptor[int]"; expected "Descriptor[str]"
+
+def build_sub_wrapper_non_gen(descriptor: Descriptor[int]) -> SubWrapper[str]:
+    return SubWrapper.create_wrapper(descriptor)  # E: Argument 1 to "create_wrapper" of "BaseWrapper" has incompatible type "Descriptor[int]"; expected "Descriptor[str]"
+[builtins fixtures/classmethod.pyi]

@@ -829,9 +829,7 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     variables of the class callable on which the method was accessed.
     """
     # TODO: verify consistency between Q and T
-    if is_classmethod:
-        assert isuper is not None
-        t = get_proper_type(expand_type_by_instance(t, isuper))
+
     # We add class type variables if the class method is accessed on class object
     # without applied type arguments, this matches the behavior of __init__().
     # For example (continuing the example in docstring):
@@ -847,7 +845,10 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
     if isinstance(t, CallableType):
         tvars = original_vars if original_vars is not None else []
         if is_classmethod:
+            t = freshen_function_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
+            assert isuper is not None
+            t = cast(CallableType, expand_type_by_instance(t, isuper))
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(item, itype, isuper, is_classmethod,
