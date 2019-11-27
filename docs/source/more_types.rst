@@ -972,17 +972,19 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
 .. note::
 
-   You need to install ``typing_extensions`` using pip to use ``TypedDict``:
+   Unless you are on Python 3.8 or newer (where ``TypedDict`` is available in
+   standard library :py:mod:`typing` module) you need to install ``typing_extensions``
+   using pip to use ``TypedDict``:
 
    .. code-block:: text
 
-       python3 -m pip install --upgrade typing-extensions
+      python3 -m pip install --upgrade typing-extensions
 
    Or, if you are using Python 2:
 
    .. code-block:: text
 
-       pip install --upgrade typing-extensions
+      pip install --upgrade typing-extensions
 
 Totality
 --------
