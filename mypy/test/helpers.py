@@ -389,10 +389,8 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options.strict_optional = False
         options.error_summary = False
 
-    # Allow custom python version to override testcase_pyversion
-    if (not flag_list or
-            all(flag.split('=')[0] not in ['--python-version', '-2', '--py2']
-                for flag in flag_list)):
+    # Allow custom python version to override testcase_pyversion.
+    if all(flag.split('=')[0] not in ['--python-version', '-2', '--py2'] for flag in flag_list):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     if testcase.config.getoption('--mypy-verbose'):
