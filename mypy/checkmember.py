@@ -848,7 +848,7 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
             t = freshen_function_type_vars(t)
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
-            t = get_proper_type(expand_type_by_instance(t, isuper))
+            t = cast(CallableType, expand_type_by_instance(t, isuper))
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(item, itype, isuper, is_classmethod,
