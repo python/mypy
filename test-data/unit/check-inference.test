@@ -2400,9 +2400,8 @@ class C(B):
 reveal_type(B.x)  # N: Revealed type is 'None'
 reveal_type(C.x)  # N: Revealed type is 'None'
 
-[case testLocalPartialTypesWithInheritance2-skip]
+[case testLocalPartialTypesWithInheritance2]
 # flags: --local-partial-types
-# This is failing because of https://github.com/python/mypy/issues/4552
 from typing import Optional
 
 class X: pass
@@ -2415,7 +2414,7 @@ class B(A):
     x = None
     x = Y()
 
-reveal_type(B.x) # E: revealed type is 'Union[__main__.Y, None]'
+reveal_type(B.x) # N: Revealed type is 'Union[__main__.Y, None]'
 
 [case testLocalPartialTypesBinderSpecialCase]
 # flags: --local-partial-types
