@@ -6566,3 +6566,31 @@ class A:
 
 reveal_type(A().y)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
+
+[case testOpWithInheritedFromAny]
+from typing import Any
+C: Any
+class D(C):
+    pass
+
+reveal_type(0.5 + C)  # N: Revealed type is 'Any'
+
+reveal_type(0.5 + D())  # N: Revealed type is 'Any'
+reveal_type(0.5 / D())  # N: Revealed type is 'Any'
+reveal_type(0.5 * D())  # N: Revealed type is 'Any'
+reveal_type(0.5 - D())  # N: Revealed type is 'Any'
+
+reveal_type(D() + 0.5)  # N: Revealed type is 'Any'
+reveal_type(D() / 0.5)  # N: Revealed type is 'Any'
+reveal_type(D() * 0.5)  # N: Revealed type is 'Any'
+reveal_type(D() - 0.5)  # N: Revealed type is 'Any'
+
+reveal_type("aaa" * D())  # N: Revealed type is 'Any'
+reveal_type("aaa" + D())  # N: Revealed type is 'Any'
+reveal_type("aaa" - D())  # N: Revealed type is 'Any'
+reveal_type("aaa" / D())  # N: Revealed type is 'Any'
+
+reveal_type(D() * "aaa")  # N: Revealed type is 'Any'
+reveal_type(D() + "aaa")  # N: Revealed type is 'Any'
+reveal_type(D() - "aaa")  # N: Revealed type is 'Any'
+reveal_type(D() / "aaa")  # N: Revealed type is 'Any'
