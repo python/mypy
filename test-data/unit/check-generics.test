@@ -2351,7 +2351,10 @@ class C(Generic[T]):
     def test(self) -> T: ...
 
 class D(C[str]): ...
+class E1(C[T], Generic[T, U]): ...
+class E2(C[U], Generic[T, U]): ...
 class G(C[List[T]]): ...
+class F(G[List[int]]): ...
 
 x: C[int]
 y: Type[C[int]]
@@ -2363,10 +2366,20 @@ yd: Type[D]
 reveal_type(xd.test)  # N: Revealed type is 'builtins.str*'
 reveal_type(yd.test)  # N: Revealed type is 'builtins.str*'
 
+ye1: Type[E1[int, str]]
+ye2: Type[E2[int, str]]
+reveal_type(ye1.test)  # N: Revealed type is 'builtins.int*'
+reveal_type(ye2.test)  # N: Revealed type is 'builtins.str*'
+
 xg: G[int]
 yg: Type[G[int]]
 reveal_type(xg.test)  # N: Revealed type is 'builtins.list*[builtins.int*]'
 reveal_type(yg.test)  # N: Revealed type is 'builtins.list*[builtins.int*]'
+
+xf: F
+yf: Type[F]
+reveal_type(xf.test)  # N: Revealed type is 'builtins.list*[builtins.list*[builtins.int]]'
+reveal_type(yf.test)  # N: Revealed type is 'builtins.list*[builtins.list*[builtins.int]]'
 
 class Sup:
     attr: int
