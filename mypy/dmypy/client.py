@@ -88,13 +88,13 @@ p.add_argument('flags', metavar='ARG', nargs='*', type=str,
                help="Regular mypy flags and files (precede with --)")
 
 recheck_parser = p = subparsers.add_parser('recheck', formatter_class=AugmentedHelpFormatter,
-    help="Re-check the previous list of files, with optional modifications (requires daemon).")
+    help="Re-check the previous list of files, with optional modifications (requires daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
 p.add_argument('--update', metavar='FILE', nargs='*',
-               help="Files in the run to add or check again (default: all from previous run)..")
+               help="Files in the run to add or check again (default: all from previous run)")
 p.add_argument('--remove', metavar='FILE', nargs='*',
                help="Files to remove from the run")
 

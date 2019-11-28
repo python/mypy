@@ -63,8 +63,8 @@ changed a few files. You can use :ref:`remote caching <remote-cache>`
 to speed up the initial run. The speedup can be significant if
 you have a large codebase.
 
-Additional features
-*******************
+Daemon client commands
+**********************
 
 While ``dmypy run`` is sufficient for most uses, some workflows
 (ones using :ref:`remote caching <remote-cache>`, perhaps),
@@ -94,6 +94,118 @@ Use ``dmypy --help`` for help on additional commands and command-line
 options not discussed here, and ``dmypy <command> --help`` for help on
 command-specific options.
 
+Additional daemon flags
+***********************
+
+.. option:: --status-file FILE
+
+   Status file to retrieve daemon details. This is normally a JSON file
+   that contains information about daemon process and connection. Default is
+   ``.dmypy.json``.
+
+.. option:: --log-file FILE
+
+   Direct daemon stdout/stderr to ``FILE``. This is useful for debugging daemon
+   crashes, since the server traceback may be not printed to client stderr. Only
+   available for ``start``, ``restart``, and ``run`` commands.
+
+.. option:: --timeout TIMEOUT
+
+   Server shutdown timeout (in seconds). Only available for ``start``,
+   ``restart``, and ``run`` commands.
+
+.. option:: --fswatcher-dump-file FILE
+
+   Collect information about the current file state. Only available for
+   ``status`` command.
+
+.. option:: --perf-stats-file FILE
+
+   Write performance telemetry information to the given file. Only available
+   for ``check``, ``recheck``, and ``run`` commands.
+
+.. option:: --update FILE
+
+   Files in the run to add or check again, may be repeated. Default: all
+   files from the previous run. Only available for ``recheck`` command.
+
+.. option:: --remove FILE
+
+   Files to remove from the run, may be repeated. Only available for
+   ``recheck`` command.
+
+Static inference of annotations
+*******************************
+
+Mypy daemon supports (as experimental feature) statically inferring draft type
+annotation for a given function or method. For example, given this program:
+
+.. code-block:: python
+
+   def format_id(user):
+       return "User: {}".format(user)
+
+   root = format_id(0)
+
+Mypy can infer that ``format_id()`` takes an ``int`` and returns a ``str``.
+To get a suggested signature for a function, use ``dmypy suggest FUNCTION``,
+where the function may be specified in either of two forms:
+
+* By its fully qualified name, i.e. ``[package.]module.[class.]function``
+
+* By its textual location, i.e. ``/path/to/file.py:line``
+
+Running this command will produce a suggested signature in the format
+``(param_type_1, param_type_2, ...) -> ret_type``. This may be used by IDEs
+or similar tools to propose to user and/or insert the annotation into file.
+
+This command can also be used to find an improvement for an existing (imprecise)
+annotation. The following flags customize various aspects of the ``dmypy suggest``
+command.
+
+.. option:: --json
+
+   Use JSON format to output the signature, so that `PyAnnotate`_ can use it
+   to apply a suggestion to file.
+
+.. option:: --no-errors
+
+   Only produce suggestions that cause no errors in the checked code. By default
+   mypy will try to find the most precise type, even if it causes some type errors.
+
+.. option:: --no-any
+
+   Only produce suggestions that don't contain ``Any`` types. By default mypy
+   proposes the most precise signature found, even if it contains ``Any`` types.
+
+.. option:: --flex-any PERCENTAGE
+
+   Allow ``Any`` types in suggested signature if they go above a certain score.
+   Scores are from ``0`` (same as ``--no-any``) to ``1``.
+
+.. option:: --try-text
+
+   Try using ``unicode`` wherever ``str`` is inferred. This flag may be useful
+   for annotating Python 2/3 straddling code.
+
+.. option:: --callsites
+
+   Only find call sites for a given function instead of suggesting a type.
+   This will produce a list including textual locations and types of actual
+   arguments for each call: ``/path/to/file.py:line: (arg_type_1, arg_type_2, ...)``.
+
+.. option:: --use-fixme NAME
+
+   A dummy name to use instead of plain ``Any`` for types that cannot
+   be inferred.
+
+.. option:: --max-guesses NUMBER
+
+   Set the maximum number of types to try for a function (default ``64``).
+
+.. TODO: Add similar sections about go to definition, find usages, and
+   reveal type when added.
+
 Limitations
 ***********
 
@@ -102,3 +214,5 @@ Limitations
   limitation. This can be defined
   through the command line or through a
   :ref:`configuration file <config-file>`.
+
+.. _PyAnnotate: https://github.com/dropbox/pyannotate
