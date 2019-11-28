@@ -1216,3 +1216,153 @@ test(b, 20)
 test(d, 30)
 test(B, -1)
 test(D, -2)
+
+[case testInterpretedInherit]
+from typing import TypeVar, Any, overload
+from mypy_extensions import mypyc_attr, trait
+
+T = TypeVar('T')
+def dec(x: T) -> T: return x
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Top:
+    def spam(self) -> str:
+        return "grandparent"
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Trait:
+    def trait_method(self) -> str:
+        return "trait"
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Foo(Top, Trait):
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def foo(self) -> str:
+        return "parent foo: " + self.bar(self.x)
+
+    def bar(self, x: int) -> str:
+        return "parent bar: {}".format(x + self.x)
+
+    @dec
+    def decorated(self) -> str:
+        return "decorated parent"
+
+    @property
+    def read_property(self) -> str:
+        return "parent prop"
+
+    @overload
+    def overloaded(self, index: int) -> int: ...
+
+    @overload
+    def overloaded(self, index: str) -> str: ...
+
+    def overloaded(self, index: Any) -> Any:
+        return index
+
+def foo(x: Foo) -> str:
+    return x.foo()
+
+def bar(x: Foo, y: int) -> str:
+    return x.bar(y)
+
+def spam(x: Top) -> str:
+    return x.spam()
+
+def decorated(x: Foo) -> str:
+    return x.decorated()
+
+def prop(x: Foo) -> str:
+    return x.read_property
+
+def trait_method(x: Trait) -> str:
+    return x.trait_method()
+
+def overloaded(x: Foo, s: str) -> str:
+    return x.overloaded(s)
+
+[file interp.py]
+from typing import Any
+from native import Foo
+
+class Bar(Foo):
+    def bar(self, x: int) -> str:
+        return "child bar: {}".format(x + self.x)
+
+    def spam(self) -> str:
+        assert super().spam() == "grandparent"
+        return "child"
+
+    @property
+    def read_property(self) -> str:
+        return "child prop"
+
+    def decorated(self) -> str:
+        return "decorated child"
+
+    def trait_method(self) -> str:
+        return "child"
+
+    def overloaded(self, index: Any) -> Any:
+        return index + index
+
+
+class InterpBase:
+    def eggs(self) -> str:
+        return "eggs"
+
+class Baz(InterpBase, Bar):
+    def __init__(self) -> None:
+        super().__init__(1000)
+        self.z = self.read_property
+
+[file driver.py]
+from native import Foo, foo, bar, spam, decorated, overloaded, prop, trait_method
+from interp import Bar, Baz
+from unittest.mock import patch
+from testutil import assertRaises
+
+x = Foo(10)
+y = Bar(20)
+z = Baz()
+
+assert isinstance(y, Bar)
+assert y.x == 20
+assert y.bar(10) == "child bar: 30"
+assert y.foo() == "parent foo: child bar: 40"
+assert foo(y) == "parent foo: child bar: 40"
+assert bar(y, 30) == "child bar: 50"
+y.x = 30
+assert bar(y, 30) == "child bar: 60"
+
+assert spam(y) == "child"
+assert y.read_property == "child prop"
+assert prop(x) == "parent prop"
+assert prop(y) == "child prop"
+assert y.decorated() == "decorated child"
+assert decorated(y) == "decorated child"
+assert y.overloaded("test") == "testtest"
+assert overloaded(y, "test") == "testtest"
+
+assert y.trait_method() == "child"
+assert trait_method(y) == "child"
+
+assert z.bar(10) == "child bar: 1010"
+assert bar(z, 10) == "child bar: 1010"
+assert z.z == "child prop"
+assert z.eggs() == "eggs"
+
+with patch("interp.Bar.spam", lambda self: "monkey patched"):
+    assert y.spam() == "monkey patched"
+    spam(y) == "monkey patched"
+
+with patch("interp.Bar.spam", lambda self: 20):
+    assert y.spam() == 20
+    with assertRaises(TypeError, "str object expected; got int"):
+        spam(y)
+
+with assertRaises(TypeError, "int object expected; got str"):
+    y.x = "test"

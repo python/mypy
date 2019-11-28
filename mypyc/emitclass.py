@@ -202,7 +202,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields['tp_basicsize'] = base_size
 
     if generate_full:
-        emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
+        # Declare setup method that allocates and initializes an object. type is the
+        # type of the class being initialized, which could be another class if there
+        # is an interpreted subclass.
+        emitter.emit_line('static PyObject *{}(PyTypeObject *type);'.format(setup_name))
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
 
@@ -216,7 +219,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
         emit_line()
         generate_native_getters_and_setters(cl, emitter)
-        vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter)
+
+        if cl.allow_interpreted_subclasses:
+            shadow_vtable_name = generate_vtables(
+                cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
+            )  # type: Optional[str]
+            emit_line()
+        else:
+            shadow_vtable_name = None
+        vtable_name = generate_vtables(cl, vtable_setup_name, vtable_name, emitter, shadow=False)
         emit_line()
     if needs_getseters:
         generate_getseter_declarations(cl, emitter)
@@ -241,7 +252,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
     if generate_full:
-        generate_setup_for_class(cl, setup_name, defaults_fn, vtable_name, emitter)
+        generate_setup_for_class(
+            cl, setup_name, defaults_fn, vtable_name, shadow_vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(
             cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
@@ -344,7 +356,8 @@ def generate_native_getters_and_setters(cl: ClassIR,
 def generate_vtables(base: ClassIR,
                      vtable_setup_name: str,
                      vtable_name: str,
-                     emitter: Emitter) -> str:
+                     emitter: Emitter,
+                     shadow: bool) -> str:
     """Emit the vtables and vtable setup functions for a class.
 
     This includes both the primary vtable and any trait implementation vtables.
@@ -354,13 +367,18 @@ def generate_vtables(base: ClassIR,
     emit empty array definitions to store the vtables and a function to
     populate them.
 
+    If shadow is True, generate "shadow vtables" that point to the
+    shadow glue methods (which should dispatch via the Python C-API).
+
     Returns the expression to use to refer to the vtable, which might be
     different than the name, if there are trait vtables.
+
     """
 
     def trait_vtable_name(trait: ClassIR) -> str:
-        return '{}_{}_trait_vtable'.format(
-            base.name_prefix(emitter.names), trait.name_prefix(emitter.names))
+        return '{}_{}_trait_vtable{}'.format(
+            base.name_prefix(emitter.names), trait.name_prefix(emitter.names),
+            '_shadow' if shadow else '')
 
     # Emit array definitions with enough space for all the entries
     emitter.emit_line('static CPyVTableItem {}[{}];'.format(
@@ -376,13 +394,16 @@ def generate_vtables(base: ClassIR,
     emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, vtable_setup_name))
     emitter.emit_line('{')
 
+    if base.allow_interpreted_subclasses and not shadow:
+        emitter.emit_line('{}{}_shadow();'.format(NATIVE_PREFIX, vtable_setup_name))
+
     subtables = []
     for trait, vtable in base.trait_vtables.items():
         name = trait_vtable_name(trait)
-        generate_vtable(vtable, name, emitter, [])
+        generate_vtable(vtable, name, emitter, [], shadow)
         subtables.append((trait, name))
 
-    generate_vtable(base.vtable_entries, vtable_name, emitter, subtables)
+    generate_vtable(base.vtable_entries, vtable_name, emitter, subtables, shadow)
 
     emitter.emit_line('return 1;')
     emitter.emit_line('}')
@@ -393,7 +414,8 @@ def generate_vtables(base: ClassIR,
 def generate_vtable(entries: VTableEntries,
                     vtable_name: str,
                     emitter: Emitter,
-                    subtables: List[Tuple[ClassIR, str]]) -> None:
+                    subtables: List[Tuple[ClassIR, str]],
+                    shadow: bool) -> None:
     emitter.emit_line('CPyVTableItem {}_scratch[] = {{'.format(vtable_name))
     if subtables:
         emitter.emit_line('/* Array of trait vtables */')
@@ -404,10 +426,11 @@ def generate_vtable(entries: VTableEntries,
 
     for entry in entries:
         if isinstance(entry, VTableMethod):
+            method = entry.shadow_method if shadow and entry.shadow_method else entry.method
             emitter.emit_line('(CPyVTableItem){}{}{},'.format(
                 emitter.get_group_prefix(entry.method.decl),
                 NATIVE_PREFIX,
-                entry.method.cname(emitter.names)))
+                method.cname(emitter.names)))
         else:
             cl, attr, is_setter = entry
             namer = native_setter_name if is_setter else native_getter_name
@@ -425,18 +448,27 @@ def generate_setup_for_class(cl: ClassIR,
                              func_name: str,
                              defaults_fn: Optional[FuncIR],
                              vtable_name: str,
+                             shadow_vtable_name: Optional[str],
                              emitter: Emitter) -> None:
     """Generate a native function that allocates an instance of a class."""
     emitter.emit_line('static PyObject *')
-    emitter.emit_line('{}(void)'.format(func_name))
+    emitter.emit_line('{}(PyTypeObject *type)'.format(func_name))
     emitter.emit_line('{')
     emitter.emit_line('{} *self;'.format(cl.struct_name(emitter.names)))
-    emitter.emit_line('self = ({struct} *){type_struct}->tp_alloc({type_struct}, 0);'.format(
-        struct=cl.struct_name(emitter.names),
-        type_struct=emitter.type_struct_name(cl)))
+    emitter.emit_line('self = ({struct} *)type->tp_alloc(type, 0);'.format(
+        struct=cl.struct_name(emitter.names)))
     emitter.emit_line('if (self == NULL)')
     emitter.emit_line('    return NULL;')
-    emitter.emit_line('self->vtable = {};'.format(vtable_name))
+
+    if shadow_vtable_name:
+        emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
+        emitter.emit_line('self->vtable = {};'.format(shadow_vtable_name))
+        emitter.emit_line('} else {')
+        emitter.emit_line('self->vtable = {};'.format(vtable_name))
+        emitter.emit_line('}')
+    else:
+        emitter.emit_line('self->vtable = {};'.format(vtable_name))
+
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_line('self->{} = {};'.format(
@@ -464,7 +496,7 @@ def generate_constructor_for_class(cl: ClassIR,
     """Generate a native function that allocates and initializes an instance of a class."""
     emitter.emit_line('{}'.format(native_function_header(fn, emitter)))
     emitter.emit_line('{')
-    emitter.emit_line('PyObject *self = {}();'.format(setup_name))
+    emitter.emit_line('PyObject *self = {}({});'.format(setup_name, emitter.type_struct_name(cl)))
     emitter.emit_line('if (self == NULL)')
     emitter.emit_line('    return NULL;')
     args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
@@ -525,13 +557,15 @@ def generate_new_for_class(cl: ClassIR,
         '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
     emitter.emit_line('{')
     # TODO: Check and unbox arguments
-    emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
-    emitter.emit_line(
-        'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");')
-    emitter.emit_line('return NULL;')
-    emitter.emit_line('}')
+    if not cl.allow_interpreted_subclasses:
+        emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
+        emitter.emit_line(
+            'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
+        )
+        emitter.emit_line('return NULL;')
+        emitter.emit_line('}')
 
-    emitter.emit_line('return {}();'.format(setup_name))
+    emitter.emit_line('return {}(type);'.format(setup_name))
     emitter.emit_line('}')
 
 
