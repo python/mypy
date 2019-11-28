@@ -104,6 +104,9 @@ Details of the options:
    You can't mix paths and :option:`-m`/:option:`-p` options in the same stubgen
    invocation.
 
+Stubgen applies heuristics to avoid generating stubs for submodules
+that include tests or vendored third-party packages.
+
 Specifying how to generate stubs
 ********************************
 
@@ -116,12 +119,13 @@ alter the default behavior:
 
 .. option:: --no-import
 
-    Don't try to import modules. Instead use mypy's normal search mechanism to find
+    Don't try to import modules. Instead only use mypy's normal search mechanism to find
     sources. This does not support C extension modules. This flag also disables
     runtime introspection functionality, which mypy uses to find the value of
     ``__all__``. As result the set of exported imported names in stubs may be
-    incomplete. This flag is generally only useful when importing a module generates
-    an error for some reason.
+    incomplete. This flag is generally only useful when importing a module causes
+    unwanted side effects, such as the running of tests. Stubgen tries to skip test
+    modules even without this option, but this does not always work.
 
 .. option:: --parse-only
 
@@ -153,6 +157,12 @@ Additional flags
     Include definitions that are considered private in stubs (with names such
     as ``_foo`` with single leading underscore and no trailing underscores).
 
+.. option:: --export-less
+
+    Don't export all names imported from other modules within the same package.
+    Instead, only export imported names that are not referenced in the module
+    that contains the import.
+
 .. option:: --search-path PATH
 
     Specify module search directories, separated by colons (only used if
@@ -171,3 +181,11 @@ Additional flags
     ``./out`` directory. The output directory will be created if it doesn't
     exist. Existing stubs in the output directory will be overwritten without
     warning.
+
+.. option:: -v, --verbose
+
+    Produce more verbose output.
+
+.. option:: -q, --quiet
+
+    Produce less verbose output.
