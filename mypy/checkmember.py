@@ -855,7 +855,7 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
                                                               builtin_type, original_type,
                                                               original_vars=original_vars))
                            for item in t.items()])
-    return t
+    return expand_type_by_instance(t, isuper)
 
 
 def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) -> ProperType:
