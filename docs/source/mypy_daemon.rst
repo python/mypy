@@ -127,7 +127,7 @@ Additional daemon flags
    the ``recheck`` command.  By default, mypy finds and checks all files changed
    since the previous run and files that depend on them.  However, if you use this option
    (and/or :option:`--remove`), mypy assumes that only the explicitly
-   specified files need to be reprocessed. This is only useful to
+   specified files have changed. This is only useful to
    speed up mypy if you type check a very large number of files, and use an
    external, fast file system watcher, such as `watchman`_ or
    `watchdog`_, to determine which files got edited or deleted.
