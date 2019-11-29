@@ -88,8 +88,8 @@ require more precise control over the lifetime of the daemon process:
   running daemon.
 
 * ``dmypy recheck`` checks the same set of files as the most recent
-  ``check`` or ``recheck`` command. (You can also use the ``--update``
-  and ``--remove`` options to alter the set of files, and to define
+  ``check`` or ``recheck`` command. (You can also use the :option:`--update`
+  and :option:`--remove` options to alter the set of files, and to define
   which files should be processed.)
 
 * ``dmypy status`` checks whether a daemon is running. It prints a
@@ -126,7 +126,7 @@ Additional daemon flags
    checked (and check it). This option may be repeated, and it's only available for
    the ``recheck`` command.  By default, mypy finds and checks all files changed
    since the previous run.  However, if you use this option
-   (and/or ``--remove``), mypy assumes that only the explicitly
+   (and/or :option:`--remove`), mypy assumes that only the explicitly
    specified files need to be reprocessed. This is only useful to
    speed up mypy if you type check a very large number of files, and use an
    external, fast file system watcher, such as `watchman`_ or
@@ -138,7 +138,7 @@ Additional daemon flags
 
    Remove ``FILE`` from the set of files being checked. This option may be
    repeated. This is only available for the
-   ``recheck`` command. See ``--update`` above for when this may be useful.
+   ``recheck`` command. See :option:`--update` above for when this may be useful.
    *Note:* This option is never required and is only available for performance
    tuning.
 
