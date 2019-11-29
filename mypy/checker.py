@@ -2809,7 +2809,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (isinstance(lvalue, (NameExpr, MemberExpr)) and
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
-                     fullname == 'builtins.dict') and
+                     fullname == 'builtins.dict' or
+                     fullname == 'collections.OrderedDict') and
                     all(isinstance(t, (NoneType, UninhabitedType))
                         for t in get_proper_types(init_type.args))):
                 partial_type = PartialType(init_type.type, name, init_type.args)
@@ -3002,7 +3003,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if partial_types is None:
                     return
                 typename = type_type.fullname
-                if typename == 'builtins.dict':
+                if typename == 'builtins.dict' or typename == 'collections.OrderedDict':
                     # TODO: Don't infer things twice.
                     key_type = self.expr_checker.accept(lvalue.index)
                     value_type = self.expr_checker.accept(rvalue)
@@ -3013,7 +3014,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if (is_valid_inferred_type(full_key_type) and
                             is_valid_inferred_type(full_value_type)):
                         if not self.current_node_deferred:
-                            var.type = self.named_generic_type('builtins.dict',
+                            var.type = self.named_generic_type(typename,
                                                                [full_key_type, full_value_type])
                             del partial_types[var]
 

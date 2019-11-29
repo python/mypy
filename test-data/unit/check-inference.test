@@ -1572,6 +1572,19 @@ if bool():
 reveal_type(dd) # N: Revealed type is 'builtins.dict[Any, Any]'
 [builtins fixtures/dict.pyi]
 
+[case testInferOrderedDictInitializedToEmpty]
+from collections import OrderedDict
+
+o = OrderedDict()
+o[1] = 'x'
+reveal_type(o) # N: Revealed type is 'collections.OrderedDict[builtins.int, builtins.str]'
+
+d = {1: 'x'}
+oo = OrderedDict()
+oo.update(d)
+reveal_type(oo) # N: Revealed type is 'collections.OrderedDict[builtins.int*, builtins.str*]'
+[builtins fixtures/dict.pyi]
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------

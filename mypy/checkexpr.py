@@ -543,6 +543,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                  }  # type: ClassVar[Dict[str, List[str]]]
     container_args = {'builtins.list': {'extend': ['builtins.list']},
                       'builtins.dict': {'update': ['builtins.dict']},
+                      'collections.OrderedDict': {'update': ['builtins.dict']},
                       'builtins.set': {'update': ['builtins.set', 'builtins.list']},
                       }  # type: ClassVar[Dict[str, Dict[str, List[str]]]]
 
