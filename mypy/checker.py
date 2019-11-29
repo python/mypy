@@ -2042,6 +2042,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
                                                       infer_lvalue_type)
         else:
+            self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue)
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             # If we're assigning to __getattr__ or similar methods, check that the signature is
             # valid.
@@ -2140,6 +2141,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+
+    def try_infer_partial_generic_type_from_assignment(self,
+                                                       lvalue: Lvalue,
+                                                       rvalue: Expression) -> None:
+        """Try to infer a precise type for partial generic type from assignment.
+
+        Example where this happens:
+
+            x = []
+            if foo():
+                x = [1]  # Infer List[int] as type of 'x'
+        """
+        if (isinstance(lvalue, NameExpr)
+                and isinstance(lvalue.node, Var)
+                and isinstance(lvalue.node.type, PartialType)):
+            var = lvalue.node
+            typ = lvalue.node.type
+            if typ.type is None:
+                return
+            partial_types = self.find_partial_types(var)
+            if partial_types is None:
+                return
+            rvalue_type = self.expr_checker.accept(rvalue)
+            rvalue_type = get_proper_type(rvalue_type)
+            if isinstance(rvalue_type, Instance):
+                if rvalue_type.type == typ.type:
+                    var.type = rvalue_type
+                    del partial_types[var]
+            elif isinstance(rvalue_type, AnyType):
+                var.type = fill_typevars_with_any(typ.type)
+                del partial_types[var]
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:

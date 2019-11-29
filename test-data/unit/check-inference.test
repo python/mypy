@@ -1367,19 +1367,16 @@ a = []
 a.append(1)
 a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyUsingUpdate]
 a = []
 a.extend([''])
 a.append(0)  # E: Argument 1 to "append" of "list" has incompatible type "int"; expected "str"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndNotAnnotated]
 a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndReadBeforeAppend]
 a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
@@ -1387,14 +1384,12 @@ if a: pass
 a.xyz  # E: "List[Any]" has no attribute "xyz"
 a.append('')
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndIncompleteTypeInAppend]
 a = [] # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
 a.append([])
 a()  # E: "List[Any]" not callable
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndMultipleAssignment]
 a, b = [], []
@@ -1403,7 +1398,6 @@ b.append('')
 a() # E: "List[int]" not callable
 b() # E: "List[str]" not callable
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyInFunction]
 def f() -> None:
@@ -1411,7 +1405,6 @@ def f() -> None:
    a.append(1)
    a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInFunction]
 def f() -> None:
@@ -1422,7 +1415,6 @@ def g() -> None: pass
 a = []
 a.append(1)
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndReadBeforeAppendInFunction]
 def f() -> None:
@@ -1431,7 +1423,6 @@ def f() -> None:
     a.xyz  # E: "List[Any]" has no attribute "xyz"
     a.append('')
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyInClassBody]
 class A:
@@ -1439,7 +1430,6 @@ class A:
    a.append(1)
    a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInClassBody]
 class A:
@@ -1449,7 +1439,6 @@ class B:
     a = []
     a.append(1)
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyInMethod]
 class A:
@@ -1458,14 +1447,12 @@ class A:
         a.append(1)
         a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInMethod]
 class A:
     def f(self) -> None:
         a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyInMethodViaAttribute]
 class A:
@@ -1475,7 +1462,6 @@ class A:
         self.a.append(1)
         self.a.append('')
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferListInitializedToEmptyInClassBodyAndOverriden]
 from typing import List
@@ -1490,49 +1476,42 @@ class B(A):
     def x(self) -> List[int]:  # E: Signature of "x" incompatible with supertype "A"
         return [123]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testInferSetInitializedToEmpty]
 a = set()
 a.add(1)
 a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expected "int"
 [builtins fixtures/set.pyi]
-[out]
 
 [case testInferSetInitializedToEmptyUsingDiscard]
 a = set()
 a.discard('')
 a.add(0)  # E: Argument 1 to "add" of "set" has incompatible type "int"; expected "str"
 [builtins fixtures/set.pyi]
-[out]
 
 [case testInferSetInitializedToEmptyUsingUpdate]
 a = set()
 a.update({0})
 a.add('')  # E: Argument 1 to "add" of "set" has incompatible type "str"; expected "int"
 [builtins fixtures/set.pyi]
-[out]
 
 [case testInferDictInitializedToEmpty]
 a = {}
 a[1] = ''
 a() # E: "Dict[int, str]" not callable
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testInferDictInitializedToEmptyUsingUpdate]
 a = {}
 a.update({'': 42})
 a() # E: "Dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testInferDictInitializedToEmptyUsingUpdateError]
 a = {}  # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
 a.update([1, 2])  # E: Argument 1 to "update" of "dict" has incompatible type "List[int]"; expected "Mapping[Any, Any]"
 a()  # E: "Dict[Any, Any]" not callable
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testInferDictInitializedToEmptyAndIncompleteTypeInUpdate]
 a = {} # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
@@ -1540,7 +1519,6 @@ a[1] = {}
 b = {} # E: Need type annotation for 'b' (hint: "b: Dict[<type>, <type>] = ...")
 b[{}] = 1
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
 map = {}
@@ -1557,20 +1535,42 @@ def add():
 [case testSpecialCaseEmptyListInitialization]
 def f(blocks: Any): # E: Name 'Any' is not defined \
                     # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
-    to_process = [] # E: Need type annotation for 'to_process' (hint: "to_process: List[<type>] = ...")
+    to_process = []
     to_process = list(blocks)
 [builtins fixtures/list.pyi]
-[out]
 
 [case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
-    to_process = [] # E: Need type annotation for 'to_process' (hint: "to_process: List[<type>] = ...")
+    to_process = []
     to_process = list(blocks) # E: No overload variant of "list" matches argument type "object" \
                               # N: Possible overload variant: \
                               # N:     def [T] __init__(self, x: Iterable[T]) -> List[T] \
                               # N:     <1 more non-matching overload not shown>
 [builtins fixtures/list.pyi]
-[out]
+
+[case testInferListInitializedToEmptyAndAssigned]
+a = []
+if bool():
+    a = [1]
+reveal_type(a) # N: Revealed type is 'builtins.list[builtins.int*]'
+
+def f():
+    return [1]
+b = []
+if bool():
+    b = f()
+reveal_type(b) # N: Revealed type is 'builtins.list[Any]'
+
+d = {}
+if bool():
+    d = {1: 'x'}
+reveal_type(d) # N: Revealed type is 'builtins.dict[builtins.int*, builtins.str*]'
+
+dd = {} # E: Need type annotation for 'dd' (hint: "dd: Dict[<type>, <type>] = ...")
+if bool():
+    dd = [1] # E: Incompatible types in assignment (expression has type "List[int]", variable has type "Dict[Any, Any]")
+reveal_type(dd) # N: Revealed type is 'builtins.dict[Any, Any]'
+[builtins fixtures/dict.pyi]
 
 
 -- Inferring types of variables first initialized to None (partial types)
