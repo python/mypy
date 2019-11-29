@@ -599,13 +599,17 @@ class Errors:
         while i < len(errors):
             dup = False
             j = i - 1
+            conflicts = False
             while (j >= 0 and errors[j][0] == errors[i][0] and
                     errors[j][1] == errors[i][1]):
+                if errors[j][3].startswith('Got:'):
+                    conflicts = True  # Member conflicts reporting
                 if (errors[j][3] == errors[i][3] and
                         # Allow duplicate notes in overload conflicts reporting.
-                        not (errors[i][3] == 'note' and
-                             errors[i][4].strip() in allowed_duplicates
-                             or errors[i][4].strip().startswith('def ')) and
+                        not ((errors[i][3] == 'note' and
+                                 errors[i][4].strip() in allowed_duplicates)
+                             or (errors[i][4].strip().startswith('def ') and
+                                 conflicts)) and
                         errors[j][4] == errors[i][4]):  # ignore column
                     dup = True
                     break
