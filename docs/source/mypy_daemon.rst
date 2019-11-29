@@ -123,12 +123,12 @@ Additional daemon flags
 .. option:: --update FILE
 
    Re-check ``FILE``, or add it to the set of files being
-   checked. This option may be repeated. This is only available for
-   the ``recheck`` command.  By default, mypy checks all files for
-   changes since the previous run.  However, if you use this option
+   checked (and check it). This option may be repeated, and it's only available for
+   the ``recheck`` command.  By default, mypy finds and checks all files changed
+   since the previous run.  However, if you use this option
    (and/or ``--remove``), mypy assumes that only the explicitly
    specified files need to be reprocessed. This is only useful to
-   speed up mypy if you type check thousands of files, and use an
+   speed up mypy if you type check a very large number of files, and use an
    external, fast file system watcher, such as `watchman`_ or
    `watchdog`_, to determine which files need to be type checked.
    *Note:* This option is never required and is only available for
@@ -145,7 +145,7 @@ Additional daemon flags
 .. option:: --fswatcher-dump-file FILE
 
    Collect information about the current internal file state. This is
-   only available for the ``status`` command. This will dump a JSON to
+   only available for the ``status`` command. This will dump JSON to
    ``FILE`` in the format ``{path: [modification_time, size,
    content_hash]}``. This is useful for debugging the built-in file
    system watcher. *Note:* This is an internal flag and the format may
@@ -165,9 +165,10 @@ generate a draft signature in the format
 ``(param_type_1, param_type_2, ...) -> ret_type`` (types are included for all
 arguments, including keyword-only arguments, ``*args`` and ``**kwargs``).
 
-This is a low-level feature intended to be used by editor integations,
+This is a low-level feature intended to be used by editor integrations,
 IDEs, and other tools (for example, the `mypy plugin for PyCharm`_),
-to automatically add annotations to source files.
+to automatically add annotations to source files, or to propose function
+signatures.
 
 In this example, the function ``format_id()`` has no annotation:
 
@@ -178,21 +179,21 @@ In this example, the function ``format_id()`` has no annotation:
 
    root = format_id(0)
 
-``dymyp suggest`` uses call sites, return statements, and other heuristics (such as
+``dymypy suggest`` uses call sites, return statements, and other heuristics (such as
 looking for signatures in base classes) to infer that ``format_id()`` accepts
 an ``int`` argument and returns a ``str``. Use ``dmypy suggest module.format_id`` to
-display a suggested signature for the function.
+print the suggested signature for the function.
 
 More generally, the target function may be specified in two ways:
 
-* By its fully qualified name, i.e. ``[package.]module.[class.]function``
+* By its fully qualified name, i.e. ``[package.]module.[class.]function``.
 
 * By its location in a source file, i.e. ``/path/to/file.py:line``. The path can be
   absolute or relative, and ``line`` can refer to any line number within
   the function body.
 
 This command can also be used to find a more precise alternative for an existing,
-imprecise annotation with ``Any`` types.
+imprecise annotation with some ``Any`` types.
 
 The following flags customize various aspects of the ``dmypy suggest``
 command.
