@@ -823,13 +823,13 @@ def add_class_tvars(t: ProperType, isuper: Optional[Instance],
     B.foo()
 
     Args:
-        t: Declared type of the method (or property);
+        t: Declared type of the method (or property)
         isuper: Current instance mapped to the superclass where method was defined, this
-            is usually done by map_instance_to_supertype();
-        is_classmethod: True if this method is decorated with @classmethod;
+            is usually done by map_instance_to_supertype()
+        is_classmethod: True if this method is decorated with @classmethod
         original_type: The value of the type B in the expression B.foo() or the corresponding
-            component in case of a union (this is used to bind the self-types);
-        original_vars: Type variables of the class callable on which the method was accessed.
+            component in case of a union (this is used to bind the self-types)
+        original_vars: Type variables of the class callable on which the method was accessed
     Returns:
         Expanded method type with added type variables (when needed).
     """
