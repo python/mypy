@@ -130,7 +130,7 @@ Additional daemon flags
    specified files need to be reprocessed. This is only useful to
    speed up mypy if you type check a very large number of files, and use an
    external, fast file system watcher, such as `watchman`_ or
-   `watchdog`_, to determine which files need to be type checked.
+   `watchdog`_, to determine which files got edited or deleted.
    *Note:* This option is never required and is only available for
    performance tuning.
 
