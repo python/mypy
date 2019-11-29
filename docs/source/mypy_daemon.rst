@@ -125,7 +125,7 @@ Additional daemon flags
    Re-check ``FILE``, or add it to the set of files being
    checked (and check it). This option may be repeated, and it's only available for
    the ``recheck`` command.  By default, mypy finds and checks all files changed
-   since the previous run.  However, if you use this option
+   since the previous run and files that depend on them.  However, if you use this option
    (and/or :option:`--remove`), mypy assumes that only the explicitly
    specified files need to be reprocessed. This is only useful to
    speed up mypy if you type check a very large number of files, and use an
