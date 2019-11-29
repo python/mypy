@@ -87,6 +87,11 @@ require more precise control over the lifetime of the daemon process:
 * ``dmypy check <files>`` checks a set of files using an already
   running daemon.
 
+* ``dmypy recheck`` checks the same set of files as the most recent
+  ``check`` or ``recheck`` command. (You can also use the :option:`--update`
+  and :option:`--remove` options to alter the set of files, and to define
+  which files should be processed.)
+
 * ``dmypy status`` checks whether a daemon is running. It prints a
   diagnostic and exits with ``0`` if there is a running daemon.
 
@@ -101,60 +106,69 @@ Additional daemon flags
 
    Use ``FILE`` as the status file for storing daemon runtime state. This is
    normally a JSON file that contains information about daemon process and
-   connection. Default is ``.dmypy.json`` in current directory.
+   connection. The default path is ``.dmypy.json`` in the current working
+   directory.
 
 .. option:: --log-file FILE
 
    Direct daemon stdout/stderr to ``FILE``. This is useful for debugging daemon
-   crashes, since the server traceback may be not printed to client stderr.
-   Only available for ``start``, ``restart``, and ``run`` commands.
+   crashes, since the server traceback is not always printed by the client.
+   This is available for the ``start``, ``restart``, and ``run`` commands.
 
 .. option:: --timeout TIMEOUT
 
    Automatically shut down server after ``TIMEOUT`` seconds of inactivity.
-   Only available for ``start``, ``restart``, and ``run`` commands.
-
-.. option:: --fswatcher-dump-file FILE
-
-   Collect information about the current file state. Only available for
-   ``status`` command. This will dump a JSON to ``FILE`` in the format
-   ``{path: [modification_time, size, content_hash]}``. This is useful for
-   debugging the built-in file system watcher. *Note:* this is an internal
-   flag and the format may change.
-
-.. option:: --perf-stats-file FILE
-
-   Write performance profiling information to ``FILE``. Only available
-   for ``check``, ``recheck``, and ``run`` commands.
+   This is available for the ``start``, ``restart``, and ``run`` commands.
 
 .. option:: --update FILE
 
-   Files in the run to add or check again, may be repeated. Default: all
-   files from the previous run. Only available for ``recheck`` command.
-   This is useful when type checking thousands of files and using external
-   fast file system watcher, like `watchman`_ or `watchdog`_, to speed
-   things up. *Note:* this option is never required and is only available
-   for performance tuning.
+   Re-check ``FILE``, or add it to the set of files being
+   checked (and check it). This option may be repeated, and it's only available for
+   the ``recheck`` command.  By default, mypy finds and checks all files changed
+   since the previous run and files that depend on them.  However, if you use this option
+   (and/or :option:`--remove`), mypy assumes that only the explicitly
+   specified files have changed. This is only useful to
+   speed up mypy if you type check a very large number of files, and use an
+   external, fast file system watcher, such as `watchman`_ or
+   `watchdog`_, to determine which files got edited or deleted.
+   *Note:* This option is never required and is only available for
+   performance tuning.
 
 .. option:: --remove FILE
 
-   Files to remove from the run, may be repeated. Only available for
-   ``recheck`` command. This flag an be used as an optimization to avoid
-   looking at all source files for deletions. *Note:* this option is never
-   required and is only available for performance tuning.
+   Remove ``FILE`` from the set of files being checked. This option may be
+   repeated. This is only available for the
+   ``recheck`` command. See :option:`--update` above for when this may be useful.
+   *Note:* This option is never required and is only available for performance
+   tuning.
+
+.. option:: --fswatcher-dump-file FILE
+
+   Collect information about the current internal file state. This is
+   only available for the ``status`` command. This will dump JSON to
+   ``FILE`` in the format ``{path: [modification_time, size,
+   content_hash]}``. This is useful for debugging the built-in file
+   system watcher. *Note:* This is an internal flag and the format may
+   change.
+
+.. option:: --perf-stats-file FILE
+
+   Write performance profiling information to ``FILE``. This is only available
+   for the ``check``, ``recheck``, and ``run`` commands.
 
 Static inference of annotations
 *******************************
 
-Mypy daemon supports (as an experimental feature) statically inferring
-a draft type annotation for a given function or method. Running
-``dmypy suggest FUNCTION`` will produce a suggested signature in the format
-``(param_type_1, param_type_2, ...) -> ret_type`` (including named and
-star arguments).
+The mypy daemon supports (as an experimental feature) statically inferring
+draft function and method type annotations. Use ``dmypy suggest FUNCTION`` to
+generate a draft signature in the format
+``(param_type_1, param_type_2, ...) -> ret_type`` (types are included for all
+arguments, including keyword-only arguments, ``*args`` and ``**kwargs``).
 
-This low level command may be used by editors, IDEs, or similar tools, like
-`mypy plugin for PyCharm`_, to propose an annotation to user and/or to insert
-the annotation into a source file.
+This is a low-level feature intended to be used by editor integrations,
+IDEs, and other tools (for example, the `mypy plugin for PyCharm`_),
+to automatically add annotations to source files, or to propose function
+signatures.
 
 In this example, the function ``format_id()`` has no annotation:
 
@@ -165,26 +179,29 @@ In this example, the function ``format_id()`` has no annotation:
 
    root = format_id(0)
 
-Mypy can use call sites and return statements (plus extra heuristics such as
-a signature in superclass for methods) to infer that ``format_id()`` takes
-an ``int`` and returns a ``str``. To get a suggested signature for a function,
-use ``dmypy suggest FUNCTION``, where the function may be specified in
-either of two forms:
+``dymypy suggest`` uses call sites, return statements, and other heuristics (such as
+looking for signatures in base classes) to infer that ``format_id()`` accepts
+an ``int`` argument and returns a ``str``. Use ``dmypy suggest module.format_id`` to
+print the suggested signature for the function.
 
-* By its fully qualified name, i.e. ``[package.]module.[class.]function``
+More generally, the target function may be specified in two ways:
 
-* By its textual location, i.e. ``/path/to/file.py:line``. The path can be
+* By its fully qualified name, i.e. ``[package.]module.[class.]function``.
+
+* By its location in a source file, i.e. ``/path/to/file.py:line``. The path can be
   absolute or relative, and ``line`` can refer to any line number within
   the function body.
 
-This command can also be used to find an improvement for an existing (imprecise)
-annotation. The following flags customize various aspects of the ``dmypy suggest``
+This command can also be used to find a more precise alternative for an existing,
+imprecise annotation with some ``Any`` types.
+
+The following flags customize various aspects of the ``dmypy suggest``
 command.
 
 .. option:: --json
 
-   Output the signature as JSON, so that `PyAnnotate`_ can use it to apply
-   a suggestion to file. An example JSON looks like this:
+   Output the signature as JSON, so that `PyAnnotate`_ can read it and add
+   the signature to the source file. Here is what the JSON looks like:
 
    .. code-block:: python
 
@@ -196,7 +213,7 @@ command.
 
 .. option:: --no-errors
 
-   Only produce suggestions that cause no errors in the checked code. By default
+   Only produce suggestions that cause no errors in the checked code. By default,
    mypy will try to find the most precise type, even if it causes some type errors.
 
 .. option:: --no-any
@@ -204,31 +221,31 @@ command.
    Only produce suggestions that don't contain ``Any`` types. By default mypy
    proposes the most precise signature found, even if it contains ``Any`` types.
 
-.. option:: --flex-any PERCENTAGE
+.. option:: --flex-any FRACTION
 
-   Allow ``Any`` types in suggested signature if they go above a certain score.
-   Scores are from ``0`` (same as ``--no-any``) to ``1``.
+   Only allow some fraction of types in the suggested signature to be ``Any`` types.
+   The fraction ranges from ``0`` (same as ``--no-any``) to ``1``.
 
 .. option:: --try-text
 
-   Try using ``unicode`` wherever ``str`` is inferred. This flag may be useful
+   Try also using ``unicode`` wherever ``str`` is inferred. This flag may be useful
    for annotating Python 2/3 straddling code.
 
 .. option:: --callsites
 
    Only find call sites for a given function instead of suggesting a type.
-   This will produce a list including textual locations and types of actual
+   This will produce a list with line numbers and types of actual
    arguments for each call: ``/path/to/file.py:line: (arg_type_1, arg_type_2, ...)``.
 
 .. option:: --use-fixme NAME
 
-   A dummy name to use instead of plain ``Any`` for types that cannot
+   Use a dummy name instead of plain ``Any`` for types that cannot
    be inferred. This may be useful to emphasize to a user that a given type
-   can't be inferred and needs to be entered manually.
+   couldn't be inferred and needs to be entered manually.
 
 .. option:: --max-guesses NUMBER
 
-   Set the maximum number of types to try for a function (default ``64``).
+   Set the maximum number of types to try for a function (default: ``64``).
 
 .. TODO: Add similar sections about go to definition, find usages, and
    reveal type when added, and then move this to a separate file.
