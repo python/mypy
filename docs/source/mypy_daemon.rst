@@ -21,8 +21,8 @@ you'll find errors sooner.
 
 .. note::
 
-    The mypy daemon is experimental. In particular, the command-line
-    interface may change in future mypy releases.
+    The command-line of interface of mypy daemon may change in future mypy
+    releases.
 
 .. note::
 
