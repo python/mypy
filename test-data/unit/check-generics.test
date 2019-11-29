@@ -2337,3 +2337,57 @@ class Test():
     reveal_type(MakeTwoAppliedSubAbstract()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
     reveal_type(MakeTwoGenericSubAbstract[str]()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.str*]'
     reveal_type(MakeTwoGenericSubAbstract[str]()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+
+[case testGenericClassPropertyBound]
+from typing import Generic, TypeVar, Callable, Type, List, Dict
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def classproperty(f: Callable[..., U]) -> U: ...
+
+class C(Generic[T]):
+    @classproperty
+    def test(self) -> T: ...
+
+class D(C[str]): ...
+class E1(C[T], Generic[T, U]): ...
+class E2(C[U], Generic[T, U]): ...
+class G(C[List[T]]): ...
+
+x: C[int]
+y: Type[C[int]]
+reveal_type(x.test)  # N: Revealed type is 'builtins.int*'
+reveal_type(y.test)  # N: Revealed type is 'builtins.int*'
+
+xd: D
+yd: Type[D]
+reveal_type(xd.test)  # N: Revealed type is 'builtins.str*'
+reveal_type(yd.test)  # N: Revealed type is 'builtins.str*'
+
+ye1: Type[E1[int, str]]
+ye2: Type[E2[int, str]]
+reveal_type(ye1.test)  # N: Revealed type is 'builtins.int*'
+reveal_type(ye2.test)  # N: Revealed type is 'builtins.str*'
+
+xg: G[int]
+yg: Type[G[int]]
+reveal_type(xg.test)  # N: Revealed type is 'builtins.list*[builtins.int*]'
+reveal_type(yg.test)  # N: Revealed type is 'builtins.list*[builtins.int*]'
+
+class Sup:
+    attr: int
+S = TypeVar('S', bound=Sup)
+
+def func(tp: Type[C[S]]) -> S:
+    reveal_type(tp.test.attr)  # N: Revealed type is 'builtins.int'
+
+    reg: Dict[S, G[S]]
+    reveal_type(reg[tp.test])  # N: Revealed type is '__main__.G*[S`-1]'
+    reveal_type(reg[tp.test].test)  # N: Revealed type is 'builtins.list*[S`-1]'
+
+    if bool():
+        return tp.test
+    else:
+        return reg[tp.test].test[0]
+[builtins fixtures/dict.pyi]

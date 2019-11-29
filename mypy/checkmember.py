@@ -764,8 +764,8 @@ def analyze_class_attribute_access(itype: Instance,
         t = get_proper_type(t)
         if isinstance(t, FunctionLike) and is_classmethod:
             t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
-        result = add_class_tvars(t, itype, isuper, is_classmethod,
-                                 mx.builtin_type, mx.self_type, original_vars=original_vars)
+        result = add_class_tvars(t, isuper, is_classmethod,
+                                 mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                                mx.msg, mx.context, chk=mx.chk)
@@ -808,9 +808,8 @@ def analyze_class_attribute_access(itype: Instance,
         return typ
 
 
-def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
+def add_class_tvars(t: ProperType, isuper: Optional[Instance],
                     is_classmethod: bool,
-                    builtin_type: Callable[[str], Instance],
                     original_type: Type,
                     original_vars: Optional[List[TypeVarDef]] = None) -> Type:
     """Instantiate type variables during analyze_class_attribute_access,
@@ -821,12 +820,18 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
         def foo(cls: Type[Q]) -> Tuple[T, Q]: ...
 
     class B(A[str]): pass
-
     B.foo()
 
-    original_type is the value of the type B in the expression B.foo() or the corresponding
-    component in case if a union (this is used to bind the self-types); original_vars are type
-    variables of the class callable on which the method was accessed.
+    Args:
+        t: Declared type of the method (or property)
+        isuper: Current instance mapped to the superclass where method was defined, this
+            is usually done by map_instance_to_supertype()
+        is_classmethod: True if this method is decorated with @classmethod
+        original_type: The value of the type B in the expression B.foo() or the corresponding
+            component in case of a union (this is used to bind the self-types)
+        original_vars: Type variables of the class callable on which the method was accessed
+    Returns:
+        Expanded method type with added type variables (when needed).
     """
     # TODO: verify consistency between Q and T
 
@@ -851,10 +856,12 @@ def add_class_tvars(t: ProperType, itype: Instance, isuper: Optional[Instance],
             t = cast(CallableType, expand_type_by_instance(t, isuper))
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
-        return Overloaded([cast(CallableType, add_class_tvars(item, itype, isuper, is_classmethod,
-                                                              builtin_type, original_type,
+        return Overloaded([cast(CallableType, add_class_tvars(item, isuper,
+                                                              is_classmethod, original_type,
                                                               original_vars=original_vars))
                            for item in t.items()])
+    if isuper is not None:
+        t = cast(ProperType, expand_type_by_instance(t, isuper))
     return t
 
 
