@@ -1585,6 +1585,78 @@ oo.update(d)
 reveal_type(oo) # N: Revealed type is 'collections.OrderedDict[builtins.int*, builtins.str*]'
 [builtins fixtures/dict.pyi]
 
+[case testInferAttributeInitializedToEmptyAndAssigned]
+class C:
+    def __init__(self) -> None:
+        self.a = []
+        if bool():
+            self.a = [1]
+reveal_type(C().a)
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAppended]
+class C:
+    def __init__(self) -> None:
+        self.a = []
+        if bool():
+            self.a.append(1)
+reveal_type(C().a)
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAssignedItem]
+class C:
+    def __init__(self) -> None:
+        self.a = {}
+        if bool():
+            self.a[0] = 'yes'
+reveal_type(C().a)
+[builtins fixtures/dict.pyi]
+
+[case testInferAttributeInitializedToNoneAndAssigned]
+# flags: --strict-optional
+class C:
+    def __init__(self) -> None:
+        self.a = None
+        if bool():
+            self.a = 1
+reveal_type(C().a)
+
+[case testInferAttributeInitializedToEmptyAndAssignedOtherMethod]
+class C:
+    def __init__(self) -> None:
+        self.a = []
+    def meth(self) -> None:
+        self.a = [1]
+reveal_type(C().a)
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAppendedOtherMethod]
+class C:
+    def __init__(self) -> None:
+        self.a = []
+    def meth(self) -> None:
+        self.a.append(1)
+reveal_type(C().a)
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAssignedItemOtherMethod]
+class C:
+    def __init__(self) -> None:
+        self.a = {}
+    def meth(self) -> None:
+        self.a[0] = 'yes'
+reveal_type(C().a)
+[builtins fixtures/dict.pyi]
+
+[case testInferAttributeInitializedToNoneAndAssignedOtherMethod]
+# flags: --strict-optional
+class C:
+    def __init__(self) -> None:
+        self.a = None
+    def meth(self) -> None:
+        self.a = 1
+reveal_type(C().a)
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------

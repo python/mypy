@@ -2714,6 +2714,7 @@ class C:
         class D:
             def __init__(self) -> None:
                 self.x = {}
+            def meth(self) -> None:
                 self.x['a'] = 'b'
 [file a.py]
 def g() -> None: pass
@@ -2731,6 +2732,7 @@ class D:
     def __init__(self) -> None:
         a.g()
         self.x = {}
+    def meth(self) -> None:
         self.x['a'] = 'b'
 [file a.py]
 def g() -> None: pass

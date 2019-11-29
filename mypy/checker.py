@@ -2153,11 +2153,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if foo():
                 x = [1]  # Infer List[int] as type of 'x'
         """
+        var = None
         if (isinstance(lvalue, NameExpr)
                 and isinstance(lvalue.node, Var)
                 and isinstance(lvalue.node.type, PartialType)):
             var = lvalue.node
-            typ = lvalue.node.type
+        elif isinstance(lvalue, MemberExpr):
+            var = self.expr_checker.get_partial_self_var(lvalue)
+        if var is not None:
+            typ = var.type
+            assert isinstance(typ, PartialType)
             if typ.type is None:
                 return
             partial_types = self.find_partial_types(var)
@@ -2993,8 +2998,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Expression) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
+        var = None
         if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
             var = lvalue.base.node
+        elif isinstance(lvalue.base, MemberExpr):
+            var = self.expr_checker.get_partial_self_var(lvalue.base)
+        if isinstance(var, Var):
             if isinstance(var.type, PartialType):
                 type_type = var.type.type
                 if type_type is None:
