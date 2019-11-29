@@ -607,7 +607,7 @@ class Errors:
                 if (errors[j][3] == errors[i][3] and
                         # Allow duplicate notes in overload conflicts reporting.
                         not ((errors[i][3] == 'note' and
-                                 errors[i][4].strip() in allowed_duplicates)
+                              errors[i][4].strip() in allowed_duplicates)
                              or (errors[i][4].strip().startswith('def ') and
                                  conflicts)) and
                         errors[j][4] == errors[i][4]):  # ignore column
