@@ -231,7 +231,7 @@ command.
    Set the maximum number of types to try for a function (default ``64``).
 
 .. TODO: Add similar sections about go to definition, find usages, and
-   reveal type when added.
+   reveal type when added, and then move this to a separate file.
 
 Limitations
 ***********
