@@ -2165,6 +2165,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             assert isinstance(typ, PartialType)
             if typ.type is None:
                 return
+            # TODO: some logic here duplicates the None partial type counterpart
+            #       inlined in check_assignment(), see # 8043.
             partial_types = self.find_partial_types(var)
             if partial_types is None:
                 return

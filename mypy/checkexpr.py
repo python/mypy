@@ -538,14 +538,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return callee
 
     def get_partial_self_var(self, expr: MemberExpr) -> Optional[Var]:
+        """Get variable node for a partial self attribute.
+
+        If the expression is not a self attribute, or attribute is not variable,
+        or variable is not partial, return None.
+        """
         if not (isinstance(expr.expr, NameExpr) and
                 isinstance(expr.expr.node, Var) and expr.expr.node.is_self):
+            # Not a self.attr expression.
             return None
         info = self.chk.scope.enclosing_class()
         if not info or expr.name not in info.names:
+            # Don't mess with partial types in superclasses.
             return None
         sym = info.names[expr.name]
-        # TODO: check implicit (add tests for defined in class body, both orders)?
         if isinstance(sym.node, Var) and isinstance(sym.node.type, PartialType):
             return sym.node
         return None

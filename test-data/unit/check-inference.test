@@ -1591,7 +1591,7 @@ class C:
         self.a = []
         if bool():
             self.a = [1]
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[builtins.int*]'
 [builtins fixtures/list.pyi]
 
 [case testInferAttributeInitializedToEmptyAndAppended]
@@ -1600,7 +1600,7 @@ class C:
         self.a = []
         if bool():
             self.a.append(1)
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
 
 [case testInferAttributeInitializedToEmptyAndAssignedItem]
@@ -1609,7 +1609,7 @@ class C:
         self.a = {}
         if bool():
             self.a[0] = 'yes'
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssigned]
@@ -1619,33 +1619,33 @@ class C:
         self.a = None
         if bool():
             self.a = 1
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'Union[builtins.int, None]'
 
 [case testInferAttributeInitializedToEmptyAndAssignedOtherMethod]
 class C:
     def __init__(self) -> None:
-        self.a = []
+        self.a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
     def meth(self) -> None:
         self.a = [1]
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
 
 [case testInferAttributeInitializedToEmptyAndAppendedOtherMethod]
 class C:
     def __init__(self) -> None:
-        self.a = []
+        self.a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
     def meth(self) -> None:
         self.a.append(1)
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
 
 [case testInferAttributeInitializedToEmptyAndAssignedItemOtherMethod]
 class C:
     def __init__(self) -> None:
-        self.a = {}
+        self.a = {}  # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
     def meth(self) -> None:
         self.a[0] = 'yes'
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'builtins.dict[Any, Any]'
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssignedOtherMethod]
@@ -1654,8 +1654,75 @@ class C:
     def __init__(self) -> None:
         self.a = None
     def meth(self) -> None:
+        self.a = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "None")
+reveal_type(C().a)  # N: Revealed type is 'None'
+
+[case testInferAttributeInitializedToEmptyAndAssignedClassBody]
+class C:
+    a = []
+    def __init__(self) -> None:
+        self.a = [1]
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[builtins.int*]'
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAppendedClassBody]
+class C:
+    a = []
+    def __init__(self) -> None:
+        self.a.append(1)
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAssignedItemClassBody]
+class C:
+    a = {}
+    def __init__(self) -> None:
+        self.a[0] = 'yes'
+reveal_type(C().a)  # N: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+[builtins fixtures/dict.pyi]
+
+[case testInferAttributeInitializedToNoneAndAssignedClassBody]
+# flags: --strict-optional
+class C:
+    a = None
+    def __init__(self) -> None:
         self.a = 1
-reveal_type(C().a)
+reveal_type(C().a)  # N: Revealed type is 'Union[builtins.int, None]'
+
+[case testInferAttributeInitializedToEmptyAndAssignedClassBodyLocal]
+# flags: --local-partial-types
+class C:
+    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    def __init__(self) -> None:
+        self.a = [1]
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAppendedClassBodyLocal]
+# flags: --local-partial-types
+class C:
+    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    def __init__(self) -> None:
+        self.a.append(1)
+reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]
+
+[case testInferAttributeInitializedToEmptyAndAssignedItemClassBodyLocal]
+# flags: --local-partial-types
+class C:
+    a = {}  # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+    def __init__(self) -> None:
+        self.a[0] = 'yes'
+reveal_type(C().a)  # N: Revealed type is 'builtins.dict[Any, Any]'
+[builtins fixtures/dict.pyi]
+
+[case testInferAttributeInitializedToNoneAndAssignedClassBodyLocal]
+# flags: --strict-optional --local-partial-types
+class C:
+    a = None  # E: Need type annotation for 'a'
+    def __init__(self) -> None:
+        self.a = 1
+reveal_type(C().a)  # N: Revealed type is 'Union[Any, None]'
 
 
 -- Inferring types of variables first initialized to None (partial types)
