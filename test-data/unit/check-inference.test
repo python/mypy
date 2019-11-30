@@ -1458,9 +1458,9 @@ class A:
 class A:
     def f(self) -> None:
         # Attributes aren't supported right now.
-        self.a = [] # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+        self.a = []
         self.a.append(1)
-        self.a.append('')
+        self.a.append('')  # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyInClassBodyAndOverriden]
