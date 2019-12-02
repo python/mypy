@@ -2450,9 +2450,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 results.append(result)
             else:
                 return result
-        
+
         # We finish invoking above operators and no early return happens. Therefore,
-        # we check if either the LHS or the RHS is Instance and fallbacks to Any, 
+        # we check if either the LHS or the RHS is Instance and fallbacks to Any,
         # if so, we also return Any
         if ((isinstance(left_type, Instance) and left_type.type.fallback_to_any) or
                 (isinstance(right_type, Instance) and right_type.type.fallback_to_any)):
