@@ -1464,5 +1464,5 @@ test.py:5: note: Subscripting classes that are not generic at runtime may requir
 [file a.pyd]
 # coding: uft-8
 [out]
-mypy: no support for .pyd files: 'a.pyd'
+mypy: stubgen does not support .pyd files: 'a.pyd'
 == Return code: 2

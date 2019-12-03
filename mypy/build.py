@@ -2006,7 +2006,7 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     if self.path.endswith('.pyd'):
                         raise CompileError([
-                            "mypy: no support for .pyd files: '{}'".format(self.path)],
+                            "mypy: stubgen does not support .pyd files: '{}'".format(self.path)],
                             module_with_blocker=self.id)
                     else:
                         raise CompileError([
