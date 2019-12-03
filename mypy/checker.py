@@ -4340,7 +4340,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # All scopes within the outermost function are active. Scopes out of
                 # the outermost function are inactive to allow local reasoning (important
                 # for fine-grained incremental mode).
-                scope_active = (not self.options.local_partial_types
+                disallow_other_scopes = self.options.local_partial_types
+
+                if isinstance(var.type, PartialType) and var.type.type is not None and var.info:
+                    # This is an ugly hack to make partial generic self attributes behave
+                    # as if --local-partial-types is always on (because it used to be like this).
+                    disallow_other_scopes = True
+
+                scope_active = (not disallow_other_scopes
                                 or scope.is_local == self.partial_types[-1].is_local)
                 return scope_active, scope.is_local, scope.map
         return False, False, None
