@@ -2004,9 +2004,11 @@ class State:
                             self.path, os.strerror(ioerr.errno))],
                         module_with_blocker=self.id)
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
-                    raise CompileError([
-                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))],
-                        module_with_blocker=self.id)
+                    if self.path.endswith('.pyd'):
+                        err = "mypy: stubgen does not support .pyd files: '{}'".format(self.path)
+                    else:
+                        err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
+                    raise CompileError([err], module_with_blocker=self.id)
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
