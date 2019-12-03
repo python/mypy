@@ -6,6 +6,8 @@ import tempfile
 import re
 import unittest
 from types import ModuleType
+from pathlib import Path
+
 
 from typing import Any, List, Tuple, Optional
 
@@ -449,15 +451,15 @@ class StubgenUtilSuite(unittest.TestCase):
         assert common_dir_prefix([]) == '.'
         assert common_dir_prefix(['x.pyi']) == '.'
         assert common_dir_prefix(['./x.pyi']) == '.'
-        assert common_dir_prefix(['foo/bar/x.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi']) == str(Path('foo/bar'))
         assert common_dir_prefix(['foo/bar/x.pyi',
-                                  'foo/bar/y.pyi']) == 'foo/bar'
+                                  'foo/bar/y.pyi']) == str(Path('foo/bar'))
         assert common_dir_prefix(['foo/bar/x.pyi', 'foo/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/x.pyi', 'foo/bar/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo'
-        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == 'foo/bar'
-        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == str(Path('foo/bar'))
+        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == str(Path('foo/bar'))
 
 
 class StubgenHelpersSuite(unittest.TestCase):
