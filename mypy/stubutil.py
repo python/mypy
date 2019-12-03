@@ -6,6 +6,7 @@ import json
 import subprocess
 import re
 from contextlib import contextmanager
+from pathlib import Path
 
 from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
@@ -247,11 +248,8 @@ def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, byte
 def common_dir_prefix(paths: List[str]) -> str:
     if not paths:
         return '.'
-    cur = os.path.dirname(paths[0])
-    for path in paths[1:]:
-        while True:
-            path = os.path.dirname(path)
-            if (cur + '/').startswith(path + '/'):
-                cur = path
-                break
-    return cur or '.'
+    cur = Path(paths[0])
+    for parent in cur.parents:
+        if all(parent in Path(path).parents for path in paths[1:]):
+            return str(parent)
+    return '.'
