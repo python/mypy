@@ -216,12 +216,12 @@ expr_com_3 = ...   # type: Literal['3']
 expr_com_4 = ...   # type: Literal['True']
 expr_com_5 = ...   # type: Literal['None']
 expr_com_6 = ...   # type: Literal['"foo"']
-reveal_type(expr_com_1)  # N: Revealed type is 'Literal['a+b']'
-reveal_type(expr_com_2)  # N: Revealed type is 'Literal['1+2']'
-reveal_type(expr_com_3)  # N: Revealed type is 'Literal['3']'
-reveal_type(expr_com_4)  # N: Revealed type is 'Literal['True']'
-reveal_type(expr_com_5)  # N: Revealed type is 'Literal['None']'
-reveal_type(expr_com_6)  # N: Revealed type is 'Literal['"foo"']'
+reveal_type(expr_com_1)  # N: Revealed type is 'Literal[u'a+b']'
+reveal_type(expr_com_2)  # N: Revealed type is 'Literal[u'1+2']'
+reveal_type(expr_com_3)  # N: Revealed type is 'Literal[u'3']'
+reveal_type(expr_com_4)  # N: Revealed type is 'Literal[u'True']'
+reveal_type(expr_com_5)  # N: Revealed type is 'Literal[u'None']'
+reveal_type(expr_com_6)  # N: Revealed type is 'Literal[u'"foo"']'
 [builtins fixtures/bool.pyi]
 [out]
 
