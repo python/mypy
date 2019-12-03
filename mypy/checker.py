@@ -4395,7 +4395,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     supertype.type.fullname == 'builtins.tuple'):
                 lhs_type = supertype.args[0]
                 lhs_types = [lhs_type] * len(subtype.items)
-                self.generate_imcompatiable_tuple_error(lhs_types,
+                self.generate_incompatible_tuple_error(lhs_types,
                                     subtype.items, context, msg, code)
                 return True
             elif (isinstance(supertype, TupleType) and
@@ -4407,13 +4407,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                         self.format_long_tuple_type(supertype))
                         self.fail(error_msg, context, code=code)
                         return True
-                self.generate_imcompatiable_tuple_error(supertype.items,
+                self.generate_incompatible_tuple_error(supertype.items,
                                     subtype.items, context, msg, code)
                 return True
         return False
 
     def format_long_tuple_type(self, typ: TupleType) -> str:
-        """Format very long tuple type using in ellipsis notation"""
+        """Format very long tuple type using an ellipsis notation"""
         item_cnt = len(typ.items)
         if item_cnt > 10:
             return 'Tuple[{}, {}, ... <{} more items>]'\
@@ -4422,22 +4422,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return format_type_bare(typ)
 
-    def generate_imcompatiable_tuple_error(self,
-                                           lhs_types: List[Type],
-                                           rhs_types: List[Type],
-                                           context: Context,
-                                           msg: str = message_registry.INCOMPATIBLE_TYPES,
-                                           code: Optional[ErrorCode] = None) -> None:
-        """Generate error message for individual imcompatiable tuple pairs"""
+    def generate_incompatible_tuple_error(self,
+                                          lhs_types: List[Type],
+                                          rhs_types: List[Type],
+                                          context: Context,
+                                          msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                          code: Optional[ErrorCode] = None) -> None:
+        """Generate error message for individual incompatible tuple pairs"""
         error_cnt = 0
         notes = []  # List[str]
-        notes_items = []  # List[Type]
         for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
             if not is_subtype(lhs_t, rhs_t):
                 if error_cnt < 3:
-                    notes.append('Expression Tuple item {} has type "{}"; "{}" expected; '
+                    notes.append('Expression tuple item {} has type "{}"; "{}" expected; '
                         .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
-                    notes_items.append(rhs_t)
                 error_cnt += 1
 
         error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
@@ -4446,7 +4444,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             error_msg += ')'
         self.fail(error_msg, context, code=code)
-        for note, item in zip(notes, notes_items):
+        for note in notes:
             self.note(note, context, code=code)
 
 
