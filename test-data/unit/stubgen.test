@@ -1638,11 +1638,11 @@ class A:
 
 [out]
 import abc
-from abc import abstractproperty
 from typing import Any
 
 class A(metaclass=abc.ABCMeta):
-    @abstractproperty
+    @property
+    @abc.abstractmethod
     def x(self) -> Any: ...
 
 [case testClassWithNameAnyOrOptional]
@@ -2153,3 +2153,31 @@ from collections import namedtuple
 
 class C:
     N = namedtuple('N', ['x', 'y'])
+
+[case testSplitAbstractPropertyUsingAlias]
+from abc import abstractproperty as alias_name
+class A:
+    @alias_name
+    def x(self): pass
+[out]
+import abc
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def x(self) -> Any: ...
+
+[case testSplitAbstractPropertyUsingMemberExpr]
+import abc
+class A:
+    @abc.abstractproperty
+    def x(self): pass
+[out]
+import abc
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def x(self) -> Any: ...

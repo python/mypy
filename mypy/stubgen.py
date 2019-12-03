@@ -647,10 +647,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                           'asyncio.coroutines',
                                                           'types'):
             self.add_coroutine_decorator(context.func, name, name)
-        elif any(self.refers_to_fullname(name, target)
-                 for target in ('abc.abstractmethod', 'abc.abstractproperty')):
+        elif self.refers_to_fullname(name, 'abc.abstractmethod'):
             self.add_decorator(name)
             self.import_tracker.require_name(name)
+            is_abstract = True
+        elif self.refers_to_fullname(name, 'abc.abstractproperty'):
+            self.add_decorator('property')
+            self.add_decorator('abc.abstractmethod')
             is_abstract = True
         return is_abstract
 
@@ -674,8 +677,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
               (expr.expr.name == 'abc' or
                self.import_tracker.reverse_alias.get('abc')) and
               expr.name in ('abstractmethod', 'abstractproperty')):
-            self.import_tracker.require_name(expr.expr.name)
-            self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
+            if expr.name == 'abstractproperty':
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s' % ('property'))
+                self.add_decorator('%s.%s' % (expr.expr.name, 'abstractmethod'))
+            else:
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
             is_abstract = True
         elif expr.name == 'coroutine':
             if (isinstance(expr.expr, MemberExpr) and
