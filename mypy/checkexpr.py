@@ -537,6 +537,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return callee
 
+    def get_partial_self_var(self, expr: MemberExpr) -> Optional[Var]:
+        """Get variable node for a partial self attribute.
+
+        If the expression is not a self attribute, or attribute is not variable,
+        or variable is not partial, return None.
+        """
+        if not (isinstance(expr.expr, NameExpr) and
+                isinstance(expr.expr.node, Var) and expr.expr.node.is_self):
+            # Not a self.attr expression.
+            return None
+        info = self.chk.scope.enclosing_class()
+        if not info or expr.name not in info.names:
+            # Don't mess with partial types in superclasses.
+            return None
+        sym = info.names[expr.name]
+        if isinstance(sym.node, Var) and isinstance(sym.node.type, PartialType):
+            return sym.node
+        return None
+
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
                  'builtins.set': ['add', 'discard'],
@@ -550,6 +569,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def try_infer_partial_type(self, e: CallExpr) -> None:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
             var = e.callee.expr.node
+            if var is None and isinstance(e.callee.expr, MemberExpr):
+                var = self.get_partial_self_var(e.callee.expr)
             if not isinstance(var, Var):
                 return
             partial_types = self.chk.find_partial_types(var)

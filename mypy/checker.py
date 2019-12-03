@@ -2153,13 +2153,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if foo():
                 x = [1]  # Infer List[int] as type of 'x'
         """
+        var = None
         if (isinstance(lvalue, NameExpr)
                 and isinstance(lvalue.node, Var)
                 and isinstance(lvalue.node.type, PartialType)):
             var = lvalue.node
-            typ = lvalue.node.type
+        elif isinstance(lvalue, MemberExpr):
+            var = self.expr_checker.get_partial_self_var(lvalue)
+        if var is not None:
+            typ = var.type
+            assert isinstance(typ, PartialType)
             if typ.type is None:
                 return
+            # TODO: some logic here duplicates the None partial type counterpart
+            #       inlined in check_assignment(), see # 8043.
             partial_types = self.find_partial_types(var)
             if partial_types is None:
                 return
@@ -2993,8 +3000,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Expression) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
+        var = None
         if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
             var = lvalue.base.node
+        elif isinstance(lvalue.base, MemberExpr):
+            var = self.expr_checker.get_partial_self_var(lvalue.base)
+        if isinstance(var, Var):
             if isinstance(var.type, PartialType):
                 type_type = var.type.type
                 if type_type is None:
@@ -4331,7 +4342,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # All scopes within the outermost function are active. Scopes out of
                 # the outermost function are inactive to allow local reasoning (important
                 # for fine-grained incremental mode).
-                scope_active = (not self.options.local_partial_types
+                disallow_other_scopes = self.options.local_partial_types
+
+                if isinstance(var.type, PartialType) and var.type.type is not None and var.info:
+                    # This is an ugly hack to make partial generic self attributes behave
+                    # as if --local-partial-types is always on (because it used to be like this).
+                    disallow_other_scopes = True
+
+                scope_active = (not disallow_other_scopes
                                 or scope.is_local == self.partial_types[-1].is_local)
                 return scope_active, scope.is_local, scope.map
         return False, False, None
