@@ -4062,7 +4062,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-
+        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg,
+                                       subtype_label, supertype_label, code=code):
+            return False
         if self.should_suppress_optional_error([subtype]):
             return False
         extra_info = []  # type: List[str]

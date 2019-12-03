@@ -1241,3 +1241,46 @@ b = ("bar", 7)
 reveal_type(a + b)  # N: Revealed type is 'Tuple[builtins.int, builtins.str, builtins.int, builtins.str, builtins.int]'
 
 [builtins fixtures/tuple.pyi]
+
+[case testAssigningWithLongTupleInitializer]
+from typing import Tuple
+
+# long initializer assignment with few mismatches
+t: Tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", 11) \
+                                                                    # E: Incompatible types in assignment (3 tuple items are incompatible) \
+                                                                    # N: Expression tuple item 8 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 9 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 10 has type "str"; "int" expected;
+
+# long initializer assignment with more mismatches
+t1: Tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str") \
+                                                                    # E: Incompatible types in assignment (4 tuple items are incompatible; 1 items are omitted) \
+                                                                    # N: Expression tuple item 8 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 9 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 10 has type "str"; "int" expected;
+
+# short tuple initializer assignment
+t2: Tuple[int, ...] = (1, 2, "s", 4) \
+                                # E: Incompatible types in assignment (expression has type "Tuple[int, int, str, int]", variable has type "Tuple[int, ...]")
+
+# long initializer assignment with few mismatches, no ellipsis
+t3: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, "str", "str") \
+                                                                    # E: Incompatible types in assignment (2 tuple items are incompatible) \
+                                                                    # N: Expression tuple item 10 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 11 has type "str"; "int" expected;
+
+# long initializer assignment with more mismatches, no ellipsis
+t4: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str") \
+                                                                    # E: Incompatible types in assignment (4 tuple items are incompatible; 1 items are omitted) \
+                                                                    # N: Expression tuple item 8 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 9 has type "str"; "int" expected; \
+                                                                    # N: Expression tuple item 10 has type "str"; "int" expected;
+
+# short tuple initializer assignment, no ellipsis
+t5: Tuple[int, int] = (1, 2, "s", 4)  # E: Incompatible types in assignment (expression has type "Tuple[int, int, str, int]", variable has type "Tuple[int, int]")
+
+# long initializer assignment with mismatched pairs
+t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8, "str", "str", "str", "str", 1, 1, 1, 1, 1) \
+                                                                    # E: Incompatible types in assignment (expression has type Tuple[int, int, ... <15 more items>], variable has type Tuple[int, int, ... <10 more items>]) 
+
+[builtins fixtures/tuple.pyi]
