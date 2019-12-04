@@ -569,9 +569,10 @@ def analyze_var(name: str,
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_function_type_vars(functype)
                 signature = check_self_arg(signature, dispatched_type, var.is_classmethod,
-                                          mx.context, name, mx.msg)
+                                           mx.context, name, mx.msg)
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
                 expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
+                freeze_type_vars(expanded_signature)
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
@@ -854,6 +855,7 @@ def add_class_tvars(t: ProperType, isuper: Optional[Instance],
             t = bind_self(t, original_type, is_classmethod=True)
             assert isuper is not None
             t = cast(CallableType, expand_type_by_instance(t, isuper))
+            freeze_type_vars(t)
         return t.copy_modified(variables=tvars + t.variables)
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(item, isuper,
