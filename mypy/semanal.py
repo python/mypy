@@ -611,7 +611,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 assert ret_type is not None, "Internal error: typing.Coroutine not found"
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
 
-    def prepare_method_signature(self, func: FuncItem, info: TypeInfo) -> None:
+    def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
         functype = func.type
