@@ -1497,5 +1497,5 @@ from asyncio import Future, wait
 from typing import List
 
 async def foo() -> None:
-    f: List[Future[None]] = []
+    f = []  # type: List[Future[None]]
     await wait(f)
