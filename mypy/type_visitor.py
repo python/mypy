@@ -290,7 +290,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types([t.upper_bound] + t.values)
 
     def visit_partial_type(self, t: PartialType) -> T:
-        return self.query_types(t.inner_types)
+        return self.strategy([])
 
     def visit_instance(self, t: Instance) -> T:
         return self.query_types(t.args)
