@@ -2,11 +2,11 @@
 
 import sys
 import os.path
+import itertools
 import json
 import subprocess
 import re
 from contextlib import contextmanager
-from pathlib import Path
 
 from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
@@ -248,8 +248,11 @@ def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, byte
 def common_dir_prefix(paths: List[str]) -> str:
     if not paths:
         return '.'
-    cur = Path(paths[0])
-    for parent in cur.parents:
-        if all(parent in Path(path).parents for path in paths[1:]):
-            return str(parent)
-    return '.'
+
+    def common_part(parts):
+        return all(x == parts[0] for x in parts)
+
+    dirs = [os.path.dirname(p) for p in paths]
+    parts = zip(*(path.split(os.path.sep) for path in dirs))
+    common_parts = (p[0] for p in itertools.takewhile(common_part, parts))
+    return os.path.join(*common_parts) or '.'

@@ -6,8 +6,8 @@ import tempfile
 import re
 import unittest
 from types import ModuleType
-from pathlib import Path
 
+import pytest
 
 from typing import Any, List, Tuple, Optional
 
@@ -447,19 +447,34 @@ class StubgenUtilSuite(unittest.TestCase):
 
         assert_equal(remove_misplaced_type_comments(original), dest)
 
-    def test_common_dir_prefix(self) -> None:
+    @pytest.mark.skipif(sys.platform == 'win32', reason='Tests building the paths common ancestor on *nix')
+    def test_common_dir_prefix_unix(self) -> None:
         assert common_dir_prefix([]) == '.'
         assert common_dir_prefix(['x.pyi']) == '.'
         assert common_dir_prefix(['./x.pyi']) == '.'
-        assert common_dir_prefix(['foo/bar/x.pyi']) == str(Path('foo/bar'))
+        assert common_dir_prefix(['foo/bar/x.pyi']) == 'foo/bar'
         assert common_dir_prefix(['foo/bar/x.pyi',
-                                  'foo/bar/y.pyi']) == str(Path('foo/bar'))
+                                  'foo/bar/y.pyi']) == 'foo/bar'
         assert common_dir_prefix(['foo/bar/x.pyi', 'foo/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/x.pyi', 'foo/bar/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/y.pyi']) == 'foo'
         assert common_dir_prefix(['foo/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo'
-        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == str(Path('foo/bar'))
-        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == str(Path('foo/bar'))
+        assert common_dir_prefix(['foo/bar/zar/x.pyi', 'foo/bar/y.pyi']) == 'foo/bar'
+        assert common_dir_prefix(['foo/bar/x.pyi', 'foo/bar/zar/y.pyi']) == 'foo/bar'
+
+    @pytest.mark.skipif(sys.platform != 'win32', reason='Tests building the paths common ancestor on Windows')
+    def test_common_dir_prefix_win(self) -> None:
+        assert common_dir_prefix(['x.pyi']) == '.'
+        assert common_dir_prefix([r'.\x.pyi']) == '.'
+        assert common_dir_prefix([r'foo\bar\x.pyi']) == r'foo\bar'
+        assert common_dir_prefix([r'foo\bar\x.pyi',
+                                  r'foo\bar\y.pyi']) == r'foo\bar'
+        assert common_dir_prefix([r'foo\bar\x.pyi', r'foo\y.pyi']) == 'foo'
+        assert common_dir_prefix([r'foo\x.pyi', 'foo\bar\y.pyi']) == 'foo'
+        assert common_dir_prefix([r'foo\bar\zar\x.pyi', r'foo\y.pyi']) == 'foo'
+        assert common_dir_prefix([r'foo\x.pyi', r'foo\bar\zar\y.pyi']) == 'foo'
+        assert common_dir_prefix([r'foo\bar\zar\x.pyi', r'foo\bar\y.pyi']) == r'foo\bar'
+        assert common_dir_prefix([r'foo\bar\x.pyi', r'foo\bar\zar\y.pyi']) == r'foo\bar'
 
 
 class StubgenHelpersSuite(unittest.TestCase):
