@@ -2924,3 +2924,18 @@ reveal_type(q2(z))  # N: Revealed type is '__main__.B*'
 reveal_type(q1(Z(b)))  # N: Revealed type is '__main__.B*'
 reveal_type(q2(Z(b)))  # N: Revealed type is '__main__.B*'
 [builtins fixtures/isinstancelist.pyi]
+
+[case testUnionInvariantSubClassAndCovariantBase]
+from typing import Union, Generic, TypeVar
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+
+class Cov(Generic[T_co]): ...
+class Inv(Cov[T]): ...
+
+X = Union[Cov[T], Inv[T]]
+
+def f(x: X[T]) -> T: ...
+x: Inv[int]
+reveal_type(f(x))  # N: Revealed type is 'builtins.int*'

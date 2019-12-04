@@ -1490,3 +1490,12 @@ reveal_type(A().b)
 [out]
 _testNamedTupleAtRunTime.py:5: error: NamedTuple type as an attribute is not supported
 _testNamedTupleAtRunTime.py:7: note: Revealed type is 'Any'
+
+[case testAsyncioFutureWait]
+# mypy: strict-optional
+from asyncio import Future, wait
+from typing import List
+
+async def foo() -> None:
+    f = []  # type: List[Future[None]]
+    await wait(f)
