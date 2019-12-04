@@ -8,7 +8,7 @@ import subprocess
 import re
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, Iterator, Union
+from typing import Optional, Tuple, List, Iterator, Sequence, Union
 from typing_extensions import overload
 
 from mypy.moduleinspect import ModuleInspect, InspectError
@@ -249,7 +249,7 @@ def common_dir_prefix(paths: List[str]) -> str:
     if not paths:
         return '.'
 
-    def common_part(parts):
+    def common_part(parts: Sequence[str]) -> bool:
         return all(x == parts[0] for x in parts)
 
     dirs = [os.path.dirname(p) for p in paths]
