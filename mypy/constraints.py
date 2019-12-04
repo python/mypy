@@ -108,7 +108,7 @@ def _infer_constraints(template: Type, actual: Type,
     template = get_proper_type(template)
     actual = get_proper_type(actual)
 
-    # Type inference shouldn't be affected by whether union types have bee simplified.
+    # Type inference shouldn't be affected by whether union types have been simplified.
     if isinstance(template, UnionType):
         template = mypy.typeops.make_simplified_union(template.items)
     if isinstance(actual, UnionType):
