@@ -823,7 +823,7 @@ class LinePrecisionReporter(AbstractReporter):
                 options: Options) -> None:
 
         try:
-            path = os.path.relpath(tree.path, start=os.getcwd())
+            path = os.path.relpath(tree.path)
 
         except ValueError:
             path = tree.path
