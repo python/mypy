@@ -588,10 +588,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (typename in self.item_args and methodname in self.item_args[typename]
                         and e.arg_kinds == [ARG_POS]):
                     item_type = self.accept(e.args[0])
-                    full_item_type = make_simplified_union(
-                        [item_type, partial_type.inner_types[0]])
-                    if mypy.checker.is_valid_inferred_type(full_item_type):
-                        var.type = self.chk.named_generic_type(typename, [full_item_type])
+                    if mypy.checker.is_valid_inferred_type(item_type):
+                        var.type = self.chk.named_generic_type(typename, [item_type])
                         del partial_types[var]
                 elif (typename in self.container_args
                       and methodname in self.container_args[typename]
@@ -600,15 +598,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if isinstance(arg_type, Instance):
                         arg_typename = arg_type.type.fullname
                         if arg_typename in self.container_args[typename][methodname]:
-                            full_item_types = [
-                                make_simplified_union([item_type, prev_type])
-                                for item_type, prev_type
-                                in zip(arg_type.args, partial_type.inner_types)
-                            ]
                             if all(mypy.checker.is_valid_inferred_type(item_type)
-                                   for item_type in full_item_types):
+                                   for item_type in arg_type.args):
                                 var.type = self.chk.named_generic_type(typename,
-                                                                       list(full_item_types))
+                                                                       list(arg_type.args))
                                 del partial_types[var]
 
     def apply_function_plugin(self,

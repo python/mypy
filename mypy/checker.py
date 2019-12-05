@@ -2810,7 +2810,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
         if isinstance(init_type, NoneType):
-            partial_type = PartialType(None, name, [init_type])
+            partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
             if (isinstance(lvalue, (NameExpr, MemberExpr)) and
@@ -2820,7 +2820,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                      fullname == 'collections.OrderedDict') and
                     all(isinstance(t, (NoneType, UninhabitedType))
                         for t in get_proper_types(init_type.args))):
-                partial_type = PartialType(init_type.type, name, init_type.args)
+                partial_type = PartialType(init_type.type, name)
             else:
                 return False
         else:
@@ -3018,15 +3018,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # TODO: Don't infer things twice.
                     key_type = self.expr_checker.accept(lvalue.index)
                     value_type = self.expr_checker.accept(rvalue)
-                    full_key_type = make_simplified_union(
-                        [key_type, var.type.inner_types[0]])
-                    full_value_type = make_simplified_union(
-                        [value_type, var.type.inner_types[1]])
-                    if (is_valid_inferred_type(full_key_type) and
-                            is_valid_inferred_type(full_value_type)):
+                    if (is_valid_inferred_type(key_type) and
+                            is_valid_inferred_type(value_type)):
                         if not self.current_node_deferred:
                             var.type = self.named_generic_type(typename,
-                                                               [full_key_type, full_value_type])
+                                                               [key_type, value_type])
                             del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
@@ -4308,7 +4304,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return Instance(
                 typ.type,
-                [AnyType(TypeOfAny.unannotated) for _ in typ.inner_types])
+                [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info:
