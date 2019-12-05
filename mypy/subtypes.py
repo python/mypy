@@ -1116,15 +1116,18 @@ def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> b
     return False
 
 
-def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = False,
-                      erase_instances: bool = False) -> bool:
+def is_proper_subtype(left: Type, right: Type, *,
+                      ignore_promotions: bool = False,
+                      erase_instances: bool = False,
+                      keep_erased_types: bool = False) -> bool:
     """Is left a proper subtype of right?
 
     For proper subtypes, there's no need to rely on compatibility due to
     Any types. Every usable type is a proper subtype of itself.
 
     If erase_instances is True, erase left instance *after* mapping it to supertype
-    (this is useful for runtime isinstance() checks).
+    (this is useful for runtime isinstance() checks). If keep_erased_types is True,
+    do not consider ErasedType a subtype of all types (used by type inference against unions).
     """
     if TypeState.is_assumed_proper_subtype(left, right):
         return True
@@ -1135,50 +1138,63 @@ def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = Fals
         with pop_on_exit(TypeState._assuming_proper, left, right):
             return _is_proper_subtype(left, right,
                                       ignore_promotions=ignore_promotions,
-                                      erase_instances=erase_instances)
+                                      erase_instances=erase_instances,
+                                      keep_erased_types=keep_erased_types)
     return _is_proper_subtype(left, right,
                               ignore_promotions=ignore_promotions,
-                              erase_instances=erase_instances)
+                              erase_instances=erase_instances,
+                              keep_erased_types=keep_erased_types)
 
 
-def _is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = False,
-                       erase_instances: bool = False) -> bool:
+def _is_proper_subtype(left: Type, right: Type, *,
+                       ignore_promotions: bool = False,
+                       erase_instances: bool = False,
+                       keep_erased_types: bool = False) -> bool:
     orig_left = left
     orig_right = right
     left = get_proper_type(left)
     right = get_proper_type(right)
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any([is_proper_subtype(orig_left, item, ignore_promotions=ignore_promotions,
-                                      erase_instances=erase_instances)
+        return any([is_proper_subtype(orig_left, item,
+                                      ignore_promotions=ignore_promotions,
+                                      erase_instances=erase_instances,
+                                      keep_erased_types=keep_erased_types)
                     for item in right.items])
     return left.accept(ProperSubtypeVisitor(orig_right,
                                             ignore_promotions=ignore_promotions,
-                                            erase_instances=erase_instances))
+                                            erase_instances=erase_instances,
+                                            keep_erased_types=keep_erased_types))
 
 
 class ProperSubtypeVisitor(TypeVisitor[bool]):
     def __init__(self, right: Type, *,
                  ignore_promotions: bool = False,
-                 erase_instances: bool = False) -> None:
+                 erase_instances: bool = False,
+                 keep_erased_types: bool = False) -> None:
         self.right = get_proper_type(right)
         self.orig_right = right
         self.ignore_promotions = ignore_promotions
         self.erase_instances = erase_instances
+        self.keep_erased_types = keep_erased_types
         self._subtype_kind = ProperSubtypeVisitor.build_subtype_kind(
             ignore_promotions=ignore_promotions,
             erase_instances=erase_instances,
+            keep_erased_types=keep_erased_types
         )
 
     @staticmethod
-    def build_subtype_kind(*, ignore_promotions: bool = False,
-                           erase_instances: bool = False) -> SubtypeKind:
-        return True, ignore_promotions, erase_instances
+    def build_subtype_kind(*,
+                           ignore_promotions: bool = False,
+                           erase_instances: bool = False,
+                           keep_erased_types: bool = False) -> SubtypeKind:
+        return True, ignore_promotions, erase_instances, keep_erased_types
 
     def _is_proper_subtype(self, left: Type, right: Type) -> bool:
         return is_proper_subtype(left, right,
                                  ignore_promotions=self.ignore_promotions,
-                                 erase_instances=self.erase_instances)
+                                 erase_instances=self.erase_instances,
+                                 keep_erased_types=self.keep_erased_types)
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably
@@ -1201,6 +1217,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_erased_type(self, left: ErasedType) -> bool:
         # This may be encountered during type inference. The result probably doesn't
         # matter much.
+        # TODO: it actually does matter, figure out more principled logic about this.
+        if self.keep_erased_types:
+            return False
         return True
 
     def visit_deleted_type(self, left: DeletedType) -> bool:

@@ -109,10 +109,12 @@ def _infer_constraints(template: Type, actual: Type,
     actual = get_proper_type(actual)
 
     # Type inference shouldn't be affected by whether union types have been simplified.
+    # We however keep any ErasedType items, so that the caller will see it when using
+    # checkexpr.has_erased_component().
     if isinstance(template, UnionType):
-        template = mypy.typeops.make_simplified_union(template.items)
+        template = mypy.typeops.make_simplified_union(template.items, keep_erased=True)
     if isinstance(actual, UnionType):
-        actual = mypy.typeops.make_simplified_union(actual.items)
+        actual = mypy.typeops.make_simplified_union(actual.items, keep_erased=True)
 
     # Ignore Any types from the type suggestion engine to avoid them
     # causing us to infer Any in situations where a better job could
