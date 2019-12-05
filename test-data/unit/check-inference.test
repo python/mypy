@@ -2939,3 +2939,17 @@ X = Union[Cov[T], Inv[T]]
 def f(x: X[T]) -> T: ...
 x: Inv[int]
 reveal_type(f(x))  # N: Revealed type is 'builtins.int*'
+
+[case testOptionalTypeVarAgainstOptional]
+# flags: --strict-optional
+from typing import Optional, TypeVar, Iterable, Iterator, List
+
+_T = TypeVar('_T')
+
+def filter(__function: None, __iterable: Iterable[Optional[_T]]) -> List[_T]: ...
+
+x: Optional[str]
+
+y = filter(None, [x])
+reveal_type(y)  # N: Revealed type is 'builtins.list[builtins.str*]'
+[builtins fixtures/list.pyi]
