@@ -265,7 +265,12 @@ def normpath(path: str, options: Options) -> str:
     # mode would be that a moved file may change its full module
     # name without changing its size, mtime or hash.)
     if options.bazel:
-        return os.path.relpath(path)
+        try:
+            return os.path.relpath(path)
+
+        except ValueError:
+            return os.path.abspath(path)
+
     else:
         return os.path.abspath(path)
 

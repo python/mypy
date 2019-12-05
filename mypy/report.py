@@ -123,6 +123,8 @@ def should_skip_path(path: str) -> bool:
         return True
     if 'stubs' in path.split('/') or 'stubs' in path.split(os.sep):
         return True
+    if 'lib-stub' in path.split('/') or 'lib-stub' in path.split(os.sep):
+        return True
     return False
 
 
@@ -459,7 +461,13 @@ class MemoryXmlReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         self.last_xml = None
-        path = os.path.relpath(tree.path)
+
+        try:
+            path = os.path.relpath(tree.path)
+
+        except ValueError:
+            path = tree.path
+
         if should_skip_path(path):
             return
 
@@ -813,7 +821,13 @@ class LinePrecisionReporter(AbstractReporter):
                 modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
-        path = os.path.relpath(tree.path)
+
+        try:
+            path = os.path.relpath(tree.path, start=os.getcwd())
+
+        except ValueError:
+            path = tree.path
+
         if should_skip_path(path):
             return
 
