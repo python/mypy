@@ -2174,7 +2174,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
                 if rvalue_type.type == typ.type:
-                    var.type = rvalue_type
+                    self.infer_variable_type(var, lvalue, rvalue_type, rvalue)
                     del partial_types[var]
             elif isinstance(rvalue_type, AnyType):
                 var.type = fill_typevars_with_any(typ.type)
