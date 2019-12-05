@@ -2950,5 +2950,6 @@ def filter(__function: None, __iterable: Iterable[Optional[_T]]) -> List[_T]: ..
 
 x: Optional[str]
 
-pagelets = filter(None, [x])
+y = filter(None, [x])
+reveal_type(y)  # N: Revealed type is 'builtins.list[builtins.str*]'
 [builtins fixtures/list.pyi]
