@@ -6566,3 +6566,12 @@ class A:
 
 reveal_type(A().y)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
+
+[case testEnclosingScopeLambdaNoCrash]
+class C:
+    x = lambda x: x.y.g()
+
+[case testEnclosingScopeLambdaNoCrashExplicit]
+from typing import Callable
+class C:
+    x: Callable[[C], int] = lambda x: x.y.g()  # E: "C" has no attribute "y"
