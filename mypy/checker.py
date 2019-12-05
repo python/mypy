@@ -2174,7 +2174,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
                 if rvalue_type.type == typ.type:
-                    self.infer_variable_type(var, lvalue, rvalue_type, rvalue)
+                    if is_valid_inferred_type(rvalue_type):
+                        var.type = rvalue_type
+                    else:
+                        var.type = self.inference_error_fallback_type(rvalue_type)
                     del partial_types[var]
             elif isinstance(rvalue_type, AnyType):
                 var.type = fill_typevars_with_any(typ.type)
@@ -2785,6 +2788,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         init_type = get_proper_type(init_type)
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
+            name.type = AnyType(TypeOfAny.from_error)
         elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
@@ -2855,10 +2859,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
         """
+        fallback = self.inference_error_fallback_type(type)
+        self.set_inferred_type(var, lvalue, fallback)
+
+    def inference_error_fallback_type(self, type: Type) -> Type:
         fallback = type.accept(SetNothingToAny())
         # Type variables may leak from inference, see https://github.com/python/mypy/issues/5738,
         # we therefore need to erase them.
-        self.set_inferred_type(var, lvalue, erase_typevars(fallback))
+        return erase_typevars(fallback)
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
