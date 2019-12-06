@@ -2173,11 +2173,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.expr_checker.accept(rvalue)
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
-                if rvalue_type.type == typ.type:
-                    if is_valid_inferred_type(rvalue_type):
-                        var.type = rvalue_type
-                    else:
-                        var.type = self.inference_error_fallback_type(rvalue_type)
+                if rvalue_type.type == typ.type and is_valid_inferred_type(rvalue_type):
+                    var.type = rvalue_type
                     del partial_types[var]
             elif isinstance(rvalue_type, AnyType):
                 var.type = fill_typevars_with_any(typ.type)

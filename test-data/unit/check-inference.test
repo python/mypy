@@ -1601,6 +1601,13 @@ main:4: note: Revealed type is 'builtins.list[Any]'
 main:5: error: Need type annotation for 'd' (hint: "d: Dict[<type>, <type>] = ...")
 main:8: note: Revealed type is 'builtins.dict[Any, Any]'
 
+[case testEmptyCollectionAssignedToVariableTwiceNoReadIncremental]
+x = [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+x = []
+[builtins fixtures/list.pyi]
+[out2]
+main:1: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+
 [case testInferAttributeInitializedToEmptyAndAssigned]
 class C:
     def __init__(self) -> None:
