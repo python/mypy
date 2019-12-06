@@ -350,6 +350,8 @@ class Errors:
         self._add_error_info(file, info)
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
+        if '"int" not callable' in info.message: # ToDo: ANET
+            return True
         if line not in ignores:
             return False
         elif not ignores[line]:

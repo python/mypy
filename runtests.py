@@ -56,6 +56,7 @@ cmds = {
     # Test cases that may take seconds to run each
     'pytest-slow': 'pytest -k "%s"' % ' or '.join(
         [SAMPLES, TYPESHED, PEP561, DAEMON, MYPYC_RUN, MYPYC_RUN_MULTI]),
+    'single': 'pytest -k TypeCheckSuite' # ToDo: ANET
 }
 
 # Stop run immediately if these commands fail
