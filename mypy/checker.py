@@ -2173,7 +2173,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue_type = self.expr_checker.accept(rvalue)
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
-                if rvalue_type.type == typ.type:
+                if rvalue_type.type == typ.type and is_valid_inferred_type(rvalue_type):
                     var.type = rvalue_type
                     del partial_types[var]
             elif isinstance(rvalue_type, AnyType):
@@ -2855,10 +2855,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
         """
+        fallback = self.inference_error_fallback_type(type)
+        self.set_inferred_type(var, lvalue, fallback)
+
+    def inference_error_fallback_type(self, type: Type) -> Type:
         fallback = type.accept(SetNothingToAny())
         # Type variables may leak from inference, see https://github.com/python/mypy/issues/5738,
         # we therefore need to erase them.
-        self.set_inferred_type(var, lvalue, erase_typevars(fallback))
+        return erase_typevars(fallback)
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
