@@ -2785,7 +2785,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         init_type = get_proper_type(init_type)
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
-            name.type = AnyType(TypeOfAny.from_error)
         elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
