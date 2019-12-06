@@ -187,6 +187,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = join_similar_callables(t, self.s)
+            # unless some or all items represent abstract objects,
+            # we set the flag: from_type_type to True
+            if not ((t.is_type_obj() and t.type_object().is_abstract) or
+                (self.s.is_type_obj() and self.s.type_object().is_abstract)):
+                result.from_type_type = True
             if any(isinstance(tp, (NoneType, UninhabitedType))
                    for tp in get_proper_types(result.arg_types)):
                 # We don't want to return unusable Callable, attempt fallback instead.
