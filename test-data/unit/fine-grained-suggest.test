@@ -1030,6 +1030,7 @@ foo.py:4: error: unexpected EOF while parsing
 # suggest: foo.optional3
 # suggest: foo.optional4
 # suggest: foo.optional5
+# suggest: foo.optional_any
 # suggest: foo.dict1
 # suggest: foo.tuple1
 [file foo.py]
@@ -1112,6 +1113,9 @@ def optional5(x: Optional[Any]):
 optional5(10)
 optional5(None)
 
+def optional_any(x: Optional[Any] = None):
+    pass
+
 def dict1(d: Dict[int, Any]):
     pass
 
@@ -1138,6 +1142,7 @@ tuple1(t)
 (Optional[foo.List[int]]) -> int
 (Union[foo.Set[int], foo.List[int]]) -> None
 (Optional[int]) -> None
+(Optional[Any]) -> None
 (foo.Dict[int, int]) -> None
 (Tuple[int, int]) -> None
 ==

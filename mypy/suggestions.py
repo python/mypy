@@ -970,6 +970,12 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
     one). If an element of the union is succesfully refined, we drop it
     from the union in favor of the refined versions.
     """
+    # Don't try to do any union refining if the types are already the
+    # same.  This prevents things like refining Optional[Any] against
+    # itself and producing None.
+    if t == s:
+        return t
+
     rhs_items = s.items if isinstance(s, UnionType) else [s]
 
     new_items = []
