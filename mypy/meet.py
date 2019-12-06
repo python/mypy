@@ -536,7 +536,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             # unless some or all items represent abstract objects,
             # we set the flag: from_type_type to True
             if not ((t.is_type_obj() and t.type_object().is_abstract) or
-                (self.s.is_type_obj() and self.s.type_object().is_abstract)):
+                    (self.s.is_type_obj() and self.s.type_object().is_abstract)):
                 result.from_type_type = True
             if isinstance(get_proper_type(result.ret_type), UninhabitedType):
                 # Return a plain None or <uninhabited> instead of a weird function.
