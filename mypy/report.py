@@ -123,8 +123,6 @@ def should_skip_path(path: str) -> bool:
         return True
     if 'stubs' in path.split('/') or 'stubs' in path.split(os.sep):
         return True
-    if 'lib-stub' in path.split('/') or 'lib-stub' in path.split(os.sep):
-        return True
     return False
 
 
@@ -466,7 +464,7 @@ class MemoryXmlReporter(AbstractReporter):
             path = os.path.relpath(tree.path)
 
         except ValueError:
-            path = tree.path
+            return
 
         if should_skip_path(path):
             return
@@ -826,7 +824,7 @@ class LinePrecisionReporter(AbstractReporter):
             path = os.path.relpath(tree.path)
 
         except ValueError:
-            path = tree.path
+            return
 
         if should_skip_path(path):
             return
