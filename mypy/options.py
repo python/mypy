@@ -43,6 +43,7 @@ PER_MODULE_OPTIONS = {
     "mypyc",
     "no_implicit_optional",
     "implicit_reexport",
+    "ignore_error_codes",
     "show_none_errors",
     "strict_optional",
     "strict_optional_whitelist",
@@ -131,6 +132,9 @@ class Options:
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
+
+        # Ignore errors with these error codes in a given file.
+        self.ignore_error_codes = []  # type: List[str]
 
         # Apply strict None checking
         self.strict_optional = True

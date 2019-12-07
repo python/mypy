@@ -441,6 +441,9 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
                         help="Warn about unused '[mypy-<pattern>]' config sections",
                         group=config_group)
+    config_group.add_argument(
+        '--ignore-error-codes', metavar='NAME', action='append', default=[],
+        help="Ignore errors with this error code (may be repeated)")
 
     imports_group = parser.add_argument_group(
         title='Import discovery',
@@ -856,6 +859,13 @@ def process_options(args: List[str],
     if overlap:
         parser.error("You can't make a variable always true and always false (%s)" %
                      ', '.join(sorted(overlap)))
+
+    # Interpret --ignore-error-codes=attr-defined,arg-type as two separate error codes.
+    if options.ignore_error_codes:
+        split_codes = []
+        for code in options.ignore_error_codes:
+            split_codes.extend([c.strip() for c in code.split(',')])
+        options.ignore_error_codes = split_codes
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:

@@ -3,7 +3,7 @@ import sys
 import traceback
 from collections import OrderedDict, defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Iterable
 from typing_extensions import Final
 
 from mypy.scope import Scope
@@ -133,6 +133,9 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines = None  # type: Dict[str, Dict[int, List[str]]]
 
+    # Error codes ignored for a given file.
+    ignored_codes = None  # type: Dict[str, Set[str]]
+
     # Lines on which an error was actually ignored.
     used_ignored_lines = None  # type: Dict[str, Set[int]]
 
@@ -179,6 +182,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
+        self.ignored_codes = OrderedDict()
         self.used_ignored_lines = defaultdict(set)
         self.ignored_files = set()
         self.only_once_messages = set()
@@ -234,10 +238,19 @@ class Errors:
         self.target_module = module
         self.scope = scope
 
-    def set_file_ignored_lines(self, file: str,
-                               ignored_lines: Dict[int, List[str]],
-                               ignore_all: bool = False) -> None:
+    def set_file_ignored_lines_and_codes(self, file: str,
+                                         ignored_lines: Dict[int, List[str]],
+                                         ignored_codes: Iterable[str],
+                                         ignore_all: bool = False) -> None:
+        """Set information about which errors should be ignored in a given file.
+
+        Args:
+            ignored_lines: Mapping from line number to error codes to ignore on this line
+            ignored_codes: Error codes to ignore globally in this file
+            ignore_all: Ignore all errors in this file
+        """
         self.ignored_lines[file] = ignored_lines
+        self.ignored_codes[file] = set(ignored_codes)
         if ignore_all:
             self.ignored_files.add(file)
 
@@ -342,6 +355,9 @@ class Errors:
                         self.used_ignored_lines[file].add(scope_line)
                         return
             if file in self.ignored_files:
+                return
+            if (info.code and file in self.ignored_codes and
+                    info.code.code in self.ignored_codes[file]):
                 return
         if info.only_once:
             if info.message in self.only_once_messages:

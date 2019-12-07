@@ -902,8 +902,9 @@ def reprocess_nodes(manager: BuildManager,
     nodes = sorted(nodeset, key=key)
 
     options = graph[module_id].options
-    manager.errors.set_file_ignored_lines(
-        file_node.path, file_node.ignored_lines, options.ignore_errors)
+    manager.errors.set_file_ignored_lines_and_codes(
+        file_node.path, file_node.ignored_lines,
+        options.ignore_error_codes, options.ignore_errors)
 
     targets = set()
     for node in nodes:

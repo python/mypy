@@ -745,7 +745,8 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module_simple(id, self) is not None
 
-    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str,
+                   ignore_errors: bool, ignore_error_codes: Iterable[str]) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
@@ -762,7 +763,10 @@ class BuildManager:
             self.log("Bailing due to parse errors")
             self.errors.raise_error()
 
-        self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
+        self.errors.set_file_ignored_lines_and_codes(path,
+                                                     tree.ignored_lines,
+                                                     ignore_error_codes,
+                                                     ignore_errors)
         return tree
 
     def load_fine_grained_deps(self, id: str) -> Dict[str, Set[str]]:
@@ -2015,7 +2019,8 @@ class State:
 
             self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors)
+                                           self.ignore_all or self.options.ignore_errors,
+                                           self.options.ignore_error_codes)
 
         modules[self.id] = self.tree
 

@@ -1232,3 +1232,36 @@ A = List  # OK
 B = List[A]  # E:10: Missing type parameters for generic type "A"
 x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
+
+[case testIgnoreErrorCodesGlobal]
+# flags: --ignore-error-codes=attr-defined,arg-type --ignore-error-codes=name-defined
+not_defined
+x: int = 'no'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+'no'.no_way
+def test(x: str) -> None: ...
+test(0)
+
+[case testIgnoreErrorCodesPerFile]
+# flags: --config-file tmp/mypy.ini
+import b
+not_defined
+x: int = 'no'
+'no'.no_way
+def test(x: str) -> None: ...
+test(0)
+[file b.py]
+not_defined
+x: int = 'no'
+'no'.no_way
+def test(x: str) -> None: ...
+test(0)
+[file mypy.ini]
+\[mypy]
+ignore_error_codes = attr-defined, arg-type
+\[mypy-b]
+ignore_error_codes = name-defined, assignment
+[out]
+tmp/b.py:3: error: "str" has no attribute "no_way"
+tmp/b.py:5: error: Argument 1 to "test" has incompatible type "int"; expected "str"
+main:3: error: Name 'not_defined' is not defined
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
