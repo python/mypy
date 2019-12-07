@@ -215,6 +215,8 @@ class TypeAliasType(Type):
         is_recursive = self.alias._is_recursive
         if is_recursive is None:
             is_recursive = self.expand_all_if_possible() is None
+            # We cache the value on the underlying TypeAlias node as an optimization,
+            # since the value is the same for all instances of the same alias.
             self.alias._is_recursive = is_recursive
         return is_recursive
 
