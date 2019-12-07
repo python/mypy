@@ -376,7 +376,7 @@ no analog available via the command line options.
 ``ignore_errors`` (bool, default False)
     Ignores all non-fatal errors.
 
-``ignore_errors_by_regex`` (comma-separated list of strings)
+``ignore_errors_by_regex`` (list of regex-pattern, with each pattern on a new line)
     Ignores all errors, which match one of the given regex-pattern.
 
 Miscellaneous strictness flags

@@ -83,7 +83,7 @@ config_types = {
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
-    'ignore_errors_by_regex': lambda s: [p.strip() for p in s.split(',')],
+    'ignore_errors_by_regex': lambda s: [p.strip() for p in s.split('\n') if p != ''],
     'cache_dir': expand_path,
     'python_executable': expand_path,
 }  # type: Final

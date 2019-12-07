@@ -5,5 +5,7 @@ x()
 
 [file mypy.ini]
 \[mypy]
-ignore_errors_by_regex = "'int' not callable", "bla"
+ignore_errors_by_regex =
+    'int' not callable
+    bla
 
