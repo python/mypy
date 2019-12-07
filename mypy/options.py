@@ -38,6 +38,7 @@ PER_MODULE_OPTIONS = {
     "follow_imports",
     "follow_imports_for_stubs",
     "ignore_errors",
+    "ignore_errors_by_regex",
     "ignore_missing_imports",
     "local_partial_types",
     "mypyc",
@@ -131,6 +132,9 @@ class Options:
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
+
+        # RegEx patterns of errors, which should be ignored
+        self.ignore_errors_by_regex = [] # type: List[str]
 
         # Apply strict None checking
         self.strict_optional = True
