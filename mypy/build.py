@@ -266,7 +266,6 @@ def normpath(path: str, options: Options) -> str:
     # name without changing its size, mtime or hash.)
     if options.bazel:
         return os.path.relpath(path)
-
     else:
         return os.path.abspath(path)
 
