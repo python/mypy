@@ -209,7 +209,8 @@ def _build(sources: List[BuildSource],
                     options.show_error_codes,
                     options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version),
-                    options.show_absolute_path)
+                    options.show_absolute_path,
+                    options.ignore_errors_by_regex)
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Construct a build manager object to hold state during the build.

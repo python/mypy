@@ -209,7 +209,9 @@ class TestRun(MypycDataSuite):
                 compiler_options=compiler_options,
                 groups=groups,
                 alt_lib_path='.')
-            errors = Errors()
+            errors = Errors(
+                ignore_errors_by_regex=options.ignore_errors_by_regex
+            )
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result,
                 compiler_options=compiler_options,

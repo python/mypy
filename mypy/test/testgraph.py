@@ -39,8 +39,10 @@ class GraphSuite(Suite):
                       frozenset({'D'})})
 
     def _make_manager(self) -> BuildManager:
-        errors = Errors()
         options = Options()
+        errors = Errors(
+            ignore_errors_by_regex=options.ignore_errors_by_regex
+        )
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(

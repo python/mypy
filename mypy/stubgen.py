@@ -1321,7 +1321,9 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     with open(mod.path, 'rb') as f:
         data = f.read()
     source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
-    errors = Errors()
+    errors = Errors(
+        ignore_errors_by_regex=mypy_options.ignore_errors_by_regex
+    )
     mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
                                errors=errors, options=mypy_options)
     mod.ast._fullname = mod.module

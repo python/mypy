@@ -196,7 +196,9 @@ def generate_c(sources: List[BuildSource],
         print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
 
     if not messages and result:
-        errors = Errors()
+        errors = Errors(
+            ignore_errors_by_regex=options.ignore_errors_by_regex
+        )
         modules, ctext = emitmodule.compile_modules_to_c(
             result, compiler_options=compiler_options, errors=errors, groups=groups)
 

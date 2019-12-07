@@ -1,13 +1,18 @@
-from typing import List
+from typing import List, Optional
 
 import mypy.errors
 
 
 class Errors:
-    def __init__(self) -> None:
+    def __init__(
+            self,
+            ignore_errors_by_regex: Optional[List[str]] = None
+    ) -> None:
         self.num_errors = 0
         self.num_warnings = 0
-        self._errors = mypy.errors.Errors()
+        self._errors = mypy.errors.Errors(
+            ignore_errors_by_regex=ignore_errors_by_regex
+        )
 
     def error(self, msg: str, path: str, line: int) -> None:
         self._errors.report(line, None, msg, severity='error', file=path)

@@ -99,11 +99,13 @@ def parse(source: Union[str, bytes],
     on failure. Otherwise, use the errors object to report parse errors.
     """
     raise_on_error = False
-    if errors is None:
-        errors = Errors()
-        raise_on_error = True
     if options is None:
         options = Options()
+    if errors is None:
+        errors = Errors(
+            ignore_errors_by_regex=options.ignore_errors_by_regex
+        )
+        raise_on_error = True
     errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
