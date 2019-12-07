@@ -1,7 +1,3 @@
-[case testIgnoreTypeErrorByString] # ToDo: ANET
-x = 1
-x()
-
 [case testIgnoreTypeError]
 x = 1
 x() # type: ignore
