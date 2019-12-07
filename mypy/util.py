@@ -403,6 +403,11 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
     return len(errors), len(files)
 
 
+def split_commas(text: str) -> List[str]:
+    """Split a comma separated list."""
+    return [c.strip() for c in text.split(',')]
+
+
 def split_words(msg: str) -> List[str]:
     """Split line of text into words (but not within quoted groups)."""
     next_word = ''

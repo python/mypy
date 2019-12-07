@@ -1234,8 +1234,9 @@ x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
 
 [case testIgnoreErrorCodesGlobal]
-# flags: --ignore-error-codes=attr-defined,arg-type --ignore-error-codes=name-defined
-not_defined
+# flags: --ignore-error-codes=attr-defined,arg-type
+
+not_defined  # E: Name 'not_defined' is not defined
 x: int = 'no'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 'no'.no_way
 def test(x: str) -> None: ...

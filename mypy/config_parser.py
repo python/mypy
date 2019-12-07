@@ -11,6 +11,7 @@ from typing_extensions import Final
 
 from mypy import defaults
 from mypy.options import Options, PER_MODULE_OPTIONS
+from mypy.util import split_commas
 
 
 def parse_version(v: str) -> Tuple[int, int]:
@@ -79,11 +80,11 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
-    'plugins': lambda s: [p.strip() for p in s.split(',')],
-    'always_true': lambda s: [p.strip() for p in s.split(',')],
-    'always_false': lambda s: [p.strip() for p in s.split(',')],
-    'ignore_error_codes': lambda s: [p.strip() for p in s.split(',')],
-    'package_root': lambda s: [p.strip() for p in s.split(',')],
+    'plugins': split_commas,
+    'always_true': split_commas,
+    'always_false': split_commas,
+    'ignore_error_codes': split_commas,
+    'package_root': split_commas,
     'cache_dir': expand_path,
     'python_executable': expand_path,
 }  # type: Final

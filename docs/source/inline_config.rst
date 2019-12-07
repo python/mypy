@@ -28,11 +28,13 @@ Values are specified using ``=``, but ``= True`` may be omitted:
 
 Multiple flags can be separated by commas or placed on separate
 lines. To include a comma as part of an option's value, place the
-value inside quotes:
+value inside quotes. Quotes are still needed if there is a single
+option on a line:
 
 .. code-block:: python
 
   # mypy: disallow-untyped-defs, always-false="FOO,BAR"
+  # mypy: ignore-error-codes="override,attr-defined"
 
 Like in the configuration file, options that take a boolean value may be
 inverted by adding ``no-`` to their name or by (when applicable)

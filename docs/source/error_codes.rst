@@ -37,8 +37,8 @@ Silencing errors based on error codes
 You can use a special comment ``# type: ignore[code, ...]`` to only
 ignore errors with a specific error code (or codes) on a particular
 line.  This can be used even if you have not configured mypy to show
-error codes. Currently it's only possible to disable arbitrary error
-codes on individual lines using this comment.
+error codes. Alternatively use :option:`--ignore-error-codes` for more
+coarse-grained (per file or per directory) control.
 
 .. note::
 

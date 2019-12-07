@@ -593,6 +593,41 @@ in error messages.
 
     Show absolute paths to files.
 
+.. option:: --ignore-error-codes CODES
+
+   This flag makes mypy ignore all errors with given error codes. Flag accepts
+   error codes as a comma separated list (there should be no spaces after commas).
+   For example, by default mypy would produce the following errors:
+
+   .. code-block:: python
+
+       class Dynamic:
+           def __init__(self, attr: str, value: object) -> None:
+               setattr(self, attr, value)
+
+       magic_builtin  # error: Name "magic_builtin" is not defined
+       Dynamic("test", 0).test  # error: "Dynamic" has no attribute "test"
+       x: int = "no"  # error: Incompatible types in assignment
+                      # (expression has type "str", variable has type "int")
+
+   But when used as ``mypy --ignore-error-codes=attr-defined,name-defined test.py``
+   it will produce the following errors:
+
+   .. code-block:: python
+
+       class Dynamic:
+           def __init__(self, attr: str, value: object) -> None:
+               setattr(self, attr, value)
+
+       magic_builtin  # No error
+       Dynamic("test", 0).test  # No error
+       x: int = "no"  # error: Incompatible types in assignment
+                      # (expression has type "str", variable has type "int")
+
+   To make mypy show error codes in error messages use :option:`--show-error-codes`.
+   See also the lists of :ref:`default error codes <error-code-list>` and
+   :ref:`optional error codes <error-codes-optional>`.
+
 
 .. _incremental:
 

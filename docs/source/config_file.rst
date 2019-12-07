@@ -439,6 +439,10 @@ These options may only be set in the global section (``[mypy]``).
 ``show_absolute_path`` (bool, default False)
     Show absolute paths to files.
 
+``ignore_error_codes`` (comma-separated list of strings)
+    Ignore errors with these error codes in given files or directories.
+    See :option:`--ignore-error-codes` for more details.
+
 
 Incremental mode
 ****************
