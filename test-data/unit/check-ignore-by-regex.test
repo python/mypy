@@ -1,0 +1,9 @@
+[case testIgnoreByRegExType]
+# flags: --config-file tmp/mypy.ini
+x = 1
+x()
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = "'int' not callable", "bla"
+
