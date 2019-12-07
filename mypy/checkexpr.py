@@ -537,18 +537,40 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return callee
 
+    def get_partial_self_var(self, expr: MemberExpr) -> Optional[Var]:
+        """Get variable node for a partial self attribute.
+
+        If the expression is not a self attribute, or attribute is not variable,
+        or variable is not partial, return None.
+        """
+        if not (isinstance(expr.expr, NameExpr) and
+                isinstance(expr.expr.node, Var) and expr.expr.node.is_self):
+            # Not a self.attr expression.
+            return None
+        info = self.chk.scope.enclosing_class()
+        if not info or expr.name not in info.names:
+            # Don't mess with partial types in superclasses.
+            return None
+        sym = info.names[expr.name]
+        if isinstance(sym.node, Var) and isinstance(sym.node.type, PartialType):
+            return sym.node
+        return None
+
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
                  'builtins.set': ['add', 'discard'],
                  }  # type: ClassVar[Dict[str, List[str]]]
     container_args = {'builtins.list': {'extend': ['builtins.list']},
                       'builtins.dict': {'update': ['builtins.dict']},
+                      'collections.OrderedDict': {'update': ['builtins.dict']},
                       'builtins.set': {'update': ['builtins.set', 'builtins.list']},
                       }  # type: ClassVar[Dict[str, Dict[str, List[str]]]]
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
             var = e.callee.expr.node
+            if var is None and isinstance(e.callee.expr, MemberExpr):
+                var = self.get_partial_self_var(e.callee.expr)
             if not isinstance(var, Var):
                 return
             partial_types = self.chk.find_partial_types(var)
@@ -566,10 +588,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if (typename in self.item_args and methodname in self.item_args[typename]
                         and e.arg_kinds == [ARG_POS]):
                     item_type = self.accept(e.args[0])
-                    full_item_type = make_simplified_union(
-                        [item_type, partial_type.inner_types[0]])
-                    if mypy.checker.is_valid_inferred_type(full_item_type):
-                        var.type = self.chk.named_generic_type(typename, [full_item_type])
+                    if mypy.checker.is_valid_inferred_type(item_type):
+                        var.type = self.chk.named_generic_type(typename, [item_type])
                         del partial_types[var]
                 elif (typename in self.container_args
                       and methodname in self.container_args[typename]
@@ -578,15 +598,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if isinstance(arg_type, Instance):
                         arg_typename = arg_type.type.fullname
                         if arg_typename in self.container_args[typename][methodname]:
-                            full_item_types = [
-                                make_simplified_union([item_type, prev_type])
-                                for item_type, prev_type
-                                in zip(arg_type.args, partial_type.inner_types)
-                            ]
                             if all(mypy.checker.is_valid_inferred_type(item_type)
-                                   for item_type in full_item_types):
+                                   for item_type in arg_type.args):
                                 var.type = self.chk.named_generic_type(typename,
-                                                                       list(full_item_types))
+                                                                       list(arg_type.args))
                                 del partial_types[var]
 
     def apply_function_plugin(self,
@@ -3221,12 +3236,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.return_types.append(AnyType(TypeOfAny.special_form))
             # Type check everything in the body except for the final return
             # statement (it can contain tuple unpacking before return).
-            for stmt in e.body.body[:-1]:
-                stmt.accept(self.chk)
-            # Only type check the return expression, not the return statement.
-            # This is important as otherwise the following statements would be
-            # considered unreachable. There's no useful type context.
-            ret_type = self.accept(e.expr(), allow_none_return=True)
+            with self.chk.scope.push_function(e):
+                for stmt in e.body.body[:-1]:
+                    stmt.accept(self.chk)
+                # Only type check the return expression, not the return statement.
+                # This is important as otherwise the following statements would be
+                # considered unreachable. There's no useful type context.
+                ret_type = self.accept(e.expr(), allow_none_return=True)
             fallback = self.named_type('builtins.function')
             self.chk.return_types.pop()
             return callable_type(e, fallback, ret_type)
@@ -3235,6 +3251,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.return_types.append(inferred_type.ret_type)
             self.chk.check_func_item(e, type_override=type_override)
             if e.expr() not in self.chk.type_map:
+                # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
             if isinstance(get_proper_type(ret_type), NoneType):

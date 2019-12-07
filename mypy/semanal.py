@@ -3621,7 +3621,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                         type_info = self.type
             elif isinstance(base.node, TypeAlias) and base.node.no_args:
                 assert isinstance(base.node.target, ProperType)
-                # TODO: support chained aliases.
                 if isinstance(base.node.target, Instance):
                     type_info = base.node.target.type
 
@@ -3969,6 +3968,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                     namespace = node.fullname
                 elif isinstance(node, PlaceholderNode):
                     return sym
+                elif isinstance(node, TypeAlias) and node.no_args:
+                    assert isinstance(node.target, ProperType)
+                    if isinstance(node.target, Instance):
+                        nextsym = node.target.type.get(part)
                 else:
                     if isinstance(node, Var):
                         typ = get_proper_type(node.type)

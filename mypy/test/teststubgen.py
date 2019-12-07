@@ -861,7 +861,6 @@ class ModuleInspectSuite(unittest.TestCase):
             p = m.get_package_properties('_socket')
             assert p is not None
             assert p.name == '_socket'
-            assert p.file
             assert p.path is None
             assert p.is_c_module is True
             assert p.subpackages == []

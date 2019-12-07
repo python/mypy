@@ -1761,16 +1761,13 @@ class PartialType(ProperType):
     # None for the 'None' partial type; otherwise a generic class
     type = None  # type: Optional[mypy.nodes.TypeInfo]
     var = None  # type: mypy.nodes.Var
-    inner_types = None  # type: List[Type]
 
     def __init__(self,
                  type: 'Optional[mypy.nodes.TypeInfo]',
-                 var: 'mypy.nodes.Var',
-                 inner_types: List[Type]) -> None:
+                 var: 'mypy.nodes.Var') -> None:
         super().__init__()
         self.type = type
         self.var = var
-        self.inner_types = inner_types
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_partial_type(self)

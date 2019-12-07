@@ -777,6 +777,12 @@ class TypeFormatter(TypeStrVisitor):
         self.module = module
         self.graph = graph
 
+    def visit_any(self, t: AnyType) -> str:
+        if t.missing_import_name:
+            return t.missing_import_name
+        else:
+            return "Any"
+
     def visit_instance(self, t: Instance) -> str:
         s = t.type.fullname or t.type.name or None
         if s is None:
@@ -876,7 +882,10 @@ def make_suggestion_anys(t: TType) -> TType:
 
 class MakeSuggestionAny(TypeTranslator):
     def visit_any(self, t: AnyType) -> Type:
-        return t.copy_modified(type_of_any=TypeOfAny.suggestion_engine)
+        if not t.missing_import_name:
+            return t.copy_modified(type_of_any=TypeOfAny.suggestion_engine)
+        else:
+            return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         return t.copy_modified(args=[a.accept(self) for a in t.args])
@@ -928,7 +937,8 @@ def refine_type(ti: Type, si: Type) -> Type:
     s = get_proper_type(si)
 
     if isinstance(t, AnyType):
-        return s
+        # If s is also an Any, we return if it is a missing_import Any
+        return t if isinstance(s, AnyType) and t.missing_import_name else s
 
     if isinstance(t, Instance) and isinstance(s, Instance) and t.type == s.type:
         return t.copy_modified(args=[refine_type(ta, sa) for ta, sa in zip(t.args, s.args)])

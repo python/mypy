@@ -632,3 +632,24 @@ except E as e:
     reveal_type(e)  # N: Revealed type is '__main__.E'
 [builtins fixtures/exception.pyi]
 [out]
+
+[case testNestedClassOnAliasAsType]
+class Out:
+    class In:
+        class Inner:
+            pass
+
+O = Out
+I = Out.In
+OI = O.In
+A = Out
+B = A
+
+w: O.In
+x: I.Inner
+y: OI.Inner
+z: B.In
+reveal_type(w)  # N: Revealed type is '__main__.Out.In'
+reveal_type(x)  # N: Revealed type is '__main__.Out.In.Inner'
+reveal_type(y)  # N: Revealed type is '__main__.Out.In.Inner'
+reveal_type(z)  # N: Revealed type is '__main__.Out.In'

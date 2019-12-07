@@ -1677,15 +1677,24 @@ INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
 # The arrow points to the "start" of the vtable (what vtable pointers
 # point to) and the bars indicate which parts correspond to the parent
 # class A's vtable layout.
+#
+# Classes that allow interpreted code to subclass them also have a
+# "shadow vtable" that contains implementations that delegate to
+# making a pycall, so that overridden methods in interpreted children
+# will be called. (A better strategy could dynamically generate these
+# vtables based on which methods are overridden in the children.)
 
 # Descriptions of method and attribute entries in class vtables.
 # The 'cls' field is the class that the method/attr was defined in,
 # which might be a parent class.
+# The 'shadow_method', if present, contains the method that should be
+# placed in the class's shadow vtable (if it has one).
 
 VTableMethod = NamedTuple(
     'VTableMethod', [('cls', 'ClassIR'),
                      ('name', str),
-                     ('method', FuncIR)])
+                     ('method', FuncIR),
+                     ('shadow_method', Optional[FuncIR])])
 
 
 VTableAttr = NamedTuple(
@@ -1705,6 +1714,7 @@ def serialize_vtable_entry(entry: VTableEntry) -> JsonDict:
             'cls': entry.cls.fullname,
             'name': entry.name,
             'method': entry.method.decl.fullname,
+            'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
         }
     else:
         return {
@@ -1721,7 +1731,9 @@ def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
 
 def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableEntry:
     if data['.class'] == 'VTableMethod':
-        return VTableMethod(ctx.classes[data['cls']], data['name'], ctx.functions[data['method']])
+        return VTableMethod(
+            ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
+            ctx.functions[data['shadow_method']] if data['shadow_method'] else None)
     elif data['.class'] == 'VTableAttr':
         return VTableAttr(ctx.classes[data['cls']], data['name'], data['is_setter'])
     assert False, "Bogus vtable .class: %s" % data['.class']
@@ -1750,6 +1762,8 @@ class ClassIR:
         self.is_augmented = False
         self.inherits_python = False
         self.has_dict = False
+        # Do we allow interpreted subclasses? Derived from a mypyc_attr.
+        self.allow_interpreted_subclasses = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -1877,8 +1891,12 @@ class ClassIR:
         return res[0] if res else None
 
     def subclasses(self) -> Optional[Set['ClassIR']]:
-        """Return all subclassses of this class, both direct and indirect."""
-        if self.children is None:
+        """Return all subclassses of this class, both direct and indirect.
+
+        Return None if it is impossible to identify all subclasses, for example
+        because we are performing separate compilation.
+        """
+        if self.children is None or self.allow_interpreted_subclasses:
             return None
         result = set(self.children)
         for child in self.children:
@@ -1914,6 +1932,7 @@ class ClassIR:
             'is_augmented': self.is_augmented,
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
+            'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
@@ -1963,6 +1982,7 @@ class ClassIR:
         ir.is_augmented = data['is_augmented']
         ir.inherits_python = data['inherits_python']
         ir.has_dict = data['has_dict']
+        ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(

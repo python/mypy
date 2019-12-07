@@ -1406,6 +1406,77 @@ class MessageBuilder:
                       .format(len(conflicts) - max_items),
                       context, offset=offset, code=code)
 
+    def try_report_long_tuple_assignment_error(self,
+                                               subtype: ProperType,
+                                               supertype: ProperType,
+                                               context: Context,
+                                               msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                               subtype_label: Optional[str] = None,
+                                               supertype_label: Optional[str] = None,
+                                               code: Optional[ErrorCode] = None) -> bool:
+        """Try to generate meaningful error message for very long tuple assignment
+
+        Returns a bool: True when generating long tuple assignment error,
+        False when no such error reported
+        """
+        if isinstance(subtype, TupleType):
+            if (len(subtype.items) > 10 and
+                isinstance(supertype, Instance) and
+                    supertype.type.fullname == 'builtins.tuple'):
+                lhs_type = supertype.args[0]
+                lhs_types = [lhs_type] * len(subtype.items)
+                self.generate_incompatible_tuple_error(lhs_types,
+                                    subtype.items, context, msg, code)
+                return True
+            elif (isinstance(supertype, TupleType) and
+                    (len(subtype.items) > 10 or len(supertype.items) > 10)):
+                if len(subtype.items) != len(supertype.items):
+                    if supertype_label is not None and subtype_label is not None:
+                        error_msg = "{} ({} {}, {} {})".format(msg, subtype_label,
+                                        self.format_long_tuple_type(subtype), supertype_label,
+                                        self.format_long_tuple_type(supertype))
+                        self.fail(error_msg, context, code=code)
+                        return True
+                self.generate_incompatible_tuple_error(supertype.items,
+                                    subtype.items, context, msg, code)
+                return True
+        return False
+
+    def format_long_tuple_type(self, typ: TupleType) -> str:
+        """Format very long tuple type using an ellipsis notation"""
+        item_cnt = len(typ.items)
+        if item_cnt > 10:
+            return 'Tuple[{}, {}, ... <{} more items>]'\
+                    .format(format_type_bare(typ.items[0]),
+                        format_type_bare(typ.items[1]), str(item_cnt - 2))
+        else:
+            return format_type_bare(typ)
+
+    def generate_incompatible_tuple_error(self,
+                                          lhs_types: List[Type],
+                                          rhs_types: List[Type],
+                                          context: Context,
+                                          msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                          code: Optional[ErrorCode] = None) -> None:
+        """Generate error message for individual incompatible tuple pairs"""
+        error_cnt = 0
+        notes = []  # List[str]
+        for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
+            if not is_subtype(lhs_t, rhs_t):
+                if error_cnt < 3:
+                    notes.append('Expression tuple item {} has type "{}"; "{}" expected; '
+                        .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
+                error_cnt += 1
+
+        error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
+        if error_cnt - 3 > 0:
+            error_msg += '; {} items are omitted)'.format(str(error_cnt - 3))
+        else:
+            error_msg += ')'
+        self.fail(error_msg, context, code=code)
+        for note in notes:
+            self.note(note, context, code=code)
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
