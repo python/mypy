@@ -166,14 +166,13 @@ class TypeAliasType(Type):
     can be represented in a tree-like manner.
     """
 
-    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref', '_is_recursive')
+    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref')
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
         self.alias = alias
         self.args = args
         self.type_ref = None  # type: Optional[str]
-        self._is_recursive = None  # type: Optional[bool]
         super().__init__(line, column)
 
     def _expand_once(self) -> Type:
@@ -212,10 +211,13 @@ class TypeAliasType(Type):
 
     @property
     def is_recursive(self) -> bool:
-        if self._is_recursive is not None:
-            return self._is_recursive
-        is_recursive = self.expand_all_if_possible() is None
-        self._is_recursive = is_recursive
+        assert self.alias is not None, 'Unfixed type alias'
+        is_recursive = self.alias._is_recursive
+        if is_recursive is None:
+            is_recursive = self.expand_all_if_possible() is None
+            # We cache the value on the underlying TypeAlias node as an optimization,
+            # since the value is the same for all instances of the same alias.
+            self.alias._is_recursive = is_recursive
         return is_recursive
 
     def can_be_true_default(self) -> bool:

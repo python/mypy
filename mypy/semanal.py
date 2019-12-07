@@ -2514,6 +2514,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         if not has_placeholder(res):
             res = make_any_non_explicit(res)
+        # Note: with the new (lazy) type alias representation we only need to set no_args to True
+        # if the expected number of arguments is non-zero, so that aliases like A = List work.
+        # However, eagerly expanding aliases like Text = str is a nice performance optimization.
         no_args = isinstance(res, Instance) and not res.args  # type: ignore
         fix_instance_types(res, self.fail, self.note)
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
