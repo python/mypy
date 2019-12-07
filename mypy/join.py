@@ -187,8 +187,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = join_similar_callables(t, self.s)
-            # unless some or all items represent abstract objects,
-            # we set the flag: from_type_type to True
+            # We set the from_type_type flag to suppress error when a collection of 
+            # concrete class objects gets inferred as their common abstract superclass.
             if not ((t.is_type_obj() and t.type_object().is_abstract) or
                     (self.s.is_type_obj() and self.s.type_object().is_abstract)):
                 result.from_type_type = True
