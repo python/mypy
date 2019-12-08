@@ -741,6 +741,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.process_overload_impl(defn)
 
     def process_overload_impl(self, defn: OverloadedFuncDef) -> None:
+        """Set flags for an overload implementation.
+
+        Currently this includes is_trivial_body and is_abstract. The latter
+        is for a trivial body in protocols classes, where it makes the method
+        implicitly abstract.
+        """
         assert defn.impl is not None
         impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
         if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:

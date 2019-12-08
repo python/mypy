@@ -373,7 +373,21 @@ protocols. If you explicitly subclass these protocols you can inherit
 these default implementations. Explicitly including a protocol as a
 base class is also a way of documenting that your class implements a
 particular protocol, and it forces mypy to verify that your class
-implementation is actually compatible with the protocol.
+implementation is actually compatible with the protocol. In particular,
+omitting a value for an attribute or a method body will make it implicitly
+abstract:
+
+.. code-block:: python
+
+    class SomeProto(Protocol):
+        attr: int  # Note, no right hand side
+        def method(self) -> str: ...  # Literal ... here
+
+    class ExplicitSubclass(SomeProto):
+        pass
+
+    ExplicitSubclass()  # error: Cannot instantiate abstract class 'ExplicitSubclass'
+                        # with abstract attributes 'attr' and 'method'
 
 .. note::
 

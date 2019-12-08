@@ -313,7 +313,8 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     methods. As all methods defined here return None by default,
     subclasses do not always need to override all the methods.
 
-    TODO: make the default return value explicit, then turn off the flag.
+    TODO: make the default return value explicit, then turn on
+       the warn_no_return flag in mypy_self_check.ini.
     """
 
     # Not in superclasses:
@@ -511,8 +512,7 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_set_comprehension(self, o: 'mypy.nodes.SetComprehension') -> T:
         pass
 
-    def visit_dictionary_comprehension(self, o: 'mypy.nodes.DictionaryComprehension'
-                                       ) -> T:
+    def visit_dictionary_comprehension(self, o: 'mypy.nodes.DictionaryComprehension') -> T:
         pass
 
     def visit_generator_expr(self, o: 'mypy.nodes.GeneratorExpr') -> T:
