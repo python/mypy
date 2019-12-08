@@ -1987,3 +1987,14 @@ reveal_type(foo['bar'])  # N: Revealed type is 'builtins.list[Any]'
 reveal_type(foo['baz'])  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testAssignTypedDictAsAttribute]
+from typing import TypedDict
+
+class A:
+    def __init__(self) -> None:
+        self.b = TypedDict('b', {'x': int, 'y': str})  # E: TypedDict type as attribute is not supported
+
+reveal_type(A().b)  # N: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
