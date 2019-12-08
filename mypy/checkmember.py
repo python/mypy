@@ -196,6 +196,16 @@ def analyze_instance_member_access(name: str,
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)
     if method:
+        if mx.is_super:
+            if isinstance(method, FuncDef) and method.is_abstract and method.is_trivial_body:
+                mx.msg.fail('Call to an abstract method with trivial body via super() is unsafe',
+                            mx.context)
+            if isinstance(method, OverloadedFuncDef):
+                if method.impl:
+                    impl = method.impl if isinstance(method.impl, FuncDef) else method.impl.func
+                    if impl.is_trivial_body and impl.is_abstract:
+                        mx.msg.fail('Call to an abstract method with trivial body via super() is unsafe',
+                                    mx.context)
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             first_item = cast(Decorator, method.items[0])
@@ -346,6 +356,9 @@ def analyze_member_var_access(name: str,
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
         v = vv.var
+        if mx.is_super and vv.func.is_abstract and vv.func.is_trivial_body:
+            mx.msg.fail('Call to an abstract method with trivial body via super() is unsafe',
+                        mx.context)
 
     if isinstance(vv, TypeInfo):
         # If the associated variable is a TypeInfo synthesize a Var node for
@@ -565,7 +578,7 @@ def analyze_var(name: str,
                 # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
                 # * x: Union[A1, B1]
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
-                # and similarly for B1 when checking agains B
+                # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_function_type_vars(functype)
                 signature = check_self_arg(signature, dispatched_type, var.is_classmethod,

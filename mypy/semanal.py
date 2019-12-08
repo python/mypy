@@ -76,6 +76,7 @@ from mypy.nodes import (
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
+    is_trivial_body
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -573,6 +574,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(get_proper_type(defn.type.ret_type), AnyType):
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
+            if is_trivial_body(defn.body) and not self.is_stub_file:
+                defn.is_trivial_body = True
+                if (self.type.is_protocol and
+                        not isinstance(self.scope.function, OverloadedFuncDef)):
+                    # Mark protocol methods with empty bodies as implicitly abstract.
+                    # This makes explicit protocol subclassing type-safe.
+                    defn.is_abstract = True
 
         # Analyze function signature
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
@@ -723,6 +731,17 @@ class SemanticAnalyzer(NodeVisitor[None],
         # We know this is an overload def. Infer properties and perform some checks.
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
+        if defn.impl:
+            self.process_overload_impl(defn)
+
+    def process_overload_impl(self, defn: OverloadedFuncDef) -> None:
+        assert defn.impl is not None
+        impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
+        if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
+            impl.is_trivial_body = True
+            assert self.type is not None
+            if not self.is_stub_file and self.type.is_protocol:
+                impl.is_abstract = True
 
     def analyze_overload_sigs_and_impl(
             self,
@@ -796,13 +815,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Generate error about missing overload implementation (only if needed)."""
         if not self.is_stub_file:
             if self.type and self.type.is_protocol and not self.is_func_scope():
-                # An overloded protocol method doesn't need an implementation.
+                # An overloaded protocol method doesn't need an implementation,
+                # but if it doesn't have one, then it is considered implicitly abstract.
                 for item in defn.items:
                     if isinstance(item, Decorator):
                         item.func.is_abstract = True
                     else:
                         item.is_abstract = True
             else:
+                # TODO: also allow omitting an implementation for abstract methods in normal ABCs?
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
                     defn)

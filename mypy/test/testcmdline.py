@@ -47,6 +47,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     args = parse_args(testcase.input[0])
     args.append('--show-traceback')
     args.append('--no-site-packages')
+    if '--disallow-empty-bodies' not in args:
+        args.append('--allow-empty-bodies')
     if '--error-summary' not in args:
         args.append('--no-error-summary')
     # Type check the program.

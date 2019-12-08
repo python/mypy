@@ -109,6 +109,7 @@ class ASTMergeSuite(DataSuite):
         options.export_types = True
         options.show_traceback = True
         options.python_version = PYTHON3_VERSION
+        options.allow_empty_bodies = True
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w', encoding='utf8') as f:
             f.write(source)

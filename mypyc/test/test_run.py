@@ -167,6 +167,7 @@ class TestRun(MypycDataSuite):
         options.python_version = max(sys.version_info[:2], (3, 6))
         options.export_types = True
         options.preserve_asts = True
+        options.allow_empty_bodies = True
         options.incremental = self.separate
 
         # Avoid checking modules/packages named 'unchecked', to provide a way

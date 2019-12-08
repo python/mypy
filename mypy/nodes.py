@@ -637,7 +637,7 @@ class FuncItem(FuncBase):
 
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
-    'is_decorated', 'is_conditional', 'is_abstract',
+    'is_decorated', 'is_conditional', 'is_abstract', 'is_trivial_body',
 ]  # type: Final
 
 
@@ -651,6 +651,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'is_decorated',
                  'is_conditional',
                  'is_abstract',
+                 'is_trivial_body',
                  'original_def',
                  )
 
@@ -664,6 +665,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
+        # Is this an abstract method with trivial body?
+        # Such methods can't be called via super().
+        self.is_trivial_body = False
         self.is_final = False
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
@@ -3203,3 +3207,49 @@ def local_definitions(names: SymbolTable,
             yield fullname, symnode, info
             if isinstance(node, TypeInfo):
                 yield from local_definitions(node.names, fullname, node)
+
+
+def is_trivial_body(block: Block) -> bool:
+    """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
+    "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
+    start with a statement containing just a string (e.g. a docstring).
+
+    Note: functions that raise other kinds of exceptions do not count as
+    "trivial". We use this function to help us determine when it's ok to
+    relax certain checks on body, but functions that raise arbitrary exceptions
+    are more likely to do non-trivial work. For example:
+
+       def halt(self, reason: str = ...) -> NoReturn:
+           raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+
+    A function that raises just NotImplementedError is much less likely to be
+    this complex.
+    """
+    body = block.body
+
+    # Skip a docstring
+    if (body and isinstance(body[0], ExpressionStmt) and
+            isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
+        body = block.body[1:]
+
+    if len(body) == 0:
+        # There's only a docstring (or no body at all).
+        return True
+    elif len(body) > 1:
+        return False
+
+    stmt = body[0]
+
+    if isinstance(stmt, RaiseStmt):
+        expr = stmt.expr
+        if expr is None:
+            return False
+        if isinstance(expr, CallExpr):
+            expr = expr.callee
+
+        return (isinstance(expr, NameExpr)
+                and expr.fullname == 'builtins.NotImplementedError')
+
+    return (isinstance(stmt, PassStmt) or
+            (isinstance(stmt, ExpressionStmt) and
+             isinstance(stmt.expr, EllipsisExpr)))

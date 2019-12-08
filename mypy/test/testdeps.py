@@ -46,6 +46,7 @@ class GetDependenciesSuite(DataSuite):
         options.python_version = python_version
         options.export_types = True
         options.preserve_asts = True
+        options.allow_empty_bodies = True
         messages, files, type_map = self.build(src, options)
         a = messages
         if files is None or type_map is None:

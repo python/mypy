@@ -309,8 +309,8 @@ class A(metaclass=ABCMeta):
 class B(A):
     def f(self, x: str) -> int: \
             # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
-        pass
-    def g(self, x: int) -> int: pass
+        return 0
+    def g(self, x: int) -> int: return 0
 [out]
 
 [case testImplementingAbstractMethodWithMultipleBaseClasses]
@@ -323,11 +323,11 @@ class J(metaclass=ABCMeta):
     @abstractmethod
     def g(self, x: str) -> str: pass
 class A(I, J):
-    def f(self, x: str) -> int: pass \
+    def f(self, x: str) -> int: return 0 \
         # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int"
-    def g(self, x: str) -> int: pass \
+    def g(self, x: str) -> int: return 0 \
         # E: Return type "int" of "g" incompatible with return type "str" in supertype "J"
-    def h(self) -> int: pass # Not related to any base class
+    def h(self) -> int: return 0  # Not related to any base class
 [out]
 
 [case testImplementingAbstractMethodWithExtension]
@@ -338,7 +338,7 @@ class J(metaclass=ABCMeta):
     def f(self, x: int) -> int: pass
 class I(J): pass
 class A(I):
-    def f(self, x: str) -> int: pass \
+    def f(self, x: str) -> int: return 0 \
         # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "int"
 [out]
 
@@ -365,11 +365,11 @@ class I(metaclass=ABCMeta):
     def h(self, a: 'I') -> A: pass
 class A(I):
     def h(self, a: 'A') -> 'I': # Fail
-        pass
+        return A()
     def f(self, a: 'I') -> 'I':
-        pass
+        return A()
     def g(self, a: 'A') -> 'A':
-        pass
+        return A()
 [out]
 main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
 main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
@@ -653,7 +653,7 @@ class A(metaclass=ABCMeta):
     def __gt__(self, other: 'A') -> int: pass
 
 [case testAbstractOperatorMethods2]
-import typing
+from typing import cast, Any
 from abc import abstractmethod, ABCMeta
 class A(metaclass=ABCMeta):
     @abstractmethod
@@ -662,7 +662,8 @@ class B:
     @abstractmethod
     def __add__(self, other: 'A') -> int: pass
 class C:
-    def __add__(self, other: int) -> B: pass
+    def __add__(self, other: int) -> B:
+        return cast(Any, None)
 [out]
 
 [case testAbstractClassWithAnyBase]
@@ -742,7 +743,7 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> int: pass
+    def x(self) -> int: return 0
 b = B()
 b.x() # E: "int" not callable
 [builtins fixtures/property.pyi]
@@ -756,7 +757,7 @@ class A(metaclass=ABCMeta):
     def x(self, v: int) -> None: pass
 class B(A):
     @property
-    def x(self) -> int: pass
+    def x(self) -> int: return 0
     @x.setter
     def x(self, v: int) -> None: pass
 b = B()
@@ -770,7 +771,7 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> str: pass # E: Return type "str" of "x" incompatible with return type "int" in supertype "A"
+    def x(self) -> str: return 'yes' # E: Return type "str" of "x" incompatible with return type "int" in supertype "A"
 b = B()
 b.x() # E: "str" not callable
 [builtins fixtures/property.pyi]
@@ -795,7 +796,7 @@ main:9: error: "int" has no attribute "y"
 from abc import abstractproperty, ABCMeta
 class A(metaclass=ABCMeta):
     @abstractproperty
-    def x(self) -> int: pass
+    def x(self) -> int: return 0
 class B(A):
     @property
     def x(self) -> int:
@@ -831,7 +832,7 @@ class A(metaclass=ABCMeta):
     def x(self, v: int) -> None: pass
 class B(A):
     @property # E
-    def x(self) -> int: pass
+    def x(self) -> int: return 0
 b = B()
 b.x.y # E
 [builtins fixtures/property.pyi]
@@ -887,7 +888,7 @@ class C(Mixin, A):
 class A:
     @property
     def foo(cls) -> str:
-        pass
+        return 'yes'
 class Mixin:
     foo = "foo"
 class C(Mixin, A):
@@ -903,7 +904,7 @@ class Y(X):
 class A:
     @property
     def foo(cls) -> X:
-        pass
+        return X()
 class Mixin:
     foo = Y()
 class C(Mixin, A):
@@ -915,7 +916,7 @@ class C(Mixin, A):
 class A:
     @property
     def foo(cls) -> str:
-        pass
+        return 'yes'
 class Mixin:
     foo = "foo"
 class C(A, Mixin): # E: Definition of "foo" in base class "A" is incompatible with definition in base class "Mixin"
@@ -999,3 +1000,37 @@ d = my_abstract_types['B']()  # E: Cannot instantiate abstract class 'MyAbstract
 d.do()
 
 [builtins fixtures/dict.pyi]
+
+
+-- Treatment of empty bodies in ABCs and protocols
+-- -----------------------------------------------
+
+[case testEmptyBodyProhibitedFunction]
+from typing import overload, Union
+
+def func1(x: str) -> int: pass  # E: Missing return statement
+def func2(x: str) -> int: ...  # E: Missing return statement
+def func3(x: str) -> int:  # E: Missing return statement
+    """Some function."""
+
+@overload
+def func4(x: int) -> int: ...
+@overload
+def func4(x: str) -> str: ...
+def func4(x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
+    pass
+
+@overload
+def func5(x: int) -> int: ...
+@overload
+def func5(x: str) -> str: ...
+def func5(x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
+    """Some function."""
+
+[case testEmptyBodyProhibitedMethod]
+
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyProhibitedProperty]
+
+[builtins fixtures/property.pyi]

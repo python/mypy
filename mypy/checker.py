@@ -24,8 +24,8 @@ from mypy.nodes import (
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
-    is_final_node,
-    ARG_NAMED)
+    is_final_node, is_trivial_body, ARG_NAMED
+)
 from mypy import nodes
 from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
@@ -445,7 +445,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.visit_decorator(cast(Decorator, defn.items[0]))
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
-            self.check_func_item(fdef.func, name=fdef.func.name)
+            self.check_func_item(fdef.func,
+                                 name=fdef.func.name,
+                                 allow_empty=True)
             if fdef.func.is_abstract:
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
@@ -774,7 +776,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_func_item(self, defn: FuncItem,
                         type_override: Optional[CallableType] = None,
-                        name: Optional[str] = None) -> None:
+                        name: Optional[str] = None,
+                        allow_empty: bool = False) -> None:
         """Type check a function.
 
         If type_override is provided, use it as the function type.
@@ -787,7 +790,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 typ = type_override.copy_modified(line=typ.line, column=typ.column)
             if isinstance(typ, CallableType):
                 with self.enter_attribute_inference_context():
-                    self.check_func_def(defn, typ, name)
+                    self.check_func_def(defn, typ, name, allow_empty)
             else:
                 raise RuntimeError('Not supported')
 
@@ -804,7 +807,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yield None
         self.inferred_attribute_types = old_types
 
-    def check_func_def(self, defn: FuncItem, typ: CallableType, name: Optional[str]) -> None:
+    def check_func_def(self, defn: FuncItem, typ: CallableType,
+                       name: Optional[str], allow_empty: bool = False) -> None:
         """Type check a function definition."""
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
@@ -956,7 +960,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
-                body_is_trivial = self.is_trivial_body(defn.body)
+                body_is_trivial = is_trivial_body(defn.body)
                 self.check_default_args(item, body_is_trivial)
 
             # Type check body in a new scope.
@@ -973,7 +977,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
-            if (self.options.warn_no_return and not unreachable):
+            if self.options.warn_no_return and not unreachable:
                 if (defn.is_generator or
                         is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
                     return_type = self.get_generator_return_type(self.return_types[-1],
@@ -984,7 +988,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return_type = self.return_types[-1]
 
                 return_type = get_proper_type(return_type)
-                if not isinstance(return_type, (NoneType, AnyType)) and not body_is_trivial:
+                allow_empty = allow_empty or self.options.allow_empty_bodies
+                if (not isinstance(return_type, (NoneType, AnyType)) and
+                        (not body_is_trivial or
+                         # Allow empty bodies for abstract methods, overloads, in tests and stubs.
+                         not allow_empty
+                         and not (isinstance(defn, FuncDef) and defn.is_abstract)
+                         and not self.is_stub)):
                     # Control flow fell off the end of a function that was
                     # declared to return a non-None type and is not
                     # entirely pass/Ellipsis/raise NotImplementedError.
@@ -1096,51 +1106,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 'returns',
                 'but must return a subtype of'
             )
-
-    def is_trivial_body(self, block: Block) -> bool:
-        """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
-        "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
-        start with a statement containing just a string (e.g. a docstring).
-
-        Note: functions that raise other kinds of exceptions do not count as
-        "trivial". We use this function to help us determine when it's ok to
-        relax certain checks on body, but functions that raise arbitrary exceptions
-        are more likely to do non-trivial work. For example:
-
-           def halt(self, reason: str = ...) -> NoReturn:
-               raise MyCustomError("Fatal error: " + reason, self.line, self.context)
-
-        A function that raises just NotImplementedError is much less likely to be
-        this complex.
-        """
-        body = block.body
-
-        # Skip a docstring
-        if (body and isinstance(body[0], ExpressionStmt) and
-                isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
-            body = block.body[1:]
-
-        if len(body) == 0:
-            # There's only a docstring (or no body at all).
-            return True
-        elif len(body) > 1:
-            return False
-
-        stmt = body[0]
-
-        if isinstance(stmt, RaiseStmt):
-            expr = stmt.expr
-            if expr is None:
-                return False
-            if isinstance(expr, CallExpr):
-                expr = expr.callee
-
-            return (isinstance(expr, NameExpr)
-                    and expr.fullname == 'builtins.NotImplementedError')
-
-        return (isinstance(stmt, PassStmt) or
-                (isinstance(stmt, ExpressionStmt) and
-                 isinstance(stmt.expr, EllipsisExpr)))
 
     def check_reverse_op_method(self, defn: FuncItem,
                                 reverse_type: CallableType, reverse_name: str,

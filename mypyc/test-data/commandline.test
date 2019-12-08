@@ -163,7 +163,7 @@ class Nope(Trait1, Concrete2):  # E: Non-trait bases must appear first in parent
 class NonExt2:
     @property  # E: Property setters not supported in non-extension classes
     def test(self) -> int:
-        pass
+        return 0
 
     @test.setter
     def test(self, x: int) -> None:
