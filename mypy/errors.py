@@ -364,13 +364,11 @@ class Errors:
 
         return False
 
-
-    def is_line_already_ignored(self, file:str, line:int) -> bool:
+    def is_line_already_ignored(self, file: str, line: int) -> bool:
         if file in self.used_ignored_lines:
             if line in self.used_ignored_lines[file]:
                 return True
         return False
-
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
         if info.severity == 'note' and self.is_line_already_ignored(info.origin[0], line):

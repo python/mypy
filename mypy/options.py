@@ -134,7 +134,7 @@ class Options:
         self.ignore_errors = False
 
         # RegEx patterns of errors, which should be ignored
-        self.ignore_errors_by_regex = [] # type: List[str]
+        self.ignore_errors_by_regex = []  # type: List[str]
 
         # Apply strict None checking
         self.strict_optional = True
