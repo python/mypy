@@ -1465,3 +1465,16 @@ x: Union[Callable[[Arg(int, 'y')], None],
          Callable[[int], None]]
 [out]
 __main__.x
+
+[case testEmptyBodySuper]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: ...
+[file next.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def meth(self) -> int: return 0
+[out]
+__main__.C.meth

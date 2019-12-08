@@ -1027,10 +1027,485 @@ def func5(x: str) -> str: ...
 def func5(x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
     """Some function."""
 
-[case testEmptyBodyProhibitedMethod]
+[case testEmptyBodyProhibitedMethodNonAbstract]
+from typing import overload, Union
 
+class A:
+    def func1(self, x: str) -> int: pass  # E: Missing return statement
+    def func2(self, x: str) -> int: ...  # E: Missing return statement
+    def func3(self, x: str) -> int:  # E: Missing return statement
+        """Some function."""
+
+class B:
+    @classmethod
+    def func1(cls, x: str) -> int: pass  # E: Missing return statement
+    @classmethod
+    def func2(cls, x: str) -> int: ...  # E: Missing return statement
+    @classmethod
+    def func3(cls, x: str) -> int:  # E: Missing return statement
+        """Some function."""
+
+class C:
+    @overload
+    def func4(self, x: int) -> int: ...
+    @overload
+    def func4(self, x: str) -> str: ...
+    def func4(self, x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
+        pass
+
+    @overload
+    def func5(self, x: int) -> int: ...
+    @overload
+    def func5(self, x: str) -> str: ...
+    def func5(self, x: Union[int, str]) -> Union[int, str]:  # E: Missing return statement
+        """Some function."""
 [builtins fixtures/classmethod.pyi]
 
-[case testEmptyBodyProhibitedProperty]
+[case testEmptyBodyProhibitedPropertyNonAbstract]
+class A:
+    @property
+    def x(self) -> int: ...  # E: Missing return statement
+    @property
+    def y(self) -> int: ...  # E: Missing return statement
+    @y.setter
+    def y(self, value: int) -> None: ...
 
+class B:
+    @property
+    def x(self) -> int: pass  # E: Missing return statement
+    @property
+    def y(self) -> int: pass  # E: Missing return statement
+    @y.setter
+    def y(self, value: int) -> None: pass
+
+class C:
+    @property
+    def x(self) -> int:  # E: Missing return statement
+       """Some property."""
+    @property
+    def y(self) -> int:  # E: Missing return statement
+        """Some property."""
+    @y.setter
+    def y(self, value: int) -> None: pass
 [builtins fixtures/property.pyi]
+
+[case testEmptyBodyAllowedFunctionStub]
+import stub
+[file stub.pyi]
+from typing import overload, Union
+
+def func1(x: str) -> int: pass
+def func2(x: str) -> int: ...
+def func3(x: str) -> int:
+    """Some function."""
+
+[case testEmptyBodyAllowedMethodNonAbstractStub]
+import stub
+[file stub.pyi]
+from typing import overload, Union
+
+class A:
+    def func1(self, x: str) -> int: pass
+    def func2(self, x: str) -> int: ...
+    def func3(self, x: str) -> int:
+        """Some function."""
+
+class B:
+    @classmethod
+    def func1(cls, x: str) -> int: pass
+    @classmethod
+    def func2(cls, x: str) -> int: ...
+    @classmethod
+    def func3(cls, x: str) -> int:
+        """Some function."""
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyAllowedPropertyNonAbstractStub]
+import stub
+[file stub.pyi]
+class A:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+    @y.setter
+    def y(self, value: int) -> None: ...
+
+class B:
+    @property
+    def x(self) -> int: pass
+    @property
+    def y(self) -> int: pass
+    @y.setter
+    def y(self, value: int) -> None: pass
+
+class C:
+    @property
+    def x(self) -> int:
+       """Some property."""
+    @property
+    def y(self) -> int:
+        """Some property."""
+    @y.setter
+    def y(self, value: int) -> None: pass
+[builtins fixtures/property.pyi]
+
+[case testEmptyBodyAllowedMethodAbstract]
+from typing import overload, Union
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def func1(self, x: str) -> int: pass
+    @abstractmethod
+    def func2(self, x: str) -> int: ...
+    @abstractmethod
+    def func3(self, x: str) -> int:
+        """Some function."""
+
+class B:
+    @classmethod
+    @abstractmethod
+    def func1(cls, x: str) -> int: pass
+    @classmethod
+    @abstractmethod
+    def func2(cls, x: str) -> int: ...
+    @classmethod
+    @abstractmethod
+    def func3(cls, x: str) -> int:
+        """Some function."""
+
+class C:
+    @overload
+    @abstractmethod
+    def func4(self, x: int) -> int: ...
+    @overload
+    @abstractmethod
+    def func4(self, x: str) -> str: ...
+    @abstractmethod
+    def func4(self, x: Union[int, str]) -> Union[int, str]:
+        pass
+
+    @overload
+    @abstractmethod
+    def func5(self, x: int) -> int: ...
+    @overload
+    @abstractmethod
+    def func5(self, x: str) -> str: ...
+    @abstractmethod
+    def func5(self, x: Union[int, str]) -> Union[int, str]:
+        """Some function."""
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyProhibitedPropertyNonAbstract]
+from abc import abstractmethod
+class A:
+    @property
+    @abstractmethod
+    def x(self) -> int: ...
+    @property
+    @abstractmethod
+    def y(self) -> int: ...
+    @y.setter
+    @abstractmethod
+    def y(self, value: int) -> None: ...
+
+class B:
+    @property
+    @abstractmethod
+    def x(self) -> int: pass
+    @property
+    @abstractmethod
+    def y(self) -> int: pass
+    @y.setter
+    @abstractmethod
+    def y(self, value: int) -> None: pass
+
+class C:
+    @property
+    @abstractmethod
+    def x(self) -> int:
+       """Some property."""
+    @property
+    @abstractmethod
+    def y(self) -> int:
+        """Some property."""
+    @y.setter
+    @abstractmethod
+    def y(self, value: int) -> None: pass
+[builtins fixtures/property.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocol]
+from typing import Protocol, overload, Union
+
+class P1(Protocol):
+    def meth(self) -> int: ...
+class B1(P1): ...
+class C1(P1):
+    def meth(self) -> int:
+        return 0
+B1()  # E: Cannot instantiate abstract class 'B1' with abstract attribute 'meth'
+C1()
+
+class P2(Protocol):
+    @classmethod
+    def meth(cls) -> int: ...
+class B2(P2): ...
+class C2(P2):
+    @classmethod
+    def meth(cls) -> int:
+        return 0
+B2()  # E: Cannot instantiate abstract class 'B2' with abstract attribute 'meth'
+C2()
+
+class P3(Protocol):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+class B3(P3): ...
+class C3(P3):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
+B3()  # E: Cannot instantiate abstract class 'B3' with abstract attribute 'meth'
+C3()
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocolProperty]
+from typing import Protocol
+
+class P1(Protocol):
+    @property
+    def attr(self) -> int: ...
+class B1(P1): ...
+class C1(P1):
+    @property
+    def attr(self) -> int:
+        return 0
+B1()  # E: Cannot instantiate abstract class 'B1' with abstract attribute 'attr'
+C1()
+
+class P2(Protocol):
+    @property
+    def attr(self) -> int: ...
+    @attr.setter
+    def attr(self, value: int) -> None: ...
+class B2(P2): ...
+class C2(P2):
+    @property
+    def attr(self) -> int: return 0
+    @attr.setter
+    def attr(self, value: int) -> None: pass
+B2()  # E: Cannot instantiate abstract class 'B2' with abstract attribute 'attr'
+C2()
+[builtins fixtures/property.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocolStub]
+from stub import P1, P2, P3, P4
+
+class B1(P1): ...
+class B2(P2): ...
+class B3(P3): ...
+class B4(P4): ...
+
+B1()
+B2()
+B3()
+B4()  # E: Cannot instantiate abstract class 'B4' with abstract attribute 'meth'
+
+[file stub.pyi]
+from typing import Protocol, overload, Union
+from abc import abstractmethod
+
+class P1(Protocol):
+    def meth(self) -> int: ...
+
+class P2(Protocol):
+    @classmethod
+    def meth(cls) -> int: ...
+
+class P3(Protocol):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+
+class P4(Protocol):
+    @abstractmethod
+    def meth(self) -> int: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyUnsafeAbstractSuper]
+from stub import StubProto, StubAbstract
+from typing import Protocol
+from abc import abstractmethod
+
+class Proto(Protocol):
+    def meth(self) -> int: ...
+class ProtoDef(Protocol):
+    def meth(self) -> int: return 0
+
+class Abstract:
+    @abstractmethod
+    def meth(self) -> int: ...
+class AbstractDef:
+    @abstractmethod
+    def meth(self) -> int: return 0
+
+class SubProto(Proto):
+    def meth(self) -> int:
+        return super().meth()  # E: Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe
+class SubProtoDef(ProtoDef):
+    def meth(self) -> int:
+        return super().meth()
+
+class SubAbstract(Abstract):
+    def meth(self) -> int:
+        return super().meth()  # E: Call to abstract method "meth" of "Abstract" with trivial body via super() is unsafe
+class SubAbstractDef(AbstractDef):
+    def meth(self) -> int:
+        return super().meth()
+
+class SubStubProto(StubProto):
+    def meth(self) -> int:
+        return super().meth()
+class SubStubAbstract(StubAbstract):
+    def meth(self) -> int:
+        return super().meth()
+
+[file stub.pyi]
+from typing import Protocol
+from abc import abstractmethod
+
+class StubProto(Protocol):
+    def meth(self) -> int: ...
+class StubAbstract:
+    @abstractmethod
+    def meth(self) -> int: ...
+
+[case testEmptyBodyUnsafeAbstractSuperProperty]
+from stub import StubProto, StubAbstract
+from typing import Protocol
+from abc import abstractmethod
+
+class Proto(Protocol):
+    @property
+    def attr(self) -> int: ...
+class SubProto(Proto):
+    @property
+    def attr(self) -> int: return super().attr  # E: Call to abstract method "attr" of "Proto" with trivial body via super() is unsafe
+
+class ProtoDef(Protocol):
+    @property
+    def attr(self) -> int: return 0
+class SubProtoDef(ProtoDef):
+    @property
+    def attr(self) -> int: return super().attr
+
+class Abstract:
+    @property
+    @abstractmethod
+    def attr(self) -> int: ...
+class SubAbstract(Abstract):
+    @property
+    @abstractmethod
+    def attr(self) -> int: return super().attr # E: Call to abstract method "attr" of "Abstract" with trivial body via super() is unsafe
+
+class AbstractDef:
+    @property
+    @abstractmethod
+    def attr(self) -> int: return 0
+class SubAbstractDef(AbstractDef):
+    @property
+    @abstractmethod
+    def attr(self) -> int: return super().attr
+
+class SubStubProto(StubProto):
+    @property
+    def attr(self) -> int: return super().attr
+class SubStubAbstract(StubAbstract):
+    @property
+    def attr(self) -> int: return super().attr
+
+[file stub.pyi]
+from typing import Protocol
+from abc import abstractmethod
+
+class StubProto(Protocol):
+    @property
+    def attr(self) -> int: ...
+class StubAbstract:
+    @property
+    @abstractmethod
+    def attr(self) -> int: ...
+[builtins fixtures/property.pyi]
+
+[case testEmptyBodyUnsafeAbstractSuperOverloads]
+from stub import StubProto
+from typing import Protocol, overload, Union
+
+class ProtoEmptyImpl(Protocol):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        raise NotImplementedError
+class ProtoDefImpl(Protocol):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
+class ProtoNoImpl(Protocol):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+
+class SubProtoEmptyImpl(ProtoEmptyImpl):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return super().meth(0)  # E: Call to abstract method "meth" of "ProtoEmptyImpl" with trivial body via super() is unsafe
+class SubProtoDefImpl(ProtoDefImpl):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return super().meth(0)
+class SubStubProto(StubProto):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return super().meth(0)
+
+# TODO: it would be good to also give an error in this case.
+class SubProtoNoImpl(ProtoNoImpl):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return super().meth(0)
+
+[file stub.pyi]
+from typing import Protocol, overload
+
+class StubProto(Protocol):
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def meth(self, x: int) -> int: ...
+
+[builtins fixtures/exception.pyi]

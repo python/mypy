@@ -54,7 +54,7 @@ from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
-    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
+    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED, FuncDef
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
@@ -174,10 +174,14 @@ def snapshot_definition(node: Optional[SymbolNode],
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
+        if isinstance(node, FuncDef):
+            is_trivial_body = node.is_trivial_body
+        else:
+            is_trivial_body = False
         return ('Func', common,
                 node.is_property, node.is_final,
                 node.is_class, node.is_static,
-                signature)
+                is_trivial_body, signature)
     elif isinstance(node, Var):
         return ('Var', common,
                 snapshot_optional_type(node.type),

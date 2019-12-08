@@ -574,13 +574,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(get_proper_type(defn.type.ret_type), AnyType):
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
-            if is_trivial_body(defn.body) and not self.is_stub_file:
-                defn.is_trivial_body = True
-                if (self.type.is_protocol and
-                        not isinstance(self.scope.function, OverloadedFuncDef)):
-                    # Mark protocol methods with empty bodies as implicitly abstract.
-                    # This makes explicit protocol subclassing type-safe.
-                    defn.is_abstract = True
 
         # Analyze function signature
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
@@ -606,6 +599,19 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
+
+        # Check and set trivial body flags.
+        if self.is_class_scope():
+            assert self.type is not None
+            if is_trivial_body(defn.body) and not self.is_stub_file:
+                defn.is_trivial_body = True
+                if (self.type.is_protocol and
+                        (not isinstance(self.scope.function, OverloadedFuncDef)
+                         or defn.is_property)):
+                    # Mark protocol methods with empty bodies as implicitly abstract.
+                    # This makes explicit protocol subclassing type-safe.
+                    defn.is_abstract = True
+
         if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
             if defn.is_async_generator:
                 # Async generator types are handled elsewhere
@@ -889,6 +895,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
+                # TODO: avoid code duplication with visit_decorator().
+                removed = []
+                for i, dec in enumerate(item.decorators):
+                    dec.accept(self)
+                    if refers_to_fullname(dec, 'abc.abstractmethod'):
+                        item.func.is_abstract = True
+                        removed.append(i)
+                for i in reversed(removed):
+                    del item.decorators[i]
                 if len(item.decorators) == 1:
                     node = item.decorators[0]
                     if isinstance(node, MemberExpr):

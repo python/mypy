@@ -85,6 +85,9 @@ STR_BYTES_PY3 = ErrorCode(
     'General')  # type: Final
 EXIT_RETURN = ErrorCode(
     'exit-return', "Warn about too general return type for '__exit__'", 'General')  # type: Final
+SAFE_SUPER = ErrorCode(
+    'safe-super', "Warn about calls to abstract methods with empty/trivial bodies",
+    'General')  # type: Final
 
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF = ErrorCode(

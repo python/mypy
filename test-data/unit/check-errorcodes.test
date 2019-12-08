@@ -703,3 +703,15 @@ class InvalidReturn:
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 [builtins fixtures/bool.pyi]
+
+[case testErrorCodeUnsafeSuper_no_empty]
+from abc import abstractmethod
+
+class Base:
+    @abstractmethod
+    def meth(self) -> int:
+        raise NotImplementedError()
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()  # E: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe  [safe-super]
+[builtins fixtures/exception.pyi]

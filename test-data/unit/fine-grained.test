@@ -9288,3 +9288,25 @@ class B:
         self.x = 0
 [out]
 ==
+
+[case testAbstractBodyTurnsEmpty]
+from b import Base
+
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()
+
+[file b.py]
+from abc import abstractmethod
+class Base:
+    @abstractmethod
+    def meth(self) -> int: return 0
+
+[file b.py.2]
+from abc import abstractmethod
+class Base:
+    @abstractmethod
+    def meth(self) -> int: ...
+[out]
+==
+main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
