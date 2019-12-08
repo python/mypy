@@ -1,6 +1,7 @@
 import os.path
 import sys
 import traceback
+import re
 from collections import OrderedDict, defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
@@ -172,7 +173,7 @@ class Errors:
         self.pretty = pretty
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.ignore_errors_by_regex = ignore_errors_by_regex
+        self.ignore_message_patterns = [re.compile(p) for p in ignore_errors_by_regex]
         self.initialize()
 
     def initialize(self) -> None:
@@ -352,10 +353,27 @@ class Errors:
             self.only_once_messages.add(info.message)
         self._add_error_info(file, info)
 
+    def is_ignore_message_by_regex(self, message: str) -> bool:
+        for p in self.ignore_message_patterns:
+            if p.match(message):
+                return True
+
+        return False
+
+
+    def is_line_already_ignored(self, file:str, line:int) -> bool:
+        if file in self.used_ignored_lines:
+            if line in self.used_ignored_lines[file]:
+                return True
+        return False
+
+
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
-        #if '"int" not callable' in info.message: # ToDo: ANET
-        #    return True
-        if line not in ignores:
+        if info.severity == 'note' and self.is_line_already_ignored(info.origin[0], line):
+            return True
+        elif self.is_ignore_message_by_regex(info.message):
+            return True
+        elif line not in ignores:
             return False
         elif not ignores[line]:
             # Empty list means that we ignore all errors
