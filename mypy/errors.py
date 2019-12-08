@@ -174,7 +174,10 @@ class Errors:
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
         self.ignore_errors_by_regex = ignore_errors_by_regex
-        self.ignore_message_regex_patterns = [re.compile(p) for p in ignore_errors_by_regex]
+        if ignore_errors_by_regex is not None:
+            self.ignore_message_regex_patterns = [re.compile(p) for p in ignore_errors_by_regex]
+        else:
+            self.ignore_message_regex_patterns = []
         self.initialize()
 
     def initialize(self) -> None:
