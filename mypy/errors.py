@@ -173,7 +173,8 @@ class Errors:
         self.pretty = pretty
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
-        self.ignore_message_patterns = [re.compile(p) for p in ignore_errors_by_regex]
+        self.ignore_errors_by_regex = ignore_errors_by_regex
+        self.ignore_message_regex_patterns = [re.compile(p) for p in ignore_errors_by_regex]
         self.initialize()
 
     def initialize(self) -> None:
@@ -354,7 +355,7 @@ class Errors:
         self._add_error_info(file, info)
 
     def is_ignore_message_by_regex(self, message: str) -> bool:
-        for p in self.ignore_message_patterns:
+        for p in self.ignore_message_regex_patterns:
             if p.match(message):
                 return True
 
