@@ -170,23 +170,34 @@ def f():
     except ZeroDivisionError, err:
         print err
 
-[case testNoConfigFile]
-# cmd: mypy main.py --config-file=
-[file mypy.ini]
+[case testWarnUnusedIgnores]
+# cmd: mypy main.py --config-file=pyproject.toml
+[file pyproject.toml]
 \[mypy]
-warn_unused_ignores = True
+warn_unused_ignores = true
 [file main.py]
 # type: ignore
+[out]
+main.py:1: error: unused 'type: ignore' comment
+
+[case testMissingMypySection]
+# cmd: mypy main.py --config-file=pyproject.toml
+[file pyproject.toml]
+[file main.py]
+# type: ignore
+[out]
+pyproject.toml: No [mypy] table in config file
+== Return code: 0
 
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
-[file mypy.ini]
+[file pyproject.toml]
 \[mypy]
-disallow_untyped_defs = True
-\[mypy-y]
-disallow_untyped_defs = False
-\[mypy-z]
-disallow_untyped_calls = True
+disallow_untyped_defs = true
+\[mypy.overrides.y]
+disallow_untyped_defs = false
+\[mypy.overrides.z]
+disallow_untyped_calls = true
 [file x.py]
 def f(a):
     pass

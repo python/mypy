@@ -6,7 +6,8 @@ import os
 import re
 import sys
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, TextIO
+import toml
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, TextIO, MutableMapping
 from typing_extensions import Final
 
 from mypy import defaults
@@ -50,9 +51,20 @@ def split_and_match_files(paths: str) -> List[str]:
 
     Returns a list of file paths
     """
+
+    return match_files(paths.split(','))
+
+
+def match_files(paths: List[str]) -> List[str]:
+    """Take list of files/directories (with support for globbing through the glob library).
+
+    Where a path/glob matches no file, we still include the raw path in the resulting list.
+
+    Returns a list of file paths
+    """
     expanded_paths = []
 
-    for path in paths.split(','):
+    for path in paths:
         path = expand_path(path.strip())
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
@@ -77,7 +89,7 @@ def check_follow_imports(choice: str) -> str:
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
 # types.
-config_types = {
+ini_type_converters = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
@@ -103,6 +115,16 @@ config_types = {
 }  # type: Final
 
 
+toml_type_converters = {
+    'python_version': parse_version,
+    'custom_typeshed_dir': expand_path,
+    'mypy_path': lambda l: [expand_path(p) for p in l],
+    'files': match_files,
+    'cache_dir': expand_path,
+    'python_executable': expand_path,
+}  # type: Final
+
+
 def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                       filename: Optional[str],
                       stdout: Optional[TextIO] = None,
@@ -113,50 +135,133 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 
     If filename is None, fall back to default config files.
     """
-    stdout = stdout or sys.stdout
+    if filename is not None:
+        filename = os.path.expanduser(filename)
+        if os.path.splitext(filename)[1] == '.toml':
+            parse_toml_config_file(options, set_strict_flags, filename, stdout, stderr)
+        else:
+            parse_ini_config_file(options, set_strict_flags, filename, stdout, stderr)
+    else:
+        for filename in defaults.CONFIG_FILES:
+            filename = os.path.expanduser(filename)
+            if not os.path.isfile(filename):
+                continue
+            if os.path.splitext(filename)[1] == '.toml':
+                parsed = parse_toml_config_file(options, set_strict_flags,
+                                                filename, stdout, stderr)
+            else:
+                parsed = parse_ini_config_file(options, set_strict_flags,
+                                               filename, stdout, stderr)
+            if parsed:
+                break
+
+
+def parse_toml_config_file(options: Options, set_strict_flags: Callable[[], None],
+                           filename: str,
+                           stdout: Optional[TextIO] = None,
+                           stderr: Optional[TextIO] = None) -> bool:
     stderr = stderr or sys.stderr
 
-    if filename is not None:
-        config_files = (filename,)  # type: Tuple[str, ...]
+    # Load the toml config file.
+    try:
+        table = toml.load(filename)  # type: MutableMapping[str, Any]
+    except (TypeError, toml.TomlDecodeError, IOError) as err:
+        print("%s: %s" % (filename, err), file=stderr)
+        return False
     else:
-        config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
+        options.config_file = filename
 
-    parser = configparser.RawConfigParser()
+    if 'mypy' not in table:
+        print("%s: No [mypy] table in config file" % filename, file=stderr)
+        return False
 
-    for config_file in config_files:
-        if not os.path.exists(config_file):
-            continue
-        try:
-            parser.read(config_file)
-        except configparser.Error as err:
-            print("%s: %s" % (config_file, err), file=stderr)
+    # Handle the mypy table.
+    for key, value in table['mypy'].items():
+
+        # Is an option.
+        if key != 'overrides':
+
+            # Is a report directory.
+            if key.endswith('_report'):
+                report_type = key[:-7].replace('_', '-')
+                if report_type in defaults.REPORTER_NAMES:
+                    options.report_dirs[report_type] = table['mypy'][key]
+                else:
+                    print("%s: Unrecognized report type: %s" %
+                          (filename, key),
+                          file=stderr)
+            elif key == 'strict':
+                set_strict_flags()
+            else:
+                if key in toml_type_converters:
+                    value = toml_type_converters[key](value)  # type: ignore
+                setattr(options, key, value)
+
+        # Read the per-module override sub-tables.
         else:
-            if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
-                continue
-            file_read = config_file
-            options.config_file = file_read
-            break
+            for glob, override in value.items():
+                if (any(c in glob for c in '?[]!') or
+                        any('*' in x and x != '*' for x in glob.split('.'))):
+                    print("%s: Patterns must be fully-qualified module names, optionally "
+                          "with '*' in some components (e.g spam.*.eggs.*)"
+                          % filename, file=stderr)
+
+                values = {}
+                for subkey, subvalue in override.items():
+                    if subkey.endswith('_report'):
+                        print("Per-module override [%s] should not specify reports (%s)" %
+                              (glob, subkey), file=stderr)
+                        continue
+                    elif subkey not in PER_MODULE_OPTIONS:
+                        print("Per-module tables [%s] should only specify per-module flags (%s)" %
+                              (key, subkey), file=stderr)
+                        continue
+
+                    if subkey in toml_type_converters:
+                        subvalue = toml_type_converters[subkey](subvalue)  # type: ignore
+                    values[subkey] = subvalue
+
+                options.per_module_options[glob] = values
+    return True
+
+
+def parse_ini_config_file(options: Options, set_strict_flags: Callable[[], None],
+                          filename: str,
+                          stdout: Optional[TextIO] = None,
+                          stderr: Optional[TextIO] = None) -> bool:
+    stderr = stderr or sys.stderr
+    parser = configparser.RawConfigParser()
+    retv = False
+
+    try:
+        parser.read(filename)
+    except configparser.Error as err:
+        print("%s: %s" % (filename, err), file=stderr)
+        return retv
     else:
-        return
+        options.config_file = filename
 
     os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
-            os.path.abspath(config_file))
+            os.path.abspath(filename))
 
     if 'mypy' not in parser:
-        if filename or file_read not in defaults.SHARED_CONFIG_FILES:
-            print("%s: No [mypy] section in config file" % file_read, file=stderr)
+        if filename not in defaults.SHARED_CONFIG_FILES:
+            print("%s: No [mypy] section in config file" % filename, file=stderr)
     else:
+        retv = True
         section = parser['mypy']
-        prefix = '%s: [%s]: ' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, set_strict_flags, section, stderr)
+        prefix = '%s: [%s]: ' % (filename, 'mypy')
+        updates, report_dirs = parse_ini_section(
+            prefix, options, set_strict_flags, section, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            prefix = '%s: [%s]: ' % (file_read, name)
-            updates, report_dirs = parse_section(
+            retv = True
+            prefix = '%s: [%s]: ' % (filename, name)
+            updates, report_dirs = parse_ini_section(
                 prefix, options, set_strict_flags, section, stderr)
             if report_dirs:
                 print("%sPer-module sections should not specify reports (%s)" %
@@ -182,13 +287,14 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                           file=stderr)
                 else:
                     options.per_module_options[glob] = updates
+    return retv
 
 
-def parse_section(prefix: str, template: Options,
-                  set_strict_flags: Callable[[], None],
-                  section: Mapping[str, str],
-                  stderr: TextIO = sys.stderr
-                  ) -> Tuple[Dict[str, object], Dict[str, str]]:
+def parse_ini_section(prefix: str, template: Options,
+                      set_strict_flags: Callable[[], None],
+                      section: Mapping[str, str],
+                      stderr: TextIO = sys.stderr
+                      ) -> Tuple[Dict[str, object], Dict[str, str]]:
     """Parse one section of a config file.
 
     Returns a dict of option values encountered, and a dict of report directories.
@@ -198,8 +304,8 @@ def parse_section(prefix: str, template: Options,
     for key in section:
         invert = False
         options_key = key
-        if key in config_types:
-            ct = config_types[key]
+        if key in ini_type_converters:
+            ct = ini_type_converters[key]
         else:
             dv = None
             # We have to keep new_semantic_analyzer in Options
@@ -361,7 +467,7 @@ def parse_mypy_comments(
             nonlocal strict_found
             strict_found = True
 
-        new_sections, reports = parse_section(
+        new_sections, reports = parse_ini_section(
             '', template, set_strict_flags, parser['dummy'], stderr=stderr)
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split('\n') if x)
         if reports:
