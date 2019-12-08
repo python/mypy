@@ -314,6 +314,28 @@ however:
    in this case, but any attempt to construct an instance will be
    flagged as an error.
 
+Mypy allows you to omit the body for an abstract method, but if you do so,
+it is unsafe to call such method via ``super()``. For example:
+
+.. code-block:: python
+
+    from abc import abstractmethod
+
+    class Base:
+        @abstractmethod
+        def foo(self) -> int: pass
+        @abstractmethod
+        def bar(self) -> int:
+            return 0
+
+    class Sub(Base):
+        def foo(self) -> int:
+            return super().foo() + 1  # error: Call to abstract method "foo" of "Base"
+                                      # with trivial body via super() is unsafe
+        @abstractmethod
+        def bar(self) -> int:
+            return super().bar() + 1  # This is OK however.
+
 A class can inherit any number of classes, both abstract and
 concrete. As with normal overrides, a dynamically typed method can
 override or implement a statically typed method defined in any base
