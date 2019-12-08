@@ -1,11 +1,400 @@
 [case testIgnoreByRegExType]
 # flags: --config-file tmp/mypy.ini
 x = 1
+z = 'hello'
 x()
+z() # E: "str" not callable
 
 [file mypy.ini]
 \[mypy]
-ignore_errors_by_regex =
-    'int' not callable
-    bla
+ignore_errors_by_regex = "int" not callable
 
+
+[case testIgnoreByRegExUndefinedName]
+# flags: --config-file tmp/mypy.ini
+x = 1
+y
+z # E: Name 'z' is not defined
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Name 'y' is not defined
+
+
+[case testIgnoreByRegExImportError]
+# flags: --config-file tmp/mypy.ini
+import xyz_m
+xyz_m.foo
+1() # E: "int" not callable
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation .+ 'xyz_m'
+
+
+[case testIgnoreByRegExImportFromError]
+# flags: --config-file tmp/mypy.ini
+from xyz_m import a, b
+a.foo
+b()
+1() # E: "int" not callable
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation .+ 'xyz_m'
+
+
+[case testIgnoreByRegExImportFromErrorMultiline]
+# flags: --config-file tmp/mypy.ini
+from xyz_m import (
+    a, b
+)
+a.foo
+b()
+1() # E: "int" not callable
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named '.+'
+
+
+[case testIgnoreByRegExImportAllError]
+# flags: --config-file tmp/mypy.ini
+from xyz_m import *
+x   # E: Name 'x' is not defined
+1() # E: "int" not callable
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = .+ library .+ 'xyz_m'
+
+
+[case testIgnoreByRegExAppliesOnlyToMissing]
+# flags: --config-file tmp/mypy.ini
+import a
+import b
+reveal_type(a.foo) # N: Revealed type is 'Any'
+reveal_type(b.foo) # N: Revealed type is 'builtins.int'
+a.bar()
+b.bar() # E: Module has no attribute "bar"
+
+[file b.py]
+foo = 3
+
+[builtins fixtures/module_all.pyi]
+[out]
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = .+ library .+ 'a'
+
+
+[case testIgnoreByRegExAssignmentTypeError]
+# flags: --config-file tmp/mypy.ini
+x = 1
+y = 'mypy'
+if int():
+    y = 42
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Incompatible types in assignment \(expression has type "int", variable has type "[^"]+"\)
+
+
+[case testIgnoreByRegExInvalidOverride]
+# flags: --config-file tmp/mypy.ini
+class A:
+    def f(self) -> int: pass
+class B(A):
+    def f(self) -> str: pass
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex =  Return type "[^"]+" of "f" incompatible with return type "[^"]+" in supertype "A"
+
+
+[case testIgnoreByRegExMissingModuleAttribute]
+# flags: --config-file tmp/mypy.ini
+import m
+m.x = object
+m.f()
+m.y # E: Module has no attribute "y"
+[file m.py]
+[builtins fixtures/module.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex =  Module has no attribute "[xf]"
+
+
+[case testIgnoreByRegExTypeInferenceError]
+# flags: --config-file tmp/mypy.ini
+x = []
+y = x
+x.append(1)
+[builtins fixtures/list.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Need type annotation for 'x'
+
+
+[case testIgnoreByRegExTypeInferenceError2]
+# flags: --config-file tmp/mypy.ini
+def f() -> None: pass
+x = f()
+y = x
+x = 1
+[builtins fixtures/list.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = "f" does not return a value
+
+
+[case testIgnoreByRegExTypeInferenceErrorAndMultipleAssignment1]
+-- two errors on the same line: only one of them should be ignored
+# flags: --config-file tmp/mypy.ini
+x, y = [], []
+z = x
+z = y
+[builtins fixtures/list.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Need type annotation for 'x' \(hint: "x: List\[<type>\] = ..."\)
+[out]
+main:2: error: Need type annotation for 'y' (hint: "y: List[<type>] = ...")
+
+
+[case testIgnoreByRegExTypeInferenceErrorAndMultipleAssignment2]
+-- two errors on the same line: only one of them should be ignored
+# flags: --config-file tmp/mypy.ini
+x, y = [], []
+z = x
+z = y
+[builtins fixtures/list.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Need type annotation for 'y' \(hint: "y: List\[<type>\] = ..."\)
+[out]
+main:2: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+
+
+[case testIgnoreByRegExSomeStarImportErrors]
+# flags: --config-file tmp/mypy.ini
+from m1 import *
+from m2 import *
+# We should still import things that don't conflict.
+y() # E: "str" not callable
+z() # E: "int" not callable
+x() # E: "int" not callable
+[file m1.py]
+x = 1
+y = ''
+[file m2.py]
+x = ''
+z = 1
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Incompatible import of "x" \(imported name has type "str", local name has type "int"\)
+
+
+[case testIgnoreByRegExdModuleDefinesBaseClass1]
+# flags: --config-file tmp/mypy.ini
+from m import B
+
+class C(B):
+    def f(self) -> None:
+        self.f(1) # E: Too many arguments for "f" of "C"
+        self.g(1)
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named '[a-zA-Z_]+'
+
+[out]
+
+
+[case testIgnoreByRegExdModuleDefinesBaseClass2]
+# flags: --config-file tmp/mypy.ini
+import m
+
+class C(m.B):
+    def f(self) -> None: ...
+
+c = C()
+c.f(1) # E: Too many arguments for "f" of "C"
+c.g(1)
+c.x = 1
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named '[a-zA-Z_]+'
+
+[out]
+
+
+[case testIgnoreByRegExdModuleDefinesBaseClassAndClassAttribute]
+# flags: --config-file tmp/mypy.ini
+import m
+
+class C(m.B):
+    @staticmethod
+    def f() -> None: pass
+
+C.f(1) # E: Too many arguments for "f" of "C"
+C.g(1)
+C.x = 1
+[builtins fixtures/staticmethod.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named '[a-zA-Z_]+'
+
+[out]
+
+
+[case testIgnoreByRegExdModuleDefinesBaseClassWithInheritance1]
+# flags: --config-file tmp/mypy.ini
+from m import B
+
+class C: pass
+class D(C, B):
+    def f(self) -> None:
+        self.f(1) # E: Too many arguments for "f" of "D"
+        self.g(1)
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named '[a-zA-Z_]+'
+
+[out]
+
+
+[case testIgnoreByRegExdModuleDefinesBaseClassWithInheritance2]
+# flags: --config-file tmp/mypy.ini
+from m import B
+
+class C(B): pass
+class D(C):
+    def f(self) -> None:
+        self.f(1) # E: Too many arguments for "f" of "D"
+        self.g(1)
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named '[a-zA-Z_]+'
+
+[out]
+
+
+[case testIgnoreByRegExTooManyTypeArguments]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+
+class Base(Generic[T, U]):
+  pass
+
+class PartialBase(Base[T, int], Generic[T]):
+  pass
+
+class Child(PartialBase[str, int]):
+  pass
+
+
+def foo(x: Base[str, int]) -> None: pass
+foo(Child())
+
+def bar(x: Base[str, str]) -> None: pass
+bar(Child())
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = "PartialBase" expects 1 type argument, but [0-9]+ given
+
+[out]
+main:20: error: Argument 1 to "bar" has incompatible type "Child"; expected "Base[str, str]"
+
+
+[case testIgnoreByRegExLineNumberWithinFile]
+# flags: --config-file tmp/mypy.ini
+import m
+pass
+m.f(kw=1)
+[file m.py]
+pass
+def f() -> None: pass
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = ignore any error, but not this
+[out]
+main:4: error: Unexpected keyword argument "kw" for "f"
+tmp/m.py:2: note: "f" defined here
+
+
+[case testIgnoreByRegExUnexpectedKeywordArgument]
+# flags: --config-file tmp/mypy.ini
+import m
+m.f(kw=1)  # type: ignore
+[file m.py]
+def f() -> None: pass
+[out]
+
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Unexpected keyword argument ".+" for "f"
+
+
+[case testIgnoreByRegExButNotBlockingError]
+# flags: --config-file tmp/mypy.ini
+yield  # E: 'yield' outside function
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = 'yield' outside function
+
+
+[case testIgnoreByRegExIgnoreSeveralErrors1]
+# flags: --config-file tmp/mypy.ini
+import m
+x = 1
+z
+l = []
+x()
+[builtins fixtures/list.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Cannot find implementation or library stub for module named 'm'
+    Name 'z' is not defined
+    Need type annotation for 'l' \(hint: "l: List\[<type>\] = ..."\)
+    "int" not callable
+
+
+[case testIgnoreByRegExIgnoreSeveralErrors2]
+# flags: --config-file tmp/mypy.ini
+import m
+x = 1
+z
+l = []
+x()
+[builtins fixtures/list.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex =
+    Cannot find implementation or library stub for module named 'm'
+    Name 'z' is not defined
+    Need type annotation for 'l' \(hint: "l: List\[<type>\] = ..."\)
+    "int" not callable
+
+
+[case testIgnoreByRegExIgnorePropertyAndDecoratorsError]
+# flags: --config-file tmp/mypy.ini
+def decorator(func):
+    return func
+
+class A():
+    @decorator
+    @property
+    def foo(self) -> int:
+        return 42
+
+[builtins fixtures/property.pyi]
+[file mypy.ini]
+\[mypy]
+ignore_errors_by_regex = Decorated property not supported
