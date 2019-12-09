@@ -705,6 +705,7 @@ class InvalidReturn:
 [builtins fixtures/bool.pyi]
 
 [case testErrorCodeUnsafeSuper_no_empty]
+# flags: --strict-optional
 from abc import abstractmethod
 
 class Base:

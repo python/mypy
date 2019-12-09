@@ -174,12 +174,12 @@ def snapshot_definition(node: Optional[SymbolNode],
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
+        impl = None  # type: Optional[FuncDef]
         if isinstance(node, FuncDef):
-            is_trivial_body = node.is_trivial_body
+            impl = node
         elif isinstance(node, OverloadedFuncDef) and node.impl:
-            is_trivial_body = node.impl.is_trivial_body
-        else:
-            is_trivial_body = False
+            impl = node.impl.func if isinstance(node.impl, Decorator) else node.impl
+        is_trivial_body = impl.is_trivial_body if impl else False
         return ('Func', common,
                 node.is_property, node.is_final,
                 node.is_class, node.is_static,
