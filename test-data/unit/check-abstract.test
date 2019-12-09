@@ -1532,6 +1532,7 @@ class SubAbstract(Abstract):
         return super().meth()
 
 [case testEmptyBodyNoSuperWarningOptionalReturn]
+# flags: --strict-optional
 from typing import Protocol, Optional
 from abc import abstractmethod
 
@@ -1542,8 +1543,8 @@ class Abstract:
     def meth(self) -> Optional[int]: pass
 
 class SubProto(Proto):
-    def meth(self) -> int:
+    def meth(self) -> Optional[int]:
         return super().meth()
 class SubAbstract(Abstract):
-    def meth(self) -> int:
+    def meth(self) -> Optional[int]:
         return super().meth()
