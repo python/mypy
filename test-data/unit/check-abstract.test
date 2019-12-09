@@ -1340,6 +1340,7 @@ class P4(Protocol):
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyUnsafeAbstractSuper]
+# flags: --strict-optional
 from stub import StubProto, StubAbstract
 from typing import Protocol
 from abc import abstractmethod
@@ -1388,6 +1389,7 @@ class StubAbstract:
     def meth(self) -> int: ...
 
 [case testEmptyBodyUnsafeAbstractSuperProperty]
+# flags: --strict-optional
 from stub import StubProto, StubAbstract
 from typing import Protocol
 from abc import abstractmethod
@@ -1445,6 +1447,7 @@ class StubAbstract:
 [builtins fixtures/property.pyi]
 
 [case testEmptyBodyUnsafeAbstractSuperOverloads]
+# flags: --strict-optional
 from stub import StubProto
 from typing import Protocol, overload, Union
 
@@ -1509,3 +1512,38 @@ class StubProto(Protocol):
     def meth(self, x: int) -> int: ...
 
 [builtins fixtures/exception.pyi]
+
+[case testEmptyBodyNoSuperWarningWithoutStrict]
+# flags: --no-strict-optional
+from typing import Protocol
+from abc import abstractmethod
+
+class Proto(Protocol):
+    def meth(self) -> int: ...
+class Abstract:
+    @abstractmethod
+    def meth(self) -> int: ...
+
+class SubProto(Proto):
+    def meth(self) -> int:
+        return super().meth()
+class SubAbstract(Abstract):
+    def meth(self) -> int:
+        return super().meth()
+
+[case testEmptyBodyNoSuperWarningOptionalReturn]
+from typing import Protocol, Optional
+from abc import abstractmethod
+
+class Proto(Protocol):
+    def meth(self) -> Optional[int]: pass
+class Abstract:
+    @abstractmethod
+    def meth(self) -> Optional[int]: pass
+
+class SubProto(Proto):
+    def meth(self) -> int:
+        return super().meth()
+class SubAbstract(Abstract):
+    def meth(self) -> int:
+        return super().meth()

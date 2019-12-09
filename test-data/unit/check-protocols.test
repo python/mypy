@@ -393,7 +393,7 @@ class P(C, Protocol): # E: All bases of a protocol must be protocols
 class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
     pass
 
-P2() # E: Cannot instantiate abstract class 'P2' with abstract attribute 'attr'
+P2() # E: Cannot instantiate protocol class "P2"
 p: P2
 reveal_type(p.attr) # N: Revealed type is 'builtins.int'
 
@@ -1403,7 +1403,8 @@ f2(z) # E: Argument 1 to "f2" has incompatible type "Union[C, D1]"; expected "P2
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None:
+        return None
 class P1(Protocol):
     def m(self) -> None: pass
 class Pbad(Protocol):
@@ -1449,7 +1450,8 @@ f(GoodAlias)
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None:
+        return None
 class B(P): pass
 class C:
     def m(self) -> None:

@@ -604,13 +604,14 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.is_class_scope():
             assert self.type is not None
             if is_trivial_body(defn.body) and not self.is_stub_file:
-                defn.is_trivial_body = True
                 if (self.type.is_protocol and
                         (not isinstance(self.scope.function, OverloadedFuncDef)
                          or defn.is_property)):
                     # Mark protocol methods with empty bodies as implicitly abstract.
                     # This makes explicit protocol subclassing type-safe.
                     defn.is_abstract = True
+                if defn.is_abstract:
+                    defn.is_trivial_body = True
 
         if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
             if defn.is_async_generator:
@@ -750,10 +751,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert defn.impl is not None
         impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
         if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
-            impl.is_trivial_body = True
             assert self.type is not None
             if not self.is_stub_file and self.type.is_protocol:
                 impl.is_abstract = True
+            if impl.is_abstract:
+                impl.is_trivial_body = True
 
     def analyze_overload_sigs_and_impl(
             self,

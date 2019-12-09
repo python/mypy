@@ -9290,6 +9290,7 @@ class B:
 ==
 
 [case testAbstractBodyTurnsEmpty]
+# flags: --strict-optional
 from b import Base
 
 class Sub(Base):
@@ -9309,4 +9310,24 @@ class Base:
     def meth(self) -> int: ...
 [out]
 ==
-main:5: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
+
+[case testAbstractBodyTurnsEmptyProtocol]
+# flags: --strict-optional
+from b import Base
+
+class Sub(Base):
+    def meth(self) -> int:
+        return super().meth()
+
+[file b.py]
+from typing import Protocol
+class Base(Protocol):
+    def meth(self) -> int: return 0
+[file b.py.2]
+from typing import Protocol
+class Base(Protocol):
+    def meth(self) -> int: ...
+[out]
+==
+main:6: error: Call to abstract method "meth" of "Base" with trivial body via super() is unsafe
