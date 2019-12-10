@@ -3992,8 +3992,12 @@ started
 index
 
 [case testDecoratorsMethods]
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, TypeVar
 from contextlib import contextmanager
+
+T = TypeVar('T')
+def dec(f: T) -> T:
+    return f
 
 def a(f: Callable[[Any], None]) -> Callable[[Any], None]:
     def g(a: Any) -> None:
@@ -4014,6 +4018,22 @@ class A:
             yield 0
         finally:
             print('contextmanager: exited')
+
+class Lol:
+    @staticmethod
+    def foo() -> None:
+        Lol.bar()
+        Lol.baz()
+
+    @staticmethod
+    @dec
+    def bar() -> None:
+        pass
+
+    @classmethod
+    @dec
+    def baz(cls) -> None:
+        pass
 
 def inside() -> None:
     with A().generator() as g:
