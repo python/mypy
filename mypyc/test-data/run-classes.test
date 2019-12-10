@@ -126,6 +126,7 @@ assert o.get(20) == 20
 from enum import Enum
 
 class TestEnum(Enum):
+    _order_ = "a b"
     a : int = 1
     b : int = 2
 
