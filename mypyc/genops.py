@@ -1448,7 +1448,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def find_non_ext_metaclass(self, cdef: ClassDef, bases: Value) -> Value:
         """Find the metaclass of a class from its defs and bases. """
         if cdef.metaclass:
-            print(cdef.metaclass)
             declared_metaclass = self.accept(cdef.metaclass)
         else:
             declared_metaclass = self.primitive_op(type_object_op, [], cdef.line)
