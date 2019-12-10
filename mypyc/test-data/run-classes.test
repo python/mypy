@@ -438,7 +438,7 @@ assert a.foo() == 11
 assert foo() == 21
 
 [case testGenericClass]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Sequence
 T = TypeVar('T')
 class C(Generic[T]):
     x: T
@@ -448,6 +448,12 @@ class C(Generic[T]):
         return self.x
     def set(self, y: T) -> None:
         self.x = y
+
+# Test subclassing generic classes both with and without a generic param
+class A(Sequence[int]):
+    pass
+class B(Sequence[T]):
+    pass
 
 def f(c: C[int]) -> int:
     y = c.get()
