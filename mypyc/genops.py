@@ -1445,7 +1445,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_to_non_ext_dict(non_ext, lvalue.name, rvalue, stmt.line)
             # We cache enum attributes to speed up enum attribute lookup since they
             # are final.
-            if cdef.info.bases and cdef.info.bases[0].type.fullname == 'enum.Enum':
+            if (
+                cdef.info.bases
+                and cdef.info.bases[0].type.fullname == 'enum.Enum'
+                # Skip "_order_", since Enum will remove it
+                and lvalue.name != '_order_'
+            ):
                 attr_to_cache.append(lvalue)
 
     def setup_non_ext_dict(self, cdef: ClassDef, bases: Value) -> Value:

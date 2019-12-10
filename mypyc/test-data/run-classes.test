@@ -126,6 +126,7 @@ assert o.get(20) == 20
 from enum import Enum
 
 class TestEnum(Enum):
+    _order_ = "a b"
     a : int = 1
     b : int = 2
 
@@ -140,11 +141,14 @@ assert TestEnum.test() == 3
 # non-extension classes
 
 [file driver.py]
-from native import TestEnum
-assert TestEnum.a.name == 'a'
-assert TestEnum.a.value == 1
-assert TestEnum.b.name == 'b'
-assert TestEnum.b.value == 2
+import sys
+# "_order_" isn't supported in 3.5
+if sys.version_info[:2] > (3, 5):
+    from native import TestEnum
+    assert TestEnum.a.name == 'a'
+    assert TestEnum.a.value == 1
+    assert TestEnum.b.name == 'b'
+    assert TestEnum.b.value == 2
 
 [case testRunDataclass]
 from dataclasses import dataclass, field
