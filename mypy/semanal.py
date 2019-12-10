@@ -1578,7 +1578,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if len(defn.base_type_exprs) == 1:
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
-                base_expr.callee.accept(self)
+                base_expr.accept(self)
                 if (base_expr.callee.fullname in {'six.with_metaclass',
                                                   'future.utils.with_metaclass',
                                                   'past.utils.with_metaclass'}

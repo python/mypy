@@ -2022,17 +2022,15 @@ class NonExtClassInfo:
     """Information needed to construct a non-extension class.
 
 
-    Includes the class dictionary, a tuple of base classes, and
-    the class annotations dictionary.
+    Includes the class dictionary, a tuple of base classes,
+    the class annotations dictionary, and the metaclass.
     """
 
-    def __init__(self,
-            non_ext_dict: Value,
-            non_ext_bases: Value,
-            non_ext_anns: Value) -> None:
-        self.dict = non_ext_dict
-        self.bases = non_ext_bases
-        self.anns = non_ext_anns
+    def __init__(self, dict: Value, bases: Value, anns: Value, metaclass: Value) -> None:
+        self.dict = dict
+        self.bases = bases
+        self.anns = anns
+        self.metaclass = metaclass
 
 
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
