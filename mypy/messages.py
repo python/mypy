@@ -659,7 +659,10 @@ class MessageBuilder:
                                      plausible_targets: List[CallableType],
                                      overload: Overloaded,
                                      arg_types: List[Type],
-                                     context: Context) -> None:
+                                     context: Context,
+                                     *,
+                                     code: Optional[ErrorCode] = None) -> None:
+        code = code or codes.CALL_OVERLOAD
         name = callable_name(overload)
         if name:
             name_str = ' of {}'.format(name)
@@ -669,16 +672,16 @@ class MessageBuilder:
         num_args = len(arg_types)
         if num_args == 0:
             self.fail('All overload variants{} require at least one argument'.format(name_str),
-                      context, code=codes.CALL_OVERLOAD)
+                      context, code=code)
         elif num_args == 1:
             self.fail('No overload variant{} matches argument type {}'
-                      .format(name_str, arg_types_str), context, code=codes.CALL_OVERLOAD)
+                      .format(name_str, arg_types_str), context, code=code)
         else:
             self.fail('No overload variant{} matches argument types {}'
-                      .format(name_str, arg_types_str), context, code=codes.CALL_OVERLOAD)
+                      .format(name_str, arg_types_str), context, code=code)
 
         self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2,
-                                     code=codes.CALL_OVERLOAD)
+                                     code=code)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
