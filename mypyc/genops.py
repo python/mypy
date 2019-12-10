@@ -1448,6 +1448,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if (
                 cdef.info.bases
                 and cdef.info.bases[0].type.fullname == 'enum.Enum'
+                # Skip "_order_", since Enum will remove it
                 and lvalue.name != '_order_'
             ):
                 attr_to_cache.append(lvalue)
