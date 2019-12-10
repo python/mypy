@@ -1375,10 +1375,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.finish_non_ext_dict(non_ext, line)
 
-        metaclass = self.primitive_op(type_object_op, [], line)
-        metaclass = self.primitive_op(py_calc_meta_op, [metaclass, non_ext.bases], line)
-
-        class_type_obj = self.py_call(metaclass,
+        class_type_obj = self.py_call(non_ext.metaclass,
                                       [cls_name, non_ext.bases, non_ext.dict],
                                       line)
         return class_type_obj
@@ -1453,16 +1450,22 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             ):
                 attr_to_cache.append(lvalue)
 
-    def setup_non_ext_dict(self, cdef: ClassDef, bases: Value) -> Value:
+    def find_non_ext_metaclass(self, cdef: ClassDef, bases: Value) -> Value:
+        """Find the metaclass of a class from its defs and bases. """
+        if cdef.metaclass:
+            declared_metaclass = self.accept(cdef.metaclass)
+        else:
+            declared_metaclass = self.primitive_op(type_object_op, [], cdef.line)
+
+        return self.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
+
+    def setup_non_ext_dict(self, cdef: ClassDef, metaclass: Value, bases: Value) -> Value:
         """
         Initialize the class dictionary for a non-extension class. This class dictionary
         is passed to the metaclass constructor.
         """
 
         # Check if the metaclass defines a __prepare__ method, and if so, call it.
-        metaclass = self.primitive_op(type_object_op, [], cdef.line)
-        metaclass = self.primitive_op(py_calc_meta_op, [metaclass, bases],
-                                      cdef.line)
         has_prepare = self.primitive_op(py_hasattr_op,
                                         [metaclass,
                                         self.load_static_unicode('__prepare__')], cdef.line)
@@ -1506,6 +1509,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.primitive_op(new_dict_op, [], cdef.line),
                 self.add(TupleSet([], cdef.line)),
                 self.primitive_op(new_dict_op, [], cdef.line),
+                self.primitive_op(type_object_op, [], cdef.line),
             )
         else:
             return None
@@ -1560,12 +1564,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             dataclass_non_ext = self.dataclass_non_ext_info(cdef)
         else:
             non_ext_bases = self.populate_non_ext_bases(cdef)
-            non_ext_dict = self.setup_non_ext_dict(cdef, non_ext_bases)
+            non_ext_metaclass = self.find_non_ext_metaclass(cdef, non_ext_bases)
+            non_ext_dict = self.setup_non_ext_dict(cdef, non_ext_metaclass, non_ext_bases)
             # We populate __annotations__ for non-extension classes
             # because dataclasses uses it to determine which attributes to compute on.
             # TODO: Maybe generate more precise types for annotations
             non_ext_anns = self.primitive_op(new_dict_op, [], cdef.line)
-            non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns)
+            non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
             dataclass_non_ext = None
             type_obj = None
 
