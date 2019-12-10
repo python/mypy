@@ -2151,13 +2151,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             func_reg = self.instantiate_callable_class(fn_info)
         else:
             assert isinstance(fn_info.fitem, FuncDef)
+            func_decl = self.mapper.func_to_decl[fn_info.fitem]
             if fn_info.is_decorated:
                 class_name = None if cdef is None else cdef.name
-                func_decl = FuncDecl(fn_info.name, class_name, self.module_name, sig)
+                func_decl = FuncDecl(fn_info.name, class_name, self.module_name, sig,
+                                     func_decl.kind,
+                                     func_decl.is_prop_getter, func_decl.is_prop_setter)
                 func_ir = FuncIR(func_decl, blocks, env, fn_info.fitem.line,
                                  traceback_name=fn_info.fitem.name)
             else:
-                func_ir = FuncIR(self.mapper.func_to_decl[fn_info.fitem], blocks, env,
+                func_ir = FuncIR(func_decl, blocks, env,
                                  fn_info.fitem.line, traceback_name=fn_info.fitem.name)
         return (func_ir, func_reg)
 
@@ -3348,7 +3351,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if self.is_native_ref_expr(callee):
             # Call to module-level native function or such
             return self.translate_call(expr, callee)
-        elif isinstance(callee.expr, RefExpr) and callee.expr.node in self.mapper.type_to_ir:
+        elif (
+            isinstance(callee.expr, RefExpr)
+            and isinstance(callee.expr.node, TypeInfo)
+            and callee.expr.node in self.mapper.type_to_ir
+            and self.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
+        ):
             # Call a method via the *class*
             assert isinstance(callee.expr.node, TypeInfo)
             ir = self.mapper.type_to_ir[callee.expr.node]
