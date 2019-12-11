@@ -462,7 +462,6 @@ class MemoryXmlReporter(AbstractReporter):
 
         try:
             path = os.path.relpath(tree.path)
-
         except ValueError:
             return
 
@@ -822,7 +821,6 @@ class LinePrecisionReporter(AbstractReporter):
 
         try:
             path = os.path.relpath(tree.path)
-
         except ValueError:
             return
 
