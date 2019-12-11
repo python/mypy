@@ -1495,8 +1495,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             target = AnyType(TypeOfAny.from_error)
 
             if not self.chk.should_suppress_optional_error(arg_types):
+                if not is_operator_method(callable_name):
+                    code = None
+                else:
+                    code = codes.OPERATOR
                 arg_messages.no_variant_matches_arguments(
-                    plausible_targets, callee, arg_types, context)
+                    plausible_targets, callee, arg_types, context, code=code)
 
         result = self.check_call(target, args, arg_kinds, context, arg_names,
                                  arg_messages=arg_messages,
@@ -4277,3 +4281,13 @@ def type_info_from_type(typ: Type) -> Optional[TypeInfo]:
     # A complicated type. Too tricky, give up.
     # TODO: Do something more clever here.
     return None
+
+
+def is_operator_method(fullname: Optional[str]) -> bool:
+    if fullname is None:
+        return False
+    short_name = fullname.split('.')[-1]
+    return (
+        short_name in nodes.op_methods.values() or
+        short_name in nodes.reverse_op_methods.values() or
+        short_name in nodes.unary_op_methods.values())

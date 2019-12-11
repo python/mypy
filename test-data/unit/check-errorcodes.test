@@ -703,3 +703,29 @@ class InvalidReturn:
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 [builtins fixtures/bool.pyi]
+
+[case testErrorCodeOverloadedOperatorMethod]
+# flags: --strict-optional
+from typing import Optional, overload
+
+class A:
+    @overload
+    def __add__(self, x: int) -> A: ...
+    @overload
+    def __add__(self, x: str) -> str: ...
+    def __add__(self, x): pass
+
+class B:
+    pass
+
+x: Optional[B]
+A() + x  # type: ignore[operator]
+
+class C:
+    @overload
+    def __rsub__(self, x: int) -> A: ...
+    @overload
+    def __rsub__(self, x: str) -> str: ...
+    def __rsub__(self, x): pass
+
+x - C()  # type: ignore[operator]
