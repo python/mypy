@@ -1855,8 +1855,7 @@ class State:
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.is_interface_fresh()
-                and self.dependencies == self.meta.dependencies
-                and self.child_modules == set(self.meta.child_modules))
+                and self.dependencies == self.meta.dependencies)
 
     def is_interface_fresh(self) -> bool:
         return self.externally_same

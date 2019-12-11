@@ -947,11 +947,15 @@ from parent import a
 
 [file parent/a.py.2]
 from parent import b
+reveal_type(b.x)
 
 [file parent/b.py.2]
+x = 10
 
-[stale parent.a, parent.b]
-[rechecked parent, parent.a, parent.b]
+[stale parent.b]
+[rechecked parent.a, parent.b]
+[out2]
+tmp/parent/a.py:2: note: Revealed type is 'builtins.int'
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
