@@ -809,6 +809,9 @@ def process_options(args: List[str],
     # Parse config file first, so command line can override.
     options = Options()
     parse_config_file(options, config_file, stdout, stderr)
+    # the 'dmypy start' will just ignore files in config
+    if server_options:
+        options.files = None
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
