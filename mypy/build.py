@@ -280,7 +280,6 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
-                        ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
                         # dep_prios and dep_lines are in parallel with
                         # dependencies + suppressed.
@@ -317,7 +316,6 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
         data_json,
         meta.get('suppressed', []),
-        meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
         meta.get('dep_lines', []),
@@ -1320,7 +1318,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'data_mtime': meta.data_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
-                'child_modules': meta.child_modules,
                 'options': (manager.options.clone_for_module(id)
                             .select_options_affecting_cache()),
                 'dep_prios': meta.dep_prios,
@@ -1364,7 +1361,7 @@ def json_dumps(obj: Any, debug_cache: bool) -> str:
 
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
-                child_modules: List[str], dep_prios: List[int], dep_lines: List[int],
+                dep_prios: List[int], dep_lines: List[int],
                 old_interface_hash: str, source_hash: str,
                 ignore_all: bool, manager: BuildManager) -> Tuple[str, Optional[CacheMeta]]:
     """Write cache files for a module.
@@ -1379,7 +1376,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
       tree: the fully checked module data
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
-      child_modules: module IDs which are this package's direct submodules
       dep_prios: priorities (parallel array to dependencies)
       dep_lines: import line locations (parallel array to dependencies)
       old_interface_hash: the hash from the previous version of the data cache file
@@ -1469,7 +1465,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
-            'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
             'dep_lines': dep_lines,
@@ -1688,9 +1683,6 @@ class State:
     # Parent package, its parent, etc.
     ancestors = None  # type: Optional[List[str]]
 
-    # A list of all direct submodules of a given module
-    child_modules = None  # type: Set[str]
-
     # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
 
@@ -1797,7 +1789,6 @@ class State:
             assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
-            self.child_modules = set(self.meta.child_modules)
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
@@ -1824,7 +1815,6 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
             self.compute_dependencies()
-            self.child_modules = set()
 
     @property
     def xmeta(self) -> CacheMeta:
@@ -1855,8 +1845,7 @@ class State:
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.is_interface_fresh()
-                and self.dependencies == self.meta.dependencies
-                and self.child_modules == set(self.meta.child_modules))
+                and self.dependencies == self.meta.dependencies)
 
     def is_interface_fresh(self) -> bool:
         return self.externally_same
@@ -2241,7 +2230,7 @@ class State:
             "Duplicates in dependencies list for {} ({})".format(self.id, self.dependencies))
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
-            list(self.dependencies), list(self.suppressed), list(self.child_modules),
+            list(self.dependencies), list(self.suppressed),
             dep_prios, dep_lines, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
         if new_interface_hash == self.interface_hash:
@@ -2795,8 +2784,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
-            if dep in st.ancestors and dep in graph:
-                graph[dep].child_modules.add(st.id)
             if dep in graph and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
                 st.add_dependency(dep)
