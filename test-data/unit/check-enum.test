@@ -908,3 +908,12 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
         reveal_type(x)  # N: Revealed type is 'builtins.int'
         return x + 2
 [builtins fixtures/primitives.pyi]
+
+[case testAssignEnumAsAttribute]
+from enum import Enum
+
+class A:
+    def __init__(self) -> None:
+        self.b = Enum("x", [("foo", "bar")])  # E: Enum type as attribute is not supported
+
+reveal_type(A().b)  # N: Revealed type is 'Any'

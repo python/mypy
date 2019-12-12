@@ -2161,13 +2161,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Check if s defines a typed dict."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
             return True  # This is a valid and analyzed typed dict definition, nothing to do here.
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(s.rvalue, name,
                                                                        self.is_func_scope())
         if not is_typed_dict:
+            return False
+        if isinstance(lvalue, MemberExpr):
+            self.fail("TypedDict type as attribute is not supported", lvalue)
             return False
         # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
