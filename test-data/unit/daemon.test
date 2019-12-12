@@ -28,6 +28,13 @@ Daemon stopped
 [file foo.py]
 def f(): pass
 
+[case testDaemonIgnoreConfigFiles]
+$ dmypy start -- --follow-imports=error
+Daemon started
+[file mypy.ini]
+\[mypy]
+files = ./foo.py
+
 [case testDaemonRunRestart]
 $ dmypy run -- foo.py --follow-imports=error
 Daemon started
