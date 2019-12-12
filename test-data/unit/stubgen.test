@@ -163,6 +163,14 @@ class C:
 class C:
     x: int = ...
 
+[case testInitTypeAnnotationPreserved]
+class C:
+    def __init__(self, x: str):
+        pass
+[out]
+class C:
+    def __init__(self, x: str) -> None: ...
+
 [case testSelfAssignment]
 class C:
     def __init__(self):
