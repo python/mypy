@@ -420,11 +420,11 @@ if MYPY:
 x = b'abc'
 [out]
 
-[case testNestedGenericFailedInference]
+[case testDefaultDictInference]
 from collections import defaultdict
 def foo() -> None:
-    x = defaultdict(list)  # type: ignore
+    x = defaultdict(list)
     x['lol'].append(10)
     reveal_type(x)
 [out]
-_testNestedGenericFailedInference.py:5: note: Revealed type is 'collections.defaultdict[Any, builtins.list[Any]]'
+_testDefaultDictInference.py:5: note: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'
