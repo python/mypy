@@ -1232,3 +1232,18 @@ A = List  # OK
 B = List[A]  # E:10: Missing type parameters for generic type "A"
 x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitDefSignature]
+# flags: --disallow-any-explicit
+
+from typing import Any, List
+
+def f(x: Any) -> None:  # E: Explicit "Any" is not allowed
+    pass
+
+def g() -> Any:  # E: Explicit "Any" is not allowed
+    pass
+
+def h() -> List[Any]:  # E: Explicit "Any" is not allowed
+    pass
+[builtins fixtures/list.pyi]

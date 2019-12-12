@@ -597,42 +597,6 @@ reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
 reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
 a.__pow__() # E: Too few arguments for "__pow__" of "int"
 
-[case testDisallowAnyUnimported]
-# cmd: mypy main.py
-[file mypy.ini]
-\[mypy]
-disallow_any_unimported = True
-ignore_missing_imports = True
-[file main.py]
-from unreal import F
-
-def f(x: F) -> None: pass
-[out]
-main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
-
-[case testDisallowAnyExplicitDefSignature]
-# cmd: mypy m.py
-[file mypy.ini]
-\[mypy]
-\[mypy-m]
-disallow_any_explicit = True
-
-[file m.py]
-from typing import Any, List
-
-def f(x: Any) -> None:
-    pass
-
-def g() -> Any:
-    pass
-
-def h() -> List[Any]:
-    pass
-
-[out]
-m.py:3: error: Explicit "Any" is not allowed
-m.py:6: error: Explicit "Any" is not allowed
-m.py:9: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitVarDeclaration]
 # cmd: mypy --python-version=3.6 m.py
