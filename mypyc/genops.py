@@ -4121,6 +4121,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fsig = FuncSignature(runtime_args, ret_type)
 
         fname = '{}{}'.format(LAMBDA_NAME, self.lambda_counter)
+        self.lambda_counter += 1
         func_ir, func_reg = self.gen_func_item(expr, fname, fsig)
         assert func_reg is not None
 
