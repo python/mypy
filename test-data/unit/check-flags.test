@@ -1429,3 +1429,28 @@ def f() -> G:  # E: Missing type parameters for generic type "G"
 
 x: G[Any] = G()  # no error
 y: G = x  # E: Missing type parameters for generic type "G"
+
+[case testDisallowSubclassingAny]
+# flags: --config-file tmp/mypy.ini
+import m
+import y
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
+
+[file mypy.ini]
+\[mypy]
+disallow_subclassing_any = True
+\[mypy-m]
+disallow_subclassing_any = False
