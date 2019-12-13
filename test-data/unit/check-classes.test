@@ -6575,6 +6575,7 @@ class C:
 from typing import Callable
 class C:
     x: Callable[[C], int] = lambda x: x.y.g()  # E: "C" has no attribute "y"
+
 [case testOpWithInheritedFromAny]
 from typing import Any
 C: Any
