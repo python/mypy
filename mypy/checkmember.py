@@ -705,6 +705,12 @@ def analyze_class_attribute_access(itype: Instance,
         check_final_member(name, info, mx.msg, mx.context)
 
     if info.is_enum and not (mx.is_lvalue or is_decorated or is_method):
+        # Skip "_order_" and "__order__", since Enum will remove it
+        if name in ("_order_", "__order__"):
+            return mx.msg.has_no_attr(
+                mx.original_type, itype, name, mx.context, mx.module_symbol_table
+            )
+
         enum_literal = LiteralType(name, fallback=itype)
         # When we analyze enums, the corresponding Instance is always considered to be erased
         # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
