@@ -951,3 +951,51 @@ default = Config({'cannot': 'modify'})  # OK
 default[1] = 2  # E: Unsupported target for indexed assignment
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testSubclassOfABCFromDictionary]
+from abc import abstractmethod, ABCMeta
+
+class MyAbstractType(metaclass=ABCMeta):
+  @abstractmethod
+  def do(self): pass
+
+class MyConcreteA(MyAbstractType):
+  def do(self):
+    print('A')
+
+class MyConcreteB(MyAbstractType):
+  def do(self):
+    print('B')
+
+class MyAbstractA(MyAbstractType):
+  @abstractmethod
+  def do(self): pass
+
+class MyAbstractB(MyAbstractType):
+  @abstractmethod
+  def do(self): pass
+
+my_concrete_types = {
+  'A': MyConcreteA,
+  'B': MyConcreteB,
+}
+
+my_abstract_types = {
+  'A': MyAbstractA,
+  'B': MyAbstractB, 
+}
+
+reveal_type(my_concrete_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]' 
+reveal_type(my_abstract_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]' 
+
+a = my_concrete_types['A']()
+a.do()
+b = my_concrete_types['B']()
+b.do()
+
+c = my_abstract_types['A']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+c.do()
+d = my_abstract_types['B']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+d.do()
+
+[builtins fixtures/dict.pyi]

@@ -2741,7 +2741,7 @@ class TypeAlias(SymbolNode):
     line and column: Line an column on the original alias definition.
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', 'assuming', 'assuming_proper', 'inferring')
+                 'line', 'column', '_is_recursive')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
@@ -2755,6 +2755,9 @@ class TypeAlias(SymbolNode):
         self.alias_tvars = alias_tvars
         self.no_args = no_args
         self.normalized = normalized
+        # This attribute is manipulated by TypeAliasType. If non-None,
+        # it is the cached value.
+        self._is_recursive = None  # type: Optional[bool]
         super().__init__(line, column)
 
     @property

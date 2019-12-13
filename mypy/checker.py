@@ -2042,6 +2042,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
                                                       infer_lvalue_type)
         else:
+            self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue)
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             # If we're assigning to __getattr__ or similar methods, check that the signature is
             # valid.
@@ -2140,6 +2141,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+
+    def try_infer_partial_generic_type_from_assignment(self,
+                                                       lvalue: Lvalue,
+                                                       rvalue: Expression) -> None:
+        """Try to infer a precise type for partial generic type from assignment.
+
+        Example where this happens:
+
+            x = []
+            if foo():
+                x = [1]  # Infer List[int] as type of 'x'
+        """
+        var = None
+        if (isinstance(lvalue, NameExpr)
+                and isinstance(lvalue.node, Var)
+                and isinstance(lvalue.node.type, PartialType)):
+            var = lvalue.node
+        elif isinstance(lvalue, MemberExpr):
+            var = self.expr_checker.get_partial_self_var(lvalue)
+        if var is not None:
+            typ = var.type
+            assert isinstance(typ, PartialType)
+            if typ.type is None:
+                return
+            # TODO: some logic here duplicates the None partial type counterpart
+            #       inlined in check_assignment(), see # 8043.
+            partial_types = self.find_partial_types(var)
+            if partial_types is None:
+                return
+            rvalue_type = self.expr_checker.accept(rvalue)
+            rvalue_type = get_proper_type(rvalue_type)
+            if isinstance(rvalue_type, Instance):
+                if rvalue_type.type == typ.type and is_valid_inferred_type(rvalue_type):
+                    var.type = rvalue_type
+                    del partial_types[var]
+            elif isinstance(rvalue_type, AnyType):
+                var.type = fill_typevars_with_any(typ.type)
+                del partial_types[var]
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
@@ -2771,16 +2810,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
         if isinstance(init_type, NoneType):
-            partial_type = PartialType(None, name, [init_type])
+            partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
             if (isinstance(lvalue, (NameExpr, MemberExpr)) and
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
-                     fullname == 'builtins.dict') and
+                     fullname == 'builtins.dict' or
+                     fullname == 'collections.OrderedDict') and
                     all(isinstance(t, (NoneType, UninhabitedType))
                         for t in get_proper_types(init_type.args))):
-                partial_type = PartialType(init_type.type, name, init_type.args)
+                partial_type = PartialType(init_type.type, name)
             else:
                 return False
         else:
@@ -2815,10 +2855,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         We implement this here by giving x a valid type (replacing inferred <nothing> with Any).
         """
+        fallback = self.inference_error_fallback_type(type)
+        self.set_inferred_type(var, lvalue, fallback)
+
+    def inference_error_fallback_type(self, type: Type) -> Type:
         fallback = type.accept(SetNothingToAny())
         # Type variables may leak from inference, see https://github.com/python/mypy/issues/5738,
         # we therefore need to erase them.
-        self.set_inferred_type(var, lvalue, erase_typevars(fallback))
+        return erase_typevars(fallback)
 
     def check_simple_assignment(self, lvalue_type: Optional[Type], rvalue: Expression,
                                 context: Context,
@@ -2960,8 +3004,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def try_infer_partial_type_from_indexed_assignment(
             self, lvalue: IndexExpr, rvalue: Expression) -> None:
         # TODO: Should we share some of this with try_infer_partial_type?
+        var = None
         if isinstance(lvalue.base, RefExpr) and isinstance(lvalue.base.node, Var):
             var = lvalue.base.node
+        elif isinstance(lvalue.base, MemberExpr):
+            var = self.expr_checker.get_partial_self_var(lvalue.base)
+        if isinstance(var, Var):
             if isinstance(var.type, PartialType):
                 type_type = var.type.type
                 if type_type is None:
@@ -2970,19 +3018,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if partial_types is None:
                     return
                 typename = type_type.fullname
-                if typename == 'builtins.dict':
+                if typename == 'builtins.dict' or typename == 'collections.OrderedDict':
                     # TODO: Don't infer things twice.
                     key_type = self.expr_checker.accept(lvalue.index)
                     value_type = self.expr_checker.accept(rvalue)
-                    full_key_type = make_simplified_union(
-                        [key_type, var.type.inner_types[0]])
-                    full_value_type = make_simplified_union(
-                        [value_type, var.type.inner_types[1]])
-                    if (is_valid_inferred_type(full_key_type) and
-                            is_valid_inferred_type(full_value_type)):
+                    if (is_valid_inferred_type(key_type) and
+                            is_valid_inferred_type(value_type)):
                         if not self.current_node_deferred:
-                            var.type = self.named_generic_type('builtins.dict',
-                                                               [full_key_type, full_value_type])
+                            var.type = self.named_generic_type(typename,
+                                                               [key_type, value_type])
                             del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
@@ -3036,7 +3080,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and not self.current_node_deferred
                         and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
                         and not (defn.name in BINARY_MAGIC_METHODS and
-                                 is_literal_not_implemented(s.expr))):
+                                 is_literal_not_implemented(s.expr))
+                        and not (isinstance(return_type, Instance) and
+                                 return_type.type.fullname == 'builtins.object')):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
 
@@ -4027,7 +4073,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-
+        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg,
+                                       subtype_label, supertype_label, code=code):
+            return False
         if self.should_suppress_optional_error([subtype]):
             return False
         extra_info = []  # type: List[str]
@@ -4260,7 +4308,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return Instance(
                 typ.type,
-                [AnyType(TypeOfAny.unannotated) for _ in typ.inner_types])
+                [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info:
@@ -4294,7 +4342,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # All scopes within the outermost function are active. Scopes out of
                 # the outermost function are inactive to allow local reasoning (important
                 # for fine-grained incremental mode).
-                scope_active = (not self.options.local_partial_types
+                disallow_other_scopes = self.options.local_partial_types
+
+                if isinstance(var.type, PartialType) and var.type.type is not None and var.info:
+                    # This is an ugly hack to make partial generic self attributes behave
+                    # as if --local-partial-types is always on (because it used to be like this).
+                    disallow_other_scopes = True
+
+                scope_active = (not disallow_other_scopes
                                 or scope.is_local == self.partial_types[-1].is_local)
                 return scope_active, scope.is_local, scope.map
         return False, False, None

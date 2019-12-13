@@ -147,6 +147,11 @@ static PyObject *CPyType_FromTemplate(PyTypeObject *template_,
         if (!ns)
             goto error;
 
+        if (bases != orig_bases) {
+            if (PyDict_SetItemString(ns, "__orig_bases__", orig_bases) < 0)
+                goto error;
+        }
+
         dummy_class = (PyTypeObject *)PyObject_CallFunctionObjArgs(
             (PyObject *)metaclass, name, bases, ns, NULL);
         Py_DECREF(ns);

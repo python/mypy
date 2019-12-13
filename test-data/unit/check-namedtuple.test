@@ -896,3 +896,12 @@ reveal_type(u.field_1)  # N: Revealed type is 'typing.Mapping[Tuple[builtins.int
 reveal_type(u.field_2)  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]'
 reveal_type(u[0])  # N: Revealed type is 'typing.Mapping[Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]'
 reveal_type(u[1])  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]'
+
+[case testAssignNamedTupleAsAttribute]
+from typing import NamedTuple
+
+class A:
+    def __init__(self) -> None:
+        self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: NamedTuple type as an attribute is not supported
+
+reveal_type(A().b)  # N: Revealed type is 'Any'

@@ -19,6 +19,7 @@ def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
 def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
+    # TODO: use an overloaded signature? (ProperType stays proper after expansion.)
     if instance.args == []:
         return typ
     else:

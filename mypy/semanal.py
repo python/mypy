@@ -1578,7 +1578,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if len(defn.base_type_exprs) == 1:
             base_expr = defn.base_type_exprs[0]
             if isinstance(base_expr, CallExpr) and isinstance(base_expr.callee, RefExpr):
-                base_expr.callee.accept(self)
+                base_expr.accept(self)
                 if (base_expr.callee.fullname in {'six.with_metaclass',
                                                   'future.utils.with_metaclass',
                                                   'past.utils.with_metaclass'}
@@ -2149,7 +2149,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                                                                           self.is_func_scope())
         if not is_named_tuple:
             return False
-        if isinstance(s.lvalues[0], MemberExpr):
+        if isinstance(lvalue, MemberExpr):
             self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
         # Yes, it's a valid namedtuple, but defer if it is not ready.
@@ -2161,13 +2161,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Check if s defines a typed dict."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
             return True  # This is a valid and analyzed typed dict definition, nothing to do here.
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(s.rvalue, name,
                                                                        self.is_func_scope())
         if not is_typed_dict:
+            return False
+        if isinstance(lvalue, MemberExpr):
+            self.fail("TypedDict type as attribute is not supported", lvalue)
             return False
         # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
@@ -2514,6 +2517,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys.
         if not has_placeholder(res):
             res = make_any_non_explicit(res)
+        # Note: with the new (lazy) type alias representation we only need to set no_args to True
+        # if the expected number of arguments is non-zero, so that aliases like A = List work.
+        # However, eagerly expanding aliases like Text = str is a nice performance optimization.
         no_args = isinstance(res, Instance) and not res.args  # type: ignore
         fix_instance_types(res, self.fail, self.note)
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
@@ -3621,7 +3627,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                         type_info = self.type
             elif isinstance(base.node, TypeAlias) and base.node.no_args:
                 assert isinstance(base.node.target, ProperType)
-                # TODO: support chained aliases.
                 if isinstance(base.node.target, Instance):
                     type_info = base.node.target.type
 
@@ -3969,6 +3974,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                     namespace = node.fullname
                 elif isinstance(node, PlaceholderNode):
                     return sym
+                elif isinstance(node, TypeAlias) and node.no_args:
+                    assert isinstance(node.target, ProperType)
+                    if isinstance(node.target, Instance):
+                        nextsym = node.target.type.get(part)
                 else:
                     if isinstance(node, Var):
                         typ = get_proper_type(node.type)

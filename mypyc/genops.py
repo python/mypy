@@ -239,10 +239,55 @@ def is_dataclass(cdef: ClassDef) -> bool:
     return any(is_dataclass_decorator(d) for d in cdef.decorators)
 
 
-def is_extension_class(cdef: ClassDef) -> bool:
+def get_mypyc_attr_literal(e: Expression) -> Any:
+    """Convert an expression from a mypyc_attr decorator to a value.
 
-    if any(not is_trait_decorator(d) and not is_dataclass_decorator(d)
-           for d in cdef.decorators):
+    Supports a pretty limited range."""
+    if isinstance(e, (StrExpr, IntExpr, FloatExpr)):
+        return e.value
+    elif isinstance(e, RefExpr) and e.fullname == 'builtins.True':
+        return True
+    elif isinstance(e, RefExpr) and e.fullname == 'builtins.False':
+        return False
+    elif isinstance(e, RefExpr) and e.fullname == 'builtins.None':
+        return None
+    return NotImplemented
+
+
+def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
+    """Check if an expression is a call to mypyc_attr and return it if so."""
+    if (
+        isinstance(d, CallExpr)
+        and isinstance(d.callee, RefExpr)
+        and d.callee.fullname == 'mypy_extensions.mypyc_attr'
+    ):
+        return d
+    return None
+
+
+def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
+    """Collect all the mypyc_attr attributes on a class definition or a function."""
+    attrs = {}  # type: Dict[str, Any]
+    for dec in stmt.decorators:
+        d = get_mypyc_attr_call(dec)
+        if d:
+            for name, arg in zip(d.arg_names, d.args):
+                if name is None:
+                    if isinstance(arg, StrExpr):
+                        attrs[arg.value] = True
+                else:
+                    attrs[name] = get_mypyc_attr_literal(arg)
+
+    return attrs
+
+
+def is_extension_class(cdef: ClassDef) -> bool:
+    if any(
+        not is_trait_decorator(d)
+        and not is_dataclass_decorator(d)
+        and not get_mypyc_attr_call(d)
+        for d in cdef.decorators
+    ):
         return False
     elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
@@ -285,10 +330,11 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
                 # TODO: emit a wrapper for __init__ that raises or something
                 if (is_same_method_signature(orig_parent_method.sig, child_method.sig)
                         or orig_parent_method.name == '__init__'):
-                    entry = VTableMethod(entry.cls, entry.name, child_method)
+                    entry = VTableMethod(entry.cls, entry.name, child_method, entry.shadow_method)
                 else:
                     entry = VTableMethod(entry.cls, entry.name,
-                                         defining_cls.glue_methods[(entry.cls, entry.name)])
+                                         defining_cls.glue_methods[(entry.cls, entry.name)],
+                                         entry.shadow_method)
         else:
             # If it is an attribute from a trait, we need to find out
             # the real class it got mixed in at and point to that.
@@ -346,7 +392,10 @@ def compute_vtable(cls: ClassIR) -> None:
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name):
                 cls.vtable[fn.name] = len(entries)
-                entries.append(VTableMethod(t, fn.name, fn))
+                # If the class contains a glue method referring to itself, that is a
+                # shadow glue method to support interpreted subclasses.
+                shadow = cls.glue_methods.get((cls, fn.name))
+                entries.append(VTableMethod(t, fn.name, fn, shadow))
 
     # Compute vtables for all of the traits that the class implements
     if not cls.is_trait:
@@ -545,6 +594,10 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
+
+    attrs = get_mypyc_attrs(cdef)
+    if attrs.get("allow_interpreted_subclasses") is True:
+        ir.allow_interpreted_subclasses = True
 
     # We sort the table for determinism here on Python 3.5
     for name, node in sorted(info.names.items()):
@@ -1165,24 +1218,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # If this overrides a parent class method with a different type, we need
         # to generate a glue method to mediate between them.
-        for cls in class_ir.mro[1:]:
-            if (name in cls.method_decls and name != '__init__'
+        for base in class_ir.mro[1:]:
+            if (name in base.method_decls and name != '__init__'
                     and not is_same_method_signature(class_ir.method_decls[name].sig,
-                                                     cls.method_decls[name].sig)):
+                                                     base.method_decls[name].sig)):
 
                 # TODO: Support contravariant subtyping in the input argument for
                 # property setters. Need to make a special glue method for handling this,
                 # similar to gen_glue_property.
 
-                if fdef.is_property:
-                    f = self.gen_glue_property(cls.method_decls[name].sig, func_ir, class_ir,
-                                               cls, fdef.line)
-                else:
-                    f = self.gen_glue_method(cls.method_decls[name].sig, func_ir, class_ir,
-                                             cls, fdef.line)
-
-                class_ir.glue_methods[(cls, name)] = f
+                f = self.gen_glue(base.method_decls[name].sig, func_ir, class_ir, base, fdef)
+                class_ir.glue_methods[(base, name)] = f
                 self.functions.append(f)
+
+        # If the class allows interpreted children, create glue
+        # methods that dispatch via the Python API. These will go in a
+        # "shadow vtable" that will be assigned to interpreted
+        # children.
+        if class_ir.allow_interpreted_subclasses:
+            f = self.gen_glue(func_ir.sig, func_ir, class_ir, class_ir, fdef, do_py_ops=True)
+            class_ir.glue_methods[(class_ir, name)] = f
+            self.functions.append(f)
 
     def handle_non_ext_method(
             self, non_ext: NonExtClassInfo, cdef: ClassDef, fdef: FuncDef) -> None:
@@ -1319,10 +1375,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.finish_non_ext_dict(non_ext, line)
 
-        metaclass = self.primitive_op(type_object_op, [], line)
-        metaclass = self.primitive_op(py_calc_meta_op, [metaclass, non_ext.bases], line)
-
-        class_type_obj = self.py_call(metaclass,
+        class_type_obj = self.py_call(non_ext.metaclass,
                                       [cls_name, non_ext.bases, non_ext.dict],
                                       line)
         return class_type_obj
@@ -1389,19 +1442,30 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_to_non_ext_dict(non_ext, lvalue.name, rvalue, stmt.line)
             # We cache enum attributes to speed up enum attribute lookup since they
             # are final.
-            if cdef.info.bases and cdef.info.bases[0].type.fullname == 'enum.Enum':
+            if (
+                cdef.info.bases
+                and cdef.info.bases[0].type.fullname == 'enum.Enum'
+                # Skip "_order_", since Enum will remove it
+                and lvalue.name != '_order_'
+            ):
                 attr_to_cache.append(lvalue)
 
-    def setup_non_ext_dict(self, cdef: ClassDef, bases: Value) -> Value:
+    def find_non_ext_metaclass(self, cdef: ClassDef, bases: Value) -> Value:
+        """Find the metaclass of a class from its defs and bases. """
+        if cdef.metaclass:
+            declared_metaclass = self.accept(cdef.metaclass)
+        else:
+            declared_metaclass = self.primitive_op(type_object_op, [], cdef.line)
+
+        return self.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
+
+    def setup_non_ext_dict(self, cdef: ClassDef, metaclass: Value, bases: Value) -> Value:
         """
         Initialize the class dictionary for a non-extension class. This class dictionary
         is passed to the metaclass constructor.
         """
 
         # Check if the metaclass defines a __prepare__ method, and if so, call it.
-        metaclass = self.primitive_op(type_object_op, [], cdef.line)
-        metaclass = self.primitive_op(py_calc_meta_op, [metaclass, bases],
-                                      cdef.line)
         has_prepare = self.primitive_op(py_hasattr_op,
                                         [metaclass,
                                         self.load_static_unicode('__prepare__')], cdef.line)
@@ -1445,6 +1509,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.primitive_op(new_dict_op, [], cdef.line),
                 self.add(TupleSet([], cdef.line)),
                 self.primitive_op(new_dict_op, [], cdef.line),
+                self.primitive_op(type_object_op, [], cdef.line),
             )
         else:
             return None
@@ -1482,6 +1547,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if any(ir.base_mro[i].base != ir. base_mro[i + 1] for i in range(len(ir.base_mro) - 1)):
             self.error("Non-trait MRO must be linear", cdef.line)
 
+        if ir.allow_interpreted_subclasses:
+            for parent in ir.mro:
+                if not parent.allow_interpreted_subclasses:
+                    self.error(
+                        'Base class "{}" does not allow interpreted subclasses'.format(
+                            parent.fullname), cdef.line)
+
         # Currently, we only create non-extension classes for classes that are
         # decorated or inherit from Enum. Classes decorated with @trait do not
         # apply here, and are handled in a different way.
@@ -1492,12 +1564,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             dataclass_non_ext = self.dataclass_non_ext_info(cdef)
         else:
             non_ext_bases = self.populate_non_ext_bases(cdef)
-            non_ext_dict = self.setup_non_ext_dict(cdef, non_ext_bases)
+            non_ext_metaclass = self.find_non_ext_metaclass(cdef, non_ext_bases)
+            non_ext_dict = self.setup_non_ext_dict(cdef, non_ext_metaclass, non_ext_bases)
             # We populate __annotations__ for non-extension classes
             # because dataclasses uses it to determine which attributes to compute on.
             # TODO: Maybe generate more precise types for annotations
             non_ext_anns = self.primitive_op(new_dict_op, [], cdef.line)
-            non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns)
+            non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
             dataclass_non_ext = None
             type_obj = None
 
@@ -1708,8 +1781,28 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return
         self.gen_import(node.id, node.line)
 
+    def gen_glue(self, sig: FuncSignature, target: FuncIR,
+                 cls: ClassIR, base: ClassIR, fdef: FuncItem,
+                 *,
+                 do_py_ops: bool = False
+                 ) -> FuncIR:
+        """Generate glue methods that mediate between different method types in subclasses.
+
+        Works on both properties and methods. See gen_glue_methods below for more details.
+
+        If do_py_ops is True, then the glue methods should use generic
+        C API operations instead of direct calls, to enable generating
+        "shadow" glue methods that work with interpreted subclasses.
+        """
+        if fdef.is_property:
+            return self.gen_glue_property(sig, target, cls, base, fdef.line, do_py_ops)
+        else:
+            return self.gen_glue_method(sig, target, cls, base, fdef.line, do_py_ops)
+
     def gen_glue_method(self, sig: FuncSignature, target: FuncIR,
-                        cls: ClassIR, base: ClassIR, line: int) -> FuncIR:
+                        cls: ClassIR, base: ClassIR, line: int,
+                        do_pycall: bool,
+                        ) -> FuncIR:
         """Generate glue methods that mediate between different method types in subclasses.
 
         For example, if we have:
@@ -1731,6 +1824,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         we need to generate glue methods that mediate between the
         different versions by coercing the arguments and return
         values.
+
+        If do_pycall is True, then make the call using the C API
+        instead of a native call.
         """
         self.enter(FuncInfo())
         self.ret_types[-1] = sig.ret_type
@@ -1746,7 +1842,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         arg_names = [arg.name for arg in rt_args]
         arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
 
-        retval = self.call(target.decl, args, arg_kinds, arg_names, line)
+        if do_pycall:
+            retval = self.py_method_call(
+                args[0], target.name, args[1:], line, arg_kinds[1:], arg_names[1:])
+        else:
+            retval = self.call(target.decl, args, arg_kinds, arg_names, line)
         retval = self.coerce(retval, sig.ret_type, line)
         self.add(Return(retval))
 
@@ -1759,16 +1859,26 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             blocks, env)
 
     def gen_glue_property(self, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR,
-                          line: int) -> FuncIR:
-        """Similarly to methods, properties of derived types can be covariantly subtyped. Thus,
+                          line: int,
+                          do_pygetattr: bool) -> FuncIR:
+        """Generate glue methods for properties that mediate between different subclass types.
+
+        Similarly to methods, properties of derived types can be covariantly subtyped. Thus,
         properties also require glue. However, this only requires the return type to change.
-        Further, instead of a method call, an attribute get is performed."""
+        Further, instead of a method call, an attribute get is performed.
+
+        If do_pygetattr is True, then get the attribute using the C
+        API instead of a native call.
+        """
         self.enter(FuncInfo())
 
         rt_arg = RuntimeArg(SELF_NAME, RInstance(cls))
         arg = self.read(self.add_self_to_env(cls), line)
         self.ret_types[-1] = sig.ret_type
-        retval = self.add(GetAttr(arg, target.name, line))
+        if do_pygetattr:
+            retval = self.py_get_attr(arg, target.name, line)
+        else:
+            retval = self.add(GetAttr(arg, target.name, line))
         retbox = self.coerce(retval, sig.ret_type, line)
         self.add(Return(retbox))
 
@@ -2051,13 +2161,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             func_reg = self.instantiate_callable_class(fn_info)
         else:
             assert isinstance(fn_info.fitem, FuncDef)
+            func_decl = self.mapper.func_to_decl[fn_info.fitem]
             if fn_info.is_decorated:
                 class_name = None if cdef is None else cdef.name
-                func_decl = FuncDecl(fn_info.name, class_name, self.module_name, sig)
+                func_decl = FuncDecl(fn_info.name, class_name, self.module_name, sig,
+                                     func_decl.kind,
+                                     func_decl.is_prop_getter, func_decl.is_prop_setter)
                 func_ir = FuncIR(func_decl, blocks, env, fn_info.fitem.line,
                                  traceback_name=fn_info.fitem.name)
             else:
-                func_ir = FuncIR(self.mapper.func_to_decl[fn_info.fitem], blocks, env,
+                func_ir = FuncIR(func_decl, blocks, env,
                                  fn_info.fitem.line, traceback_name=fn_info.fitem.name)
         return (func_ir, func_reg)
 
@@ -3104,7 +3217,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 arg_values: List[Value],
                 line: int,
                 arg_kinds: Optional[List[int]] = None,
-                arg_names: Optional[List[Optional[str]]] = None) -> Value:
+                arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
         """Use py_call_op or py_call_with_kwargs_op for function call."""
         # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
@@ -3153,8 +3266,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                        method_name: str,
                        arg_values: List[Value],
                        line: int,
-                       arg_kinds: Optional[List[int]] = None,
-                       arg_names: Optional[List[Optional[str]]] = None) -> Value:
+                       arg_kinds: Optional[List[int]],
+                       arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             method_name_reg = self.load_static_unicode(method_name)
             return self.primitive_op(py_method_call_op, [obj, method_name_reg] + arg_values, line)
@@ -3248,7 +3361,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if self.is_native_ref_expr(callee):
             # Call to module-level native function or such
             return self.translate_call(expr, callee)
-        elif isinstance(callee.expr, RefExpr) and callee.expr.node in self.mapper.type_to_ir:
+        elif (
+            isinstance(callee.expr, RefExpr)
+            and isinstance(callee.expr.node, TypeInfo)
+            and callee.expr.node in self.mapper.type_to_ir
+            and self.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
+        ):
             # Call a method via the *class*
             assert isinstance(callee.expr.node, TypeInfo)
             ir = self.mapper.type_to_ir[callee.expr.node]
@@ -4003,6 +4121,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fsig = FuncSignature(runtime_args, ret_type)
 
         fname = '{}{}'.format(LAMBDA_NAME, self.lambda_counter)
+        self.lambda_counter += 1
         func_ir, func_reg = self.gen_func_item(expr, fname, fsig)
         assert func_reg is not None
 

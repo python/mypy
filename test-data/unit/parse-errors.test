@@ -273,10 +273,17 @@ file:3: error: syntax error in type comment
 file:3: error: Inconsistent use of '*' in function signature
 file:3: error: Inconsistent use of '**' in function signature
 
-[case testPrintStatementInPython3-skip]
+[case testPrintStatementInPython35]
+# flags: --python-version 3.5
 print 1
 [out]
-file:1: error: Missing parentheses in call to 'print'
+file:2: error: Missing parentheses in call to 'print'
+
+[case testPrintStatementInPython37]
+# flags: --python-version 3.7
+print 1
+[out]
+file:2: error: Missing parentheses in call to 'print'. Did you mean print(1)?
 
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4

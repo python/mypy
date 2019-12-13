@@ -21,8 +21,8 @@ you'll find errors sooner.
 
 .. note::
 
-    The mypy daemon is experimental. In particular, the command-line
-    interface may change in future mypy releases.
+    The command-line of interface of mypy daemon may change in future mypy
+    releases.
 
 .. note::
 
@@ -63,8 +63,8 @@ changed a few files. You can use :ref:`remote caching <remote-cache>`
 to speed up the initial run. The speedup can be significant if
 you have a large codebase.
 
-Additional features
-*******************
+Daemon client commands
+**********************
 
 While ``dmypy run`` is sufficient for most uses, some workflows
 (ones using :ref:`remote caching <remote-cache>`, perhaps),
@@ -87,12 +87,168 @@ require more precise control over the lifetime of the daemon process:
 * ``dmypy check <files>`` checks a set of files using an already
   running daemon.
 
+* ``dmypy recheck`` checks the same set of files as the most recent
+  ``check`` or ``recheck`` command. (You can also use the :option:`--update`
+  and :option:`--remove` options to alter the set of files, and to define
+  which files should be processed.)
+
 * ``dmypy status`` checks whether a daemon is running. It prints a
   diagnostic and exits with ``0`` if there is a running daemon.
 
 Use ``dmypy --help`` for help on additional commands and command-line
 options not discussed here, and ``dmypy <command> --help`` for help on
 command-specific options.
+
+Additional daemon flags
+***********************
+
+.. option:: --status-file FILE
+
+   Use ``FILE`` as the status file for storing daemon runtime state. This is
+   normally a JSON file that contains information about daemon process and
+   connection. The default path is ``.dmypy.json`` in the current working
+   directory.
+
+.. option:: --log-file FILE
+
+   Direct daemon stdout/stderr to ``FILE``. This is useful for debugging daemon
+   crashes, since the server traceback is not always printed by the client.
+   This is available for the ``start``, ``restart``, and ``run`` commands.
+
+.. option:: --timeout TIMEOUT
+
+   Automatically shut down server after ``TIMEOUT`` seconds of inactivity.
+   This is available for the ``start``, ``restart``, and ``run`` commands.
+
+.. option:: --update FILE
+
+   Re-check ``FILE``, or add it to the set of files being
+   checked (and check it). This option may be repeated, and it's only available for
+   the ``recheck`` command.  By default, mypy finds and checks all files changed
+   since the previous run and files that depend on them.  However, if you use this option
+   (and/or :option:`--remove`), mypy assumes that only the explicitly
+   specified files have changed. This is only useful to
+   speed up mypy if you type check a very large number of files, and use an
+   external, fast file system watcher, such as `watchman`_ or
+   `watchdog`_, to determine which files got edited or deleted.
+   *Note:* This option is never required and is only available for
+   performance tuning.
+
+.. option:: --remove FILE
+
+   Remove ``FILE`` from the set of files being checked. This option may be
+   repeated. This is only available for the
+   ``recheck`` command. See :option:`--update` above for when this may be useful.
+   *Note:* This option is never required and is only available for performance
+   tuning.
+
+.. option:: --fswatcher-dump-file FILE
+
+   Collect information about the current internal file state. This is
+   only available for the ``status`` command. This will dump JSON to
+   ``FILE`` in the format ``{path: [modification_time, size,
+   content_hash]}``. This is useful for debugging the built-in file
+   system watcher. *Note:* This is an internal flag and the format may
+   change.
+
+.. option:: --perf-stats-file FILE
+
+   Write performance profiling information to ``FILE``. This is only available
+   for the ``check``, ``recheck``, and ``run`` commands.
+
+Static inference of annotations
+*******************************
+
+The mypy daemon supports (as an experimental feature) statically inferring
+draft function and method type annotations. Use ``dmypy suggest FUNCTION`` to
+generate a draft signature in the format
+``(param_type_1, param_type_2, ...) -> ret_type`` (types are included for all
+arguments, including keyword-only arguments, ``*args`` and ``**kwargs``).
+
+This is a low-level feature intended to be used by editor integrations,
+IDEs, and other tools (for example, the `mypy plugin for PyCharm`_),
+to automatically add annotations to source files, or to propose function
+signatures.
+
+In this example, the function ``format_id()`` has no annotation:
+
+.. code-block:: python
+
+   def format_id(user):
+       return "User: {}".format(user)
+
+   root = format_id(0)
+
+``dymypy suggest`` uses call sites, return statements, and other heuristics (such as
+looking for signatures in base classes) to infer that ``format_id()`` accepts
+an ``int`` argument and returns a ``str``. Use ``dmypy suggest module.format_id`` to
+print the suggested signature for the function.
+
+More generally, the target function may be specified in two ways:
+
+* By its fully qualified name, i.e. ``[package.]module.[class.]function``.
+
+* By its location in a source file, i.e. ``/path/to/file.py:line``. The path can be
+  absolute or relative, and ``line`` can refer to any line number within
+  the function body.
+
+This command can also be used to find a more precise alternative for an existing,
+imprecise annotation with some ``Any`` types.
+
+The following flags customize various aspects of the ``dmypy suggest``
+command.
+
+.. option:: --json
+
+   Output the signature as JSON, so that `PyAnnotate`_ can read it and add
+   the signature to the source file. Here is what the JSON looks like:
+
+   .. code-block:: python
+
+      [{"func_name": "example.format_id",
+        "line": 1,
+        "path": "/absolute/path/to/example.py",
+        "samples": 0,
+        "signature": {"arg_types": ["int"], "return_type": "str"}}]
+
+.. option:: --no-errors
+
+   Only produce suggestions that cause no errors in the checked code. By default,
+   mypy will try to find the most precise type, even if it causes some type errors.
+
+.. option:: --no-any
+
+   Only produce suggestions that don't contain ``Any`` types. By default mypy
+   proposes the most precise signature found, even if it contains ``Any`` types.
+
+.. option:: --flex-any FRACTION
+
+   Only allow some fraction of types in the suggested signature to be ``Any`` types.
+   The fraction ranges from ``0`` (same as ``--no-any``) to ``1``.
+
+.. option:: --try-text
+
+   Try also using ``unicode`` wherever ``str`` is inferred. This flag may be useful
+   for annotating Python 2/3 straddling code.
+
+.. option:: --callsites
+
+   Only find call sites for a given function instead of suggesting a type.
+   This will produce a list with line numbers and types of actual
+   arguments for each call: ``/path/to/file.py:line: (arg_type_1, arg_type_2, ...)``.
+
+.. option:: --use-fixme NAME
+
+   Use a dummy name instead of plain ``Any`` for types that cannot
+   be inferred. This may be useful to emphasize to a user that a given type
+   couldn't be inferred and needs to be entered manually.
+
+.. option:: --max-guesses NUMBER
+
+   Set the maximum number of types to try for a function (default: ``64``).
+
+.. TODO: Add similar sections about go to definition, find usages, and
+   reveal type when added, and then move this to a separate file.
 
 Limitations
 ***********
@@ -102,3 +258,8 @@ Limitations
   limitation. This can be defined
   through the command line or through a
   :ref:`configuration file <config-file>`.
+
+.. _watchman: https://facebook.github.io/watchman/
+.. _watchdog: https://pypi.org/project/watchdog/
+.. _PyAnnotate: https://github.com/dropbox/pyannotate
+.. _mypy plugin for PyCharm: https://github.com/dropbox/mypy-PyCharm-plugin

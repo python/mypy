@@ -3646,7 +3646,7 @@ def test_narrow_none() -> None:
     a: Optional[int]
     if int():
         a = narrow_none(a)
-        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(a)  # N: Revealed type is 'builtins.int'
 
     b: int
     if int():
@@ -3710,7 +3710,7 @@ def test_narrow_none_v2() -> None:
     a: Optional[int]
     if int():
         a = narrow_none_v2(a)
-        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(a)  # N: Revealed type is 'builtins.int'
 
     b: int
     if int():

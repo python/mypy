@@ -221,7 +221,7 @@ This submodule contains types for the Python standard library.
 
 Due to the way git submodules work, you'll have to do
 ```
-  git submodule update typeshed
+  git submodule update mypy/typeshed
 ```
 whenever you change branches, merge, rebase, or pull.
 

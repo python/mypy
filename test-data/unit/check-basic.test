@@ -466,3 +466,11 @@ a = (a.A(), A())
 a.x  # E: "Tuple[a.A, b.A]" has no attribute "x"
 
 [builtins fixtures/dict.pyi]
+
+[case testReturnAnyFromFunctionDeclaredToReturnObject]
+# flags: --warn-return-any
+from typing import Any
+
+def f() -> object:
+    x: Any = 1
+    return x

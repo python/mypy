@@ -336,11 +336,16 @@ def write_cache(
         st = result.graph[id]
 
         meta_path, _, _ = get_cache_names(id, st.xpath, result.manager.options)
+        # If the metadata isn't there, skip writing the cache.
+        try:
+            meta_data = result.manager.metastore.read(meta_path)
+        except IOError:
+            continue
 
         newpath = get_state_ir_cache_name(st)
         ir_data = {
             'ir': module.serialize(),
-            'meta_hash': compute_hash(result.manager.metastore.read(meta_path)),
+            'meta_hash': compute_hash(meta_data),
             'src_hashes': hashes[group_map[id]],
         }
 

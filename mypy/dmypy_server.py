@@ -131,11 +131,9 @@ CONNECTION_NAME = 'dmypy'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
-    sources, options = mypy.main.process_options(['-i'] + flags,
-                                                 require_targets=False,
-                                                 server_options=True)
-    if sources and not allow_sources:
-        sys.exit("dmypy: start/restart does not accept sources")
+    _, options = mypy.main.process_options(
+        ['-i'] + flags, require_targets=False, server_options=True
+    )
     if options.report_dirs:
         sys.exit("dmypy: start/restart cannot generate reports")
     if options.junit_xml:

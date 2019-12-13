@@ -375,7 +375,6 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         if flags2:
             flags = flags2
 
-    flag_list = None
     if flags:
         flag_list = flags.group(1).split()
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
@@ -384,14 +383,14 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
+        flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
         options.error_summary = False
 
-    # Allow custom python version to override testcase_pyversion
-    if (not flag_list or
-            all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
+    # Allow custom python version to override testcase_pyversion.
+    if all(flag.split('=')[0] not in ['--python-version', '-2', '--py2'] for flag in flag_list):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     if testcase.config.getoption('--mypy-verbose'):

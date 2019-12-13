@@ -602,14 +602,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 arg = name + annotation
             args.append(arg)
         retname = None
-        if isinstance(o.unanalyzed_type, CallableType):
+        if o.name != '__init__' and isinstance(o.unanalyzed_type, CallableType):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = self.typing_name('Any')
             self.add_typing_import("Any")
-        elif o.name == '__init__' or not has_return_statement(o) and not is_abstract:
+        elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -647,10 +647,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                           'asyncio.coroutines',
                                                           'types'):
             self.add_coroutine_decorator(context.func, name, name)
-        elif any(self.refers_to_fullname(name, target)
-                 for target in ('abc.abstractmethod', 'abc.abstractproperty')):
+        elif self.refers_to_fullname(name, 'abc.abstractmethod'):
             self.add_decorator(name)
             self.import_tracker.require_name(name)
+            is_abstract = True
+        elif self.refers_to_fullname(name, 'abc.abstractproperty'):
+            self.add_decorator('property')
+            self.add_decorator('abc.abstractmethod')
             is_abstract = True
         return is_abstract
 
@@ -674,8 +677,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
               (expr.expr.name == 'abc' or
                self.import_tracker.reverse_alias.get('abc')) and
               expr.name in ('abstractmethod', 'abstractproperty')):
-            self.import_tracker.require_name(expr.expr.name)
-            self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
+            if expr.name == 'abstractproperty':
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s' % ('property'))
+                self.add_decorator('%s.%s' % (expr.expr.name, 'abstractmethod'))
+            else:
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
             is_abstract = True
         elif expr.name == 'coroutine':
             if (isinstance(expr.expr, MemberExpr) and

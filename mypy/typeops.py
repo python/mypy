@@ -312,7 +312,8 @@ def callable_corresponding_argument(typ: CallableType,
 
 
 def make_simplified_union(items: Sequence[Type],
-                          line: int = -1, column: int = -1) -> ProperType:
+                          line: int = -1, column: int = -1,
+                          *, keep_erased: bool = False) -> ProperType:
     """Build union type with redundant union items removed.
 
     If only a single item remains, this may return a non-union type.
@@ -327,6 +328,8 @@ def make_simplified_union(items: Sequence[Type],
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
+    The keep_erased flag is used for type inference against union types
+    containing type variables. If set to True, keep all ErasedType items.
     """
     items = get_proper_types(items)
     while any(isinstance(typ, UnionType) for typ in items):
@@ -346,7 +349,7 @@ def make_simplified_union(items: Sequence[Type],
         # Keep track of the truishness info for deleted subtypes which can be relevant
         cbt = cbf = False
         for j, tj in enumerate(items):
-            if i != j and is_proper_subtype(tj, ti):
+            if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
                 # We found a redundant item in the union.
                 removed.add(j)
                 cbt = cbt or tj.can_be_true
