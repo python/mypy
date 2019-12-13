@@ -659,6 +659,40 @@ else:
     reveal_type(y)  # No output here: this branch is unreachable
 [builtins fixtures/bool.pyi]
 
+[case testEnumReachabilityChecksWithOrdering]
+from enum import Enum
+from typing_extensions import Literal
+
+class Foo(Enum):
+    _order_ = "A B"
+    A = 1
+    B = 2
+
+Foo._order_  # E: "Type[Foo]" has no attribute "_order_"
+
+x: Literal[Foo.A, Foo.B]
+if x is Foo.A:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif x is Foo.B:
+    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+else:
+    reveal_type(x)  # No output here: this branch is unreachable
+
+class Bar(Enum):
+    __order__ = "A B"
+    A = 1
+    B = 2
+
+Bar.__order__  # E: "Type[Bar]" has no attribute "__order__"
+
+y: Literal[Bar.A, Bar.B]
+if y is Bar.A:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Bar.A]'
+elif y is Bar.B:
+    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Bar.B]'
+else:
+    reveal_type(y)  # No output here: this branch is unreachable
+
 [case testEnumReachabilityChecksIndirect]
 from enum import Enum
 from typing_extensions import Literal, Final
