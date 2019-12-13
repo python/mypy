@@ -2470,6 +2470,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return result
 
+        # We finish invoking above operators and no early return happens. Therefore,
+        # we check if either the LHS or the RHS is Instance and fallbacks to Any,
+        # if so, we also return Any
+        if ((isinstance(left_type, Instance) and left_type.type.fallback_to_any) or
+                (isinstance(right_type, Instance) and right_type.type.fallback_to_any)):
+            any_type = AnyType(TypeOfAny.special_form)
+            return any_type, any_type
+
         # STEP 4b:
         # Sometimes, the variants list is empty. In that case, we fall-back to attempting to
         # call the __op__ method (even though it's missing).

@@ -6575,3 +6575,24 @@ class C:
 from typing import Callable
 class C:
     x: Callable[[C], int] = lambda x: x.y.g()  # E: "C" has no attribute "y"
+
+[case testOpWithInheritedFromAny]
+from typing import Any
+C: Any
+class D(C):
+    pass
+
+class D1(C):
+    def __add__(self, rhs: float) -> D1:
+        return self
+
+reveal_type(0.5 + C)  # N: Revealed type is 'Any'
+
+reveal_type(0.5 + D())  # N: Revealed type is 'Any'
+reveal_type(D() + 0.5)  # N: Revealed type is 'Any'
+reveal_type("str" + D())  # N: Revealed type is 'builtins.str'
+reveal_type(D() + "str")  # N: Revealed type is 'Any'
+
+
+reveal_type(0.5 + D1())  # N: Revealed type is 'Any'
+reveal_type(D1() + 0.5)  # N: Revealed type is '__main__.D1'
