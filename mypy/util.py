@@ -424,9 +424,12 @@ def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
     try:
         cols, _ = os.get_terminal_size()
-        return cols
     except OSError:
         return DEFAULT_COLUMNS
+    else:
+        if cols == 0:
+            return DEFAULT_COLUMNS
+        return cols
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
