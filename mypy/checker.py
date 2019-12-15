@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
-    Sequence, Mapping, Generic, AbstractSet
+    Sequence, Mapping, Generic, AbstractSet, Callable
 )
 from typing_extensions import Final
 
@@ -50,7 +50,8 @@ from mypy.typeops import (
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
-    true_only, false_only, function_type, TypeVarExtractor,
+    true_only, false_only, function_type, TypeVarExtractor, custom_special_method,
+    is_literal_type_like,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -3890,20 +3891,59 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             partial_type_maps = []
             for operator, expr_indices in simplified_operator_list:
-                if operator in {'is', 'is not'}:
-                    if_map, else_map = self.refine_identity_comparison_expression(
-                        operands,
-                        operand_types,
-                        expr_indices,
-                        narrowable_operand_index_to_hash.keys(),
-                    )
-                elif operator in {'==', '!='}:
-                    if_map, else_map = self.refine_equality_comparison_expression(
-                        operands,
-                        operand_types,
-                        expr_indices,
-                        narrowable_operand_index_to_hash.keys(),
-                    )
+                if operator in {'is', 'is not', '==', '!='}:
+                    # is_valid_target:
+                    #   Controls which types we're allowed to narrow exprs to. Note that
+                    #   we cannot use 'is_literal_type_like' in both cases since doing
+                    #   'x = 10000 + 1; x is 10001' is not always True in all Python impls.
+                    #
+                    # coerce_only_in_literal_context:
+                    #   If true, coerce types into literal types only if one or more of
+                    #   the provided exprs contains an explicit Literal type. This could
+                    #   technically be set to any arbitrary value, but it seems being liberal
+                    #   with narrowing when using 'is' and conservative when using '==' seems
+                    #   to break the least amount of real-world code.
+                    #
+                    # should_narrow_by_identity:
+                    #   Set to 'false' only if the user defines custom __eq__ or __ne__ methods
+                    #   that could cause identity-based narrowing to produce invalid results.
+                    if operator in {'is', 'is not'}:
+                        is_valid_target = is_singleton_type    # type: Callable[[Type], bool]
+                        coerce_only_in_literal_context = False
+                        should_narrow_by_identity = True
+                    else:
+                        is_valid_target = is_exactly_literal_type
+                        coerce_only_in_literal_context = True
+
+                        def has_no_custom_eq_checks(t: Type) -> bool:
+                            return not custom_special_method(t, '__eq__', check_all=False) \
+                                   and not custom_special_method(t, '__ne__', check_all=False)
+                        expr_types = [operand_types[i] for i in expr_indices]
+                        should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
+
+                    if_map = {}    # type: TypeMap
+                    else_map = {}  # type: TypeMap
+                    if should_narrow_by_identity:
+                        if_map, else_map = self.refine_identity_comparison_expression(
+                            operands,
+                            operand_types,
+                            expr_indices,
+                            narrowable_operand_index_to_hash.keys(),
+                            is_valid_target,
+                            coerce_only_in_literal_context,
+                        )
+
+                    # Strictly speaking, we should also skip this check if the objects in the expr
+                    # chain have custom __eq__ or __ne__ methods. But we (maybe optimistically)
+                    # assume nobody would actually create a custom objects that considers itself
+                    # equal to None.
+                    if if_map == {} and else_map == {}:
+                        if_map, else_map = self.refine_away_none_in_comparison(
+                            operands,
+                            operand_types,
+                            expr_indices,
+                            narrowable_operand_index_to_hash.keys(),
+                        )
                 elif operator in {'in', 'not in'}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
@@ -4146,8 +4186,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                               operand_types: List[Type],
                                               chain_indices: List[int],
                                               narrowable_operand_indices: AbstractSet[int],
+                                              is_valid_target: Callable[[ProperType], bool],
+                                              coerce_only_in_literal_context: bool,
                                               ) -> Tuple[TypeMap, TypeMap]:
-        """Produces conditional type maps refining expressions used in an identity comparison.
+        """Produces conditional type maps refining exprs used in an identity/equality comparison.
 
         The 'operands' and 'operand_types' lists should be the full list of operands used
         in the overall comparison expression. The 'chain_indices' list is the list of indices
@@ -4163,30 +4205,45 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         The 'narrowable_operand_indices' parameter is the set of all indices we are allowed
         to refine the types of: that is, all operands that will potentially be a part of
         the output TypeMaps.
+
+        Although this function could theoretically try setting the types of the operands
+        in the chains to the meet, doing that causes too many issues in real-world code.
+        Instead, we use 'is_valid_target' to identify which of the given chain types
+        we could plausibly use as the refined type for the expressions in the chain.
+
+        Similarly, 'coerce_only_in_literal_context' controls whether we should try coercing
+        expressions in the chain to a Literal type. Performing this coercion is sometimes
+        too aggressive of a narrowing, depending on context.
         """
-        singleton = None  # type: Optional[ProperType]
-        possible_singleton_indices = []
+        should_coerce = True
+        if coerce_only_in_literal_context:
+            should_coerce = any(is_literal_type_like(operand_types[i]) for i in chain_indices)
+
+        target = None  # type: Optional[Type]
+        possible_target_indices = []
         for i in chain_indices:
-            coerced_type = coerce_to_literal(operand_types[i])
-            if not is_singleton_type(coerced_type):
+            expr_type = operand_types[i]
+            if should_coerce:
+                expr_type = coerce_to_literal(expr_type)
+            if not is_valid_target(get_proper_type(expr_type)):
                 continue
-            if singleton and not is_same_type(singleton, coerced_type):
-                # We have multiple disjoint singleton types. So the 'if' branch
+            if target and not is_same_type(target, expr_type):
+                # We have multiple disjoint target types. So the 'if' branch
                 # must be unreachable.
                 return None, {}
-            singleton = coerced_type
-            possible_singleton_indices.append(i)
+            target = expr_type
+            possible_target_indices.append(i)
 
-        # There's nothing we can currently infer if none of the operands are singleton types,
+        # There's nothing we can currently infer if none of the operands are valid targets,
         # so we end early and infer nothing.
-        if singleton is None:
+        if target is None:
             return {}, {}
 
-        # If possible, use an unassignable expression as the singleton.
-        # We skip refining the type of the singleton below, so ideally we'd
+        # If possible, use an unassignable expression as the target.
+        # We skip refining the type of the target below, so ideally we'd
         # want to pick an expression we were going to skip anyways.
         singleton_index = -1
-        for i in possible_singleton_indices:
+        for i in possible_target_indices:
             if i not in narrowable_operand_indices:
                 singleton_index = i
 
@@ -4215,20 +4272,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # currently will just mark the whole branch as unreachable if either operand is
         # narrowed to <uninhabited>.
         if singleton_index == -1:
-            singleton_index = possible_singleton_indices[-1]
+            singleton_index = possible_target_indices[-1]
 
         enum_name = None
-        if isinstance(singleton, LiteralType) and singleton.is_enum_literal():
-            enum_name = singleton.fallback.type.fullname
+        target = get_proper_type(target)
+        if isinstance(target, LiteralType) and target.is_enum_literal():
+            enum_name = target.fallback.type.fullname
 
-        target_type = [TypeRange(singleton, is_upper_bound=False)]
+        target_type = [TypeRange(target, is_upper_bound=False)]
 
         partial_type_maps = []
         for i in chain_indices:
-            # If we try refining a singleton against itself, conditional_type_map
+            # If we try refining a type against itself, conditional_type_map
             # will end up assuming that the 'else' branch is unreachable. This is
             # typically not what we want: generally the user will intend for the
-            # singleton type to be some fixed 'sentinel' value and will want to refine
+            # target type to be some fixed 'sentinel' value and will want to refine
             # the other exprs against this one instead.
             if i == singleton_index:
                 continue
@@ -4246,17 +4304,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return reduce_partial_conditional_maps(partial_type_maps)
 
-    def refine_equality_comparison_expression(self,
-                                              operands: List[Expression],
-                                              operand_types: List[Type],
-                                              chain_indices: List[int],
-                                              narrowable_operand_indices: AbstractSet[int],
-                                              ) -> Tuple[TypeMap, TypeMap]:
-        """Produces conditional type maps refining expressions used in an equality comparison.
+    def refine_away_none_in_comparison(self,
+                                       operands: List[Expression],
+                                       operand_types: List[Type],
+                                       chain_indices: List[int],
+                                       narrowable_operand_indices: AbstractSet[int],
+                                       ) -> Tuple[TypeMap, TypeMap]:
+        """Produces conditional type maps refining away None in an identity/equality chain.
 
-        For more details, see the docstring of 'refine_equality_comparison' up above.
-        The only difference is that this function is for refining equality operations
-        (e.g. 'a == b == c') instead of identity ('a is b is c').
+        For more details about what the different arguments mean, see the
+        docstring of 'refine_identity_comparison_expression' up above.
         """
         non_optional_types = []
         for i in chain_indices:
@@ -4749,7 +4806,7 @@ def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
         return False
 
     parent_type = get_proper_type(parent_type)
-    member_type = coerce_to_literal(member_type)
+    member_type = get_proper_type(coerce_to_literal(member_type))
     if not isinstance(parent_type, FunctionLike) or not isinstance(member_type, LiteralType):
         return False
 
@@ -5540,3 +5597,9 @@ def has_bool_item(typ: ProperType) -> bool:
         return any(is_named_instance(item, 'builtins.bool')
                    for item in typ.items)
     return False
+
+
+# TODO: why can't we define this as an inline function?
+# Does mypyc not support them?
+def is_exactly_literal_type(t: Type) -> bool:
+    return isinstance(get_proper_type(t), LiteralType)
