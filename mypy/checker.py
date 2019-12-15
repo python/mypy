@@ -3788,67 +3788,109 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
         elif isinstance(node, ComparisonExpr):
-            operand_types = [coerce_to_literal(type_map[expr])
-                             for expr in node.operands if expr in type_map]
+            # Step 1: Obtain the types of each operand and whether or not we can
+            # narrow their types. (For example, we shouldn't try narrowing the
+            # types of literal string or enum expressions).
 
-            is_not = node.operators == ['is not']
-            if (is_not or node.operators == ['is']) and len(operand_types) == len(node.operands):
-                if_vars = {}  # type: TypeMap
-                else_vars = {}  # type: TypeMap
+            operands = node.operands
+            operand_types = []
+            narrowable_operand_indices = set()
+            for i, expr in enumerate(operands):
+                if expr not in type_map:
+                    return {}, {}
+                expr_type = type_map[expr]
+                operand_types.append(expr_type)
 
-                for i, expr in enumerate(node.operands):
-                    var_type = operand_types[i]
-                    other_type = operand_types[1 - i]
+                if (literal(expr) == LITERAL_TYPE
+                        and not is_literal_none(expr)
+                        and not is_literal_enum(type_map, expr)):
+                    narrowable_operand_indices.add(i)
 
-                    if literal(expr) == LITERAL_TYPE and is_singleton_type(other_type):
-                        # This should only be true at most once: there should be
-                        # exactly two elements in node.operands and if the 'other type' is
-                        # a singleton type, it by definition does not need to be narrowed:
-                        # it already has the most precise type possible so does not need to
-                        # be narrowed/included in the output map.
-                        #
-                        # TODO: Generalize this to handle the case where 'other_type' is
-                        # a union of singleton types.
+            # Step 2: Group operands chained by either the 'is' or '==' operands
+            # together. For all other operands, we keep them in groups of size 2.
+            # So the expression:
+            #
+            #   x0 == x1 == x2 < x3 < x4 is x5 is x6 is not x7 is not x8
+            #
+            # ...is converted into the simplified operator list:
+            #
+            #  [("==", [0, 1, 2]), ("<", [2, 3]), ("<", [3, 4]),
+            #   ("is", [4, 5, 6]), ("is not", [6, 7]), ("is not", [7, 8])]
+            #
+            # We group identity/equality expressions so we can propagate information
+            # we discover about one operand across the entire chain. We don't bother
+            # handling 'is not' and '!=' chains in a special way: those are very rare
+            # in practice.
 
-                        if isinstance(other_type, LiteralType) and other_type.is_enum_literal():
-                            fallback_name = other_type.fallback.type.fullname
-                            var_type = try_expanding_enum_to_union(var_type, fallback_name)
+            simplified_operator_list = []  # type: List[Tuple[str, List[int]]]
+            last_operator = node.operators[0]
+            current_group = set()  # type: Set[int]
+            for i, (operator, left_expr, right_expr) in enumerate(node.pairwise()):
+                if current_group and (operator != last_operator or operator not in {'is', '=='}):
+                    simplified_operator_list.append((last_operator, sorted(current_group)))
+                    last_operator = operator
+                    current_group = set()
 
-                        target_type = [TypeRange(other_type, is_upper_bound=False)]
-                        if_vars, else_vars = conditional_type_map(expr, var_type, target_type)
-                        break
+                # Note: 'i' corresponds to the left operand index, so 'i + 1' is the
+                # right operand.
+                current_group.add(i)
+                current_group.add(i + 1)
 
-                if is_not:
-                    if_vars, else_vars = else_vars, if_vars
-                return if_vars, else_vars
-            # Check for `x == y` where x is of type Optional[T] and y is of type T
-            # or a type that overlaps with T (or vice versa).
-            elif node.operators == ['==']:
-                first_type = type_map[node.operands[0]]
-                second_type = type_map[node.operands[1]]
-                if is_optional(first_type) != is_optional(second_type):
-                    if is_optional(first_type):
-                        optional_type, comp_type = first_type, second_type
-                        optional_expr = node.operands[0]
+            simplified_operator_list.append((last_operator, sorted(current_group)))
+
+            # Step 3: Analyze each group and infer more precise type maps for each
+            # assignable operand, if possible. We combine these type maps together
+            # in the final step.
+
+            partial_type_maps = []
+            for operator, expr_indices in simplified_operator_list:
+                if operator in {'is', 'is not'}:
+                    if_map, else_map = self.refine_identity_comparison_expression(
+                        operands,
+                        operand_types,
+                        expr_indices,
+                        narrowable_operand_indices,
+                    )
+                elif operator in {'==', '!='}:
+                    if_map, else_map = self.refine_equality_comparison_expression(
+                        operands,
+                        operand_types,
+                        expr_indices,
+                        narrowable_operand_indices,
+                    )
+                elif operator in {'in', 'not in'}:
+                    assert len(expr_indices) == 2
+                    left_index, right_index = expr_indices
+                    if left_index not in narrowable_operand_indices:
+                        continue
+
+                    item_type = operand_types[left_index]
+                    collection_type = operand_types[right_index]
+
+                    # We only try and narrow away 'None' for now
+                    if not is_optional(item_type):
+                        pass
+
+                    collection_item_type = get_proper_type(builtin_item_type(collection_type))
+                    if collection_item_type is None or is_optional(collection_item_type):
+                        continue
+                    if (isinstance(collection_item_type, Instance)
+                            and collection_item_type.type.fullname == 'builtins.object'):
+                        continue
+                    if is_overlapping_erased_types(item_type, collection_item_type):
+                        if_map, else_map = {operands[left_index]: remove_optional(item_type)}, {}
                     else:
-                        optional_type, comp_type = second_type, first_type
-                        optional_expr = node.operands[1]
-                    if is_overlapping_erased_types(optional_type, comp_type):
-                        return {optional_expr: remove_optional(optional_type)}, {}
-            elif node.operators in [['in'], ['not in']]:
-                expr = node.operands[0]
-                left_type = type_map[expr]
-                right_type = get_proper_type(builtin_item_type(type_map[node.operands[1]]))
-                right_ok = right_type and (not is_optional(right_type) and
-                                           (not isinstance(right_type, Instance) or
-                                            right_type.type.fullname != 'builtins.object'))
-                if (right_type and right_ok and is_optional(left_type) and
-                        literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
-                        is_overlapping_erased_types(left_type, right_type)):
-                    if node.operators == ['in']:
-                        return {expr: remove_optional(left_type)}, {}
-                    if node.operators == ['not in']:
-                        return {}, {expr: remove_optional(left_type)}
+                        continue
+                else:
+                    if_map = {}
+                    else_map = {}
+
+                if operator in {'is not', '!=', 'not in'}:
+                    if_map, else_map = else_map, if_map
+
+                partial_type_maps.append((if_map, else_map))
+
+            return reduce_partial_type_maps(partial_type_maps)
         elif isinstance(node, RefExpr):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
@@ -4052,6 +4094,120 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
 
         return output
+
+    def refine_identity_comparison_expression(self,
+                                              operands: List[Expression],
+                                              operand_types: List[Type],
+                                              chain_indices: List[int],
+                                              narrowable_operand_indices: Set[int],
+                                              ) -> Tuple[TypeMap, TypeMap]:
+        """Produces conditional type maps refining expressions used in an identity comparison.
+
+        The 'operands' and 'operand_types' lists should be the full list of operands used
+        in the overall comparison expression. The 'chain_indices' list is the list of indices
+        actually used within this identity comparison chain.
+
+        So if we have the expression:
+
+            a <= b is c is d <= e
+
+        ...then 'operands' and 'operand_types' would be lists of length 5 and 'chain_indices'
+        would be the list [1, 2, 3].
+
+        The 'narrowable_operand_indices' parameter is the set of all indices we are allowed
+        to refine the types of: that is, all operands that will potentially be a part of
+        the output TypeMaps.
+        """
+        singleton = None  # type: Optional[ProperType]
+        possible_singleton_indices = []
+        for i in chain_indices:
+            coerced_type = coerce_to_literal(operand_types[i])
+            if not is_singleton_type(coerced_type):
+                continue
+            if singleton and not is_same_type(singleton, coerced_type):
+                # We have multiple disjoint singleton types. So the 'if' branch
+                # must be unreachable.
+                return None, {}
+            singleton = coerced_type
+            possible_singleton_indices.append(i)
+
+        # There's nothing we can currently infer if none of the operands are singleton types,
+        # so we end early and infer nothing.
+        if singleton is None:
+            return {}, {}
+
+        # If possible, use an unassignable expression as the singleton.
+        # We skip refining the type of the singleton below, so ideally we'd
+        # want to pick an expression we were going to skip anyways.
+        singleton_index = -1
+        for i in possible_singleton_indices:
+            if i not in narrowable_operand_indices:
+                singleton_index = i
+
+        # Oh well, give up and just arbitrarily pick the last item.
+        if singleton_index == -1:
+            singleton_index = possible_singleton_indices[-1]
+
+        enum_name = None
+        if isinstance(singleton, LiteralType) and singleton.is_enum_literal():
+            enum_name = singleton.fallback.type.fullname
+
+        target_type = [TypeRange(singleton, is_upper_bound=False)]
+
+        partial_type_maps = []
+        for i in chain_indices:
+            # If we try refining a singleton against itself, conditional_type_map
+            # will end up assuming that the 'else' branch is unreachable. This is
+            # typically not what we want: generally the user will intend for the
+            # singleton type to be some fixed 'sentinel' value and will want to refine
+            # the other exprs against this one instead.
+            if i == singleton_index:
+                continue
+
+            # Naturally, we can't refine operands which are not permitted to be refined.
+            if i not in narrowable_operand_indices:
+                continue
+
+            expr = operands[i]
+            expr_type = coerce_to_literal(operand_types[i])
+
+            if enum_name is not None:
+                expr_type = try_expanding_enum_to_union(expr_type, enum_name)
+            partial_type_maps.append(conditional_type_map(expr, expr_type, target_type))
+
+        return reduce_partial_type_maps(partial_type_maps)
+
+    def refine_equality_comparison_expression(self,
+                                              operands: List[Expression],
+                                              operand_types: List[Type],
+                                              chain_indices: List[int],
+                                              narrowable_operand_indices: Set[int],
+                                              ) -> Tuple[TypeMap, TypeMap]:
+        """Produces conditional type maps refining expressions used in an equality comparison.
+
+        For more details, see the docstring of 'refine_equality_comparison' up above.
+        The only difference is that this function is for refining equality operations
+        (e.g. 'a == b == c') instead of identity ('a is b is c').
+        """
+        non_optional_types = []
+        for i in chain_indices:
+            typ = operand_types[i]
+            if not is_optional(typ):
+                non_optional_types.append(typ)
+
+        # Make sure we have a mixture of optional and non-optional types.
+        if len(non_optional_types) == 0 or len(non_optional_types) == len(chain_indices):
+            return {}, {}
+
+        if_map = {}
+        for i in narrowable_operand_indices:
+            expr_type = operand_types[i]
+            if not is_optional(expr_type):
+                continue
+            if any(is_overlapping_erased_types(expr_type, t) for t in non_optional_types):
+                if_map[operands[i]] = remove_optional(expr_type)
+
+        return if_map, {}
 
     #
     # Helpers
@@ -4496,6 +4652,26 @@ def is_false_literal(n: Expression) -> bool:
             or isinstance(n, IntExpr) and n.value == 0)
 
 
+def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
+    if not isinstance(n, MemberExpr) or not isinstance(n.expr, NameExpr):
+        return False
+
+    parent_type = type_map.get(n.expr)
+    member_type = type_map.get(n)
+    if member_type is None or parent_type is None:
+        return False
+
+    parent_type = get_proper_type(parent_type)
+    member_type = coerce_to_literal(member_type)
+    if not isinstance(parent_type, FunctionLike) or not isinstance(member_type, LiteralType):
+        return False
+
+    if not parent_type.is_type_obj():
+        return False
+
+    return member_type.is_enum_literal() and member_type.fallback.type == parent_type.type_object()
+
+
 def is_literal_none(n: Expression) -> bool:
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
@@ -4585,6 +4761,75 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
             if literal_hash(n1) == literal_hash(n2):
                 result[n1] = make_simplified_union([m1[n1], m2[n2]])
     return result
+
+
+def or_partial_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
+    """Calculate what information we can learn from the truth of (e1 or e2)
+    in terms of the information that we can learn from the truth of e1 and
+    the truth of e2.
+
+    Unlike 'or_conditional_maps', we include an expression in the output even
+    if it exists in only one map: we're assuming both maps are "partial" and
+    contain information about only some expressions, and so we "or" together
+    expressions both maps have information on.
+    """
+
+    if m1 is None:
+        return m2
+    if m2 is None:
+        return m1
+    # The logic here is a blend between 'and_conditional_maps'
+    # and 'or_conditional_maps'. We use the high-level logic from the
+    # former to ensure all expressions make it in the output map,
+    # but resolve cases where both maps contain info on the same
+    # expr using the unioning strategy from the latter.
+    result = m2.copy()
+    m2_keys = {literal_hash(n2): n2 for n2 in m2}
+    for n1 in m1:
+        n2 = m2_keys.get(literal_hash(n1))
+        if n2 is None:
+            result[n1] = m1[n1]
+        else:
+            result[n2] = make_simplified_union([m1[n1], result[n2]])
+
+    return result
+
+
+def reduce_partial_type_maps(type_maps: List[Tuple[TypeMap, TypeMap]]) -> Tuple[TypeMap, TypeMap]:
+    """Reduces a list containing pairs of *partial* if/else TypeMaps into a single pair.
+
+    That is, if a expression exists in only one map, we always include it in the output.
+    We only "and"/"or" together expressions that appear in multiple if/else maps.
+
+    So for example, if we had the input:
+
+        [
+            ({x: TypeIfX, shared: TypeIfShared1}, {x: TypeElseX, shared: TypeElseShared1}),
+            ({y: TypeIfY, shared: TypeIfShared2}, {y: TypeElseY, shared: TypeElseShared2}),
+        ]
+
+    ...we'd return the output:
+
+        (
+            {x: TypeIfX,   y: TypeIfY,   shared: PseudoIntersection[TypeIfShared1, TypeIfShared2]},
+            {x: TypeElseX, y: TypeElseY, shared: Union[TypeElseShared1, TypeElseShared2]},
+        )
+
+    ...where "PseudoIntersection[X, Y] == Y" because mypy actually doesn't understand intersections
+    yet, so we settle for just arbitrarily picking the right expr's type.
+    """
+    if len(type_maps) == 0:
+        return {}, {}
+    elif len(type_maps) == 1:
+        return type_maps[0]
+    else:
+        final_if_map, final_else_map = type_maps[0]
+        for if_map, else_map in type_maps[1:]:
+            # 'and_conditional_maps' does the same thing for both global and partial type maps,
+            # which is why we don't need to have an 'and_partial_conditional_maps' function.
+            final_if_map = and_conditional_maps(final_if_map, if_map)
+            final_else_map = or_partial_conditional_maps(final_else_map, else_map)
+        return final_if_map, final_else_map
 
 
 def convert_to_typetype(type_map: TypeMap) -> TypeMap:
