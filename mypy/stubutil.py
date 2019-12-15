@@ -2,13 +2,12 @@
 
 import sys
 import os.path
-import itertools
 import json
 import subprocess
 import re
 from contextlib import contextmanager
 
-from typing import Optional, Tuple, List, Iterator, Sequence, Union
+from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
 
 from mypy.moduleinspect import ModuleInspect, InspectError
@@ -249,10 +248,11 @@ def common_dir_prefix(paths: List[str]) -> str:
     if not paths:
         return '.'
 
-    def common_part(parts: Sequence[str]) -> bool:
-        return all(x == parts[0] for x in parts)
-
-    dirs = [os.path.dirname(p) for p in paths]
-    parts = zip(*(path.split(os.path.sep) for path in dirs))
-    common_parts = (p[0] for p in itertools.takewhile(common_part, parts))
-    return os.path.join(*common_parts) or '.'
+    cur = os.path.dirname(os.path.normpath(paths[0]))
+    for path in paths[1:]:
+        while True:
+            path = os.path.dirname(os.path.normpath(path))
+            if (cur + os.sep).startswith(path + os.sep):
+                cur = path
+                break
+    return cur or '.'
