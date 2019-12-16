@@ -32,7 +32,7 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
-str_split_types = [str_rprimitive, object_rprimitive, int_rprimitive]  # type: List[RType]
+str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
 str_split_format_strs = ["NULL, -1", "{args[1]}, -1", "{args[1]}, {args[2]}"]  # type: List[str]
 
 for i in range(3):
