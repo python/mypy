@@ -2231,15 +2231,20 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
-def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
+def flatten_nested_unions(types: Iterable[Type],
+                          handle_type_alias_type: bool = False) -> List[Type]:
     """Flatten nested unions in a type list."""
     # This and similar functions on unions can cause infinite recursion
     # if passed a "pathological" alias like A = Union[int, A] or similar.
     # TODO: ban such aliases in semantic analyzer.
     flat_items = []  # type: List[Type]
+    if handle_type_alias_type:
+        types = [get_proper_type(item) if isinstance(item, TypeAliasType)
+                 else item for item in types]
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
-            flat_items.extend(flatten_nested_unions(tp.items))
+            flat_items.extend(flatten_nested_unions(tp.items,
+                                        handle_type_alias_type=handle_type_alias_type))
         else:
             flat_items.append(tp)
     return flat_items
