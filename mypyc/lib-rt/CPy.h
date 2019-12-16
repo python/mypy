@@ -1062,6 +1062,7 @@ static PyObject *CPy_FormatTypeName(PyObject *value) {
     return output;
 }
 
+CPy_NOINLINE
 static void CPy_TypeError(const char *expected, PyObject *value) {
     PyObject *out = CPy_FormatTypeName(value);
     if (out) {
