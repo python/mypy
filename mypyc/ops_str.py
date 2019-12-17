@@ -2,7 +2,7 @@ from typing import List, Callable
 
 from mypyc.ops import (
     object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface,
-    RType, int_rprimitive
+    RType, int_rprimitive, EmitCallback
 )
 from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op, method_op
 
@@ -32,33 +32,26 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
-str_split_types = [str_rprimitive, str_rprimitive]  # type: List[RType]
-str_split_formats = ["NULL, -1", "{args[1]}, -1"]  # type: List[str]
-
-for i in range(2):
-    method_op(
-        name='split',
-        arg_types=str_split_types[0:i+1],
-        result_type=object_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=simple_emit('{dest} = PyUnicode_Split({args[0]}, ' +
-                         '{});'.format(str_split_formats[i])))
-
 
 def emit_str_split(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     temp = emitter.temp_name()
     emitter.emit_declaration('Py_ssize_t %s;' % temp)
     emitter.emit_lines(
-        '%s = CPyTagged_ShortAsSsize_t(%s);' % (temp, args[2]),
+        '%s = CPyTagged_AsSsize_t(%s);' % (temp, args[2]),
         '%s = PyUnicode_Split(%s, %s, %s);' % (dest, args[0], args[1], temp))
 
 
-method_op(
-    name='split',
-    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=emit_str_split)
+str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
+str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
+                   simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
+                   emit_str_split]  # type: List[EmitCallback]
+for i in range(3):
+    method_op(
+        name='split',
+        arg_types=str_split_types[0:i+1],
+        result_type=object_rprimitive,
+        error_kind=ERR_MAGIC,
+        emit=str_split_emits[i])
 
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.

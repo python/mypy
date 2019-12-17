@@ -4701,3 +4701,25 @@ import b
 
 assert f(20) == 61
 assert isinstance(whatever, b.A)
+
+[case testStrSplit]
+from typing import List, Optional
+def f(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
+    if sep is not None:
+        if max_split is not None:
+            return s.split(sep, max_split)
+        else:
+            return s.split(sep)
+    return s.split()
+
+[file driver.py]
+from native import f
+s = "abc abcd abcde abcdef"
+
+assert f(s) == ["abc", "abcd", "abcde", "abcdef"]
+assert f(s, " ") == ["abc", "abcd", "abcde", "abcdef"]
+assert f(s, "-") == ["abc abcd abcde abcdef"]
+assert f(s, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
+assert f(s, " ", 0) == ["abc abcd abcde abcdef"]
+assert f(s, " ", 1) == ["abc", "abcd abcde abcdef"]
+assert f(s, " ", 2) == ["abc", "abcd", "abcde abcdef"]
