@@ -9288,3 +9288,32 @@ class B:
         self.x = 0
 [out]
 ==
+
+[case testGenericChange]
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+from typing import TypeVar, Generic, Type, List
+import a
+
+T = TypeVar('T')
+class C(Generic[T]): pass
+
+reveal_type(a.f)
+c: C[int]
+l = a.f() if True else c
+d = a.f()
+d = c
+c = d
+
+x: List[C] = [a.f(), a.f()]
+
+[out]
+==
+b.py:7: note: Revealed type is 'def () -> b.C[Any]'
+[builtins fixtures/list.pyi]

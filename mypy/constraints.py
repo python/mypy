@@ -347,29 +347,33 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     template.type.has_base(instance.type.fullname)):
                 mapped = map_instance_to_supertype(template, instance.type)
                 tvars = mapped.type.defn.type_vars
-                for i in range(len(instance.args)):
+                # N.B: We use zip instead of indexing because the lengths might have
+                # mismatches during daemon reprocessing.
+                for tvar, mapped_arg, instance_arg in zip(tvars, mapped.args, instance.args):
                     # The constraints for generic type parameters depend on variance.
                     # Include constraints from both directions if invariant.
-                    if tvars[i].variance != CONTRAVARIANT:
+                    if tvar.variance != CONTRAVARIANT:
                         res.extend(infer_constraints(
-                            mapped.args[i], instance.args[i], self.direction))
-                    if tvars[i].variance != COVARIANT:
+                            mapped_arg, instance_arg, self.direction))
+                    if tvar.variance != COVARIANT:
                         res.extend(infer_constraints(
-                            mapped.args[i], instance.args[i], neg_op(self.direction)))
+                            mapped_arg, instance_arg, neg_op(self.direction)))
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname)):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
-                for j in range(len(template.args)):
+                # N.B: We use zip instead of indexing because the lengths might have
+                # mismatches during daemon reprocessing.
+                for tvar, mapped_arg, template_arg in zip(tvars, mapped.args, template.args):
                     # The constraints for generic type parameters depend on variance.
                     # Include constraints from both directions if invariant.
-                    if tvars[j].variance != CONTRAVARIANT:
+                    if tvar.variance != CONTRAVARIANT:
                         res.extend(infer_constraints(
-                            template.args[j], mapped.args[j], self.direction))
-                    if tvars[j].variance != COVARIANT:
+                            template_arg, mapped_arg, self.direction))
+                    if tvar.variance != COVARIANT:
                         res.extend(infer_constraints(
-                            template.args[j], mapped.args[j], neg_op(self.direction)))
+                            template_arg, mapped_arg, neg_op(self.direction)))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
