@@ -32,10 +32,10 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
-str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
-str_split_formats = ["NULL, -1", "{args[1]}, -1", "{args[1]}, {args[2]} / 2"]  # type: List[str]
+str_split_types = [str_rprimitive, str_rprimitive]  # type: List[RType]
+str_split_formats = ["NULL, -1", "{args[1]}, -1"]  # type: List[str]
 
-for i in range(3):
+for i in range(2):
     method_op(
         name='split',
         arg_types=str_split_types[0:i+1],
@@ -43,6 +43,22 @@ for i in range(3):
         error_kind=ERR_MAGIC,
         emit=simple_emit('{dest} = PyUnicode_Split({args[0]}, ' +
                          '{});'.format(str_split_formats[i])))
+
+
+def emit_str_split(emitter: EmitterInterface, args: List[str], dest: str) -> None:
+    temp = emitter.temp_name()
+    emitter.emit_declaration('Py_ssize_t %s;' % temp)
+    emitter.emit_lines(
+        '%s = CPyTagged_ShortAsSsize_t(%s);' % (temp, args[2]),
+        '%s = PyUnicode_Split(%s, %s, %s);' % (dest, args[0], args[1], temp))
+
+
+method_op(
+    name='split',
+    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=emit_str_split)
 
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
