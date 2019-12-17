@@ -486,7 +486,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             si = self.s
-            if t.type == si.type and len(t.args) == len(si.args):
+            if t.type == si.type:
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
