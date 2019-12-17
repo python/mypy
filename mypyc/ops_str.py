@@ -2,7 +2,7 @@ from typing import List, Callable
 
 from mypyc.ops import (
     object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface,
-    RType, bool_rprimitive
+    RType, int_rprimitive
 )
 from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op, method_op
 
@@ -32,8 +32,8 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
-str_split_types = [str_rprimitive, str_rprimitive, bool_rprimitive]  # type: List[RType]
-str_split_format_strs = ["NULL, -1", "{args[1]}, -1", "{args[1]}, {args[2]}"]  # type: List[str]
+str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
+str_split_formats = ["NULL, -1", "{args[1]}, -1", "{args[1]}, {args[2]} / 2"]  # type: List[str]
 
 for i in range(3):
     method_op(
@@ -42,7 +42,7 @@ for i in range(3):
         result_type=object_rprimitive,
         error_kind=ERR_MAGIC,
         emit=simple_emit('{dest} = PyUnicode_Split({args[0]}, ' +
-                         '{});'.format(str_split_format_strs[i])))
+                         '{});'.format(str_split_formats[i])))
 
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
