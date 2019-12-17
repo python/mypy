@@ -348,7 +348,7 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
             # N.B: We use zip instead of indexing because the lengths might have
             # mismatches during daemon reprocessing.
             for ta, sa in zip(t.args, s.args):
-                args.append(self.join(ta, sa))
+                args.append(join_types(ta, sa))
             return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
