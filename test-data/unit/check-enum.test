@@ -693,6 +693,22 @@ elif y is Bar.B:
 else:
     reveal_type(y)  # No output here: this branch is unreachable
 
+x2: Foo
+if x2 is Foo.A:
+    reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif x2 is Foo.B:
+    reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+else:
+    reveal_type(x2)  # No output here: this branch is unreachable
+
+y2: Bar
+if y2 is Bar.A:
+    reveal_type(y2)  # N: Revealed type is 'Literal[__main__.Bar.A]'
+elif y2 is Bar.B:
+    reveal_type(y2)  # N: Revealed type is 'Literal[__main__.Bar.B]'
+else:
+    reveal_type(y2)  # No output here: this branch is unreachable
+
 [case testEnumReachabilityChecksIndirect]
 from enum import Enum
 from typing_extensions import Literal, Final
