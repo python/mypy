@@ -2,7 +2,7 @@ from typing import List, Callable
 
 from mypyc.ops import (
     object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface,
-    int_rprimitive, RType
+    RType, bool_rprimitive
 )
 from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op, method_op
 
@@ -32,7 +32,7 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
-str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
+str_split_types = [str_rprimitive, str_rprimitive, bool_rprimitive]  # type: List[RType]
 str_split_format_strs = ["NULL, -1", "{args[1]}, -1", "{args[1]}, {args[2]}"]  # type: List[str]
 
 for i in range(3):
