@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Union, Optional, Dict, TypeVar
+from typing import Any, Iterable, Union, Optional, Dict, TypeVar, overload, Optional, Callable
 
 def namedtuple(
     typename: str,
@@ -10,8 +10,10 @@ def namedtuple(
     defaults: Optional[Iterable[Any]] = ...
 ) -> Any: ...
 
-K = TypeVar('K')
-V = TypeVar('V')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
-class OrderedDict(Dict[K, V]):
-    def __setitem__(self, k: K, v: V) -> None: ...
+class OrderedDict(Dict[KT, VT]): ...
+
+class defaultdict(Dict[KT, VT]):
+    def __init__(self, default_factory: Optional[Callable[[], VT]]) -> None: ...

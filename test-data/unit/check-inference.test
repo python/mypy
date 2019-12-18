@@ -2976,3 +2976,97 @@ x: Optional[str]
 y = filter(None, [x])
 reveal_type(y)  # N: Revealed type is 'builtins.list[builtins.str*]'
 [builtins fixtures/list.pyi]
+
+[case testPartialDefaultDict]
+from collections import defaultdict
+x = defaultdict(int)
+x[''] = 1
+reveal_type(x) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.int]'
+
+y = defaultdict(int) # E: Need type annotation for 'y'
+
+z = defaultdict(int)  # E: Need type annotation for 'z'
+z[''] = ''
+reveal_type(z) # N: Revealed type is 'collections.defaultdict[Any, Any]'
+[builtins fixtures/dict.pyi]
+
+[case testPartialDefaultDictInconsistentValueTypes]
+from collections import defaultdict
+a = defaultdict(int)  # E: Need type annotation for 'a'
+a[''] = ''
+a[''] = 1
+reveal_type(a) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.int]'
+[builtins fixtures/dict.pyi]
+
+[case testPartialDefaultDictListValue]
+# flags: --no-strict-optional
+from collections import defaultdict
+a = defaultdict(list)
+a['x'].append(1)
+reveal_type(a) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'
+
+b = defaultdict(lambda: [])
+b[1].append('x')
+reveal_type(b) # N: Revealed type is 'collections.defaultdict[builtins.int, builtins.list[builtins.str]]'
+[builtins fixtures/dict.pyi]
+
+[case testPartialDefaultDictListValueStrictOptional]
+# flags: --strict-optional
+from collections import defaultdict
+a = defaultdict(list)
+a['x'].append(1)
+reveal_type(a) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'
+
+b = defaultdict(lambda: [])
+b[1].append('x')
+reveal_type(b) # N: Revealed type is 'collections.defaultdict[builtins.int, builtins.list[builtins.str]]'
+[builtins fixtures/dict.pyi]
+
+[case testPartialDefaultDictSpecialCases]
+from collections import defaultdict
+class A:
+    def f(self) -> None:
+        self.x = defaultdict(list)
+        self.x['x'].append(1)
+        reveal_type(self.x) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'
+        self.y = defaultdict(list)  # E: Need type annotation for 'y'
+        s = self
+        s.y['x'].append(1)
+
+x = {} # E: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+x['x'].append(1)
+
+y = defaultdict(list)  # E: Need type annotation for 'y'
+y[[]].append(1)
+[builtins fixtures/dict.pyi]
+
+[case testPartialDefaultDictSpecialCases2]
+from collections import defaultdict
+
+x = defaultdict(lambda: [1]) # E: Need type annotation for 'x'
+x[1].append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
+reveal_type(x) # N: Revealed type is 'collections.defaultdict[Any, builtins.list[builtins.int]]'
+
+xx = defaultdict(lambda: {'x': 1}) # E: Need type annotation for 'xx'
+xx[1]['z'] = 3
+reveal_type(xx) # N: Revealed type is 'collections.defaultdict[Any, builtins.dict[builtins.str, builtins.int]]'
+
+y = defaultdict(dict)  # E: Need type annotation for 'y'
+y['x'][1] = [3]
+
+z = defaultdict(int) # E: Need type annotation for 'z'
+z[1].append('')
+reveal_type(z) # N: Revealed type is 'collections.defaultdict[Any, Any]'
+[builtins fixtures/dict.pyi]
+
+[case testPartialDefaultDictSpecialCase3]
+from collections import defaultdict
+
+x = defaultdict(list)
+x['a'] = [1, 2, 3]
+reveal_type(x)  # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int*]]'
+
+y = defaultdict(list)  # E: Need type annotation for 'y'
+y['a'] = []
+reveal_type(y)  # N: Revealed type is 'collections.defaultdict[Any, Any]'
+[builtins fixtures/dict.pyi]

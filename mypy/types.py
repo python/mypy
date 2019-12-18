@@ -1763,13 +1763,18 @@ class PartialType(ProperType):
     # None for the 'None' partial type; otherwise a generic class
     type = None  # type: Optional[mypy.nodes.TypeInfo]
     var = None  # type: mypy.nodes.Var
+    # For partial defaultdict[K, V], the type V (K is unknown). If V is generic,
+    # the type argument is Any and will be replaced later.
+    value_type = None  # type: Optional[Instance]
 
     def __init__(self,
                  type: 'Optional[mypy.nodes.TypeInfo]',
-                 var: 'mypy.nodes.Var') -> None:
+                 var: 'mypy.nodes.Var',
+                 value_type: 'Optional[Instance]' = None) -> None:
         super().__init__()
         self.type = type
         self.var = var
+        self.value_type = value_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_partial_type(self)

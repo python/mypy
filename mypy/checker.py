@@ -2813,7 +2813,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
-            if (isinstance(lvalue, (NameExpr, MemberExpr)) and
+            is_ref = isinstance(lvalue, RefExpr)
+            if (is_ref and
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
                      fullname == 'builtins.dict' or
@@ -2821,6 +2822,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     all(isinstance(t, (NoneType, UninhabitedType))
                         for t in get_proper_types(init_type.args))):
                 partial_type = PartialType(init_type.type, name)
+            elif is_ref and fullname == 'collections.defaultdict':
+                arg0 = get_proper_type(init_type.args[0])
+                arg1 = get_proper_type(init_type.args[1])
+                if (isinstance(arg0, (NoneType, UninhabitedType)) and
+                        isinstance(arg1, Instance) and
+                        self.is_valid_defaultdict_partial_value_type(arg1)):
+                    # Erase type argument, if one exists (this fills in Anys)
+                    arg1 = self.named_type(arg1.type.fullname)
+                    partial_type = PartialType(init_type.type, name, arg1)
+                else:
+                    return False
             else:
                 return False
         else:
@@ -2828,6 +2840,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.set_inferred_type(name, lvalue, partial_type)
         self.partial_types[-1].map[name] = lvalue
         return True
+
+    def is_valid_defaultdict_partial_value_type(self, t: Instance) -> bool:
+        """Check if t can be used as the basis for a partial defaultddict value type.
+
+        Examples:
+
+          * t is 'int' --> True
+          * t is 'list[<nothing>]' --> True
+          * t is 'dict[...]' --> False (only generic types with a single type
+            argument supported)
+        """
+        if len(t.args) == 0:
+            return True
+        if len(t.args) == 1:
+            arg = get_proper_type(t.args[0])
+            # TODO: This is too permissive -- we only allow TypeVarType since
+            #       they leak in cases like defaultdict(list) due to a bug.
+            #       This can result in incorrect types being inferred, but only
+            #       in rare cases.
+            if isinstance(arg, (TypeVarType, UninhabitedType, NoneType)):
+                return True
+        return False
 
     def set_inferred_type(self, var: Var, lvalue: Lvalue, type: Type) -> None:
         """Store inferred variable type.
@@ -3018,16 +3052,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if partial_types is None:
                     return
                 typename = type_type.fullname
-                if typename == 'builtins.dict' or typename == 'collections.OrderedDict':
+                if (typename == 'builtins.dict'
+                        or typename == 'collections.OrderedDict'
+                        or typename == 'collections.defaultdict'):
                     # TODO: Don't infer things twice.
                     key_type = self.expr_checker.accept(lvalue.index)
                     value_type = self.expr_checker.accept(rvalue)
                     if (is_valid_inferred_type(key_type) and
-                            is_valid_inferred_type(value_type)):
-                        if not self.current_node_deferred:
-                            var.type = self.named_generic_type(typename,
-                                                               [key_type, value_type])
-                            del partial_types[var]
+                            is_valid_inferred_type(value_type) and
+                            not self.current_node_deferred and
+                            not (typename == 'collections.defaultdict' and
+                                 var.type.value_type is not None and
+                                 not is_equivalent(value_type, var.type.value_type))):
+                        var.type = self.named_generic_type(typename,
+                                                           [key_type, value_type])
+                        del partial_types[var]
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
