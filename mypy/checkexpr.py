@@ -651,6 +651,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                            for item_type in arg_type.args):
                         return self.chk.named_generic_type(typename,
                                                            list(arg_type.args))
+            elif isinstance(arg_type, AnyType):
+                return self.chk.named_type(typename)
+
         return None
 
     def apply_function_plugin(self,
