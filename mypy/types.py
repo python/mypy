@@ -1764,10 +1764,7 @@ class PartialType(ProperType):
     type = None  # type: Optional[mypy.nodes.TypeInfo]
     var = None  # type: mypy.nodes.Var
     # For partial defaultdict[K, V], the type V (K is unknown). If V is generic,
-    # the type argument is not final and will be replaced later (it's TypeVarType
-    # or UninhabitedType).
-    #
-    # TODO: The type argument can only be TypeVarType due to leaking type variables
+    # the type argument is Any and will be replaced later.
     value_type = None  # type: Optional[Instance]
 
     def __init__(self,

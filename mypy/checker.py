@@ -2813,7 +2813,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
-            is_ref = isinstance(lvalue, (NameExpr, MemberExpr))
+            is_ref = isinstance(lvalue, RefExpr)
             if (is_ref and
                     (fullname == 'builtins.list' or
                      fullname == 'builtins.set' or
@@ -2827,7 +2827,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 arg1 = get_proper_type(init_type.args[1])
                 if (isinstance(arg0, (NoneType, UninhabitedType)) and
                         isinstance(arg1, Instance) and
-                        self.is_valid_ordereddict_partial_value_type(arg1)):
+                        self.is_valid_defaultdict_partial_value_type(arg1)):
+                    # Erase type argument, if one exists (this fills in Anys)
+                    arg1 = self.named_type(arg1.type.fullname)
                     partial_type = PartialType(init_type.type, name, arg1)
                 else:
                     return False
@@ -2839,7 +2841,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types[-1].map[name] = lvalue
         return True
 
-    def is_valid_ordereddict_partial_value_type(self, t: Instance) -> bool:
+    def is_valid_defaultdict_partial_value_type(self, t: Instance) -> bool:
+        """Check if t can be used as the basis for a partial defaultddict value type.
+
+        Examples:
+
+          * t is 'int' --> True
+          * t is 'list[<nothing>]' --> True
+          * t is 'dict[...]' --> False (only generic types with a single type
+            argument supported)
+        """
         if len(t.args) == 0:
             return True
         if len(t.args) == 1:
@@ -2848,7 +2859,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             #       they leak in cases like defaultdict(list) due to a bug.
             #       This can result in incorrect types being inferred, but only
             #       in rare cases.
-            if isinstance(arg, (TypeVarType, UninhabitedType)):
+            if isinstance(arg, (TypeVarType, UninhabitedType, NoneType)):
                 return True
         return False
 
