@@ -63,7 +63,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.mro import calculate_mro
-from mypy.erasetype import erase_typevars, remove_instance_last_known_values
+from mypy.erasetype import erase_typevars, remove_instance_last_known_values, erase_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
@@ -2826,10 +2826,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 arg0 = get_proper_type(init_type.args[0])
                 arg1 = get_proper_type(init_type.args[1])
                 if (isinstance(arg0, (NoneType, UninhabitedType)) and
-                        isinstance(arg1, Instance) and
                         self.is_valid_defaultdict_partial_value_type(arg1)):
-                    # Erase type argument, if one exists (this fills in Anys)
-                    arg1 = self.named_type(arg1.type.fullname)
+                    arg1 = erase_type(arg1)
+                    assert isinstance(arg1, Instance)
                     partial_type = PartialType(init_type.type, name, arg1)
                 else:
                     return False
@@ -2841,7 +2840,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types[-1].map[name] = lvalue
         return True
 
-    def is_valid_defaultdict_partial_value_type(self, t: Instance) -> bool:
+    def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
         """Check if t can be used as the basis for a partial defaultddict value type.
 
         Examples:
@@ -2851,6 +2850,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
           * t is 'dict[...]' --> False (only generic types with a single type
             argument supported)
         """
+        if not isinstance(t, Instance):
+            return False
         if len(t.args) == 0:
             return True
         if len(t.args) == 1:
