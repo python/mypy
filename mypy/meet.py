@@ -491,8 +491,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     args = []  # type: List[Type]
-                    for i in range(len(t.args)):
-                        args.append(self.meet(t.args[i], si.args[i]))
+                    # N.B: We use zip instead of indexing because the lengths might have
+                    # mismatches during daemon reprocessing.
+                    for ta, sia in zip(t.args, si.args):
+                        args.append(self.meet(ta, sia))
                     return Instance(t.type, args)
                 else:
                     if state.strict_optional:

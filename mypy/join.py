@@ -345,8 +345,10 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
         if is_subtype(t, s) or is_subtype(s, t):
             # Compatible; combine type arguments.
             args = []  # type: List[Type]
-            for i in range(len(t.args)):
-                args.append(join_types(t.args[i], s.args[i]))
+            # N.B: We use zip instead of indexing because the lengths might have
+            # mismatches during daemon reprocessing.
+            for ta, sa in zip(t.args, s.args):
+                args.append(join_types(ta, sa))
             return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.

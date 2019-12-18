@@ -9288,3 +9288,92 @@ class B:
         self.x = 0
 [out]
 ==
+
+[case testGenericChange1]
+import a
+[file a.py]
+import b
+def f() -> b.C: pass
+[file b.py]
+import a
+class C: pass
+[file b.py.2]
+from typing import TypeVar, Generic, List
+import a
+
+T = TypeVar('T')
+class C(Generic[T]): pass
+
+reveal_type(a.f)
+c: C[int]
+l = a.f() if True else c
+d = a.f()
+d = c
+c = d
+
+x: List[C] = [a.f(), a.f()]
+
+[out]
+==
+b.py:7: note: Revealed type is 'def () -> b.C[Any]'
+[builtins fixtures/list.pyi]
+
+[case testGenericChange2]
+import a
+[file a.py]
+import b
+def f() -> b.C[int]: pass
+[file b.py]
+from typing import TypeVar, Generic
+import a
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file b.py.2]
+from typing import List
+import a
+
+class C(): pass
+
+c: C
+l = a.f() if True else c
+d = a.f()
+d = c
+c = d
+
+x: List[C] = [a.f(), a.f()]
+
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:2: error: "C" expects no type arguments, but 1 given
+
+[case testGenericChange3]
+import a
+[file a.py]
+import b
+def f() -> b.C[int]: pass
+[file b.py]
+from typing import TypeVar, Generic
+import a
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file b.py.2]
+from typing import TypeVar, Generic, List
+import a
+
+T = TypeVar('T')
+S = TypeVar('S')
+class C(Generic[S, T]): pass
+
+c: C[int, str]
+l = a.f() if True else c
+d = a.f()
+d = c
+c = d
+
+x: List[C] = [a.f(), a.f()]
+
+[out]
+==
+a.py:2: error: "C" expects 2 type arguments, but 1 given
+[builtins fixtures/list.pyi]
