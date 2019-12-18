@@ -1757,6 +1757,15 @@ if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
 reveal_type(d)  # N: Revealed type is 'None'
 [builtins fixtures/dict.pyi]
 
+[case testInferFromEmptyListWhenUsingInWithStrictEquality]
+# flags: --strict-equality
+def f() -> None:
+    a = []
+    if 1 in a:  # TODO: This should be an error
+        a.append('x')
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------
