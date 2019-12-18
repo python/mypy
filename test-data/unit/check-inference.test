@@ -1723,6 +1723,21 @@ class C:
         self.a = 1
 reveal_type(C().a)  # N: Revealed type is 'Union[builtins.int, None]'
 
+[case testInferListTypeFromEmptyListAndAny]
+def f():
+    return []
+
+def g() -> None:
+    x = []
+    if bool():
+        x = f()
+    reveal_type(x)  # N: Revealed type is 'builtins.list[Any]'
+
+    y = []
+    y.extend(f())
+    reveal_type(y)  # N: Revealed type is 'builtins.list[Any]'
+[builtins fixtures/list.pyi]
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------
