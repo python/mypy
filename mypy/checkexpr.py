@@ -2211,11 +2211,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return result
 
     def find_partial_type_ref_fast_path(self, expr: Expression) -> Optional[Type]:
+        """If expression has a partial generic type, return it without additional checks.
+
+        In particular, this does not generate an error about a missing annotation.
+
+        Otherwise, return None.
+        """
         if not isinstance(expr, RefExpr):
             return None
         if isinstance(expr.node, Var):
             result = self.analyze_var_ref(expr.node, expr)
-            if isinstance(result, PartialType):
+            if isinstance(result, PartialType) and result.type is not None:
                 self.chk.store_type(expr, result)
                 return result
         return None

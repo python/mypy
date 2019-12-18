@@ -1750,6 +1750,13 @@ if 'x' not in dd:
 reveal_type(dd)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 [builtins fixtures/dict.pyi]
 
+[case testInferFromEmptyDictWhenUsingInSpecialCase]
+d = None
+if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
+    pass
+reveal_type(d)  # N: Revealed type is 'None'
+[builtins fixtures/dict.pyi]
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------
