@@ -2844,7 +2844,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         if len(t.args) == 1:
             arg = get_proper_type(t.args[0])
-            if isinstance(arg, (TypeVarType, UninhabitedType)):  # TODO: This is too permissive
+            # TODO: This is too permissive -- we only allow TypeVarType since
+            #       they leak in cases like defaultdict(list) due to a bug.
+            #       This can result in incorrect types being inferred, but only
+            #       in rare cases.
+            if isinstance(arg, (TypeVarType, UninhabitedType)):
                 return True
         return False
 
