@@ -143,6 +143,9 @@ class SupportsInt(Protocol):
 class SupportsFloat(Protocol):
     def __float__(self) -> float: pass
 
+class SupportsAbs(Protocol[T_co]):
+    def __abs__(self) -> T_co: pass
+
 def runtime_checkable(cls: T) -> T:
     return cls
 
