@@ -3942,7 +3942,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo))
 
     def is_textually_before_statement(self, node: SymbolNode) -> bool:
-        """Check if a node is defined textually before a statement
+        """Check if a node is defined textually before the current statement
 
         Note that decorated functions' line number are the same as
         the top decorator.

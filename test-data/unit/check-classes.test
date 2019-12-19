@@ -6607,6 +6607,10 @@ class B:
     @staticmethod
     def A() -> Type[A]:
         return A
+    @staticmethod
+    def B() -> Type[A]:  # E: Function "__main__.B.A" is not valid as a type \
+                         # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return A
 
 class C:
     @property
@@ -6615,3 +6619,19 @@ class C:
         return A
 
 [builtins fixtures/staticmethod.pyi]
+
+[case testRefMethodWithOverloadDecorator]
+from typing import Type, overload
+
+class A:
+    pass
+
+class B:
+    @classmethod
+    @overload
+    def A(cls, x: int) -> Type[A]: ...
+    @classmethod
+    @overload
+    def A(cls, x: str) -> Type[A]: ...
+
+[builtins fixtures/classmethod.pyi]
