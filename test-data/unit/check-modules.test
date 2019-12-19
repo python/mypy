@@ -2781,3 +2781,28 @@ aaaab: int
 aaaba: int
 aabaa: int
 [builtins fixtures/module.pyi]
+
+[case testDirectlyImportTypedDictObjectAtTopLevel]
+import foo.bar.custom_dict
+from foo import bar
+from foo.bar import custom_dict
+from foo.bar.custom_dict import CustomDict
+
+foo.bar.custom_dict.CustomDict(foo="abc", bar="def")
+bar.custom_dict.CustomDict(foo="abc", bar="def")
+custom_dict.CustomDict(foo="abc", bar="def")
+CustomDict(foo="abc", bar="def")
+
+[file foo/__init__.py]
+[file foo/bar/__init__.py]
+[file foo/bar/custom_dict.py]
+from typing_extensions import TypedDict
+
+CustomDict = TypedDict(
+    "CustomDict",
+    {
+        "foo": str,
+        "bar": str,
+    },
+)
+[typing fixtures/typing-full.pyi]
