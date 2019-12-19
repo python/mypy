@@ -1521,7 +1521,7 @@ x: Union[int, List[str]]
 if isinstance(x, Iterable):
     reveal_type(x) # N: Revealed type is 'builtins.list[builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
 from typing import Protocol, runtime_checkable, TypeVar, Generic
@@ -1581,7 +1581,7 @@ else:
     reveal_type(c2) # N: Revealed type is '__main__.C2'
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesUnionInProtocolsIsInstance]
 from typing import Protocol, runtime_checkable, TypeVar, Generic, Union
@@ -1615,7 +1615,7 @@ if isinstance(x, P2):
 else:
     reveal_type(x) # N: Revealed type is '__main__.C1[builtins.int]'
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Non-Instances and protocol types (Callable vs __call__ etc.)
 -- ------------------------------------------------------------
@@ -2219,7 +2219,7 @@ if issubclass(cls, P):
 else:
     reveal_type(cls)  # N: Revealed type is 'Type[__main__.E]'
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testCallableImplementsProtocol]
@@ -2495,4 +2495,4 @@ reveal_type(abs(TWO))  # N: Revealed type is 'builtins.int*'
 reveal_type(abs(3))  # N: Revealed type is 'builtins.int*'
 reveal_type(abs(ALL))  # N: Revealed type is 'builtins.int*'
 [builtins fixtures/float.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
