@@ -152,7 +152,7 @@ async def f() -> None:
     async for x in C():
         reveal_type(x)  # N: Revealed type is 'builtins.int*'
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncForError]
 
@@ -161,7 +161,7 @@ async def f() -> None:
     async for x in [1]:
         pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
 
@@ -667,7 +667,7 @@ async def decorated_host_coroutine() -> None:
     x = await other_coroutine()
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testAsyncGenDisallowUntyped]
@@ -681,7 +681,7 @@ async def f() -> AsyncGenerator[int, None]:
 async def g() -> AsyncGenerator[Any, None]:
     yield 0
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testAsyncGenDisallowUntypedTriggers]
@@ -697,7 +697,7 @@ async def h() -> Any:
 async def g():  # E: Function is missing a return type annotation
     yield 0
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testAsyncOverloadedFunction]
