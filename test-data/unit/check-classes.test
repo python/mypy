@@ -6603,10 +6603,15 @@ from typing import Type
 class A:
     pass
 
-
 class B:
     @staticmethod
     def A() -> Type[A]:
         return A
 
-[builtins fixtures/classmethod.pyi]
+class C:
+    @property
+    @staticmethod
+    def A() -> Type[A]:
+        return A
+
+[builtins fixtures/staticmethod.pyi]
