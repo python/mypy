@@ -3949,7 +3949,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         assert self.statement
         line_diff = self.statement.line - node.line
-        if isinstance(node, Decorator):
+        if isinstance(node, OverloadedFuncDef) and isinstance(self.statement, FuncDef):
+            return node.name != self.statement.name and line_diff > 0
+        elif isinstance(node, Decorator) and not node.is_overload:
             return line_diff > len(node.original_decorators)
         else:
             return line_diff > 0

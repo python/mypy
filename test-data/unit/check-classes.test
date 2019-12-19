@@ -6633,5 +6633,8 @@ class B:
     @classmethod
     @overload
     def A(cls, x: str) -> Type[A]: ...
+    @classmethod
+    def A(cls, x: object) -> Type[A]:
+        return A
 
 [builtins fixtures/classmethod.pyi]
