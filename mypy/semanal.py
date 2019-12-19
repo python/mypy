@@ -3945,7 +3945,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Check if a node is defined textually before a statement
 
         Note that decorated functions' line number are the same as
-        the topest decorator.
+        the top decorator.
         """
         assert self.statement
         line_diff = self.statement.line - node.line
