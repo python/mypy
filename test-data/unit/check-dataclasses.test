@@ -80,6 +80,28 @@ reveal_type(D)  # N: Revealed type is 'def (a: builtins.int, b: builtins.int, c:
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassesMultipleInheritance]
+from dataclasses import dataclass, field, InitVar
+@dataclass
+class A:
+    a: bool
+
+@dataclass
+class B:
+    b: InitVar[bool]
+    _b: bool = field(init=False)
+
+    def __post_init__(self, b: bool):
+        self._b = b
+
+@dataclass
+class C(A, B):
+    pass
+
+reveal_type(C)  # N: Revealed type is 'def (b: builtins.bool, a: builtins.bool) -> __main__.C'
+
+[builtins fixtures/bool.pyi]
+
 [case testDataclassesOverriding]
 # flags: --python-version 3.6
 from dataclasses import dataclass
@@ -588,6 +610,88 @@ class A:
         reveal_type(cls())  # N: Revealed type is 'T`-1'
         return cls()
 [builtins fixtures/classmethod.pyi]
+
+[case testDataclassesInitVarOverride]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a):
+        self._a = a
+
+@dataclasses.dataclass(init=False)
+class B(A):
+    b: dataclasses.InitVar[int]
+    _b: int = dataclasses.field(init=False)
+
+    def __init__(self, b):
+        super().__init__(b+1)
+        self._b = b
+
+[builtins fixtures/bool.pyi]
+
+[case testDataclassesInitVarNoOverride]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a):
+        self._a = a
+
+@dataclasses.dataclass(init=True)
+class B(A):
+    b: dataclasses.InitVar[int]
+    _b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a, b):
+        self._a = a
+        self._b = b
+
+B(1, 2)
+B(1, 'a') # E: Argument 2 to "B" has incompatible type "str"; expected "int"
+
+[builtins fixtures/bool.pyi]
+
+[case testDataclassesInitVarPostInitOverride]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        self._a = a
+
+@dataclasses.dataclass
+class B(A):
+    b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        super().__post_init__(a)
+        self.b = a + 1
+
+@dataclasses.dataclass(init=False)
+class C(B):
+    c: int
+
+    def __init__(self, a: int, c: int) -> None:
+        super().__init__(a)
+        self.c = c + self.b
+
+A(1)
+B(1)
+B(1, 2)  # E: Too many arguments for "B"
+C(1, 2)
+C(1, 'a')  # E: Argument 2 to "C" has incompatible type "str"; expected "int"
+
+[builtins fixtures/primitives.pyi]
 
 [case testNoComplainFieldNone]
 # flags: --python-version 3.6
