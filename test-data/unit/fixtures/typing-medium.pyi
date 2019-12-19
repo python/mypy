@@ -39,11 +39,6 @@ S = TypeVar('S')
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
 
-class Container(Protocol[T_co]):
-    @abstractmethod
-    # Use int because bool isn't in the default test builtins
-    def __contains__(self, arg: object) -> int: pass
-
 class Sized(Protocol):
     @abstractmethod
     def __len__(self) -> int: pass
@@ -83,7 +78,7 @@ class Coroutine(Awaitable[V], Generic[T, U, V]):
     @abstractmethod
     def close(self) -> None: pass
 
-class Sequence(Iterable[T_co], Container[T_co]):
+class Sequence(Iterable[T_co]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
 
