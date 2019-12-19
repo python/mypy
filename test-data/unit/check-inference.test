@@ -1738,6 +1738,34 @@ def g() -> None:
     reveal_type(y)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
 
+[case testInferFromEmptyDictWhenUsingIn]
+d = {}
+if 'x' in d:
+    d['x'] = 1
+reveal_type(d)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+
+dd = {}
+if 'x' not in dd:
+    dd['x'] = 1
+reveal_type(dd)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+[builtins fixtures/dict.pyi]
+
+[case testInferFromEmptyDictWhenUsingInSpecialCase]
+d = None
+if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
+    pass
+reveal_type(d)  # N: Revealed type is 'None'
+[builtins fixtures/dict.pyi]
+
+[case testInferFromEmptyListWhenUsingInWithStrictEquality]
+# flags: --strict-equality
+def f() -> None:
+    a = []
+    if 1 in a:  # TODO: This should be an error
+        a.append('x')
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------

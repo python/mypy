@@ -2125,7 +2125,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method_type = None  # type: Optional[mypy.types.Type]
 
             if operator == 'in' or operator == 'not in':
-                right_type = self.accept(right)  # always validate the right operand
+                # If the right operand has partial type, look it up without triggering
+                # a "Need type annotation ..." message, as it would be noise.
+                right_type = self.find_partial_type_ref_fast_path(right)
+                if right_type is None:
+                    right_type = self.accept(right)  # Validate the right operand
 
                 # Keep track of whether we get type check errors (these won't be reported, they
                 # are just to verify whether something is valid typing wise).
@@ -2205,6 +2209,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert result is not None
         return result
+
+    def find_partial_type_ref_fast_path(self, expr: Expression) -> Optional[Type]:
+        """If expression has a partial generic type, return it without additional checks.
+
+        In particular, this does not generate an error about a missing annotation.
+
+        Otherwise, return None.
+        """
+        if not isinstance(expr, RefExpr):
+            return None
+        if isinstance(expr.node, Var):
+            result = self.analyze_var_ref(expr.node, expr)
+            if isinstance(result, PartialType) and result.type is not None:
+                self.chk.store_type(expr, self.chk.fixup_partial_type(result))
+                return result
+        return None
 
     def dangerous_comparison(self, left: Type, right: Type,
                              original_container: Optional[Type] = None) -> bool:
