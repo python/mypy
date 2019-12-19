@@ -8,8 +8,6 @@
 
 from abc import abstractmethod, ABCMeta
 
-class GenericMeta(type): pass
-
 cast = 0
 overload = 0
 Any = 0
