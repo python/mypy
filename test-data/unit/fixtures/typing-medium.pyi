@@ -88,9 +88,6 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass
 
-class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
-    def __setitem__(self, k: T, v: U) -> None: pass
-
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
 
