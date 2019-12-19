@@ -180,7 +180,7 @@ async def f() -> None:
     async for z in C():  # type: Union[int, str]
         reveal_type(z)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehension]
 # flags: --python-version 3.6
@@ -507,7 +507,7 @@ async def h() -> None:
     reveal_type(await g.asend('hello'))  # N: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAthrow]
 # flags: --python-version 3.6
@@ -526,7 +526,7 @@ async def h() -> None:
     reveal_type(await g.athrow(BaseException))  # N: Revealed type is 'builtins.str*'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoSyncIteration]
 # flags: --python-version 3.6
@@ -541,7 +541,7 @@ def h() -> None:
         pass
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [out]
 main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
@@ -557,7 +557,7 @@ async def gen() -> AsyncGenerator[int, None]:
     yield from f()  # E: 'yield from' in async function
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorNoReturnWithValue]
 # flags: --python-version 3.6
@@ -579,7 +579,7 @@ async def return_f() -> AsyncGenerator[int, None]:
     return f()  # E: 'return' with value in async generator is not allowed
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- The full matrix of coroutine compatibility
 -- ------------------------------------------
