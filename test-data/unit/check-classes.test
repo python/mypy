@@ -6596,3 +6596,17 @@ reveal_type(D() + "str")  # N: Revealed type is 'Any'
 
 reveal_type(0.5 + D1())  # N: Revealed type is 'Any'
 reveal_type(D1() + 0.5)  # N: Revealed type is '__main__.D1'
+
+[case testRefMethodWithDecorator]
+from typing import Type
+
+class A:
+    pass
+
+
+class B:
+    @staticmethod
+    def A() -> Type[A]:
+        return A
+
+[builtins fixtures/classmethod.pyi]

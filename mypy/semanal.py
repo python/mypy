@@ -3936,10 +3936,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         #       caught.
         assert self.statement  # we are at class scope
         return (node is None
-                or node.line < self.statement.line
+                or self.is_textually_before_statement(node)
                 or not self.is_defined_in_current_module(node.fullname)
                 or isinstance(node, TypeInfo)
                 or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo))
+
+    def is_textually_before_statement(self, node: SymbolNode) -> bool:
+        assert self.statement
+        line_diff = self.statement.line - node.line
+        return line_diff > 1 or (line_diff == 1 and not isinstance(node, Decorator))
 
     def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
         if fullname is None:
