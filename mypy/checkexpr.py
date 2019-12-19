@@ -263,7 +263,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
 
     def visit_call_expr_inner(self, e: CallExpr, allow_none_return: bool = False) -> Type:
-        if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
+        if isinstance(e.callee, RefExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             # Use named fallback for better error messages.
             typeddict_type = e.callee.node.typeddict_type.copy_modified(
