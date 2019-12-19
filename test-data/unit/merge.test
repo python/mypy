@@ -1148,7 +1148,7 @@ from typing import Iterator, List, Tuple
 @contextmanager
 def f(x: List[Tuple[int]]) -> Iterator[None]:
     yield
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 __main__:

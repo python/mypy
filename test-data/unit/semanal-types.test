@@ -1371,7 +1371,7 @@ MypyFile:1(
 from typing import _promote
 @_promote(str)
 class S: pass
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [_promote])

@@ -950,7 +950,7 @@ default = Config({'cannot': 'modify'})  # OK
 
 default[1] = 2  # E: Unsupported target for indexed assignment
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testSubclassOfABCFromDictionary]
 from abc import abstractmethod, ABCMeta

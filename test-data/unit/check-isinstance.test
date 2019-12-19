@@ -1755,7 +1755,7 @@ isinstance(x, Iterable[T])  # E: Parameterized generics cannot be used with clas
 isinstance(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, (int, (str, Iterable[int])))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testIsinstanceAnyAlias]
 from typing import Any
@@ -1775,7 +1775,7 @@ isinstance(x, It)
 isinstance(x, It2[int])  # E: Parameterized generics cannot be used with class or instance checks
 isinstance(x, It2)  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testIssubclassTypeArgs]
 from typing import Iterable, TypeVar
@@ -1786,7 +1786,7 @@ issubclass(x, Iterable[int])  # E: Parameterized generics cannot be used with cl
 issubclass(x, Iterable[T])  # E: Parameterized generics cannot be used with class or instance checks
 issubclass(x, (int, Iterable[int]))  # E: Parameterized generics cannot be used with class or instance checks
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testIsinstanceAndNarrowTypeVariable]
 from typing import TypeVar
@@ -2020,7 +2020,7 @@ if y not in z:
     reveal_type(y) # N: Revealed type is 'Union[builtins.int, None]'
 else:
     reveal_type(y) # N: Revealed type is 'Union[builtins.int, None]'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2042,7 +2042,7 @@ if y not in C():
     reveal_type(y) # N: Revealed type is 'Union[builtins.int, None]'
 else:
     reveal_type(y) # N: Revealed type is 'Union[builtins.int, None]'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2077,7 +2077,7 @@ def f() -> None:
     if x not in td:
         return
     reveal_type(x) # N: Revealed type is 'builtins.str'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 

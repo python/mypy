@@ -959,13 +959,13 @@ fb(aa) # E: Argument 1 to "fb" has incompatible type "Tuple[A, A]"; expected "Tu
 from typing import Container
 a = None  # type: Container[str]
 a = ()
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testSubtypingTupleIsSized]
 from typing import Sized
 a = None  # type: Sized
 a = ()
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testTupleWithStarExpr1]
 

@@ -521,7 +521,7 @@ reveal_type(close(arg)) # N: Revealed type is 'builtins.int*'
 reveal_type(close_all([F()])) # N: Revealed type is 'builtins.int*'
 reveal_type(close_all([arg])) # N: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testProtocolGenericInference2]
 from typing import Generic, TypeVar, Protocol
@@ -786,7 +786,7 @@ t = D[int]() # OK
 if int():
     t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testRecursiveProtocols2]
 from typing import Protocol, TypeVar
@@ -843,7 +843,7 @@ if int():
     t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
     t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
 from typing import Protocol, Sequence, List
@@ -1333,7 +1333,7 @@ f(C()) # E: No overload variant of "f" matches argument type "C" \
        # N:     def f(x: P1) -> int \
        # N:     def f(x: P2) -> str
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 -- Unions of protocol types
 -- ------------------------
@@ -1511,7 +1511,7 @@ if isinstance(x, R):
     reveal_type(x)  # N: Revealed type is '__main__.R'
     reveal_type(x.meth())  # N: Revealed type is 'builtins.int'
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testRuntimeIterableProtocolCheck]
 from typing import Iterable, List, Union
@@ -1521,7 +1521,7 @@ x: Union[int, List[str]]
 if isinstance(x, Iterable):
     reveal_type(x) # N: Revealed type is 'builtins.list[builtins.str]'
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
 from typing import Protocol, runtime_checkable, TypeVar, Generic
@@ -1581,7 +1581,7 @@ else:
     reveal_type(c2) # N: Revealed type is '__main__.C2'
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testConcreteClassesUnionInProtocolsIsInstance]
 from typing import Protocol, runtime_checkable, TypeVar, Generic, Union
@@ -1615,7 +1615,7 @@ if isinstance(x, P2):
 else:
     reveal_type(x) # N: Revealed type is '__main__.C1[builtins.int]'
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 -- Non-Instances and protocol types (Callable vs __call__ etc.)
 -- ------------------------------------------------------------
@@ -1776,7 +1776,7 @@ bar((1, 2))
 bar(1) # E: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testBasicSupportsIntProtocol]
 from typing import SupportsInt
@@ -1792,7 +1792,7 @@ foo(Bar())
 foo('no way') # E: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 -- Additional tests and corner cases for protocols
 -- ----------------------------------------------
@@ -2219,7 +2219,7 @@ if issubclass(cls, P):
 else:
     reveal_type(cls)  # N: Revealed type is 'Type[__main__.E]'
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testCallableImplementsProtocol]
@@ -2431,7 +2431,7 @@ class P(Protocol): ...
 class C(P): ...
 
 reveal_type(C.register(int))  # N: Revealed type is 'def () -> builtins.int'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testProtocolVarianceAfterDecorators]
@@ -2495,4 +2495,4 @@ reveal_type(abs(TWO))  # N: Revealed type is 'builtins.int*'
 reveal_type(abs(3))  # N: Revealed type is 'builtins.int*'
 reveal_type(abs(ALL))  # N: Revealed type is 'builtins.int*'
 [builtins fixtures/float.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]

@@ -21,7 +21,7 @@ with yield_id(1) as x:
 f = yield_id
 def g(x, y): pass
 f = g # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[T], GeneratorContextManager[T]]")
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testContextManagerWithUnspecifiedArguments]
 from contextlib import contextmanager
@@ -30,4 +30,4 @@ from typing import Callable, Iterator
 c: Callable[..., Iterator[int]]
 reveal_type(c) # N: Revealed type is 'def (*Any, **Any) -> typing.Iterator[builtins.int]'
 reveal_type(contextmanager(c)) # N: Revealed type is 'def (*Any, **Any) -> contextlib.GeneratorContextManager[builtins.int*]'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]

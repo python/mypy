@@ -1683,7 +1683,7 @@ b = None  # type: B
 if int():
     b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = b
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDucktypeTransitivityDecorator]
 from typing import _promote
@@ -1697,7 +1697,7 @@ c = None  # type: C
 if int():
     c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
     a = c
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 -- Hard coded type promotions
@@ -4853,7 +4853,7 @@ class MyDestr(Destroyable):
 reveal_type(Arc[MyDestr]())  # N: Revealed type is '__main__.Arc[__main__.MyDestr*]'
 reveal_type(Arc1[MyDestr]())  # N: Revealed type is '__main__.Arc1[__main__.MyDestr*]'
 [builtins fixtures/bool.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testSixMetaclassErrors]
 
@@ -4979,7 +4979,7 @@ class MyDestr(Destroyable):
     pass
 reveal_type(Arc[MyDestr]())  # N: Revealed type is '__main__.Arc[__main__.MyDestr*]'
 [builtins fixtures/bool.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testFutureMetaclassErrors]
 import future.utils

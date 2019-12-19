@@ -1154,7 +1154,7 @@ OpExpr(3) : builtins.list[builtins.str]
 ## IntExpr|OpExpr|StrExpr
 '%d' % 1
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 IntExpr(2) : Literal[1]?
 OpExpr(2) : builtins.str
