@@ -2222,7 +2222,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(expr.node, Var):
             result = self.analyze_var_ref(expr.node, expr)
             if isinstance(result, PartialType) and result.type is not None:
-                self.chk.store_type(expr, result)
+                self.chk.store_type(expr, self.chk.fixup_partial_type(result))
                 return result
         return None
 
