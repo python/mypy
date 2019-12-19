@@ -1333,7 +1333,7 @@ f(C()) # E: No overload variant of "f" matches argument type "C" \
        # N:     def f(x: P1) -> int \
        # N:     def f(x: P2) -> str
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Unions of protocol types
 -- ------------------------
@@ -1511,7 +1511,7 @@ if isinstance(x, R):
     reveal_type(x)  # N: Revealed type is '__main__.R'
     reveal_type(x.meth())  # N: Revealed type is 'builtins.int'
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRuntimeIterableProtocolCheck]
 from typing import Iterable, List, Union

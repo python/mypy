@@ -2473,7 +2473,7 @@ c: Container[int]
 1 == 1.0  # OK
 1.0 in c  # OK
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStrictEqualityAny]
 # flags: --strict-equality
@@ -2485,7 +2485,7 @@ x in c
 x == 42
 x is 42
 [builtins fixtures/bool.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStrictEqualityStrictOptional]
 # flags: --strict-equality --strict-optional
@@ -2600,7 +2600,7 @@ object in subclasses
 D in subclasses
 Bad in subclasses  # E: Non-overlapping container check (element type: "Type[Bad]", container item type: "Type[C]")
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testStrictEqualityMetaclass]
 # flags: --strict-equality
