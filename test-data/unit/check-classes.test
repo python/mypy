@@ -6605,8 +6605,7 @@ class A:
 
 class B:
     @staticmethod
-    def A() -> Type[A]:
-        return A
+    def A() -> Type[A]: ...
     @staticmethod
     def B() -> Type[A]:  # E: Function "__main__.B.A" is not valid as a type \
                          # N: Perhaps you need "Callable[...]" or a callback protocol?
