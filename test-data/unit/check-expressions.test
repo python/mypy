@@ -1147,7 +1147,7 @@ i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 '%d' % (s,) # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
 '%d' % t
 '%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
-'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFlo1at]")
+'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
 '%x' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
 '%i' % f
 '%o' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
@@ -1698,6 +1698,7 @@ class S:
 '%d' % S()  # This is OK however
 '{:%}'.format(0.001)
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Lambdas
 -- -------
