@@ -40,15 +40,12 @@ S = TypeVar('S')
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
 
 class Sized(Protocol):
-    @abstractmethod
     def __len__(self) -> int: pass
 
 class Iterable(Protocol[T_co]):
-    @abstractmethod
     def __iter__(self) -> 'Iterator[T_co]': pass
 
 class Iterator(Iterable[T_co], Protocol):
-    @abstractmethod
     def __next__(self) -> T_co: pass
 
 class Generator(Iterator[T], Generic[T, U, V]):
@@ -65,7 +62,6 @@ class Generator(Iterator[T], Generic[T, U, V]):
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
 class Awaitable(Protocol[T]):
-    @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
 
 class Coroutine(Awaitable[V], Generic[T, U, V]):
