@@ -108,9 +108,6 @@ class SupportsInt(Protocol):
 class SupportsFloat(Protocol):
     def __float__(self) -> float: pass
 
-class SupportsAbs(Protocol[T_co]):
-    def __abs__(self) -> T_co: pass
-
 class ContextManager(Generic[T]):
     def __enter__(self) -> T: pass
     # Use Any because not all the precise types are in the fixtures.
