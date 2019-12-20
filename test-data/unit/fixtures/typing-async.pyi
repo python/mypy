@@ -1,6 +1,6 @@
-# More complete stub for typing module.
+# Test stub for typing module, with features for async/await related tests.
 #
-# Use [typing fixtures/typing-full.pyi] to use this instead of lib-stub/typing.pyi
+# Use [typing fixtures/typing-async.pyi] to use this instead of lib-stub/typing.pyi
 # in a particular test case.
 #
 # Many of the definitions have special handling in the type checker, so they
