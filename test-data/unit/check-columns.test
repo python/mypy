@@ -246,7 +246,7 @@ t: D = {'x':
 if int():
     del t['y'] # E:5: TypedDict "D" has no key 'y'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testColumnSignatureIncompatibleWithSuperType]
 class A:
