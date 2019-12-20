@@ -50,15 +50,6 @@ class Iterator(Iterable[T_co], Protocol):
 
 class Generator(Iterator[T], Generic[T, U, V]):
     @abstractmethod
-    def send(self, value: U) -> T: pass
-
-    @abstractmethod
-    def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
-
-    @abstractmethod
-    def close(self) -> None: pass
-
-    @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
 class Sequence(Iterable[T_co]):
