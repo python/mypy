@@ -6,8 +6,6 @@
 # Many of the definitions have special handling in the type checker, so they
 # can just be initialized to anything.
 
-from abc import abstractmethod, ABCMeta
-
 cast = 0
 overload = 0
 Any = 0
@@ -49,14 +47,12 @@ class Iterator(Iterable[T_co], Protocol):
     def __next__(self) -> T_co: pass
 
 class Generator(Iterator[T], Generic[T, U, V]):
-    @abstractmethod
     def __iter__(self) -> 'Generator[T, U, V]': pass
 
 class Sequence(Iterable[T_co]):
-    @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
 
-class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
+class Mapping(Iterable[T], Generic[T, T_co]):
     def __getitem__(self, key: T) -> T_co: pass
 
 class SupportsInt(Protocol):

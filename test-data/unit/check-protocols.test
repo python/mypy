@@ -2431,7 +2431,7 @@ class P(Protocol): ...
 class C(P): ...
 
 reveal_type(C.register(int))  # N: Revealed type is 'def () -> builtins.int'
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 
 [case testProtocolVarianceAfterDecorators]
