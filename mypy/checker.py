@@ -2042,7 +2042,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
                                                       infer_lvalue_type)
         else:
-            self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue)
+            self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue, '=')
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             # If we're assigning to __getattr__ or similar methods, check that the signature is
             # valid.
@@ -2142,10 +2142,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
+    # (type, operator) tuples for augmented assignments supported with partial types
+    partial_type_augmented_ops = {
+        ('builtins.list', '+'),
+        ('builtins.set', '|'),
+    }  # type: Final
+
     def try_infer_partial_generic_type_from_assignment(self,
                                                        lvalue: Lvalue,
-                                                       rvalue: Expression) -> None:
+                                                       rvalue: Expression,
+                                                       op: str) -> None:
         """Try to infer a precise type for partial generic type from assignment.
+
+        'op' is '=' for normal assignment and a binary operator ('+', ...) for
+        augmented assignment.
 
         Example where this happens:
 
@@ -2164,6 +2174,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             typ = var.type
             assert isinstance(typ, PartialType)
             if typ.type is None:
+                return
+            # Return if this is an unsupported augmented assignment.
+            if op != '=' and (typ.type.fullname, op) not in self.partial_type_augmented_ops:
                 return
             # TODO: some logic here duplicates the None partial type counterpart
             #       inlined in check_assignment(), see # 8043.
@@ -3193,6 +3206,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> None:
         """Type check an operator assignment statement, e.g. x += 1."""
+        self.try_infer_partial_generic_type_from_assignment(s.lvalue, s.rvalue, s.op)
         if isinstance(s.lvalue, MemberExpr):
             # Special case, some additional errors may be given for
             # assignments to read-only or final attributes.

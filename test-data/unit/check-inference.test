@@ -1766,6 +1766,18 @@ def f() -> None:
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testInferListTypeFromInplaceAdd]
+a = []
+a += [1]
+reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.int*]'
+[builtins fixtures/list.pyi]
+
+[case testInferSetTypeFromInplaceOr]
+a = set()
+a |= {'x'}
+reveal_type(a)  # N: Revealed type is 'builtins.set[builtins.str*]'
+[builtins fixtures/set.pyi]
+
 
 -- Inferring types of variables first initialized to None (partial types)
 -- ----------------------------------------------------------------------
