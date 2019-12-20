@@ -2077,7 +2077,7 @@ def f() -> None:
     if x not in td:
         return
     reveal_type(x) # N: Revealed type is 'builtins.str'
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 

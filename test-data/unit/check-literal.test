@@ -2185,7 +2185,7 @@ del d[a_key]                  # E: Key 'a' of TypedDict "Outer" cannot be delete
 del d[b_key]
 del d[c_key]                  # E: TypedDict "Outer" has no key 'c'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingUsingFinal]
@@ -2224,7 +2224,7 @@ b[int_key_bad]                       # E: Tuple index out of range
 c[str_key_bad]                       # E: TypedDict "MyDict" has no key 'missing'
 c.get(str_key_bad, u)                # E: TypedDict "MyDict" has no key 'missing'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTupleUnions]
@@ -2306,7 +2306,7 @@ del test[good_keys]             # E: Key 'a' of TypedDict "Test" cannot be delet
 del test[bad_keys]              # E: Key 'a' of TypedDict "Test" cannot be deleted \
                                 # E: TypedDict "Test" has no key 'bad'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictPython2-skip]
@@ -2393,7 +2393,7 @@ reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __m
 reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, Literal[3]?, __main__.C]'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 --
 -- Interactions with 'Final'
