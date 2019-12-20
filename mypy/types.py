@@ -2239,12 +2239,11 @@ def flatten_nested_unions(types: Iterable[Type],
     # TODO: ban such aliases in semantic analyzer.
     flat_items = []  # type: List[Type]
     if handle_type_alias_type:
-        types = [get_proper_type(item) if isinstance(item, TypeAliasType)
-                 else item for item in types]
+        types = get_proper_types(types)
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items,
-                                        handle_type_alias_type=handle_type_alias_type))
+                              handle_type_alias_type=handle_type_alias_type))
         else:
             flat_items.append(tp)
     return flat_items
