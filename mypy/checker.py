@@ -2143,10 +2143,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
     # (type, operator) tuples for augmented assignments supported with partial types
-    partial_type_augmented_ops: Final = {
+    partial_type_augmented_ops = {
         ('builtins.list', '+'),
         ('builtins.set', '|'),
-    }
+    }  # type: Final
 
     def try_infer_partial_generic_type_from_assignment(self,
                                                        lvalue: Lvalue,
