@@ -94,6 +94,7 @@ def g(x: int): ...
     +  # type: ignore  # E: unused 'type: ignore' comment
     0  # type: ignore
 )  # type: ignore  # E: unused 'type: ignore' comment
+[builtins fixtures/primitives.pyi]
 
 [case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
