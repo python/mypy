@@ -3963,9 +3963,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whehter the function belongs to the overloaded variants"""
         if isinstance(node, OverloadedFuncDef) and isinstance(statement, FuncDef):
-            return (statement in
-                    [item.func if isinstance(item, Decorator) else item for item in node.items]
-                    or (node.impl is not None and statement is node.impl))
+            in_items = statement in {item.func if isinstance(item, Decorator)
+                                     else item for item in node.items}
+            in_impl = (node.impl is not None and
+                      ((isinstance(node.impl, Decorator) and statement is node.impl.func)
+                       or statement is node.impl))
+            return in_items or in_impl
         return False
 
     def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
