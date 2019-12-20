@@ -1345,6 +1345,7 @@ else:
             x = 1
 f(1)
 f('x') # fail
+[builtins fixtures/primitives.pyi]
 [out]
 main:5: error: Unsupported operand types for + ("str" and "int")
 main:10: error: Unsupported operand types for + ("int" and "str")
@@ -1605,6 +1606,7 @@ class A:
                 x = 1
 A().f(1)
 A().f('x') # fail
+[builtins fixtures/primitives.pyi]
 [out]
 main:6: error: Unsupported operand types for + ("str" and "int")
 main:11: error: Unsupported operand types for + ("int" and "str")

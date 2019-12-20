@@ -1720,7 +1720,7 @@ a *= b                  # E: Incompatible types in assignment (expression has ty
 b *= a
 
 reveal_type(b)          # N: Revealed type is 'builtins.int'
-[out]
+[builtins fixtures/primitives.pyi]
 
 [case testLiteralFallbackInheritedMethodsWorkCorrectly]
 from typing_extensions import Literal

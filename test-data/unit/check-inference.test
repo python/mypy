@@ -2692,6 +2692,7 @@ def bar() -> None:
     y + ''
     x + ''  # E: Unsupported operand types for + ("int" and "str")
     y + 0  # E: Unsupported operand types for + ("str" and "int")
+[builtins fixtures/primitives.pyi]
 
 [case testUnusedTargetNotImport]
 import d, c, b, a

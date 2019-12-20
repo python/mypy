@@ -1075,7 +1075,7 @@ class A:
         def g() -> None:
             "" + 1  # E: Unsupported operand types for + ("str" and "int")
         "" + 1  # E: Unsupported operand types for + ("str" and "int")
-[out]
+[builtins fixtures/primitives.pyi]
 
 -- Static methods
 -- --------------
@@ -6596,3 +6596,4 @@ reveal_type(D() + "str")  # N: Revealed type is 'Any'
 
 reveal_type(0.5 + D1())  # N: Revealed type is 'Any'
 reveal_type(D1() + 0.5)  # N: Revealed type is '__main__.D1'
+[builtins fixtures/primitives.pyi]

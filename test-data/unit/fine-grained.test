@@ -7492,6 +7492,7 @@ class B:
 [file b.py.2]
 class B:
     x: int
+[builtins fixtures/primitives.pyi]
 [out]
 main:5: error: Unsupported operand types for + ("str" and "int")
 ==
@@ -7510,6 +7511,7 @@ class B:
 [file b.py.2]
 class B:
     x: int
+[builtins fixtures/primitives.pyi]
 [out]
 main:6: error: Unsupported operand types for + ("str" and "int")
 ==
@@ -7539,6 +7541,7 @@ from typing import Callable, TypeVar
 F = TypeVar('F', bound=Callable)
 def deco(f: F) -> F:
     pass
+[builtins fixtures/primitives.pyi]
 [out]
 main:7: error: Unsupported operand types for + ("str" and "int")
 ==
