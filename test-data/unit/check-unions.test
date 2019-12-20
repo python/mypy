@@ -1013,3 +1013,18 @@ y: Union[int, Dict[int, int]] = 1 if bool() else {}
 u: Union[int, List[int]] = [] if bool() else 1
 v: Union[int, Dict[int, int]] = {} if bool() else 1
 [builtins fixtures/isinstancelist.pyi]
+
+[case testFlattenTypeAliasWhenAliasedAsUnion]
+from typing import Union
+
+T1 = int
+T2 = Union[T1, float]
+T3 = Union[T2, complex]
+T4 = Union[T3, int]
+
+def foo(a: T2, b: T2) -> T2:
+    return a + b
+
+def bar(a: T4, b: T4) -> T4:  # test multi-level alias
+    return a + b
+[builtins fixtures/ops.pyi]

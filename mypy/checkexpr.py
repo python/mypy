@@ -19,7 +19,7 @@ from mypy.types import (
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
-    get_proper_types
+    get_proper_types, flatten_nested_unions
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -2589,7 +2589,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_variants = [base_type]
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
-                left_variants = [item for item in base_type.relevant_items()]
+                left_variants = [item for item in
+                                 flatten_nested_unions(base_type.relevant_items(),
+                                                       handle_type_alias_type=True)]
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure
@@ -2632,8 +2634,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             right_type = get_proper_type(right_type)
             if isinstance(right_type, UnionType):
                 right_variants = [(item, TempNode(item, context=context))
-                                  for item in right_type.relevant_items()]
-
+                                  for item in flatten_nested_unions(right_type.relevant_items(),
+                                                                    handle_type_alias_type=True)]
             msg = self.msg.clean_copy()
             msg.disable_count = 0
             all_results = []
