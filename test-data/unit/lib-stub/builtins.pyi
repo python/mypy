@@ -1,3 +1,5 @@
+# DO NOT ADD TO THIS FILE AS IT WILL SLOW DOWN TESTS!
+
 from typing import Generic, TypeVar
 _T = TypeVar('_T')
 

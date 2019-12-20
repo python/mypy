@@ -392,8 +392,7 @@ f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int, 'z
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictWithSimpleProtocol]
-from typing_extensions import Protocol
-from mypy_extensions import TypedDict
+from typing_extensions import Protocol, TypedDict
 
 class StrObjectMap(Protocol):
     def __getitem__(self, key: str) -> object: ...
@@ -411,17 +410,17 @@ fun(a)
 fun(b)
 fun2(a) # Error
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
-main:18: error: Argument 1 to "fun2" has incompatible type "A"; expected "StrIntMap"
-main:18: note: Following member(s) of "A" have conflicts:
-main:18: note:     Expected:
-main:18: note:         def __getitem__(self, str) -> int
-main:18: note:     Got:
-main:18: note:         def __getitem__(self, str) -> object
+main:17: error: Argument 1 to "fun2" has incompatible type "A"; expected "StrIntMap"
+main:17: note: Following member(s) of "A" have conflicts:
+main:17: note:     Expected:
+main:17: note:         def __getitem__(self, str) -> int
+main:17: note:     Got:
+main:17: note:         def __getitem__(self, str) -> object
 
 [case testTypedDictWithSimpleProtocolInference]
-from typing_extensions import Protocol
-from mypy_extensions import TypedDict
+from typing_extensions import Protocol, TypedDict
 from typing import TypeVar
 
 T_co = TypeVar('T_co', covariant=True)
@@ -440,7 +439,7 @@ b: B
 reveal_type(fun(a))  # N: Revealed type is 'builtins.object*'
 reveal_type(fun(b))  # N: Revealed type is 'builtins.object*'
 [builtins fixtures/dict.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 -- Join
 

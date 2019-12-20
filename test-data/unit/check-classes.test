@@ -4433,7 +4433,7 @@ def parse_ast(name_dict: NameDict) -> None:
         pass
     reveal_type(name_dict['test']) # N: Revealed type is 'Tuple[builtins.bool, fallback=__main__.NameInfo]'
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 [case testCrashInForwardRefToTypedDictWithIsinstance]
 from mypy_extensions import TypedDict
@@ -4448,7 +4448,7 @@ def parse_ast(name_dict: NameDict) -> None:
         pass
     reveal_type(name_dict['']['ast'])  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 [case testCorrectIsinstanceInForwardRefToNewType]
 from typing import Dict, NewType
@@ -4467,7 +4467,7 @@ def parse_ast(name_dict: NameDict) -> None:
         x = NameInfo(Base()) # OK
         x = Base() # E: Incompatible types in assignment (expression has type "Base", variable has type "NameInfo")
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 [case testNoCrashForwardRefToBrokenDoubleNewType]
 from typing import Any, Dict, List, NewType

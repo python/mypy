@@ -2866,7 +2866,7 @@ expect_2(final_dict["foo"])  # E: Argument 1 to "expect_2" has incompatible type
 expect_2(final_set_1.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
 expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 --
 -- Tests for Literals and enums
