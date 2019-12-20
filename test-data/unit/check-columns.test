@@ -80,6 +80,7 @@ x = 15
 y = 'hello'
 if int():
     x = 2; y = x; y += 1
+[builtins fixtures/primitives.pyi]
 [out]
 main:4:16: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:4:24: error: Unsupported operand types for + ("str" and "int")
@@ -246,7 +247,7 @@ t: D = {'x':
 if int():
     del t['y'] # E:5: TypedDict "D" has no key 'y'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testColumnSignatureIncompatibleWithSuperType]
 class A:

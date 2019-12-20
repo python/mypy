@@ -4086,7 +4086,7 @@ from typing import Iterable
 from a import Point
 p: Point
 it: Iterable[int] = p  # change
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")

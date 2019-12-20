@@ -362,7 +362,7 @@ async def asyncf():  # E: Function is missing a return type annotation  [no-unty
 
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testErrorCodeCallUntypedFunction]
 # flags: --disallow-untyped-calls
@@ -615,7 +615,7 @@ def g() -> int:
 '{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
 '%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]

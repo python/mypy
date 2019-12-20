@@ -1075,7 +1075,7 @@ class A:
         def g() -> None:
             "" + 1  # E: Unsupported operand types for + ("str" and "int")
         "" + 1  # E: Unsupported operand types for + ("str" and "int")
-[out]
+[builtins fixtures/primitives.pyi]
 
 -- Static methods
 -- --------------
@@ -1683,7 +1683,7 @@ b = None  # type: B
 if int():
     b = a # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = b
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDucktypeTransitivityDecorator]
 from typing import _promote
@@ -1697,7 +1697,7 @@ c = None  # type: C
 if int():
     c = a # E: Incompatible types in assignment (expression has type "A", variable has type "C")
     a = c
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 -- Hard coded type promotions
@@ -4433,7 +4433,7 @@ def parse_ast(name_dict: NameDict) -> None:
         pass
     reveal_type(name_dict['test']) # N: Revealed type is 'Tuple[builtins.bool, fallback=__main__.NameInfo]'
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 [case testCrashInForwardRefToTypedDictWithIsinstance]
 from mypy_extensions import TypedDict
@@ -4448,7 +4448,7 @@ def parse_ast(name_dict: NameDict) -> None:
         pass
     reveal_type(name_dict['']['ast'])  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 [case testCorrectIsinstanceInForwardRefToNewType]
 from typing import Dict, NewType
@@ -4467,7 +4467,7 @@ def parse_ast(name_dict: NameDict) -> None:
         x = NameInfo(Base()) # OK
         x = Base() # E: Incompatible types in assignment (expression has type "Base", variable has type "NameInfo")
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 [case testNoCrashForwardRefToBrokenDoubleNewType]
 from typing import Any, Dict, List, NewType
@@ -6596,3 +6596,4 @@ reveal_type(D() + "str")  # N: Revealed type is 'Any'
 
 reveal_type(0.5 + D1())  # N: Revealed type is 'Any'
 reveal_type(D1() + 0.5)  # N: Revealed type is '__main__.D1'
+[builtins fixtures/primitives.pyi]

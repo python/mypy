@@ -1751,7 +1751,7 @@ with cm as g:
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testForwardRefsInWithStatement]
@@ -1764,7 +1764,7 @@ with cm as g:  # type: N
 
 N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testGlobalWithoutInitialization]

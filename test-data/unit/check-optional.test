@@ -409,6 +409,8 @@ from typing import Optional
 x = None  # type: Optional[int]
 x + 1
 
+[builtins fixtures/primitives.pyi]
+
 [case testOptionalWhitelistPermitsOtherErrors]
 # flags: --strict-optional-whitelist
 import a
@@ -423,6 +425,7 @@ from typing import Optional
 x = None  # type: Optional[int]
 x + 1
 1 + "foo"
+[builtins fixtures/primitives.pyi]
 [out]
 tmp/b.py:4: error: Unsupported operand types for + ("int" and "str")
 
@@ -439,6 +442,7 @@ x + "foo"
 from typing import Optional
 x = None  # type: Optional[int]
 x + 1
+[builtins fixtures/primitives.pyi]
 [out]
 tmp/a.py:3: error: Unsupported left operand type for + ("None")
 tmp/a.py:3: note: Left operand is of type "Optional[str]"

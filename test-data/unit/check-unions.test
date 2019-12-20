@@ -306,6 +306,7 @@ def f(x: Union[int, str, A]):
                  # E: Unsupported operand types for + ("int" and "object") \
                  # E: Unsupported operand types for + ("str" and "object") \
                  # N: Left operand is of type "Union[int, str, A]"
+[builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownNamedTupleUnion]
 from typing import NamedTuple, Union

@@ -919,7 +919,7 @@ from typing import no_type_check
 @no_type_check
 def foo(x: 'bar', y: {'x': 4}) -> 42:
     1 + 'x'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testNoTypeCheckDecoratorOnMethod2]
 import typing
@@ -931,7 +931,7 @@ def foo(x: 's', y: {'x': 4}) -> 42:
 @typing.no_type_check
 def bar() -> None:
     1 + 'x'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testCallingNoTypeCheckFunction]
 import typing
@@ -942,7 +942,7 @@ def foo(x: {1:2}) -> [1]:
 
 foo()
 foo(1, 'b')
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testCallingNoTypeCheckFunction2]
 import typing
@@ -953,7 +953,7 @@ def f() -> None:
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     1 + 'x'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testNoTypeCheckDecoratorSemanticError]
 import typing
@@ -961,7 +961,7 @@ import typing
 @typing.no_type_check
 def foo(x: {1:2}) -> [1]:
     x = y
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 -- Forward references to decorated functions
@@ -1345,6 +1345,7 @@ else:
             x = 1
 f(1)
 f('x') # fail
+[builtins fixtures/primitives.pyi]
 [out]
 main:5: error: Unsupported operand types for + ("str" and "int")
 main:10: error: Unsupported operand types for + ("int" and "str")
@@ -1550,7 +1551,7 @@ from contextlib import contextmanager
 @contextmanager
 def f():
     yield
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 -- Conditional method definition
@@ -1605,6 +1606,7 @@ class A:
                 x = 1
 A().f(1)
 A().f('x') # fail
+[builtins fixtures/primitives.pyi]
 [out]
 main:6: error: Unsupported operand types for + ("str" and "int")
 main:11: error: Unsupported operand types for + ("int" and "str")

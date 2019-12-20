@@ -475,7 +475,7 @@ def f(x: List[Tuple[int]]) -> Iterator[None]:
 @contextmanager
 def g(x: object) -> Iterator[None]:
     yield
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 __main__.g

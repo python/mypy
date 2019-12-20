@@ -122,7 +122,7 @@ def f(): pass
 async def g() -> None:
     x = await f()
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 <m.f> -> m.g
 

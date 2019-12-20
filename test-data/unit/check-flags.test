@@ -59,14 +59,14 @@ async def f():  # E: Function is missing a return type annotation \
                 # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testAsyncUnannotatedArgument]
 # flags: --disallow-untyped-defs
 async def f(x) -> None:  # E: Function is missing a type annotation for one or more arguments
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testAsyncUnannotatedReturn]
 # flags: --disallow-untyped-defs
@@ -77,7 +77,7 @@ async def f(x: int):  # E: Function is missing a return type annotation
 async def g(x: int) -> Any:
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testDisallowUntypedDefsUntypedDecorator]
 # flags: --disallow-untyped-decorators

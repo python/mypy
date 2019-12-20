@@ -791,7 +791,7 @@ divmod('foo', f)  # E: Unsupported operand types for divmod ("str" and "float")
 divmod('foo', d)  # E: Unsupported operand types for divmod ("str" and "Decimal")
 
 [builtins fixtures/divmod.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 -- Unary operators
@@ -1152,7 +1152,7 @@ i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
 '%i' % f
 '%o' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationSAcceptsAnyType]
 from typing import Any
@@ -1180,7 +1180,7 @@ reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is 'builtins.unicode'
 reveal_type('%r' % xu)  # N: Revealed type is 'builtins.str'
 reveal_type('%s' % xs)  # N: Revealed type is 'builtins.str'
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationCount]
 '%d %d' % 1  # E: Not enough arguments for format string
@@ -1191,14 +1191,14 @@ t = 1, 's'
 '%s %d' % t  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
 '%d' % t  # E: Not all arguments converted during string formatting
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationWithAnyType]
 from typing import Any
 a = None # type: Any
 '%d %d' % a
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character 'W'
@@ -1225,7 +1225,7 @@ b'%a' % 3
 '%*f' % (4, 3.14)
 '%*f' % (1.1, 3.14) # E: * wants int
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationPrecision]
 '%.2f' % 3.14
@@ -1233,7 +1233,7 @@ b'%a' % 3
 '%.*f' % (4, 3.14)
 '%.*f' % (1.1, 3.14) # E: * wants int
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationWidthAndPrecision]
 '%4.2f' % 3.14
@@ -1242,7 +1242,7 @@ b'%a' % 3
 '%*.*f' % 3.14 # E: Not enough arguments for format string
 '%*.*f' % (4, 2, 3.14)
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationFlagsAndLengthModifiers]
 '%04hd' % 1
@@ -1250,7 +1250,7 @@ b'%a' % 3
 '%+*Ld' % (1, 1)
 '% .*ld' % (1, 1)
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationDoublePercentage]
 '%% %d' % 1
@@ -1258,7 +1258,7 @@ b'%a' % 3
 '%*%' % 1
 '%*% %d' % 1  # E: Not enough arguments for format string
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationC]
 '%c' % 1
@@ -1272,7 +1272,7 @@ b'%a' % 3
 '%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "Union[int, float, SupportsInt]")
 b'%(x)s' % {b'x': b'data'}
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}
@@ -1280,7 +1280,7 @@ b'%(x)s' % {b'x': b'data'}
 '%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
 '%(a)d %%' % {'a': 1}
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationMappingDictTypes]
 from typing import Any, Dict
@@ -1310,7 +1310,7 @@ di = None # type: Dict[int, int]
 '%(a).1d' % {'a': 1}
 '%(a)#1.1ld' % {'a': 1}
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationFloatPrecision]
 '%.f' % 1.2
@@ -1318,7 +1318,7 @@ di = None # type: Dict[int, int]
 '%.f' % 'x'
 '%.3f' % 'x'
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
 main:4: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
@@ -1334,7 +1334,7 @@ foo(b'a', b'b') == b'a:b'
 [case testStringInterpolationStarArgs]
 x = (1, 2)
 "%d%d" % (*x,)
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testBytePercentInterpolationSupported]
 b'%s' % (b'xyz',)
@@ -1351,7 +1351,7 @@ def f(t: Tuple[int, ...]) -> None:
     '%d %d' % t
     '%d %d %d' % t
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationUnionType]
 from typing import Tuple, Union
@@ -1686,7 +1686,7 @@ class Good:
 x: Union[float, Good]
 '{:+f}'.format(x)
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testFormatCallSpecialCases]
 '{:08b}'.format(int('3'))
@@ -1698,7 +1698,7 @@ class S:
 '%d' % S()  # This is OK however
 '{:%}'.format(0.001)
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 -- Lambdas
 -- -------
@@ -2312,7 +2312,7 @@ d = {**a, **b, 'c': 3}
 e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
 f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDictIncompatibleTypeErrorMessage]
 from typing import Dict, Callable
@@ -2429,7 +2429,7 @@ cb: Union[Container[A], Container[B]]
 # flags: --strict-equality
 b'abc' in b'abcde'
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStrictEqualityBytesSpecialUnion]
 # flags: --strict-equality
@@ -2439,20 +2439,20 @@ x: Union[bytes, str]
 b'abc' in x
 x in b'abc'
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStrictEqualityByteArraySpecial]
 # flags: --strict-equality
 b'abc' in bytearray(b'abcde')
 bytearray(b'abc') in b'abcde'  # OK on Python 3
 [builtins fixtures/primitives.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testBytesVsByteArray_python2]
 # flags: --strict-equality --py2
 b'hi' in bytearray(b'hi')
 [builtins_py2 fixtures/python2.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testStrictEqualityNoPromotePy3]
 # flags: --strict-equality

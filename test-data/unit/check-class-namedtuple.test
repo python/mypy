@@ -518,7 +518,7 @@ reveal_type(XMeth(1).asyncdouble())  # N: Revealed type is 'typing.Coroutine[Any
 reveal_type(XMeth(42).x)  # N: Revealed type is 'builtins.int'
 reveal_type(XRepr(42).__str__())  # N: Revealed type is 'builtins.str'
 reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # N: Revealed type is 'builtins.int'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testNewNamedTupleOverloading]
 from typing import NamedTuple, overload
