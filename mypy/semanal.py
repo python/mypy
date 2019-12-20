@@ -3953,16 +3953,20 @@ class SemanticAnalyzer(NodeVisitor[None],
         # The first branch handles reference an overloaded function variant inside itself,
         # this is a corner case where mypy technically deviates from runtime name resolution,
         # but it is fine because we want an overloaded function to be treated as a single unit.
-        if isinstance(node, OverloadedFuncDef) and isinstance(self.statement, FuncDef):
-            return self.is_overloaded_item(node, self.statement) and line_diff > 0
+        if self.is_overloaded_item(node, self.statement):
+            return False
         elif isinstance(node, Decorator) and not node.is_overload:
             return line_diff > len(node.original_decorators)
         else:
             return line_diff > 0
 
-    def is_overloaded_item(self, overload: OverloadedFuncDef, func: FuncDef) -> bool:
+    def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
         """Check whehter the function belongs to the overloaded variants"""
-        return func in overload.items
+        if isinstance(node, OverloadedFuncDef) and isinstance(statement, FuncDef):
+            return (statement in
+                    [item.func if isinstance(item, Decorator) else item for item in node.items]
+                    or (node.impl is not None and statement is node.impl))
+        return False
 
     def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
         if fullname is None:

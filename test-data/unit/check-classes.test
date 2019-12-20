@@ -6633,7 +6633,8 @@ class B:
     @overload
     def A(cls, x: str) -> Type[A]: ...
     @classmethod
-    def A(cls, x: object) -> Type[A]:
-        return A
+    def A(cls, x: object) -> Type[A]: ...
+    def B(cls, x: int) -> Type[A]: ...  # E: Function "__main__.B.A" is not valid as a type \
+                                        # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 [builtins fixtures/classmethod.pyi]
