@@ -6597,3 +6597,45 @@ reveal_type(D() + "str")  # N: Revealed type is 'Any'
 reveal_type(0.5 + D1())  # N: Revealed type is 'Any'
 reveal_type(D1() + 0.5)  # N: Revealed type is '__main__.D1'
 [builtins fixtures/primitives.pyi]
+
+[case testRefMethodWithDecorator]
+from typing import Type
+
+class A:
+    pass
+
+class B:
+    @staticmethod
+    def A() -> Type[A]: ...
+    @staticmethod
+    def B() -> Type[A]:  # E: Function "__main__.B.A" is not valid as a type \
+                         # N: Perhaps you need "Callable[...]" or a callback protocol?
+        return A
+
+class C:
+    @property
+    @staticmethod
+    def A() -> Type[A]:
+        return A
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testRefMethodWithOverloadDecorator]
+from typing import Type, overload
+
+class A:
+    pass
+
+class B:
+    @classmethod
+    @overload
+    def A(cls, x: int) -> Type[A]: ...
+    @classmethod
+    @overload
+    def A(cls, x: str) -> Type[A]: ...
+    @classmethod
+    def A(cls, x: object) -> Type[A]: ...
+    def B(cls, x: int) -> Type[A]: ...  # E: Function "__main__.B.A" is not valid as a type \
+                                        # N: Perhaps you need "Callable[...]" or a callback protocol?
+
+[builtins fixtures/classmethod.pyi]

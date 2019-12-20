@@ -3936,10 +3936,40 @@ class SemanticAnalyzer(NodeVisitor[None],
         #       caught.
         assert self.statement  # we are at class scope
         return (node is None
-                or node.line < self.statement.line
+                or self.is_textually_before_statement(node)
                 or not self.is_defined_in_current_module(node.fullname)
                 or isinstance(node, TypeInfo)
                 or (isinstance(node, PlaceholderNode) and node.becomes_typeinfo))
+
+    def is_textually_before_statement(self, node: SymbolNode) -> bool:
+        """Check if a node is defined textually before the current statement
+
+        Note that decorated functions' line number are the same as
+        the top decorator.
+        """
+        assert self.statement
+        line_diff = self.statement.line - node.line
+
+        # The first branch handles reference an overloaded function variant inside itself,
+        # this is a corner case where mypy technically deviates from runtime name resolution,
+        # but it is fine because we want an overloaded function to be treated as a single unit.
+        if self.is_overloaded_item(node, self.statement):
+            return False
+        elif isinstance(node, Decorator) and not node.is_overload:
+            return line_diff > len(node.original_decorators)
+        else:
+            return line_diff > 0
+
+    def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
+        """Check whehter the function belongs to the overloaded variants"""
+        if isinstance(node, OverloadedFuncDef) and isinstance(statement, FuncDef):
+            in_items = statement in {item.func if isinstance(item, Decorator)
+                                     else item for item in node.items}
+            in_impl = (node.impl is not None and
+                      ((isinstance(node.impl, Decorator) and statement is node.impl.func)
+                       or statement is node.impl))
+            return in_items or in_impl
+        return False
 
     def is_defined_in_current_module(self, fullname: Optional[str]) -> bool:
         if fullname is None:
