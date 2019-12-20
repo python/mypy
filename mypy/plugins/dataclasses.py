@@ -290,7 +290,6 @@ class DataclassTransformer:
         # copy() because we potentially modify all_attrs below and if this code requires debugging
         # we'll have unmodified attrs laying around.
         all_attrs = attrs.copy()
-        init_method = cls.info.get_method('__init__')
         for info in cls.info.mro[1:-1]:
             if 'dataclass' not in info.metadata:
                 continue
@@ -303,15 +302,17 @@ class DataclassTransformer:
                 name = data['name']  # type: str
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data)
-                    if attr.is_init_var and isinstance(init_method, FuncDef):
+                    if attr.is_init_var:
                         # InitVars are removed from classes so, in order for them to be inherited
                         # properly, we need to re-inject them into subclasses' sym tables here.
                         # To do that, we look 'em up from the parents' __init__.  These variables
                         # are subsequently removed from the sym table at the end of
                         # DataclassTransformer.transform.
-                        for arg, arg_name in zip(init_method.arguments, init_method.arg_names):
-                            if arg_name == attr.name:
-                                cls.info.names[attr.name] = SymbolTableNode(MDEF, arg.variable)
+                        superclass_init = info.get_method('__init__')
+                        if isinstance(superclass_init, FuncDef):
+                            attr_node = _get_arg_from_init(superclass_init, attr.name)
+                            if attr_node is not None:
+                                cls.info.names[attr.name] = attr_node
 
                     known_attrs.add(name)
                     super_attrs.append(attr)
@@ -365,6 +366,14 @@ class DataclassTransformer:
                 var.is_property = True
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
+
+
+def _get_arg_from_init(init_method: FuncDef, attr_name: str) -> Optional[SymbolTableNode]:
+    """Given an init method and an attribute name, find the Var in the init method's args."""
+    for arg, arg_name in zip(init_method.arguments, init_method.arg_names):
+        if arg_name == attr_name:
+            return SymbolTableNode(MDEF, arg.variable)
+    return None
 
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:

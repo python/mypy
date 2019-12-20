@@ -96,6 +96,7 @@ if typing.TYPE_CHECKING:
     import pow123 # E
 else:
     import xyz753
+[typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Cannot find implementation or library stub for module named 'pow123'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -106,6 +107,7 @@ if TYPE_CHECKING:
     import pow123 # E
 else:
     import xyz753
+[typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Cannot find implementation or library stub for module named 'pow123'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -117,6 +119,7 @@ if not typing.TYPE_CHECKING:
 else:
     import xyz753
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 main:5: error: Cannot find implementation or library stub for module named 'xyz753'
 main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -618,6 +621,7 @@ if typing.TYPE_CHECKING:
 reveal_type(x)  # N: Revealed type is '__main__.B'
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableWhenSuperclassIsAny]
 # flags: --strict-optional
@@ -834,6 +838,7 @@ if FOOBAR:
 else:
     reveal_type(x)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/ops.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisExprUnreachable]
 # flags: --warn-unreachable --always-false FOOBAR
@@ -851,6 +856,7 @@ b = (not FOOBAR) or foo()
 c = 1 if FOOBAR else 2
 d = [x for x in lst if FOOBAR]
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagOkWithDeadStatements]
 # flags: --warn-unreachable
@@ -1026,7 +1032,7 @@ def f_no_suppress_5() -> int:
         return 3
     noop()                  # E: Statement is unreachable
 
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagContextManagersSuppressed]
 # flags: --warn-unreachable
@@ -1072,7 +1078,7 @@ def f_mix() -> int:         # E: Missing return statement
     with DoesNotSuppress(), Suppresses1(), DoesNotSuppress():
         return 3
     noop()
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagContextManagersSuppressedNoStrictOptional]
 # flags: --warn-unreachable --no-strict-optional
@@ -1113,7 +1119,7 @@ def f_suppress() -> int:  # E: Missing return statement
     with Suppresses():
         return 3
     noop()
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagContextAsyncManagersNoSuppress]
 # flags: --warn-unreachable --python-version 3.7
@@ -1276,4 +1282,3 @@ async def f_malformed_2() -> int:
     noop()                  # E: Statement is unreachable
 
 [typing fixtures/typing-full.pyi]
-

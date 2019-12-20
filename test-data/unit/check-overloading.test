@@ -1082,7 +1082,7 @@ def f(n: A) -> A:
 
 f(B()) + 'x'  # E: Unsupported left operand type for + ("B")
 f(A()) + 'x'  # E: Unsupported left operand type for + ("A")
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadingAndIntFloatSubtyping]
 from foo import *
@@ -3538,7 +3538,7 @@ reveal_type(mymap(f2, seq))  # N: Revealed type is 'typing.Iterable[builtins.int
 reveal_type(mymap(f3, seq))  # N: Revealed type is 'typing.Iterable[builtins.str*]'
 
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsNoneAndTypeVarsWithStrictOptional]
 # flags: --strict-optional
@@ -3563,7 +3563,7 @@ reveal_type(mymap(f2, seq))  # N: Revealed type is 'typing.Iterable[builtins.int
 reveal_type(mymap(f3, seq))  # N: Revealed type is 'Union[typing.Iterable[builtins.str*], typing.Iterable[builtins.int*]]'
 
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeNoStrictOptional1]
 # flags: --no-strict-optional
@@ -3595,7 +3595,7 @@ def test_narrow_int() -> None:
                         # TODO: maybe we should make mypy report a warning instead?
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional1]
 # flags: --strict-optional
@@ -3627,7 +3627,7 @@ def test_narrow_int() -> None:
                         # TODO: maybe we should make mypy report a warning instead?
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeNoStrictOptional2]
 # flags: --no-strict-optional
@@ -3659,7 +3659,7 @@ def test_narrow_none() -> None:
         reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional2]
 # flags: --strict-optional
@@ -3691,7 +3691,7 @@ def test_narrow_none() -> None:
         reveal_type(c)  # Branch is now dead
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 [case testOverloadsAndNoReturnNarrowTypeNoStrictOptional3]
@@ -3723,7 +3723,7 @@ def test_narrow_none_v2() -> None:
         reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowTypeWithStrictOptional3]
 # flags: --strict-optional
@@ -3754,7 +3754,7 @@ def test_narrow_none_v2() -> None:
         reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype]
 from typing import TypeVar, NoReturn, Union, overload
@@ -3784,7 +3784,7 @@ def test() -> None:
         reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2]
 from typing import TypeVar, NoReturn, Union, overload
@@ -3812,7 +3812,7 @@ def test_v2(val: Union[A, B], val2: A) -> None:
         reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadWithNonGenericDescriptor]
 from typing import overload, Any, Optional, Union
@@ -3840,7 +3840,7 @@ reveal_type(MyModel.my_number)        # N: Revealed type is '__main__.NumberAttr
 reveal_type(MyModel.my_number.foo())  # N: Revealed type is 'builtins.str'
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadWithNonGenericDescriptorLookalike]
 from typing import overload, Any, Optional, Union
@@ -3883,7 +3883,7 @@ reveal_type(NumberAttribute[MyModel]().__get__(None, MyModel))  # N: Revealed ty
 reveal_type(NumberAttribute[str]().__get__(None, str))      # N: Revealed type is '__main__.NumberAttribute[builtins.str*]'
 
 [builtins fixtures/isinstance.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadWithGenericDescriptorLookalike]
 from typing import overload, Any, Optional, TypeVar, Type, Union, Generic
@@ -4685,7 +4685,7 @@ def g(x: int) -> str: ...
 def g(x: str) -> int: ...
 
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 
 [case testNestedOverloadsNoCrash]
@@ -4860,7 +4860,7 @@ def g(x: Union[int, float]) -> Union[List[int], List[float]]:
         return floats
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testOverloadsTypesAndUnions]
 from typing import overload, Type, Union

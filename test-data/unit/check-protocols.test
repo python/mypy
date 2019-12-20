@@ -521,7 +521,7 @@ reveal_type(close(arg)) # N: Revealed type is 'builtins.int*'
 reveal_type(close_all([F()])) # N: Revealed type is 'builtins.int*'
 reveal_type(close_all([arg])) # N: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testProtocolGenericInference2]
 from typing import Generic, TypeVar, Protocol
@@ -786,7 +786,7 @@ t = D[int]() # OK
 if int():
     t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testRecursiveProtocols2]
 from typing import Protocol, TypeVar
@@ -843,7 +843,7 @@ if int():
     t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
     t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
 from typing import Protocol, Sequence, List
@@ -1776,7 +1776,7 @@ bar((1, 2))
 bar(1) # E: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testBasicSupportsIntProtocol]
 from typing import SupportsInt
@@ -1792,7 +1792,7 @@ foo(Bar())
 foo('no way') # E: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 
 [builtins fixtures/isinstancelist.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 -- Additional tests and corner cases for protocols
 -- ----------------------------------------------

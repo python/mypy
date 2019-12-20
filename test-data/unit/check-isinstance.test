@@ -2020,7 +2020,7 @@ if y not in z:
     reveal_type(y) # N: Revealed type is 'Union[builtins.int, None]'
 else:
     reveal_type(y) # N: Revealed type is 'Union[builtins.int, None]'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2077,7 +2077,7 @@ def f() -> None:
     if x not in td:
         return
     reveal_type(x) # N: Revealed type is 'builtins.str'
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 

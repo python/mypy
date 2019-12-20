@@ -2235,6 +2235,7 @@ class Box:
 
     def __init__(self, value: int) -> None: ...
 [builtins fixtures/classmethod.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testNewAnalyzerCastForward1]
 from typing import cast

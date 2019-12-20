@@ -44,7 +44,7 @@ x = 43  # E: Incompatible types in assignment (expression has type "Literal[43]"
 
 y: Literal[43]
 y = 43
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testLiteralParsingPython2]
 # flags: --python-version 2.7
@@ -1720,7 +1720,7 @@ a *= b                  # E: Incompatible types in assignment (expression has ty
 b *= a
 
 reveal_type(b)          # N: Revealed type is 'builtins.int'
-[out]
+[builtins fixtures/primitives.pyi]
 
 [case testLiteralFallbackInheritedMethodsWorkCorrectly]
 from typing_extensions import Literal
@@ -2185,7 +2185,7 @@ del d[a_key]                  # E: Key 'a' of TypedDict "Outer" cannot be delete
 del d[b_key]
 del d[c_key]                  # E: TypedDict "Outer" has no key 'c'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingUsingFinal]
@@ -2224,7 +2224,7 @@ b[int_key_bad]                       # E: Tuple index out of range
 c[str_key_bad]                       # E: TypedDict "MyDict" has no key 'missing'
 c.get(str_key_bad, u)                # E: TypedDict "MyDict" has no key 'missing'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTupleUnions]
@@ -2306,7 +2306,7 @@ del test[good_keys]             # E: Key 'a' of TypedDict "Test" cannot be delet
 del test[bad_keys]              # E: Key 'a' of TypedDict "Test" cannot be deleted \
                                 # E: TypedDict "Test" has no key 'bad'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictPython2-skip]
@@ -2355,7 +2355,7 @@ from mypy_extensions import TypedDict
 UnicodeDict = TypedDict(b'UnicodeDict', {'key': int})
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testLiteralIntelligentIndexingMultiTypedDict]
 from typing import Union
@@ -2393,7 +2393,7 @@ reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __m
 reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, Literal[3]?, __main__.C]'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 --
 -- Interactions with 'Final'
@@ -2866,7 +2866,7 @@ expect_2(final_dict["foo"])  # E: Argument 1 to "expect_2" has incompatible type
 expect_2(final_set_1.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
 expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 --
 -- Tests for Literals and enums

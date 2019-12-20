@@ -1706,7 +1706,7 @@ T = List[int]
 from typing import List
 T = List[int]  # yo
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 ==
 
@@ -1825,7 +1825,7 @@ def f() -> Iterator[None]:
 [file b.py]
 [delete b.py.2]
 [file b.py.3]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
 2: <b>, __main__
@@ -1871,7 +1871,7 @@ def g() -> None:
     import b
     b.h(1)
     pass
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
 2: <b.h>, <b>, <b[wildcard]>, a.g
@@ -1910,7 +1910,7 @@ import b
 def f(x: List[int]) -> Iterator[None]:
     x.append(1)
     yield
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 [out]
 ==
@@ -5275,7 +5275,7 @@ from enum import Enum
 
 class C(Enum):
     X = 0
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 ==
 a.py:5: error: "Type[C]" has no attribute "Y"
@@ -5371,7 +5371,7 @@ C = Enum('C', 'X Y')
 from enum import Enum
 
 C = Enum('C', 'X')
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 ==
 a.py:5: error: "Type[C]" has no attribute "Y"
@@ -7370,7 +7370,7 @@ async def g() -> str:
     return ''
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:4: error: Incompatible return value type (got "str", expected "int")
@@ -7396,7 +7396,7 @@ class C:
         return ''
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:4: error: Incompatible return value type (got "str", expected "int")
@@ -7431,7 +7431,7 @@ class E:
     async def __anext__(self) -> object: return 0
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:6: error: Incompatible return value type (got "str", expected "int")
@@ -7470,7 +7470,7 @@ class C:
     async def __aenter__(self) -> int: pass
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:5: error: Incompatible return value type (got "str", expected "int")
@@ -7492,6 +7492,7 @@ class B:
 [file b.py.2]
 class B:
     x: int
+[builtins fixtures/primitives.pyi]
 [out]
 main:5: error: Unsupported operand types for + ("str" and "int")
 ==
@@ -7510,6 +7511,7 @@ class B:
 [file b.py.2]
 class B:
     x: int
+[builtins fixtures/primitives.pyi]
 [out]
 main:6: error: Unsupported operand types for + ("str" and "int")
 ==
@@ -7539,6 +7541,7 @@ from typing import Callable, TypeVar
 F = TypeVar('F', bound=Callable)
 def deco(f: F) -> F:
     pass
+[builtins fixtures/primitives.pyi]
 [out]
 main:7: error: Unsupported operand types for + ("str" and "int")
 ==
@@ -8388,6 +8391,7 @@ x = 2
 [file a.py.3]
 x = 'no way'
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 ==
 ==
@@ -9207,7 +9211,7 @@ class Data(TypedDict):
 
 [delete a.py.2]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 
@@ -9239,7 +9243,7 @@ Data = Tuple[User, File]
 
 [delete a.py.2]
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 

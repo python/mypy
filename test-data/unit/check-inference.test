@@ -1332,7 +1332,7 @@ if int():
      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testListWithDucktypeCompatibilityAndTransitivity]
 from typing import List, _promote
@@ -1355,7 +1355,7 @@ if int():
      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 
 -- Inferring type of variable when initialized to an empty collection
@@ -1737,6 +1737,46 @@ def g() -> None:
     y.extend(f())
     reveal_type(y)  # N: Revealed type is 'builtins.list[Any]'
 [builtins fixtures/list.pyi]
+
+[case testInferFromEmptyDictWhenUsingIn]
+d = {}
+if 'x' in d:
+    d['x'] = 1
+reveal_type(d)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+
+dd = {}
+if 'x' not in dd:
+    dd['x'] = 1
+reveal_type(dd)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+[builtins fixtures/dict.pyi]
+
+[case testInferFromEmptyDictWhenUsingInSpecialCase]
+d = None
+if 'x' in d:  # E: "None" has no attribute "__iter__" (not iterable)
+    pass
+reveal_type(d)  # N: Revealed type is 'None'
+[builtins fixtures/dict.pyi]
+
+[case testInferFromEmptyListWhenUsingInWithStrictEquality]
+# flags: --strict-equality
+def f() -> None:
+    a = []
+    if 1 in a:  # TODO: This should be an error
+        a.append('x')
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testInferListTypeFromInplaceAdd]
+a = []
+a += [1]
+reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.int*]'
+[builtins fixtures/list.pyi]
+
+[case testInferSetTypeFromInplaceOr]
+a = set()
+a |= {'x'}
+reveal_type(a)  # N: Revealed type is 'builtins.set[builtins.str*]'
+[builtins fixtures/set.pyi]
 
 
 -- Inferring types of variables first initialized to None (partial types)
@@ -2664,6 +2704,7 @@ def bar() -> None:
     y + ''
     x + ''  # E: Unsupported operand types for + ("int" and "str")
     y + 0  # E: Unsupported operand types for + ("str" and "int")
+[builtins fixtures/primitives.pyi]
 
 [case testUnusedTargetNotImport]
 import d, c, b, a

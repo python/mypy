@@ -64,6 +64,10 @@ class float:
     def __truediv__(self, x: 'float') -> 'float': pass
     def __rtruediv__(self, x: 'float') -> 'float': pass
 
+class complex:
+    def __add__(self, x: complex) -> complex: pass
+    def __radd__(self, x: complex) -> complex: pass
+
 class BaseException: pass
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass

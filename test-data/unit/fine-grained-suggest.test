@@ -483,6 +483,7 @@ def test() -> None:
     bar(starargs)
     baz(named)
     quux(default)
+[builtins fixtures/primitives.pyi]
 [out]
 (Callable[[int, str], int]) -> int
 (Callable[..., int]) -> int

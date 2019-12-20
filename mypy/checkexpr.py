@@ -19,7 +19,7 @@ from mypy.types import (
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
-    get_proper_types
+    get_proper_types, flatten_nested_unions
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -263,7 +263,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
 
     def visit_call_expr_inner(self, e: CallExpr, allow_none_return: bool = False) -> Type:
-        if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
+        if isinstance(e.callee, RefExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             # Use named fallback for better error messages.
             typeddict_type = e.callee.node.typeddict_type.copy_modified(
@@ -2125,7 +2125,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             method_type = None  # type: Optional[mypy.types.Type]
 
             if operator == 'in' or operator == 'not in':
-                right_type = self.accept(right)  # always validate the right operand
+                # If the right operand has partial type, look it up without triggering
+                # a "Need type annotation ..." message, as it would be noise.
+                right_type = self.find_partial_type_ref_fast_path(right)
+                if right_type is None:
+                    right_type = self.accept(right)  # Validate the right operand
 
                 # Keep track of whether we get type check errors (these won't be reported, they
                 # are just to verify whether something is valid typing wise).
@@ -2205,6 +2209,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert result is not None
         return result
+
+    def find_partial_type_ref_fast_path(self, expr: Expression) -> Optional[Type]:
+        """If expression has a partial generic type, return it without additional checks.
+
+        In particular, this does not generate an error about a missing annotation.
+
+        Otherwise, return None.
+        """
+        if not isinstance(expr, RefExpr):
+            return None
+        if isinstance(expr.node, Var):
+            result = self.analyze_var_ref(expr.node, expr)
+            if isinstance(result, PartialType) and result.type is not None:
+                self.chk.store_type(expr, self.chk.fixup_partial_type(result))
+                return result
+        return None
 
     def dangerous_comparison(self, left: Type, right: Type,
                              original_container: Optional[Type] = None) -> bool:
@@ -2569,7 +2589,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_variants = [base_type]
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
-                left_variants = [item for item in base_type.relevant_items()]
+                left_variants = [item for item in
+                                 flatten_nested_unions(base_type.relevant_items(),
+                                                       handle_type_alias_type=True)]
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure
@@ -2612,8 +2634,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             right_type = get_proper_type(right_type)
             if isinstance(right_type, UnionType):
                 right_variants = [(item, TempNode(item, context=context))
-                                  for item in right_type.relevant_items()]
-
+                                  for item in flatten_nested_unions(right_type.relevant_items(),
+                                                                    handle_type_alias_type=True)]
             msg = self.msg.clean_copy()
             msg.disable_count = 0
             all_results = []
