@@ -1500,6 +1500,7 @@ if TYPE_CHECKING:
 def part4_thing(a: int) -> str: pass
 
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 tmp/part3.py:2: note: Revealed type is 'def (a: builtins.int) -> builtins.str'
 

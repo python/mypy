@@ -1,5 +1,8 @@
 # Stub for typing module. Many of the definitions have special handling in
 # the type checker, so they can just be initialized to anything.
+#
+# You can add [typing fixtures/typing-{medium,full,async,...}.pyi] in a test case
+# to a more complete stub for typing.
 
 cast = 0
 overload = 0
@@ -39,5 +42,3 @@ class Mapping(Generic[T, T_co]):
     def __getitem__(self, key: T) -> T_co: pass
 
 def final(meth: T) -> T: pass
-
-TYPE_CHECKING = 1
