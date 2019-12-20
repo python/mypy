@@ -1178,7 +1178,7 @@ async def f_no_suppress_5() -> int:
         return 3
     noop()                  # E: Statement is unreachable
 
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testUnreachableFlagContextAsyncManagersSuppressed]
 # flags: --warn-unreachable --python-version 3.7
@@ -1224,7 +1224,7 @@ async def f_mix() -> int:         # E: Missing return statement
     async with DoesNotSuppress(), Suppresses1(), DoesNotSuppress():
         return 3
     noop()
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testUnreachableFlagContextAsyncManagersAbnormal]
 # flags: --warn-unreachable --python-version 3.7
@@ -1275,5 +1275,4 @@ async def f_malformed_2() -> int:
         return 3
     noop()                  # E: Statement is unreachable
 
-[typing fixtures/typing-medium.pyi]
-
+[typing fixtures/typing-full.pyi]

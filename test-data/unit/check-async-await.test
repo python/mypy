@@ -220,7 +220,7 @@ async def generatorexp(obj: Iterable[int]):
     reveal_type(lst2)  # N: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncForComprehensionErrors]
 # flags: --python-version 3.6
@@ -251,7 +251,7 @@ main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? 
 main:20: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
 main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncWith]
 
@@ -405,7 +405,7 @@ async def main() -> None:
     async for z in I():
         reveal_type(z)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testYieldTypeCheckInDecoratedCoroutine]
 
@@ -421,7 +421,7 @@ def f() -> Generator[int, str, int]:
     else:
         return ''  # E: Incompatible return value type (got "str", expected "int")
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Async generators (PEP 525), some test cases adapted from the PEP text
 -- ---------------------------------------------------------------------
@@ -452,7 +452,7 @@ async def wrong_return() -> Generator[int, None, None]:  # E: The return type of
     yield 3
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorReturnIterator]
 # flags: --python-version 3.6
@@ -468,7 +468,7 @@ async def use_gen() -> None:
         reveal_type(item)  # N: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorManualIter]
 # flags: --python-version 3.6
@@ -486,7 +486,7 @@ async def user() -> None:
     reveal_type(await gen.__anext__())  # N: Revealed type is 'builtins.int*'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testAsyncGeneratorAsend]
 # flags: --python-version 3.6

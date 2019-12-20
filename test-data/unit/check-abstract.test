@@ -950,7 +950,7 @@ default = Config({'cannot': 'modify'})  # OK
 
 default[1] = 2  # E: Unsupported target for indexed assignment
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testSubclassOfABCFromDictionary]
 from abc import abstractmethod, ABCMeta
@@ -982,11 +982,11 @@ my_concrete_types = {
 
 my_abstract_types = {
   'A': MyAbstractA,
-  'B': MyAbstractB, 
+  'B': MyAbstractB,
 }
 
-reveal_type(my_concrete_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]' 
-reveal_type(my_abstract_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]' 
+reveal_type(my_concrete_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
+reveal_type(my_abstract_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
 
 a = my_concrete_types['A']()
 a.do()

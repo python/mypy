@@ -1739,7 +1739,7 @@ from typing import TypeVar, Container
 T = TypeVar('T')
 def f(x: Container[T]) -> T: ...
 reveal_type(f((1, 2))) # N: Revealed type is 'builtins.int*'
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testClassMethodInGenericClassWithGenericConstructorArg]
 from typing import TypeVar, Generic

@@ -363,7 +363,7 @@ def as_dict(p: Point) -> Dict[str, int]:
 def as_mutable_mapping(p: Point) -> MutableMapping[str, object]:
     return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, object]")
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCanConvertTypedDictToAny]
 from mypy_extensions import TypedDict
@@ -1901,7 +1901,7 @@ else:
 assert isinstance(u2, Mapping)
 reveal_type(u2)  # N: Revealed type is 'TypedDict('__main__.User', {'id': builtins.int, 'name': builtins.str})'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testTypedDictLiteralTypeKeyInCreation]
 from typing import TypedDict, Final, Literal
