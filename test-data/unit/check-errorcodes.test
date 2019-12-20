@@ -362,7 +362,7 @@ async def asyncf():  # E: Function is missing a return type annotation  [no-unty
 
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testErrorCodeCallUntypedFunction]
 # flags: --disallow-untyped-calls

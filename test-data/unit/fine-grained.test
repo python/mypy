@@ -7370,7 +7370,7 @@ async def g() -> str:
     return ''
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:4: error: Incompatible return value type (got "str", expected "int")
@@ -7396,7 +7396,7 @@ class C:
         return ''
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:4: error: Incompatible return value type (got "str", expected "int")
@@ -7431,7 +7431,7 @@ class E:
     async def __anext__(self) -> object: return 0
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:6: error: Incompatible return value type (got "str", expected "int")
@@ -7470,7 +7470,7 @@ class C:
     async def __aenter__(self) -> int: pass
 
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 ==
 main:5: error: Incompatible return value type (got "str", expected "int")
