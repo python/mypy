@@ -1151,9 +1151,10 @@ ListExpr(3) : builtins.list[builtins.str]
 OpExpr(3) : builtins.list[builtins.str]
 
 [case testStringFormatting]
-## .*
+## IntExpr|OpExpr|StrExpr
 '%d' % 1
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 [out]
 IntExpr(2) : Literal[1]?
 OpExpr(2) : builtins.str
