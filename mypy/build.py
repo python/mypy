@@ -602,6 +602,12 @@ class BuildManager:
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
         self.metastore = create_metastore(options)
+        if fscache.isdir(options.cache_dir):
+            gitignore = os.path.join(options.cache_dir, ".gitignore")
+            if not fscache.isfile(gitignore):
+                with open(gitignore, "w") as f:
+                    print("# Automatically created by mypy", file=f)
+                    print("*", file=f)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
