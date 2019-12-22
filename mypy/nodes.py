@@ -856,7 +856,7 @@ class Var(SymbolNode):
         #         def __init__(self) -> None:
         #             self.x: int
         # This case is important because this defines a new Var, even if there is one
-        # present in a superclass (without explict type this doesn't create a new Var).
+        # present in a superclass (without explicit type this doesn't create a new Var).
         # See SemanticAnalyzer.analyze_member_lvalue() for details.
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.

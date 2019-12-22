@@ -122,7 +122,7 @@ class ModuleInspect:
         self.results = Queue()  # type: Queue[Union[ModuleProperties, str]]
         self.proc = Process(target=worker, args=(self.tasks, self.results, sys.path))
         self.proc.start()
-        self.counter = 0  # Number of successfull roundtrips
+        self.counter = 0  # Number of successful roundtrips
 
     def close(self) -> None:
         """Free any resources used."""

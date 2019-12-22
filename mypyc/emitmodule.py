@@ -53,7 +53,7 @@ from mypyc.errors import Errors
 # modules: one shim per module and one shared library containing all
 # the actual code.
 # In fully separate compilation, we (unfortunately) will generate 2*N
-# extension modules: one shim per module and also one library containg
+# extension modules: one shim per module and also one library containing
 # each module's actual code. (This might be fixable in the future,
 # but allows a clean separation between setup of the export tables
 # (see generate_export_table) and running module top levels.)
@@ -424,10 +424,10 @@ def pointerize(decl: str, name: str) -> str:
     """Given a C decl and its name, modify it to be a declaration to a pointer."""
     # This doesn't work in general but does work for all our types...
     if '(' in decl:
-        # Function pointer. Stick a * in front of the name and wrap it in parens.
+        # Function pointer. Stick an * in front of the name and wrap it in parens.
         return decl.replace(name, '(*{})'.format(name))
     else:
-        # Non-function pointer. Just stick a * in front of the name.
+        # Non-function pointer. Just stick an * in front of the name.
         return decl.replace(name, '*{}'.format(name))
 
 
