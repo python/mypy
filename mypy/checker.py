@@ -5,8 +5,8 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Sequence,
-    Mapping,
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
+    Sequence, Mapping, Generic, AbstractSet
 )
 from typing_extensions import Final
 
@@ -27,7 +27,7 @@ from mypy.nodes import (
     is_final_node,
     ARG_NAMED)
 from mypy import nodes
-from mypy.literals import literal, literal_hash
+from mypy.literals import literal, literal_hash, Key
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -3794,7 +3794,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             operands = node.operands
             operand_types = []
-            narrowable_operand_indices = set()
+            narrowable_operand_index_to_hash = {}
             for i, expr in enumerate(operands):
                 if expr not in type_map:
                     return {}, {}
@@ -3804,7 +3804,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (literal(expr) == LITERAL_TYPE
                         and not is_literal_none(expr)
                         and not is_literal_enum(type_map, expr)):
-                    narrowable_operand_indices.add(i)
+                    h = literal_hash(expr)
+                    if h is not None:
+                        narrowable_operand_index_to_hash[i] = h
 
             # Step 2: Group operands chained by either the 'is' or '==' operands
             # together. For all other operands, we keep them in groups of size 2.
@@ -3822,21 +3824,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # handling 'is not' and '!=' chains in a special way: those are very rare
             # in practice.
 
-            simplified_operator_list = []  # type: List[Tuple[str, List[int]]]
-            last_operator = node.operators[0]
-            current_group = set()  # type: Set[int]
-            for i, (operator, left_expr, right_expr) in enumerate(node.pairwise()):
-                if current_group and (operator != last_operator or operator not in {'is', '=='}):
-                    simplified_operator_list.append((last_operator, sorted(current_group)))
-                    last_operator = operator
-                    current_group = set()
-
-                # Note: 'i' corresponds to the left operand index, so 'i + 1' is the
-                # right operand.
-                current_group.add(i)
-                current_group.add(i + 1)
-
-            simplified_operator_list.append((last_operator, sorted(current_group)))
+            simplified_operator_list = group_comparison_operands(
+                node.pairwise(),
+                narrowable_operand_index_to_hash,
+                {'==', 'is'},
+            )
 
             # Step 3: Analyze each group and infer more precise type maps for each
             # assignable operand, if possible. We combine these type maps together
@@ -3849,19 +3841,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         operands,
                         operand_types,
                         expr_indices,
-                        narrowable_operand_indices,
+                        narrowable_operand_index_to_hash.keys(),
                     )
                 elif operator in {'==', '!='}:
                     if_map, else_map = self.refine_equality_comparison_expression(
                         operands,
                         operand_types,
                         expr_indices,
-                        narrowable_operand_indices,
+                        narrowable_operand_index_to_hash.keys(),
                     )
                 elif operator in {'in', 'not in'}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
-                    if left_index not in narrowable_operand_indices:
+                    if left_index not in narrowable_operand_index_to_hash:
                         continue
 
                     item_type = operand_types[left_index]
@@ -3890,7 +3882,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 partial_type_maps.append((if_map, else_map))
 
-            return reduce_partial_type_maps(partial_type_maps)
+            return reduce_partial_conditional_maps(partial_type_maps)
         elif isinstance(node, RefExpr):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
@@ -4099,7 +4091,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                               operands: List[Expression],
                                               operand_types: List[Type],
                                               chain_indices: List[int],
-                                              narrowable_operand_indices: Set[int],
+                                              narrowable_operand_indices: AbstractSet[int],
                                               ) -> Tuple[TypeMap, TypeMap]:
         """Produces conditional type maps refining expressions used in an identity comparison.
 
@@ -4144,7 +4136,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if i not in narrowable_operand_indices:
                 singleton_index = i
 
-        # Oh well, give up and just arbitrarily pick the last item.
+        # But if none of the possible singletons are unassignable ones, we give up
+        # and arbitrarily pick the last item, mostly because other parts of the
+        # type narrowing logic bias towards picking the rightmost item and it'd be
+        # nice to stay consistent.
+        #
+        # That said, it shouldn't matter which index we pick. For example, suppose we
+        # have this if statement, where 'x' and 'y' both have singleton types:
+        #
+        #     if x is y:
+        #         reveal_type(x)
+        #         reveal_type(y)
+        #     else:
+        #         reveal_type(x)
+        #         reveal_type(y)
+        #
+        # At this point, 'x' and 'y' *must* have the same singleton type: we would have
+        # ended early in the first for-loop in this function if they weren't.
+        #
+        # So, we should always get the same result in the 'if' case no matter which
+        # index we pick. And while we do end up getting different results in the 'else'
+        # case depending on the index (e.g. if we pick 'y', then its type stays the same
+        # while 'x' is narrowed to '<uninhabited>'), this distinction is also moot: mypy
+        # currently will just mark the whole branch as unreachable if either operand is
+        # narrowed to <uninhabited>.
         if singleton_index == -1:
             singleton_index = possible_singleton_indices[-1]
 
@@ -4175,13 +4190,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr_type = try_expanding_enum_to_union(expr_type, enum_name)
             partial_type_maps.append(conditional_type_map(expr, expr_type, target_type))
 
-        return reduce_partial_type_maps(partial_type_maps)
+        return reduce_partial_conditional_maps(partial_type_maps)
 
     def refine_equality_comparison_expression(self,
                                               operands: List[Expression],
                                               operand_types: List[Type],
                                               chain_indices: List[int],
-                                              narrowable_operand_indices: Set[int],
+                                              narrowable_operand_indices: AbstractSet[int],
                                               ) -> Tuple[TypeMap, TypeMap]:
         """Produces conditional type maps refining expressions used in an equality comparison.
 
@@ -4643,16 +4658,34 @@ def gen_unique_name(base: str, table: SymbolTable) -> str:
 
 
 def is_true_literal(n: Expression) -> bool:
+    """Returns true if this expression is the 'True' literal/keyword."""
     return (refers_to_fullname(n, 'builtins.True')
             or isinstance(n, IntExpr) and n.value == 1)
 
 
 def is_false_literal(n: Expression) -> bool:
+    """Returns true if this expression is the 'False' literal/keyword."""
     return (refers_to_fullname(n, 'builtins.False')
             or isinstance(n, IntExpr) and n.value == 0)
 
 
 def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
+    """Returns true if this expression (with the given type context) is an Enum literal.
+
+    For example, if we had an enum:
+
+        class Foo(Enum):
+            A = 1
+            B = 2
+
+    ...and if the expression 'Foo' referred to that enum within the current type context,
+    then the expression 'Foo.A' would be a a literal enum. However, if we did 'a = Foo.A',
+    then the variable 'a' would *not* be a literal enum.
+
+    We occasionally special-case expressions like 'Foo.A' and treat them as a single primitive
+    unit for the same reasons we sometimes treat 'True', 'False', or 'None' as a single
+    primitive unit.
+    """
     if not isinstance(n, MemberExpr) or not isinstance(n.expr, NameExpr):
         return False
 
@@ -4673,6 +4706,7 @@ def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
 
 
 def is_literal_none(n: Expression) -> bool:
+    """Returns true if this expression is the 'None' literal/keyword."""
     return isinstance(n, NameExpr) and n.fullname == 'builtins.None'
 
 
@@ -4795,7 +4829,8 @@ def or_partial_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     return result
 
 
-def reduce_partial_type_maps(type_maps: List[Tuple[TypeMap, TypeMap]]) -> Tuple[TypeMap, TypeMap]:
+def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
+                                    ) -> Tuple[TypeMap, TypeMap]:
     """Reduces a list containing pairs of *partial* if/else TypeMaps into a single pair.
 
     That is, if a expression exists in only one map, we always include it in the output.
@@ -5196,6 +5231,192 @@ class CheckerScope:
 @contextmanager
 def nothing() -> Iterator[None]:
     yield
+
+
+TKey = TypeVar('TKey')
+TValue = TypeVar('TValue')
+
+
+class DisjointDict(Generic[TKey, TValue]):
+    """An variation of the union-find algorithm/data structure where instead of
+    keeping track of just disjoint sets, we keep track of disjoint dicts.
+
+    That is, we keep track of multiple Set[Keys] -> Set[Values] mappings, where each
+    mapping's keys are guaranteed to be disjoint.
+    """
+    def __init__(self) -> None:
+        # Each key maps to a unique ID
+        self._key_to_id = {}       # type: Dict[TKey, int]
+
+        # Each id points to the 'parent root id'. If the current ID already
+        # is the root, it points to itself.
+        self._id_to_root_id = {}  # type: Dict[int, int]
+
+        # Each root id in turn maps to the set of values.
+        self._root_id_to_values = {}  # type: Dict[int, Set[TValue]]
+
+    def add_mapping(self, keys: Set[TKey], values: Set[TValue]) -> None:
+        """Adds a 'Set[TKey] -> Set[TValue]' mapping. If there already exists
+        a mapping containing one or more of the provided keys, we merge the
+        given mapping with the old one.
+
+        Note that the given set of keys must be non-empty -- otherwise, nothing
+        happens.
+        """
+        if len(keys) == 0:
+            return
+
+        for key in keys:
+            self._ensure_key_is_registered(key)
+        subtree_root_ids = [self._lookup_root_id(key) for key in keys]
+        self._reparent(subtree_root_ids, subtree_root_ids[0], values)
+
+    def items(self) -> List[Tuple[Set[TKey], Set[TValue]]]:
+        """Returns all disjoint mappings in key-value pairs."""
+        root_id_to_keys = {}  # type: Dict[int, Set[TKey]]
+        for key in self._key_to_id:
+            root_id = self._lookup_root_id(key)
+            if root_id not in root_id_to_keys:
+                root_id_to_keys[root_id] = set()
+            root_id_to_keys[root_id].add(key)
+
+        output = []
+        for root_id, keys in root_id_to_keys.items():
+            output.append((keys, self._root_id_to_values[root_id]))
+
+        return output
+
+    def _ensure_key_is_registered(self, key: TKey) -> None:
+        if key not in self._key_to_id:
+            new_id = len(self._key_to_id)
+            self._key_to_id[key] = new_id
+            self._id_to_root_id[new_id] = new_id
+            self._root_id_to_values[new_id] = set()
+
+    def _lookup_root_id(self, key: TKey) -> int:
+        i = self._key_to_id[key]
+        while i != self._id_to_root_id[i]:
+            # Optimization: make keys directly point to their grandparents to speed up
+            # future traversals.
+            self._id_to_root_id[i] = self._id_to_root_id[self._id_to_root_id[i]]
+            i = self._id_to_root_id[i]
+        return i
+
+    def _reparent(self,
+                  subtree_root_ids: List[int],
+                  new_root_id: int,
+                  new_values: Set[TValue],
+                  ) -> None:
+        root_values = self._root_id_to_values[new_root_id]
+        root_values.update(new_values)
+        for subtree_root_id in subtree_root_ids:
+            if subtree_root_id == new_root_id:
+                continue
+            self._id_to_root_id[subtree_root_id] = new_root_id
+            root_values.update(self._root_id_to_values.pop(subtree_root_id))
+
+
+def group_comparison_operands(pairwise_comparisons: Iterable[Tuple[str, Expression, Expression]],
+                              operand_to_literal_hash: Mapping[int, Key],
+                              operators_to_group: Set[str],
+                              ) -> List[Tuple[str, List[int]]]:
+    """Group a series of comparison operands together chained by any operand
+    in the 'operators_to_group' set. All other pairwise operands are kept in
+    groups of size 2.
+
+    For example, suppose we have the input comparison expression:
+
+        x0 == x1 == x2 < x3 < x4 is x5 is x6 is not x7 is not x8
+
+    If we get these expressions in a pairwise way (e.g. by calling ComparisionExpr's
+    'pairwise()' method), we get the following as input:
+
+        [('==', x0, x1), ('==', x1, x2), ('<', x2, x3), ('<', x3, x4),
+         ('is', x4, x5), ('is', x5, x6), ('is not', x6, x7), ('is not', x7, x8)]
+
+    If `operators_to_group` is the set {'==', 'is'}, this function will produce
+    the following "simplified operator list":
+
+       [("==", [0, 1, 2]), ("<", [2, 3]), ("<", [3, 4]),
+        ("is", [4, 5, 6]), ("is not", [6, 7]), ("is not", [7, 8])]
+
+    Note that (a) we yield *indices* to the operands rather then the operand
+    expressions themselves and that (b) operands used in a consecutive chain
+    of '==' or 'is' are grouped together.
+
+    If two of these chains happen to contain operands with the same underlying
+    literal hash (e.g. are assignable and correspond to the same expression),
+    we combine those chains together. For example, if we had:
+
+        same == x < y == same
+
+    ...and if 'operand_to_literal_hash' contained the same values for the indices
+    0 and 3, we'd produce the following output:
+
+        [("==", [0, 1, 2, 3]), ("<", [1, 2])]
+
+    But if the 'operand_to_literal_hash' did *not* contain an entry, we'd instead
+    default to returning:
+
+        [("==", [0, 1]), ("<", [1, 2]), ("==", [2, 3])]
+
+    This function is currently only used to assist with type-narrowing refinements
+    and is extracted out to a helper function so we can unit test it.
+    """
+    groups = {
+        op: DisjointDict() for op in operators_to_group
+    }  # type: Dict[str, DisjointDict[Key, int]]
+
+    simplified_operator_list = []  # type: List[Tuple[str, List[int]]]
+    last_operator = None
+    current_indices = set()  # type: Set[int]
+    current_hashes = set()  # type: Set[Key]
+    for i, (operator, left_expr, right_expr) in enumerate(pairwise_comparisons):
+        if last_operator is None:
+            last_operator = operator
+
+        if current_indices and (operator != last_operator or operator not in operators_to_group):
+            if len(current_hashes) == 0:
+                # If the previous group has no assignable operands, just add the indices to the
+                # output immediately
+                simplified_operator_list.append((last_operator, sorted(current_indices)))
+            else:
+                # But if there *are* assignable operands, defer adding it. Instead, update
+                # the appropriate DisjointDict and decide at the end what the chains are.
+                groups[last_operator].add_mapping(current_hashes, current_indices)
+            last_operator = operator
+            current_indices = set()
+            current_hashes = set()
+
+        # Note: 'i' corresponds to the left operand index, so 'i + 1' is the
+        # right operand.
+        current_indices.add(i)
+        current_indices.add(i + 1)
+
+        # We only ever want to combine operands/combine chains for these operators
+        if operator in operators_to_group:
+            left_hash = operand_to_literal_hash.get(i)
+            if left_hash is not None:
+                current_hashes.add(left_hash)
+            right_hash = operand_to_literal_hash.get(i + 1)
+            if right_hash is not None:
+                current_hashes.add(right_hash)
+
+    if last_operator is not None:
+        if len(current_hashes) == 0:
+            simplified_operator_list.append((last_operator, sorted(current_indices)))
+        else:
+            groups[last_operator].add_mapping(current_hashes, current_indices)
+
+    # Now that we know which chains happen to contain the same underlying expressions
+    # and can be merged together, add in this info back to the output.
+    for operator, disjoint_dict in groups.items():
+        for keys, indices in disjoint_dict.items():
+            simplified_operator_list.append((operator, sorted(indices)))
+
+    # For stability, reorder list by the first operand index to appear
+    simplified_operator_list.sort(key=lambda item: item[1][0])
+    return simplified_operator_list
 
 
 def is_typed_callable(c: Optional[Type]) -> bool:
