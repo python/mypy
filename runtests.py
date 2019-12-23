@@ -45,7 +45,7 @@ ALL_NON_FAST = [CMDLINE,
                 ERROR_STREAM]
 
 
-# These must be enable by explicitly including 'mypyc-extra' on the command line.
+# These must be enabled by explicitly including 'mypyc-extra' on the command line.
 MYPYC_OPT_IN = [MYPYC_RUN,
                 MYPYC_RUN_MULTI]
 
