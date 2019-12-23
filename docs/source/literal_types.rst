@@ -16,8 +16,6 @@ precise type signature for this function using ``Literal[...]`` and overloads:
 
 .. code-block:: python
 
-    # Note: if you are using Python 3.7 or earlier, you will need to import
-    # Literal from the typing_extensions module.
     from typing import overload, Union, Literal
 
     # The first two overloads use Literal[...] so we can
@@ -46,6 +44,13 @@ precise type signature for this function using ``Literal[...]`` and overloads:
 
     variable = True
     reveal_type(fetch_data(variable))    # Revealed type is 'Union[bytes, str]'
+
+.. note::
+
+    The examples in this page import ``Literal`` as well as ``Final`` and
+    ``TypedDict`` from the ``typing`` module. These types were added to
+    ``typing`` in Python 3.8, but are also available for use in Python 2.7
+    and 3.4 - 3.7 via the ``typing_extensions`` package.
 
 Parameterizing Literals
 ***********************
@@ -106,8 +111,6 @@ you can instead change the variable to be ``Final`` (see :ref:`final_attrs`):
 
 .. code-block:: python
 
-    # Note: if you are using Python 3.7 or earlier, you will need to import
-    # Literal and Final from the typing_extensions module.
     from typing import Final, Literal
 
     def expects_literal(x: Literal[19]) -> None: pass
@@ -144,7 +147,7 @@ For example, compare and contrast what happens when you try appending these type
 
 .. code-block:: python
 
-    from typing_extensions import Final, Literal
+    from typing import Final, Literal
 
     a: Final = 19
     b: Literal[19] = 19
@@ -174,6 +177,8 @@ corresponding to some particular index, we can use Literal types like so:
 
 .. code-block:: python
 
+    from typing import TypedDict
+
     tup = ("foo", 3.4)
 
     # Indexing with an int literal gives us the exact type for that index
@@ -190,6 +195,20 @@ corresponding to some particular index, we can use Literal types like so:
     fin_index: Final = 1
     reveal_type(tup[lit_index])  # Revealed type is 'str'
     reveal_type(tup[fin_index])  # Revealed type is 'str'
+
+    # We can do the same thing with with TypedDict and str keys:
+    class MyDict(TypedDict):
+        name: str
+        main_id: int
+        backup_id: int
+
+    d: MyDict = {"name": "Saanvi", "main_id": 111, "backup_id": 222}
+    name_key: Final = "name"
+    reveal_type(d[name_key])  # Revealed type is 'str'
+
+    # You can also index using unions of literals
+    id_key: Literal["main_id", "backup_id"]
+    reveal_type(d[id_key])    # Revealed type is 'int' 
 
 .. _tagged_unions:
 
@@ -210,8 +229,6 @@ type. Then, you can discriminate between each kind of TypedDict by checking the 
 
 .. code-block:: python
 
-    # Note: if you are using Python 3.7 or earlier, you will need to import
-    # Literal and TypedDict from the typing_extensions module.
     from typing import Literal, TypedDict, Union
 
     class NewJobEvent(TypedDict):
@@ -241,7 +258,35 @@ type. Then, you can discriminate between each kind of TypedDict by checking the 
 While this feature is mostly useful when working with TypedDicts, you can also
 use the same technique wih regular objects, tuples, or namedtuples.
 
-This language feature is sometimes called "sum types" or "discriminated union types"
+Similarly, tags do not need to be specifically str Literals: they can be any type
+you can normally narrow within ``if`` statements and the like. For example, you
+could have your tags be int or Enum Literals or even regular classes you narrow
+using ``isinstance()``:
+
+.. code-block:: python
+
+    from typing import Generic, TypeVar, Union
+
+    T = TypeVar('T')
+
+    class Wrapper(Generic[T]):
+        def __init__(self, inner: T) -> None:
+            self.inner = inner
+
+    def process(w: Union[Wrapper[int], Wrapper[str]]) -> None:
+        # Doing `if isinstance(w, Wrapper[int])` does not work: isinstance requires
+        # that the second argument always be an *erased* type, with no generics.
+        # This is because generics are a typing-only concept and do not exist at
+        # runtime in a way `isinstance` can always check.
+        #
+        # However, we can side-step this by checking the type of `w.inner` to
+        # narrow `w` itself:
+        if isinstance(w.inner, int):
+            reveal_type(w)  # Revealed type is 'Wrapper[int]'
+        else:
+            reveal_type(w)  # Revealed type is 'Wrapper[str]'
+
+This feature is sometimes called "sum types" or "discriminated union types"
 in other programming languages.
 
 Limitations
