@@ -1232,3 +1232,225 @@ A = List  # OK
 B = List[A]  # E:10: Missing type parameters for generic type "A"
 x: A  # E:4: Missing type parameters for generic type "A"
 [builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitDefSignature]
+# flags: --disallow-any-explicit
+
+from typing import Any, List
+
+def f(x: Any) -> None:  # E: Explicit "Any" is not allowed
+    pass
+
+def g() -> Any:  # E: Explicit "Any" is not allowed
+    pass
+
+def h() -> List[Any]:  # E: Explicit "Any" is not allowed
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitVarDeclaration]
+# flags: --python-version 3.6 --disallow-any-explicit
+from typing import Any
+v: Any = ''  # E: Explicit "Any" is not allowed
+w = ''  # type: Any  # E: Explicit "Any" is not allowed
+class X:
+    y = ''  # type: Any  # E: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericVarDeclaration]
+# flags: --python-version 3.6 --disallow-any-explicit
+from typing import Any, List
+v: List[Any] = []  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitInheritance]
+# flags: --disallow-any-explicit
+from typing import Any, List
+
+class C(Any):  # E: Explicit "Any" is not allowed
+    pass
+
+class D(List[Any]):  # E: Explicit "Any" is not allowed
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitAlias]
+# flags: --disallow-any-explicit
+from typing import Any, List
+
+X = Any  # E: Explicit "Any" is not allowed
+Y = List[Any]  # E: Explicit "Any" is not allowed
+
+def foo(x: X) -> Y:  # no error
+    x.nonexistent()  # no error
+    return x
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitGenericAlias]
+# flags: --disallow-any-explicit
+from typing import Any, TypeVar, Tuple
+
+T = TypeVar('T')
+
+TupleAny = Tuple[Any, T]  # E: Explicit "Any" is not allowed
+
+def foo(x: TupleAny[str]) -> None:  # no error
+    pass
+
+def goo(x: TupleAny[Any]) -> None:  # E: Explicit "Any" is not allowed
+    pass
+
+[case testDisallowAnyExplicitCast]
+# flags: --disallow-any-explicit
+from typing import Any, List, cast
+
+x = 1
+y = cast(Any, x)  # E: Explicit "Any" is not allowed
+z = cast(List[Any], x)  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitNamedTuple]
+# flags: --disallow-any-explicit
+from typing import Any, List, NamedTuple
+
+Point = NamedTuple('Point', [('x', List[Any]), ('y', Any)])  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitTypeVarConstraint]
+# flags: --disallow-any-explicit
+from typing import Any, List, TypeVar
+
+T = TypeVar('T', Any, List[Any])  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitNewType]
+# flags: --disallow-any-explicit
+from typing import Any, List, NewType
+
+# this error does not come from `--disallow-any-explicit` flag
+Baz = NewType('Baz', Any)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
+Bar = NewType('Bar', List[Any])  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitTypedDictSimple]
+# flags: --disallow-any-explicit
+from mypy_extensions import TypedDict
+from typing import Any
+
+M = TypedDict('M', {'x': str, 'y': Any})  # E: Explicit "Any" is not allowed
+M(x='x', y=2)  # no error
+def f(m: M) -> None: pass  # no error
+[builtins fixtures/dict.pyi]
+
+[case testDisallowAnyExplicitTypedDictGeneric]
+# flags: --disallow-any-explicit
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+M = TypedDict('M', {'x': str, 'y': List[Any]})  # E: Explicit "Any" is not allowed
+N = TypedDict('N', {'x': str, 'y': List})  # no error
+[builtins fixtures/dict.pyi]
+
+[case testDisallowAnyGenericsTupleNoTypeParams]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import Tuple
+
+def f(s: Tuple) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def g(s) -> Tuple:  # E: Missing type parameters for generic type "Tuple"
+    return 'a', 'b'
+def h(s) -> Tuple[str, str]:  # no error
+    return 'a', 'b'
+x: Tuple = ()  # E: Missing type parameters for generic type "Tuple"
+
+[case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
+# flags: --disallow-any-generics
+from typing import Tuple, List
+
+def f(s: List[Tuple]) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def g(s: List[Tuple[str, str]]) -> None: pass  # no error
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsTypeType]
+# flags: --disallow-any-generics
+from typing import Type, Any
+
+def f(s: Type[Any]) -> None: pass  # no error
+def g(s) -> Type:  # E: Missing type parameters for generic type "Type"
+    return s
+def h(s) -> Type[str]:  # no error
+    return s
+x: Type = g(0)  # E: Missing type parameters for generic type "Type"
+
+[case testDisallowAnyGenericsAliasGenericType]
+# flags: --disallow-any-generics
+from typing import List
+
+L = List  # no error
+
+def f(l: L) -> None: pass  # E: Missing type parameters for generic type "L"
+def g(l: L[str]) -> None: pass  # no error
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsGenericAlias]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import TypeVar, Tuple
+
+T = TypeVar('T')
+A = Tuple[T, str, T]
+
+def f(s: A) -> None: pass  # E: Missing type parameters for generic type "A"
+def g(s) -> A:  # E: Missing type parameters for generic type "A"
+    return 'a', 'b', 1
+def h(s) -> A[str]:  # no error
+    return 'a', 'b', 'c'
+x: A = ('a', 'b', 1)  # E: Missing type parameters for generic type "A"
+
+[case testDisallowAnyGenericsPlainList]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import List
+
+def f(l: List) -> None: pass  # E: Missing type parameters for generic type "List"
+def g(l: List[str]) -> None: pass  # no error
+def h(l: List[List]) -> None: pass   # E: Missing type parameters for generic type "List"
+def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type parameters for generic type "List"
+
+x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+y: List = []  # E: Missing type parameters for generic type "List"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsCustomGenericClass]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+class G(Generic[T]): pass
+
+def f() -> G:  # E: Missing type parameters for generic type "G"
+    return G()
+
+x: G[Any] = G()  # no error
+y: G = x  # E: Missing type parameters for generic type "G"
+
+[case testDisallowSubclassingAny]
+# flags: --config-file tmp/mypy.ini
+import m
+import y
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
+
+[file mypy.ini]
+\[mypy]
+disallow_subclassing_any = True
+\[mypy-m]
+disallow_subclassing_any = False
