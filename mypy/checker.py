@@ -5368,7 +5368,7 @@ def group_comparison_operands(pairwise_comparisons: Iterable[Tuple[str, Expressi
     }  # type: Dict[str, DisjointDict[Key, int]]
 
     simplified_operator_list = []  # type: List[Tuple[str, List[int]]]
-    last_operator = None
+    last_operator = None  # type: Optional[str]
     current_indices = set()  # type: Set[int]
     current_hashes = set()  # type: Set[Key]
     for i, (operator, left_expr, right_expr) in enumerate(pairwise_comparisons):
