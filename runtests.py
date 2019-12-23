@@ -44,6 +44,10 @@ ALL_NON_FAST = [CMDLINE,
                 MYPYC_COMMAND_LINE,
                 ERROR_STREAM]
 
+
+# These must be enable by explicitly including 'mypyc-extra' on the command line.
+MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
+
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
 # time to run.
@@ -70,6 +74,9 @@ cmds = {
          MYPYC_EXTERNAL,
          MYPYC_COMMAND_LINE,
          ERROR_STREAM]),
+    # Mypyc tests that aren't run by default, since they are slow and rarely
+    # fail for commits that don't touch mypyc
+    'mypyc-extra': 'pytest -k "%s"' % ' or '.join(MYPYC_OPT_IN),
 }
 
 # Stop run immediately if these commands fail
@@ -120,7 +127,7 @@ def main() -> None:
         exit(1)
 
     if not args:
-        args = list(cmds)
+        args = [cmd for cmd in cmds if cmd != 'mypyc-extra']
 
     status = 0
 
