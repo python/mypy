@@ -601,8 +601,10 @@ class BuildManager:
                               and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
+        # add ignore-all .gitignore to cache dir if we created it
+        cache_dir_existed = os.path.isdir(options.cache_dir)
         self.metastore = create_metastore(options)
-        if fscache.isdir(options.cache_dir):
+        if not cache_dir_existed and os.path.isdir(options.cache_dir):
             gitignore = os.path.join(options.cache_dir, ".gitignore")
             if not fscache.isfile(gitignore):
                 with open(gitignore, "w") as f:
