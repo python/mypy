@@ -110,7 +110,7 @@ def main() -> None:
 
     status = 0
 
-    if args[:2] == ['self', 'lint']:
+    if 'self' in args and 'lint' in args:
         # Perform lint and self check in parallel as it's faster.
         proc = start_background_cmd('lint')
         cmd_status = run_cmd('self')
@@ -119,7 +119,7 @@ def main() -> None:
         cmd_status = wait_background_cmd('lint', proc)
         if cmd_status:
             status = cmd_status
-        args = args[2:]
+        args = [arg for arg in args if arg not in ('self', 'lint')]
 
     for arg in args:
         cmd_status = run_cmd(arg)
