@@ -46,7 +46,8 @@ ALL_NON_FAST = [CMDLINE,
 
 
 # These must be enable by explicitly including 'mypyc-extra' on the command line.
-MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
+MYPYC_OPT_IN = [MYPYC_RUN,
+                MYPYC_RUN_MULTI]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
@@ -69,8 +70,6 @@ cmds = {
          TYPESHED,
          PEP561,
          DAEMON,
-         MYPYC_RUN,
-         MYPYC_RUN_MULTI,
          MYPYC_EXTERNAL,
          MYPYC_COMMAND_LINE,
          ERROR_STREAM]),
@@ -81,6 +80,8 @@ cmds = {
 
 # Stop run immediately if these commands fail
 FAST_FAIL = ['self', 'lint']
+
+DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd != 'mypyc-extra']
 
 assert all(cmd in cmds for cmd in FAST_FAIL)
 
@@ -124,10 +125,12 @@ def main() -> None:
 
     if not set(args).issubset(cmds):
         print("usage:", prog, " ".join('[%s]' % k for k in cmds))
+        print()
+        print('Run the given tests. If given no arguments, run everything except mypyc-extra.')
         exit(1)
 
     if not args:
-        args = [cmd for cmd in cmds if cmd != 'mypyc-extra']
+        args = DEFAULT_COMMANDS[:]
 
     status = 0
 
