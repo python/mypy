@@ -17,7 +17,7 @@ dist: xenial
 
 env:
   TOXENV=py
-  EXTRA_ARGS="-n 12"
+  EXTRA_ARGS="-n 2"
   TEST_MYPYC=0
   PYTHON_DEBUG_BUILD=0
 
@@ -39,19 +39,19 @@ jobs:
       - TOXENV=py36
       - PYTHONVERSION=3.6.8
       - PYTHON_DEBUG_BUILD=1
-      - EXTRA_ARGS="-n 12 mypyc/test/test_run.py mypyc/test/test_external.py"
+      - EXTRA_ARGS="-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
   - name: "run mypyc runtime tests with python 3.6 on OS X"
     os: osx
     osx_image: xcode8.3
     language: generic
     env:
       - PYTHONVERSION=3.6.3
-      - EXTRA_ARGS="-n 12 mypyc/test/test_run.py mypyc/test/test_external.py"
+      - EXTRA_ARGS="-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
   - name: "run test suite with python 3.7 (compiled with mypyc)"
     python: 3.7
     env:
     - TOXENV=py
-    - EXTRA_ARGS="-n 12"
+    - EXTRA_ARGS="-n 2"
     - TEST_MYPYC=1
   - name: "type check our own code"
     python: 3.7
