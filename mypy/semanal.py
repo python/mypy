@@ -4295,7 +4295,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif name not in self.missing_names and '*' not in self.missing_names:
+        elif (not (name in self.missing_names and symbol.kind != MDEF)
+                and '*' not in self.missing_names):
             names[name] = symbol
             self.progress = True
             return True
