@@ -482,6 +482,23 @@ of the above sections.
            # 'items' now has type List[List[str]]
            ...
 
+.. option:: --local-partial-types
+
+    By default, mypy won't check partial types spanning module top level or class top level.
+    This flag changes the behavior to only allow partial types at local level. For example:
+
+    .. code-block:: python
+
+        from typing import Optional
+
+        a = None  # error
+        b = None  # type: Optional[str]
+
+        class Foo:
+            bar = None  # error
+            boo = None  # type: Optional[int]
+
+
 .. option:: --no-implicit-reexport
 
     By default, imported values to a module are treated as exported and mypy allows
