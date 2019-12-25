@@ -1528,6 +1528,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     original_class_or_static,
                                     override_class_or_static,
                                     context)
+            # TODO:
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
