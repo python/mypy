@@ -528,6 +528,28 @@ else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
 [builtins fixtures/ops.pyi]
 
+[case testInferEqualsNotOptionalWithMultipleArgs]
+from typing import Optional
+x: Optional[int]
+y: Optional[int]
+if x == y == 1:
+    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(y)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
+    reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
+
+class A: pass
+a: Optional[A]
+b: Optional[A]
+if a == b == object():
+    reveal_type(a)  # N: Revealed type is '__main__.A'
+    reveal_type(b)  # N: Revealed type is '__main__.A'
+else:
+    reveal_type(a)  # N: Revealed type is 'Union[__main__.A, None]'
+    reveal_type(b)  # N: Revealed type is 'Union[__main__.A, None]'
+[builtins fixtures/ops.pyi]
+
 [case testWarnNoReturnWorksWithStrictOptional]
 # flags: --warn-no-return
 def f() -> None:
