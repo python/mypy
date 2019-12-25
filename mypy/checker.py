@@ -5238,38 +5238,62 @@ TValue = TypeVar('TValue')
 
 
 class DisjointDict(Generic[TKey, TValue]):
-    """An variation of the union-find algorithm/data structure where instead of
-    keeping track of just disjoint sets, we keep track of disjoint dicts.
+    """An variation of the union-find algorithm/data structure where instead of keeping
+    track of just disjoint sets, we keep track of disjoint dicts -- keep track of multiple
+    Set[Key] -> Set[Value] mappings, where each mapping's keys are guaranteed to be disjoint.
 
-    That is, we keep track of multiple Set[Keys] -> Set[Values] mappings, where each
-    mapping's keys are guaranteed to be disjoint.
+    This data structure is currently used exclusively by 'group_comparison_operands' below
+    to merge chains of '==' and 'is' comparisons when two or more chains use the same expression
+    in best-case O(n), where n is the number of operands.
+
+    Specifically, the `add_mapping()` function and `items()` functions will take on average
+    O(k + v) and O(n) respectively, where k and v are the number of keys and values we're adding
+    for a given chain. Note that k <= n and v <= n.
+
+    We hit these average/best-case scenarios for most user code: e.g. when the user has just
+    a single chain like 'a == b == c == d == ...' or multiple disjoint chains like
+    'a==b < c==d < e==f < ...'. (Note that a naive iterative merging would be O(n^2) for
+    the latter case).
+
+    In comparison, this data structure will make 'group_comparison_operands' have a worst-case
+    runtime of O(n*log(n)): 'add_mapping()' and 'items()' are worst-case O(k*log(n) + v) and
+    O(k*log(n)) respectively. This happens only in the rare case where the user keeps repeatedly
+    making disjoint mappings before merging them in a way that persistently dodges the path
+    compression optimization in '_lookup_root_id', which would end up constructing a single
+    tree of height log_2(n). This makes root lookups no longer amoritized constant time when we
+    finally call 'items()'.
     """
     def __init__(self) -> None:
         # Each key maps to a unique ID
         self._key_to_id = {}       # type: Dict[TKey, int]
 
-        # Each id points to the 'parent root id'. If the current ID already
-        # is the root, it points to itself.
-        self._id_to_root_id = {}  # type: Dict[int, int]
+        # Each id points to the parent id, forming a forest of upwards-pointing trees. If the
+        # current id already is the root, it points to itself. We gradually flatten these trees
+        # as we perform root lookups: eventually all nodes point directly to its root.
+        self._id_to_parent_id = {}  # type: Dict[int, int]
 
         # Each root id in turn maps to the set of values.
         self._root_id_to_values = {}  # type: Dict[int, Set[TValue]]
 
     def add_mapping(self, keys: Set[TKey], values: Set[TValue]) -> None:
-        """Adds a 'Set[TKey] -> Set[TValue]' mapping. If there already exists
-        a mapping containing one or more of the provided keys, we merge the
-        given mapping with the old one.
+        """Adds a 'Set[TKey] -> Set[TValue]' mapping. If there already exists a mapping
+        containing one or more of the given keys, we merge the input mapping with the old one.
 
-        Note that the given set of keys must be non-empty -- otherwise, nothing
-        happens.
+        Note that the given set of keys must be non-empty -- otherwise, nothing happens.
         """
         if len(keys) == 0:
             return
 
-        for key in keys:
-            self._ensure_key_is_registered(key)
-        subtree_root_ids = [self._lookup_root_id(key) for key in keys]
-        self._reparent(subtree_root_ids, subtree_root_ids[0], values)
+        subtree_roots = [self._lookup_or_make_root_id(key) for key in keys]
+        new_root = subtree_roots[0]
+
+        root_values = self._root_id_to_values[new_root]
+        root_values.update(values)
+        for subtree_root in subtree_roots[1:]:
+            if subtree_root == new_root or subtree_root not in self._root_id_to_values:
+                continue
+            self._id_to_parent_id[subtree_root] = new_root
+            root_values.update(self._root_id_to_values.pop(subtree_root))
 
     def items(self) -> List[Tuple[Set[TKey], Set[TValue]]]:
         """Returns all disjoint mappings in key-value pairs."""
@@ -5286,34 +5310,25 @@ class DisjointDict(Generic[TKey, TValue]):
 
         return output
 
-    def _ensure_key_is_registered(self, key: TKey) -> None:
-        if key not in self._key_to_id:
+    def _lookup_or_make_root_id(self, key: TKey) -> int:
+        if key in self._key_to_id:
+            return self._lookup_root_id(key)
+        else:
             new_id = len(self._key_to_id)
             self._key_to_id[key] = new_id
-            self._id_to_root_id[new_id] = new_id
+            self._id_to_parent_id[new_id] = new_id
             self._root_id_to_values[new_id] = set()
+            return new_id
 
     def _lookup_root_id(self, key: TKey) -> int:
         i = self._key_to_id[key]
-        while i != self._id_to_root_id[i]:
+        while i != self._id_to_parent_id[i]:
             # Optimization: make keys directly point to their grandparents to speed up
-            # future traversals.
-            self._id_to_root_id[i] = self._id_to_root_id[self._id_to_root_id[i]]
-            i = self._id_to_root_id[i]
+            # future traversals. This prevents degenerate trees of height n from forming.
+            new_parent = self._id_to_parent_id[self._id_to_parent_id[i]]
+            self._id_to_parent_id[i] = new_parent
+            i = new_parent
         return i
-
-    def _reparent(self,
-                  subtree_root_ids: List[int],
-                  new_root_id: int,
-                  new_values: Set[TValue],
-                  ) -> None:
-        root_values = self._root_id_to_values[new_root_id]
-        root_values.update(new_values)
-        for subtree_root_id in subtree_root_ids:
-            if subtree_root_id == new_root_id:
-                continue
-            self._id_to_root_id[subtree_root_id] = new_root_id
-            root_values.update(self._root_id_to_values.pop(subtree_root_id))
 
 
 def group_comparison_operands(pairwise_comparisons: Iterable[Tuple[str, Expression, Expression]],
@@ -5376,13 +5391,11 @@ def group_comparison_operands(pairwise_comparisons: Iterable[Tuple[str, Expressi
             last_operator = operator
 
         if current_indices and (operator != last_operator or operator not in operators_to_group):
+            # If some of the operands in the chain are assignable, defer adding it: we might
+            # end up needing to merge it with other chains that appear later.
             if len(current_hashes) == 0:
-                # If the previous group has no assignable operands, just add the indices to the
-                # output immediately
                 simplified_operator_list.append((last_operator, sorted(current_indices)))
             else:
-                # But if there *are* assignable operands, defer adding it. Instead, update
-                # the appropriate DisjointDict and decide at the end what the chains are.
                 groups[last_operator].add_mapping(current_hashes, current_indices)
             last_operator = operator
             current_indices = set()

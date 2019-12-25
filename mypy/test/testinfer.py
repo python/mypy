@@ -271,6 +271,18 @@ class OperandDisjointDictSuite(Suite):
             ({0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 15, 16}, {"a", "b", "c", "d", "e", "f"}),
         ])
 
+    def test_merge_with_multiple_overlaps(self) -> None:
+        d = self.new()
+        d.add_mapping({0, 1, 2}, {"a"})
+        d.add_mapping({3, 4, 5}, {"b"})
+        d.add_mapping({1, 2, 4, 5}, {"c"})
+        d.add_mapping({6, 1, 2, 4, 5}, {"d"})
+        d.add_mapping({6, 1, 2, 4, 5}, {"e"})
+
+        self.assertEqual(d.items(), [
+            ({0, 1, 2, 3, 4, 5, 6}, {"a", "b", "c", "d", "e"}),
+        ])
+
 
 class OperandComparisonGroupingSuite(Suite):
     """Test cases for checker.group_comparison_operands."""
