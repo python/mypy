@@ -512,7 +512,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                        kwargs: DictExpr,
                                        context: Context) -> bool:
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
-        if validated_kwargs:
+        if validated_kwargs is not None:
             return (callee.required_keys <= set(validated_kwargs.keys())
                 <= set(callee.items.keys()))
         else:
