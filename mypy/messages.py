@@ -1111,6 +1111,14 @@ class MessageBuilder:
         else:
             self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
 
+    def typeddict_context_ambiguous(
+            self,
+            types: List[TypedDictType],
+            context: Context) -> None:
+        self.fail('Type of TypedDict is Ambiguous, could be any of {}'.format(
+                  ([(format_type(typ), format_item_name_list(typ.items.keys())) for typ in types])
+                  ), context)
+
     def typeddict_key_cannot_be_deleted(
             self,
             typ: TypedDictType,
