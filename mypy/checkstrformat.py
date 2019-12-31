@@ -382,7 +382,8 @@ class StringFormatterChecker:
                     self.msg.requires_int_or_char(call, format_call=True)
         if (not spec.type or spec.type == 's') and not spec.conversion:
             if self.chk.options.python_version >= (3, 0):
-                if has_type_component(actual_type, 'builtins.bytes'):
+                if (has_type_component(actual_type, 'builtins.bytes') and
+                        not custom_special_method(actual_type, '__str__')):
                     self.msg.fail("On Python 3 '{}'.format(b'abc') produces \"b'abc'\";"
                                   " use !r if this is a desired behavior", call,
                                   code=codes.STR_BYTES_PY3)
