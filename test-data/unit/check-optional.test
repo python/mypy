@@ -550,6 +550,15 @@ else:
     reveal_type(b)  # N: Revealed type is 'Union[__main__.A, None]'
 [builtins fixtures/ops.pyi]
 
+[case testInferInWithErasedTypes]
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+def foo(f: Callable[[T], bool], it: T) -> None: ...
+
+foo(lambda x: x in [1, 2] and bool(), 3)
+[builtins fixtures/list.pyi]
+
 [case testWarnNoReturnWorksWithStrictOptional]
 # flags: --warn-no-return
 def f() -> None:

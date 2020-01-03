@@ -3915,7 +3915,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     # We only try and narrow away 'None' for now
                     if not is_optional(item_type):
-                        pass
+                        continue
 
                     collection_item_type = get_proper_type(builtin_item_type(collection_type))
                     if collection_item_type is None or is_optional(collection_item_type):
