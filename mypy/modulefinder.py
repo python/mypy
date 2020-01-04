@@ -9,8 +9,9 @@ import functools
 import os
 import subprocess
 import sys
+from enum import Enum
 
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
 
 from mypy.defaults import PYTHON3_VERSION_MIN
@@ -32,6 +33,37 @@ OnePackageDir = Tuple[str, bool]
 PackageDirs = List[OnePackageDir]
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
+
+
+# TODO: Consider adding more reasons here?
+# E.g. if we deduce a module would likely be found if the user were
+# to set the --namespace-packages flag.
+class ModuleNotFoundReason(Enum):
+    # The module was not found: we found neither stubs nor a plausible code
+    # implementation (with or without a py.typed file).
+    NOT_FOUND = 0
+
+    # The implementation for this module plausibly exists (e.g. we
+    # found a matching folder or *.py file), but either the parent package
+    # did not contain a py.typed file or we were unable to find a
+    # corresponding *-stubs package.
+    FOUND_WITHOUT_TYPE_HINTS = 1
+
+    def error_message_templates(self) -> Tuple[str, str]:
+        if self is ModuleNotFoundReason.NOT_FOUND:
+            msg = "Cannot find implementation or library stub for module named '{}'"
+            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+        elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+            msg = "Skipping analyzing '{}': found module but no type hints or library stubs"
+            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+        else:
+            assert False
+        return msg, note
+
+
+# If we found the module, returns the path to the module as a str.
+# Otherwise, returns the reason why the module wasn't found.
+ModuleSearchResult = Union[str, ModuleNotFoundReason]
 
 
 class BuildSource:
@@ -72,7 +104,7 @@ class FindModuleCache:
         # search_paths -> (toplevel_id -> list(package_dirs))
         self.initial_components = {}  # type: Dict[Tuple[str, ...], Dict[str, List[str]]]
         # Cache find_module: id -> result
-        self.results = {}  # type: Dict[str, Optional[str]]
+        self.results = {}  # type: Dict[str, ModuleSearchResult]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
         self.ns_packages = ns_packages or []  # type: List[str]
@@ -128,20 +160,27 @@ class FindModuleCache:
         self.initial_components[lib_path] = components
         return components.get(id, [])
 
-    def find_module(self, id: str) -> Optional[str]:
-        """Return the path of the module source file, or None if not found."""
+    def find_module(self, id: str) -> ModuleSearchResult:
+        """Return the path of the module source file or why it wasn't found."""
         if id not in self.results:
             self.results[id] = self._find_module(id)
         return self.results[id]
 
     def _find_module_non_stub_helper(self, components: List[str],
-                                     pkg_dir: str) -> Optional[OnePackageDir]:
+                                     pkg_dir: str) -> Union[OnePackageDir, ModuleNotFoundReason]:
+        plausible_match = False
         dir_path = pkg_dir
         for index, component in enumerate(components):
             dir_path = os.path.join(dir_path, component)
             if self.fscache.isfile(os.path.join(dir_path, 'py.typed')):
                 return os.path.join(pkg_dir, *components[:-1]), index == 0
-        return None
+            elif not plausible_match and (self.fscache.isdir(dir_path)
+                                          or self.fscache.isfile(dir_path + ".py")):
+                plausible_match = True
+        if plausible_match:
+            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+        else:
+            return ModuleNotFoundReason.NOT_FOUND
 
     def _update_ns_ancestors(self, components: List[str], match: Tuple[str, bool]) -> None:
         path, verify = match
@@ -151,7 +190,7 @@ class FindModuleCache:
                 self.ns_ancestors[pkg_id] = path
             path = os.path.dirname(path)
 
-    def _find_module(self, id: str) -> Optional[str]:
+    def _find_module(self, id: str) -> ModuleSearchResult:
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -166,6 +205,7 @@ class FindModuleCache:
         # put them in the front of the search path
         third_party_inline_dirs = []  # type: PackageDirs
         third_party_stubs_dirs = []  # type: PackageDirs
+        found_possible_third_party_missing_type_hints = False
         # Third-party stub/typed packages
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
@@ -193,13 +233,17 @@ class FindModuleCache:
                     else:
                         third_party_stubs_dirs.append((path, True))
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
-            if non_stub_match:
+            if isinstance(non_stub_match, ModuleNotFoundReason):
+                if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+                    found_possible_third_party_missing_type_hints = True
+            else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
             third_party_stubs_dirs.clear()
+            found_possible_third_party_missing_type_hints = False
         python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
         candidate_base_dirs = self.find_lib_path_dirs(id, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
@@ -279,11 +323,18 @@ class FindModuleCache:
         # installed package with a py.typed marker that is a
         # subpackage of a namespace package.  We only fess up to these
         # if we would otherwise return "not found".
-        return self.ns_ancestors.get(id)
+        ancestor = self.ns_ancestors.get(id)
+        if ancestor is not None:
+            return ancestor
+
+        if found_possible_third_party_missing_type_hints:
+            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+        else:
+            return ModuleNotFoundReason.NOT_FOUND
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)
-        if not module_path:
+        if isinstance(module_path, ModuleNotFoundReason):
             return []
         result = [BuildSource(module_path, module, None)]
         if module_path.endswith(('__init__.py', '__init__.pyi')):
