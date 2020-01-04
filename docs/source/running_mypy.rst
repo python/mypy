@@ -286,7 +286,7 @@ this error, try:
 
 4.  If you are using namespace packages -- packages which do not contain
     ``__init__.py`` files within each subfolder -- using the
-    :option:`--namespace-package <mypy --namespace-package>` command
+    :option:`--namespace-packages <mypy --namespace-packages>` command
     line flag.
 
 In some rare cases, you may get the "Cannot find implementation or library
