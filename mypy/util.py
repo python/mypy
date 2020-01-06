@@ -607,8 +607,11 @@ class FancyFormatter:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
             codepos = msg.rfind('[')
-            code = msg[codepos:]
-            msg = msg[:codepos]
+            if codepos != -1:
+                code = msg[codepos:]
+                msg = msg[:codepos]
+            else:
+                code = ""  # no error code specified
             return (loc + self.style('error:', 'red', bold=True) +
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:
