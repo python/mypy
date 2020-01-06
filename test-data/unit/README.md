@@ -30,7 +30,7 @@ Add the test in this format anywhere in the file:
 with text "abc..."
 - note a space after `E:` and `flags:`
 - `# E:12` adds column number to the expected error
-- use `\` to escape the `#` character and indicate that the rest of the line is part of 
+- use `\` to escape the `#` character and indicate that the rest of the line is part of
 the error message
 - repeating `# E: ` several times in one line indicates multiple expected errors in one line
 - `W: ...` and `N: ...` works exactly like `E:`, but report a warning and a note respectively
@@ -88,29 +88,32 @@ module:
 
     $ python2 -m pip install -U typing
 
-The unit test suites are driven by the `pytest` framework. To run all tests,
+The unit test suites are driven by the `pytest` framework. To run all mypy tests,
 run `pytest` in the mypy repository:
 
-    $ pytest
-
-Note that some tests will be disabled for older python versions.
+    $ pytest mypy
 
 This will run all tests, including integration and regression tests,
-and will type check mypy and verify that all stubs are valid. This may
-take several minutes to run, so you don't want to use this all the time
-while doing development.
+and will verify that all stubs are valid. This may take several minutes to run,
+so you don't want to use this all the time while doing development.
 
 Test suites for individual components are in the files `mypy/test/test*.py`.
 
+Note that some tests will be disabled for older python versions.
+
+If you work on mypyc, you will want to also run mypyc tests:
+
+    $ pytest mypyc
+
 You can run tests from a specific module directly, a specific suite within a
- module, or a test in a suite (even if it's data-driven):
+module, or a test in a suite (even if it's data-driven):
 
     $ pytest mypy/test/testdiff.py
 
     $ pytest mypy/test/testsemanal.py::SemAnalTypeInfoSuite
-    
+
     $ pytest -n0 mypy/test/testargs.py::ArgSuite::test_coherence
-    
+
     $ pytest -n0 mypy/test/testcheck.py::TypeCheckSuite::testCallingVariableWithFunctionType
 
 To control which tests are run and how, you can use the `-k` switch:
@@ -144,9 +147,18 @@ To run the linter:
 
     $ flake8
 
-You can also run all of the above tests together with:
+You can also run all of the above tests using `runtests.py` (this includes
+type checking mypy and linting):
 
     $ python3 runtests.py
+
+By default, this runs everything except some mypyc tests. You can give it
+arguments to control what gets run, such as `self` to run mypy on itself:
+
+    $ python3 runtests.py self
+
+Run `python3 runtests.py mypyc-extra` to run mypyc tests that are not
+enabled by default. This is typically only needed if you work on mypyc.
 
 Many test suites store test case descriptions in text files
 (`test-data/unit/*.test`). The module `mypy.test.data` parses these
