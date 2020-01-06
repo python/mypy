@@ -13,7 +13,6 @@ The function build() is the main interface to this module.
 import contextlib
 import errno
 import gc
-import hashlib
 import json
 import os
 import pathlib
@@ -37,7 +36,7 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file
+    read_py_file, hash_digest,
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -468,7 +467,7 @@ def take_module_snapshot(module: types.ModuleType) -> str:
     """
     if hasattr(module, '__file__'):
         with open(module.__file__, 'rb') as f:
-            digest = hashlib.md5(f.read()).hexdigest()
+            digest = hash_digest(f.read())
     else:
         digest = 'unknown'
     ver = getattr(module, '__version__', 'none')
@@ -1262,9 +1261,9 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
     #
-    # We still *do* the mtime/md5 checks, however, to enable
+    # We still *do* the mtime/hash checks, however, to enable
     # fine-grained mode to take advantage of the mtime-updating
-    # optimization when mtimes differ but md5s match.  There is
+    # optimization when mtimes differ but hashes match.  There is
     # essentially no extra time cost to computing the hash here, since
     # it will be cached and will be needed for finding changed files
     # later anyways.
@@ -1292,7 +1291,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
         t0 = time.time()
         try:
-            source_hash = manager.fscache.md5(path)
+            source_hash = manager.fscache.hash_digest(path)
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         manager.add_stats(validate_hash_time=time.time() - t0)
@@ -1346,10 +1345,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
 
 def compute_hash(text: str) -> str:
-    # We use md5 instead of the builtin hash(...) function because the output of hash(...)
-    # can differ between runs due to hash randomization (enabled by default in Python 3.3).
-    # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
-    return hashlib.md5(text.encode('utf-8')).hexdigest()
+    # We use a crypto hash instead of the builtin hash(...) function
+    # because the output of hash(...)  can differ between runs due to
+    # hash randomization (enabled by default in Python 3.3).  See the
+    # note in
+    # https://docs.python.org/3/reference/datamodel.html#object.__hash__.
+    return hash_digest(text.encode('utf-8'))
 
 
 def json_dumps(obj: Any, debug_cache: bool) -> str:
@@ -1982,7 +1983,7 @@ class State:
                     path = manager.maybe_swap_for_shadow_path(self.path)
                     source = decode_python_encoding(manager.fscache.read(path),
                                                     manager.options.python_version)
-                    self.source_hash = manager.fscache.md5(path)
+                    self.source_hash = manager.fscache.hash_digest(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
                     # other systems, but os.strerror(ioerr.errno) does not, so we use that.
