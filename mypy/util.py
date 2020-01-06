@@ -142,7 +142,7 @@ def read_py_file(path: str, read: Callable[[str], bytes],
     """
     try:
         source = read(path)
-    except (IOError, OSError):
+    except OSError:
         return None
     else:
         try:
