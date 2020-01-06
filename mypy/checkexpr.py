@@ -32,7 +32,6 @@ from mypy.nodes import (
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
-    SYMBOL_FUNCBASE_TYPES
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -4302,29 +4301,6 @@ def is_expr_literal_type(node: Expression) -> bool:
         underlying = node.node
         return isinstance(underlying, TypeAlias) and isinstance(get_proper_type(underlying.target),
                                                                 LiteralType)
-    return False
-
-
-def custom_equality_method(typ: Type) -> bool:
-    """Does this type have a custom __eq__() method?"""
-    typ = get_proper_type(typ)
-    if isinstance(typ, Instance):
-        method = typ.type.get('__eq__')
-        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
-            if method.node.info:
-                return not method.node.info.fullname.startswith('builtins.')
-        return False
-    if isinstance(typ, UnionType):
-        return any(custom_equality_method(t) for t in typ.items)
-    if isinstance(typ, TupleType):
-        return custom_equality_method(tuple_fallback(typ))
-    if isinstance(typ, CallableType) and typ.is_type_obj():
-        # Look up __eq__ on the metaclass for class objects.
-        return custom_equality_method(typ.fallback)
-    if isinstance(typ, AnyType):
-        # Avoid false positives in uncertain cases.
-        return True
-    # TODO: support other types (see ExpressionChecker.has_member())?
     return False
 
 
