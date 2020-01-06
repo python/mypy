@@ -4,7 +4,6 @@
 # single module and it should be renamed.
 
 import os
-import hashlib
 import json
 from collections import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
@@ -18,6 +17,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.fscache import FileSystemCache
+from mypy.util import hash_digest
 
 from mypyc import genops
 from mypyc.common import (
@@ -144,7 +144,7 @@ class MypycPlugin(Plugin):
                     contents = f.read()
             except FileNotFoundError:
                 return None
-            real_hash = hashlib.md5(contents).hexdigest()
+            real_hash = hash_digest(contents)
             if hash != real_hash:
                 return None
 

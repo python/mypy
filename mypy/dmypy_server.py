@@ -423,7 +423,7 @@ class Server:
                 assert state.path is not None
                 self.fswatcher.set_file_data(
                     state.path,
-                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
+                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash))
 
             changed, removed = self.find_changed(sources)
 
