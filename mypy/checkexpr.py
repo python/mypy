@@ -2514,7 +2514,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 variants_raw.append((right_cmp_op, right_type, left_expr))
 
         # STEP 3:
-        # We now filter out all non-existant operators. The 'variants' list contains
+        # We now filter out all non-existent operators. The 'variants' list contains
         # all operator methods that are actually present, in the order that Python
         # attempts to invoke them.
 

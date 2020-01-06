@@ -968,7 +968,7 @@ def write_plugins_snapshot(manager: BuildManager) -> None:
 def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     """Read cached snapshot of versions and hashes of plugins from previous run."""
     snapshot = _load_json_file(PLUGIN_SNAPSHOT_FILE, manager,
-                               log_sucess='Plugins snapshot ',
+                               log_success='Plugins snapshot ',
                                log_error='Could not load plugins snapshot: ')
     if snapshot is None:
         return None
@@ -1009,7 +1009,7 @@ def read_deps_cache(manager: BuildManager,
     Returns None if the cache was invalid in some way.
     """
     deps_meta = _load_json_file(DEPS_META_FILE, manager,
-                                log_sucess='Deps meta ',
+                                log_success='Deps meta ',
                                 log_error='Could not load fine-grained dependency metadata: ')
     if deps_meta is None:
         return None
@@ -1041,7 +1041,7 @@ def read_deps_cache(manager: BuildManager,
 
 
 def _load_json_file(file: str, manager: BuildManager,
-                    log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
+                    log_success: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
     t0 = time.time()
     try:
@@ -1052,7 +1052,7 @@ def _load_json_file(file: str, manager: BuildManager,
     manager.add_stats(metastore_read_time=time.time() - t0)
     # Only bother to compute the log message if we are logging it, since it could be big
     if manager.verbosity() >= 2:
-        manager.trace(log_sucess + data.rstrip())
+        manager.trace(log_success + data.rstrip())
     try:
         result = json.loads(data)
     except ValueError:  # TODO: JSONDecodeError in 3.5
@@ -1142,7 +1142,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
-                           log_sucess='Meta {} '.format(id),
+                           log_success='Meta {} '.format(id),
                            log_error='Could not load cache for {}: '.format(id))
     t1 = time.time()
     if meta is None:

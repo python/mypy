@@ -305,7 +305,7 @@ class SuggestionEngine:
         """Produce a list of type suggestions for each argument type."""
         types = []  # type: List[List[Type]]
         for i in range(len(base.arg_kinds)):
-            # Make self args Any but this will get overriden somewhere in the checker
+            # Make self args Any but this will get overridden somewhere in the checker
             if i == 0 and is_method:
                 types.append([AnyType(TypeOfAny.suggestion_engine)])
                 continue
@@ -967,7 +967,7 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
 
     This is done by refining every component of the union against the
     right hand side type (or every component of its union if it is
-    one). If an element of the union is succesfully refined, we drop it
+    one). If an element of the union is successfully refined, we drop it
     from the union in favor of the refined versions.
     """
     # Don't try to do any union refining if the types are already the
