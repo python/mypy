@@ -465,6 +465,7 @@ foo(*())
 
 -- Overloads + varargs
 -- -------------------
+[builtins fixtures/tuple.pyi]
 
 
 [case testIntersectionTypesAndVarArgs]

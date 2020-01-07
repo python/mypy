@@ -38,6 +38,7 @@ class J(metaclass=ABCMeta):
 class A(I, J): pass
 class B(A): pass
 class C(I): pass
+[builtins fixtures/tuple.pyi]
 
 [case testAbstractClassSubtypingViaExtension]
 
@@ -67,6 +68,7 @@ class I(metaclass=ABCMeta):
   def f(self): pass
 class J(I): pass
 class A(J): pass
+[builtins fixtures/tuple.pyi]
 
 [case testInheritingAbstractClassInSubclass]
 from abc import abstractmethod, ABCMeta
@@ -134,6 +136,7 @@ if int():
     i = cast(I, o)
 if int():
     i = cast(I, a)
+[builtins fixtures/tuple.pyi]
 
 [case testInstantiatingClassThatImplementsAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -396,6 +399,7 @@ i.g()      # E: "I" has no attribute "g"
 
 if int():
     b = i.f(a)
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingInheritedAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -415,6 +419,7 @@ if int():
 
 -- Any (dynamic) types
 -- -------------------
+[builtins fixtures/tuple.pyi]
 
 
 [case testAbstractClassWithAllDynamicTypes]

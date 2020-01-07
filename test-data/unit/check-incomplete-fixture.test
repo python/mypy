@@ -64,6 +64,7 @@ x: Tuple[int, ...]
 x[0]
 for y in x:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 -- These errors are pretty bad, but keeping this test anyway to
 -- avoid things getting worse.

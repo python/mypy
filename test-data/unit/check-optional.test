@@ -234,6 +234,7 @@ class C:
     def __init__(self) -> None:
         self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
         self.y = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testOverloadWithNone]

@@ -656,6 +656,7 @@ N = NamedTuple('N', [('x', A)])
 from typing import NamedTuple
 class A: pass
 N = NamedTuple('N', [('x', A), ('y', A)])
+[builtins fixtures/tuple.pyi]
 [out]
 TypeInfo<0>(
   Name(target.A)
@@ -1093,6 +1094,7 @@ N = NamedTuple('N', [('x', int)])
 [file target.py]
 f = 1
 [file target.py.next]
+[builtins fixtures/tuple.pyi]
 [out]
 __main__:
     N: TypeInfo<0>
@@ -1454,6 +1456,7 @@ bar: Literal[4] = 4
 from typing_extensions import Literal
 def foo(x: Literal['3']) -> Literal['b']: pass
 bar: Literal[5] = 5
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1<0>(
   tmp/main

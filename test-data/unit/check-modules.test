@@ -2473,6 +2473,7 @@ x = m.One(name="Foo")
 reveal_type(x.name)
 class Two:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 tmp/m/two.py:3: note: Revealed type is 'builtins.str'
 
@@ -2490,6 +2491,7 @@ x = m.One(name="Foo")
 reveal_type(x.name)
 class Two:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 tmp/m/two.py:3: note: Revealed type is 'builtins.str'
 
@@ -2807,3 +2809,4 @@ CustomDict = TypedDict(
     },
 )
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

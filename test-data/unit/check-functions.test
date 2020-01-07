@@ -25,6 +25,7 @@ if int():
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testKeywordOnlyArgumentOrderInsensitivity]
 import typing
@@ -243,6 +244,7 @@ if int():
     o = f
 
 class A: pass
+[builtins fixtures/tuple.pyi]
 
 [case testFunctionSubtypingWithVoid]
 from typing import Callable
@@ -407,6 +409,7 @@ def f(x: A) -> A: pass
 def f(x: B) -> B: pass
 @overload
 def f(x: C) -> C: pass
+[builtins fixtures/tuple.pyi]
 
 [case testInferConstraintsUnequalLengths]
 from typing import Any, Callable, List
@@ -459,6 +462,7 @@ def f(x: 'A'  =  None) -> 'B': pass
 class A: pass
 class AA(A): pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testDefaultArgumentExpressions]
 import typing
@@ -1556,6 +1560,7 @@ def f():
 
 -- Conditional method definition
 -- -----------------------------
+[builtins fixtures/tuple.pyi]
 
 
 [case testTypeCheckBodyOfConditionalMethod]
@@ -1713,6 +1718,7 @@ def a(f: F):
 from collections import namedtuple
 class C(namedtuple('t', 'x')):
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testCallableParsingSameName]
 from typing import Callable
@@ -1981,6 +1987,7 @@ f(g3)
 
 -- (...) -> T
 -- ----------------
+[builtins fixtures/tuple.pyi]
 [case testEllipsisWithArbitraryArgsOnBareFunction]
 def f(x, y, z): # type: (...) -> None
     pass
