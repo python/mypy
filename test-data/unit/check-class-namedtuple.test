@@ -495,7 +495,7 @@ class X(NamedTuple):
 from typing import NamedTuple
 
 class X(NamedTuple):
-    x: int = 1 + '1'  # E: Unsupported operand types for + ("int" and "str")
+    x: int = 1 + '1'  # E: Unsupported left operand type for + ("int")
 [builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleInheritance]
@@ -534,14 +534,14 @@ class XRepr(NamedTuple):
     y: int = 1
     def __str__(self) -> str:
         return 'string'
-    def __add__(self, other: XRepr) -> int:
+    def __sub__(self, other: XRepr) -> int:
         return 0
 
 reveal_type(XMeth(1).double()) # N: Revealed type is 'builtins.int'
 reveal_type(XMeth(1).asyncdouble())  # N: Revealed type is 'typing.Coroutine[Any, Any, builtins.int]'
 reveal_type(XMeth(42).x)  # N: Revealed type is 'builtins.int'
 reveal_type(XRepr(42).__str__())  # N: Revealed type is 'builtins.str'
-reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # N: Revealed type is 'builtins.int'
+reveal_type(XRepr(1, 2).__sub__(XRepr(3)))  # N: Revealed type is 'builtins.int'
 [typing fixtures/typing-async.pyi]
 [builtins fixtures/tuple.pyi]
 

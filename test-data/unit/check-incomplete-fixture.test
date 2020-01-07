@@ -64,12 +64,10 @@ x: Tuple[int, ...]
 x[0]
 for y in x:
     pass
-[builtins fixtures/tuple.pyi]
 [out]
 -- These errors are pretty bad, but keeping this test anyway to
 -- avoid things getting worse.
-main:3: error: Value of type "Tuple[int, ...]" is not indexable
-main:4: error: "Tuple[int, ...]" has no attribute "__iter__" (not iterable)
+main:2: error: Name 'tuple' is not defined
 
 [case testClassmethodMissingFromStubs]
 class A:
