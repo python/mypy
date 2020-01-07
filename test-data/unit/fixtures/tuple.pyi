@@ -26,6 +26,7 @@ class int:
 class slice: pass
 class bool: pass
 class str: pass # For convenience
+class bytes: pass
 class unicode: pass
 
 T = TypeVar('T')
