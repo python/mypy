@@ -81,7 +81,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import best_matches, MessageBuilder, pretty_or
+from mypy.messages import best_matches, MessageBuilder, pretty_or, SUGGESTED_TEST_FIXTURES
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
@@ -119,21 +119,6 @@ from mypy.reachability import (
 from mypy.mro import calculate_mro, MroError
 
 T = TypeVar('T')
-
-# Map from the full name of a missing definition to the test fixture (under
-# test-data/unit/fixtures/) that provides the definition. This is used for
-# generating better error messages when running mypy tests only.
-SUGGESTED_TEST_FIXTURES = {
-    'builtins.list': 'list.pyi',
-    'builtins.dict': 'dict.pyi',
-    'builtins.set': 'set.pyi',
-    'builtins.bool': 'bool.pyi',
-    'builtins.Exception': 'exception.pyi',
-    'builtins.BaseException': 'exception.pyi',
-    'builtins.isinstance': 'isinstancelist.pyi',
-    'builtins.property': 'property.pyi',
-    'builtins.classmethod': 'classmethod.pyi',
-}  # type: Final
 
 TYPES_FOR_UNIMPORTED_HINTS = {
     'typing.Any',
@@ -1828,7 +1813,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if (self.lookup_fully_qualified_or_none(fullname) is None and
                     fullname in SUGGESTED_TEST_FIXTURES):
                 # Yes. Generate a helpful note.
-                self.add_fixture_note(fullname, context)
+                self.msg.add_fixture_note(fullname, context)
 
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,
@@ -1857,13 +1842,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             import_node.assignments.append(assignment)
             return True
         return False
-
-    def add_fixture_note(self, fullname: str, ctx: Context) -> None:
-        self.note('Maybe your test fixture does not define "{}"?'.format(fullname), ctx)
-        if fullname in SUGGESTED_TEST_FIXTURES:
-            self.note(
-                'Consider adding [builtins fixtures/{}] to your test description'.format(
-                    SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
         import_id, ok = correct_relative_import(self.cur_mod_id, node.relative, node.id,
@@ -4599,7 +4577,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             fullname = 'builtins.{}'.format(name)
             if self.lookup_fully_qualified_or_none(fullname) is None:
                 # Yes. Generate a helpful note.
-                self.add_fixture_note(fullname, ctx)
+                self.msg.add_fixture_note(fullname, ctx)
 
         modules_with_unimported_hints = {
             name.split('.', 1)[0]
