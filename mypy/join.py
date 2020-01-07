@@ -272,7 +272,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return TupleType(items, fallback)
         elif isinstance(self.s, Instance) and self.s.type.fullname == 'builtins.tuple':
             typ = self.s.args[0]
-            for item in t.items[1:]:
+            for item in t.items:
                 typ = self.join(item, typ)
 
             return Instance(self.s.type, [typ])
