@@ -1966,7 +1966,7 @@ class Child4(Parent):
     @overload
     def f(self, arg: str) -> str: ...
     def f(self, arg: Union[int, str]) -> Union[int, str]:
-        return True  # E: Incompatible return value type (got "bool", expected "Union[int, str]")
+        return b''  # E: Incompatible return value type (got "bytes", expected "Union[int, str]")
 
 [builtins fixtures/tuple.pyi]
 
