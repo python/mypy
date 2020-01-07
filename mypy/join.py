@@ -179,6 +179,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return join_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return join_types(t, self.s)
+        elif isinstance(self.s, TupleType):
+            return join_types(t, self.s)
         else:
             return self.default(self.s)
 
@@ -268,6 +270,12 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                                       mypy.typeops.tuple_fallback(t))
             assert isinstance(fallback, Instance)
             return TupleType(items, fallback)
+        elif isinstance(self.s, Instance) and self.s.type.fullname == 'builtins.tuple':
+            typ = self.s.args[0]
+            for item in t.items[1:]:
+                typ = self.join(item, typ)
+
+            return Instance(self.s.type, [typ])
         else:
             return self.default(self.s)
 

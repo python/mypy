@@ -3126,3 +3126,30 @@ y = defaultdict(list)  # E: Need type annotation for 'y'
 y['a'] = []
 reveal_type(y)  # N: Revealed type is 'collections.defaultdict[Any, Any]'
 [builtins fixtures/dict.pyi]
+
+[case testTupleAndInstanceJoin]
+from typing import Tuple
+x: Tuple[int, int]
+y: Tuple[int, ...]
+
+lst = [x, y]
+reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testTupleAndInstanceJoinPartlySame]
+from typing import Tuple
+x: Tuple[int, str]
+y: Tuple[int, ...]
+
+lst = [x, y]
+reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.object]'
+[builtins fixtures/list.pyi]
+
+[case testTupleAndInstanceJoinAllDifferent]
+from typing import Tuple
+x: Tuple[str, float]
+y: Tuple[int, ...]
+
+lst = [x, y]
+reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.object]'
+[builtins fixtures/list.pyi]
