@@ -267,6 +267,88 @@ if x.key is Key.D:
 else:
     reveal_type(x)  # N: Revealed type is 'Union[__main__.Object1, __main__.Object2]'
 
+[case testNarrowingTypedDictParentMultipleKeys]
+# flags: --warn-unreachable
+from typing import Union
+from typing_extensions import Literal, TypedDict
+
+class TypedDict1(TypedDict):
+    key: Literal['A', 'C']
+class TypedDict2(TypedDict):
+    key: Literal['B', 'C']
+
+x: Union[TypedDict1, TypedDict2]
+if x['key'] == 'A':
+    reveal_type(x)  # N: Revealed type is 'TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]})'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]'
+
+if x['key'] == 'C':
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]'
+
+if x['key'] == 'D':
+    reveal_type(x)  # E: Statement is unreachable
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]'
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingPartialTypedDictParentMultipleKeys]
+# flags: --warn-unreachable
+from typing import Union
+from typing_extensions import Literal, TypedDict
+
+class TypedDict1(TypedDict, total=False):
+    key: Literal['A', 'C']
+class TypedDict2(TypedDict, total=False):
+    key: Literal['B', 'C']
+
+x: Union[TypedDict1, TypedDict2]
+if x['key'] == 'A':
+    reveal_type(x)  # N: Revealed type is 'TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]})'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]'
+
+if x['key'] == 'C':
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]'
+
+if x['key'] == 'D':
+    reveal_type(x)  # E: Statement is unreachable
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]'
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingNestedTypedDicts]
+from typing import Union
+from typing_extensions import TypedDict, Literal
+
+class A(TypedDict):
+    key: Literal['A']
+class B(TypedDict):
+    key: Literal['B']
+class C(TypedDict):
+    key: Literal['C']
+
+class X(TypedDict):
+    inner: Union[A, B]
+class Y(TypedDict):
+    inner: Union[B, C]
+
+unknown: Union[X, Y]
+if unknown['inner']['key'] == 'A':
+    reveal_type(unknown)            # N: Revealed type is 'TypedDict('__main__.X', {'inner': Union[TypedDict('__main__.A', {'key': Literal['A']}), TypedDict('__main__.B', {'key': Literal['B']})]})'
+    reveal_type(unknown['inner'])   # N: Revealed type is 'TypedDict('__main__.A', {'key': Literal['A']})'
+if unknown['inner']['key'] == 'B':
+    reveal_type(unknown)            # N: Revealed type is 'Union[TypedDict('__main__.X', {'inner': Union[TypedDict('__main__.A', {'key': Literal['A']}), TypedDict('__main__.B', {'key': Literal['B']})]}), TypedDict('__main__.Y', {'inner': Union[TypedDict('__main__.B', {'key': Literal['B']}), TypedDict('__main__.C', {'key': Literal['C']})]})]'
+    reveal_type(unknown['inner'])   # N: Revealed type is 'TypedDict('__main__.B', {'key': Literal['B']})'
+if unknown['inner']['key'] == 'C':
+    reveal_type(unknown)            # N: Revealed type is 'TypedDict('__main__.Y', {'inner': Union[TypedDict('__main__.B', {'key': Literal['B']}), TypedDict('__main__.C', {'key': Literal['C']})]})'
+    reveal_type(unknown['inner'])   # N: Revealed type is 'TypedDict('__main__.C', {'key': Literal['C']})'
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingParentWithMultipleParents]
 from enum import Enum
 from typing import Union
@@ -529,6 +611,42 @@ else:
     reveal_type(y)              # N: Revealed type is 'Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]'
     reveal_type(y["model"])     # N: Revealed type is 'Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]'
 
+[case testNarrowingParentsHierarchyTypedDictWithStr]
+# flags: --warn-unreachable
+from typing import Union
+from typing_extensions import TypedDict, Literal
+
+class Parent1(TypedDict):
+    model: Model1
+    foo: int
+
+class Parent2(TypedDict):
+    model: Model2
+    bar: str
+
+class Model1(TypedDict):
+    key: Literal['A']
+
+class Model2(TypedDict):
+    key: Literal['B']
+
+x: Union[Parent1, Parent2]
+if x["model"]["key"] == 'A':
+    reveal_type(x)              # N: Revealed type is 'TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int})'
+    reveal_type(x["model"])     # N: Revealed type is 'TypedDict('__main__.Model1', {'key': Literal['A']})'
+else:
+    reveal_type(x)              # N: Revealed type is 'TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})'
+    reveal_type(x["model"])     # N: Revealed type is 'TypedDict('__main__.Model2', {'key': Literal['B']})'
+
+y: Union[Parent1, Parent2]
+if y["model"]["key"] == 'C':
+    reveal_type(y)              # E: Statement is unreachable
+    reveal_type(y["model"])
+else:
+    reveal_type(y)              # N: Revealed type is 'Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]'
+    reveal_type(y["model"])     # N: Revealed type is 'Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]'
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingEqualityFlipFlop]
 # flags: --warn-unreachable --strict-equality
 from typing_extensions import Literal, Final
@@ -606,6 +724,12 @@ A_literal: Literal["A"]
 # is narrowed here -- see 'testNarrowingEqualityFlipFlop' for an example of
 # why more precise inference here is problematic.
 x_str: str
+if x_str == "A":
+    reveal_type(x_str)  # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(x_str)  # N: Revealed type is 'builtins.str'
+reveal_type(x_str)      # N: Revealed type is 'builtins.str'
+
 if x_str == A_final:
     reveal_type(x_str)  # N: Revealed type is 'builtins.str'
 else:
@@ -745,8 +869,94 @@ if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Un
     reveal_type(x)   # E: Statement is unreachable
     reveal_type(z)
 else:
-    # TODO: Why do we narrow away 'Literal[1]' here?
-    # Even if the equality comparison is bogus, we should try and do better here.
-    reveal_type(x)   # N: Revealed type is 'Union[Literal[2], None]'
+    reveal_type(x)   # N: Revealed type is 'Union[Literal[1], Literal[2], None]'
     reveal_type(z)   # N: Revealed type is '__main__.Default'
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingUnreachableCases]
+# flags: --strict-optional --strict-equality --warn-unreachable
+from typing import Union
+from typing_extensions import Literal
+
+a: Literal[1]
+b: Literal[1, 2]
+c: Literal[2, 3]
+
+if a == b == c:
+    reveal_type(a)  # E: Statement is unreachable
+    reveal_type(b)
+    reveal_type(c)
+else:
+    reveal_type(a)  # N: Revealed type is 'Literal[1]'
+    reveal_type(b)  # N: Revealed type is 'Union[Literal[1], Literal[2]]'
+    reveal_type(c)  # N: Revealed type is 'Union[Literal[2], Literal[3]]'
+
+if a == a == a:
+    reveal_type(a)  # N: Revealed type is 'Literal[1]'
+else:
+    reveal_type(a)  # E: Statement is unreachable
+
+if a == a == b:
+    reveal_type(a)  # N: Revealed type is 'Literal[1]'
+    reveal_type(b)  # N: Revealed type is 'Literal[1]'
+else:
+    reveal_type(a)  # N: Revealed type is 'Literal[1]'
+    reveal_type(b)  # N: Revealed type is 'Literal[2]'
+
+# In this case, it's ok for 'b' to narrow down to Literal[1] in the else case
+# since that's the only way 'b == 2' can be false
+if b == 2:
+    reveal_type(b)  # N: Revealed type is 'Literal[2]'
+else:
+    reveal_type(b)  # N: Revealed type is 'Literal[1]'
+
+# But in this case, we can't conclude anything about the else case. This expression
+# could end up being either '2 == 2 == 3' or '1 == 2 == 2', which means we can't
+# conclude anything.
+if b == 2 == c:
+    reveal_type(b)  # N: Revealed type is 'Literal[2]'
+    reveal_type(c)  # N: Revealed type is 'Literal[2]'
+else:
+    reveal_type(b)  # N: Revealed type is 'Union[Literal[1], Literal[2]]'
+    reveal_type(c)  # N: Revealed type is 'Union[Literal[2], Literal[3]]'
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingUnreachableCases2]
+# flags: --strict-optional --strict-equality --warn-unreachable
+from typing import Union
+from typing_extensions import Literal
+
+a: Literal[1, 2, 3, 4]
+b: Literal[1, 2, 3, 4]
+
+if a == b == 1:
+    reveal_type(a)  # N: Revealed type is 'Literal[1]'
+    reveal_type(b)  # N: Revealed type is 'Literal[1]'
+elif a == b == 2:
+    reveal_type(a)  # N: Revealed type is 'Literal[2]'
+    reveal_type(b)  # N: Revealed type is 'Literal[2]'
+elif a == b == 3:
+    reveal_type(a)  # N: Revealed type is 'Literal[3]'
+    reveal_type(b)  # N: Revealed type is 'Literal[3]'
+elif a == b == 4:
+    reveal_type(a)  # N: Revealed type is 'Literal[4]'
+    reveal_type(b)  # N: Revealed type is 'Literal[4]'
+else:
+    # This branch is reachable if a == 1 and b == 2, for example.
+    reveal_type(a)  # N: Revealed type is 'Union[Literal[1], Literal[2], Literal[3], Literal[4]]'
+    reveal_type(b)  # N: Revealed type is 'Union[Literal[1], Literal[2], Literal[3], Literal[4]]'
+
+if a == a == 1:
+    reveal_type(a)  # N: Revealed type is 'Literal[1]'
+elif a == a == 2:
+    reveal_type(a)  # N: Revealed type is 'Literal[2]'
+elif a == a == 3:
+    reveal_type(a)  # N: Revealed type is 'Literal[3]'
+elif a == a == 4:
+    reveal_type(a)  # N: Revealed type is 'Literal[4]'
+else:
+    # In contrast, this branch must be unreachable: we assume (maybe naively)
+    # that 'a' won't be mutated in the middle of the expression.
+    reveal_type(a)  # E: Statement is unreachable
+    reveal_type(b)
 [builtins fixtures/primitives.pyi]

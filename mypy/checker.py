@@ -3895,7 +3895,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # is_valid_target:
                     #   Controls which types we're allowed to narrow exprs to. Note that
                     #   we cannot use 'is_literal_type_like' in both cases since doing
-                    #   'x = 10000 + 1; x is 10001' is not always True in all Python impls.
+                    #   'x = 10000 + 1; x is 10001' is not always True in all Python
+                    #   implementations.
                     #
                     # coerce_only_in_literal_context:
                     #   If true, coerce types into literal types only if one or more of
@@ -3916,12 +3917,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         coerce_only_in_literal_context = True
 
                         def has_no_custom_eq_checks(t: Type) -> bool:
-                            return not custom_special_method(t, '__eq__', check_all=False) \
-                                   and not custom_special_method(t, '__ne__', check_all=False)
+                            return (not custom_special_method(t, '__eq__', check_all=False)
+                                   and not custom_special_method(t, '__ne__', check_all=False))
                         expr_types = [operand_types[i] for i in expr_indices]
                         should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
 
-                    if_map = {}    # type: TypeMap
+                    if_map = {}   # type: TypeMap
                     else_map = {}  # type: TypeMap
                     if should_narrow_by_identity:
                         if_map, else_map = self.refine_identity_comparison_expression(
@@ -3976,7 +3977,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 partial_type_maps.append((if_map, else_map))
 
-            return reduce_partial_conditional_maps(partial_type_maps)
+            return reduce_conditional_maps(partial_type_maps)
         elif isinstance(node, RefExpr):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
@@ -4189,7 +4190,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                               is_valid_target: Callable[[ProperType], bool],
                                               coerce_only_in_literal_context: bool,
                                               ) -> Tuple[TypeMap, TypeMap]:
-        """Produces conditional type maps refining exprs used in an identity/equality comparison.
+        """Produce conditional type maps refining expressions by an identity/equality comparison.
 
         The 'operands' and 'operand_types' lists should be the full list of operands used
         in the overall comparison expression. The 'chain_indices' list is the list of indices
@@ -4302,7 +4303,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr_type = try_expanding_enum_to_union(expr_type, enum_name)
             partial_type_maps.append(conditional_type_map(expr, expr_type, target_type))
 
-        return reduce_partial_conditional_maps(partial_type_maps)
+        return reduce_conditional_maps(partial_type_maps)
 
     def refine_away_none_in_comparison(self,
                                        operands: List[Expression],
@@ -4908,46 +4909,12 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     return result
 
 
-def or_partial_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
-    """Calculate what information we can learn from the truth of (e1 or e2)
-    in terms of the information that we can learn from the truth of e1 and
-    the truth of e2.
+def reduce_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
+                            ) -> Tuple[TypeMap, TypeMap]:
+    """Reduces a list containing pairs of if/else TypeMaps into a single pair.
 
-    Unlike 'or_conditional_maps', we include an expression in the output even
-    if it exists in only one map: we're assuming both maps are "partial" and
-    contain information about only some expressions, and so we "or" together
-    expressions both maps have information on.
-    """
-
-    if m1 is None:
-        return m2
-    if m2 is None:
-        return m1
-    # The logic here is a blend between 'and_conditional_maps'
-    # and 'or_conditional_maps'. We use the high-level logic from the
-    # former to ensure all expressions make it in the output map,
-    # but resolve cases where both maps contain info on the same
-    # expr using the unioning strategy from the latter.
-    result = m2.copy()
-    m2_keys = {literal_hash(n2): n2 for n2 in m2}
-    for n1 in m1:
-        n2 = m2_keys.get(literal_hash(n1))
-        if n2 is None:
-            result[n1] = m1[n1]
-        else:
-            result[n2] = make_simplified_union([m1[n1], result[n2]])
-
-    return result
-
-
-def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
-                                    ) -> Tuple[TypeMap, TypeMap]:
-    """Reduces a list containing pairs of *partial* if/else TypeMaps into a single pair.
-
-    That is, if a expression exists in only one map, we always include it in the output.
-    We only "and"/"or" together expressions that appear in multiple if/else maps.
-
-    So for example, if we had the input:
+    We "and" together all of the if TypeMaps and "or" together the else TypeMaps. So
+    for example, if we had the input:
 
         [
             ({x: TypeIfX, shared: TypeIfShared1}, {x: TypeElseX, shared: TypeElseShared1}),
@@ -4958,11 +4925,14 @@ def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
 
         (
             {x: TypeIfX,   y: TypeIfY,   shared: PseudoIntersection[TypeIfShared1, TypeIfShared2]},
-            {x: TypeElseX, y: TypeElseY, shared: Union[TypeElseShared1, TypeElseShared2]},
+            {shared: Union[TypeElseShared1, TypeElseShared2]},
         )
 
     ...where "PseudoIntersection[X, Y] == Y" because mypy actually doesn't understand intersections
     yet, so we settle for just arbitrarily picking the right expr's type.
+
+    We only retain the shared expression in the 'else' case because we don't actually know
+    whether x was refined or y was refined -- only just that one of the two was refined.
     """
     if len(type_maps) == 0:
         return {}, {}
@@ -4971,10 +4941,9 @@ def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
     else:
         final_if_map, final_else_map = type_maps[0]
         for if_map, else_map in type_maps[1:]:
-            # 'and_conditional_maps' does the same thing for both global and partial type maps,
-            # which is why we don't need to have an 'and_partial_conditional_maps' function.
             final_if_map = and_conditional_maps(final_if_map, if_map)
-            final_else_map = or_partial_conditional_maps(final_else_map, else_map)
+            final_else_map = or_conditional_maps(final_else_map, else_map)
+
         return final_if_map, final_else_map
 
 
