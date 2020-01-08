@@ -2773,6 +2773,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
+        self.find_partial_type_ref_fast_path(e.target)
         return value
 
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
