@@ -3913,12 +3913,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         coerce_only_in_literal_context = False
                         should_narrow_by_identity = True
                     else:
-                        is_valid_target = is_exactly_literal_type
-                        coerce_only_in_literal_context = True
+                        def is_exactly_literal_type(t: Type) -> bool:
+                            return isinstance(get_proper_type(t), LiteralType)
 
                         def has_no_custom_eq_checks(t: Type) -> bool:
                             return (not custom_special_method(t, '__eq__', check_all=False)
-                                   and not custom_special_method(t, '__ne__', check_all=False))
+                                    and not custom_special_method(t, '__ne__', check_all=False))
+
+                        is_valid_target = is_exactly_literal_type
+                        coerce_only_in_literal_context = True
+
                         expr_types = [operand_types[i] for i in expr_indices]
                         should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
 
@@ -5566,9 +5570,3 @@ def has_bool_item(typ: ProperType) -> bool:
         return any(is_named_instance(item, 'builtins.bool')
                    for item in typ.items)
     return False
-
-
-# TODO: why can't we define this as an inline function?
-# Does mypyc not support them?
-def is_exactly_literal_type(t: Type) -> bool:
-    return isinstance(get_proper_type(t), LiteralType)
