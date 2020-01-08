@@ -489,12 +489,20 @@ if x == '<string>':
     reveal_type(x)  # N: Revealed type is 'builtins.str'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
+if x is '<string>':
+    reveal_type(x)  # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
 [builtins fixtures/ops.pyi]
 
 [case testInferEqualsNotOptionalWithUnion]
 from typing import Union
 x = ''  # type: Union[str, int, None]
 if x == '<string>':
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
+if x is '<string>':
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
@@ -507,12 +515,20 @@ if x == object():
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
+if x is object():
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
 [builtins fixtures/ops.pyi]
 
 [case testInferEqualsStillOptionalWithNoOverlap]
 from typing import Optional
 x = ''  # type: Optional[str]
 if x == 0:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
+if x is 0:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, None]'
@@ -523,6 +539,10 @@ from typing import Union
 x = ''  # type: Union[str, int, None]
 y = ''  # type: Union[str, None]
 if x == y:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
+else:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
+if x is y:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[builtins.str, builtins.int, None]'

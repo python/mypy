@@ -50,7 +50,7 @@ from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkstrformat import StringFormatterChecker, custom_special_method
+from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
@@ -58,7 +58,8 @@ from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
-    function_type, callable_type, try_getting_str_literals
+    function_type, callable_type, try_getting_str_literals, custom_special_method,
+    is_literal_type_like,
 )
 import mypy.errorcodes as codes
 
@@ -4263,24 +4264,6 @@ def merge_typevars_in_callables_by_name(
         output.append(target)
 
     return output, variables
-
-
-def is_literal_type_like(t: Optional[Type]) -> bool:
-    """Returns 'true' if the given type context is potentially either a LiteralType,
-    a Union of LiteralType, or something similar.
-    """
-    t = get_proper_type(t)
-    if t is None:
-        return False
-    elif isinstance(t, LiteralType):
-        return True
-    elif isinstance(t, UnionType):
-        return any(is_literal_type_like(item) for item in t.items)
-    elif isinstance(t, TypeVarType):
-        return (is_literal_type_like(t.upper_bound)
-                or any(is_literal_type_like(item) for item in t.values))
-    else:
-        return False
 
 
 def try_getting_literal(typ: Type) -> ProperType:

@@ -978,32 +978,43 @@ class Foo(Enum):
 x: Foo
 y: Foo
 
+# We can't narrow anything in the else cases -- what if
+# x is Foo.A and y is Foo.B or vice versa, for example?
 if x is y is Foo.A:
-   reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
-   reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif x is y is Foo.B:
+    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-   reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-   reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is '__main__.Foo'
+    reveal_type(y)   # N: Revealed type is '__main__.Foo'
+reveal_type(x)       # N: Revealed type is '__main__.Foo'
+reveal_type(y)       # N: Revealed type is '__main__.Foo'
 
 if x is Foo.A is y:
-   reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
-   reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif x is Foo.B is y:
+    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-   reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-   reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is '__main__.Foo'
+    reveal_type(y)   # N: Revealed type is '__main__.Foo'
+reveal_type(x)       # N: Revealed type is '__main__.Foo'
+reveal_type(y)       # N: Revealed type is '__main__.Foo'
 
 if Foo.A is x is y:
-   reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
-   reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+elif Foo.B is x is y:
+    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-   reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-   reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is '__main__.Foo'
+    reveal_type(y)   # N: Revealed type is '__main__.Foo'
+reveal_type(x)       # N: Revealed type is '__main__.Foo'
+reveal_type(y)       # N: Revealed type is '__main__.Foo'
 
 [builtins fixtures/primitives.pyi]
 
@@ -1026,8 +1037,10 @@ if x is Foo.A < y is Foo.B:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    # Note: we can't narrow in this case. What if both x and y
+    # are Foo.A, for example?
+    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+    reveal_type(y)  # N: Revealed type is '__main__.Foo'
 reveal_type(x)      # N: Revealed type is '__main__.Foo'
 reveal_type(y)      # N: Revealed type is '__main__.Foo'
 
@@ -1109,11 +1122,13 @@ if x0 is x1 is Foo.A is x2 < x3 is Foo.B is x4 is x5:
     reveal_type(x4)  # N: Revealed type is 'Literal[__main__.Foo.B]'
     reveal_type(x5)  # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-    reveal_type(x0)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(x1)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(x2)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
+    # We unfortunately can't narrow away anything. For example,
+    # what if x0 == Foo.A and x1 == Foo.B or vice versa?
+    reveal_type(x0)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x1)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x2)  # N: Revealed type is '__main__.Foo'
 
-    reveal_type(x3)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.C]]'
-    reveal_type(x4)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.C]]'
-    reveal_type(x5)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.C]]'
+    reveal_type(x3)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x4)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x5)  # N: Revealed type is '__main__.Foo'
 [builtins fixtures/primitives.pyi]
