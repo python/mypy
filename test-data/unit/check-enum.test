@@ -987,10 +987,10 @@ elif x is y is Foo.B:
     reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
     reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-    reveal_type(x)      # N: Revealed type is '__main__.Foo'
-    reveal_type(y)      # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is '__main__.Foo'
+    reveal_type(y)   # N: Revealed type is '__main__.Foo'
+reveal_type(x)       # N: Revealed type is '__main__.Foo'
+reveal_type(y)       # N: Revealed type is '__main__.Foo'
 
 if x is Foo.A is y:
     reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
@@ -999,10 +999,10 @@ elif x is Foo.B is y:
     reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
     reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-    reveal_type(x)      # N: Revealed type is '__main__.Foo'
-    reveal_type(y)      # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is '__main__.Foo'
+    reveal_type(y)   # N: Revealed type is '__main__.Foo'
+reveal_type(x)       # N: Revealed type is '__main__.Foo'
+reveal_type(y)       # N: Revealed type is '__main__.Foo'
 
 if Foo.A is x is y:
     reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
@@ -1011,10 +1011,10 @@ elif Foo.B is x is y:
     reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
     reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
 else:
-    reveal_type(x)      # N: Revealed type is '__main__.Foo'
-    reveal_type(y)      # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is '__main__.Foo'
+    reveal_type(y)   # N: Revealed type is '__main__.Foo'
+reveal_type(x)       # N: Revealed type is '__main__.Foo'
+reveal_type(y)       # N: Revealed type is '__main__.Foo'
 
 [builtins fixtures/primitives.pyi]
 
