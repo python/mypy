@@ -266,11 +266,7 @@ def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Option
         reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
 
     if x and (y := 1):
-        # TODO should just be int
-        # This is because in check_boolean_op in checkexpr.py we accept the right conditional
-        # within a binder frame context, so the types assigned in it are lost later. Perhaps
-        # we need to make find_isinstance_check() walrus-aware.
-        reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
 
     if (a := 1) and x:
         reveal_type(a)  # N: Revealed type is 'builtins.int'
@@ -293,5 +289,11 @@ def check_partial_list() -> None:
         x.append(3)
 
     reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.int]'
+
+def check_narrow(x: Optional[int]) -> None:
+    if (y := x):
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/f_string.pyi]
+
 
 [builtins fixtures/f_string.pyi]
