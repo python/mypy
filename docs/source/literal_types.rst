@@ -242,7 +242,7 @@ type. Then, you can discriminate between each kind of TypedDict by checking the 
 
     Event = Union[NewJobEvent, CancelJobEvent]
 
-    def process_event(event: Union[NewJobEvent, CancelJobEvent]) -> None:
+    def process_event(event: Event) -> None:
         # Since we made sure both TypedDicts have a key named 'tag', it's
         # safe to do 'event["tag"]'. This expression normally has the type
         # Literal["new-job", "cancel-job"], but the check below will narrow
