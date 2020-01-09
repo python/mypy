@@ -4916,10 +4916,10 @@ class E(metaclass=t.M): pass
 class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
+[builtins fixtures/tuple.pyi]
 
 -- Special support for future.utils
 -- --------------------------------
-[builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclass]
 import future.utils

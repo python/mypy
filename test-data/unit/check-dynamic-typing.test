@@ -38,11 +38,11 @@ s, t = d
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Expressions
 -- -----------
-[builtins fixtures/tuple.pyi]
 
 
 [case testCallingFunctionWithDynamicArgumentTypes]

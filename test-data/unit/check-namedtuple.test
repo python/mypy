@@ -637,10 +637,10 @@ def bar(nt: MyNamedTuple) -> MyNamedTuple:
 
 x: MyNamedTuple
 reveal_type(x.parent) # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
 
 -- Some crazy self-referential named tuples and types dicts
 -- to be sure that everything works
-[builtins fixtures/tuple.pyi]
 
 [case testCrossFileNamedTupleForwardRefs]
 import a

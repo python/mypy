@@ -462,10 +462,10 @@ def foo() -> None:
     pass
 
 foo(*())
+[builtins fixtures/tuple.pyi]
 
 -- Overloads + varargs
 -- -------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testIntersectionTypesAndVarArgs]

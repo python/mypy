@@ -810,7 +810,6 @@ class Baz:
     pass
 [delete c.py.2]
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 

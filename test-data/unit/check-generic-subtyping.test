@@ -172,11 +172,11 @@ b.a = d
 class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Overriding with generic types
 -- -----------------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testOverridingMethodInSimpleTypeInheritingGenericType]
@@ -520,11 +520,11 @@ class J(Generic[t]): pass
 class X(metaclass=ABCMeta): pass
 class I(X, J[t], Generic[t]): pass
 class A(I[t], Generic[t]): pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Subclassing a generic ABC
 -- -------------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testSubclassingGenericABC1]
@@ -698,11 +698,11 @@ ia = None # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"; expected "A"
 ia.f(a)
+[builtins fixtures/tuple.pyi]
 
 
 -- Misc
 -- ----
-[builtins fixtures/tuple.pyi]
 
 
 [case testMultipleAssignmentAndGenericSubtyping]

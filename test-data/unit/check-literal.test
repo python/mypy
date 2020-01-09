@@ -1295,13 +1295,13 @@ from typing_extensions import Literal
 Bar1 = Literal[15]
 Bar2 = Literal[14]
 c: Literal[15]
+[builtins fixtures/tuple.pyi]
 
 
 --
 -- Check to make sure we handle inference of literal values correctly,
 -- especially when doing assignments or calls
 --
-[builtins fixtures/tuple.pyi]
 
 [case testLiteralInferredInAssignment]
 from typing_extensions import Literal
@@ -2076,11 +2076,11 @@ reveal_type(func1(identity(4)))  # N: Revealed type is 'Literal[19]'
 reveal_type(func1(identity(5)))  # N: Revealed type is 'builtins.int'
 reveal_type(func1(identity(a)))  # N: Revealed type is 'Literal[19]'
 reveal_type(func1(identity(b)))  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 
 --
 -- Interactions with meets
 --
-[builtins fixtures/tuple.pyi]
 
 [case testLiteralMeets]
 from typing import TypeVar, List, Callable, Union

@@ -1556,11 +1556,11 @@ from contextlib import contextmanager
 def f():
     yield
 [typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 
 -- Conditional method definition
 -- -----------------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testTypeCheckBodyOfConditionalMethod]
@@ -1984,10 +1984,11 @@ def g3(*x: T) -> T: pass
 f(g1)
 f(g2)
 f(g3)
+[builtins fixtures/tuple.pyi]
 
 -- (...) -> T
 -- ----------------
-[builtins fixtures/tuple.pyi]
+
 [case testEllipsisWithArbitraryArgsOnBareFunction]
 def f(x, y, z): # type: (...) -> None
     pass

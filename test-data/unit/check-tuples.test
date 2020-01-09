@@ -504,11 +504,11 @@ a = b, c = 1, 1
 x, y = p, q = 1, 1
 u, v, w = r, s = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
+[builtins fixtures/tuple.pyi]
 
 
 -- Assignment to starred expressions
 -- ---------------------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testAssignmentToStarMissingAnnotation]
@@ -732,11 +732,11 @@ if int():
 class A: pass
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Error messages
 -- --------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testTupleErrorMessages]

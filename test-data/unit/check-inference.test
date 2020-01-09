@@ -668,11 +668,11 @@ def f(a: T, b: T) -> T: pass
 class A: pass
 class B(A, I, J): pass
 class C(A, I, J): pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Generic function inference with function arguments
 -- --------------------------------------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testNonOverloadedMapInference]
@@ -1146,11 +1146,11 @@ def f(x: AnyStr) -> Tuple[AnyStr]: pass
 x = None
 (x,) = f('')
 reveal_type(x)  # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 
 -- Inferring attribute types
 -- -------------------------
-[builtins fixtures/tuple.pyi]
 
 
 [case testInferAttributeType]
