@@ -1718,7 +1718,6 @@ N = NamedTuple('N', [('x', int)])
 def f() -> None: pass
 [file a.py.2]
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 main:2: error: Module 'a' has no attribute 'f'
@@ -3305,7 +3304,6 @@ x = 0
 [file m.py.2]
 x = ''
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 
@@ -3415,7 +3413,6 @@ def g() -> None:
     x = L(A())
     x.f(a)
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 
@@ -3484,7 +3481,6 @@ def f(x: a.N) -> None:
     pass
 f(a.x)
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 
@@ -3503,7 +3499,6 @@ import a
 def f(x: a.N) -> None:
     pass
 f(a.x)
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -3534,7 +3529,6 @@ def f(x: b.M) -> None:
 f(b.x)
 lol(b.x)
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
@@ -3557,7 +3551,6 @@ import a
 def f(x: a.N) -> None:
     pass
 f(a.x)
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -4379,7 +4372,6 @@ x = 0
 [file b.py.2]
 x = ''
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 
@@ -4457,7 +4449,6 @@ def unchecked():
         # type: () -> (str, int)
         return 'lol', 10
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 
@@ -4487,7 +4478,6 @@ import a
 [file a.py.2]
 # dummy change
 (x, y) = 1, 'hi'  # type: (int, str)
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -5835,7 +5825,6 @@ def f() -> Tuple[int, object]: pass
 [file b.py.3]
 from typing import Tuple
 def f() -> Tuple[str, int]: pass
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -8026,7 +8015,6 @@ def test(x: int, y: int) -> str:
     pass
 x = 1
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 
@@ -8432,7 +8420,6 @@ NT = NamedTuple('NT', [('x', B)])
 def func(x): pass
 B = func
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
@@ -8449,7 +8436,6 @@ A = B
 [file b.py.2]
 def func(x): pass
 B = func
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -8477,7 +8463,6 @@ A = B
 [file b.py.2]
 def func(x): pass
 B = func
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -8548,7 +8533,6 @@ def foo(x: Literal[3]) -> None: pass
 from typing_extensions import Literal
 def foo(x: Literal[4]) -> None: pass
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 ==
@@ -8565,7 +8549,6 @@ Alias = Literal[1]
 [file mod.py.3]
 from typing_extensions import Literal
 Alias = Literal[2]
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -8616,7 +8599,6 @@ qux: Literal[3]
 from typing_extensions import Literal
 qux: Literal[4]
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
@@ -8640,7 +8622,6 @@ Alias3 = Literal[3]
 from typing_extensions import Literal
 Alias3 = Literal[4]
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
@@ -8661,7 +8642,6 @@ def func3() -> Literal[3]: pass
 [file mod3.py.2]
 from typing_extensions import Literal
 def func3() -> Literal[4]: pass
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -8707,7 +8687,6 @@ qux: Final = 4
 [file mod3.py.3]
 from typing_extensions import Final
 qux: Final[int] = 4
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
@@ -8813,7 +8792,6 @@ def f(x: Union[int, str]) -> None: ...
 [targets2 c, b]
 [targets3 a]
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 ==
@@ -8880,7 +8858,6 @@ B().x
 [targets2 c, b]
 [targets3 a]
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/tuple.pyi]
 [out]
 ==
 ==
@@ -8919,7 +8896,6 @@ B().x
 
 [targets2 c, b]
 [targets3 a]
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
