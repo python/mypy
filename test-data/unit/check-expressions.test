@@ -1570,6 +1570,12 @@ def func(x: A) -> A:
 '{!r}'.format(b)
 '{!r}'.format(x)
 '{!r}'.format(n)
+
+class D(bytes):
+    def __str__(self) -> str:
+        return "overrides __str__ of bytes"
+
+'{}'.format(D())
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFormatTypesBytesNotPy2]
