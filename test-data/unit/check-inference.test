@@ -3127,7 +3127,7 @@ y['a'] = []
 reveal_type(y)  # N: Revealed type is 'collections.defaultdict[Any, Any]'
 [builtins fixtures/dict.pyi]
 
-[case testTupleAndInstanceJoin]
+[case testJoinTupleAndInstance]
 from typing import Tuple
 x: Tuple[int, int]
 y: Tuple[int, ...]
@@ -3136,20 +3136,76 @@ lst = [x, y]
 reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.int]'
 [builtins fixtures/list.pyi]
 
-[case testTupleAndInstanceJoinPartlySame]
+[case testJoinTupleAndInstancePartlySame]
 from typing import Tuple
 x: Tuple[int, str]
 y: Tuple[int, ...]
 
 lst = [x, y]
 reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.object]'
-[builtins fixtures/list.pyi]
+[builtins fixtures/tuple.pyi]
 
-[case testTupleAndInstanceJoinAllDifferent]
+[case testJoinTupleAndInstanceAllDifferent]
 from typing import Tuple
-x: Tuple[str, float]
+x: Tuple[float, float]
 y: Tuple[int, ...]
 
 lst = [x, y]
-reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.object]'
-[builtins fixtures/list.pyi]
+reveal_type(lst[0])  # N: Revealed type is 'builtins.tuple*[builtins.float]'
+[builtins fixtures/tuple.pyi]
+
+[case testJoinTupleAndEmptyTuple]
+from typing import Tuple
+x = ()
+y: Tuple[int]
+z: bool
+
+res = x if z else y
+reveal_type(res)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+res = y if z else x
+reveal_type(res)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+[case testJoinTupleVariableAndEmptyTuple]
+from typing import Tuple
+
+x = ()
+y: Tuple[int, ...]
+z: bool
+
+res = x if z else y
+reveal_type(res)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+[case testJoinTupleAndDifferentTupleLength]
+from typing import Tuple
+x: Tuple[int]
+y: Tuple[int, int]
+z: bool
+
+res = x if z else y
+reveal_type(res)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+[case testJoinTupleAndDifferentTupleLengthType]
+from typing import Tuple
+x: Tuple[int, float]
+y: Tuple[int]
+z: bool
+
+res = x if z else y
+reveal_type(res)  # N: Revealed type is 'builtins.tuple[builtins.float]'
+
+[case testJoinTupleAndInstanceTupleSubclass]
+from typing import Tuple
+
+class A(tuple):
+    pass
+
+class B(A):
+    pass
+
+x: B
+y: Tuple[int]
+z: bool
+
+res = x if z else y
+reveal_type(res)  # N: Revealed type is 'builtins.tuple[Any]'

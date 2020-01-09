@@ -262,22 +262,29 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
-        if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items = []  # type: List[Type]
-            for i in range(t.length()):
-                items.append(self.join(t.items[i], self.s.items[i]))
-            fallback = join_instances(mypy.typeops.tuple_fallback(self.s),
-                                      mypy.typeops.tuple_fallback(t))
-            assert isinstance(fallback, Instance)
-            return TupleType(items, fallback)
-        elif isinstance(self.s, Instance) and self.s.type.fullname == 'builtins.tuple':
-            typ = self.s.args[0]
-            for item in t.items:
-                typ = self.join(item, typ)
+        if isinstance(self.s, TupleType):
+            if self.s.length() == t.length():
+                items = []  # type: List[Type]
+                for i in range(t.length()):
+                    items.append(self.join(t.items[i], self.s.items[i]))
+                fallback = join_instances(mypy.typeops.tuple_fallback(self.s),
+                                        mypy.typeops.tuple_fallback(t))
+                assert isinstance(fallback, Instance)
+                return TupleType(items, fallback)
+            else:
+                s_type = join_type_list(self.s.items)
+                t_type = join_type_list(t.items)
 
-            return Instance(self.s.type, [typ])
-        else:
-            return self.default(self.s)
+                return Instance(self.s.partial_fallback.type, [self.join(s_type, t_type)])
+
+        elif isinstance(self.s, Instance):
+            for typ in self.s.type.mro:
+                if typ.fullname == 'builtins.tuple':
+                    # how to access the original args? i see we can recursively descend .bases
+                    # but this seems cumbersome
+                    return Instance(typ, [AnyType(4)]) # just a stub for now
+
+        return self.default(self.s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
