@@ -69,6 +69,7 @@ class DataclassAttribute:
     def deserialize(
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
     ) -> 'DataclassAttribute':
+        data = data.copy()
         typ_serialized = data.pop('type')
         typ = deserialize_and_fixup_type(typ_serialized, api) if typ_serialized else None
         return cls(type=typ, **data)
