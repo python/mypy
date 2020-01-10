@@ -224,6 +224,7 @@ class B:
     def __add__(self, x: A) -> 'C': pass
 
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for + ("A" and "B")
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
@@ -244,6 +245,7 @@ class B:
     def __sub__(self, x: A) -> 'C': pass
 
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for - ("A" and "B")
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
@@ -260,6 +262,7 @@ class A:
     def __mul__(self, x: 'C') -> 'A': pass
 
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for * ("A" and "A")
 main:4: error: Unsupported left operand type for * ("C")
@@ -274,6 +277,7 @@ class A:
     def __matmul__(self, x: 'C') -> 'A': pass
 
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 [case testDivAssign]
 
@@ -286,6 +290,7 @@ class A:
     def __truediv__(self, x: 'C') -> 'A': pass
 
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for / ("A" and "A")
 main:4: error: Unsupported left operand type for / ("C")
@@ -301,6 +306,7 @@ class A:
     def __pow__(self, x: 'C') -> 'A': pass
 
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for ** ("A" and "A")
 main:4: error: Unsupported left operand type for ** ("C")
@@ -316,6 +322,7 @@ class A:
     def __add__(self, x: 'A') -> 'B': pass
 
 class B(A): pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testAdditionalOperatorsInOpAssign]
@@ -332,6 +339,7 @@ class A:
     def __rshift__(self, x: 'C') -> 'A': pass
     def __floordiv__(self, x: 'C') -> 'A': pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Unsupported operand types for & ("A" and "A")
 main:4: error: Unsupported operand types for >> ("A" and "A")
@@ -1018,6 +1026,7 @@ del a[b] # E: "A" has no attribute "__delitem__"
 class B:
   def __delitem__(self, index: 'A'): pass
 class A: pass
+[builtins fixtures/tuple.pyi]
 
 [case testDelStmtWithAttribute]
 class A:
@@ -1033,6 +1042,7 @@ class A:
     x = 0
 a = A()
 del a.x, a.y # E: "A" has no attribute "y"
+[builtins fixtures/tuple.pyi]
 
 
 [case testDelStatementWithAssignmentSimple]

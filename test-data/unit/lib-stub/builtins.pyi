@@ -2,9 +2,6 @@
 #
 # Use [builtins fixtures/...pyi] if you need more features.
 
-from typing import Generic, TypeVar
-_T = TypeVar('_T')
-
 class object:
     def __init__(self) -> None: pass
 
@@ -19,7 +16,6 @@ class float: pass
 class str: pass
 class bytes: pass
 
-class tuple(Generic[_T]): pass
 class function: pass
 class ellipsis: pass
 

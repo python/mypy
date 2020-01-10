@@ -1472,6 +1472,7 @@ f4(**a) # E: Extra argument "y" from **args for "f4"
 f5(**a) # E: Too few arguments for "f5"
 f6(**a) # E: Extra argument "y" from **args for "f6"
 f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictAsStarStarArgConstraints]
 from typing import TypeVar, Union
@@ -1484,6 +1485,7 @@ def f1(x: T, y: S) -> Union[T, S]: ...
 A = TypedDict('A', {'y': int, 'x': str})
 a: A
 reveal_type(f1(**a)) # N: Revealed type is 'Union[builtins.str*, builtins.int*]'
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictAsStarStarArgCalleeKwargs]
 from mypy_extensions import TypedDict
@@ -1528,6 +1530,7 @@ f1(**a, **c) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
 f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictNonMappingMethods]
 from typing import List

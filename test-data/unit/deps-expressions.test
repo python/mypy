@@ -459,6 +459,7 @@ b = a
 def f(x: Alias) -> None: pass
 def g() -> Literal[1]:
     return b
+[builtins fixtures/tuple.pyi]
 [out]
 <m.Alias> -> <m.f>, m, m.f
 <m.a> -> m

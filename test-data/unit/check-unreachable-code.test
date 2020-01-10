@@ -1033,6 +1033,7 @@ def f_no_suppress_5() -> int:
     noop()                  # E: Statement is unreachable
 
 [typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextManagersSuppressed]
 # flags: --warn-unreachable
@@ -1079,6 +1080,7 @@ def f_mix() -> int:         # E: Missing return statement
         return 3
     noop()
 [typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextManagersSuppressedNoStrictOptional]
 # flags: --warn-unreachable --no-strict-optional
@@ -1120,6 +1122,7 @@ def f_suppress() -> int:  # E: Missing return statement
         return 3
     noop()
 [typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersNoSuppress]
 # flags: --warn-unreachable --python-version 3.7
@@ -1185,6 +1188,7 @@ async def f_no_suppress_5() -> int:
     noop()                  # E: Statement is unreachable
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersSuppressed]
 # flags: --warn-unreachable --python-version 3.7
@@ -1231,6 +1235,7 @@ async def f_mix() -> int:         # E: Missing return statement
         return 3
     noop()
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersAbnormal]
 # flags: --warn-unreachable --python-version 3.7
@@ -1282,3 +1287,4 @@ async def f_malformed_2() -> int:
     noop()                  # E: Statement is unreachable
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

@@ -53,6 +53,23 @@ ARG_CONSTRUCTOR_NAMES = {
 }  # type: Final
 
 
+# Map from the full name of a missing definition to the test fixture (under
+# test-data/unit/fixtures/) that provides the definition. This is used for
+# generating better error messages when running mypy tests only.
+SUGGESTED_TEST_FIXTURES = {
+    'builtins.list': 'list.pyi',
+    'builtins.dict': 'dict.pyi',
+    'builtins.set': 'set.pyi',
+    'builtins.tuple': 'tuple.pyi',
+    'builtins.bool': 'bool.pyi',
+    'builtins.Exception': 'exception.pyi',
+    'builtins.BaseException': 'exception.pyi',
+    'builtins.isinstance': 'isinstancelist.pyi',
+    'builtins.property': 'property.pyi',
+    'builtins.classmethod': 'classmethod.pyi',
+}  # type: Final
+
+
 class MessageBuilder:
     """Helper class for reporting type checker error messages with parameters.
 
@@ -1479,6 +1496,13 @@ class MessageBuilder:
         self.fail(error_msg, context, code=code)
         for note in notes:
             self.note(note, context, code=code)
+
+    def add_fixture_note(self, fullname: str, ctx: Context) -> None:
+        self.note('Maybe your test fixture does not define "{}"?'.format(fullname), ctx)
+        if fullname in SUGGESTED_TEST_FIXTURES:
+            self.note(
+                'Consider adding [builtins fixtures/{}] to your test description'.format(
+                    SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
 
 def quote_type_string(type_string: str) -> str:

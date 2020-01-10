@@ -15,6 +15,7 @@ class A(Generic[T]):
 
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 [case testGenericMethodArgument]
 from typing import TypeVar, Generic
@@ -47,6 +48,7 @@ a.v = b
 
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
@@ -61,6 +63,7 @@ class A(Generic[T]):
     v = None # type: T
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
@@ -80,6 +83,7 @@ if int():
 class A(Generic[T]): pass
 class B: pass
 class C(B): pass
+[builtins fixtures/tuple.pyi]
 
 [case testGenericTypeCompatibilityWithAny]
 from typing import Any, TypeVar, Generic
@@ -94,6 +98,7 @@ d = c
 class A(Generic[T]): pass
 class B: pass
 class C(B): pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testTypeVariableAsTypeArgument]
@@ -824,6 +829,7 @@ use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "
 my_cb = None # type: C2[int]
 use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
 reveal_type(use_cb(1, my_cb)) # N: Revealed type is '__main__.Node[builtins.int]'
+[builtins fixtures/tuple.pyi]
 
 [out]
 
@@ -899,6 +905,7 @@ T = TypeVar('T')
 R = TypeVar('R')
 
 Transform = Callable[[T, int], Tuple[T, R]]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testGenericTypeAliasesImportingWithoutTypeVarError]
@@ -1028,6 +1035,7 @@ reveal_type(us) # N: Revealed type is 'Any'
 xx = CA[str] + 1  # E: Type application is only supported for generic classes
 yy = TA[str]()  # E: Type application is only supported for generic classes
 zz = UA[str].x  # E: Type application is only supported for generic classes
+[builtins fixtures/tuple.pyi]
 
 [out]
 
@@ -1740,6 +1748,7 @@ T = TypeVar('T')
 def f(x: Container[T]) -> T: ...
 reveal_type(f((1, 2))) # N: Revealed type is 'builtins.int*'
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testClassMethodInGenericClassWithGenericConstructorArg]
 from typing import TypeVar, Generic

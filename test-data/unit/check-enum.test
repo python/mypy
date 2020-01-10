@@ -24,6 +24,7 @@ reveal_type(Medal.bronze)  # N: Revealed type is 'Literal[__main__.Medal.bronze]
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+[builtins fixtures/tuple.pyi]
 
 [case testEnumFromEnumMetaSubclass]
 from enum import EnumMeta
@@ -38,6 +39,7 @@ reveal_type(Medal.bronze)  # N: Revealed type is 'Literal[__main__.Medal.bronze]
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+[builtins fixtures/tuple.pyi]
 
 [case testEnumFromEnumMetaGeneric]
 from enum import EnumMeta
@@ -159,6 +161,7 @@ class E(N, Enum):
 def f(x: E) -> None: pass
 
 f(E.X)
+[builtins fixtures/tuple.pyi]
 
 [case testEnumCall]
 from enum import IntEnum
@@ -708,6 +711,7 @@ elif y2 is Bar.B:
     reveal_type(y2)  # N: Revealed type is 'Literal[__main__.Bar.B]'
 else:
     reveal_type(y2)  # No output here: this branch is unreachable
+[builtins fixtures/tuple.pyi]
 
 [case testEnumReachabilityChecksIndirect]
 from enum import Enum

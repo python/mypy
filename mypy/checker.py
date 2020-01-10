@@ -39,7 +39,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes,
-    format_type, format_type_bare, format_type_distinctly,
+    format_type, format_type_bare, format_type_distinctly, SUGGESTED_TEST_FIXTURES
 )
 import mypy.checkexpr
 from mypy.checkmember import (
@@ -4499,9 +4499,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if last in n.names:
                 return n.names[last]
             elif len(parts) == 2 and parts[0] == 'builtins':
-                raise KeyError("Could not find builtin symbol '{}'. (Are you running a "
-                               "test case? If so, make sure to include a fixture that "
-                               "defines this symbol.)".format(last))
+                fullname = 'builtins.' + last
+                if fullname in SUGGESTED_TEST_FIXTURES:
+                    suggestion = ", e.g. add '[builtins fixtures/{}]' to your test".format(
+                        SUGGESTED_TEST_FIXTURES[fullname])
+                else:
+                    suggestion = ''
+                raise KeyError("Could not find builtin symbol '{}' (If you are running a "
+                               "test case, use a fixture that "
+                               "defines this symbol{})".format(last, suggestion))
             else:
                 msg = "Failed qualified lookup: '{}' (fullname = '{}')."
                 raise KeyError(msg.format(last, name))

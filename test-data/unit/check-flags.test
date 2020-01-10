@@ -726,6 +726,7 @@ from missing import Unchecked
 foo: Unchecked = ""
 foo = ""
 x, y = 1, 2  # type: Unchecked, Unchecked
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
@@ -1083,6 +1084,7 @@ from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)])  # type: ignore
 n: N
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
@@ -1180,6 +1182,7 @@ b = 6
 [file other_module_2.py]
 from other_module_1 import a, b
 __all__ = ('b',)
+[builtins fixtures/tuple.pyi]
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
@@ -1203,6 +1206,7 @@ b = 6
 [file other_module_2.py]
 from other_module_1 import *
 __all__ = ('b',)
+[builtins fixtures/tuple.pyi]
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
@@ -1298,6 +1302,7 @@ def foo(x: TupleAny[str]) -> None:  # no error
 
 def goo(x: TupleAny[Any]) -> None:  # E: Explicit "Any" is not allowed
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyExplicitCast]
 # flags: --disallow-any-explicit
@@ -1360,6 +1365,7 @@ def g(s) -> Tuple:  # E: Missing type parameters for generic type "Tuple"
 def h(s) -> Tuple[str, str]:  # no error
     return 'a', 'b'
 x: Tuple = ()  # E: Missing type parameters for generic type "Tuple"
+[builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
 # flags: --disallow-any-generics
@@ -1403,6 +1409,7 @@ def g(s) -> A:  # E: Missing type parameters for generic type "A"
 def h(s) -> A[str]:  # no error
     return 'a', 'b', 'c'
 x: A = ('a', 'b', 1)  # E: Missing type parameters for generic type "A"
+[builtins fixtures/tuple.pyi]
 
 [case testDisallowAnyGenericsPlainList]
 # flags: --python-version 3.6 --disallow-any-generics

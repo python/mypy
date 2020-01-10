@@ -171,6 +171,7 @@ MypyFile:1(
 from typing import Tuple
 T = Tuple[int, str]
 def f(x: T) -> None: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple])
@@ -430,6 +431,7 @@ MypyFile:1(
 from typing import Union, Tuple, Any
 A = Union['int', Tuple[int, Any]]
 a = 1 # type: A
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Union, Tuple, Any])

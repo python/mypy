@@ -168,6 +168,7 @@ if x5["key"] is Key.A:
     reveal_type(x5)         # N: Revealed type is 'TypedDict('__main__.TypedDict1', {'key': Literal[__main__.Key.A], 'foo': builtins.int})'
 else:
     reveal_type(x5)         # N: Revealed type is 'TypedDict('__main__.TypedDict2', {'key': Literal[__main__.Key.B], 'foo': builtins.str})'
+[builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
 from dataclasses import dataclass
@@ -266,6 +267,7 @@ if x.key is Key.D:
     reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is 'Union[__main__.Object1, __main__.Object2]'
+[builtins fixtures/tuple.pyi]
 
 [case testNarrowingTypedDictParentMultipleKeys]
 # flags: --warn-unreachable
@@ -492,6 +494,7 @@ else:
     # TODO: Is this a bug? Should we skip inferring Any for singleton types?
     reveal_type(x.key)  # N: Revealed type is 'Union[Any, Literal[__main__.Key.B]]'
     reveal_type(x)      # N: Revealed type is 'Union[__main__.Object1, __main__.Object2, Any]'
+[builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentsHierarchy]
 from typing import Union
@@ -549,6 +552,7 @@ if y.child.same_for_1_and_2 is Key.A:
 else:
     reveal_type(y)          # N: Revealed type is '__main__.Parent2'
     reveal_type(y.child)    # N: Revealed type is '__main__.Child3'
+[builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentsHierarchyGenerics]
 from typing import Generic, TypeVar, Union
@@ -610,6 +614,7 @@ if y["model"]["key"] is Key.C:
 else:
     reveal_type(y)              # N: Revealed type is 'Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]'
     reveal_type(y["model"])     # N: Revealed type is 'Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]'
+[builtins fixtures/tuple.pyi]
 
 [case testNarrowingParentsHierarchyTypedDictWithStr]
 # flags: --warn-unreachable

@@ -16,6 +16,7 @@ def f(a: Any) -> None:
     n.a
 [file a.py]
 class A: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f
@@ -35,6 +36,7 @@ def f(a: Any) -> None:
 [file a.py]
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f
@@ -50,6 +52,7 @@ N = NamedTuple('N', [('x', int)])
 x = N(1)
 M = NamedTuple('M', [('z', 'N')])
 y = M(x)
+[builtins fixtures/tuple.pyi]
 [out]
 <m.M.__init__> -> m
 <m.M.__new__> -> m
@@ -71,6 +74,7 @@ def f(a: Any) -> None:
     n.a
 [file a.py]
 class A: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f

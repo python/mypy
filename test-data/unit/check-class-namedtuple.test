@@ -4,6 +4,7 @@ from typing import NamedTuple
 
 class E(NamedTuple):  # E: NamedTuple class syntax is only supported in Python 3.6
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleNoUnderscoreFields]
 # flags: --python-version 3.6
@@ -13,6 +14,7 @@ class X(NamedTuple):
     x: int
     _y: int  # E: NamedTuple field name cannot start with an underscore: _y
     _z: int  # E: NamedTuple field name cannot start with an underscore: _z
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleAccessingAttributes]
 # flags: --python-version 3.6
@@ -26,6 +28,7 @@ x: X
 x.x
 x.y
 x.z # E: "X" has no attribute "z"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleAttributesAreReadOnly]
 # flags: --python-version 3.6
@@ -41,6 +44,7 @@ x.y = 5 # E: "X" has no attribute "y"
 class A(X): pass
 a: A
 a.x = 5 # E: Property "x" defined in "X" is read-only
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleCreateWithPositionalArguments]
 # flags: --python-version 3.6
@@ -55,6 +59,7 @@ x.x
 x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Too few arguments for "X"
 x = X(1, '2', 3)  # E: Too many arguments for "X"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleShouldBeSingleBase]
 # flags: --python-version 3.6
@@ -63,6 +68,7 @@ from typing import NamedTuple
 class A: ...
 class X(NamedTuple, A):  # E: NamedTuple should be a single base
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testCreateNewNamedTupleWithKeywordArguments]
 # flags: --python-version 3.6
@@ -76,6 +82,7 @@ x = X(x=1, y='x')
 x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
 x = X(y='x') # E: Missing positional argument "x" in call to "X"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleCreateAndUseAsTuple]
 # flags: --python-version 3.6
@@ -88,6 +95,7 @@ class X(NamedTuple):
 x = X(1, 'x')
 a, b = x
 a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithItemTypes]
 # flags: --python-version 3.6
@@ -105,6 +113,7 @@ i: int = n.b  # E: Incompatible types in assignment (expression has type "str", 
 x, y = n
 if int():
     x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleConstructorArgumentTypes]
 # flags: --python-version 3.6
@@ -118,6 +127,7 @@ n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "in
 n = N(1, b=2)   # E: Argument "b" to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleAsBaseClass]
 # flags: --python-version 3.6
@@ -138,6 +148,7 @@ if int():
     i, s = x
 if int():
     s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleSelfTypeWithNamedTupleAsBase]
 # flags: --python-version 3.6
@@ -157,6 +168,7 @@ class B(A):
             i, s = self
             i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                               variable has type "int")
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNewNamedTupleTypeReferenceToClassDerivedFrom]
@@ -179,6 +191,7 @@ class B(A):
                                   variable has type "str")
             i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                               variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleSubtyping]
 # flags: --python-version 3.6
@@ -206,6 +219,7 @@ if int():
     t = b
 if int():
     a = b
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleSimpleTypeInference]
 # flags: --python-version 3.6
@@ -233,6 +247,7 @@ class MyNamedTuple(NamedTuple):
     b: str
 
 MyNamedTuple.x # E: "Type[MyNamedTuple]" has no attribute "x"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleEmptyItems]
 # flags: --python-version 3.6
@@ -240,6 +255,7 @@ from typing import NamedTuple
 
 class A(NamedTuple):
     ...
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleForwardRef]
 # flags: --python-version 3.6
@@ -252,6 +268,7 @@ class B: ...
 
 a = A(B())
 a = A(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "B"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleProperty]
 # flags: --python-version 3.6
@@ -295,6 +312,7 @@ x: X
 reveal_type(x._replace())  # N: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
 x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleFields]
 # flags: --python-version 3.6
@@ -321,6 +339,7 @@ class X(NamedTuple):
 x: X = X()
 x._replace()
 x._fields[0]  # E: Tuple index out of range
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleJoinNamedTuple]
 # flags: --python-version 3.6
@@ -358,6 +377,7 @@ class X(NamedTuple):
     x: int
     y = z = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
     def f(self): pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithInvalidItems2]
 # flags: --python-version 3.6
@@ -386,6 +406,7 @@ from typing import NamedTuple
 class X(NamedTuple):
     x: int
     y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
+[builtins fixtures/tuple.pyi]
 
 [case testTypeUsingTypeCNamedTuple]
 # flags: --python-version 3.6
@@ -467,13 +488,15 @@ from typing import NamedTuple
 class X(NamedTuple):
     x: int
     y: int = 'not an int'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleErrorInDefault]
 # flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
-    x: int = 1 + '1'  # E: Unsupported operand types for + ("int" and "str")
+    x: int = 1 + '1'  # E: Unsupported left operand type for + ("int")
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleInheritance]
 # flags: --python-version 3.6
@@ -494,6 +517,7 @@ Y(y=1, x='1').method()
 class CallsBaseInit(X):
     def __init__(self, x: str) -> None:
         super().__init__(x) # E: Too many arguments for "__init__" of "object"
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleWithMethods]
 from typing import NamedTuple
@@ -510,15 +534,16 @@ class XRepr(NamedTuple):
     y: int = 1
     def __str__(self) -> str:
         return 'string'
-    def __add__(self, other: XRepr) -> int:
+    def __sub__(self, other: XRepr) -> int:
         return 0
 
 reveal_type(XMeth(1).double()) # N: Revealed type is 'builtins.int'
 reveal_type(XMeth(1).asyncdouble())  # N: Revealed type is 'typing.Coroutine[Any, Any, builtins.int]'
 reveal_type(XMeth(42).x)  # N: Revealed type is 'builtins.int'
 reveal_type(XRepr(42).__str__())  # N: Revealed type is 'builtins.str'
-reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # N: Revealed type is 'builtins.int'
+reveal_type(XRepr(1, 2).__sub__(XRepr(3)))  # N: Revealed type is 'builtins.int'
 [typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleOverloading]
 from typing import NamedTuple, overload
@@ -538,6 +563,7 @@ Overloader(1).method(('tuple',))  # E: No overload variant of "method" of "Overl
                                   # N: Possible overload variants: \
                                   # N:     def method(self, y: str) -> str \
                                   # N:     def method(self, y: int) -> int
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleMethodInheritance]
 from typing import NamedTuple, TypeVar
@@ -642,6 +668,7 @@ class BadDoc(NamedTuple):
         return ''
 
 reveal_type(BadDoc(1).__doc__())  # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleClassMethod]
 from typing import NamedTuple
