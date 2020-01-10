@@ -1736,8 +1736,8 @@ def format_type_bare(typ: Type,
     return format_type_inner(typ, verbosity, find_type_overlaps(typ))
 
 
-def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tuple[str, str]:
-    """Jointly format a pair of types to distinct strings.
+def format_type_distinctly(*types: Type, bare: bool = False) -> Tuple[str, ...]:
+    """Jointly format types to distinct strings.
 
     Increase the verbosity of the type strings until they become distinct
     while also requiring that distinct types with the same short name are
@@ -1748,16 +1748,18 @@ def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tupl
     be quoted; callers who need to do post-processing of the strings before
     quoting them (such as prepending * or **) should use this.
     """
-    overlapping = find_type_overlaps(type1, type2)
+    overlapping = find_type_overlaps(*types)
     for verbosity in range(2):
-        str1 = format_type_inner(type1, verbosity=verbosity, fullnames=overlapping)
-        str2 = format_type_inner(type2, verbosity=verbosity, fullnames=overlapping)
-        if str1 != str2:
+        strs = [
+            format_type_inner(type, verbosity=verbosity, fullnames=overlapping)
+            for type in types
+        ]
+        if len(set(strs)) == len(strs):
             break
     if bare:
-        return (str1, str2)
+        return tuple(strs)
     else:
-        return (quote_type_string(str1), quote_type_string(str2))
+        return tuple(quote_type_string(s) for s in strs)
 
 
 def pretty_callable(tp: CallableType) -> str:
