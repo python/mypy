@@ -3315,7 +3315,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return rv
 
     def find_typeddict_context(self, context: Optional[Type],
-                              dict_expr: DictExpr) -> Optional[TypedDictType]:
+                               dict_expr: DictExpr) -> Optional[TypedDictType]:
         context = get_proper_type(context)
         if isinstance(context, TypedDictType):
             return context
