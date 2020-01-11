@@ -251,6 +251,7 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
 import sys
 y: sys  # E: Module "sys" is not valid as a type  [valid-type]
 z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNeedTypeAnnotation]
 from typing import TypeVar
@@ -363,6 +364,7 @@ async def asyncf():  # E: Function is missing a return type annotation  [no-unty
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
 [typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeCallUntypedFunction]
 # flags: --disallow-untyped-calls
@@ -432,6 +434,7 @@ B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
 '' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]
 
 1()  # E: "int" not callable  [operator]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeListOrDictItem]
 from typing import List, Dict
@@ -636,6 +639,7 @@ def g(p: P) -> None: pass
 
 p: A
 g(p)  # type: ignore[arg-type]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNoneReturnNoteIgnore]
 # flags: --disallow-untyped-defs

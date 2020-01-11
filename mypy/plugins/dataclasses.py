@@ -311,9 +311,13 @@ class DataclassTransformer:
                         superclass_init = info.get_method('__init__')
                         if isinstance(superclass_init, FuncDef):
                             attr_node = _get_arg_from_init(superclass_init, attr.name)
-                            if attr_node is not None:
+                            if attr_node is None:
+                                # Continue the loop: we will look it up in the next MRO entry.
+                                # Don't add it to the known or super attrs because we don't know
+                                # anything about it yet
+                                continue
+                            else:
                                 cls.info.names[attr.name] = attr_node
-
                     known_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:

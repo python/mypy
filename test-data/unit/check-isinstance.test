@@ -5,6 +5,7 @@ def f(): x, y  # Prevent independent redefinition
 y = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 x = 2
 y = x
+[builtins fixtures/tuple.pyi]
 
 [case testJoinAny]
 from typing import List, Any

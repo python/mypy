@@ -644,6 +644,7 @@ class OrderedItemsView(ItemsView[K, V], Sequence[Tuple[K, V]]):
 
 class OrderedItemsViewDirect(ItemsView[K, V], Sequence[Tuple[K, V]]):
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testGenericMultipleOverrideReplace]
 from typing import TypeVar, Generic, Union

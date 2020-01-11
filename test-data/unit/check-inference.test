@@ -195,6 +195,7 @@ def f() -> None:
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testInferringLvarTypesInNestedTupleAssignment1]
@@ -212,6 +213,7 @@ def f() -> None:
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testInferringLvarTypesInNestedTupleAssignment2]
@@ -666,6 +668,7 @@ def f(a: T, b: T) -> T: pass
 class A: pass
 class B(A, I, J): pass
 class C(A, I, J): pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Generic function inference with function arguments
@@ -1143,6 +1146,7 @@ def f(x: AnyStr) -> Tuple[AnyStr]: pass
 x = None
 (x,) = f('')
 reveal_type(x)  # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 
 -- Inferring attribute types
@@ -2174,6 +2178,7 @@ def f(): pass
 def g(x: Union[int, str]): pass
 c = a if f() else b
 g(c) # E: Argument 1 to "g" has incompatible type "Union[int, str, Tuple[Any, ...]]"; expected "Union[int, str]"
+[builtins fixtures/tuple.pyi]
 
 [case testUnificationMultipleInheritance]
 class A: pass
@@ -2291,6 +2296,7 @@ def f(x: T) -> Tuple[T]:
 x = None
 (x,) = f('')
 reveal_type(x) # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNoCrashOnPartialVariable2]
@@ -2302,6 +2308,7 @@ def f() -> Tuple[T]:
 x = None
 if int():
     (x,) = f()
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNoCrashOnPartialVariable3]
@@ -2313,6 +2320,7 @@ def f(x: T) -> Tuple[T, T]:
 x = None
 (x, x) = f('')
 reveal_type(x) # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testInferenceNestedTuplesFromGenericIterable]
@@ -2688,6 +2696,7 @@ def bar() -> None:
     _, _ = t
     _ = 0
     _ = ''
+[builtins fixtures/tuple.pyi]
 
 [case testUnusedTargetMultipleTargets]
 def foo() -> None:
@@ -2766,6 +2775,7 @@ def f() -> None:
     with C() as _: pass
     _ = 0
     _ = ''
+[builtins fixtures/tuple.pyi]
 
 [case testUnusedTargetNotExceptClause]
 # Things don't work for except clauses.
@@ -2967,6 +2977,7 @@ def f() -> None:
 class C:
     def __init__(self, a: int) -> None:
         self.a = a
+[builtins fixtures/tuple.pyi]
 
 [case testUnionGenericWithBoundedVariable]
 from typing import Generic, TypeVar, Union

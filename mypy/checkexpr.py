@@ -32,7 +32,6 @@ from mypy.nodes import (
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
-    SYMBOL_FUNCBASE_TYPES
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -51,7 +50,7 @@ from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkstrformat import StringFormatterChecker, custom_special_method
+from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
@@ -59,7 +58,8 @@ from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
-    function_type, callable_type, try_getting_str_literals
+    function_type, callable_type, try_getting_str_literals, custom_special_method,
+    is_literal_type_like,
 )
 import mypy.errorcodes as codes
 
@@ -2534,7 +2534,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 variants_raw.append((right_cmp_op, right_type, left_expr))
 
         # STEP 3:
-        # We now filter out all non-existant operators. The 'variants' list contains
+        # We now filter out all non-existent operators. The 'variants' list contains
         # all operator methods that are actually present, in the order that Python
         # attempts to invoke them.
 
@@ -2792,6 +2792,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
+        self.find_partial_type_ref_fast_path(e.target)
         return value
 
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
@@ -4291,24 +4292,6 @@ def merge_typevars_in_callables_by_name(
     return output, variables
 
 
-def is_literal_type_like(t: Optional[Type]) -> bool:
-    """Returns 'true' if the given type context is potentially either a LiteralType,
-    a Union of LiteralType, or something similar.
-    """
-    t = get_proper_type(t)
-    if t is None:
-        return False
-    elif isinstance(t, LiteralType):
-        return True
-    elif isinstance(t, UnionType):
-        return any(is_literal_type_like(item) for item in t.items)
-    elif isinstance(t, TypeVarType):
-        return (is_literal_type_like(t.upper_bound)
-                or any(is_literal_type_like(item) for item in t.values))
-    else:
-        return False
-
-
 def try_getting_literal(typ: Type) -> ProperType:
     """If possible, get a more precise literal type for a given type."""
     typ = get_proper_type(typ)
@@ -4327,29 +4310,6 @@ def is_expr_literal_type(node: Expression) -> bool:
         underlying = node.node
         return isinstance(underlying, TypeAlias) and isinstance(get_proper_type(underlying.target),
                                                                 LiteralType)
-    return False
-
-
-def custom_equality_method(typ: Type) -> bool:
-    """Does this type have a custom __eq__() method?"""
-    typ = get_proper_type(typ)
-    if isinstance(typ, Instance):
-        method = typ.type.get('__eq__')
-        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
-            if method.node.info:
-                return not method.node.info.fullname.startswith('builtins.')
-        return False
-    if isinstance(typ, UnionType):
-        return any(custom_equality_method(t) for t in typ.items)
-    if isinstance(typ, TupleType):
-        return custom_equality_method(tuple_fallback(typ))
-    if isinstance(typ, CallableType) and typ.is_type_obj():
-        # Look up __eq__ on the metaclass for class objects.
-        return custom_equality_method(typ.fallback)
-    if isinstance(typ, AnyType):
-        # Avoid false positives in uncertain cases.
-        return True
-    # TODO: support other types (see ExpressionChecker.has_member())?
     return False
 
 

@@ -856,7 +856,7 @@ class Var(SymbolNode):
         #         def __init__(self) -> None:
         #             self.x: int
         # This case is important because this defines a new Var, even if there is one
-        # present in a superclass (without explict type this doesn't create a new Var).
+        # present in a superclass (without explicit type this doesn't create a new Var).
         # See SemanticAnalyzer.analyze_member_lvalue() for details.
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.
@@ -1749,6 +1749,13 @@ class ComparisonExpr(Expression):
         self.operators = operators
         self.operands = operands
         self.method_types = []
+
+    def pairwise(self) -> Iterator[Tuple[str, Expression, Expression]]:
+        """If this comparison expr is "a < b is c == d", yields the sequence
+        ("<", a, b), ("is", b, c), ("==", c, d)
+        """
+        for i, operator in enumerate(self.operators):
+            yield operator, self.operands[i], self.operands[i + 1]
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)

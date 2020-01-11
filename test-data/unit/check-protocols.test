@@ -2134,6 +2134,7 @@ class MockDict(MockMapping[T]):
 def f(x: MockMapping[int]) -> None: pass
 x: MockDict[str]
 f(x)  # E: Argument 1 to "f" has incompatible type "MockDict[str]"; expected "MockMapping[int]"
+[builtins fixtures/tuple.pyi]
 
 [case testProtocolNotesForComplexSignatures]
 from typing import Protocol, Optional
@@ -2238,6 +2239,7 @@ def func(caller: Caller) -> None:
 
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testCallableImplementsProtocolGeneric]
@@ -2334,6 +2336,7 @@ def bad(x: int, *args: str) -> None:
 
 cb: Caller = bad  # E: Incompatible types in assignment (expression has type "Callable[[int, VarArg(str)], None]", variable has type "Caller") \
                   # N: "Caller.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testCallableImplementsProtocolArgName]

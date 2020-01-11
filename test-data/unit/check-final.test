@@ -43,6 +43,7 @@ class C:
         self.y: Final[float] = 1
 reveal_type(C((1, 2)).x)  # N: Revealed type is 'Tuple[builtins.int, Any]'
 reveal_type(C((1, 2)).y)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalBadDefinitionTooManyArgs]
@@ -182,6 +183,7 @@ reveal_type(C().g)  # N: Revealed type is 'builtins.int'
 from typing import Final, Callable, Tuple, Any
 x: Tuple[Final]  # E: Final can be only used as an outermost qualifier in a variable annotation
 y: Callable[[], Tuple[Final[int]]]  # E: Final can be only used as an outermost qualifier in a variable annotation
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalDefiningNotInMethod]
@@ -196,6 +198,7 @@ from typing_extensions import Final
 
 def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
 def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalDefiningNoRhs]
@@ -234,6 +237,7 @@ d: Any
 
 class C(Generic[T]):
     x: Final[Tuple[T, T]] = d  # E: Final name declared in class body cannot depend on type variables
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalDefiningTypevarsImplicit]
@@ -250,6 +254,7 @@ reveal_type(C((1, 2)).x)  # N: Revealed type is 'Tuple[builtins.int*, builtins.i
 C.x  # E: Cannot access final instance attribute "x" on class object \
      # E: Access to generic instance variables via class is ambiguous
 C.y  # E: Cannot access final instance attribute "y" on class object
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalDefiningNotInOtherMethod]
@@ -259,6 +264,7 @@ class C:
     def meth(self, x: Tuple[int, Any]) -> None:
         self.x: Final = x  # E: Can only declare a final attribute in class body or __init__
         self.y: Final[float] = 1  # E: Can only declare a final attribute in class body or __init__
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalDefiningOnlyOnSelf]
@@ -273,6 +279,7 @@ class C:
         slf.x: Final = x  # E: Final can be only applied to a name or an attribute on self
         slf.y: Final[float] = 1  # E: Type cannot be declared in assignment to non-self attribute \
                                  # E: Final can be only applied to a name or an attribute on self
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalNotInProtocol]
@@ -1026,6 +1033,7 @@ class C(B):
 @final
 class F: ...
 class E(F): ...  # E: Cannot inherit from final class "F"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalCanUseTypingExtensionsAliased]
@@ -1047,6 +1055,7 @@ class C(B):
 @f
 class D(C): ...
 class E(D): ...  # E: Cannot inherit from final class "D"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFinalMultiassignAllowed]
@@ -1072,3 +1081,4 @@ class A:
     def __init__(self) -> None:
         self.x = 10  # type: Final
         undefined  # type: ignore
+[builtins fixtures/tuple.pyi]

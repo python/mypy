@@ -112,4 +112,5 @@ class C:
     attr: int
 
 x: P[int] = C()
+[builtins fixtures/tuple.pyi]
 [out]
