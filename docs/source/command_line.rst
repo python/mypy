@@ -485,19 +485,28 @@ of the above sections.
 .. option:: --local-partial-types
 
     By default, mypy won't check partial types spanning module top level or class top level.
-    This flag changes the behavior to only allow partial types at local level. For example:
+    This flag changes the behavior to only allow partial types at local level. The most common
+    cases are variables initialized with values such as ``[]``, ``{}`` where the explicit type
+    arguments ``T`` for ``List[T]``, ``Dict[T]`` is missing, or ``None`` without explicit
+    ``Option`` annotation, therefore their types can not be fully inferred and specified. For example:
 
     .. code-block:: python
 
-        from typing import Optional
+        from typing import Optional, List, Dict
 
         a = None  # error
-        b = None  # type: Optional[str]
+        b = None  # type: Optional[int]
+        l1 = []   # error
+        l2 = []   # type: List[int]
 
         class Foo:
             bar = None  # error
             boo = None  # type: Optional[int]
+            d1 = {}  # error
+            d2 = {}  # type: Dict[int, float]
 
+    Note: this option is always implicitly enabled in mypy daemon and will become
+    enabled by default for mypy in a future release.
 
 .. option:: --no-implicit-reexport
 
