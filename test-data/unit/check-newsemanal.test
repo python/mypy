@@ -3193,4 +3193,4 @@ class T(NamedTuple):
     b: b.T
 
 class b:
-    T: Union[Any]
+    T = Union[Any]
