@@ -312,7 +312,7 @@ class TestRun(MypycDataSuite):
             return True
 
 
-# Run the main multi-module tests in multi-file compliation mode
+# Run the main multi-module tests in multi-file compilation mode
 class TestRunMultiFile(TestRun):
     multi_file = True
     test_name_suffix = '_multi'
@@ -322,7 +322,7 @@ class TestRunMultiFile(TestRun):
     ]
 
 
-# Run the main multi-module tests in separate compliation mode
+# Run the main multi-module tests in separate compilation mode
 class TestRunSeparate(TestRun):
     separate = True
     test_name_suffix = '_separate'

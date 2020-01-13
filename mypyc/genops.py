@@ -601,7 +601,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
     # We sort the table for determinism here on Python 3.5
     for name, node in sorted(info.names.items()):
-        # Currenly all plugin generated methods are dummies and not included.
+        # Currently all plugin generated methods are dummies and not included.
         if node.plugin_generated:
             continue
 
@@ -3651,7 +3651,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # create a tuple of unknown length
             return self._visit_tuple_display(expr)
 
-        # create an tuple of fixed length (RTuple)
+        # create a tuple of fixed length (RTuple)
         tuple_type = self.node_type(expr)
         # When handling NamedTuple et. al we might not have proper type info,
         # so make some up if we need it.

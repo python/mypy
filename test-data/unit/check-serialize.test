@@ -710,6 +710,7 @@ class C:
         self.a = A(0)
         self.b = A(0)  # type: A
         self.c = A
+[builtins fixtures/tuple.pyi]
 [out1]
 main:2: note: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
 main:3: note: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
@@ -924,6 +925,7 @@ b.N(x='')
 from typing import NamedTuple
 N = NamedTuple('N', [('x', int)])
 x: N
+[builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:5: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
 tmp/a.py:6: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")

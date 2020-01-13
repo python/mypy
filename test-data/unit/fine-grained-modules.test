@@ -744,6 +744,7 @@ a.x = 0
 [file a.py.2]
 import sys
 x = sys.platform
+[builtins fixtures/tuple.pyi]
 [out]
 main:1: error: Cannot find implementation or library stub for module named 'a'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -808,6 +809,7 @@ class Bar:
 class Baz:
     pass
 [delete c.py.2]
+[builtins fixtures/tuple.pyi]
 [out]
 ==
 

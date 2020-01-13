@@ -17,7 +17,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
-    Expression, StrExpr, Var
+    Expression, StrExpr, Var, Decorator, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
@@ -564,6 +564,24 @@ def try_getting_literals_from_type(typ: Type,
     return literals
 
 
+def is_literal_type_like(t: Optional[Type]) -> bool:
+    """Returns 'true' if the given type context is potentially either a LiteralType,
+    a Union of LiteralType, or something similar.
+    """
+    t = get_proper_type(t)
+    if t is None:
+        return False
+    elif isinstance(t, LiteralType):
+        return True
+    elif isinstance(t, UnionType):
+        return any(is_literal_type_like(item) for item in t.items)
+    elif isinstance(t, TypeVarType):
+        return (is_literal_type_like(t.upper_bound)
+                or any(is_literal_type_like(item) for item in t.values))
+    else:
+        return False
+
+
 def get_enum_values(typ: Instance) -> List[str]:
     """Return the list of values for an Enum."""
     return [name for name, sym in typ.type.names.items() if isinstance(sym.node, Var)]
@@ -640,10 +658,11 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
         return typ
 
 
-def coerce_to_literal(typ: Type) -> ProperType:
+def coerce_to_literal(typ: Type) -> Type:
     """Recursively converts any Instances that have a last_known_value or are
     instances of enum types with a single value into the corresponding LiteralType.
     """
+    original_type = typ
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         new_items = [coerce_to_literal(item) for item in typ.items]
@@ -655,7 +674,7 @@ def coerce_to_literal(typ: Type) -> ProperType:
             enum_values = get_enum_values(typ)
             if len(enum_values) == 1:
                 return LiteralType(value=enum_values[0], fallback=typ)
-    return typ
+    return original_type
 
 
 def get_type_vars(tp: Type) -> List[TypeVarType]:
@@ -674,3 +693,31 @@ class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
 
     def visit_type_var(self, t: TypeVarType) -> List[TypeVarType]:
         return [t]
+
+
+def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool:
+    """Does this type have a custom special method such as __format__() or __eq__()?
+
+    If check_all is True ensure all items of a union have a custom method, not just some.
+    """
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        method = typ.type.get(name)
+        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
+            if method.node.info:
+                return not method.node.info.fullname.startswith('builtins.')
+        return False
+    if isinstance(typ, UnionType):
+        if check_all:
+            return all(custom_special_method(t, name, check_all) for t in typ.items)
+        return any(custom_special_method(t, name) for t in typ.items)
+    if isinstance(typ, TupleType):
+        return custom_special_method(tuple_fallback(typ), name, check_all)
+    if isinstance(typ, CallableType) and typ.is_type_obj():
+        # Look up __method__ on the metaclass for class objects.
+        return custom_special_method(typ.fallback, name, check_all)
+    if isinstance(typ, AnyType):
+        # Avoid false positives in uncertain cases.
+        return True
+    # TODO: support other types (see ExpressionChecker.has_member())?
+    return False

@@ -523,6 +523,7 @@ ci: C[int]
 cs: C[str]
 reveal_type(ci.from_item)  # N: Revealed type is 'def (item: Tuple[builtins.int])'
 reveal_type(cs.from_item)  # N: Revealed type is 'def (item: builtins.str)'
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeRestrictedMethodOverloadFallback]
 from typing import TypeVar, Generic, overload, Callable
@@ -675,6 +676,7 @@ b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic
 
 reveal_type(f.copy())  # N: Revealed type is '__main__.File*'
 b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
+[builtins fixtures/tuple.pyi]
 
 [case testBadClassLevelDecoratorHack]
 from typing_extensions import Protocol
@@ -692,6 +694,7 @@ class Test:
 
 reveal_type(Test().meth)  # N: Revealed type is 'def (x: builtins.str) -> builtins.int'
 Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeTrickyExample]
 from typing import *
@@ -742,6 +745,7 @@ c: Lnk[int, float] = Lnk()
 d: Lnk[str, float] = b >> c  # OK
 e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
 f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeMutuallyExclusiveRestrictions]
 from typing import Generic, TypeVar
@@ -863,6 +867,7 @@ class C(Generic[T]):
     def magic(self: C[Tuple[S, U]]) -> Tuple[T, S, U]: ...
 
 reveal_type(C[Tuple[int, str]]().magic())  # N: Revealed type is 'Tuple[Tuple[builtins.int, builtins.str], builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeOnUnion]
 from typing import TypeVar, Union

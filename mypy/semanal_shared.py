@@ -208,7 +208,7 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     Note that there is an apparent chicken and egg problem with respect
     to verifying type arguments against bounds. Verifying bounds might
     require fallbacks, but we might use the bounds to calculate the
-    fallbacks. In partice this is not a problem, since the worst that
+    fallbacks. In practice this is not a problem, since the worst that
     can happen is that we have invalid type argument values, and these
     can happen in later stages as well (they will generate errors, but
     we don't prevent their existence).

@@ -656,6 +656,7 @@ N = NamedTuple('N', [('x', A)])
 from typing import NamedTuple
 class A: pass
 N = NamedTuple('N', [('x', A), ('y', A)])
+[builtins fixtures/tuple.pyi]
 [out]
 TypeInfo<0>(
   Name(target.A)
@@ -665,20 +666,20 @@ TypeInfo<0>(
 TypeInfo<2>(
   Name(target.N)
   Bases(builtins.tuple[target.A<0>]<3>)
-  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
+  Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
-    _NT<4>
-    __annotations__<5> (builtins.object<1>)
-    __doc__<6> (builtins.str<7>)
-    __new__<8>
-    _asdict<9>
-    _field_defaults<10> (builtins.object<1>)
-    _field_types<11> (builtins.object<1>)
-    _fields<12> (Tuple[builtins.str<7>])
-    _make<13>
-    _replace<14>
-    _source<15> (builtins.str<7>)
-    x<16> (target.A<0>)))
+    _NT<6>
+    __annotations__<7> (builtins.object<1>)
+    __doc__<8> (builtins.str<9>)
+    __new__<10>
+    _asdict<11>
+    _field_defaults<12> (builtins.object<1>)
+    _field_types<13> (builtins.object<1>)
+    _fields<14> (Tuple[builtins.str<9>])
+    _make<15>
+    _replace<16>
+    _source<17> (builtins.str<9>)
+    x<18> (target.A<0>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -688,21 +689,21 @@ TypeInfo<0>(
 TypeInfo<2>(
   Name(target.N)
   Bases(builtins.tuple[target.A<0>]<3>)
-  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
+  Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
-    _NT<4>
-    __annotations__<5> (builtins.object<1>)
-    __doc__<6> (builtins.str<7>)
-    __new__<8>
-    _asdict<9>
-    _field_defaults<10> (builtins.object<1>)
-    _field_types<11> (builtins.object<1>)
-    _fields<12> (Tuple[builtins.str<7>, builtins.str<7>])
-    _make<13>
-    _replace<14>
-    _source<15> (builtins.str<7>)
-    x<16> (target.A<0>)
-    y<17> (target.A<0>)))
+    _NT<6>
+    __annotations__<7> (builtins.object<1>)
+    __doc__<8> (builtins.str<9>)
+    __new__<10>
+    _asdict<11>
+    _field_defaults<12> (builtins.object<1>)
+    _field_types<13> (builtins.object<1>)
+    _fields<14> (Tuple[builtins.str<9>, builtins.str<9>])
+    _make<15>
+    _replace<16>
+    _source<17> (builtins.str<9>)
+    x<18> (target.A<0>)
+    y<19> (target.A<0>)))
 
 [case testUnionType_types]
 import target
@@ -1093,6 +1094,7 @@ N = NamedTuple('N', [('x', int)])
 [file target.py]
 f = 1
 [file target.py.next]
+[builtins fixtures/tuple.pyi]
 [out]
 __main__:
     N: TypeInfo<0>
@@ -1454,6 +1456,7 @@ bar: Literal[4] = 4
 from typing_extensions import Literal
 def foo(x: Literal['3']) -> Literal['b']: pass
 bar: Literal[5] = 5
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1<0>(
   tmp/main

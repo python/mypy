@@ -246,6 +246,7 @@ reveal_type(T2(x=2)) # E
 [file b.py]
 from a import TypedDict as TD1
 from a import TD2 as TD3
+[builtins fixtures/tuple.pyi]
 
 [out]
 tmp/a.py:5: note: Revealed type is 'TypedDict('a.T2', {'x': builtins.int})'
@@ -274,6 +275,7 @@ x: T2
 reveal_type(x) # N: Revealed type is 'TypedDict('__main__.T2', {'x': builtins.str, 'y': builtins.int})'
 y: T4
 reveal_type(y) # N: Revealed type is 'TypedDict('__main__.T4', {'x': builtins.str, 'y': __main__.A})'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerRedefinitionAndDeferral1a]
 import a
@@ -864,6 +866,7 @@ reveal_type(i.t)  # N: Revealed type is '__main__.Other'
 
 In = NamedTuple('In', [('s', str), ('t', Other)])
 class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClass]
 from typing import NamedTuple
@@ -885,6 +888,7 @@ class In(NamedTuple):
     s: str
     t: Other
 class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleCallNested]
 from typing import NamedTuple
@@ -902,6 +906,7 @@ class C:
     In = NamedTuple('In', [('s', str), ('t', Other)])
     Out = NamedTuple('Out', [('x', In), ('y', Other)])
     class Other: pass
+[builtins fixtures/tuple.pyi]
 
 
 [case testNewAnalyzerNamedTupleClassNested]
@@ -924,6 +929,7 @@ class C:
         s: str
         t: C.Other
     class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleCallNestedMethod]
 from typing import NamedTuple
@@ -938,6 +944,7 @@ class C:
         Out = NamedTuple('Out', [('x', In), ('y', Other)])
         In = NamedTuple('In', [('s', str), ('t', Other)])
         class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassNestedMethod]
 from typing import NamedTuple
@@ -958,6 +965,7 @@ class C:
             s: str
             t: Other
         class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassForwardMethod]
 from typing import NamedTuple
@@ -973,6 +981,7 @@ class NT(NamedTuple):
 
 class Other(NamedTuple):
     s: str
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleSpecialMethods]
 from typing import NamedTuple
@@ -987,6 +996,7 @@ class SubO(Out): pass
 Out = NamedTuple('Out', [('x', In), ('y', Other)])
 In = NamedTuple('In', [('s', str), ('t', Other)])
 class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNamedTupleBaseClass]
 from typing import NamedTuple
@@ -1004,6 +1014,7 @@ class In(NamedTuple):
     s: str
     t: Other
 class Other: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerIncompleteRefShadowsBuiltin1]
 import a
@@ -1158,6 +1169,7 @@ class B(type):
         return 0
 
 reveal_type(A.f()) # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclassSix2]
 import six
@@ -1171,6 +1183,7 @@ class B(type):
         return 0
 
 reveal_type(A.f()) # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclassSix3]
 import six
@@ -1187,6 +1200,7 @@ class Defer:
 
 reveal_type(A.f()) # N: Revealed type is 'builtins.int'
 reveal_type(A.x) # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclassSix4]
 import six
@@ -1203,6 +1217,7 @@ class A(six.with_metaclass(B, Defer)):
 
 class Defer:
     x: str
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclassFuture1]
 import future.utils
@@ -1215,6 +1230,7 @@ class B(type):
         return 0
 
 reveal_type(A.f()) # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclassFuture3]
 import future.utils
@@ -1231,6 +1247,7 @@ class Defer:
 
 reveal_type(A.f()) # N: Revealed type is 'builtins.int'
 reveal_type(A.x) # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclassFuture4]
 import future.utils
@@ -1247,6 +1264,7 @@ class A(future.utils.with_metaclass(B, Defer)):
 
 class Defer:
     x: str
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMetaclass1_python2]
 class A:
@@ -1716,6 +1734,7 @@ def g(x: int) -> int: ...
 def g(x: Union[C[str], int]) -> int:  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
     y: C[object]  # E: Type argument "builtins.object" of "C" must be a subtype of "builtins.int"
     return 0
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
 # flags: --config-file tmp/mypy.ini
@@ -1818,6 +1837,7 @@ reveal_type(x)  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
 [file b.py]
 import a
 x = (1, 2)
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerImportPriosA]
 import a
@@ -1827,6 +1847,7 @@ reveal_type(x)  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
 [file b.py]
 import a
 x = (1, 2)
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerConditionalFunc]
 if int():
@@ -2015,6 +2036,7 @@ from typing import Tuple
 c: C
 class C(Tuple[int, str]):
     def __init__(self) -> None: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerNotAnAlias]
 class Meta(type):
@@ -2268,6 +2290,7 @@ reveal_type(x)  # N: Revealed type is 'Tuple[builtins.int, fallback=__main__.C]'
 reveal_type(x.x)  # N: Revealed type is 'builtins.int'
 
 C = NamedTuple('C', [('x', int)])
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerApplicationForward1]
 from typing import Generic, TypeVar
@@ -2487,6 +2510,7 @@ var1: Final = 1
 def force1(x: Literal[1]) -> None: pass
 
 force1(reveal_type(var1))            # N: Revealed type is 'Literal[1]'
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerReportLoopInMRO]
 class A(A): ... # E: Cannot resolve name "A" (possible cyclic definition)
@@ -2748,6 +2772,7 @@ def force(x: Literal[42]) -> None: pass
 force(reveal_type(var))  # N: Revealed type is 'Literal[42]'
 
 class Yes: ...
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerImportCycleWithIgnoreMissingImports]
 # flags: --ignore-missing-imports

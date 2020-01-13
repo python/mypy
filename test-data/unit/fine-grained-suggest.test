@@ -141,6 +141,7 @@ No guesses that match criteria!
 [file foo.py]
 def foo():
     return 1, "1"
+[builtins fixtures/tuple.pyi]
 [out]
 () -> Tuple[int, str]
 ==
@@ -152,6 +153,7 @@ from typing import NamedTuple
 N = NamedTuple('N', [('x', int)])
 def foo():
     return N(1)
+[builtins fixtures/tuple.pyi]
 [out]
 () -> foo.N
 ==
@@ -200,6 +202,7 @@ class B: ...
 from foo import foo
 from baz import B
 foo(B())
+[builtins fixtures/tuple.pyi]
 
 [out]
 (baz.B) -> Tuple[foo.A, foo:A.C]

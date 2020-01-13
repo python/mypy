@@ -20,6 +20,7 @@ class B: pass
 
 def f(x: Tuple[A, B]) -> None:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> <m.f>, m.B, m.f
@@ -844,6 +845,7 @@ class P(NamedTuple):
     x: A
 [file mod.py]
 class I: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.A> -> m
 <m.P> -> m.P
@@ -862,6 +864,7 @@ from mod import I
 A = I
 [file mod.py]
 class I: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <a.A> -> m
 <a> -> m

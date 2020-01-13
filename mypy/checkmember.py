@@ -565,7 +565,7 @@ def analyze_var(name: str,
                 # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
                 # * x: Union[A1, B1]
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
-                # and similarly for B1 when checking agains B
+                # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_function_type_vars(functype)
                 signature = check_self_arg(signature, dispatched_type, var.is_classmethod,

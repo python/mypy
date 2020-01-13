@@ -53,6 +53,23 @@ ARG_CONSTRUCTOR_NAMES = {
 }  # type: Final
 
 
+# Map from the full name of a missing definition to the test fixture (under
+# test-data/unit/fixtures/) that provides the definition. This is used for
+# generating better error messages when running mypy tests only.
+SUGGESTED_TEST_FIXTURES = {
+    'builtins.list': 'list.pyi',
+    'builtins.dict': 'dict.pyi',
+    'builtins.set': 'set.pyi',
+    'builtins.tuple': 'tuple.pyi',
+    'builtins.bool': 'bool.pyi',
+    'builtins.Exception': 'exception.pyi',
+    'builtins.BaseException': 'exception.pyi',
+    'builtins.isinstance': 'isinstancelist.pyi',
+    'builtins.property': 'property.pyi',
+    'builtins.classmethod': 'classmethod.pyi',
+}  # type: Final
+
+
 class MessageBuilder:
     """Helper class for reporting type checker error messages with parameters.
 
@@ -1480,6 +1497,13 @@ class MessageBuilder:
         for note in notes:
             self.note(note, context, code=code)
 
+    def add_fixture_note(self, fullname: str, ctx: Context) -> None:
+        self.note('Maybe your test fixture does not define "{}"?'.format(fullname), ctx)
+        if fullname in SUGGESTED_TEST_FIXTURES:
+            self.note(
+                'Consider adding [builtins fixtures/{}] to your test description'.format(
+                    SUGGESTED_TEST_FIXTURES[fullname]), ctx)
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
@@ -1712,8 +1736,8 @@ def format_type_bare(typ: Type,
     return format_type_inner(typ, verbosity, find_type_overlaps(typ))
 
 
-def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tuple[str, str]:
-    """Jointly format a pair of types to distinct strings.
+def format_type_distinctly(*types: Type, bare: bool = False) -> Tuple[str, ...]:
+    """Jointly format types to distinct strings.
 
     Increase the verbosity of the type strings until they become distinct
     while also requiring that distinct types with the same short name are
@@ -1724,16 +1748,18 @@ def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tupl
     be quoted; callers who need to do post-processing of the strings before
     quoting them (such as prepending * or **) should use this.
     """
-    overlapping = find_type_overlaps(type1, type2)
+    overlapping = find_type_overlaps(*types)
     for verbosity in range(2):
-        str1 = format_type_inner(type1, verbosity=verbosity, fullnames=overlapping)
-        str2 = format_type_inner(type2, verbosity=verbosity, fullnames=overlapping)
-        if str1 != str2:
+        strs = [
+            format_type_inner(type, verbosity=verbosity, fullnames=overlapping)
+            for type in types
+        ]
+        if len(set(strs)) == len(strs):
             break
     if bare:
-        return (str1, str2)
+        return tuple(strs)
     else:
-        return (quote_type_string(str1), quote_type_string(str2))
+        return tuple(quote_type_string(s) for s in strs)
 
 
 def pretty_callable(tp: CallableType) -> str:
