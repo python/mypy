@@ -3210,6 +3210,7 @@ class T(TypedDict):
 
 class b:
     T: Union[Any]
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerMemberNameMatchesNamedTuple]
 from typing import Union, Any, NamedTuple
@@ -3219,3 +3220,5 @@ class T(NamedTuple):
 
 class b:
     T = Union[Any]
+
+[builtins fixtures/tuple.pyi]
