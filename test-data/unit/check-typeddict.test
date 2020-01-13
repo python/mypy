@@ -831,6 +831,7 @@ B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
 
 c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
 reveal_type(c) # N: Revealed type is 'Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]'
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictUnionAmbiguousCase]
 from typing import Union, Mapping, Any, cast
