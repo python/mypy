@@ -487,9 +487,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def check_typeddict_call_with_dict(self, callee: TypedDictType,
-                                       kwargs: DictExpr,
-                                       context: Context) -> Type:
+    def validate_typeddict_kwargs(
+            self, kwargs: DictExpr) -> 'Optional[OrderedDict[str, Expression]]':
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]
@@ -504,12 +503,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 key_context = item_name_expr or item_arg
                 self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
                               key_context)
-                return AnyType(TypeOfAny.from_error)
+                return None
             else:
                 item_names.append(literal_value)
+        return OrderedDict(zip(item_names, item_args))
 
-        return self.check_typeddict_call_with_kwargs(
-            callee, OrderedDict(zip(item_names, item_args)), context)
+    def match_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> bool:
+        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
+        if validated_kwargs is not None:
+            return (callee.required_keys <= set(validated_kwargs.keys())
+                <= set(callee.items.keys()))
+        else:
+            return False
+
+    def check_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> Type:
+        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
+        if validated_kwargs is not None:
+            return self.check_typeddict_call_with_kwargs(
+                callee,
+                kwargs=validated_kwargs,
+                context=context)
+        else:
+            return AnyType(TypeOfAny.from_error)
 
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
@@ -3229,7 +3248,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # an error, but returns the TypedDict type that matches the literal it found
         # that would cause a second error when that TypedDict type is returned upstream
         # to avoid the second error, we always return TypedDict type that was requested
-        typeddict_context = self.find_typeddict_context(self.type_context[-1])
+        typeddict_context = self.find_typeddict_context(self.type_context[-1], e)
         if typeddict_context:
             self.check_typeddict_call_with_dict(
                 callee=typeddict_context,
@@ -3295,19 +3314,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert rv is not None
         return rv
 
-    def find_typeddict_context(self, context: Optional[Type]) -> Optional[TypedDictType]:
+    def find_typeddict_context(self, context: Optional[Type],
+                               dict_expr: DictExpr) -> Optional[TypedDictType]:
         context = get_proper_type(context)
         if isinstance(context, TypedDictType):
             return context
         elif isinstance(context, UnionType):
             items = []
             for item in context.items:
-                item_context = self.find_typeddict_context(item)
-                if item_context:
+                item_context = self.find_typeddict_context(item, dict_expr)
+                if (item_context is not None
+                        and self.match_typeddict_call_with_dict(
+                            item_context, dict_expr, dict_expr)):
                     items.append(item_context)
             if len(items) == 1:
-                # Only one union item is TypedDict, so use the context as it's unambiguous.
+                # Only one union item is valid TypedDict for the given dict_expr, so use the
+                # context as it's unambiguous.
                 return items[0]
+            if len(items) > 1:
+                self.msg.typeddict_context_ambiguous(items, dict_expr)
         # No TypedDict type in context.
         return None
 
