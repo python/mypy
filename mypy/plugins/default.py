@@ -150,14 +150,14 @@ def _verify_open_signature(
     (encoding, errors, newline) are None.
     """
     if not arg_types or len(arg_types[mode_arg_index]) != 1:
-        return None
+        return
 
     mode_str = try_getting_str_literals(
         args[mode_arg_index][0], arg_types[mode_arg_index][0]
     )
     if mode_str is None or len(mode_str) != 1 or 'b' not in mode_str[0]:
         # mode cannot be found, or is not binary
-        return None
+        return
 
     # Verify that text-only arguments are None if mode is binary
     for arg_index in text_only_arg_indices:

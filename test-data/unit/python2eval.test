@@ -189,6 +189,7 @@ f.write(u'foo')
 f.write('bar')
 f.close()
 [out]
+_program.py:3: error: Argument 1 to "write" of "IO" has incompatible type "unicode"; expected "str"
 
 [case testPrintFunctionWithFileArg_python2]
 from __future__ import print_function
