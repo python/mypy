@@ -3125,18 +3125,25 @@ class SemanticAnalyzer(NodeVisitor[None],
                     # respect explicitly annotated type
                     if (isinstance(lval.node, Var) and lval.node.type is not None):
                         continue
-                    lnode = self.current_symbol_table().get(lval.name)
-                    if lnode is None and self.type is not None:
+
+                    # We can handle these assignments to locals and to self
+                    if isinstance(lval, NameExpr):
+                        lnode = self.current_symbol_table().get(lval.name)
+                    elif isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
+                        assert self.type is not None
                         lnode = self.type.names.get(lval.name)
+                    else:
+                        continue
+
                     if lnode:
                         if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
+                            assert isinstance(lval, (NameExpr, MemberExpr))
                             self.fail(
                                 "Cannot assign multiple modules to name '{}' "
                                 "without explicit 'types.ModuleType' annotation".format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
-                            lnode.kind = self.current_symbol_kind()
                             assert rnode.node is not None
                             lnode.node = rnode.node
 
