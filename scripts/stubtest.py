@@ -191,8 +191,7 @@ def build_stubs(options: Options,
                 mod: str) -> Dict[str, nodes.MypyFile]:
     sources = find_module_cache.find_modules_recursive(mod)
     try:
-        res = build.build(sources=sources,
-                          options=options)
+        res = build.build(sources=sources, options=options)
         messages = res.errors
     except CompileError as error:
         messages = error.messages
@@ -212,6 +211,7 @@ def main(args: List[str]) -> Iterator[Error]:
         modules = args[1:]
 
     options = Options()
+    options.incremental = False
     data_dir = default_data_dir()
     search_path = compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)
