@@ -33,7 +33,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
 
     FuncDecls, FuncIRs, and ClassIRs are compared by fullname to avoid
     infinite recursion.
-    (More detailed comparisions should be done manually.)
+    (More detailed comparisons should be done manually.)
 
     Types and signatures are compared using mypyc.sametype.
 

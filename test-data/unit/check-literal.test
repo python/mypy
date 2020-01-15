@@ -14,6 +14,7 @@ def f2(x: 'A B') -> None: pass  # E: Invalid type comment or annotation
 def g2(x: Literal['A B']) -> None: pass
 reveal_type(f2)  # N: Revealed type is 'def (x: Any)'
 reveal_type(g2)  # N: Revealed type is 'def (x: Literal['A B'])'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInvalidTypeComment]
@@ -34,6 +35,7 @@ def g(x):
 
 reveal_type(f)  # N: Revealed type is 'def (x: Any)'
 reveal_type(g)  # N: Revealed type is 'def (x: Literal['A['])'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralFromTypingWorks]
@@ -44,7 +46,7 @@ x = 43  # E: Incompatible types in assignment (expression has type "Literal[43]"
 
 y: Literal[43]
 y = 43
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testLiteralParsingPython2]
 # flags: --python-version 2.7
@@ -78,6 +80,7 @@ def bar(x: Tuple[Literal[2]]) -> None: ...
 reveal_type(x)                      # N: Revealed type is 'Tuple[Any]'
 reveal_type(y)                      # N: Revealed type is 'Tuple[Literal[2]]'
 reveal_type(bar)                    # N: Revealed type is 'def (x: Tuple[Literal[2]])'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInsideOtherTypesPython2]
@@ -116,6 +119,7 @@ def bar(x):
 reveal_type(x)                      # N: Revealed type is 'Union[Tuple[Any], None]'
 reveal_type(y)                      # N: Revealed type is 'Union[Tuple[Literal[2]], None]'
 reveal_type(bar)                    # N: Revealed type is 'def (x: Tuple[Literal[2]])'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralValidExpressionsInStringsPython3]
@@ -216,12 +220,12 @@ expr_com_3 = ...   # type: Literal['3']
 expr_com_4 = ...   # type: Literal['True']
 expr_com_5 = ...   # type: Literal['None']
 expr_com_6 = ...   # type: Literal['"foo"']
-reveal_type(expr_com_1)  # N: Revealed type is 'Literal['a+b']'
-reveal_type(expr_com_2)  # N: Revealed type is 'Literal['1+2']'
-reveal_type(expr_com_3)  # N: Revealed type is 'Literal['3']'
-reveal_type(expr_com_4)  # N: Revealed type is 'Literal['True']'
-reveal_type(expr_com_5)  # N: Revealed type is 'Literal['None']'
-reveal_type(expr_com_6)  # N: Revealed type is 'Literal['"foo"']'
+reveal_type(expr_com_1)  # N: Revealed type is 'Literal[u'a+b']'
+reveal_type(expr_com_2)  # N: Revealed type is 'Literal[u'1+2']'
+reveal_type(expr_com_3)  # N: Revealed type is 'Literal[u'3']'
+reveal_type(expr_com_4)  # N: Revealed type is 'Literal[u'True']'
+reveal_type(expr_com_5)  # N: Revealed type is 'Literal[u'None']'
+reveal_type(expr_com_6)  # N: Revealed type is 'Literal[u'"foo"']'
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -286,6 +290,7 @@ accepts_bytes(c_hint)
 accepts_bytes(a_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
 accepts_bytes(b_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
 accepts_bytes(c_alias)
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralMixingUnicodeAndBytesPython2]
@@ -461,6 +466,7 @@ reveal_type(c_str_wrapper_alias)      # N: Revealed type is '__main__.Wrap[Liter
 reveal_type(a_bytes_wrapper_alias)    # N: Revealed type is '__main__.Wrap[Literal['foo']]'
 reveal_type(b_bytes_wrapper_alias)    # N: Revealed type is '__main__.Wrap[Literal['foo']]'
 reveal_type(c_bytes_wrapper_alias)    # N: Revealed type is '__main__.Wrap[Literal[b'foo']]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralMixingUnicodeAndBytesPython2ForwardStrings]
@@ -657,6 +663,7 @@ a1 = c2  # E: Incompatible types in assignment (expression has type "Literal['¬
 a1 = a3
 a1 = b3
 a1 = c3  # E: Incompatible types in assignment (expression has type "Literal['¬b ∧ λ(p)']", variable has type "Literal['\x00¬b ∧ λ(p)']")
+[builtins fixtures/tuple.pyi]
 
 [out skip-path-normalization]
 
@@ -668,6 +675,7 @@ reveal_type(x)   # N: Revealed type is 'Literal[3]'
 
 y: Foo["hello"]
 reveal_type(y)   # N: Revealed type is 'Literal['hello']'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralRenamingImportViaAnotherImportWorks]
@@ -682,6 +690,7 @@ reveal_type(y)  # N: Revealed type is 'Literal[4]'
 [file other_module.py]
 from typing_extensions import Literal as Foo
 Bar = Foo[4]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralRenamingImportNameConfusion]
@@ -691,6 +700,7 @@ x: Foo["Foo"]
 reveal_type(x)  # N: Revealed type is 'Literal['Foo']'
 
 y: Foo[Foo]     # E: Literal[...] must have at least one parameter
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBadRawExpressionWithBadType]
@@ -741,6 +751,7 @@ def f3(x: Literal[-300]) -> Literal[-300]: pass
 reveal_type(f1)  # N: Revealed type is 'def (x: Literal[4]) -> Literal[4]'
 reveal_type(f2)  # N: Revealed type is 'def (x: Literal[42]) -> Literal[42]'
 reveal_type(f3)  # N: Revealed type is 'def (x: Literal[-300]) -> Literal[-300]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBasicBoolUsage]
@@ -794,6 +805,7 @@ reveal_type(f2)  # N: Revealed type is 'def (x: Literal['  foo bar  ']) -> Liter
 reveal_type(f3)  # N: Revealed type is 'def (x: Literal['  foo bar  ']) -> Literal['  foo bar  ']'
 reveal_type(f4)  # N: Revealed type is 'def (x: Literal['foo']) -> Literal['foo']'
 reveal_type(f5)  # N: Revealed type is 'def (x: Literal['foo']) -> Literal['foo']'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBasicStrUsageSlashes]
@@ -804,6 +816,7 @@ b: Literal["foo\nbar"]
 
 reveal_type(a)
 reveal_type(b)
+[builtins fixtures/tuple.pyi]
 [out skip-path-normalization]
 main:6: note: Revealed type is 'Literal['foo\\nbar']'
 main:7: note: Revealed type is 'Literal['foo\nbar']'
@@ -821,6 +834,7 @@ def f3(x: Literal[None]) -> Literal[None]: pass
 reveal_type(f1)  # N: Revealed type is 'def (x: None)'
 reveal_type(f2)  # N: Revealed type is 'def (x: None)'
 reveal_type(f3)  # N: Revealed type is 'def (x: None)'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralCallingUnionFunction]
@@ -846,6 +860,7 @@ func(c)
 func(d)
 func(e)
 func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], Literal['bar'], Literal['baz']]"; expected "Union[Literal['foo'], Literal['bar'], Literal['  foo  ']]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralDisallowAny]
@@ -859,6 +874,7 @@ b: Literal[BadAlias]                    # E: Parameter 1 of Literal[...] cannot 
 
 reveal_type(a)                          # N: Revealed type is 'Any'
 reveal_type(b)                          # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralDisallowActualTypes]
@@ -906,6 +922,7 @@ b: Literal["  foo  ".trim()]    # E: Invalid type: Literal[...] cannot contain a
 c: Literal[+42]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 d: Literal[~12]                 # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 e: Literal[dummy()]             # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralDisallowCollections]
@@ -914,6 +931,7 @@ a: Literal[{"a": 1, "b": 2}]    # E: Invalid type: Literal[...] cannot contain a
 b: Literal[{1, 2, 3}]           # E: Invalid type: Literal[...] cannot contain arbitrary expressions
 c: {"a": 1, "b": 2}             # E: Invalid type comment or annotation
 d: {1, 2, 3}                    # E: Invalid type comment or annotation
+[builtins fixtures/tuple.pyi]
 
 [case testLiteralDisallowCollections2]
 
@@ -923,6 +941,7 @@ a: (1, 2, 3)                    # E: Syntax error in type annotation \
 b: Literal[[1, 2, 3]]           # E: Parameter 1 of Literal[...] is invalid
 c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type \
                                 # N: Did you mean "List[...]"?
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralDisallowCollectionsTypeAlias]
@@ -955,6 +974,7 @@ at = Literal[T]  # E: Parameter 1 of Literal[...] is invalid
 a: at
 
 def foo(b: Literal[T]) -> T: pass   # E: Parameter 1 of Literal[...] is invalid
+[builtins fixtures/tuple.pyi]
 [out]
 
 
@@ -989,6 +1009,7 @@ a: Literal[1, 2, 3]
 b: Literal[(1, 2, 3)]
 reveal_type(a)  # N: Revealed type is 'Union[Literal[1], Literal[2], Literal[3]]'
 reveal_type(b)  # N: Revealed type is 'Union[Literal[1], Literal[2], Literal[3]]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralNestedUsage]
@@ -1010,6 +1031,7 @@ basic_mode = Literal["r", "w", "a"]
 basic_with_plus = Literal["r+", "w+", "a+"]
 combined: Literal[basic_mode, basic_with_plus]
 reveal_type(combined)  # N: Revealed type is 'Union[Literal['r'], Literal['w'], Literal['a'], Literal['r+'], Literal['w+'], Literal['a+']]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBiasTowardsAssumingForwardReference]
@@ -1027,6 +1049,7 @@ d: "Literal['Foo']"
 reveal_type(d)      # N: Revealed type is 'Literal['Foo']'
 
 class Foo: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBiasTowardsAssumingForwardReferenceForTypeAliases]
@@ -1048,6 +1071,7 @@ e: Literal[Foo, 'Foo']
 reveal_type(e)      # N: Revealed type is 'Union[Literal[5], Literal['Foo']]'
 
 Foo = Literal[5]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBiasTowardsAssumingForwardReferencesForTypeComments]
@@ -1065,6 +1089,7 @@ reveal_type(c)      # N: Revealed type is 'Literal['Foo']'
 d = None  # type: Literal[Foo]   # E: Parameter 1 of Literal[...] is invalid
 
 class Foo: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 
@@ -1083,6 +1108,7 @@ c: int
 foo(a)  # E: Argument 1 to "foo" has incompatible type "Literal[1]"; expected "Literal[3]"
 foo(b)  # E: Argument 1 to "foo" has incompatible type "Literal[2]"; expected "Literal[3]"
 foo(c)  # E: Argument 1 to "foo" has incompatible type "int"; expected "Literal[3]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralCallingFunctionWithUnionLiteral]
@@ -1098,6 +1124,7 @@ foo(a)
 foo(b)
 foo(c)  # E: Argument 1 to "foo" has incompatible type "Union[Literal[4], Literal[5]]"; expected "Union[Literal[1], Literal[2], Literal[3]]"
 foo(d)  # E: Argument 1 to "foo" has incompatible type "int"; expected "Union[Literal[1], Literal[2], Literal[3]]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralCallingFunctionWithStandardBase]
@@ -1111,6 +1138,7 @@ c: Literal[4, 'foo']
 foo(a)
 foo(b)
 foo(c)  # E: Argument 1 to "foo" has incompatible type "Union[Literal[4], Literal['foo']]"; expected "int"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralCheckSubtypingStrictOptional]
@@ -1136,6 +1164,7 @@ fc(lit)  # E: Argument 1 to "fc" has incompatible type "Literal[1]"; expected "N
 f_lit(a)
 f_lit(b)
 f_lit(c) # E: Argument 1 to "f_lit" has incompatible type "None"; expected "Literal[1]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralCheckSubtypingNoStrictOptional]
@@ -1161,6 +1190,7 @@ fc(lit)  # E: Argument 1 to "fc" has incompatible type "Literal[1]"; expected "N
 f_lit(a)
 f_lit(b)
 f_lit(c)
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralCallingOverloadedFunction]
@@ -1225,6 +1255,7 @@ c2: Contravariant[Literal[1, 2]]
 c3: Contravariant[Literal[1, 2, 3]]
 c2 = c1  # E: Incompatible types in assignment (expression has type "Contravariant[Literal[1]]", variable has type "Contravariant[Union[Literal[1], Literal[2]]]")
 c2 = c3
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInListAndSequence]
@@ -1264,6 +1295,7 @@ from typing_extensions import Literal
 Bar1 = Literal[15]
 Bar2 = Literal[14]
 c: Literal[15]
+[builtins fixtures/tuple.pyi]
 
 
 --
@@ -1423,6 +1455,7 @@ def f4(x: Literal[1]) -> Literal[1]:
 
 def f5(x: Literal[2]) -> Literal[1]:
     return x  # E: Incompatible return value type (got "Literal[2]", expected "Literal[1]")
+[builtins fixtures/tuple.pyi]
 
 [out]
 
@@ -1524,6 +1557,7 @@ reveal_type(func(b))  # N: Revealed type is 'builtins.int'
 # with the output we would have gotten if we replaced int and the
 # Literal types here with regular classes/subclasses.
 reveal_type(func(c))  # N: Revealed type is 'builtins.object'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralOverloadProhibitUnsafeOverlaps]
@@ -1548,6 +1582,7 @@ def func3(x: Literal['a']) -> Literal[2]: ...
 @overload
 def func3(x: str) -> int: ...
 def func3(x): pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInferredInOverloadContextUnionMath]
@@ -1592,6 +1627,7 @@ reveal_type(func(f))  # E: No overload variant of "func" matches argument type "
                       # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
                       # N:     def func(x: Literal['foo']) -> C \
                       # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType]
@@ -1615,6 +1651,7 @@ reveal_type(f(2))  # N: Revealed type is 'builtins.int'
 reveal_type(f(y))  # N: Revealed type is 'builtins.object'
 reveal_type(f(z))  # N: Revealed type is 'builtins.int' \
                    # E: Argument 1 to "f" has incompatible type "Union[Literal[1], Literal[2], Literal['three']]"; expected "Union[Literal[1], Literal[2]]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInferredInOverloadContextWithTypevars]
@@ -1665,6 +1702,7 @@ reveal_type(f4("foo"))  # N: Revealed type is 'builtins.str'
 # Note: first overload is selected and prevents the typevar from
 # ever inferring a Literal["something"].
 reveal_type(f4(b))      # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralInferredInOverloadContextUnionMathTrickyOverload]
@@ -1683,6 +1721,7 @@ x: Literal['a', 'b']
 y: Literal['a', 'b']
 f(x, y)  # E: Argument 1 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
          # E: Argument 2 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
+[builtins fixtures/tuple.pyi]
 [out]
 
 
@@ -1720,7 +1759,7 @@ a *= b                  # E: Incompatible types in assignment (expression has ty
 b *= a
 
 reveal_type(b)          # N: Revealed type is 'builtins.int'
-[out]
+[builtins fixtures/primitives.pyi]
 
 [case testLiteralFallbackInheritedMethodsWorkCorrectly]
 from typing_extensions import Literal
@@ -1793,6 +1832,7 @@ class Bad1(Literal[3]): pass            # E: Invalid base class "Literal"
 class Bad2(Renamed[3]): pass            # E: Invalid base class "Renamed"
 class Bad3(indirect.Literal[3]): pass   # E: Invalid base class "indirect.Literal"
 class Bad4(Alias): pass                 # E: Invalid base class "Alias"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralErrorsWhenInvoked-skip]
@@ -1850,6 +1890,7 @@ expects_literal(foo(foo(5)))    # E: Argument 1 to "foo" has incompatible type "
 expects_int(a)
 expects_int(foo(a))
 expects_int(foo(foo(a)))
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralAndGenericWithUnion]
@@ -1861,6 +1902,7 @@ def identity(x: T) -> T: return x
 
 a: Union[int, Literal['foo']] = identity('foo')
 b: Union[int, Literal['foo']] = identity('bar')  # E: Argument 1 to "identity" has incompatible type "Literal['bar']"; expected "Union[int, Literal['foo']]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralAndGenericsNoMatch]
@@ -1914,6 +1956,7 @@ expects_literal(Wrapper(5).inner())  # E: Argument 1 to "expects_literal" has in
 expects_literal_wrapper(Wrapper(a))
 expects_literal_wrapper(Wrapper(3))
 expects_literal_wrapper(Wrapper(5))  # E: Argument 1 to "Wrapper" has incompatible type "Literal[5]"; expected "Literal[3]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralAndGenericsRespectsUpperBound]
@@ -1953,6 +1996,7 @@ reveal_type(func2(a))   # N: Revealed type is 'Literal[3]'
 reveal_type(func2(4))   # N: Revealed type is 'builtins.int*'
 reveal_type(func2(b))   # N: Revealed type is 'Literal[4]'
 reveal_type(func2(c))   # N: Revealed type is 'builtins.int*'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralAndGenericsRespectsValueRestriction]
@@ -2009,6 +2053,7 @@ reveal_type(func2("foo"))   # N: Revealed type is 'builtins.str*'
 reveal_type(func2(s1))      # N: Revealed type is 'builtins.str*'
 reveal_type(func2("bar"))   # N: Revealed type is 'builtins.str*'
 reveal_type(func2(s2))      # N: Revealed type is 'builtins.str*'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralAndGenericsWithOverloads]
@@ -2031,6 +2076,7 @@ reveal_type(func1(identity(4)))  # N: Revealed type is 'Literal[19]'
 reveal_type(func1(identity(5)))  # N: Revealed type is 'builtins.int'
 reveal_type(func1(identity(a)))  # N: Revealed type is 'Literal[19]'
 reveal_type(func1(identity(b)))  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 
 --
 -- Interactions with meets
@@ -2185,7 +2231,7 @@ del d[a_key]                  # E: Key 'a' of TypedDict "Outer" cannot be delete
 del d[b_key]
 del d[c_key]                  # E: TypedDict "Outer" has no key 'c'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingUsingFinal]
@@ -2224,7 +2270,7 @@ b[int_key_bad]                       # E: Tuple index out of range
 c[str_key_bad]                       # E: TypedDict "MyDict" has no key 'missing'
 c.get(str_key_bad, u)                # E: TypedDict "MyDict" has no key 'missing'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTupleUnions]
@@ -2285,9 +2331,9 @@ bad_keys: Literal["a", "bad"]
 
 reveal_type(test[good_keys])                      # N: Revealed type is 'Union[__main__.A, __main__.B]'
 reveal_type(test.get(good_keys))                  # N: Revealed type is 'Union[__main__.A, __main__.B]'
-reveal_type(test.get(good_keys, 3))               # N: Revealed type is 'Union[__main__.A, builtins.int, __main__.B]'
+reveal_type(test.get(good_keys, 3))               # N: Revealed type is 'Union[__main__.A, Literal[3]?, __main__.B]'
 reveal_type(test.pop(optional_keys))              # N: Revealed type is 'Union[__main__.D, __main__.E]'
-reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is 'Union[__main__.D, __main__.E, builtins.int]'
+reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is 'Union[__main__.D, __main__.E, Literal[3]?]'
 reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is 'Union[__main__.A, __main__.B]'
 del test[optional_keys]
 
@@ -2306,7 +2352,7 @@ del test[good_keys]             # E: Key 'a' of TypedDict "Test" cannot be delet
 del test[bad_keys]              # E: Key 'a' of TypedDict "Test" cannot be deleted \
                                 # E: TypedDict "Test" has no key 'bad'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTypedDictPython2-skip]
@@ -2355,7 +2401,7 @@ from mypy_extensions import TypedDict
 UnicodeDict = TypedDict(b'UnicodeDict', {'key': int})
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testLiteralIntelligentIndexingMultiTypedDict]
 from typing import Union
@@ -2390,10 +2436,10 @@ x.get(bad_keys, 3)  # E: TypedDict "D1" has no key 'd' \
 
 reveal_type(x[good_keys])           # N: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __main__.C]'
-reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, builtins.int, __main__.C]'
+reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, Literal[3]?, __main__.C]'
 
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 --
 -- Interactions with 'Final'
@@ -2424,18 +2470,18 @@ def force2(x: Literal["foo"]) -> None: pass
 def force3(x: Literal[True]) -> None: pass
 def force4(x: Literal[None]) -> None: pass
 
-reveal_type(var1)                    # N: Revealed type is 'builtins.int'
-reveal_type(var2)                    # N: Revealed type is 'builtins.str'
-reveal_type(var3)                    # N: Revealed type is 'builtins.bool'
+reveal_type(var1)                    # N: Revealed type is 'Literal[1]?'
+reveal_type(var2)                    # N: Revealed type is 'Literal['foo']?'
+reveal_type(var3)                    # N: Revealed type is 'Literal[True]?'
 reveal_type(var4)                    # N: Revealed type is 'None'
 force1(reveal_type(var1))            # N: Revealed type is 'Literal[1]'
 force2(reveal_type(var2))            # N: Revealed type is 'Literal['foo']'
 force3(reveal_type(var3))            # N: Revealed type is 'Literal[True]'
 force4(reveal_type(var4))            # N: Revealed type is 'None'
 
-reveal_type(Foo.classvar1)           # N: Revealed type is 'builtins.int'
-reveal_type(Foo.classvar2)           # N: Revealed type is 'builtins.str'
-reveal_type(Foo.classvar3)           # N: Revealed type is 'builtins.bool'
+reveal_type(Foo.classvar1)           # N: Revealed type is 'Literal[1]?'
+reveal_type(Foo.classvar2)           # N: Revealed type is 'Literal['foo']?'
+reveal_type(Foo.classvar3)           # N: Revealed type is 'Literal[True]?'
 reveal_type(Foo.classvar4)           # N: Revealed type is 'None'
 force1(reveal_type(Foo.classvar1))   # N: Revealed type is 'Literal[1]'
 force2(reveal_type(Foo.classvar2))   # N: Revealed type is 'Literal['foo']'
@@ -2443,9 +2489,9 @@ force3(reveal_type(Foo.classvar3))   # N: Revealed type is 'Literal[True]'
 force4(reveal_type(Foo.classvar4))   # N: Revealed type is 'None'
 
 f = Foo()
-reveal_type(f.instancevar1)          # N: Revealed type is 'builtins.int'
-reveal_type(f.instancevar2)          # N: Revealed type is 'builtins.str'
-reveal_type(f.instancevar3)          # N: Revealed type is 'builtins.bool'
+reveal_type(f.instancevar1)          # N: Revealed type is 'Literal[1]?'
+reveal_type(f.instancevar2)          # N: Revealed type is 'Literal['foo']?'
+reveal_type(f.instancevar3)          # N: Revealed type is 'Literal[True]?'
 reveal_type(f.instancevar4)          # N: Revealed type is 'None'
 force1(reveal_type(f.instancevar1))  # N: Revealed type is 'Literal[1]'
 force2(reveal_type(f.instancevar2))  # N: Revealed type is 'Literal['foo']'
@@ -2564,6 +2610,35 @@ force4(reveal_type(f.instancevar4))  # N: Revealed type is 'None'
 [builtins fixtures/primitives.pyi]
 [out]
 
+[case testLiteralFinalErasureInMutableDatastructures1]
+# flags: --strict-optional
+from typing_extensions import Final
+
+var1: Final = [0, None]
+var2: Final = (0, None)
+
+reveal_type(var1)  # N: Revealed type is 'builtins.list[Union[builtins.int, None]]'
+reveal_type(var2)  # N: Revealed type is 'Tuple[Literal[0]?, None]'
+[builtins fixtures/tuple.pyi]
+
+[case testLiteralFinalErasureInMutableDatastructures2]
+from typing_extensions import Final, Literal
+
+var1: Final = []
+var1.append(0)
+reveal_type(var1)  # N: Revealed type is 'builtins.list[builtins.int]'
+
+var2 = []
+var2.append(0)
+reveal_type(var2)  # N: Revealed type is 'builtins.list[builtins.int]'
+
+x: Literal[0] = 0
+var3 = []
+var3.append(x)
+reveal_type(var3)  # N: Revealed type is 'builtins.list[Literal[0]]'
+
+[builtins fixtures/list.pyi]
+
 [case testLiteralFinalMismatchCausesError]
 from typing_extensions import Final, Literal
 
@@ -2604,12 +2679,14 @@ b: Final = (1, 2)
 def force1(x: Literal[1]) -> None: pass
 def force2(x: Tuple[Literal[1], Literal[2]]) -> None: pass
 
-reveal_type(a)          # N: Revealed type is 'builtins.int'
-reveal_type(b)          # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(a)          # N: Revealed type is 'Literal[1]?'
+reveal_type(b)          # N: Revealed type is 'Tuple[Literal[1]?, Literal[2]?]'
 
+# TODO: This test seems somewhat broken and might need a rewrite (and a fix somewhere in mypy).
+# See https://github.com/python/mypy/issues/7399#issuecomment-554188073 for more context.
 force1(reveal_type(a))  # N: Revealed type is 'Literal[1]'
 force2(reveal_type(b))  # E: Argument 1 to "force2" has incompatible type "Tuple[int, int]"; expected "Tuple[Literal[1], Literal[2]]" \
-                        # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+                        # N: Revealed type is 'Tuple[Literal[1]?, Literal[2]?]'
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2663,6 +2740,7 @@ force_bytes(reveal_type(a))    # E: Argument 1 to "force_bytes" has incompatible
 force_bytes(reveal_type(b))    # E: Argument 1 to "force_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']" \
                                # N: Revealed type is 'Literal['foo']'
 force_bytes(reveal_type(c))    # N: Revealed type is 'Literal[b'foo']'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralFinalStringTypesPython2UnicodeLiterals]
@@ -2773,6 +2851,7 @@ over_int(reveal_type(w3))                       # E: Argument 1 to "over_int" ha
 over_literal(reveal_type(w3))                   # N: Revealed type is '__main__.WrapperClass[Literal[99]]'
 over_int(reveal_type(WrapperClass(var3)))       # N: Revealed type is '__main__.WrapperClass[builtins.int]'
 over_literal(reveal_type(WrapperClass(var3)))   # N: Revealed type is '__main__.WrapperClass[Literal[99]]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralFinalUsedInLiteralType]
@@ -2796,6 +2875,7 @@ c_wrap: Literal[4, c]  # E: Parameter 2 of Literal[...] is invalid \
                        # E: Variable "__main__.c" is not valid as a type
 d_wrap: Literal[4, d]  # E: Parameter 2 of Literal[...] is invalid \
                        # E: Variable "__main__.d" is not valid as a type
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralWithFinalPropagation]
@@ -2809,6 +2889,7 @@ def expect_3(x: Literal[3]) -> None: pass
 expect_3(a)
 expect_3(b)
 expect_3(c)  # E: Argument 1 to "expect_3" has incompatible type "int"; expected "Literal[3]"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralWithFinalPropagationIsNotLeaking]
@@ -2835,7 +2916,7 @@ expect_2(final_dict["foo"])  # E: Argument 1 to "expect_2" has incompatible type
 expect_2(final_set_1.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
 expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type "int"; expected "Literal[2]"
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-medium.pyi]
 
 --
 -- Tests for Literals and enums
@@ -2876,6 +2957,7 @@ expects_red(b)  # E: Argument 1 to "expects_red" has incompatible type "Literal[
 reveal_type(expects_red)  # N: Revealed type is 'def (x: Literal[__main__.Color.RED])'
 reveal_type(r)            # N: Revealed type is 'Literal[__main__.Color.RED]'
 reveal_type(r.func())     # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralWithEnumsDefinedInClass]
@@ -2898,6 +2980,7 @@ foo(g)  # E: Argument 1 to "foo" has incompatible type "Literal[Color.GREEN]"; e
 
 reveal_type(foo)  # N: Revealed type is 'def (x: Literal[__main__.Wrapper.Color.RED])'
 reveal_type(r)    # N: Revealed type is 'Literal[__main__.Wrapper.Color.RED]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralWithEnumsSimilarDefinitions]
@@ -2932,6 +3015,7 @@ from enum import Enum
 class Test(Enum):
     FOO = 1
     BAR = 2
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralWithEnumsDeclaredUsingCallSyntax]
@@ -2982,13 +3066,10 @@ expects_int(a)  # E: Argument 1 to "expects_int" has incompatible type "Literal[
 expects_int(b)
 expects_int(c)
 expects_int(d)  # E: Argument 1 to "expects_int" has incompatible type "Literal[D.FOO]"; expected "int"
+[builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralWithEnumsAliases-skip]
-# TODO: Fix this test once https://github.com/python/mypy/issues/6667 is resolved.
-#
-# The linked issue is about nested classes, but the same root bug prevents aliases
-# to enums from working.
+[case testLiteralWithEnumsAliases]
 from typing_extensions import Literal
 from enum import Enum
 
@@ -3000,6 +3081,7 @@ Alias = Test
 
 x: Literal[Alias.FOO]
 reveal_type(x)  # N: Revealed type is 'Literal[__main__.Test.FOO]'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralUsingEnumAttributesInLiteralContexts]
@@ -3033,6 +3115,7 @@ var2 = Test2.FOO
 final2: Final = Test2.FOO
 expects_test2_foo(var2)       # E: Argument 1 to "expects_test2_foo" has incompatible type "Test2"; expected "Literal[Test2.FOO]"
 expects_test2_foo(final2)
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralUsingEnumAttributeNamesInLiteralContexts]
@@ -3061,11 +3144,12 @@ expects_foo(Test3.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible t
 expects_foo(Test4.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
 expects_foo(Test5.BAR.name)  # E: Argument 1 to "expects_foo" has incompatible type "Literal['BAR']"; expected "Literal['FOO']"
 
-reveal_type(Test1.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test2.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test3.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test4.FOO.name)  # N: Revealed type is 'builtins.str'
-reveal_type(Test5.FOO.name)  # N: Revealed type is 'builtins.str'
+reveal_type(Test1.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test2.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test3.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test4.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+reveal_type(Test5.FOO.name)  # N: Revealed type is 'Literal['FOO']?'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralBinderLastValueErased]
@@ -3118,3 +3202,18 @@ err_code = -TWO
 if bool():
     err_code = -THREE
 [builtins fixtures/float.pyi]
+
+[case testAliasForEnumTypeAsLiteral]
+from typing_extensions import Literal
+from enum import Enum
+
+class Foo(Enum):
+    A = 1
+
+F = Foo
+
+x: Literal[Foo.A]
+y: Literal[F.A]
+reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+[builtins fixtures/tuple.pyi]

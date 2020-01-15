@@ -568,10 +568,10 @@ x = ''
 [file m2.py]
 x = 1
 
-[case testStarImportOverridingLocalImports-skip]
+[case testStarImportOverridingLocalImports]
 from m1 import *
 from m2 import *
-x = '' # E: TODO (cannot assign str to int)
+x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [file m1.py]
 x = 1
 [file m2.py]
@@ -1500,6 +1500,7 @@ if TYPE_CHECKING:
 def part4_thing(a: int) -> str: pass
 
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 tmp/part3.py:2: note: Revealed type is 'def (a: builtins.int) -> builtins.str'
 
@@ -2240,9 +2241,7 @@ reveal_type(x) # N: Revealed type is 'builtins.str'
 x = str()
 y = int()
 
-[case testForwardReferenceToListAlias-skip]
-# TODO: This fails because of missing ImportedName handling in
-#     mypy.typeanal.TypeAnalyser.visit_unbound_type.
+[case testForwardReferenceToListAlias]
 x: List[int]
 reveal_type(x) # N: Revealed type is 'builtins.list[builtins.int]'
 def f() -> 'List[int]': pass
@@ -2391,8 +2390,7 @@ ignore_missing_imports = True
 main:3: error: Cannot find implementation or library stub for module named 'a.b.d'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
-[case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
--- TODO: Fails because of missing ImportedName handling in mypy.typeanal
+[case testIndirectFromImportWithinCycleUsedAsBaseClass]
 import a
 [file a.py]
 from b import f
@@ -2400,7 +2398,7 @@ from c import B
 [file b.py]
 from c import y
 class A(B): pass
-reveal_type(A().x) # N: Revealed type is 'builtins.str'
+reveal_type(A().x) # N: Revealed type is 'builtins.int'
 from a import B
 def f() -> None: pass
 [file c.py]
@@ -2475,6 +2473,7 @@ x = m.One(name="Foo")
 reveal_type(x.name)
 class Two:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 tmp/m/two.py:3: note: Revealed type is 'builtins.str'
 
@@ -2492,6 +2491,7 @@ x = m.One(name="Foo")
 reveal_type(x.name)
 class Two:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 tmp/m/two.py:3: note: Revealed type is 'builtins.str'
 
@@ -2765,3 +2765,48 @@ x: alias.NonExistent  # E: Name 'alias.NonExistent' is not defined
 [file pack/__init__.py]
 [file pack/mod.py]
 class Existent: pass
+
+[case testModuleAttributeTwoSuggestions]
+import m
+m.aaaa # E: Module has no attribute "aaaa"; maybe "aaaaa" or "aaa"?
+
+[file m.py]
+aaa: int
+aaaaa: int
+[builtins fixtures/module.pyi]
+
+[case testModuleAttributeThreeSuggestions]
+import m
+m.aaaaa # E: Module has no attribute "aaaaa"; maybe "aabaa", "aaaba", or "aaaab"?
+
+[file m.py]
+aaaab: int
+aaaba: int
+aabaa: int
+[builtins fixtures/module.pyi]
+
+[case testDirectlyImportTypedDictObjectAtTopLevel]
+import foo.bar.custom_dict
+from foo import bar
+from foo.bar import custom_dict
+from foo.bar.custom_dict import CustomDict
+
+foo.bar.custom_dict.CustomDict(foo="abc", bar="def")
+bar.custom_dict.CustomDict(foo="abc", bar="def")
+custom_dict.CustomDict(foo="abc", bar="def")
+CustomDict(foo="abc", bar="def")
+
+[file foo/__init__.py]
+[file foo/bar/__init__.py]
+[file foo/bar/custom_dict.py]
+from typing_extensions import TypedDict
+
+CustomDict = TypedDict(
+    "CustomDict",
+    {
+        "foo": str,
+        "bar": str,
+    },
+)
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

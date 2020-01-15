@@ -786,7 +786,8 @@ L0:
 [case testLambdas]
 def f(x: int, y: int) -> None:
     s = lambda a, b: a + b
-    return s(x, y)
+    t = lambda a, b: s(a, b)
+    return t(x, y)
 
 [out]
 def __mypyc_lambda__0_f_obj.__get__(__mypyc_self__, instance, owner):
@@ -811,23 +812,51 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = a + b
     return r1
+def __mypyc_lambda__1_f_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = builtins.None :: object
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
+def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_f_obj
+    a, b :: object
+    r0 :: __main__.f_env
+    r1, r2 :: object
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.s
+    r2 = py_call(r1, a, b)
+    return r2
 def f(x, y):
     x, y :: int
     r0 :: __main__.f_env
     r1 :: __main__.__mypyc_lambda__0_f_obj
-    r2 :: bool
-    s, r3, r4, r5 :: object
-    r6 :: None
+    r2, r3 :: bool
+    r4 :: __main__.__mypyc_lambda__1_f_obj
+    r5 :: bool
+    t, r6, r7, r8 :: object
+    r9 :: None
 L0:
     r0 = f_env()
     r1 = __mypyc_lambda__0_f_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
-    s = r1
-    r3 = box(int, x)
-    r4 = box(int, y)
-    r5 = py_call(s, r3, r4)
-    r6 = unbox(None, r5)
-    return r6
+    r0.s = r1; r3 = is_error
+    r4 = __mypyc_lambda__1_f_obj()
+    r4.__mypyc_env__ = r0; r5 = is_error
+    t = r4
+    r6 = box(int, x)
+    r7 = box(int, y)
+    r8 = py_call(t, r6, r7)
+    r9 = unbox(None, r8)
+    return r9
 
 [case testRecursiveFunction]
 from typing import Callable

@@ -8,7 +8,7 @@ from typing import List, Tuple, Optional, Union, cast
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
     UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS,
-    EnumCallExpr
+    EnumCallExpr, MemberExpr
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
@@ -25,12 +25,15 @@ class EnumCallAnalyzer:
         Return True if this looks like an Enum definition (but maybe with errors),
         otherwise return False.
         """
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
         enum_call = self.check_enum_call(s.rvalue, name, is_func_scope)
         if enum_call is None:
+            return False
+        if isinstance(lvalue, MemberExpr):
+            self.fail("Enum type as attribute is not supported", lvalue)
             return False
         # Yes, it's a valid Enum definition. Add it to the symbol table.
         self.api.add_symbol(name, enum_call, s)

@@ -497,7 +497,7 @@ class TransformVisitor(NodeVisitor[Node]):
                            self.type(node.upper_bound), variance=node.variance)
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
-        return TypeAliasExpr(node.type, node.tvars, node.no_args)
+        return TypeAliasExpr(node.node)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
         res = NewTypeExpr(node.name, node.old_type, line=node.line, column=node.column)

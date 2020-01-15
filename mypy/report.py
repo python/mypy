@@ -459,7 +459,12 @@ class MemoryXmlReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         self.last_xml = None
-        path = os.path.relpath(tree.path)
+
+        try:
+            path = os.path.relpath(tree.path)
+        except ValueError:
+            return
+
         if should_skip_path(path):
             return
 
@@ -813,7 +818,12 @@ class LinePrecisionReporter(AbstractReporter):
                 modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
-        path = os.path.relpath(tree.path)
+
+        try:
+            path = os.path.relpath(tree.path)
+        except ValueError:
+            return
+
         if should_skip_path(path):
             return
 

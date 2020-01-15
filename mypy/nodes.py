@@ -856,7 +856,7 @@ class Var(SymbolNode):
         #         def __init__(self) -> None:
         #             self.x: int
         # This case is important because this defines a new Var, even if there is one
-        # present in a superclass (without explict type this doesn't create a new Var).
+        # present in a superclass (without explicit type this doesn't create a new Var).
         # See SemanticAnalyzer.analyze_member_lvalue() for details.
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.
@@ -1750,6 +1750,13 @@ class ComparisonExpr(Expression):
         self.operands = operands
         self.method_types = []
 
+    def pairwise(self) -> Iterator[Tuple[str, Expression, Expression]]:
+        """If this comparison expr is "a < b is c == d", yields the sequence
+        ("<", a, b), ("is", b, c), ("==", c, d)
+        """
+        for i, operator in enumerate(self.operators):
+            yield operator, self.operands[i], self.operands[i + 1]
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
 
@@ -2116,11 +2123,12 @@ class TypeAliasExpr(Expression):
     #     A = List[Any]
     no_args = False  # type: bool
 
-    def __init__(self, type: 'mypy.types.Type', tvars: List[str], no_args: bool) -> None:
+    def __init__(self, node: 'TypeAlias') -> None:
         super().__init__()
-        self.type = type
-        self.tvars = tvars
-        self.no_args = no_args
+        self.type = node.target
+        self.tvars = node.alias_tvars
+        self.no_args = node.no_args
+        self.node = node
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
@@ -2284,6 +2292,7 @@ class TypeInfo(SymbolNode):
     # Used to stash the names of the mro classes temporarily between
     # deserialization and fixup. See deserialize() for why.
     _mro_refs = None  # type: Optional[List[str]]
+    bad_mro = False  # Could not construct full MRO
 
     declared_metaclass = None  # type: Optional[mypy.types.Instance]
     metaclass_type = None  # type: Optional[mypy.types.Instance]
@@ -2739,7 +2748,7 @@ class TypeAlias(SymbolNode):
     line and column: Line an column on the original alias definition.
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', 'assuming', 'assuming_proper', 'inferring')
+                 'line', 'column', '_is_recursive')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
@@ -2753,6 +2762,9 @@ class TypeAlias(SymbolNode):
         self.alias_tvars = alias_tvars
         self.no_args = no_args
         self.normalized = normalized
+        # This attribute is manipulated by TypeAliasType. If non-None,
+        # it is the cached value.
+        self._is_recursive = None  # type: Optional[bool]
         super().__init__(line, column)
 
     @property

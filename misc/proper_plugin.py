@@ -42,6 +42,8 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                 return ctx.default_return_type
             ctx.api.fail('Never apply isinstance() to unexpanded types;'
                          ' use mypy.types.get_proper_type() first', ctx.context)
+            ctx.api.note('If you pass on the original type'  # type: ignore[attr-defined]
+                         ' after the check, always use its unexpanded version', ctx.context)
     return ctx.default_return_type
 
 

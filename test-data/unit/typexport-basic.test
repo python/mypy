@@ -38,9 +38,9 @@ import typing
 'foo'
 [builtins fixtures/primitives.pyi]
 [out]
-IntExpr(2) : builtins.int
+IntExpr(2) : Literal[5]?
 FloatExpr(3) : builtins.float
-StrExpr(4) : builtins.str
+StrExpr(4) : Literal['foo']?
 
 [case testNameExpression]
 
@@ -246,10 +246,10 @@ elif not a:
 [builtins fixtures/bool.pyi]
 [out]
 NameExpr(3) : builtins.bool
-IntExpr(4) : builtins.int
+IntExpr(4) : Literal[1]?
 NameExpr(5) : builtins.bool
 UnaryExpr(5) : builtins.bool
-IntExpr(6) : builtins.int
+IntExpr(6) : Literal[1]?
 
 [case testWhile]
 
@@ -715,7 +715,7 @@ NameExpr(2) : B
 import typing
 f = lambda: 1
 [out]
-LambdaExpr(3) : def () -> builtins.int
+LambdaExpr(3) : def () -> Literal[1]?
 NameExpr(3) : def () -> builtins.int
 
 [case testLambdaWithInferredType2]
@@ -906,6 +906,7 @@ class A:
 
     def f(self, *args) -> None: pass
 A.f
+[builtins fixtures/tuple.pyi]
 [out]
 MemberExpr(10) : Overload(def (self: A), def (self: A, builtins.object))
 
@@ -920,6 +921,7 @@ class A:
 
     def f(self, *args): pass
 A.f
+[builtins fixtures/tuple.pyi]
 [out]
 MemberExpr(10) : Overload(def (self: A) -> Any, def (self: A, Any) -> Any)
 
@@ -974,6 +976,7 @@ class A(Generic[t]):
 
 ab, b = None, None # type: (A[B], B)
 A.f(ab, b)
+[builtins fixtures/tuple.pyi]
 [out]
 CallExpr(13) : B
 
@@ -1117,7 +1120,7 @@ m(fun,
   nums)
 [builtins fixtures/list.pyi]
 [out]
-IntExpr(13) : builtins.int
+IntExpr(13) : Literal[1]?
 ListExpr(13) : builtins.list[builtins.int]
 CallExpr(14) : None
 NameExpr(14) : def (s: builtins.int) -> builtins.int
@@ -1146,18 +1149,19 @@ from typing import List
 a = [None] * 3 # type: List[str]
 [builtins fixtures/list.pyi]
 [out]
-IntExpr(3) : builtins.int
+IntExpr(3) : Literal[3]?
 ListExpr(3) : builtins.list[builtins.str]
 OpExpr(3) : builtins.list[builtins.str]
 
 [case testStringFormatting]
-## .*
+## IntExpr|OpExpr|StrExpr
 '%d' % 1
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
-IntExpr(2) : builtins.int
+IntExpr(2) : Literal[1]?
 OpExpr(2) : builtins.str
-StrExpr(2) : builtins.str
+StrExpr(2) : Literal['%d']?
 
 -- TODO
 --

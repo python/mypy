@@ -131,11 +131,9 @@ CONNECTION_NAME = 'dmypy'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
-    sources, options = mypy.main.process_options(['-i'] + flags,
-                                                 require_targets=False,
-                                                 server_options=True)
-    if sources and not allow_sources:
-        sys.exit("dmypy: start/restart does not accept sources")
+    _, options = mypy.main.process_options(
+        ['-i'] + flags, require_targets=False, server_options=True
+    )
     if options.report_dirs:
         sys.exit("dmypy: start/restart cannot generate reports")
     if options.junit_xml:
@@ -275,7 +273,7 @@ class Server:
         res.update(get_meminfo())
         if fswatcher_dump_file:
             data = self.fswatcher.dump_file_data() if hasattr(self, 'fswatcher') else {}
-            # Using .dumps and then writing was noticably faster than using dump
+            # Using .dumps and then writing was noticeably faster than using dump
             s = json.dumps(data)
             with open(fswatcher_dump_file, 'w') as f:
                 f.write(s)
@@ -425,7 +423,7 @@ class Server:
                 assert state.path is not None
                 self.fswatcher.set_file_data(
                     state.path,
-                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
+                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash))
 
             changed, removed = self.find_changed(sources)
 

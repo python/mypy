@@ -17,42 +17,44 @@ dist: xenial
 
 env:
   TOXENV=py
-  EXTRA_ARGS="-n 12"
+  EXTRA_ARGS="-n 2"
   TEST_MYPYC=0
   PYTHON_DEBUG_BUILD=0
 
 jobs:
   include:
   # Specifically request 3.5.1 because we need to be compatible with that.
-  - name: "run test suite with python 3.5.1"
+  - name: "run test suite with python 3.5.1 (compiled with mypyc)"
     python: 3.5.1
     dist: trusty
+    env:
+    - TOXENV=py
+    - EXTRA_ARGS="-n 2"
+    - TEST_MYPYC=1
   - name: "run test suite with python 3.6"
     python: 3.6    # 3.6.3  pip  9.0.1
-  - name: "run test suite with python 3.7"
-    python: 3.7    # 3.7.0  pip 10.0.1
-  - name: "run test suite with python 3.8-dev"
-    python: 3.8-dev
+  - name: "run test suite with python 3.7 (compiled with mypyc)"
+    python: 3.7
+    env:
+    - TOXENV=py
+    - EXTRA_ARGS="-n 2"
+    - TEST_MYPYC=1
+  - name: "run test suite with python 3.8"
+    python: 3.8
   - name: "run mypyc runtime tests with python 3.6 debug build"
     language: generic
     env:
       - TOXENV=py36
       - PYTHONVERSION=3.6.8
       - PYTHON_DEBUG_BUILD=1
-      - EXTRA_ARGS="-n 12 mypyc/test/test_run.py mypyc/test/test_external.py"
+      - EXTRA_ARGS="-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
   - name: "run mypyc runtime tests with python 3.6 on OS X"
     os: osx
     osx_image: xcode8.3
     language: generic
     env:
       - PYTHONVERSION=3.6.3
-      - EXTRA_ARGS="-n 12 mypyc/test/test_run.py mypyc/test/test_external.py"
-  - name: "run test suite with python 3.7 (compiled with mypyc)"
-    python: 3.7
-    env:
-    - TOXENV=py
-    - EXTRA_ARGS="-n 12"
-    - TEST_MYPYC=1
+      - EXTRA_ARGS="-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
   - name: "type check our own code"
     python: 3.7
     env:

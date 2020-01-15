@@ -26,6 +26,9 @@ class ellipsis: pass
 # Primitive types are special in generated code.
 
 class int:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object, base: int = 10) -> None: pass
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass

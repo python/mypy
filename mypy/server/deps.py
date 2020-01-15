@@ -299,7 +299,7 @@ class DependencyVisitor(TraverserVisitor):
                     if name not in info.names:
                         continue
                     # __init__ and __new__ can be overridden with different signatures, so no
-                    # logical depedency.
+                    # logical dependency.
                     if name in ('__init__', '__new__'):
                         continue
                 self.add_dependency(make_trigger(base_info.fullname + '.' + name),
@@ -884,6 +884,10 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
+        # TODO: Add guard for infinite recursion here. Moreover, now that type aliases
+        # are its own kind of types we can simplify the logic to rely on intermediate
+        # dependencies (like for instance types).
+        triggers.extend(self.get_type_triggers(typ.alias.target))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:

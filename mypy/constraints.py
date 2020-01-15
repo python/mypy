@@ -92,8 +92,7 @@ def infer_constraints(template: Type, actual: Type,
     """
     if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
         return []
-    if (isinstance(template, TypeAliasType) and isinstance(actual, TypeAliasType) and
-            template.is_recursive and actual.is_recursive):
+    if isinstance(template, TypeAliasType) and template.is_recursive:
         # This case requires special care because it may cause infinite recursion.
         TypeState._inferring.append(template)
         res = _infer_constraints(template, actual, direction)
@@ -105,8 +104,24 @@ def infer_constraints(template: Type, actual: Type,
 def _infer_constraints(template: Type, actual: Type,
                        direction: int) -> List[Constraint]:
 
+    orig_template = template
     template = get_proper_type(template)
     actual = get_proper_type(actual)
+
+    # Type inference shouldn't be affected by whether union types have been simplified.
+    # We however keep any ErasedType items, so that the caller will see it when using
+    # checkexpr.has_erased_component().
+    if isinstance(template, UnionType):
+        template = mypy.typeops.make_simplified_union(template.items, keep_erased=True)
+    if isinstance(actual, UnionType):
+        actual = mypy.typeops.make_simplified_union(actual.items, keep_erased=True)
+
+    # Ignore Any types from the type suggestion engine to avoid them
+    # causing us to infer Any in situations where a better job could
+    # be done otherwise. (This can produce false positives but that
+    # doesn't really matter because it is all heuristic anyway.)
+    if isinstance(actual, AnyType) and actual.type_of_any == TypeOfAny.suggestion_engine:
+        return []
 
     # If the template is simply a type variable, emit a Constraint directly.
     # We need to handle this case before handling Unions for two reasons:
@@ -129,7 +144,7 @@ def _infer_constraints(template: Type, actual: Type,
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
         res = []
         for a_item in actual.items:
-            res.extend(infer_constraints(template, a_item, direction))
+            res.extend(infer_constraints(orig_template, a_item, direction))
         return res
 
     # Now the potential subtype is known not to be a Union or a type
@@ -332,29 +347,33 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     template.type.has_base(instance.type.fullname)):
                 mapped = map_instance_to_supertype(template, instance.type)
                 tvars = mapped.type.defn.type_vars
-                for i in range(len(instance.args)):
+                # N.B: We use zip instead of indexing because the lengths might have
+                # mismatches during daemon reprocessing.
+                for tvar, mapped_arg, instance_arg in zip(tvars, mapped.args, instance.args):
                     # The constraints for generic type parameters depend on variance.
                     # Include constraints from both directions if invariant.
-                    if tvars[i].variance != CONTRAVARIANT:
+                    if tvar.variance != CONTRAVARIANT:
                         res.extend(infer_constraints(
-                            mapped.args[i], instance.args[i], self.direction))
-                    if tvars[i].variance != COVARIANT:
+                            mapped_arg, instance_arg, self.direction))
+                    if tvar.variance != COVARIANT:
                         res.extend(infer_constraints(
-                            mapped.args[i], instance.args[i], neg_op(self.direction)))
+                            mapped_arg, instance_arg, neg_op(self.direction)))
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname)):
                 mapped = map_instance_to_supertype(instance, template.type)
                 tvars = template.type.defn.type_vars
-                for j in range(len(template.args)):
+                # N.B: We use zip instead of indexing because the lengths might have
+                # mismatches during daemon reprocessing.
+                for tvar, mapped_arg, template_arg in zip(tvars, mapped.args, template.args):
                     # The constraints for generic type parameters depend on variance.
                     # Include constraints from both directions if invariant.
-                    if tvars[j].variance != CONTRAVARIANT:
+                    if tvar.variance != CONTRAVARIANT:
                         res.extend(infer_constraints(
-                            template.args[j], mapped.args[j], self.direction))
-                    if tvars[j].variance != COVARIANT:
+                            template_arg, mapped_arg, self.direction))
+                    if tvar.variance != COVARIANT:
                         res.extend(infer_constraints(
-                            template.args[j], mapped.args[j], neg_op(self.direction)))
+                            template_arg, mapped_arg, neg_op(self.direction)))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking

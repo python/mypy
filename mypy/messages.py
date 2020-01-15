@@ -31,7 +31,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr
+    CallExpr, SymbolTable
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -50,6 +50,23 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_NAMED_OPT: "DefaultNamedArg",
     ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
+}  # type: Final
+
+
+# Map from the full name of a missing definition to the test fixture (under
+# test-data/unit/fixtures/) that provides the definition. This is used for
+# generating better error messages when running mypy tests only.
+SUGGESTED_TEST_FIXTURES = {
+    'builtins.list': 'list.pyi',
+    'builtins.dict': 'dict.pyi',
+    'builtins.set': 'set.pyi',
+    'builtins.tuple': 'tuple.pyi',
+    'builtins.bool': 'bool.pyi',
+    'builtins.Exception': 'exception.pyi',
+    'builtins.BaseException': 'exception.pyi',
+    'builtins.isinstance': 'isinstancelist.pyi',
+    'builtins.property': 'property.pyi',
+    'builtins.classmethod': 'classmethod.pyi',
 }  # type: Final
 
 
@@ -175,7 +192,12 @@ class MessageBuilder:
     # get some information as arguments, and they build an error message based
     # on them.
 
-    def has_no_attr(self, original_type: Type, typ: Type, member: str, context: Context) -> Type:
+    def has_no_attr(self,
+                    original_type: Type,
+                    typ: Type,
+                    member: str,
+                    context: Context,
+                    module_symbol_table: Optional[SymbolTable] = None) -> Type:
         """Report a missing or non-accessible member.
 
         original_type is the top-level type on which the error occurred.
@@ -183,6 +205,11 @@ class MessageBuilder:
         different, e.g., in a union, original_type will be the union and typ
         will be the specific item in the union that does not have the member
         attribute.
+
+        'module_symbol_table' is passed to this function if the type for which we
+        are trying to get a member was originally a module. The SymbolTable allows
+        us to look up and suggests attributes of the module since they are not
+        directly available on original_type
 
         If member corresponds to an operator, use the corresponding operator
         name in the messages. Return type Any.
@@ -244,6 +271,15 @@ class MessageBuilder:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
+
+                    if module_symbol_table is not None:
+                        alternatives |= {key for key in module_symbol_table.keys()}
+
+                    # in some situations, the member is in the alternatives set
+                    # but since we're in this function, we shouldn't suggest it
+                    if member in alternatives:
+                        alternatives.remove(member)
+
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == '__aiter__' and matches == ['__iter__']:
@@ -640,7 +676,10 @@ class MessageBuilder:
                                      plausible_targets: List[CallableType],
                                      overload: Overloaded,
                                      arg_types: List[Type],
-                                     context: Context) -> None:
+                                     context: Context,
+                                     *,
+                                     code: Optional[ErrorCode] = None) -> None:
+        code = code or codes.CALL_OVERLOAD
         name = callable_name(overload)
         if name:
             name_str = ' of {}'.format(name)
@@ -650,16 +689,16 @@ class MessageBuilder:
         num_args = len(arg_types)
         if num_args == 0:
             self.fail('All overload variants{} require at least one argument'.format(name_str),
-                      context, code=codes.CALL_OVERLOAD)
+                      context, code=code)
         elif num_args == 1:
             self.fail('No overload variant{} matches argument type {}'
-                      .format(name_str, arg_types_str), context, code=codes.CALL_OVERLOAD)
+                      .format(name_str, arg_types_str), context, code=code)
         else:
             self.fail('No overload variant{} matches argument types {}'
-                      .format(name_str, arg_types_str), context, code=codes.CALL_OVERLOAD)
+                      .format(name_str, arg_types_str), context, code=code)
 
         self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2,
-                                     code=codes.CALL_OVERLOAD)
+                                     code=code)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -1089,6 +1128,14 @@ class MessageBuilder:
         else:
             self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
 
+    def typeddict_context_ambiguous(
+            self,
+            types: List[TypedDictType],
+            context: Context) -> None:
+        formatted_types = ', '.join(list(format_type_distinctly(*types)))
+        self.fail('Type of TypedDict is ambiguous, could be any of ({})'.format(
+                  formatted_types), context)
+
     def typeddict_key_cannot_be_deleted(
             self,
             typ: TypedDictType,
@@ -1387,6 +1434,84 @@ class MessageBuilder:
                       .format(len(conflicts) - max_items),
                       context, offset=offset, code=code)
 
+    def try_report_long_tuple_assignment_error(self,
+                                               subtype: ProperType,
+                                               supertype: ProperType,
+                                               context: Context,
+                                               msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                               subtype_label: Optional[str] = None,
+                                               supertype_label: Optional[str] = None,
+                                               code: Optional[ErrorCode] = None) -> bool:
+        """Try to generate meaningful error message for very long tuple assignment
+
+        Returns a bool: True when generating long tuple assignment error,
+        False when no such error reported
+        """
+        if isinstance(subtype, TupleType):
+            if (len(subtype.items) > 10 and
+                isinstance(supertype, Instance) and
+                    supertype.type.fullname == 'builtins.tuple'):
+                lhs_type = supertype.args[0]
+                lhs_types = [lhs_type] * len(subtype.items)
+                self.generate_incompatible_tuple_error(lhs_types,
+                                    subtype.items, context, msg, code)
+                return True
+            elif (isinstance(supertype, TupleType) and
+                    (len(subtype.items) > 10 or len(supertype.items) > 10)):
+                if len(subtype.items) != len(supertype.items):
+                    if supertype_label is not None and subtype_label is not None:
+                        error_msg = "{} ({} {}, {} {})".format(msg, subtype_label,
+                                        self.format_long_tuple_type(subtype), supertype_label,
+                                        self.format_long_tuple_type(supertype))
+                        self.fail(error_msg, context, code=code)
+                        return True
+                self.generate_incompatible_tuple_error(supertype.items,
+                                    subtype.items, context, msg, code)
+                return True
+        return False
+
+    def format_long_tuple_type(self, typ: TupleType) -> str:
+        """Format very long tuple type using an ellipsis notation"""
+        item_cnt = len(typ.items)
+        if item_cnt > 10:
+            return 'Tuple[{}, {}, ... <{} more items>]'\
+                    .format(format_type_bare(typ.items[0]),
+                        format_type_bare(typ.items[1]), str(item_cnt - 2))
+        else:
+            return format_type_bare(typ)
+
+    def generate_incompatible_tuple_error(self,
+                                          lhs_types: List[Type],
+                                          rhs_types: List[Type],
+                                          context: Context,
+                                          msg: str = message_registry.INCOMPATIBLE_TYPES,
+                                          code: Optional[ErrorCode] = None) -> None:
+        """Generate error message for individual incompatible tuple pairs"""
+        error_cnt = 0
+        notes = []  # List[str]
+        for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
+            if not is_subtype(lhs_t, rhs_t):
+                if error_cnt < 3:
+                    notes.append('Expression tuple item {} has type "{}"; "{}" expected; '
+                        .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
+                error_cnt += 1
+
+        error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
+        if error_cnt - 3 > 0:
+            error_msg += '; {} items are omitted)'.format(str(error_cnt - 3))
+        else:
+            error_msg += ')'
+        self.fail(error_msg, context, code=code)
+        for note in notes:
+            self.note(note, context, code=code)
+
+    def add_fixture_note(self, fullname: str, ctx: Context) -> None:
+        self.note('Maybe your test fixture does not define "{}"?'.format(fullname), ctx)
+        if fullname in SUGGESTED_TEST_FIXTURES:
+            self.note(
+                'Consider adding [builtins fixtures/{}] to your test description'.format(
+                    SUGGESTED_TEST_FIXTURES[fullname]), ctx)
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""
@@ -1438,15 +1563,11 @@ def format_type_inner(typ: Type,
             return '{}[{}]'.format(alias, ', '.join(items))
         else:
             # There are type arguments. Convert the arguments to strings.
-            # If the result is too long, replace arguments with [...].
             a = []  # type: List[str]
             for arg in itype.args:
                 a.append(format(arg))
             s = ', '.join(a)
-            if len((base_str + s)) < 150:
-                return '{}[{}]'.format(base_str, s)
-            else:
-                return '{}[...]'.format(base_str)
+            return '{}[{}]'.format(base_str, s)
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
@@ -1623,8 +1744,8 @@ def format_type_bare(typ: Type,
     return format_type_inner(typ, verbosity, find_type_overlaps(typ))
 
 
-def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tuple[str, str]:
-    """Jointly format a pair of types to distinct strings.
+def format_type_distinctly(*types: Type, bare: bool = False) -> Tuple[str, ...]:
+    """Jointly format types to distinct strings.
 
     Increase the verbosity of the type strings until they become distinct
     while also requiring that distinct types with the same short name are
@@ -1635,16 +1756,18 @@ def format_type_distinctly(type1: Type, type2: Type, bare: bool = False) -> Tupl
     be quoted; callers who need to do post-processing of the strings before
     quoting them (such as prepending * or **) should use this.
     """
-    overlapping = find_type_overlaps(type1, type2)
+    overlapping = find_type_overlaps(*types)
     for verbosity in range(2):
-        str1 = format_type_inner(type1, verbosity=verbosity, fullnames=overlapping)
-        str2 = format_type_inner(type2, verbosity=verbosity, fullnames=overlapping)
-        if str1 != str2:
+        strs = [
+            format_type_inner(type, verbosity=verbosity, fullnames=overlapping)
+            for type in types
+        ]
+        if len(set(strs)) == len(strs):
             break
     if bare:
-        return (str1, str2)
+        return tuple(strs)
     else:
-        return (quote_type_string(str1), quote_type_string(str2))
+        return tuple(quote_type_string(s) for s in strs)
 
 
 def pretty_callable(tp: CallableType) -> str:

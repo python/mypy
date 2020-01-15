@@ -4,7 +4,6 @@
 # single module and it should be renamed.
 
 import os
-import hashlib
 import json
 from collections import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
@@ -18,11 +17,13 @@ from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.fscache import FileSystemCache
+from mypy.util import hash_digest
 
 from mypyc import genops
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
+from mypyc.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
@@ -52,7 +53,7 @@ from mypyc.errors import Errors
 # modules: one shim per module and one shared library containing all
 # the actual code.
 # In fully separate compilation, we (unfortunately) will generate 2*N
-# extension modules: one shim per module and also one library containg
+# extension modules: one shim per module and also one library containing
 # each module's actual code. (This might be fixable in the future,
 # but allows a clean separation between setup of the export tables
 # (see generate_export_table) and running module top levels.)
@@ -143,7 +144,7 @@ class MypycPlugin(Plugin):
                     contents = f.read()
             except FileNotFoundError:
                 return None
-            real_hash = hashlib.md5(contents).hexdigest()
+            real_hash = hash_digest(contents)
             if hash != real_hash:
                 return None
 
@@ -335,11 +336,16 @@ def write_cache(
         st = result.graph[id]
 
         meta_path, _, _ = get_cache_names(id, st.xpath, result.manager.options)
+        # If the metadata isn't there, skip writing the cache.
+        try:
+            meta_data = result.manager.metastore.read(meta_path)
+        except IOError:
+            continue
 
         newpath = get_state_ir_cache_name(st)
         ir_data = {
             'ir': module.serialize(),
-            'meta_hash': compute_hash(result.manager.metastore.read(meta_path)),
+            'meta_hash': compute_hash(meta_data),
             'src_hashes': hashes[group_map[id]],
         }
 
@@ -414,26 +420,14 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
             '{};'.format(wrapper_function_header(fn, emitter.names)))
 
 
-def encode_as_c_string(s: str) -> Tuple[str, int]:
-    """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
-    return encode_bytes_as_c_string(s.encode('utf-8'))
-
-
-def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
-    """Produce a single-escaped, quoted C string and its size from a bytes"""
-    # This is a kind of abusive way to do this...
-    escaped = repr(b)[2:-1].replace('"', '\\"')
-    return '"{}"'.format(escaped), len(b)
-
-
 def pointerize(decl: str, name: str) -> str:
     """Given a C decl and its name, modify it to be a declaration to a pointer."""
     # This doesn't work in general but does work for all our types...
     if '(' in decl:
-        # Function pointer. Stick a * in front of the name and wrap it in parens.
+        # Function pointer. Stick an * in front of the name and wrap it in parens.
         return decl.replace(name, '(*{})'.format(name))
     else:
-        # Non-function pointer. Just stick a * in front of the name.
+        # Non-function pointer. Just stick an * in front of the name.
         return decl.replace(name, '*{}'.format(name))
 
 

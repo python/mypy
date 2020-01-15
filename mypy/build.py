@@ -13,7 +13,6 @@ The function build() is the main interface to this module.
 import contextlib
 import errno
 import gc
-import hashlib
 import json
 import os
 import pathlib
@@ -37,7 +36,7 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file
+    read_py_file, hash_digest,
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -50,7 +49,7 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, ChainedPlugin, plugin_types, ReportConfigContext
+from mypy.plugin import Plugin, ChainedPlugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
@@ -280,7 +279,6 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
-                        ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
                         # dep_prios and dep_lines are in parallel with
                         # dependencies + suppressed.
@@ -317,7 +315,6 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
         data_json,
         meta.get('suppressed', []),
-        meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
         meta.get('dep_lines', []),
@@ -423,7 +420,7 @@ def load_plugins_from_config(
             plugin_error(
                 'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
                     plugin_type, plugin_path))
-        if not issubclass(plugin_type, plugin_types):
+        if not issubclass(plugin_type, Plugin):
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))
@@ -470,7 +467,7 @@ def take_module_snapshot(module: types.ModuleType) -> str:
     """
     if hasattr(module, '__file__'):
         with open(module.__file__, 'rb') as f:
-            digest = hashlib.md5(f.read()).hexdigest()
+            digest = hash_digest(f.read())
     else:
         digest = 'unknown'
     ver = getattr(module, '__version__', 'none')
@@ -970,7 +967,7 @@ def write_plugins_snapshot(manager: BuildManager) -> None:
 def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     """Read cached snapshot of versions and hashes of plugins from previous run."""
     snapshot = _load_json_file(PLUGIN_SNAPSHOT_FILE, manager,
-                               log_sucess='Plugins snapshot ',
+                               log_success='Plugins snapshot ',
                                log_error='Could not load plugins snapshot: ')
     if snapshot is None:
         return None
@@ -1011,7 +1008,7 @@ def read_deps_cache(manager: BuildManager,
     Returns None if the cache was invalid in some way.
     """
     deps_meta = _load_json_file(DEPS_META_FILE, manager,
-                                log_sucess='Deps meta ',
+                                log_success='Deps meta ',
                                 log_error='Could not load fine-grained dependency metadata: ')
     if deps_meta is None:
         return None
@@ -1043,7 +1040,7 @@ def read_deps_cache(manager: BuildManager,
 
 
 def _load_json_file(file: str, manager: BuildManager,
-                    log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
+                    log_success: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
     t0 = time.time()
     try:
@@ -1054,7 +1051,7 @@ def _load_json_file(file: str, manager: BuildManager,
     manager.add_stats(metastore_read_time=time.time() - t0)
     # Only bother to compute the log message if we are logging it, since it could be big
     if manager.verbosity() >= 2:
-        manager.trace(log_sucess + data.rstrip())
+        manager.trace(log_success + data.rstrip())
     try:
         result = json.loads(data)
     except ValueError:  # TODO: JSONDecodeError in 3.5
@@ -1144,7 +1141,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
-                           log_sucess='Meta {} '.format(id),
+                           log_success='Meta {} '.format(id),
                            log_error='Could not load cache for {}: '.format(id))
     t1 = time.time()
     if meta is None:
@@ -1264,9 +1261,9 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
     #
-    # We still *do* the mtime/md5 checks, however, to enable
+    # We still *do* the mtime/hash checks, however, to enable
     # fine-grained mode to take advantage of the mtime-updating
-    # optimization when mtimes differ but md5s match.  There is
+    # optimization when mtimes differ but hashes match.  There is
     # essentially no extra time cost to computing the hash here, since
     # it will be cached and will be needed for finding changed files
     # later anyways.
@@ -1294,7 +1291,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
         t0 = time.time()
         try:
-            source_hash = manager.fscache.md5(path)
+            source_hash = manager.fscache.hash_digest(path)
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         manager.add_stats(validate_hash_time=time.time() - t0)
@@ -1320,7 +1317,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'data_mtime': meta.data_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
-                'child_modules': meta.child_modules,
                 'options': (manager.options.clone_for_module(id)
                             .select_options_affecting_cache()),
                 'dep_prios': meta.dep_prios,
@@ -1349,10 +1345,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
 
 def compute_hash(text: str) -> str:
-    # We use md5 instead of the builtin hash(...) function because the output of hash(...)
-    # can differ between runs due to hash randomization (enabled by default in Python 3.3).
-    # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
-    return hashlib.md5(text.encode('utf-8')).hexdigest()
+    # We use a crypto hash instead of the builtin hash(...) function
+    # because the output of hash(...)  can differ between runs due to
+    # hash randomization (enabled by default in Python 3.3).  See the
+    # note in
+    # https://docs.python.org/3/reference/datamodel.html#object.__hash__.
+    return hash_digest(text.encode('utf-8'))
 
 
 def json_dumps(obj: Any, debug_cache: bool) -> str:
@@ -1364,7 +1362,7 @@ def json_dumps(obj: Any, debug_cache: bool) -> str:
 
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
-                child_modules: List[str], dep_prios: List[int], dep_lines: List[int],
+                dep_prios: List[int], dep_lines: List[int],
                 old_interface_hash: str, source_hash: str,
                 ignore_all: bool, manager: BuildManager) -> Tuple[str, Optional[CacheMeta]]:
     """Write cache files for a module.
@@ -1379,7 +1377,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
       tree: the fully checked module data
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
-      child_modules: module IDs which are this package's direct submodules
       dep_prios: priorities (parallel array to dependencies)
       dep_lines: import line locations (parallel array to dependencies)
       old_interface_hash: the hash from the previous version of the data cache file
@@ -1469,7 +1466,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
-            'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
             'dep_lines': dep_lines,
@@ -1688,9 +1684,6 @@ class State:
     # Parent package, its parent, etc.
     ancestors = None  # type: Optional[List[str]]
 
-    # A list of all direct submodules of a given module
-    child_modules = None  # type: Set[str]
-
     # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
 
@@ -1797,7 +1790,6 @@ class State:
             assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
-            self.child_modules = set(self.meta.child_modules)
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
@@ -1824,7 +1816,6 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
             self.compute_dependencies()
-            self.child_modules = set()
 
     @property
     def xmeta(self) -> CacheMeta:
@@ -1855,8 +1846,7 @@ class State:
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.is_interface_fresh()
-                and self.dependencies == self.meta.dependencies
-                and self.child_modules == set(self.meta.child_modules))
+                and self.dependencies == self.meta.dependencies)
 
     def is_interface_fresh(self) -> bool:
         return self.externally_same
@@ -1993,7 +1983,7 @@ class State:
                     path = manager.maybe_swap_for_shadow_path(self.path)
                     source = decode_python_encoding(manager.fscache.read(path),
                                                     manager.options.python_version)
-                    self.source_hash = manager.fscache.md5(path)
+                    self.source_hash = manager.fscache.hash_digest(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
                     # other systems, but os.strerror(ioerr.errno) does not, so we use that.
@@ -2004,9 +1994,11 @@ class State:
                             self.path, os.strerror(ioerr.errno))],
                         module_with_blocker=self.id)
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
-                    raise CompileError([
-                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))],
-                        module_with_blocker=self.id)
+                    if self.path.endswith('.pyd'):
+                        err = "mypy: stubgen does not support .pyd files: '{}'".format(self.path)
+                    else:
+                        err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
+                    raise CompileError([err], module_with_blocker=self.id)
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
@@ -2239,7 +2231,7 @@ class State:
             "Duplicates in dependencies list for {} ({})".format(self.id, self.dependencies))
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
-            list(self.dependencies), list(self.suppressed), list(self.child_modules),
+            list(self.dependencies), list(self.suppressed),
             dep_prios, dep_lines, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
         if new_interface_hash == self.interface_hash:
@@ -2793,8 +2785,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
-            if dep in st.ancestors and dep in graph:
-                graph[dep].child_modules.add(st.id)
             if dep in graph and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
                 st.add_dependency(dep)

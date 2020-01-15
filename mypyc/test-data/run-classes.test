@@ -57,12 +57,13 @@ assert hasattr(c, 'x')
 1000000000000000000000000000001
 1000000000000000000000000000002
 
-[case testNonExtInheritance]
-from typing import Any
+[case testNonExtMisc]
+from typing import Any, overload
 
 def decorator(cls) -> Any:
     return cls
 
+@decorator
 class C:
     def __init__(self) -> None:
         self.c = 3
@@ -70,6 +71,7 @@ class C:
     def get_c(self) -> int:
         return self.c
 
+@decorator
 class B(C):
     def __init__(self) -> None:
         super().__init__()
@@ -91,8 +93,22 @@ class A(B):
     def get_a(self) -> int:
         return self.a
 
+@decorator
+class Overload:
+    @overload
+    def get(self, index: int) -> int: ...
+
+    @overload
+    def get(self, index: str) -> str: ...
+
+    def get(self, index: Any) -> Any:
+        return index
+
+def get(c: Overload, s: str) -> str:
+    return c.get(s)
+
 [file driver.py]
-from native import A
+from native import A, Overload, get
 a = A()
 assert a.a == 1
 assert a.b == 2
@@ -102,10 +118,15 @@ assert a.get_b() == 2
 assert a.get_c() == 3
 assert A.constant() == 4
 
+o = Overload()
+assert get(o, "test") == "test"
+assert o.get(20) == 20
+
 [case testEnum]
 from enum import Enum
 
 class TestEnum(Enum):
+    _order_ = "a b"
     a : int = 1
     b : int = 2
 
@@ -120,11 +141,14 @@ assert TestEnum.test() == 3
 # non-extension classes
 
 [file driver.py]
-from native import TestEnum
-assert TestEnum.a.name == 'a'
-assert TestEnum.a.value == 1
-assert TestEnum.b.name == 'b'
-assert TestEnum.b.value == 2
+import sys
+# "_order_" isn't supported in 3.5
+if sys.version_info[:2] > (3, 5):
+    from native import TestEnum
+    assert TestEnum.a.name == 'a'
+    assert TestEnum.a.value == 1
+    assert TestEnum.b.name == 'b'
+    assert TestEnum.b.value == 2
 
 [case testRunDataclass]
 from dataclasses import dataclass, field
@@ -418,7 +442,7 @@ assert a.foo() == 11
 assert foo() == 21
 
 [case testGenericClass]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Sequence
 T = TypeVar('T')
 class C(Generic[T]):
     x: T
@@ -428,6 +452,12 @@ class C(Generic[T]):
         return self.x
     def set(self, y: T) -> None:
         self.x = y
+
+# Test subclassing generic classes both with and without a generic param
+class A(Sequence[int]):
+    pass
+class B(Sequence[T]):
+    pass
 
 def f(c: C[int]) -> int:
     y = c.get()
@@ -1075,6 +1105,40 @@ try:
 except TypeError as e:
     assert(str(e) == "mypyc classes can't have a metaclass")
 
+[case testMetaclass]
+from meta import Meta
+import six
+
+class Nothing1(metaclass=Meta):
+    pass
+
+def ident(x): return x
+
+@ident
+class Test:
+    pass
+
+class Nothing2(six.with_metaclass(Meta, Test)):
+    pass
+
+@six.add_metaclass(Meta)
+class Nothing3:
+    pass
+
+[file meta.py]
+from typing import Any
+class Meta(type):
+    def __new__(mcs, name, bases, dct):
+        dct['X'] = 10
+        return super().__new__(mcs, name, bases, dct)
+
+
+[file driver.py]
+from native import Nothing1, Nothing2, Nothing3
+assert Nothing1.X == 10
+assert Nothing2.X == 10
+assert Nothing3.X == 10
+
 [case testPickling]
 from mypy_extensions import trait
 from typing import Any, TypeVar, Generic
@@ -1196,3 +1260,153 @@ test(b, 20)
 test(d, 30)
 test(B, -1)
 test(D, -2)
+
+[case testInterpretedInherit]
+from typing import TypeVar, Any, overload
+from mypy_extensions import mypyc_attr, trait
+
+T = TypeVar('T')
+def dec(x: T) -> T: return x
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Top:
+    def spam(self) -> str:
+        return "grandparent"
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@trait
+class Trait:
+    def trait_method(self) -> str:
+        return "trait"
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Foo(Top, Trait):
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def foo(self) -> str:
+        return "parent foo: " + self.bar(self.x)
+
+    def bar(self, x: int) -> str:
+        return "parent bar: {}".format(x + self.x)
+
+    @dec
+    def decorated(self) -> str:
+        return "decorated parent"
+
+    @property
+    def read_property(self) -> str:
+        return "parent prop"
+
+    @overload
+    def overloaded(self, index: int) -> int: ...
+
+    @overload
+    def overloaded(self, index: str) -> str: ...
+
+    def overloaded(self, index: Any) -> Any:
+        return index
+
+def foo(x: Foo) -> str:
+    return x.foo()
+
+def bar(x: Foo, y: int) -> str:
+    return x.bar(y)
+
+def spam(x: Top) -> str:
+    return x.spam()
+
+def decorated(x: Foo) -> str:
+    return x.decorated()
+
+def prop(x: Foo) -> str:
+    return x.read_property
+
+def trait_method(x: Trait) -> str:
+    return x.trait_method()
+
+def overloaded(x: Foo, s: str) -> str:
+    return x.overloaded(s)
+
+[file interp.py]
+from typing import Any
+from native import Foo
+
+class Bar(Foo):
+    def bar(self, x: int) -> str:
+        return "child bar: {}".format(x + self.x)
+
+    def spam(self) -> str:
+        assert super().spam() == "grandparent"
+        return "child"
+
+    @property
+    def read_property(self) -> str:
+        return "child prop"
+
+    def decorated(self) -> str:
+        return "decorated child"
+
+    def trait_method(self) -> str:
+        return "child"
+
+    def overloaded(self, index: Any) -> Any:
+        return index + index
+
+
+class InterpBase:
+    def eggs(self) -> str:
+        return "eggs"
+
+class Baz(InterpBase, Bar):
+    def __init__(self) -> None:
+        super().__init__(1000)
+        self.z = self.read_property
+
+[file driver.py]
+from native import Foo, foo, bar, spam, decorated, overloaded, prop, trait_method
+from interp import Bar, Baz
+from unittest.mock import patch
+from testutil import assertRaises
+
+x = Foo(10)
+y = Bar(20)
+z = Baz()
+
+assert isinstance(y, Bar)
+assert y.x == 20
+assert y.bar(10) == "child bar: 30"
+assert y.foo() == "parent foo: child bar: 40"
+assert foo(y) == "parent foo: child bar: 40"
+assert bar(y, 30) == "child bar: 50"
+y.x = 30
+assert bar(y, 30) == "child bar: 60"
+
+assert spam(y) == "child"
+assert y.read_property == "child prop"
+assert prop(x) == "parent prop"
+assert prop(y) == "child prop"
+assert y.decorated() == "decorated child"
+assert decorated(y) == "decorated child"
+assert y.overloaded("test") == "testtest"
+assert overloaded(y, "test") == "testtest"
+
+assert y.trait_method() == "child"
+assert trait_method(y) == "child"
+
+assert z.bar(10) == "child bar: 1010"
+assert bar(z, 10) == "child bar: 1010"
+assert z.z == "child prop"
+assert z.eggs() == "eggs"
+
+with patch("interp.Bar.spam", lambda self: "monkey patched"):
+    assert y.spam() == "monkey patched"
+    spam(y) == "monkey patched"
+
+with patch("interp.Bar.spam", lambda self: 20):
+    assert y.spam() == 20
+    with assertRaises(TypeError, "str object expected; got int"):
+        spam(y)
+
+with assertRaises(TypeError, "int object expected; got str"):
+    y.x = "test"

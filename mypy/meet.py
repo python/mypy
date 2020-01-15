@@ -491,8 +491,10 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     args = []  # type: List[Type]
-                    for i in range(len(t.args)):
-                        args.append(self.meet(t.args[i], si.args[i]))
+                    # N.B: We use zip instead of indexing because the lengths might have
+                    # mismatches during daemon reprocessing.
+                    for ta, sia in zip(t.args, si.args):
+                        args.append(self.meet(ta, sia))
                     return Instance(t.type, args)
                 else:
                     if state.strict_optional:
@@ -533,6 +535,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
+            # We set the from_type_type flag to suppress error when a collection of
+            # concrete class objects gets inferred as their common abstract superclass.
+            if not ((t.is_type_obj() and t.type_object().is_abstract) or
+                    (self.s.is_type_obj() and self.s.type_object().is_abstract)):
+                result.from_type_type = True
             if isinstance(get_proper_type(result.ret_type), UninhabitedType):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)

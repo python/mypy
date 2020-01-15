@@ -103,6 +103,10 @@ class TypeOfAny:
     from_another_any = 7  # type: Final
     # Does this Any come from an implementation limitation/bug?
     implementation_artifact = 8  # type: Final
+    # Does this Any come from use in the suggestion engine?  This is
+    # used to ignore Anys inserted by the suggestion engine when
+    # generating constraints.
+    suggestion_engine = 9  # type: Final
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
@@ -162,14 +166,13 @@ class TypeAliasType(Type):
     can be represented in a tree-like manner.
     """
 
-    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref', '_is_recursive')
+    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref')
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
         self.alias = alias
         self.args = args
         self.type_ref = None  # type: Optional[str]
-        self._is_recursive = None  # type: Optional[bool]
         super().__init__(line, column)
 
     def _expand_once(self) -> Type:
@@ -180,6 +183,11 @@ class TypeAliasType(Type):
         its public wrapper mypy.types.get_proper_type() is preferred.
         """
         assert self.alias is not None
+        if self.alias.no_args:
+            # We know that no_args=True aliases like L = List must have an instance
+            # as their target.
+            assert isinstance(self.alias.target, Instance)  # type: ignore[misc]
+            return self.alias.target.copy_modified(args=self.args)
         return replace_alias_tvars(self.alias.target, self.alias.alias_tvars, self.args,
                                    self.line, self.column)
 
@@ -203,10 +211,13 @@ class TypeAliasType(Type):
 
     @property
     def is_recursive(self) -> bool:
-        if self._is_recursive is not None:
-            return self._is_recursive
-        is_recursive = self.expand_all_if_possible() is None
-        self._is_recursive = is_recursive
+        assert self.alias is not None, 'Unfixed type alias'
+        is_recursive = self.alias._is_recursive
+        if is_recursive is None:
+            is_recursive = self.expand_all_if_possible() is None
+            # We cache the value on the underlying TypeAlias node as an optimization,
+            # since the value is the same for all instances of the same alias.
+            self.alias._is_recursive = is_recursive
         return is_recursive
 
     def can_be_true_default(self) -> bool:
@@ -825,13 +836,14 @@ class Instance(ProperType):
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
+                      erased: Bogus[bool] = _dummy,
                       last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            self.erased,
+            erased if erased is not _dummy else self.erased,
             last_known_value if last_known_value is not _dummy else self.last_known_value,
         )
 
@@ -1751,16 +1763,18 @@ class PartialType(ProperType):
     # None for the 'None' partial type; otherwise a generic class
     type = None  # type: Optional[mypy.nodes.TypeInfo]
     var = None  # type: mypy.nodes.Var
-    inner_types = None  # type: List[Type]
+    # For partial defaultdict[K, V], the type V (K is unknown). If V is generic,
+    # the type argument is Any and will be replaced later.
+    value_type = None  # type: Optional[Instance]
 
     def __init__(self,
                  type: 'Optional[mypy.nodes.TypeInfo]',
                  var: 'mypy.nodes.Var',
-                 inner_types: List[Type]) -> None:
+                 value_type: 'Optional[Instance]' = None) -> None:
         super().__init__()
         self.type = type
         self.var = var
-        self.inner_types = inner_types
+        self.value_type = value_type
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_partial_type(self)
@@ -1891,6 +1905,14 @@ def get_proper_type(typ: Type) -> ProperType: ...
 
 
 def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
+    """Get the expansion of a type alias type.
+
+    If the type is already a proper type, this is a no-op. Use this function
+    wherever a decision is made on a call like e.g. 'if isinstance(typ, UnionType): ...',
+    because 'typ' in this case may be an alias to union. Note: if after making the decision
+    on the isinstance() call you pass on the original type (and not one of its components)
+    it is recommended to *always* pass on the unexpanded alias.
+    """
     if typ is None:
         return None
     while isinstance(typ, TypeAliasType):
@@ -1901,12 +1923,13 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
 
 
 @overload
-def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]: ...  # type: ignore[misc]
 @overload
-def get_proper_types(typ: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
+def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]: ...
 
 
-def get_proper_types(it: Iterable[Optional[Type]]) -> List[Optional[ProperType]]:  # type: ignore
+def get_proper_types(it: Iterable[Optional[Type]]
+                     ) -> Union[List[ProperType], List[Optional[ProperType]]]:
     return [get_proper_type(t) for t in it]
 
 
@@ -1936,6 +1959,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
+        self.any_as_dots = False
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
@@ -1954,6 +1978,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "{}({}, {})".format(t.constructor, typ, t.name)
 
     def visit_any(self, t: AnyType) -> str:
+        if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
+            return '...'
         return 'Any'
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -1972,7 +1998,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return "<Deleted '{}'>".format(t.source)
 
     def visit_instance(self, t: Instance) -> str:
-        s = t.type.fullname or t.type.name or '<???>'
+        if t.last_known_value and not t.args:
+            # Instances with a literal fallback should never be generic. If they are,
+            # something went wrong so we fall back to showing the full Instance repr.
+            s = '{}?'.format(t.last_known_value)
+        else:
+            s = t.type.fullname or t.type.name or '<???>'
+
         if t.erased:
             s += '*'
         if t.args != []:
@@ -2093,7 +2125,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> str:
         if t.alias is not None:
-            return '<alias {}>'.format(t.alias.fullname)
+            unrolled, recursed = t._partial_expansion()
+            self.any_as_dots = recursed
+            type_str = unrolled.accept(self)
+            self.any_as_dots = False
+            return type_str
         return '<alias (unfixed)>'
 
     def list_str(self, a: Iterable[Type]) -> str:
@@ -2200,15 +2236,19 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
-def flatten_nested_unions(types: Iterable[Type]) -> List[Type]:
+def flatten_nested_unions(types: Iterable[Type],
+                          handle_type_alias_type: bool = False) -> List[Type]:
     """Flatten nested unions in a type list."""
     # This and similar functions on unions can cause infinite recursion
     # if passed a "pathological" alias like A = Union[int, A] or similar.
     # TODO: ban such aliases in semantic analyzer.
     flat_items = []  # type: List[Type]
+    if handle_type_alias_type:
+        types = get_proper_types(types)
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
-            flat_items.extend(flatten_nested_unions(tp.items))
+            flat_items.extend(flatten_nested_unions(tp.items,
+                              handle_type_alias_type=handle_type_alias_type))
         else:
             flat_items.append(tp)
     return flat_items

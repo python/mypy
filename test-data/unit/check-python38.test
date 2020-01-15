@@ -77,6 +77,7 @@ def g(x: int): ...
     g("IGNORE"),  # type: ignore
     f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 )
+[builtins fixtures/tuple.pyi]
 
 [case testIgnoreScopeNestedOverlapping]
 def f(x: int): ...
@@ -86,6 +87,7 @@ def g(x: int): ...
         "IGNORE"  # type: ignore
     ), f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 )
+[builtins fixtures/tuple.pyi]
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
@@ -94,6 +96,7 @@ def g(x: int): ...
     +  # type: ignore  # E: unused 'type: ignore' comment
     0  # type: ignore
 )  # type: ignore  # E: unused 'type: ignore' comment
+[builtins fixtures/primitives.pyi]
 
 [case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
@@ -226,7 +229,7 @@ def f(x: int = (c := 4)) -> int:
     f(x=(y7 := 3))
     reveal_type(y7)  # N: Revealed type is 'builtins.int'
 
-    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is 'builtins.int'
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is 'Literal[3]?'
     y8  # E: Name 'y8' is not defined
 
     y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
@@ -240,7 +243,11 @@ def f(x: int = (c := 4)) -> int:
     if Alias := int:
         z3: Alias  # E: Variable "Alias" is not valid as a type
 
-    return (y9 := 3) + y9
+    if (reveal_type(y9 := 3) and   # N: Revealed type is 'Literal[3]?'
+            reveal_type(y9)):       # N: Revealed type is 'builtins.int'
+        reveal_type(y9)            # N: Revealed type is 'builtins.int'
+
+    return (y10 := 3) + y10
 
 reveal_type(c)  # N: Revealed type is 'builtins.int'
 
@@ -261,11 +268,7 @@ def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Option
         reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
 
     if x and (y := 1):
-        # TODO should just be int
-        # This is because in check_boolean_op in checkexpr.py we accept the right conditional
-        # within a binder frame context, so the types assigned in it are lost later. Perhaps
-        # we need to make find_isinstance_check() walrus-aware.
-        reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
 
     if (a := 1) and x:
         reveal_type(a)  # N: Revealed type is 'builtins.int'
@@ -283,10 +286,23 @@ def check_partial() -> None:
 
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
 
-def check_partial_list() -> None:
-    if (x := []):
-        x.append(3)
-
-    reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.int]'
-
+def check_narrow(x: Optional[int]) -> None:
+    if (y := x):
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/f_string.pyi]
+
+[case testWalrusPartialTypes]
+from typing import List
+
+def check_partial_list() -> None:
+    if (x := []):  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+        pass
+
+    y: List[str]
+    if (y := []):
+        pass
+
+    if (z := []):
+        z.append(3)
+    reveal_type(z)  # N: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]

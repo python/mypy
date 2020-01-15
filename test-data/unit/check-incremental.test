@@ -947,11 +947,15 @@ from parent import a
 
 [file parent/a.py.2]
 from parent import b
+reveal_type(b.x)
 
 [file parent/b.py.2]
+x = 10
 
-[stale parent.a, parent.b]
-[rechecked parent, parent.a, parent.b]
+[stale parent.b]
+[rechecked parent.a, parent.b]
+[out2]
+tmp/parent/a.py:2: note: Revealed type is 'builtins.int'
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
@@ -1633,6 +1637,7 @@ MyTuple = NamedTuple('MyTuple', [
 
 [rechecked bar, mid, foo]
 [stale bar]
+[builtins fixtures/tuple.pyi]
 [out2]
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -1667,6 +1672,7 @@ class Outer:
 
 [rechecked bar, mid, foo]
 [stale bar]
+[builtins fixtures/tuple.pyi]
 [out2]
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -1813,6 +1819,7 @@ from typing import NamedTuple
 class C:
     def f(self) -> None:
         A = NamedTuple('A', [('x', int), ('y', int)])
+[builtins fixtures/tuple.pyi]
 [out1]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
@@ -1826,6 +1833,7 @@ class C:
     class D:
         def f(self) -> None:
             A = NamedTuple('A', [('x', int), ('y', int)])
+[builtins fixtures/tuple.pyi]
 [out1]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
@@ -1840,6 +1848,7 @@ class C:
         class D:
             def f(self) -> None:
                 A = NamedTuple('A', [('x', int), ('y', int)])
+[builtins fixtures/tuple.pyi]
 [out1]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
@@ -2405,6 +2414,7 @@ class Pair(NamedTuple):
     last: str
 
 Person(name=Pair(first="John", last="Doe"))
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNoCrashForwardRefToBrokenDoubleNewTypeIncremental]
@@ -2459,6 +2469,7 @@ class N(NamedTuple):
 
 x: NT = N(1) # type: ignore
 x = NT(N(1))
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNewTypeFromForwardTypedDictIncremental]
@@ -2472,7 +2483,7 @@ A = Dict[str, int]
 [builtins fixtures/dict.pyi]
 [out]
 
--- Some crazy selef-referential named tuples, types dicts, and aliases
+-- Some crazy self-referential named tuples, types dicts, and aliases
 -- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
 
@@ -2529,6 +2540,7 @@ A = Union[B, int]  # type: ignore
 B = Callable[[C], int] # type: ignore
 class C(NamedTuple): # type: ignore
     x: A
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testGenericTypeAliasesForwardAnyIncremental1]
@@ -2589,6 +2601,7 @@ yg: G[M]
 z: int = G[M]().x.x
 z = G[M]().x[0]
 M = NamedTuple('M', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSelfRefNTIncremental1]
@@ -3600,8 +3613,7 @@ x = 1
 [file b.py.2]
 x = '2'
 
--- TODO: Fails due to #4856
-[case testImportUnusedIgnore2-skip]
+[case testImportUnusedIgnore2]
 # flags: --warn-unused-ignores
 import a
 [file a.py]
@@ -3616,7 +3628,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:1: note: unused 'type: ignore' comment
+tmp/a.py:2: error: unused 'type: ignore' comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]
@@ -3647,6 +3659,7 @@ cache_fine_grained = False
 cache_fine_grained = True
 [rechecked a, builtins, typing]
 [stale a, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalPackageNameOverload]
 # cmd: mypy -m main a
@@ -3693,6 +3706,7 @@ import b
 -- Every file should get reloaded, since the cache was invalidated
 [stale a, b, builtins, typing]
 [rechecked a, b, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache2]
 # flags2: --cache-fine-grained
@@ -3705,6 +3719,7 @@ import b
 -- Every file should get reloaded, since the settings changed
 [stale a, b, builtins, typing]
 [rechecked a, b, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache3]
 # flags: --cache-fine-grained --no-sqlite-cache
@@ -3720,6 +3735,7 @@ import b
 -- Every file should get reloaded, since the cache was invalidated
 [stale a, b, builtins, typing]
 [rechecked a, b, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalWorkingFineGrainedCache]
 # flags: --cache-fine-grained
@@ -4083,7 +4099,7 @@ from typing import Iterable
 from a import Point
 p: Point
 it: Iterable[int] = p  # change
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
@@ -4118,7 +4134,9 @@ class C:
 [out2]
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testBazelFlagIgnoresFileChanges]
+[case testBazelFlagIgnoresFileChanges-skip]
+-- This test fails on windows, when the mypy source in on a different drive than
+--   the run-directory. In this case os.path.relpath(...) fails with an exception
 -- Since the initial run wrote a cache file, the second run ignores the source
 # flags: --bazel
 from a import f
@@ -4982,6 +5000,7 @@ a = 1
 [file mod.py.2]
 from typing_extensions import Literal
 a: Literal[2] = 2
+[builtins fixtures/tuple.pyi]
 [out]
 main:2: note: Revealed type is 'builtins.int'
 [out2]
@@ -5014,6 +5033,7 @@ reveal_type(x)
 [file b.py]
 from typing import NamedTuple
 NT = NamedTuple('BadName', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
@@ -5053,6 +5073,7 @@ class C:
     def __init__(self) -> None:
         self.h: Hidden
         Hidden = NamedTuple('Hidden', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.C.Hidden@5]'

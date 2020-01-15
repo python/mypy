@@ -80,6 +80,7 @@ x = 15
 y = 'hello'
 if int():
     x = 2; y = x; y += 1
+[builtins fixtures/primitives.pyi]
 [out]
 main:4:16: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:4:24: error: Unsupported operand types for + ("str" and "int")
@@ -126,7 +127,7 @@ import m
 if int():
     from m import foobaz # E:5: Module 'm' has no attribute 'foobaz'; maybe "foobar"?
 (1).x # E:2: "int" has no attribute "x"
-(m.foobaz()) # E:2: Module has no attribute "foobaz"
+(m.foobaz()) # E:2: Module has no attribute "foobaz"; maybe "foobar"?
 
 [file m.py]
 def foobar(): pass
@@ -246,7 +247,7 @@ t: D = {'x':
 if int():
     del t['y'] # E:5: TypedDict "D" has no key 'y'
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testColumnSignatureIncompatibleWithSuperType]
 class A:
@@ -308,7 +309,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:17: Revealed type is 'builtins.int'
+    reveal_type(1) # N:17: Revealed type is 'Literal[1]?'
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality

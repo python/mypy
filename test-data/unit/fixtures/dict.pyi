@@ -42,6 +42,7 @@ class list(Sequence[T]): # needed by some test cases
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __contains__(self, item: object) -> bool: pass
+    def append(self, item: T) -> None: pass
 
 class tuple(Generic[T]): pass
 class function: pass
