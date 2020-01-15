@@ -218,7 +218,6 @@ def main(args: List[str]) -> Iterator[Error]:
         modules = args[1:]
 
     options = Options()
-    options.incremental = False
     data_dir = default_data_dir()
     search_path = compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)
