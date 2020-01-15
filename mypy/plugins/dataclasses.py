@@ -287,7 +287,7 @@ class DataclassTransformer:
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
-                type=cls.info[lhs.name].type,
+                type=sym.type,
             ))
 
         # Next, collect attributes belonging to any class in the MRO
