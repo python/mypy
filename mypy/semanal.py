@@ -49,11 +49,12 @@ Some important properties:
 """
 
 from contextlib import contextmanager
+from collections import defaultdict
 
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
-from typing_extensions import Final
+from typing_extensions import DefaultDict, Final
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -199,7 +200,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
     # Note that a star import adds a special name '*' to the set, this blocks
     # adding _any_ names in the current file.
-    missing_names = None  # type: Set[str]
+    missing_names = None  # type: DefaultDict[Optional[str], Set[str]]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
     loop_depth = 0         # Depth of breakable loops
@@ -356,7 +357,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.deferred = False
         self.incomplete = False
         self._final_iteration = final_iteration
-        self.missing_names = set()
+        self.missing_names = defaultdict(set)
 
         with self.file_context(file_node, options, active_type):
             if isinstance(node, MypyFile):
@@ -4170,6 +4171,12 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             return self.globals.get(name)
 
+    def current_scope_identifier(self) -> Optional[str]:
+        if self.type and self.is_class_scope():
+            return self.type._fullname
+        else:
+            return self.cur_mod_id
+
     #
     # Adding symbols
     #
@@ -4273,8 +4280,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif (not (name in self.missing_names and symbol.kind != MDEF)
-                and '*' not in self.missing_names):
+        elif (name not in self.missing_names[self.current_scope_identifier()]
+                and '*' not in self.missing_names[self.current_scope_identifier()]):
             names[name] = symbol
             self.progress = True
             return True
@@ -4446,7 +4453,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
                                           becomes_typeinfo=becomes_typeinfo)
             self.add_symbol(name, placeholder, context=dummy_context())
-        self.missing_names.add(name)
+        self.missing_names[self.current_scope_identifier()].add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
         """Is a module or class namespace potentially missing some definitions?
