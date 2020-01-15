@@ -188,6 +188,13 @@ def verify_typealias(node: nodes.TypeAlias,
         yield None
 
 
+@verify.register(nodes.TypeAlias)
+def verify_typealias(node: nodes.TypeAlias,
+                     module_node: Optional[DumpNode]) -> Iterator[ErrorParts]:
+    if False:
+        yield None
+
+
 def dump_module(name: str) -> DumpNode:
     mod = importlib.import_module(name)
     return {'type': 'file', 'names': module_to_json(mod)}
