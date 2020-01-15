@@ -55,6 +55,7 @@ class DataclassAttribute:
         return Var(self.name, self.type)
 
     def serialize(self) -> JsonDict:
+        assert self.type
         return {
             'name': self.name,
             'is_in_init': self.is_in_init,
@@ -62,7 +63,7 @@ class DataclassAttribute:
             'has_default': self.has_default,
             'line': self.line,
             'column': self.column,
-            'type': self.type.serialize() if self.type else None,
+            'type': self.type.serialize(),
         }
 
     @classmethod
@@ -70,8 +71,7 @@ class DataclassAttribute:
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
     ) -> 'DataclassAttribute':
         data = data.copy()
-        typ_serialized = data.pop('type')
-        typ = deserialize_and_fixup_type(typ_serialized, api) if typ_serialized else None
+        typ = deserialize_and_fixup_type(data.pop('type'), api)
         return cls(type=typ, **data)
 
 
