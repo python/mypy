@@ -1661,30 +1661,6 @@ def f() -> None: pass
 [out]
 ==
 
-[case testImportModuleAsClassMember]
-import warnings
-
-class A:
-    def __init__(self) -> None:
-        self.warnings = warnings
-
-    def __call__(self) -> None:
-      self.warnings.warn("Message")
-[out]
-==
-
-[case testLocalImportModuleAsClassMember]
-class A:
-    def __init__(self) -> None:
-        import warnings
-
-        self.warnings = warnings
-
-    def __call__(self) -> None:
-      self.warnings.warn("Message")
-[out]
-==
-
 [case testTypeAliasRefresh]
 from typing import Callable
 from a import f
