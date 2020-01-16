@@ -7,17 +7,41 @@ at runtime.
 import argparse
 import importlib
 import sys
-from typing import Dict, Any, List, Iterator, NamedTuple, Optional, Mapping, Tuple
-from typing_extensions import Type, Final
+import types
 from collections import defaultdict
 from functools import singledispatch
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
+
+from typing_extensions import Final, Type
 
 import mypy.build
 import mypy.modulefinder
-from mypy.modulefinder import FindModuleCache
-from mypy.errors import CompileError
 from mypy import nodes
+from mypy.errors import CompileError
+from mypy.modulefinder import FindModuleCache
 from mypy.options import Options
+
+
+class Missing:
+    def __repr__(self) -> str:
+        return "MISSING"
+
+
+MISSING = Missing()
+
+T = TypeVar("T")
+MaybeMissing = Union[T, Missing]
 
 
 class Error(str):
@@ -39,12 +63,14 @@ def test_module(
 
 
 @singledispatch
-def verify(stub: nodes.Node, runtime: Optional[Any]) -> Iterator[Error]:
+def verify(stub: nodes.Node, runtime: MaybeMissing[Any]) -> Iterator[Error]:
     raise TypeError("unknown mypy node " + str(stub))
 
 
 @verify.register(nodes.MypyFile)
-def verify_mypyfile(stub: nodes.MypyFile, runtime: Optional[Any]) -> Iterator[Error]:
+def verify_mypyfile(
+    stub: nodes.MypyFile, runtime: MaybeMissing[types.ModuleType]
+) -> Iterator[Error]:
     if runtime is None:
         yield Error("not_in_runtime")
     elif runtime["type"] != "file":
@@ -71,7 +97,9 @@ def verify_mypyfile(stub: nodes.MypyFile, runtime: Optional[Any]) -> Iterator[Er
 
 
 @verify.register(nodes.TypeInfo)
-def verify_typeinfo(stub: nodes.TypeInfo, runtime: Optional[Any]) -> Iterator[Error]:
+def verify_typeinfo(
+    stub: nodes.TypeInfo, runtime: MaybeMissing[Any]
+) -> Iterator[Error]:
     if not runtime:
         yield Error("not_in_runtime")
     elif runtime["type"] != "class":
@@ -83,7 +111,9 @@ def verify_typeinfo(stub: nodes.TypeInfo, runtime: Optional[Any]) -> Iterator[Er
 
 
 @verify.register(nodes.FuncItem)
-def verify_funcitem(stub: nodes.FuncItem, runtime: Optional[Any]) -> Iterator[Error]:
+def verify_funcitem(
+    stub: nodes.FuncItem, runtime: MaybeMissing[Any]
+) -> Iterator[Error]:
     if not runtime:
         yield Error("not_in_runtime")
     elif "type" not in runtime or runtime["type"] not in ("function", "callable"):
@@ -92,7 +122,7 @@ def verify_funcitem(stub: nodes.FuncItem, runtime: Optional[Any]) -> Iterator[Er
 
 
 @verify.register(type(None))
-def verify_none(stub: None, runtime: Optional[Any]) -> Iterator[Error]:
+def verify_none(stub: None, runtime: MaybeMissing[Any]) -> Iterator[Error]:
     if runtime is None:
         yield Error("not_in_stub")
     else:
@@ -100,7 +130,7 @@ def verify_none(stub: None, runtime: Optional[Any]) -> Iterator[Error]:
 
 
 @verify.register(nodes.Var)
-def verify_var(node: nodes.Var, module_node: Optional[Any]) -> Iterator[Error]:
+def verify_var(node: nodes.Var, module_node: MaybeMissing[Any]) -> Iterator[Error]:
     if False:
         yield None
     # Need to check if types are inconsistent.
@@ -111,7 +141,7 @@ def verify_var(node: nodes.Var, module_node: Optional[Any]) -> Iterator[Error]:
 
 @verify.register(nodes.OverloadedFuncDef)
 def verify_overloadedfuncdef(
-    node: nodes.OverloadedFuncDef, module_node: Optional[Any]
+    node: nodes.OverloadedFuncDef, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
     # Should check types of the union of the overloaded types.
     if False:
@@ -120,7 +150,7 @@ def verify_overloadedfuncdef(
 
 @verify.register(nodes.TypeVarExpr)
 def verify_typevarexpr(
-    node: nodes.TypeVarExpr, module_node: Optional[Any]
+    node: nodes.TypeVarExpr, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
     if False:
         yield None
@@ -128,7 +158,7 @@ def verify_typevarexpr(
 
 @verify.register(nodes.Decorator)
 def verify_decorator(
-    node: nodes.Decorator, module_node: Optional[Any]
+    node: nodes.Decorator, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
     if False:
         yield None
@@ -136,7 +166,7 @@ def verify_decorator(
 
 @verify.register(nodes.TypeAlias)
 def verify_typealias(
-    node: nodes.TypeAlias, module_node: Optional[Any]
+    node: nodes.TypeAlias, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
     if False:
         yield None
