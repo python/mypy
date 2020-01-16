@@ -12,9 +12,9 @@ from typing_extensions import Type, Final
 from collections import defaultdict
 from functools import singledispatch
 
-from mypy import build
-from mypy.build import default_data_dir
-from mypy.modulefinder import compute_search_paths, FindModuleCache
+import mypy.build
+import mypy.modulefinder
+from mypy.modulefinder import FindModuleCache
 from mypy.errors import CompileError
 from mypy import nodes
 from mypy.options import Options
@@ -227,7 +227,7 @@ def build_stubs(
 ) -> Dict[str, nodes.MypyFile]:
     sources = find_module_cache.find_modules_recursive(mod)
     try:
-        res = build.build(sources=sources, options=options)
+        res = mypy.build.build(sources=sources, options=options)
         messages = res.errors
     except CompileError as error:
         messages = error.messages
@@ -251,8 +251,8 @@ def main() -> Iterator[Error]:
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
 
-    data_dir = default_data_dir()
-    search_path = compute_search_paths([], options, data_dir)
+    data_dir = mypy.build.default_data_dir()
+    search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)
 
     for module in args.modules:
