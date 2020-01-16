@@ -92,47 +92,47 @@ def verify(stub: nodes.Node, runtime: Optional[Any]) -> Iterator[ErrorParts]:
 
 @verify.register(nodes.MypyFile)
 def verify_mypyfile(
-    stub: nodes.MypyFile, instance: Optional[Any]
+    stub: nodes.MypyFile, runtime: Optional[Any]
 ) -> Iterator[ErrorParts]:
-    if instance is None:
+    if runtime is None:
         yield [], "not_in_runtime", stub.line, type(stub), None
-    elif instance["type"] != "file":
-        yield [], "inconsistent", stub.line, type(stub), instance["type"]
+    elif runtime["type"] != "file":
+        yield [], "inconsistent", stub.line, type(stub), runtime["type"]
     else:
         stub_children = defaultdict(
             lambda: None, stub.names
         )  # type: Mapping[str, Optional[nodes.SymbolTableNode]]
-        instance_children = defaultdict(lambda: None, instance["names"])
+        runtime_children = defaultdict(lambda: None, runtime["names"])
 
         # TODO: I would rather not filter public children here.
         #       For example, what if the checkersurfaces an inconsistency
         #       in the typing of a private child
         public_nodes = {
-            name: (stub_children[name], instance_children[name])
-            for name in set(stub_children) | set(instance_children)
+            name: (stub_children[name], runtime_children[name])
+            for name in set(stub_children) | set(runtime_children)
             if not name.startswith("_")
             and (stub_children[name] is None or stub_children[name].module_public)  # type: ignore
         }
 
-        for node, (stub_child, instance_child) in public_nodes.items():
+        for node, (stub_child, runtime_child) in public_nodes.items():
             stub_child = getattr(stub_child, "node", None)
             for identifiers, error_type, line, stub_type, module_type in verify(
-                stub_child, instance_child
+                stub_child, runtime_child
             ):
                 yield ([node] + identifiers, error_type, line, stub_type, module_type)
 
 
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
-    stub: nodes.TypeInfo, instance: Optional[Any]
+    stub: nodes.TypeInfo, runtime: Optional[Any]
 ) -> Iterator[ErrorParts]:
-    if not instance:
+    if not runtime:
         yield [], "not_in_runtime", stub.line, type(stub), None
-    elif instance["type"] != "class":
-        yield [], "inconsistent", stub.line, type(stub), instance["type"]
+    elif runtime["type"] != "class":
+        yield [], "inconsistent", stub.line, type(stub), runtime["type"]
     else:
         for attr, attr_node in stub.names.items():
-            subdump = instance["attributes"].get(attr, None)
+            subdump = runtime["attributes"].get(attr, None)
             for identifiers, error_type, line, stub_type, module_type in verify(
                 attr_node.node, subdump
             ):
@@ -141,21 +141,21 @@ def verify_typeinfo(
 
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
-    stub: nodes.FuncItem, instance: Optional[Any]
+    stub: nodes.FuncItem, runtime: Optional[Any]
 ) -> Iterator[ErrorParts]:
-    if not instance:
+    if not runtime:
         yield [], "not_in_runtime", stub.line, type(stub), None
-    elif "type" not in instance or instance["type"] not in ("function", "callable"):
-        yield [], "inconsistent", stub.line, type(stub), instance["type"]
+    elif "type" not in runtime or runtime["type"] not in ("function", "callable"):
+        yield [], "inconsistent", stub.line, type(stub), runtime["type"]
     # TODO check arguments and return value
 
 
 @verify.register(type(None))
-def verify_none(stub: None, instance: Optional[Any]) -> Iterator[ErrorParts]:
-    if instance is None:
+def verify_none(stub: None, runtime: Optional[Any]) -> Iterator[ErrorParts]:
+    if runtime is None:
         yield [], "not_in_stub", None, None, None
     else:
-        yield [], "not_in_stub", instance["line"], None, instance["type"]
+        yield [], "not_in_stub", runtime["line"], None, runtime["type"]
 
 
 @verify.register(nodes.Var)
