@@ -1,7 +1,8 @@
 from typing import List, Callable
 
 from mypyc.ops import (
-    object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface
+    object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface,
+    RType, int_rprimitive, list_rprimitive, EmitCallback
 )
 from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op, method_op
 
@@ -30,6 +31,20 @@ method_op(
     result_type=str_rprimitive,
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
+
+
+str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
+str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
+                   simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
+                   simple_emit('{dest} = CPyStr_Split({args[0]}, {args[1]}, {args[2]});')] \
+                   # type: List[EmitCallback]
+for i in range(len(str_split_types)):
+    method_op(
+        name='split',
+        arg_types=str_split_types[0:i+1],
+        result_type=list_rprimitive,
+        error_kind=ERR_MAGIC,
+        emit=str_split_emits[i])
 
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
