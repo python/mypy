@@ -62,12 +62,23 @@ def test_module(
         yield from verify(stub, runtime)
 
 
+def trace(fn):
+    import functools
+
+    @functools.wraps(fn)
+    def new_fn(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    return new_fn
+
+
 @singledispatch
 def verify(stub: nodes.Node, runtime: MaybeMissing[Any]) -> Iterator[Error]:
     raise TypeError("unknown mypy node " + str(stub))
 
 
 @verify.register(nodes.MypyFile)
+@trace
 def verify_mypyfile(
     stub: nodes.MypyFile, runtime: MaybeMissing[types.ModuleType]
 ) -> Iterator[Error]:
@@ -96,6 +107,7 @@ def verify_mypyfile(
 
 
 @verify.register(nodes.TypeInfo)
+@trace
 def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
@@ -113,6 +125,7 @@ def verify_typeinfo(
 
 
 @verify.register(nodes.FuncItem)
+@trace
 def verify_funcitem(
     stub: nodes.FuncItem, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
@@ -124,6 +137,7 @@ def verify_funcitem(
 
 
 @verify.register(type(None))
+@trace
 def verify_none(stub: None, runtime: MaybeMissing[Any]) -> Iterator[Error]:
     if runtime is None:
         yield Error("not_in_stub")
@@ -132,6 +146,7 @@ def verify_none(stub: None, runtime: MaybeMissing[Any]) -> Iterator[Error]:
 
 
 @verify.register(nodes.Var)
+@trace
 def verify_var(node: nodes.Var, module_node: MaybeMissing[Any]) -> Iterator[Error]:
     if False:
         yield None
@@ -142,6 +157,7 @@ def verify_var(node: nodes.Var, module_node: MaybeMissing[Any]) -> Iterator[Erro
 
 
 @verify.register(nodes.OverloadedFuncDef)
+@trace
 def verify_overloadedfuncdef(
     node: nodes.OverloadedFuncDef, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
@@ -151,6 +167,7 @@ def verify_overloadedfuncdef(
 
 
 @verify.register(nodes.TypeVarExpr)
+@trace
 def verify_typevarexpr(
     node: nodes.TypeVarExpr, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
@@ -159,6 +176,7 @@ def verify_typevarexpr(
 
 
 @verify.register(nodes.Decorator)
+@trace
 def verify_decorator(
     node: nodes.Decorator, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
@@ -167,6 +185,7 @@ def verify_decorator(
 
 
 @verify.register(nodes.TypeAlias)
+@trace
 def verify_typealias(
     node: nodes.TypeAlias, module_node: MaybeMissing[Any]
 ) -> Iterator[Error]:
