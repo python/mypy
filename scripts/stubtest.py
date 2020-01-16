@@ -25,7 +25,7 @@ from dumpmodule import module_to_json, DumpNode
 # TODO: email.contentmanager has a symbol table with a None node.
 #       This seems like it should not be.
 
-skip = {
+MODULES_TO_SKIP = {
     "_importlib_modulespec",
     "_subprocess",
     "distutils.command.bdist_msi",
@@ -72,13 +72,14 @@ ErrorParts = Tuple[
 ]
 
 
-def test_stub(
-    options: Options, find_module_cache: FindModuleCache, name: str
+def test_module(
+    module_name: str, options: Options, find_module_cache: FindModuleCache
 ) -> Iterator[Error]:
     stubs = {
         mod: stub
-        for mod, stub in build_stubs(options, find_module_cache, name).items()
-        if (mod == name or mod.startswith(name + ".")) and mod not in skip
+        for mod, stub in build_stubs(module_name, options, find_module_cache).items()
+        if (mod == module_name or mod.startswith(module_name + "."))
+        and mod not in MODULES_TO_SKIP
     }
 
     for mod, stub in stubs.items():
@@ -223,9 +224,9 @@ def dump_module(name: str) -> DumpNode:
 
 
 def build_stubs(
-    options: Options, find_module_cache: FindModuleCache, mod: str
+    module_name: str, options: Options, find_module_cache: FindModuleCache
 ) -> Dict[str, nodes.MypyFile]:
-    sources = find_module_cache.find_modules_recursive(mod)
+    sources = find_module_cache.find_modules_recursive(module_name)
     try:
         res = mypy.build.build(sources=sources, options=options)
         messages = res.errors
@@ -256,7 +257,7 @@ def main() -> Iterator[Error]:
     find_module_cache = FindModuleCache(search_path)
 
     for module in args.modules:
-        for error in test_stub(options, find_module_cache, module):
+        for error in test_module(module, options, find_module_cache):
             yield error
 
 
