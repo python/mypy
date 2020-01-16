@@ -4,6 +4,7 @@ Verify that various things in stubs are consistent with how things behave
 at runtime.
 """
 
+import argparse
 import importlib
 import sys
 from typing import Dict, Any, List, Iterator, NamedTuple, Optional, Mapping, Tuple
@@ -217,25 +218,27 @@ def build_stubs(options: Options,
     return res.files
 
 
-def main(args: List[str]) -> Iterator[Error]:
-    if len(args) == 1:
-        print('must provide at least one module to test')
-        sys.exit(1)
-    else:
-        modules = args[1:]
+def main() -> Iterator[Error]:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('modules', nargs='+', help='Modules to test')
+    parser.add_argument(
+        '--custom-typeshed-dir', metavar='DIR', help='Use the custom typeshed in DIR'
+    )
+    args = parser.parse_args()
 
     options = Options()
     options.incremental = False
+    options.custom_typeshed_dir = args.custom_typeshed_dir
+
     data_dir = default_data_dir()
     search_path = compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)
 
-    for module in modules:
+    for module in args.modules:
         for error in test_stub(options, find_module_cache, module):
             yield error
 
 
 if __name__ == '__main__':
-
-    for err in main(sys.argv):
+    for err in main():
         print(messages[err.error_type].format(error=err))
