@@ -19,8 +19,6 @@ from mypy.errors import CompileError
 from mypy import nodes
 from mypy.options import Options
 
-from dumpmodule import module_to_json, DumpNode
-
 
 # TODO: email.contentmanager has a symbol table with a None node.
 #       This seems like it should not be.
@@ -83,24 +81,18 @@ def test_module(
     }
 
     for mod, stub in stubs.items():
-        instance = dump_module(mod)
-
-        for identifiers, error_type, line, stub_type, module_type in verify(
-            stub, instance
-        ):
-            yield Error(
-                mod, ".".join(identifiers), error_type, line, stub_type, module_type
-            )
+        runtime = importlib.import_module(mod)
+        yield from verify(stub, runtime)
 
 
 @singledispatch
-def verify(node: nodes.Node, module_node: Optional[DumpNode]) -> Iterator[ErrorParts]:
-    raise TypeError("unknown mypy node " + str(node))
+def verify(stub: nodes.Node, runtime: Optional[Any]) -> Iterator[ErrorParts]:
+    raise TypeError("unknown mypy node " + str(stub))
 
 
 @verify.register(nodes.MypyFile)
 def verify_mypyfile(
-    stub: nodes.MypyFile, instance: Optional[DumpNode]
+    stub: nodes.MypyFile, instance: Optional[Any]
 ) -> Iterator[ErrorParts]:
     if instance is None:
         yield [], "not_in_runtime", stub.line, type(stub), None
@@ -132,7 +124,7 @@ def verify_mypyfile(
 
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
-    stub: nodes.TypeInfo, instance: Optional[DumpNode]
+    stub: nodes.TypeInfo, instance: Optional[Any]
 ) -> Iterator[ErrorParts]:
     if not instance:
         yield [], "not_in_runtime", stub.line, type(stub), None
@@ -149,7 +141,7 @@ def verify_typeinfo(
 
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
-    stub: nodes.FuncItem, instance: Optional[DumpNode]
+    stub: nodes.FuncItem, instance: Optional[Any]
 ) -> Iterator[ErrorParts]:
     if not instance:
         yield [], "not_in_runtime", stub.line, type(stub), None
@@ -159,7 +151,7 @@ def verify_funcitem(
 
 
 @verify.register(type(None))
-def verify_none(stub: None, instance: Optional[DumpNode]) -> Iterator[ErrorParts]:
+def verify_none(stub: None, instance: Optional[Any]) -> Iterator[ErrorParts]:
     if instance is None:
         yield [], "not_in_stub", None, None, None
     else:
@@ -167,9 +159,7 @@ def verify_none(stub: None, instance: Optional[DumpNode]) -> Iterator[ErrorParts
 
 
 @verify.register(nodes.Var)
-def verify_var(
-    node: nodes.Var, module_node: Optional[DumpNode]
-) -> Iterator[ErrorParts]:
+def verify_var(node: nodes.Var, module_node: Optional[Any]) -> Iterator[ErrorParts]:
     if False:
         yield None
     # Need to check if types are inconsistent.
@@ -180,7 +170,7 @@ def verify_var(
 
 @verify.register(nodes.OverloadedFuncDef)
 def verify_overloadedfuncdef(
-    node: nodes.OverloadedFuncDef, module_node: Optional[DumpNode]
+    node: nodes.OverloadedFuncDef, module_node: Optional[Any]
 ) -> Iterator[ErrorParts]:
     # Should check types of the union of the overloaded types.
     if False:
@@ -189,7 +179,7 @@ def verify_overloadedfuncdef(
 
 @verify.register(nodes.TypeVarExpr)
 def verify_typevarexpr(
-    node: nodes.TypeVarExpr, module_node: Optional[DumpNode]
+    node: nodes.TypeVarExpr, module_node: Optional[Any]
 ) -> Iterator[ErrorParts]:
     if False:
         yield None
@@ -197,7 +187,7 @@ def verify_typevarexpr(
 
 @verify.register(nodes.Decorator)
 def verify_decorator(
-    node: nodes.Decorator, module_node: Optional[DumpNode]
+    node: nodes.Decorator, module_node: Optional[Any]
 ) -> Iterator[ErrorParts]:
     if False:
         yield None
@@ -205,22 +195,10 @@ def verify_decorator(
 
 @verify.register(nodes.TypeAlias)
 def verify_typealias(
-    node: nodes.TypeAlias, module_node: Optional[DumpNode]
+    node: nodes.TypeAlias, module_node: Optional[Any]
 ) -> Iterator[ErrorParts]:
     if False:
         yield None
-
-
-@verify.register(nodes.TypeAlias)
-def verify_typealias(node: nodes.TypeAlias,
-                     module_node: Optional[DumpNode]) -> Iterator[ErrorParts]:
-    if False:
-        yield None
-
-
-def dump_module(name: str) -> DumpNode:
-    mod = importlib.import_module(name)
-    return {"type": "file", "names": module_to_json(mod)}
 
 
 def build_stubs(
