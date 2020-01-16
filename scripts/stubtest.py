@@ -204,16 +204,75 @@ def verify_funcitem(
         yield Error("type_mismatch", stub, runtime)
         return
 
-    # TODO: make this better
     try:
-        runtime_params = set(inspect.signature(runtime).parameters)
-        stub_params = set(arg.variable.name for arg in stub.arguments)
-        todo = runtime_params.symmetric_difference(stub_params)
-        if todo:
-            yield Error(f"arg_mismatch: {todo}", stub, runtime)
+        signature = inspect.signature(runtime)
     except ValueError:
         # inspect.signature throws sometimes
-        pass
+        return
+
+    i, j = 0, 0
+    stub_args = stub.arguments
+    runtime_args = list(signature.parameters.values())
+    while i < len(stub_args) or j < len(runtime_args):
+        if i >= len(stub_args):
+            # Ignore errors if the stub doesn't take **kwargs, since the stub might just have
+            # listed out the keyword parameters this function takes
+            if runtime_args[j].kind != inspect.Parameter.VAR_KEYWORD:
+                yield Error(
+                    f"arg_mismatch: {stub.name}, stub missing {runtime_args[j].name}",
+                    stub,
+                    runtime,
+                    runtime_printer=lambda s: str(inspect.signature(s)),
+                )
+            j += 1
+            continue
+        if j >= len(runtime_args):
+            yield Error(
+                f"arg_mismatch: {stub.name}, runtime missing {stub_args[i].variable.name}",
+                stub,
+                runtime,
+                runtime_printer=lambda s: str(inspect.signature(s)),
+            )
+            i += 1
+            continue
+
+        # TODO: maybe don't check by name for positional-only args, dunder methods
+        # TODO: stricter checking of positional-only, keyword-only
+        # TODO: check type compatibility of default args
+
+        stub_arg, runtime_arg = stub_args[i], runtime_args[j]
+        if (stub_arg.kind == mypy.nodes.ARG_STAR) and (
+            runtime_arg.kind != inspect.Parameter.VAR_POSITIONAL
+        ):
+            j += 1
+            continue
+        if (stub_arg.kind != mypy.nodes.ARG_STAR) and (
+            runtime_arg.kind == inspect.Parameter.VAR_POSITIONAL
+        ):
+            i += 1
+            continue
+
+        if (stub_arg.kind == mypy.nodes.ARG_STAR2) and (
+            runtime_arg.kind != inspect.Parameter.VAR_KEYWORD
+        ):
+            j += 1
+            continue
+        if (stub_arg.kind != mypy.nodes.ARG_STAR2) and (
+            runtime_arg.kind == inspect.Parameter.VAR_KEYWORD
+        ):
+            i += 1
+            continue
+
+        if stub_arg.variable.name != runtime_arg.name:
+            # TODO: _asdict takes _self and self
+            yield Error(
+                f"arg_mismatch: {stub.name}, {stub_arg.variable.name} != {runtime_arg.name}",
+                stub,
+                runtime,
+                runtime_printer=lambda s: str(inspect.signature(s)),
+            )
+        i += 1
+        j += 1
 
 
 @verify.register(Missing)
