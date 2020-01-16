@@ -723,6 +723,51 @@ C(1, 'a')  # E: Argument 2 to "C" has incompatible type "str"; expected "int"
 
 [builtins fixtures/primitives.pyi]
 
+[case testDataclassesInitVarIncremental]
+import a
+
+[file a.py]
+import dataclasses
+from b import A
+
+@dataclasses.dataclass
+class B(A):
+    b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        super().__post_init__(a)
+        self.b = a + 1
+
+[file a.py.2]
+import dataclasses
+from b import A
+
+@dataclasses.dataclass
+class B(A):
+    b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        super().__post_init__(a)
+        self.b = a + 2
+
+reveal_type(B)
+
+[file b.py]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        self._a = a
+[out2]
+tmp/a.py:12: note: Revealed type is 'def (a: builtins.int) -> a.B'
+
+[builtins fixtures/primitives.pyi]
+
+
 [case testNoComplainFieldNone]
 # flags: --python-version 3.6
 # flags: --no-strict-optional
@@ -957,3 +1002,33 @@ class A:  # E: Name 'x' already defined (possibly by an import)
 @dataclass
 class B(A):
     pass
+
+[case testDataclassInheritanceNoAnnotation]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    foo: int
+
+x = 0
+@dataclass
+class B(A):
+    foo = x
+
+reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
+
+[case testDataclassInheritanceNoAnnotation2]
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class A:
+    foo: int
+
+@dataclass
+class B(A):
+    @property
+    def foo(self) -> int: pass  # E: Signature of "foo" incompatible with supertype "A"
+
+reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
+
+[builtins fixtures/property.pyi]
