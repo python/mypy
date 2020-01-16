@@ -74,7 +74,7 @@ def trace(fn):
 
 @singledispatch
 def verify(stub: nodes.Node, runtime: MaybeMissing[Any]) -> Iterator[Error]:
-    raise TypeError("unknown mypy node " + str(stub))
+    print("unknown mypy node " + str(stub))
 
 
 @verify.register(nodes.MypyFile)
@@ -140,13 +140,12 @@ def verify_funcitem(
     # TODO check arguments and return value
 
 
-@verify.register(type(None))
+@verify.register(Missing)
 @trace
-def verify_none(stub: None, runtime: MaybeMissing[Any]) -> Iterator[Error]:
-    if runtime is None:
-        yield Error("not_in_stub")
-    else:
-        yield Error("not_in_stub")
+def verify_none(stub: Missing, runtime: MaybeMissing[Any]) -> Iterator[Error]:
+    yield Error(f"not_in_stub: {runtime}")
+    if isinstance(runtime, Missing):
+        raise RuntimeError
 
 
 @verify.register(nodes.Var)
