@@ -226,7 +226,7 @@ class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
     pass
 
 b: Bad
-reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.float})'
+reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithClassOverwriting2]

@@ -72,7 +72,7 @@ class TypedDictAnalyzer:
             keys = []  # type: List[str]
             types = []
             required_keys = set()
-            for base in typeddict_bases:
+            for base in reversed(typeddict_bases): # Reversing so that leftmost base class' keys take precedence
                 assert isinstance(base, RefExpr)
                 assert isinstance(base.node, TypeInfo)
                 assert isinstance(base.node.typeddict_type, TypedDictType)
