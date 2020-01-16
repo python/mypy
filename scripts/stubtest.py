@@ -187,7 +187,7 @@ def verify_mypyfile(
 
     for entry in sorted(to_check):
         yield from verify(
-            getattr(stub.names.get(entry, MISSING), "node", MISSING),
+            stub.names[entry].node if entry in stub.names else MISSING,
             getattr(runtime, entry, MISSING),
             object_path + [entry],
         )
@@ -210,7 +210,7 @@ def verify_typeinfo(
 
     for entry in sorted(to_check):
         yield from verify(
-            getattr(stub.names.get(entry, MISSING), "node", MISSING),
+            stub.names[entry].node if entry in stub.names else MISSING,
             getattr(runtime, entry, MISSING),
             object_path + [entry],
         )
