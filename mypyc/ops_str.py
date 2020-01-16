@@ -33,14 +33,6 @@ method_op(
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
 
-def emit_str_split(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_lines(
-        '%s = CPyTagged_AsSsize_t(%s);' % (temp, args[2]),
-        '%s = PyUnicode_Split(%s, %s, %s);' % (dest, args[0], args[1], temp))
-
-
 str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
 str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
                    simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
