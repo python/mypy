@@ -20,54 +20,8 @@ from mypy import nodes
 from mypy.options import Options
 
 
-# TODO: email.contentmanager has a symbol table with a None node.
-#       This seems like it should not be.
-
-MODULES_TO_SKIP = {
-    "_importlib_modulespec",
-    "_subprocess",
-    "distutils.command.bdist_msi",
-    "distutils.command.bdist_packager",
-    "msvcrt",
-    "wsgiref.types",
-    "mypy_extensions",
-    "unittest.mock",  # mock.call infinite loops on inspect.getsourcelines
-    # https://bugs.python.org/issue25532
-    # TODO: can we filter only call?
-}  # type: Final
-
-
-messages = {
-    "not_in_runtime": (
-        '{error.stub_type} "{error.name}" defined at line '
-        " {error.line} in stub but is not defined at runtime"
-    ),
-    "not_in_stub": (
-        '{error.module_type} "{error.name}" defined at line'
-        " {error.line} at runtime but is not defined in stub"
-    ),
-    "no_stubs": "could not find typeshed {error.name}",
-    "inconsistent": (
-        '"{error.name}" is {error.stub_type} in stub but'
-        " {error.module_type} at runtime"
-    ),
-}  # type: Final
-
-Error = NamedTuple(
-    "Error",
-    (
-        ("module", str),
-        ("name", str),
-        ("error_type", str),
-        ("line", Optional[int]),
-        ("stub_type", Optional[Type[nodes.Node]]),
-        ("module_type", Optional[str]),
-    ),
-)
-
-ErrorParts = Tuple[
-    List[str], str, Optional[int], Optional[Type[nodes.Node]], Optional[str],
-]
+class Error(str):
+    pass
 
 
 def test_module(
@@ -77,7 +31,6 @@ def test_module(
         mod: stub
         for mod, stub in build_stubs(module_name, options, find_module_cache).items()
         if (mod == module_name or mod.startswith(module_name + "."))
-        and mod not in MODULES_TO_SKIP
     }
 
     for mod, stub in stubs.items():
@@ -86,18 +39,16 @@ def test_module(
 
 
 @singledispatch
-def verify(stub: nodes.Node, runtime: Optional[Any]) -> Iterator[ErrorParts]:
+def verify(stub: nodes.Node, runtime: Optional[Any]) -> Iterator[Error]:
     raise TypeError("unknown mypy node " + str(stub))
 
 
 @verify.register(nodes.MypyFile)
-def verify_mypyfile(
-    stub: nodes.MypyFile, runtime: Optional[Any]
-) -> Iterator[ErrorParts]:
+def verify_mypyfile(stub: nodes.MypyFile, runtime: Optional[Any]) -> Iterator[Error]:
     if runtime is None:
-        yield [], "not_in_runtime", stub.line, type(stub), None
+        yield Error("not_in_runtime")
     elif runtime["type"] != "file":
-        yield [], "inconsistent", stub.line, type(stub), runtime["type"]
+        yield Error("inconsistent")
     else:
         stub_children = defaultdict(
             lambda: None, stub.names
@@ -116,50 +67,40 @@ def verify_mypyfile(
 
         for node, (stub_child, runtime_child) in public_nodes.items():
             stub_child = getattr(stub_child, "node", None)
-            for identifiers, error_type, line, stub_type, module_type in verify(
-                stub_child, runtime_child
-            ):
-                yield ([node] + identifiers, error_type, line, stub_type, module_type)
+            yield from verify(stub_child, runtime_child)
 
 
 @verify.register(nodes.TypeInfo)
-def verify_typeinfo(
-    stub: nodes.TypeInfo, runtime: Optional[Any]
-) -> Iterator[ErrorParts]:
+def verify_typeinfo(stub: nodes.TypeInfo, runtime: Optional[Any]) -> Iterator[Error]:
     if not runtime:
-        yield [], "not_in_runtime", stub.line, type(stub), None
+        yield Error("not_in_runtime")
     elif runtime["type"] != "class":
-        yield [], "inconsistent", stub.line, type(stub), runtime["type"]
+        yield Error("inconsistent")
     else:
         for attr, attr_node in stub.names.items():
             subdump = runtime["attributes"].get(attr, None)
-            for identifiers, error_type, line, stub_type, module_type in verify(
-                attr_node.node, subdump
-            ):
-                yield ([attr] + identifiers, error_type, line, stub_type, module_type)
+            yield from verify(attr_node.node, subdump)
 
 
 @verify.register(nodes.FuncItem)
-def verify_funcitem(
-    stub: nodes.FuncItem, runtime: Optional[Any]
-) -> Iterator[ErrorParts]:
+def verify_funcitem(stub: nodes.FuncItem, runtime: Optional[Any]) -> Iterator[Error]:
     if not runtime:
-        yield [], "not_in_runtime", stub.line, type(stub), None
+        yield Error("not_in_runtime")
     elif "type" not in runtime or runtime["type"] not in ("function", "callable"):
-        yield [], "inconsistent", stub.line, type(stub), runtime["type"]
+        yield Error("inconsistent")
     # TODO check arguments and return value
 
 
 @verify.register(type(None))
-def verify_none(stub: None, runtime: Optional[Any]) -> Iterator[ErrorParts]:
+def verify_none(stub: None, runtime: Optional[Any]) -> Iterator[Error]:
     if runtime is None:
-        yield [], "not_in_stub", None, None, None
+        yield Error("not_in_stub")
     else:
-        yield [], "not_in_stub", runtime["line"], None, runtime["type"]
+        yield Error("not_in_stub")
 
 
 @verify.register(nodes.Var)
-def verify_var(node: nodes.Var, module_node: Optional[Any]) -> Iterator[ErrorParts]:
+def verify_var(node: nodes.Var, module_node: Optional[Any]) -> Iterator[Error]:
     if False:
         yield None
     # Need to check if types are inconsistent.
@@ -171,7 +112,7 @@ def verify_var(node: nodes.Var, module_node: Optional[Any]) -> Iterator[ErrorPar
 @verify.register(nodes.OverloadedFuncDef)
 def verify_overloadedfuncdef(
     node: nodes.OverloadedFuncDef, module_node: Optional[Any]
-) -> Iterator[ErrorParts]:
+) -> Iterator[Error]:
     # Should check types of the union of the overloaded types.
     if False:
         yield None
@@ -180,7 +121,7 @@ def verify_overloadedfuncdef(
 @verify.register(nodes.TypeVarExpr)
 def verify_typevarexpr(
     node: nodes.TypeVarExpr, module_node: Optional[Any]
-) -> Iterator[ErrorParts]:
+) -> Iterator[Error]:
     if False:
         yield None
 
@@ -188,7 +129,7 @@ def verify_typevarexpr(
 @verify.register(nodes.Decorator)
 def verify_decorator(
     node: nodes.Decorator, module_node: Optional[Any]
-) -> Iterator[ErrorParts]:
+) -> Iterator[Error]:
     if False:
         yield None
 
@@ -196,7 +137,7 @@ def verify_decorator(
 @verify.register(nodes.TypeAlias)
 def verify_typealias(
     node: nodes.TypeAlias, module_node: Optional[Any]
-) -> Iterator[ErrorParts]:
+) -> Iterator[Error]:
     if False:
         yield None
 
@@ -205,16 +146,11 @@ def build_stubs(
     module_name: str, options: Options, find_module_cache: FindModuleCache
 ) -> Dict[str, nodes.MypyFile]:
     sources = find_module_cache.find_modules_recursive(module_name)
-    try:
-        res = mypy.build.build(sources=sources, options=options)
-        messages = res.errors
-    except CompileError as error:
-        messages = error.messages
 
-    if messages:
-        for msg in messages:
-            print(msg)
-        sys.exit(1)
+    res = mypy.build.build(sources=sources, options=options)
+    if res.errors:
+        raise CompileError
+
     return res.files
 
 
@@ -241,4 +177,4 @@ def main() -> Iterator[Error]:
 
 if __name__ == "__main__":
     for err in main():
-        print(messages[err.error_type].format(error=err))
+        print(err)
