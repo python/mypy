@@ -109,19 +109,23 @@ def verify_mypyfile(
 @verify.register(nodes.TypeInfo)
 @trace
 def verify_typeinfo(
-    stub: nodes.TypeInfo, runtime: MaybeMissing[Any]
+    stub: nodes.TypeInfo, runtime: MaybeMissing[Type[Any]]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         yield Error("not_in_runtime")
         return
-    if not runtime:
-        yield Error("not_in_runtime")
-    elif runtime["type"] != "class":
-        yield Error("inconsistent")
-    else:
-        for attr, attr_node in stub.names.items():
-            subdump = runtime["attributes"].get(attr, None)
-            yield from verify(attr_node.node, subdump)
+    if not isinstance(runtime, type):
+        yield Error("type_mismatch")
+        return
+
+    to_check = set(stub.names)
+    to_check.update(m for m in vars(runtime) if not m.startswith("_"))
+
+    for entry in to_check:
+        yield from verify(
+            getattr(stub.names.get(entry, MISSING), "node", MISSING),
+            getattr(runtime, entry, MISSING),
+        )
 
 
 @verify.register(nodes.FuncItem)
