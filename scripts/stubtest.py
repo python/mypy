@@ -239,6 +239,7 @@ def verify_funcitem(
         # TODO: maybe don't check by name for positional-only args, dunder methods
         # TODO: stricter checking of positional-only, keyword-only
         # TODO: check type compatibility of default args
+        # TODO: overloads are sometimes pretty deceitful, so handle that better
 
         stub_arg, runtime_arg = stub_args[i], runtime_args[j]
         if (stub_arg.kind == mypy.nodes.ARG_STAR) and (
@@ -301,9 +302,8 @@ def verify_var(stub: nodes.Var, runtime: MaybeMissing[Any]) -> Iterator[Error]:
 def verify_overloadedfuncdef(
     stub: nodes.OverloadedFuncDef, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
-    # Should check types of the union of the overloaded types.
-    if False:
-        yield None
+    for func in stub.items:
+        yield from verify(func, runtime)
 
 
 @verify.register(nodes.TypeVarExpr)
@@ -320,8 +320,12 @@ def verify_typevarexpr(
 def verify_decorator(
     stub: nodes.Decorator, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
-    if False:
-        yield None
+    if (
+        len(stub.decorators) == 1
+        and isinstance(stub.decorators[0], nodes.NameExpr)
+        and stub.decorators[0].fullname == "typing.overload"
+    ):
+        yield from verify(stub.func, runtime)
 
 
 @verify.register(nodes.TypeAlias)
