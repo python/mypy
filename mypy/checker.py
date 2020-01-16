@@ -3461,6 +3461,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             super_instance = map_instance_to_supertype(typ, supertype)
             assert len(super_instance.args) == 1
             return super_instance.args[0]
+        if isinstance(typ, TupleType):
+            return self.analyze_container_item_type(tuple_fallback(typ))
         return None
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
