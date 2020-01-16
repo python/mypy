@@ -36,7 +36,8 @@ method_op(
 str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
 str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
                    simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
-                   simple_emit('{dest} = CPyStr_Split({args[0]}, {args[1]}, {args[2]});')]  # type: List[EmitCallback]
+                   simple_emit('{dest} = CPyStr_Split({args[0]}, {args[1]}, {args[2]});')] \
+                   # type: List[EmitCallback]
 for i in range(len(str_split_types)):
     method_op(
         name='split',
