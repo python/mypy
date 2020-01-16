@@ -185,7 +185,7 @@ def verify_mypyfile(
     # We currently don't check things in the module that aren't in the stub, other than things that
     # are in __all__ to avoid false positives.
 
-    for entry in to_check:
+    for entry in sorted(to_check):
         yield from verify(
             getattr(stub.names.get(entry, MISSING), "node", MISSING),
             getattr(runtime, entry, MISSING),
@@ -208,7 +208,7 @@ def verify_typeinfo(
     to_check = set(stub.names)
     to_check.update(m for m in vars(runtime) if not m.startswith("_"))
 
-    for entry in to_check:
+    for entry in sorted(to_check):
         yield from verify(
             getattr(stub.names.get(entry, MISSING), "node", MISSING),
             getattr(runtime, entry, MISSING),
