@@ -28,6 +28,7 @@ from typing_extensions import Final, Type
 
 import mypy.build
 import mypy.modulefinder
+import mypy.types
 from mypy import nodes
 from mypy.errors import CompileError
 from mypy.modulefinder import FindModuleCache
@@ -163,19 +164,20 @@ def verify_none(stub: Missing, runtime: MaybeMissing[Any]) -> Iterator[Error]:
 
 @verify.register(nodes.Var)
 @trace
-def verify_var(node: nodes.Var, module_node: MaybeMissing[Any]) -> Iterator[Error]:
-    if False:
-        yield None
-    # Need to check if types are inconsistent.
-    # if 'type' not in dump or dump['type'] != node.node.type:
-    #    import ipdb; ipdb.set_trace()
-    #    yield name, 'inconsistent', node.node.line, shed_type, module_type
+def verify_var(stub: nodes.Var, runtime: MaybeMissing[Any]) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error("not_in_runtime")
+        return
+    # TODO: Make this better
+    if isinstance(stub, mypy.types.Instance):
+        if stub.type.type.name != runtime.__name__:
+            yield Error(f"var_mismatch: {runtime}")
 
 
 @verify.register(nodes.OverloadedFuncDef)
 @trace
 def verify_overloadedfuncdef(
-    node: nodes.OverloadedFuncDef, module_node: MaybeMissing[Any]
+    stub: nodes.OverloadedFuncDef, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
     # Should check types of the union of the overloaded types.
     if False:
@@ -185,7 +187,7 @@ def verify_overloadedfuncdef(
 @verify.register(nodes.TypeVarExpr)
 @trace
 def verify_typevarexpr(
-    node: nodes.TypeVarExpr, module_node: MaybeMissing[Any]
+    stub: nodes.TypeVarExpr, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
     if False:
         yield None
@@ -194,7 +196,7 @@ def verify_typevarexpr(
 @verify.register(nodes.Decorator)
 @trace
 def verify_decorator(
-    node: nodes.Decorator, module_node: MaybeMissing[Any]
+    stub: nodes.Decorator, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
     if False:
         yield None
@@ -203,7 +205,7 @@ def verify_decorator(
 @verify.register(nodes.TypeAlias)
 @trace
 def verify_typealias(
-    node: nodes.TypeAlias, module_node: MaybeMissing[Any]
+    stub: nodes.TypeAlias, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
     if False:
         yield None
