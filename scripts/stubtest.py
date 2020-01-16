@@ -78,6 +78,9 @@ class Error:
             lambda s: s if isinstance(s, Missing) else runtime_printer(s)
         )
 
+    def is_missing_stub(self) -> bool:
+        return isinstance(self.stub_object, Missing)
+
     def __str__(self) -> str:
         stub_line = None
         stub_file = None
@@ -385,6 +388,11 @@ def main() -> Iterator[Error]:
     parser = argparse.ArgumentParser()
     parser.add_argument("modules", nargs="+", help="Modules to test")
     parser.add_argument(
+        "--ignore-missing-stub",
+        action="store_true",
+        help="Ignore errors for stub missing things that are present at runtime",
+    )
+    parser.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
     )
     args = parser.parse_args()
@@ -399,7 +407,8 @@ def main() -> Iterator[Error]:
 
     for module in args.modules:
         for error in test_module(module, options, find_module_cache):
-            yield error
+            if not args.ignore_missing_stub or not error.is_missing_stub():
+                yield error
 
 
 if __name__ == "__main__":
