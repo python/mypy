@@ -71,35 +71,37 @@ def verify(stub: nodes.Node, runtime: MaybeMissing[Any]) -> Iterator[Error]:
 def verify_mypyfile(
     stub: nodes.MypyFile, runtime: MaybeMissing[types.ModuleType]
 ) -> Iterator[Error]:
-    if runtime is None:
+    if isinstance(runtime, Missing):
         yield Error("not_in_runtime")
-    elif runtime["type"] != "file":
-        yield Error("inconsistent")
-    else:
-        stub_children = defaultdict(
-            lambda: None, stub.names
-        )  # type: Mapping[str, Optional[nodes.SymbolTableNode]]
-        runtime_children = defaultdict(lambda: None, runtime["names"])
+        return
+    if not isinstance(runtime, types.ModuleType):
+        yield Error("type_mismatch")
+        return
 
-        # TODO: I would rather not filter public children here.
-        #       For example, what if the checkersurfaces an inconsistency
-        #       in the typing of a private child
-        public_nodes = {
-            name: (stub_children[name], runtime_children[name])
-            for name in set(stub_children) | set(runtime_children)
-            if not name.startswith("_")
-            and (stub_children[name] is None or stub_children[name].module_public)  # type: ignore
-        }
+    # Check all things in the stub
+    to_check = set(m for m, o in stub.names.items() if o.module_public)
+    # Check all things declared in module's __all__
+    to_check.update(getattr(runtime, "__all__", []))
+    to_check.difference_update(
+        {"__file__", "__doc__", "__name__", "__builtins__", "__package__"}
+    )
+    # We currently don't check things in the module that aren't in the stub, other than things that
+    # are in __all__ to avoid false positives.
 
-        for node, (stub_child, runtime_child) in public_nodes.items():
-            stub_child = getattr(stub_child, "node", None)
-            yield from verify(stub_child, runtime_child)
+    for entry in to_check:
+        yield from verify(
+            getattr(stub.names.get(entry, MISSING), "node", MISSING),
+            getattr(runtime, entry, MISSING),
+        )
 
 
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Any]
 ) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error("not_in_runtime")
+        return
     if not runtime:
         yield Error("not_in_runtime")
     elif runtime["type"] != "class":
