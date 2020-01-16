@@ -2754,6 +2754,13 @@ assert u'foo' == 'foo'
 assert u'foo' == u'bar'  # E: Non-overlapping equality check (left operand type: "Literal[u'foo']", right operand type: "Literal[u'bar']")
 [builtins_py2 fixtures/python2.pyi]
 
+[case testStrictEqualityWithFixedLengthTupleInCheck]
+# flags: --strict-equality
+if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", container item type: "str")
+    pass
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name 'Any' is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
