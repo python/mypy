@@ -6,6 +6,7 @@ at runtime.
 
 import argparse
 import importlib
+import inspect
 import sys
 import types
 from collections import defaultdict
@@ -131,13 +132,25 @@ def verify_typeinfo(
 @verify.register(nodes.FuncItem)
 @trace
 def verify_funcitem(
-    stub: nodes.FuncItem, runtime: MaybeMissing[Any]
+    stub: nodes.FuncItem, runtime: MaybeMissing[types.FunctionType]
 ) -> Iterator[Error]:
-    if not runtime:
+    if isinstance(runtime, Missing):
         yield Error("not_in_runtime")
-    elif "type" not in runtime or runtime["type"] not in ("function", "callable"):
-        yield Error("inconsistent")
-    # TODO check arguments and return value
+        return
+    if not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
+        yield Error(f"type_mismatch: {runtime}")
+        return
+
+    # TODO: make this better
+    try:
+        runtime_params = set(inspect.signature(runtime).parameters)
+        stub_params = set(arg.variable.name for arg in stub.arguments)
+        todo = runtime_params.symmetric_difference(stub_params)
+        if todo:
+            yield Error(f"arg_mismatch: {todo} at {runtime}")
+    except ValueError:
+        # inspect.signature throws sometimes
+        pass
 
 
 @verify.register(Missing)
