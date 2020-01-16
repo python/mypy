@@ -13,6 +13,7 @@ from collections import defaultdict
 from functools import singledispatch
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterator,
     List,
@@ -33,6 +34,7 @@ from mypy import nodes
 from mypy.errors import CompileError
 from mypy.modulefinder import FindModuleCache
 from mypy.options import Options
+from mypy.util import FancyFormatter
 
 
 class Missing:
@@ -46,8 +48,68 @@ T = TypeVar("T")
 MaybeMissing = Union[T, Missing]
 
 
-class Error(str):
-    pass
+class Error:
+    def __init__(
+        self,
+        message: str,
+        stub_object: MaybeMissing[nodes.Node],
+        runtime_object: MaybeMissing[Any],
+        stub_printer: Optional[Callable[[nodes.Node], str]] = None,
+        runtime_printer: Optional[Callable[[Any], str]] = None,
+    ) -> None:
+        self.message = message
+        self.stub_object = stub_object
+        self.runtime_object = runtime_object
+        if stub_printer is None:
+            stub_printer = lambda stub: str(stub.type)
+        self.stub_printer = lambda s: s if isinstance(s, Missing) else stub_printer(s)
+        if runtime_printer is None:
+            runtime_printer = lambda runtime: str(runtime)
+        self.runtime_printer = (
+            lambda s: s if isinstance(s, Missing) else runtime_printer(s)
+        )
+
+    def __str__(self) -> str:
+        stub_line = None
+        stub_file = None
+        if not isinstance(self.stub_object, Missing):
+            stub_line = self.stub_object.line
+        # TODO: Find a way of getting the stub file
+
+        stub_loc_str = ""
+        if stub_line:
+            stub_loc_str += f" at line {stub_line}"
+        if stub_file:
+            stub_loc_str += f" in file {stub_file}"
+
+        runtime_line = None
+        runtime_file = None
+        if not isinstance(self.runtime_object, Missing):
+            try:
+                runtime_line = inspect.getsourcelines(self.runtime_object)[1]
+            except (OSError, TypeError):
+                pass
+            try:
+                runtime_file = inspect.getsourcefile(self.runtime_object)
+            except TypeError:
+                pass
+
+        runtime_loc_str = ""
+        if runtime_line:
+            runtime_loc_str += f" at line {runtime_line}"
+        if runtime_file:
+            runtime_loc_str += f" in file {runtime_file}"
+
+        return "".join(
+            [
+                formatter.style("error:", "red", bold=True),
+                f" {self.message}\n",
+                f"Stub{stub_loc_str}:\n",
+                f"{self.stub_printer(self.stub_object)}\n",
+                f"Runtime{runtime_loc_str}:\n",
+                f"{self.runtime_printer(self.runtime_object)}\n",
+            ]
+        )
 
 
 def test_module(
@@ -76,7 +138,7 @@ def trace(fn):
 
 @singledispatch
 def verify(stub: nodes.Node, runtime: MaybeMissing[Any]) -> Iterator[Error]:
-    print("unknown mypy node " + str(stub))
+    yield Error("unknown mypy node", stub, runtime)
 
 
 @verify.register(nodes.MypyFile)
@@ -85,10 +147,10 @@ def verify_mypyfile(
     stub: nodes.MypyFile, runtime: MaybeMissing[types.ModuleType]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
-        yield Error("not_in_runtime")
+        yield Error("not_in_runtime", stub, runtime)
         return
     if not isinstance(runtime, types.ModuleType):
-        yield Error("type_mismatch")
+        yield Error("type_mismatch", stub, runtime)
         return
 
     # Check all things in the stub
@@ -114,10 +176,10 @@ def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Type[Any]]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
-        yield Error("not_in_runtime")
+        yield Error("not_in_runtime", stub, runtime)
         return
     if not isinstance(runtime, type):
-        yield Error("type_mismatch")
+        yield Error("type_mismatch", stub, runtime)
         return
 
     to_check = set(stub.names)
@@ -136,10 +198,10 @@ def verify_funcitem(
     stub: nodes.FuncItem, runtime: MaybeMissing[types.FunctionType]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
-        yield Error("not_in_runtime")
+        yield Error("not_in_runtime", stub, runtime)
         return
     if not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
-        yield Error(f"type_mismatch: {runtime}")
+        yield Error("type_mismatch", stub, runtime)
         return
 
     # TODO: make this better
@@ -148,7 +210,7 @@ def verify_funcitem(
         stub_params = set(arg.variable.name for arg in stub.arguments)
         todo = runtime_params.symmetric_difference(stub_params)
         if todo:
-            yield Error(f"arg_mismatch: {todo} at {runtime}")
+            yield Error(f"arg_mismatch: {todo}", stub, runtime)
     except ValueError:
         # inspect.signature throws sometimes
         pass
@@ -157,7 +219,7 @@ def verify_funcitem(
 @verify.register(Missing)
 @trace
 def verify_none(stub: Missing, runtime: MaybeMissing[Any]) -> Iterator[Error]:
-    yield Error(f"not_in_stub: {runtime}")
+    yield Error("not_in_stub", stub, runtime)
     if isinstance(runtime, Missing):
         raise RuntimeError
 
@@ -166,12 +228,13 @@ def verify_none(stub: Missing, runtime: MaybeMissing[Any]) -> Iterator[Error]:
 @trace
 def verify_var(stub: nodes.Var, runtime: MaybeMissing[Any]) -> Iterator[Error]:
     if isinstance(runtime, Missing):
-        yield Error("not_in_runtime")
+        # Don't yield an error here, because we often can't find instance variables
+        # yield Error("not_in_runtime", stub, runtime)
         return
     # TODO: Make this better
     if isinstance(stub, mypy.types.Instance):
         if stub.type.type.name != runtime.__name__:
-            yield Error(f"var_mismatch: {runtime}")
+            yield Error(f"var_mismatch", stub, runtime)
 
 
 @verify.register(nodes.OverloadedFuncDef)
@@ -245,5 +308,6 @@ def main() -> Iterator[Error]:
 
 
 if __name__ == "__main__":
+    formatter = FancyFormatter(sys.stdout, sys.stderr, False)
     for err in main():
         print(err)
