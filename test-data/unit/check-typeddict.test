@@ -202,7 +202,7 @@ p: Point
 reveal_type(p) # N: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, '_y': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassOverwriting]
+[case testCannotCreateTypedDictWithDuplicateField]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
@@ -214,7 +214,7 @@ b: Bad
 reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassOverwriting2]
+[case testCanCreateTypedDictWithClassOverwriting]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
@@ -222,24 +222,24 @@ class Point1(TypedDict):
     x: int
 class Point2(TypedDict):
     x: float
-class Bad(Point1, Point2): # E: Cannot overwrite TypedDict field "x" while merging
+class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
     pass
 
 b: Bad
 reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassOverwriting2]
+[case testCanCreateTypedDictWithClassOverwriting2]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point1(TypedDict):
     x: int
 class Point2(Point1):
-    x: float # E: Cannot overwrite TypedDict field "x" while extending
+    x: float # E: Overwriting TypedDict field "x" while extending
 
 p2: Point2
-reveal_type(p2) # N: Revealed type is 'TypedDict('__main__.Point2', {'x': builtins.int})'
+reveal_type(p2) # N: Revealed type is 'TypedDict('__main__.Point2', {'x': builtins.float})'
 [builtins fixtures/dict.pyi]
 
 
