@@ -131,16 +131,6 @@ def test_module(
         yield from verify(stub, runtime, [mod])
 
 
-def trace(fn):
-    import functools
-
-    @functools.wraps(fn)
-    def new_fn(*args, **kwargs):
-        return fn(*args, **kwargs)
-
-    return new_fn
-
-
 @singledispatch
 def verify(
     stub: nodes.Node, runtime: MaybeMissing[Any], object_path: List[str]
@@ -149,7 +139,6 @@ def verify(
 
 
 @verify.register(nodes.MypyFile)
-@trace
 def verify_mypyfile(
     stub: nodes.MypyFile,
     runtime: MaybeMissing[types.ModuleType],
@@ -181,7 +170,6 @@ def verify_mypyfile(
 
 
 @verify.register(nodes.TypeInfo)
-@trace
 def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Type[Any]], object_path: List[str]
 ) -> Iterator[Error]:
@@ -204,7 +192,6 @@ def verify_typeinfo(
 
 
 @verify.register(nodes.FuncItem)
-@trace
 def verify_funcitem(
     stub: nodes.FuncItem,
     runtime: MaybeMissing[types.FunctionType],
@@ -294,7 +281,6 @@ def verify_funcitem(
 
 
 @verify.register(Missing)
-@trace
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
@@ -304,7 +290,6 @@ def verify_none(
 
 
 @verify.register(nodes.Var)
-@trace
 def verify_var(
     stub: nodes.Var, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
@@ -320,7 +305,6 @@ def verify_var(
 
 
 @verify.register(nodes.OverloadedFuncDef)
-@trace
 def verify_overloadedfuncdef(
     stub: nodes.OverloadedFuncDef, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
@@ -329,7 +313,6 @@ def verify_overloadedfuncdef(
 
 
 @verify.register(nodes.TypeVarExpr)
-@trace
 def verify_typevarexpr(
     stub: nodes.TypeVarExpr, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
@@ -338,7 +321,6 @@ def verify_typevarexpr(
 
 
 @verify.register(nodes.Decorator)
-@trace
 def verify_decorator(
     stub: nodes.Decorator, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
@@ -351,7 +333,6 @@ def verify_decorator(
 
 
 @verify.register(nodes.TypeAlias)
-@trace
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
