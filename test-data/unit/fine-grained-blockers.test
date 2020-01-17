@@ -405,6 +405,7 @@ import blocker
 [file a.py.4]
 import sys
 1()
+[builtins fixtures/tuple.pyi]
 [out]
 ==
 a.py:1: error: invalid syntax

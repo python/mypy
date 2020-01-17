@@ -8,6 +8,7 @@ b = x[0]
 a = x[1]
 a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithTupleFieldNamesUsedAsTuple]
 from collections import namedtuple
@@ -19,6 +20,7 @@ b = x[0]
 a = x[1]
 a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleUnicode_python2]
 from __future__ import unicode_literals
@@ -34,6 +36,7 @@ X = namedtuple('X', ('x', 'y'))  # type: ignore
 from collections import namedtuple
 
 X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() field names cannot start with an underscore: _y, _z
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAccessingAttributes]
 from collections import namedtuple
@@ -43,6 +46,7 @@ x = None  # type: X
 x.x
 x.y
 x.z # E: "X" has no attribute "z"
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleClassPython35]
 # flags: --python-version 3.5
@@ -50,6 +54,7 @@ from typing import NamedTuple
 
 class A(NamedTuple):
     x = 3  # type: int
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: NamedTuple class syntax is only supported in Python 3.6
 
@@ -62,6 +67,7 @@ from typing import NamedTuple
 
 class A(NamedTuple):
     x: int
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAttributesAreReadOnly]
 from collections import namedtuple
@@ -77,6 +83,7 @@ a = None  # type: A
 a.x = 5 # E: Property "x" defined in "X" is read-only
 a.y = 5 # E: Property "y" defined in "X" is read-only
 -- a.z = 5 # not supported yet
+[builtins fixtures/tuple.pyi]
 
 
 [case testTypingNamedTupleAttributesAreReadOnly]
@@ -91,6 +98,7 @@ class A(NamedTuple):
 
 a: HasX = A("foo")
 a.x = "bar"
+[builtins fixtures/tuple.pyi]
 [out]
 main:10: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
 main:10: note: Protocol member HasX.x expected settable variable, got read-only attribute
@@ -105,6 +113,7 @@ x.x
 x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Too few arguments for "X"
 x = X(1, 2, 3)  # E: Too many arguments for "X"
+[builtins fixtures/tuple.pyi]
 
 [case testCreateNamedTupleWithKeywordArguments]
 from collections import namedtuple
@@ -114,6 +123,7 @@ x = X(x=1, y='x')
 x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
 x = X(y=1) # E: Missing positional argument "x" in call to "X"
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleCreateAndUseAsTuple]
 from collections import namedtuple
@@ -122,6 +132,7 @@ X = namedtuple('X', 'x y')
 x = X(1, 'x')
 a, b = x
 a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAdditionalArgs]
 from collections import namedtuple
@@ -169,6 +180,7 @@ x, y = n
 if int():
     x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [targets __main__, __main__.N.__new__, __main__.N._asdict, __main__.N._make, __main__.N._replace]
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTupleWithTupleFieldNamesWithItemTypes]
@@ -183,6 +195,7 @@ i = n.b # type: int  # E: Incompatible types in assignment (expression has type 
 x, y = n
 if int():
     x = y  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTupleConstructorArgumentTypes]
@@ -193,6 +206,7 @@ n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "in
 n = N(1, b=2)   # E: Argument "b" to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAsBaseClass]
 from typing import NamedTuple
@@ -209,6 +223,7 @@ if int():
     i, s = x
 if int():
     s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAsBaseClass2]
 from typing import NamedTuple
@@ -224,6 +239,7 @@ if int():
     i, s = x
 if int():
     s, s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTuplesTwoAsBaseClasses]
@@ -232,6 +248,7 @@ A = NamedTuple('A', [('a', int)])
 B = NamedTuple('B', [('a', int)])
 class X(A, B):  # E: Class has two incompatible bases derived from tuple
     pass
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTuplesTwoAsBaseClasses2]
@@ -239,6 +256,7 @@ from typing import NamedTuple
 A = NamedTuple('A', [('a', int)])
 class X(A, NamedTuple('B', [('a', int)])): # E: Class has two incompatible bases derived from tuple
     pass
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTupleSelfTypeWithNamedTupleAsBase]
@@ -254,6 +272,7 @@ class B(A):
             i, s = self
             i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                               variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 
 [out]
@@ -273,6 +292,7 @@ class B(A):
                                   variable has type "str")
             i, i = self  # E: Incompatible types in assignment (expression has type "str", \
                               variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 [out]
 
@@ -297,6 +317,7 @@ if int():
     t = b
 if int():
     a = b
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTupleSimpleTypeInference]
@@ -326,6 +347,7 @@ MyNamedTuple.x # E: "Type[MyNamedTuple]" has no attribute "x"
 [case testNamedTupleEmptyItems]
 from typing import NamedTuple
 A = NamedTuple('A', [])
+[builtins fixtures/tuple.pyi]
 
 
 [case testNamedTupleProperty]
@@ -383,6 +405,7 @@ x = None  # type: X
 reveal_type(x._replace())  # N: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
 x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleMake]
 from typing import NamedTuple
@@ -403,6 +426,7 @@ from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._fields)  # N: Revealed type is 'Tuple[builtins.str, builtins.str]'
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSource]
 from typing import NamedTuple
@@ -411,6 +435,7 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._source)  # N: Revealed type is 'builtins.str'
 x = None  # type: X
 reveal_type(x._source)  # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleUnit]
 from typing import NamedTuple
@@ -419,6 +444,7 @@ X = NamedTuple('X', [])
 x = X()  # type: X
 x._replace()
 x._fields[0]  # E: Tuple index out of range
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleJoinNamedTuple]
 from typing import NamedTuple
@@ -469,6 +495,7 @@ g(D())  # E: Argument 1 to "g" has incompatible type "D"; expected "C"
 y = None  # type: C
 if int():
     y = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSelfTypeMethod]
 from typing import TypeVar, NamedTuple
@@ -488,6 +515,7 @@ b = None  # type: B
 b = B('').member()
 a = B('')
 a = B('').member()
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSelfTypeReplace]
 from typing import NamedTuple, TypeVar
@@ -502,6 +530,7 @@ class B(A):
 reveal_type(B('hello')._replace(x=''))  # N: Revealed type is 'Tuple[builtins.str, fallback=__main__.B]'
 b = None  # type: B
 b = B('hello')._replace(x='')
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSelfTypeMake]
 from typing import NamedTuple, TypeVar
@@ -520,7 +549,7 @@ b = B._make([''])  # type: B
 [case testNamedTupleIncompatibleRedefinition]
 from typing import NamedTuple
 class Crash(NamedTuple):
-    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
+    count: int  # E: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], object], int]")
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInClassNamespace]
@@ -532,12 +561,14 @@ class C:
     def g(self):
         A = NamedTuple('A', [('y', int)])
 C.A  # E: "Type[C]" has no attribute "A"
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInFunction]
 from typing import NamedTuple
 def f() -> None:
     A = NamedTuple('A', [('x', int)])
 A  # E: Name 'A' is not defined
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleForwardAsUpperBound]
 from typing import NamedTuple, TypeVar, Generic
@@ -551,6 +582,7 @@ reveal_type(G[M]().x.x)  # N: Revealed type is 'builtins.int'
 reveal_type(G[M]().x[0])  # N: Revealed type is 'builtins.int'
 
 M = NamedTuple('M', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNamedTupleWithImportCycle]
@@ -569,6 +601,7 @@ def f(x: a.X) -> None:
     reveal_type(x)
     x = a.X(1)
     reveal_type(x)
+[builtins fixtures/tuple.pyi]
 [out]
 tmp/b.py:4: note: Revealed type is 'Tuple[Any, fallback=a.X]'
 tmp/b.py:6: note: Revealed type is 'Tuple[Any, fallback=a.X]'
@@ -588,6 +621,7 @@ def f(x: a.N) -> None:
     if int():
         x = a.N(1)
         reveal_type(x)
+[builtins fixtures/tuple.pyi]
 [out]
 tmp/b.py:4: note: Revealed type is 'Tuple[Any, fallback=a.N]'
 tmp/b.py:7: note: Revealed type is 'Tuple[Any, fallback=a.N]'
@@ -603,6 +637,7 @@ def bar(nt: MyNamedTuple) -> MyNamedTuple:
 
 x: MyNamedTuple
 reveal_type(x.parent) # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
 
 -- Some crazy self-referential named tuples and types dicts
 -- to be sure that everything works
@@ -626,6 +661,7 @@ class B:
         return 'b'
     def aWithTuple(self, atuple: 'a.ATuple') -> str:
         return 'a'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSelfRefNT1]
@@ -751,6 +787,7 @@ from a import C
 from typing import NamedTuple
 
 tp = NamedTuple('tp', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSubclassOfRecursiveNamedTuple]
@@ -775,6 +812,7 @@ class Real(NamedTuple):
     def __sub__(self, other: Real) -> str: return ""
 class Fraction(Real):
     def __rsub__(self, other: Real) -> Real: return other  # E: Signatures of "__rsub__" of "Fraction" and "__sub__" of "Real" are unsafely overlapping
+[builtins fixtures/tuple.pyi]
 
 [case testForwardReferenceInNamedTuple]
 from typing import NamedTuple
@@ -785,6 +823,7 @@ class A(NamedTuple):
 
 class B:
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testTypeNamedTupleClassmethod]
 from typing import Type, NamedTuple
@@ -809,6 +848,7 @@ class CallableTuple(Thing):
 
 o = CallableTuple('hello ', 12)
 o()
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleSubclassMulti]
 from typing import NamedTuple
@@ -837,6 +877,7 @@ class Child(Base):
 
 Base(param=10)
 Child(param=10)
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleClassMethodWithGenericReturnValue]
 from typing import TypeVar, Type, NamedTuple
@@ -896,6 +937,7 @@ reveal_type(u.field_1)  # N: Revealed type is 'typing.Mapping[Tuple[builtins.int
 reveal_type(u.field_2)  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]'
 reveal_type(u[0])  # N: Revealed type is 'typing.Mapping[Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple], builtins.int]'
 reveal_type(u[1])  # N: Revealed type is 'Tuple[builtins.int, builtins.int, fallback=__main__.MyBaseTuple]'
+[builtins fixtures/tuple.pyi]
 
 [case testAssignNamedTupleAsAttribute]
 from typing import NamedTuple
@@ -905,3 +947,4 @@ class A:
         self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: NamedTuple type as an attribute is not supported
 
 reveal_type(A().b)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]

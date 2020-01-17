@@ -181,6 +181,13 @@ def verify_decorator(node: nodes.Decorator,
         yield None
 
 
+@verify.register(nodes.TypeAlias)
+def verify_typealias(node: nodes.TypeAlias,
+                     module_node: Optional[DumpNode]) -> Iterator[ErrorParts]:
+    if False:
+        yield None
+
+
 def dump_module(name: str) -> DumpNode:
     mod = importlib.import_module(name)
     return {'type': 'file', 'names': module_to_json(mod)}
@@ -191,8 +198,7 @@ def build_stubs(options: Options,
                 mod: str) -> Dict[str, nodes.MypyFile]:
     sources = find_module_cache.find_modules_recursive(mod)
     try:
-        res = build.build(sources=sources,
-                          options=options)
+        res = build.build(sources=sources, options=options)
         messages = res.errors
     except CompileError as error:
         messages = error.messages
@@ -212,7 +218,7 @@ def main(args: List[str]) -> Iterator[Error]:
         modules = args[1:]
 
     options = Options()
-    options.python_version = (3, 6)
+    options.incremental = False
     data_dir = default_data_dir()
     search_path = compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)

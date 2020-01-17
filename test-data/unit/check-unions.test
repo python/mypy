@@ -523,6 +523,7 @@ reveal_type(a1)  # N: Revealed type is 'builtins.float'
 b: Union[Tuple[int], Tuple[str]]
 (b1,) = b
 reveal_type(b1)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignDouble]
 from typing import Union, Tuple
@@ -531,6 +532,7 @@ c: Union[Tuple[int, int], Tuple[int, float]]
 (c1, c2) = c
 reveal_type(c1)  # N: Revealed type is 'builtins.int'
 reveal_type(c2)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignGeneric]
 from typing import Union, Tuple, TypeVar
@@ -543,6 +545,7 @@ def pack_two(x: T, y: S) -> Union[Tuple[T, T], Tuple[S, S]]:
 (x, y) = pack_two(1, 'a')
 reveal_type(x)  # N: Revealed type is 'Union[builtins.int*, builtins.str*]'
 reveal_type(y)  # N: Revealed type is 'Union[builtins.int*, builtins.str*]'
+[builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignAny]
 from typing import Union, Tuple, Any
@@ -554,6 +557,7 @@ reveal_type(d2)  # N: Revealed type is 'Union[Any, builtins.float]'
 
 e: Union[Any, Tuple[float, float], int]
 (e1, e2) = e  # E: 'builtins.int' object is not iterable
+[builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignNotJoin]
 from typing import Union, List
@@ -609,6 +613,7 @@ d1: object
 (d1, d2) = d
 reveal_type(d1)  # N: Revealed type is 'builtins.int'
 reveal_type(d2)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignIndexed]
 from typing import Union, Tuple, List

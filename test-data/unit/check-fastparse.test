@@ -113,6 +113,7 @@ with open('test', 'r') as f:  # type: int  # type: ignore
 [case testFastParseTypeWithIgnoreForStmt]
 for i in (1, 2, 3, 100):  # type: str # type: ignore
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testFastParseVariableCommentThenIgnore]
 a="test" # type: int #comment # type: ignore  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -343,6 +344,7 @@ assert (1, 2)  # E: Assertion is always true, perhaps remove parentheses?
 assert (1, 2), 3  # E: Assertion is always true, perhaps remove parentheses?
 assert ()
 assert (1,)  # E: Assertion is always true, perhaps remove parentheses?
+[builtins fixtures/tuple.pyi]
 
 [case testFastParseAssertMessage]
 

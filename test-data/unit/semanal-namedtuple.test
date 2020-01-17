@@ -4,6 +4,7 @@
 from collections import namedtuple
 N = namedtuple('N', ['a'])
 def f() -> N: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
@@ -20,6 +21,7 @@ MypyFile:1(
 from collections import namedtuple
 N = namedtuple('N', ['a', 'xyz'])
 def f() -> N: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
@@ -36,6 +38,7 @@ MypyFile:1(
 from collections import namedtuple
 N = namedtuple('N', ('a', 'xyz'))
 def f() -> N: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
@@ -52,6 +55,7 @@ MypyFile:1(
 from collections import namedtuple
 N = namedtuple('N', ' a  xyz ')
 def f() -> N: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
@@ -68,6 +72,7 @@ MypyFile:1(
 from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
@@ -79,6 +84,7 @@ MypyFile:1(
 from typing import NamedTuple
 N = NamedTuple('N', (('a', int),
                      ('b', str)))
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
@@ -90,6 +96,7 @@ MypyFile:1(
 from collections import namedtuple
 N = namedtuple('N', ['x'])
 class A(N): pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
@@ -107,6 +114,7 @@ MypyFile:1(
 [case testNamedTupleBaseClass2]
 from collections import namedtuple
 class A(namedtuple('N', ['x'])): pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(collections, [namedtuple])
@@ -121,6 +129,7 @@ MypyFile:1(
 [case testNamedTupleBaseClassWithItemTypes]
 from typing import NamedTuple
 class A(NamedTuple('N', [('x', int)])): pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [NamedTuple])
@@ -137,33 +146,40 @@ MypyFile:1(
 [case testNamedTupleWithTooFewArguments]
 from collections import namedtuple
 N = namedtuple('N') # E: Too few arguments for namedtuple()
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidName]
 from collections import namedtuple
 N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first argument
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidItems]
 from collections import namedtuple
 N = namedtuple('N', 1) # E: List or tuple literal expected as the second argument to namedtuple()
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidItems2]
 from collections import namedtuple
 N = namedtuple('N', ['x', 1]) # E: String literal expected as namedtuple() item
+[builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithUnderscoreItemName]
 from collections import namedtuple
 N = namedtuple('N', ['_fallback']) # E: namedtuple() field names cannot start with an underscore: _fallback
+[builtins fixtures/tuple.pyi]
 
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testNamedTupleWithNonpositionalArgs]
 from collections import namedtuple
 N = namedtuple(typename='N', field_names=['x']) # E: Unexpected arguments to namedtuple()
+[builtins fixtures/tuple.pyi]
 
 [case testInvalidNamedTupleBaseClass]
 from typing import NamedTuple
 class A(NamedTuple('N', [1])): pass # E: Tuple expected as NamedTuple() field
 class B(A): pass
+[builtins fixtures/tuple.pyi]
 
 [case testInvalidNamedTupleBaseClass2]
 

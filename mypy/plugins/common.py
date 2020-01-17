@@ -1,15 +1,18 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, Expression, SYMBOL_FUNCBASE_TYPES,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var
+    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
-from mypy.plugin import ClassDefContext
+from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import set_callable_name
-from mypy.types import CallableType, Overloaded, Type, TypeVarDef, get_proper_type
+from mypy.types import (
+    CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
+)
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
+from mypy.fixup import TypeFixer
 
 
 def _get_decorator_bool_argument(
@@ -128,3 +131,11 @@ def add_method(
 
     info.names[name] = SymbolTableNode(MDEF, func, plugin_generated=True)
     info.defn.defs.body.append(func)
+
+
+def deserialize_and_fixup_type(
+    data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
+) -> Type:
+    typ = deserialize_type(data)
+    typ.accept(TypeFixer(api.modules, allow_missing=False))
+    return typ

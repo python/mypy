@@ -28,10 +28,10 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
-import hashlib
 import os
 import stat
 from typing import Dict, List, Set
+from mypy.util import hash_digest
 
 
 class FileSystemCache:
@@ -256,12 +256,11 @@ class FileSystemCache:
                 self.read_error_cache[path] = err
                 raise
 
-        md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
-        self.hash_cache[path] = md5hash
+        self.hash_cache[path] = hash_digest(data)
         return data
 
-    def md5(self, path: str) -> str:
+    def hash_digest(self, path: str) -> str:
         if path not in self.hash_cache:
             self.read(path)
         return self.hash_cache[path]

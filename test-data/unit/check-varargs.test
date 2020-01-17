@@ -462,6 +462,7 @@ def foo() -> None:
     pass
 
 foo(*())
+[builtins fixtures/tuple.pyi]
 
 -- Overloads + varargs
 -- -------------------

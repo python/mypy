@@ -126,6 +126,7 @@ T = TypeVar('T', bound=Tuple[A, B])
 
 def f(x: T) -> T:
     return x
+[builtins fixtures/tuple.pyi]
 [out]
 <m.A> -> <m.T>, <m.f>, m, m.A, m.f
 <m.B> -> <m.T>, <m.f>, m, m.B, m.f

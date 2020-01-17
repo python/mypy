@@ -273,7 +273,7 @@ class Server:
         res.update(get_meminfo())
         if fswatcher_dump_file:
             data = self.fswatcher.dump_file_data() if hasattr(self, 'fswatcher') else {}
-            # Using .dumps and then writing was noticably faster than using dump
+            # Using .dumps and then writing was noticeably faster than using dump
             s = json.dumps(data)
             with open(fswatcher_dump_file, 'w') as f:
                 f.write(s)
@@ -423,7 +423,7 @@ class Server:
                 assert state.path is not None
                 self.fswatcher.set_file_data(
                     state.path,
-                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
+                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash))
 
             changed, removed = self.find_changed(sources)
 
