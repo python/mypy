@@ -200,7 +200,9 @@ def verify_funcitem(
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
-    if not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
+    if not isinstance(
+        runtime, (types.FunctionType, types.BuiltinFunctionType)
+    ) and not inspect.ismethoddescriptor(runtime):
         yield Error(object_path, "is not a function", stub, runtime)
         return
 
@@ -210,20 +212,23 @@ def verify_funcitem(
         # inspect.signature throws sometimes
         return
 
+    def runtime_printer(s: Any) -> str:
+        return "def " + str(inspect.signature(s))
+
     i, j = 0, 0
     stub_args = stub.arguments
     runtime_args = list(signature.parameters.values())
     while i < len(stub_args) or j < len(runtime_args):
         if i >= len(stub_args):
-            # Ignore errors if the stub doesn't take **kwargs, since the stub might just have
-            # listed out the keyword parameters this function takes
+            # Ignore the error if the stub doesn't take **kwargs, for cases where the stub
+            # just listed out the keyword parameters the function takes
             if runtime_args[j].kind != inspect.Parameter.VAR_KEYWORD:
                 yield Error(
                     object_path,
                     f'is inconsistent, stub does not have argument "{runtime_args[j].name}"',
                     stub,
                     runtime,
-                    runtime_printer=lambda s: str(inspect.signature(s)),
+                    runtime_printer=runtime_printer,
                 )
             j += 1
             continue
@@ -233,16 +238,17 @@ def verify_funcitem(
                 f"is inconsistent, runtime does not have argument {stub_args[i].variable.name}",
                 stub,
                 runtime,
-                runtime_printer=lambda s: str(inspect.signature(s)),
+                runtime_printer=runtime_printer,
             )
             i += 1
             continue
 
-        # TODO: maybe don't check by name for positional-only args, dunder methods
+        # TODO: maybe don't check by name for positional-only args
         # TODO: stricter checking of positional-only, keyword-only
         # TODO: check type compatibility of default args
         # TODO: overloads are sometimes pretty deceitful, so handle that better
 
+        # Allow *args and **kwargs to soak up extra args and kwargs
         stub_arg, runtime_arg = stub_args[i], runtime_args[j]
         if (stub_arg.kind == mypy.nodes.ARG_STAR) and (
             runtime_arg.kind != inspect.Parameter.VAR_POSITIONAL
@@ -266,15 +272,19 @@ def verify_funcitem(
             i += 1
             continue
 
-        if stub_arg.variable.name != runtime_arg.name:
-            # TODO: _asdict takes _self and self
+        # Ignore exact names for all dunder methods other than __init__
+        is_dunder_method = stub.name != "__init__" and stub.name.startswith("__")
+        if (
+            stub_arg.variable.name.replace("_", "") != runtime_arg.name.replace("_", "")
+            and not is_dunder_method
+        ):
             yield Error(
                 object_path,
                 f'is inconsistent, stub argument "{stub_arg.variable.name}" differs from '
                 f'runtime argument "{runtime_arg.name}"',
                 stub,
                 runtime,
-                runtime_printer=lambda s: str(inspect.signature(s)),
+                runtime_printer=runtime_printer,
             )
         i += 1
         j += 1
