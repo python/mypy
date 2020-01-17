@@ -1,7 +1,7 @@
 """Tests for stubs.
 
-Verify that various things in stubs are consistent with how things behave
-at runtime.
+Verify that various things in stubs are consistent with how things behave at runtime.
+
 """
 
 import argparse
@@ -9,23 +9,10 @@ import importlib
 import inspect
 import sys
 import types
-from collections import defaultdict
 from functools import singledispatch
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Mapping,
-    NamedTuple,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Dict, Iterator, List, Optional, TypeVar, Union
 
-from typing_extensions import Final, Type
+from typing_extensions import Type
 
 import mypy.build
 import mypy.modulefinder
