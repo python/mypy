@@ -815,7 +815,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )
     # For other names surrendered by underscores, we don't make them Enum members
-    if name.startswith('__') and name.endswith("__"):
+    if name.startswith('__') and name.endswith("__") and name.replace('_', '') != '':
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
