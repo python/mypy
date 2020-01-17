@@ -365,7 +365,7 @@ def build_stubs(
     return res.files
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("modules", nargs="+", help="Modules to test")
     parser.add_argument(
@@ -389,11 +389,14 @@ def main() -> None:
     search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)
 
+    exit_code = 0
     for module in args.modules:
         for error in test_module(module, options, find_module_cache):
             if not args.ignore_missing_stub or not error.is_missing_stub():
+                exit_code = 1
                 print(error.get_description(concise=args.concise))
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
