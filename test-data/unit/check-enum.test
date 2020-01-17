@@ -991,6 +991,5 @@ class Comparator(enum.Enum):
     def foo(self) -> int:
         return Comparator.__foo__[self.value]
 
-Comparator.LessThan.foo()
-Comparator("<").foo()
+reveal_type(Comparator.__foo__)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 [builtins fixtures/dict.pyi]
