@@ -68,7 +68,10 @@ class Error:
     def is_missing_stub(self) -> bool:
         return isinstance(self.stub_object, Missing)
 
-    def __str__(self) -> str:
+    def get_description(self, concise: bool = False) -> str:
+        if concise:
+            return _style(self.object_desc, bold=True) + " " + self.message
+
         stub_line = None
         stub_file = None
         if not isinstance(self.stub_object, Missing):
@@ -362,13 +365,16 @@ def build_stubs(
     return res.files
 
 
-def main() -> Iterator[Error]:
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("modules", nargs="+", help="Modules to test")
     parser.add_argument(
         "--ignore-missing-stub",
         action="store_true",
         help="Ignore errors for stub missing things that are present at runtime",
+    )
+    parser.add_argument(
+        "--concise", action="store_true", help="Make output concise",
     )
     parser.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
@@ -386,9 +392,8 @@ def main() -> Iterator[Error]:
     for module in args.modules:
         for error in test_module(module, options, find_module_cache):
             if not args.ignore_missing_stub or not error.is_missing_stub():
-                yield error
+                print(error.get_description(concise=args.concise))
 
 
 if __name__ == "__main__":
-    for err in main():
-        print(err)
+    main()
