@@ -1136,3 +1136,29 @@ else:
     reveal_type(x4)  # N: Revealed type is '__main__.Foo'
     reveal_type(x5)  # N: Revealed type is '__main__.Foo'
 [builtins fixtures/primitives.pyi]
+
+[case testPrivateAttributeNotAsEnumMembers]
+import enum
+
+class Comparator(enum.Enum):
+    LessThan = "<"
+    LessThanOrEqualTo = "<="
+    EqualTo = "=="
+    NotEqualTo = "!="
+    GreaterThanOrEqualTo = ">="
+    GreaterThan = ">"
+
+    __foo__ = {
+        LessThan: 1,
+        LessThanOrEqualTo: 2,
+        EqualTo: 3,
+        NotEqualTo: 4,
+        GreaterThanOrEqualTo: 5,
+        GreaterThan: 6,
+    }
+
+    def foo(self) -> int:
+        return Comparator.__foo__[self.value]
+
+reveal_type(Comparator.__foo__)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+[builtins fixtures/dict.pyi]
