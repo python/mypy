@@ -456,15 +456,24 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("modules", nargs="+", help="Modules to test")
     parser.add_argument(
+        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
+    )
+    parser.add_argument(
         "--ignore-missing-stub",
         action="store_true",
         help="Ignore errors for stub missing things that are present at runtime",
     )
     parser.add_argument(
+        "--whitelist",
+        help="Use file as a whitelist. Whitelists can be created with --output-whitelist",
+    )
+    parser.add_argument(
         "--concise", action="store_true", help="Make output concise",
     )
     parser.add_argument(
-        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
+        "--output-whitelist",
+        action="store_true",
+        help="Print a whitelist (to stdout) to be used with --whitelist",
     )
     args = parser.parse_args()
 
@@ -476,12 +485,23 @@ def main() -> int:
     search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
     find_module_cache = FindModuleCache(search_path)
 
+    whitelist = set()
+    if args.whitelist:
+        with open(args.whitelist) as f:
+            whitelist = set(l.strip() for l in f.readlines())
+
     exit_code = 0
     for module in args.modules:
         for error in test_module(module, options, find_module_cache):
-            if not args.ignore_missing_stub or not error.is_missing_stub():
-                exit_code = 1
-                print(error.get_description(concise=args.concise))
+            if args.ignore_missing_stub and error.is_missing_stub():
+                continue
+            if error.object_desc in whitelist:
+                continue
+            if args.output_whitelist:
+                print(error.object_desc)
+                continue
+            exit_code = 1
+            print(error.get_description(concise=args.concise))
     return exit_code
 
 
