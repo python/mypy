@@ -390,8 +390,15 @@ def verify_funcitem(
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        try:
+            # We shouldn't really get here, however, some modules like distutils.command have some
+            # weird things going on. Try to see if we can find a runtime object by importing it,
+            # otherwise crash.
+            runtime = importlib.import_module(".".join(object_path))
+        except ModuleNotFoundError:
+            assert False
     yield Error(object_path, "is not present in stub", stub, runtime)
-    assert not isinstance(runtime, Missing)
 
 
 @verify.register(nodes.Var)
