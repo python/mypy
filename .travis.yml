@@ -1,5 +1,5 @@
-# we only CI the master, release branches, tags and PRs
-if: tag IS present OR type = pull_request OR ((branch = master OR branch =~ release-*) AND type = push)
+# in the python/mypy repo, we only CI the master, release branches, tags and PRs
+if: tag IS present OR type = pull_request OR ((branch = master OR branch =~ release-*) AND type = push) OR repo != python/mypy
 
 language: python
 # cache package wheels (1 cache per python version)
