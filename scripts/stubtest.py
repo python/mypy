@@ -7,9 +7,11 @@ Verify that various things in stubs are consistent with how things behave at run
 import argparse
 import importlib
 import inspect
+import subprocess
 import sys
 import types
 from functools import singledispatch
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, TypeVar, Union
 
 from typing_extensions import Type
@@ -462,9 +464,49 @@ def build_stubs(
     return res.files
 
 
+def get_typeshed_stdlib_modules(
+    data_dir: str, custom_typeshed_dir: Optional[str]
+) -> List[str]:
+    # This snippet is based on code in mypy.modulefinder.default_lib_path
+    if custom_typeshed_dir:
+        typeshed_dir = Path(custom_typeshed_dir)
+    else:
+        typeshed_dir = Path(data_dir)
+        if (typeshed_dir / "stubs-auto").exists():
+            typeshed_dir /= "stubs-auto"
+        typeshed_dir /= "typeshed"
+
+    versions = ["2and3", "3"]
+    for minor in range(sys.version_info.minor + 1):
+        versions.append(f"3.{minor}")
+
+    modules = []
+    for version in versions:
+        base = typeshed_dir / "stdlib" / version
+        if base.exists():
+            output = subprocess.check_output(
+                ["find", base, "-type", "f"], encoding="utf-8"
+            )
+            paths = [Path(p) for p in output.splitlines()]
+            for path in paths:
+                if path.stem == "__init__":
+                    path = path.parent
+                modules.append(
+                    ".".join(path.relative_to(base).parts[:-1] + (path.stem,))
+                )
+    return sorted(modules)
+
+
 def main() -> int:
+    assert sys.version_info >= (3, 6), "This script requires at least Python 3.6"
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("modules", nargs="+", help="Modules to test")
+    parser.add_argument("modules", nargs="*", help="Modules to test")
+    parser.add_argument(
+        "--check-typeshed",
+        action="store_true",
+        help="Check all stdlib modules in typeshed",
+    )
     parser.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
     )
@@ -500,8 +542,19 @@ def main() -> int:
         with open(args.whitelist) as f:
             whitelist = set(l.strip() for l in f.readlines())
 
+    modules = args.modules
+    if args.check_typeshed:
+        assert (
+            not args.modules
+        ), "Cannot pass both --check-typeshed and a list of modules"
+        modules = get_typeshed_stdlib_modules(data_dir, args.custom_typeshed_dir)
+        # TODO: See if there's a more efficient way to get mypy to build all the stubs, rather than
+        # just one by one
+
+    assert modules, "No modules to check"
+
     exit_code = 0
-    for module in args.modules:
+    for module in modules:
         for error in test_module(module, options, find_module_cache):
             if args.ignore_missing_stub and error.is_missing_stub():
                 continue
