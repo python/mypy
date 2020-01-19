@@ -1479,6 +1479,20 @@ def f_suppresses() -> int:
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
 
+[case testIsInstanceAdHocIntersectionWithStrAndBytes]
+# mypy: warn-unreachable
+x: str
+if isinstance(x, bytes):
+    reveal_type(x)
+y: str
+if isinstance(x, int):
+    reveal_type(x)
+[out]
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
+
 [case testAsyncioFutureWait]
 # mypy: strict-optional
 from asyncio import Future, wait

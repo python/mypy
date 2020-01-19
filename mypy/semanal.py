@@ -81,7 +81,7 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import best_matches, MessageBuilder, pretty_or, SUGGESTED_TEST_FIXTURES
+from mypy.messages import best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
@@ -1802,7 +1802,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             alternatives = set(module.names.keys()).difference({source_id})
             matches = best_matches(source_id, alternatives)[:3]
             if matches:
-                suggestion = "; maybe {}?".format(pretty_or(matches))
+                suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
                 message += "{}".format(suggestion)
         self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(imported_id, context)
