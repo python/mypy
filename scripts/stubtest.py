@@ -284,6 +284,7 @@ def verify_funcitem(
         # Ignore exact names for all dunder methods other than __init__
         if stub.name != "__init__" and stub.name.startswith("__"):
             return
+        # TODO: make this check a little less hacky, maybe be more lax for positional-only args
         if stub_arg.variable.name.replace("_", "") != runtime_arg.name.replace("_", ""):
             yield make_error(
                 f'stub argument "{stub_arg.variable.name}" differs from '
@@ -320,6 +321,14 @@ def verify_funcitem(
             yield make_error(
                 f'stub argument "{stub_arg.variable.name}" should be '
                 "positional-only (rename with a leading double underscore)"
+            )
+        if (
+            runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
+            and stub_arg.variable.name.startswith("__")
+        ):
+            yield make_error(
+                f'stub argument "{stub_arg.variable.name}" is positional or keyword '
+                "(remove leading double underscore)"
             )
 
     # Checks involving *args
