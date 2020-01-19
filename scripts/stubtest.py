@@ -18,7 +18,6 @@ import mypy.build
 import mypy.modulefinder
 import mypy.types
 from mypy import nodes
-from mypy.errors import CompileError
 from mypy.modulefinder import FindModuleCache
 from mypy.options import Options
 from mypy.util import FancyFormatter
@@ -129,8 +128,15 @@ def test_module(
         if (mod == module_name or mod.startswith(module_name + "."))
     }
 
+    if not stubs:
+        yield Error([module_name], "failed to find stubs", MISSING, None)
+
     for mod, stub in stubs.items():
-        runtime = importlib.import_module(mod)
+        try:
+            runtime = importlib.import_module(mod)
+        except Exception as e:
+            yield Error([mod], f"failed to import: {e}", stub, MISSING)
+            continue
         yield from verify(stub, runtime, [mod])
 
 
@@ -244,7 +250,7 @@ def verify_funcitem(
         elif stub_arg.kind == nodes.ARG_STAR2:
             stub_args_varkw = stub_arg
         else:
-            raise ValueError
+            assert False
 
     runtime_args_pos = []
     runtime_args_kwonly = {}
@@ -264,7 +270,7 @@ def verify_funcitem(
         elif runtime_arg.kind == inspect.Parameter.VAR_KEYWORD:
             runtime_args_varkw = runtime_arg
         else:
-            raise ValueError
+            assert False
 
     def verify_arg_name(
         stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
@@ -383,8 +389,7 @@ def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
     yield Error(object_path, "is not present in stub", stub, runtime)
-    if isinstance(runtime, Missing):
-        raise RuntimeError
+    assert not isinstance(runtime, Missing)
 
 
 @verify.register(nodes.Var)
@@ -447,8 +452,13 @@ def build_stubs(
 
     res = mypy.build.build(sources=sources, options=options)
     if res.errors:
-        raise CompileError
-
+        output = [
+            _style("error: ", color="red", bold=True),
+            _style(module_name, bold=True),
+            " failed mypy build.\n",
+        ]
+        print("".join(output) + "\n".join(res.errors))
+        sys.exit(1)
     return res.files
 
 
