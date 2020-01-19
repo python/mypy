@@ -162,15 +162,19 @@ def verify_mypyfile(
         yield Error(object_path, "is not a module", stub, runtime)
         return
 
-    # Check all things in the stub
-    to_check = set(m for m, o in stub.names.items() if o.module_public)
+    # Check things in the stub that are public
+    to_check = set(
+        m
+        for m, o in stub.names.items()
+        if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
+    )
     # Check all things declared in module's __all__
     to_check.update(getattr(runtime, "__all__", []))
     to_check.difference_update(
         {"__file__", "__doc__", "__name__", "__builtins__", "__package__"}
     )
     # We currently don't check things in the module that aren't in the stub, other than things that
-    # are in __all__ to avoid false positives.
+    # are in __all__, to avoid false positives.
 
     for entry in sorted(to_check):
         yield from verify(
