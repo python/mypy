@@ -343,7 +343,11 @@ def parse_mypy_comments(
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
         if strict_found:
-            errors.append((lineno, "Setting 'strict' not supported in inline configuration"))
+            errors.append((lineno,
+                           "Setting 'strict' not supported in inline configuration: specify it in "
+                           "a configuration file instead, or set individual inline flags "
+                           "(see 'mypy -h' for the list of flags enabled in strict mode)"))
+
         sections.update(new_sections)
 
     return sections, errors
