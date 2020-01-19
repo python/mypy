@@ -81,6 +81,7 @@ flagged as an error.
   as 'None' to type-check this :py:meth:`__init__ <object.__init__>` method:
 
   .. code-block:: python
+
       def foo(s: str) -> str:
           return s
 
@@ -96,8 +97,6 @@ flagged as an error.
       class C():
           def __init__(self) -> None:  # Must specify return type to type-check
               foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
-              
-
 
 - **Some imports may be silently ignored**.  Another source of
   unexpected ``Any`` values are the :option:`--ignore-missing-imports
