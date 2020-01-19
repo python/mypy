@@ -284,12 +284,31 @@ def verify_funcitem(
         # Ignore exact names for all dunder methods other than __init__
         if stub.name != "__init__" and stub.name.startswith("__"):
             return
-        # TODO: make this check a little less hacky, maybe be more lax for positional-only args
-        if stub_arg.variable.name.replace("_", "") != runtime_arg.name.replace("_", ""):
-            yield make_error(
-                f'stub argument "{stub_arg.variable.name}" differs from '
-                f'runtime argument "{runtime_arg.name}"'
-            )
+
+        def strip_prefix(s: str, prefix: str) -> str:
+            return s[len(prefix) :] if s.startswith(prefix) else s
+
+        if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
+            return
+
+        def names_approx_match(a: str, b: str) -> bool:
+            a = a.strip("_")
+            b = b.strip("_")
+            return a.startswith(b) or b.startswith(a) or len(a) == 1 or len(b) == 1
+
+        # Be more permissive about names matching for positional-only arguments
+        if (
+            runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
+            and names_approx_match(stub_arg.variable.name, runtime_arg.name)
+        ):
+            return
+        # This comes up with namedtuples, so ignore
+        if stub_arg.variable.name == "_self":
+            return
+        yield make_error(
+            f'stub argument "{stub_arg.variable.name}" differs from '
+            f'runtime argument "{runtime_arg.name}"'
+        )
 
     def verify_arg_default_value(
         stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
