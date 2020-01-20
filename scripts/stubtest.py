@@ -435,10 +435,19 @@ def verify_var(
         if len(object_path) <= 1:
             yield Error(object_path, "is not present at runtime", stub, runtime)
         return
-    # TODO: Make this better
-    if isinstance(stub, mypy.types.Instance):
-        if stub.type.type.name != runtime.__name__:
-            yield Error(object_path, "var_mismatch", stub, runtime)
+
+    runtime_type = get_mypy_type_of_runtime_value(runtime)
+    if (
+        runtime_type is not None
+        and stub.type is not None
+        and not is_subtype_helper(runtime_type, stub.type)
+    ):
+        yield Error(
+            object_path,
+            f"variable differs from runtime type {runtime_type}",
+            stub,
+            runtime,
+        )
 
 
 @verify.register(nodes.OverloadedFuncDef)
@@ -477,6 +486,44 @@ def verify_typealias(
 ) -> Iterator[Error]:
     if False:
         yield None
+
+
+def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
+    with mypy.state.strict_optional_set(True):
+        return mypy.subtypes.is_subtype(left, right)
+
+
+def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
+    if runtime is None:
+        return mypy.types.NoneType()
+    if isinstance(runtime, property):
+        return None
+    if isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
+        # TODO: Construct a mypy.types.CallableType
+        return None
+    stub = get_stub(type(runtime).__module__)
+    if stub is not None:
+        type_name = type(runtime).__name__
+        if type_name in stub.names:
+            type_info = stub.names[type_name].node
+            if isinstance(type_info, nodes.TypeInfo):
+                anytype = lambda: mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+
+                if isinstance(runtime, tuple):
+                    opt_items = [get_mypy_type_of_runtime_value(v) for v in runtime]
+                    items = [(i if i is not None else anytype()) for i in opt_items]
+                    fallback = mypy.types.Instance(type_info, [anytype()])
+                    return mypy.types.TupleType(items, fallback)
+
+                # Technically, Literals are supposed to be only bool, int, str or bytes, but this
+                # seems to work fine
+                return mypy.types.LiteralType(
+                    value=runtime,
+                    fallback=mypy.types.Instance(
+                        type_info, [anytype() for _ in type_info.type_vars]
+                    ),
+                )
+    return None
 
 
 _all_stubs: Dict[str, nodes.MypyFile] = {}
