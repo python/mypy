@@ -20,7 +20,6 @@ import mypy.build
 import mypy.modulefinder
 import mypy.types
 from mypy import nodes
-from mypy.modulefinder import FindModuleCache
 from mypy.options import Options
 from mypy.util import FancyFormatter
 
@@ -121,25 +120,19 @@ class Error:
         return "".join(output)
 
 
-def test_module(
-    module_name: str, options: Options, find_module_cache: FindModuleCache
-) -> Iterator[Error]:
-    stubs = {
-        mod: stub
-        for mod, stub in build_stubs(module_name, options, find_module_cache).items()
-        if (mod == module_name or mod.startswith(module_name + "."))
-    }
-
-    if not stubs:
+def test_module(module_name: str) -> Iterator[Error]:
+    stub = get_stub(module_name)
+    if stub is None:
         yield Error([module_name], "failed to find stubs", MISSING, None)
+        return
 
-    for mod, stub in stubs.items():
-        try:
-            runtime = importlib.import_module(mod)
-        except Exception as e:
-            yield Error([mod], f"failed to import: {e}", stub, MISSING)
-            continue
-        yield from verify(stub, runtime, [mod])
+    try:
+        runtime = importlib.import_module(module_name)
+    except Exception as e:
+        yield Error([module_name], f"failed to import: {e}", stub, MISSING)
+        return
+
+    yield from verify(stub, runtime, [module_name])
 
 
 @singledispatch
@@ -486,31 +479,46 @@ def verify_typealias(
         yield None
 
 
-def build_stubs(
-    module_name: str, options: Options, find_module_cache: FindModuleCache
-) -> Dict[str, nodes.MypyFile]:
-    sources = find_module_cache.find_modules_recursive(module_name)
+_all_stubs: Dict[str, nodes.MypyFile] = {}
+
+
+def build_stubs(modules: List[str], options: Options) -> None:
+    data_dir = mypy.build.default_data_dir()
+    search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
+    find_module_cache = mypy.modulefinder.FindModuleCache(search_path)
+
+    sources = []
+    # TODO: restore support for automatically recursing into submodules with find_modules_recursive
+    for module in modules:
+        module_path = find_module_cache.find_module(module)
+        if module_path is None:
+            # test_module will yield an error later when it can't find stubs
+            continue
+        sources.append(mypy.modulefinder.BuildSource(module_path, module, None))
 
     res = mypy.build.build(sources=sources, options=options)
     if res.errors:
         output = [
             _style("error: ", color="red", bold=True),
-            _style(module_name, bold=True),
             " failed mypy build.\n",
         ]
         print("".join(output) + "\n".join(res.errors))
         sys.exit(1)
-    return res.files
+
+    global _all_stubs
+    _all_stubs = res.files
 
 
-def get_typeshed_stdlib_modules(
-    data_dir: str, custom_typeshed_dir: Optional[str]
-) -> List[str]:
+def get_stub(module: str) -> Optional[nodes.MypyFile]:
+    return _all_stubs.get(module)
+
+
+def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]:
     # This snippet is based on code in mypy.modulefinder.default_lib_path
     if custom_typeshed_dir:
         typeshed_dir = Path(custom_typeshed_dir)
     else:
-        typeshed_dir = Path(data_dir)
+        typeshed_dir = Path(mypy.build.default_data_dir())
         if (typeshed_dir / "stubs-auto").exists():
             typeshed_dir /= "stubs-auto"
         typeshed_dir /= "typeshed"
@@ -568,14 +576,6 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    options = Options()
-    options.incremental = False
-    options.custom_typeshed_dir = args.custom_typeshed_dir
-
-    data_dir = mypy.build.default_data_dir()
-    search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
-    find_module_cache = FindModuleCache(search_path)
-
     whitelist = set()
     if args.whitelist:
         with open(args.whitelist) as f:
@@ -586,15 +586,19 @@ def main() -> int:
         assert (
             not args.modules
         ), "Cannot pass both --check-typeshed and a list of modules"
-        modules = get_typeshed_stdlib_modules(data_dir, args.custom_typeshed_dir)
-        # TODO: See if there's a more efficient way to get mypy to build all the stubs, rather than
-        # just one by one
+        modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
 
     assert modules, "No modules to check"
 
+    options = Options()
+    options.incremental = False
+    options.custom_typeshed_dir = args.custom_typeshed_dir
+
+    build_stubs(modules, options)
+
     exit_code = 0
     for module in modules:
-        for error in test_module(module, options, find_module_cache):
+        for error in test_module(module):
             if args.ignore_missing_stub and error.is_missing_stub():
                 continue
             if error.object_desc in whitelist:
