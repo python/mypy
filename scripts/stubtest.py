@@ -381,7 +381,7 @@ def verify_funcitem(
             )
 
     # Check keyword-only args
-    for arg in set(stub_args_kwonly) & set(runtime_args_kwonly):
+    for arg in sorted(set(stub_args_kwonly) & set(runtime_args_kwonly)):
         stub_arg, runtime_arg = stub_args_kwonly[arg], runtime_args_kwonly[arg]
         yield from verify_arg_name(stub_arg, runtime_arg)
         yield from verify_arg_default_value(stub_arg, runtime_arg)
@@ -406,12 +406,12 @@ def verify_funcitem(
     if runtime_args_varkw is None or not set(runtime_args_kwonly).issubset(
         set(stub_args_kwonly)
     ):
-        for arg in set(stub_args_kwonly) - set(runtime_args_kwonly):
+        for arg in sorted(set(stub_args_kwonly) - set(runtime_args_kwonly)):
             yield make_error(f'runtime does not have argument "{arg}"')
     if stub_args_varkw is None or not set(stub_args_kwonly).issubset(
         set(runtime_args_kwonly)
     ):
-        for arg in set(runtime_args_kwonly) - set(stub_args_kwonly):
+        for arg in sorted(set(runtime_args_kwonly) - set(stub_args_kwonly)):
             if arg in set(stub_arg.variable.name for stub_arg in stub_args_pos):
                 yield make_error(f'stub argument "{arg}" is not keyword-only')
             else:
