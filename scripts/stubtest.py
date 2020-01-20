@@ -587,6 +587,7 @@ def main() -> int:
             not args.modules
         ), "Cannot pass both --check-typeshed and a list of modules"
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
+        modules.remove("antigravity")  # it's super annoying
 
     assert modules, "No modules to check"
 
