@@ -307,12 +307,25 @@ def verify_funcitem(
         stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
     ) -> Iterator[Error]:
         if runtime_arg.default != inspect.Parameter.empty:
-            # TODO: Check that the default value is compatible with the stub type
             if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
                 yield make_error(
                     f'runtime argument "{runtime_arg.name}" has a default value '
                     "but stub argument does not"
                 )
+            else:
+                runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
+                if (
+                    runtime_type is not None
+                    and stub_arg.variable.type is not None
+                    # Avoid false positives for marker objects
+                    and type(runtime_arg.default) != object
+                    and not is_subtype_helper(runtime_type, stub_arg.variable.type)
+                ):
+                    yield make_error(
+                        f'runtime argument "{runtime_arg.name}" has a default value of type '
+                        f"{runtime_type}, which is incompatible with stub argument type "
+                        f"{stub_arg.variable.type}"
+                    )
         else:
             if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
                 yield make_error(
