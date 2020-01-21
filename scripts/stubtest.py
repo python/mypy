@@ -695,13 +695,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--whitelist",
-        help="Use file as a whitelist. Whitelists can be created with --output-whitelist",
+        help="Use file as a whitelist. Whitelists can be created with --generate-whitelist",
     )
     parser.add_argument(
         "--concise", action="store_true", help="Make output concise",
     )
     parser.add_argument(
-        "--output-whitelist",
+        "--generate-whitelist",
         action="store_true",
         help="Print a whitelist (to stdout) to be used with --whitelist",
     )
@@ -714,8 +714,8 @@ def main() -> int:
         with open(args.whitelist) as f:
             whitelist = {l.strip(): False for l in f.readlines()}
 
-    # If we need to output a whitelist, we store Error.object_desc for each error here.
-    output_whitelist = set()
+    # If we need to generate a whitelist, we store Error.object_desc for each error here.
+    generated_whitelist = set()
 
     modules = args.modules
     if args.check_typeshed:
@@ -745,8 +745,8 @@ def main() -> int:
 
             # We have errors, so change exit code, and output whatever necessary
             exit_code = 1
-            if args.output_whitelist:
-                output_whitelist.add(error.object_desc)
+            if args.generate_whitelist:
+                generated_whitelist.add(error.object_desc)
                 continue
             print(error.get_description(concise=args.concise))
 
@@ -757,8 +757,8 @@ def main() -> int:
             print(f"note: unused whitelist entry {w}")
 
     # Print the generated whitelist
-    if args.output_whitelist:
-        for e in sorted(output_whitelist):
+    if args.generate_whitelist:
+        for e in sorted(generated_whitelist):
             print(e)
         exit_code = 0
 
