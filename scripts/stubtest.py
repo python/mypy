@@ -502,6 +502,15 @@ def verify_typealias(
 
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
+    if (
+        isinstance(left, mypy.types.LiteralType)
+        and isinstance(left.value, int)
+        and left.value in (0, 1)
+        and isinstance(right, mypy.types.Instance)
+        and right.type.fullname == "builtins.bool"
+    ):
+        # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
+        return True
     with mypy.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
