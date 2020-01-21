@@ -25,6 +25,8 @@ from mypy.util import FancyFormatter
 
 
 class Missing:
+    """Marker object for things that are missing (from a stub or the runtime)."""
+
     def __repr__(self) -> str:
         return "MISSING"
 
@@ -38,6 +40,7 @@ _formatter = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
 def _style(message: str, **kwargs: Any) -> str:
+    """Wrapper around mypy.util for fancy formatting."""
     kwargs.setdefault("color", "none")
     return _formatter.style(message, **kwargs)
 
@@ -52,6 +55,16 @@ class Error:
         stub_printer: Optional[Callable[[nodes.Node], str]] = None,
         runtime_printer: Optional[Callable[[Any], str]] = None,
     ) -> None:
+        """Represents an error found by stubtest.
+
+        :param object_path: Location of the object with the error, eg, ["module", "Class", "method"]
+        :param message: Error message
+        :param stub_object: The mypy node representing the stub
+        :param runtime_object: Actual object obtained from the runtime
+        :param stub_printer: Callable to provide specialised output for a given stub object
+        :param runtime_printer: Callable to provide specialised output for a given runtime object
+
+        """
         self.object_desc = ".".join(object_path)
         self.message = message
         self.stub_object = stub_object
@@ -66,9 +79,15 @@ class Error:
         )
 
     def is_missing_stub(self) -> bool:
+        """Whether or not the error is for something missing from the stub."""
         return isinstance(self.stub_object, Missing)
 
     def get_description(self, concise: bool = False) -> str:
+        """Returns a description of the error.
+
+        :param concise: Whether to return a concise, one-line description
+
+        """
         if concise:
             return _style(self.object_desc, bold=True) + " " + self.message
 
@@ -121,6 +140,13 @@ class Error:
 
 
 def test_module(module_name: str) -> Iterator[Error]:
+    """Tests a given module's stub against introspecting it at runtime.
+
+    Requires the stub to have been built already, accomplished by a call to ``build_stubs``.
+
+    :param module_name: The module to test
+
+    """
     stub = get_stub(module_name)
     if stub is None:
         yield Error([module_name], "failed to find stubs", MISSING, None)
@@ -139,6 +165,14 @@ def test_module(module_name: str) -> Iterator[Error]:
 def verify(
     stub: nodes.Node, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
+    """Entry point for comparing a stub to a runtime object.
+
+    We use single dispatch based on the type of ``stub``.
+
+    :param stub: The mypy node representing a part of the stub
+    :param runtime: The runtime object corresponding to ``stub``
+
+    """
     yield Error(object_path, "is an unknown mypy node", stub, runtime)
 
 
@@ -234,6 +268,7 @@ def verify_funcitem(
             runtime_printer=runtime_printer,
         )
 
+    # Extract various arguments by type from the stub
     stub_args_pos = []
     stub_args_kwonly = {}
     stub_args_varpos = None
@@ -251,6 +286,7 @@ def verify_funcitem(
         else:
             assert False
 
+    # Extract various arguments by type from the runtime object
     runtime_args_pos = []
     runtime_args_kwonly = {}
     runtime_args_varpos = None
@@ -274,6 +310,7 @@ def verify_funcitem(
     def verify_arg_name(
         stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
     ) -> Iterator[Error]:
+        """Checks whether argument names match."""
         # Ignore exact names for all dunder methods other than __init__
         if stub.name != "__init__" and stub.name.startswith("__"):
             return
@@ -306,6 +343,7 @@ def verify_funcitem(
     def verify_arg_default_value(
         stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
     ) -> Iterator[Error]:
+        """Checks whether argument default values are compatible."""
         if runtime_arg.default != inspect.Parameter.empty:
             if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
                 yield make_error(
@@ -430,7 +468,8 @@ def verify_none(
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         try:
-            # We shouldn't really get here, however, some modules like distutils.command have some
+            # We shouldn't really get here since that would involve something not existing both in
+            # the stub and the runtime, however, some modules like distutils.command have some
             # weird things going on. Try to see if we can find a runtime object by importing it,
             # otherwise crash.
             runtime = importlib.import_module(".".join(object_path))
@@ -490,7 +529,10 @@ def verify_decorator(
         and isinstance(stub.decorators[0], nodes.NameExpr)
         and stub.decorators[0].fullname == "typing.overload"
     ):
+        # If the only decorator is @typing.overload, just delegate to the usual verify_funcitem
         yield from verify(stub.func, runtime, object_path)
+
+    # TODO: See if there are other common decorators we should be checking
 
 
 @verify.register(nodes.TypeAlias)
@@ -502,6 +544,7 @@ def verify_typealias(
 
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
+    """Checks whether ``left`` is a subtype of ``right``."""
     if (
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
@@ -516,42 +559,59 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
 
 
 def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
+    """Returns a mypy type object representing the type of ``runtime``.
+
+    Returns None if we can't find something that works.
+
+    """
     if runtime is None:
         return mypy.types.NoneType()
     if isinstance(runtime, property):
+        # Give up on properties to avoid issues with things that are typed as attributes.
         return None
     if isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
         # TODO: Construct a mypy.types.CallableType
         return None
+
+    # Try and look up a stub for the runtime object
     stub = get_stub(type(runtime).__module__)
-    if stub is not None:
-        type_name = type(runtime).__name__
-        if type_name in stub.names:
-            type_info = stub.names[type_name].node
-            if isinstance(type_info, nodes.TypeInfo):
-                anytype = lambda: mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+    if stub is None:
+        return None
+    type_name = type(runtime).__name__
+    if type_name not in stub.names:
+        return None
+    type_info = stub.names[type_name].node
+    if not isinstance(type_info, nodes.TypeInfo):
+        return None
 
-                if isinstance(runtime, tuple):
-                    opt_items = [get_mypy_type_of_runtime_value(v) for v in runtime]
-                    items = [(i if i is not None else anytype()) for i in opt_items]
-                    fallback = mypy.types.Instance(type_info, [anytype()])
-                    return mypy.types.TupleType(items, fallback)
+    anytype = lambda: mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
 
-                # Technically, Literals are supposed to be only bool, int, str or bytes, but this
-                # seems to work fine
-                return mypy.types.LiteralType(
-                    value=runtime,
-                    fallback=mypy.types.Instance(
-                        type_info, [anytype() for _ in type_info.type_vars]
-                    ),
-                )
-    return None
+    if isinstance(runtime, tuple):
+        # Special case tuples so we construct a valid mypy.types.TupleType
+        opt_items = [get_mypy_type_of_runtime_value(v) for v in runtime]
+        items = [(i if i is not None else anytype()) for i in opt_items]
+        fallback = mypy.types.Instance(type_info, [anytype()])
+        return mypy.types.TupleType(items, fallback)
+
+    # Technically, Literals are supposed to be only bool, int, str or bytes, but this
+    # seems to work fine
+    return mypy.types.LiteralType(
+        value=runtime,
+        fallback=mypy.types.Instance(
+            type_info, [anytype() for _ in type_info.type_vars]
+        ),
+    )
 
 
 _all_stubs: Dict[str, nodes.MypyFile] = {}
 
 
 def build_stubs(modules: List[str], options: Options) -> None:
+    """Uses mypy to construct stub objects for the given modules.
+
+    This sets global state that ``get_stub`` can access.
+
+    """
     data_dir = mypy.build.default_data_dir()
     search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
     find_module_cache = mypy.modulefinder.FindModuleCache(search_path)
@@ -579,10 +639,12 @@ def build_stubs(modules: List[str], options: Options) -> None:
 
 
 def get_stub(module: str) -> Optional[nodes.MypyFile]:
+    """Returns a stub object for the given module, if we've built one."""
     return _all_stubs.get(module)
 
 
 def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]:
+    """Returns a list of stdlib modules in typeshed (for current Python version)."""
     # This snippet is based on code in mypy.modulefinder.default_lib_path
     if custom_typeshed_dir:
         typeshed_dir = Path(custom_typeshed_dir)
@@ -647,9 +709,12 @@ def main() -> int:
 
     whitelist = {}
     if args.whitelist:
+        # Load the whitelist. This is a series of strings corresponding to Error.object_desc
+        # Values in the dict will store whether we used the whitelist entry or not.
         with open(args.whitelist) as f:
             whitelist = {l.strip(): False for l in f.readlines()}
 
+    # If we need to output a whitelist, we store Error.object_desc for each error here.
     output_whitelist = set()
 
     modules = args.modules
@@ -671,23 +736,27 @@ def main() -> int:
     exit_code = 0
     for module in modules:
         for error in test_module(module):
+            # Filter errors
             if args.ignore_missing_stub and error.is_missing_stub():
                 continue
             if error.object_desc in whitelist:
                 whitelist[error.object_desc] = True
                 continue
 
+            # We have errors, so change exit code, and output whatever necessary
             exit_code = 1
             if args.output_whitelist:
                 output_whitelist.add(error.object_desc)
                 continue
             print(error.get_description(concise=args.concise))
 
+    # Print unused whitelist entries
     for w in whitelist:
         if not whitelist[w]:
             exit_code = 1
             print(f"note: unused whitelist entry {w}")
 
+    # Print the generated whitelist
     if args.output_whitelist:
         for e in sorted(output_whitelist):
             print(e)
