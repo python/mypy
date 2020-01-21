@@ -451,13 +451,13 @@ class Errors:
                 # Add source code fragment and a location marker.
                 if severity == 'error' and source_lines and line > 0:
                     source_line = source_lines[line - 1]
-                    source_line_expanded = source_line.replace('\t', ' ' * 8)
+                    source_line_expanded = source_line.expandtabs()
                     if column < 0:
                         # Something went wrong, take first non-empty column.
                         column = len(source_line) - len(source_line.lstrip())
 
                     # Shifts column after tab expansion
-                    column = len(source_line[:column].replace('\t', ' ' * 8))
+                    column = len(source_line[:column].expandtabs())
 
                     # Note, currently coloring uses the offset to detect source snippets,
                     # so these offsets should not be arbitrary.
