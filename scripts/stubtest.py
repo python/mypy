@@ -650,6 +650,8 @@ def main() -> int:
         with open(args.whitelist) as f:
             whitelist = {l.strip(): False for l in f.readlines()}
 
+    output_whitelist = set()
+
     modules = args.modules
     if args.check_typeshed:
         assert (
@@ -674,16 +676,22 @@ def main() -> int:
             if error.object_desc in whitelist:
                 whitelist[error.object_desc] = True
                 continue
-            if args.output_whitelist:
-                print(error.object_desc)
-                continue
+
             exit_code = 1
+            if args.output_whitelist:
+                output_whitelist.add(error.object_desc)
+                continue
             print(error.get_description(concise=args.concise))
 
     for w in whitelist:
         if not whitelist[w]:
             exit_code = 1
             print(f"note: unused whitelist entry {w}")
+
+    if args.output_whitelist:
+        for e in sorted(output_whitelist):
+            print(e)
+        exit_code = 0
 
     return exit_code
 
