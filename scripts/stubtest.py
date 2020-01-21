@@ -645,10 +645,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    whitelist = set()
+    whitelist = {}
     if args.whitelist:
         with open(args.whitelist) as f:
-            whitelist = set(l.strip() for l in f.readlines())
+            whitelist = {l.strip(): False for l in f.readlines()}
 
     modules = args.modules
     if args.check_typeshed:
@@ -672,12 +672,19 @@ def main() -> int:
             if args.ignore_missing_stub and error.is_missing_stub():
                 continue
             if error.object_desc in whitelist:
+                whitelist[error.object_desc] = True
                 continue
             if args.output_whitelist:
                 print(error.object_desc)
                 continue
             exit_code = 1
             print(error.get_description(concise=args.concise))
+
+    for w in whitelist:
+        if not whitelist[w]:
+            exit_code = 1
+            print(f"note: unused whitelist entry {w}")
+
     return exit_code
 
 
