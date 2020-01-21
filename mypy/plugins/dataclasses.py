@@ -1,6 +1,8 @@
 """Plugin that provides support for dataclasses."""
 
+from collections import OrderedDict
 from typing import Dict, List, Set, Tuple, Optional
+
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -8,12 +10,14 @@ from mypy.nodes import (
     Context, Expression, JsonDict, NameExpr, RefExpr,
     SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
 )
-from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import ClassDefContext, FunctionContext
+from mypy.plugin import SemanticAnalyzerPluginInterface
+from mypy.plugins.common import add_method, _get_decorator_bool_argument, make_typeddict
 from mypy.plugins.common import (
-    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
+    deserialize_and_fixup_type,
 )
-from mypy.types import Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -22,6 +26,10 @@ dataclass_makers = {
 }  # type: Final
 
 SELF_TVAR_NAME = '_DT'  # type: Final
+
+
+def is_type_dataclass(info: TypeInfo) -> bool:
+    return 'dataclass' in info.metadata
 
 
 class DataclassAttribute:
@@ -297,7 +305,7 @@ class DataclassTransformer:
         # we'll have unmodified attrs laying around.
         all_attrs = attrs.copy()
         for info in cls.info.mro[1:-1]:
-            if 'dataclass' not in info.metadata:
+            if not is_type_dataclass(info):
                 continue
 
             super_attrs = []
@@ -386,3 +394,22 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
             args[name] = arg
         return True, args
     return False, {}
+
+
+def asdict_callback(ctx: FunctionContext) -> Type:
+    arg_types = ctx.arg_types[0]
+    if arg_types:
+        dataclass_instance = arg_types[0]
+        if isinstance(dataclass_instance, Instance):
+            info = dataclass_instance.type
+            if is_type_dataclass(info):
+                attrs = info.metadata['dataclass']['attributes']
+                fields = OrderedDict()  # type: OrderedDict[str, Type]
+                for data in attrs:
+                    attr = DataclassAttribute.deserialize(info, data, ctx.api)
+                    sym_node = info.names[attr.name]
+                    typ = sym_node.type
+                    assert typ is not None
+                    fields[attr.name] = typ
+                return make_typeddict(ctx.api, fields=fields, required_keys=set(fields.keys()))
+    return ctx.default_return_type

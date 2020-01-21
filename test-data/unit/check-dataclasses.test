@@ -1032,3 +1032,25 @@ class B(A):
 reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
 
 [builtins fixtures/property.pyi]
+
+[case testDataclassesAsdict]
+from dataclasses import dataclass, asdict
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+@dataclass
+class NotQuiteAPerson:
+    name: str
+    other_field: str
+
+reveal_type(Person)  # N: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
+reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
+Person(**asdict(Person('John', 32)))  # Round-trip works
+NotQuiteAPerson(**asdict(Person('John', 32)))  # E: Extra argument "age" from **args for "NotQuiteAPerson"
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]

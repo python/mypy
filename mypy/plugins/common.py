@@ -1,14 +1,14 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Set
 
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, Expression, SYMBOL_FUNCBASE_TYPES,
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
-from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
+from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface, CheckerPluginInterface
 from mypy.semanal import set_callable_name
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
-)
+    TypedDictType, Instance, TPDICT_FB_NAMES)
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
@@ -139,3 +139,18 @@ def deserialize_and_fixup_type(
     typ = deserialize_type(data)
     typ.accept(TypeFixer(api.modules, allow_missing=False))
     return typ
+
+
+def make_typeddict(api: CheckerPluginInterface, fields: 'OrderedDict[str, Type]',
+                   required_keys: Set[str]) -> TypedDictType:
+    # Try to resolve the TypedDict fallback type
+    anonymous_typeddict_type: Optional[Instance] = None
+    for type_fullname in TPDICT_FB_NAMES:
+        try:
+            anonymous_typeddict_type = api.named_generic_type(type_fullname, [])
+            if anonymous_typeddict_type is not None:
+                break
+        except KeyError:
+            continue
+    assert anonymous_typeddict_type is not None
+    return TypedDictType(fields, required_keys=required_keys, fallback=anonymous_typeddict_type)
