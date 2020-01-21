@@ -476,21 +476,27 @@ def f() -> object:
     return x
 
 [case testImportModuleAsClassMember]
-import warnings
+import test
 
 class A:
     def __init__(self) -> None:
-        self.warnings = warnings
+        self.test = test
 
     def __call__(self) -> None:
-      self.warnings.warn("Message")
+      self.test.foo("Message")
+
+[file test.py]
+def foo(s: str) -> None: ...
 
 [case testLocalImportModuleAsClassMember]
 class A:
     def __init__(self) -> None:
-        import warnings
+        import test
 
-        self.warnings = warnings
+        self.test = test
 
     def __call__(self) -> None:
-      self.warnings.warn("Message")
+      self.test.foo("Message")
+
+[file test.py]
+def foo(s: str) -> None: ...
