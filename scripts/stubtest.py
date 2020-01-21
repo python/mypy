@@ -10,6 +10,7 @@ import inspect
 import subprocess
 import sys
 import types
+import warnings
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, TypeVar, Union
@@ -158,7 +159,10 @@ def test_module(module_name: str) -> Iterator[Error]:
         yield Error([module_name], f"failed to import: {e}", stub, MISSING)
         return
 
-    yield from verify(stub, runtime, [module_name])
+    # collections likes to warn us about the things we're doing
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        yield from verify(stub, runtime, [module_name])
 
 
 @singledispatch
