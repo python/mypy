@@ -13,7 +13,17 @@ import types
 import warnings
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from typing_extensions import Type
 
@@ -237,6 +247,211 @@ def verify_typeinfo(
         )
 
 
+def _verify_static_class_methods(
+    stub: nodes.FuncItem, runtime: types.FunctionType
+) -> Iterator[str]:
+    if isinstance(runtime, classmethod) and not stub.is_class:
+        yield "runtime is a classmethod but stub is not"
+    if not isinstance(runtime, classmethod) and stub.is_class:
+        yield "stub is a classmethod but runtime is not"
+    if isinstance(runtime, staticmethod) and not stub.is_static:
+        yield "runtime is a staticmethod but stub is not"
+    if not isinstance(runtime, classmethod) and stub.is_static:
+        yield "stub is a staticmethod but runtime is not"
+
+
+def _verify_arg_name(
+    stub_arg: nodes.Argument, runtime_arg: inspect.Parameter, function_name: str
+) -> Iterator[str]:
+    """Checks whether argument names match."""
+    # Ignore exact names for all dunder methods other than __init__
+    if function_name != "__init__" and function_name.startswith("__"):
+        return
+
+    def strip_prefix(s: str, prefix: str) -> str:
+        return s[len(prefix) :] if s.startswith(prefix) else s
+
+    if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
+        return
+
+    def names_approx_match(a: str, b: str) -> bool:
+        a = a.strip("_")
+        b = b.strip("_")
+        return a.startswith(b) or b.startswith(a) or len(a) == 1 or len(b) == 1
+
+    # Be more permissive about names matching for positional-only arguments
+    if runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY and names_approx_match(
+        stub_arg.variable.name, runtime_arg.name
+    ):
+        return
+    # This comes up with namedtuples, so ignore
+    if stub_arg.variable.name == "_self":
+        return
+    yield (
+        f'stub argument "{stub_arg.variable.name}" differs from '
+        f'runtime argument "{runtime_arg.name}"'
+    )
+
+
+def _verify_arg_default_value(
+    stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
+) -> Iterator[str]:
+    """Checks whether argument default values are compatible."""
+    if runtime_arg.default != inspect.Parameter.empty:
+        if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
+            yield (
+                f'runtime argument "{runtime_arg.name}" has a default value '
+                "but stub argument does not"
+            )
+        else:
+            runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
+            if (
+                runtime_type is not None
+                and stub_arg.variable.type is not None
+                # Avoid false positives for marker objects
+                and type(runtime_arg.default) != object
+                and not is_subtype_helper(runtime_type, stub_arg.variable.type)
+            ):
+                yield (
+                    f'runtime argument "{runtime_arg.name}" has a default value of type '
+                    f"{runtime_type}, which is incompatible with stub argument type "
+                    f"{stub_arg.variable.type}"
+                )
+    else:
+        if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
+            yield (
+                f'stub argument "{stub_arg.variable.name}" has a default '
+                "value but runtime argument does not"
+            )
+
+
+class Signature(Generic[T]):
+    def __init__(self) -> None:
+        self.pos: List[T] = []
+        self.kwonly: Dict[str, T] = {}
+        self.varpos: Optional[T] = None
+        self.varkw: Optional[T] = None
+
+    @staticmethod
+    def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
+        stub_sig: Signature[nodes.Argument] = Signature()
+        for stub_arg in stub.arguments:
+            if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
+                stub_sig.pos.append(stub_arg)
+            elif stub_arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+                stub_sig.kwonly[stub_arg.variable.name] = stub_arg
+            elif stub_arg.kind == nodes.ARG_STAR:
+                stub_sig.varpos = stub_arg
+            elif stub_arg.kind == nodes.ARG_STAR2:
+                stub_sig.varkw = stub_arg
+            else:
+                raise ValueError
+        return stub_sig
+
+    @staticmethod
+    def from_inspect_signature(
+        signature: inspect.Signature,
+    ) -> "Signature[inspect.Parameter]":
+        runtime_sig: Signature[inspect.Parameter] = Signature()
+        for runtime_arg in signature.parameters.values():
+            if runtime_arg.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            ):
+                runtime_sig.pos.append(runtime_arg)
+            elif runtime_arg.kind == inspect.Parameter.KEYWORD_ONLY:
+                runtime_sig.kwonly[runtime_arg.name] = runtime_arg
+            elif runtime_arg.kind == inspect.Parameter.VAR_POSITIONAL:
+                runtime_sig.varpos = runtime_arg
+            elif runtime_arg.kind == inspect.Parameter.VAR_KEYWORD:
+                runtime_sig.varkw = runtime_arg
+            else:
+                raise ValueError
+        return runtime_sig
+
+
+def _verify_signature(
+    stub: Signature[nodes.Argument],
+    runtime: Signature[inspect.Parameter],
+    function_name: str,
+) -> Iterator[str]:
+    # Check positional arguments match up
+    for stub_arg, runtime_arg in zip(stub.pos, runtime.pos):
+        yield from _verify_arg_name(stub_arg, runtime_arg, function_name)
+        yield from _verify_arg_default_value(stub_arg, runtime_arg)
+        if (
+            runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
+            and not stub_arg.variable.name.startswith("__")
+            and not stub_arg.variable.name.strip("_") == "self"
+            and not function_name.startswith("__")  # noisy for dunder methods
+        ):
+            yield (
+                f'stub argument "{stub_arg.variable.name}" should be '
+                "positional-only (rename with a leading double underscore)"
+            )
+        if (
+            runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
+            and stub_arg.variable.name.startswith("__")
+        ):
+            yield (
+                f'stub argument "{stub_arg.variable.name}" is positional or keyword '
+                "(remove leading double underscore)"
+            )
+
+    # Checks involving *args
+    if len(stub.pos) == len(runtime.pos):
+        if stub.varpos is None and runtime.varpos is not None:
+            yield f'stub does not have *args argument "{runtime.varpos.name}"'
+        if stub.varpos is not None and runtime.varpos is None:
+            yield (
+                f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+            )
+    elif len(stub.pos) > len(runtime.pos):
+        if runtime.varpos is None:
+            for stub_arg in stub.pos[len(runtime.pos) :]:
+                # If the variable is in runtime.kwonly, it's just mislabelled as not a
+                # keyword-only argument; we report the error while checking keyword-only arguments
+                if stub_arg.variable.name not in runtime.kwonly:
+                    yield f'runtime does not have argument "{stub_arg.variable.name}"'
+        # We do not check whether stub takes *args when the runtime does, for cases where the stub
+        # just listed out the extra parameters the function takes
+    elif len(stub.pos) < len(runtime.pos):
+        if stub.varpos is None:
+            for runtime_arg in runtime.pos[len(stub.pos) :]:
+                yield f'stub does not have argument "{runtime_arg.name}"'
+        elif runtime.pos is None:
+            yield (
+                f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+            )
+
+    # Check keyword-only args
+    for arg in sorted(set(stub.kwonly) & set(runtime.kwonly)):
+        stub_arg, runtime_arg = stub.kwonly[arg], runtime.kwonly[arg]
+        yield from _verify_arg_name(stub_arg, runtime_arg, function_name)
+        yield from _verify_arg_default_value(stub_arg, runtime_arg)
+
+    # Checks involving **kwargs
+    if stub.varkw is None and runtime.varkw is not None:
+        # We do not check whether stub takes **kwargs when the runtime does, for cases where the
+        # stub just listed out the extra keyword parameters the function takes
+        # Also check against positional parameters, to avoid a nitpicky message when an argument
+        # isn't marked as keyword-only
+        stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
+        if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
+            yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
+    if stub.varkw is not None and runtime.varkw is None:
+        yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+    if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
+        for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
+            yield f'runtime does not have argument "{arg}"'
+    if stub.varkw is None or not set(stub.kwonly).issubset(set(runtime.kwonly)):
+        for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
+            if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
+                yield f'stub argument "{arg}" is not keyword-only'
+            else:
+                yield f'stub does not have argument "{arg}"'
+
+
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
     stub: nodes.FuncItem,
@@ -254,22 +469,8 @@ def verify_funcitem(
         yield Error(object_path, "is not a function", stub, runtime)
         return
 
-    if isinstance(runtime, classmethod) and not stub.is_class:
-        yield Error(
-            object_path, "runtime is a classmethod but stub is not", stub, runtime
-        )
-    if not isinstance(runtime, classmethod) and stub.is_class:
-        yield Error(
-            object_path, "stub is a classmethod but runtime is not", stub, runtime
-        )
-    if isinstance(runtime, staticmethod) and not stub.is_static:
-        yield Error(
-            object_path, "runtime is a staticmethod but stub is not", stub, runtime
-        )
-    if not isinstance(runtime, classmethod) and stub.is_static:
-        yield Error(
-            object_path, "stub is a staticmethod but runtime is not", stub, runtime
-        )
+    for message in _verify_static_class_methods(stub, runtime):
+        yield Error(object_path, message, stub, runtime)
 
     try:
         signature = inspect.signature(runtime)
@@ -277,210 +478,20 @@ def verify_funcitem(
         # inspect.signature throws sometimes
         return
 
+    stub_sig = Signature.from_funcitem(stub)
+    runtime_sig = Signature.from_inspect_signature(signature)
+
     def runtime_printer(s: Any) -> str:
         return "def " + str(inspect.signature(s))
 
-    def make_error(message: str) -> Error:
-        return Error(
+    for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
+        yield Error(
             object_path,
             "is inconsistent, " + message,
             stub,
             runtime,
             runtime_printer=runtime_printer,
         )
-
-    # Extract various arguments by type from the stub
-    stub_args_pos = []
-    stub_args_kwonly = {}
-    stub_args_varpos = None
-    stub_args_varkw = None
-
-    for stub_arg in stub.arguments:
-        if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
-            stub_args_pos.append(stub_arg)
-        elif stub_arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
-            stub_args_kwonly[stub_arg.variable.name] = stub_arg
-        elif stub_arg.kind == nodes.ARG_STAR:
-            stub_args_varpos = stub_arg
-        elif stub_arg.kind == nodes.ARG_STAR2:
-            stub_args_varkw = stub_arg
-        else:
-            assert False
-
-    # Extract various arguments by type from the runtime object
-    runtime_args_pos = []
-    runtime_args_kwonly = {}
-    runtime_args_varpos = None
-    runtime_args_varkw = None
-
-    for runtime_arg in signature.parameters.values():
-        if runtime_arg.kind in (
-            inspect.Parameter.POSITIONAL_ONLY,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        ):
-            runtime_args_pos.append(runtime_arg)
-        elif runtime_arg.kind == inspect.Parameter.KEYWORD_ONLY:
-            runtime_args_kwonly[runtime_arg.name] = runtime_arg
-        elif runtime_arg.kind == inspect.Parameter.VAR_POSITIONAL:
-            runtime_args_varpos = runtime_arg
-        elif runtime_arg.kind == inspect.Parameter.VAR_KEYWORD:
-            runtime_args_varkw = runtime_arg
-        else:
-            assert False
-
-    def verify_arg_name(
-        stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
-    ) -> Iterator[Error]:
-        """Checks whether argument names match."""
-        # Ignore exact names for all dunder methods other than __init__
-        if stub.name != "__init__" and stub.name.startswith("__"):
-            return
-
-        def strip_prefix(s: str, prefix: str) -> str:
-            return s[len(prefix) :] if s.startswith(prefix) else s
-
-        if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
-            return
-
-        def names_approx_match(a: str, b: str) -> bool:
-            a = a.strip("_")
-            b = b.strip("_")
-            return a.startswith(b) or b.startswith(a) or len(a) == 1 or len(b) == 1
-
-        # Be more permissive about names matching for positional-only arguments
-        if (
-            runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
-            and names_approx_match(stub_arg.variable.name, runtime_arg.name)
-        ):
-            return
-        # This comes up with namedtuples, so ignore
-        if stub_arg.variable.name == "_self":
-            return
-        yield make_error(
-            f'stub argument "{stub_arg.variable.name}" differs from '
-            f'runtime argument "{runtime_arg.name}"'
-        )
-
-    def verify_arg_default_value(
-        stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
-    ) -> Iterator[Error]:
-        """Checks whether argument default values are compatible."""
-        if runtime_arg.default != inspect.Parameter.empty:
-            if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
-                yield make_error(
-                    f'runtime argument "{runtime_arg.name}" has a default value '
-                    "but stub argument does not"
-                )
-            else:
-                runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
-                if (
-                    runtime_type is not None
-                    and stub_arg.variable.type is not None
-                    # Avoid false positives for marker objects
-                    and type(runtime_arg.default) != object
-                    and not is_subtype_helper(runtime_type, stub_arg.variable.type)
-                ):
-                    yield make_error(
-                        f'runtime argument "{runtime_arg.name}" has a default value of type '
-                        f"{runtime_type}, which is incompatible with stub argument type "
-                        f"{stub_arg.variable.type}"
-                    )
-        else:
-            if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
-                yield make_error(
-                    f'stub argument "{stub_arg.variable.name}" has a default '
-                    "value but runtime argument does not"
-                )
-
-    # Check positional arguments match up
-    for stub_arg, runtime_arg in zip(stub_args_pos, runtime_args_pos):
-        yield from verify_arg_name(stub_arg, runtime_arg)
-        yield from verify_arg_default_value(stub_arg, runtime_arg)
-        if (
-            runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
-            and not stub_arg.variable.name.startswith("__")
-            and not stub_arg.variable.name.strip("_") == "self"
-            and not stub.name.startswith("__")  # noisy for dunder methods
-        ):
-            yield make_error(
-                f'stub argument "{stub_arg.variable.name}" should be '
-                "positional-only (rename with a leading double underscore)"
-            )
-        if (
-            runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
-            and stub_arg.variable.name.startswith("__")
-        ):
-            yield make_error(
-                f'stub argument "{stub_arg.variable.name}" is positional or keyword '
-                "(remove leading double underscore)"
-            )
-
-    # Checks involving *args
-    if len(stub_args_pos) == len(runtime_args_pos):
-        if stub_args_varpos is None and runtime_args_varpos is not None:
-            yield make_error(
-                f'stub does not have *args argument "{runtime_args_varpos.name}"'
-            )
-        if stub_args_varpos is not None and runtime_args_varpos is None:
-            yield make_error(
-                f'runtime does not have *args argument "{stub_args_varpos.variable.name}"'
-            )
-    elif len(stub_args_pos) > len(runtime_args_pos):
-        if runtime_args_varpos is None:
-            for stub_arg in stub_args_pos[len(runtime_args_pos) :]:
-                # If the variable is in runtime_args_kwonly, it's just mislabelled as not a
-                # keyword-only argument; we report the error while checking keyword-only arguments
-                if stub_arg.variable.name not in runtime_args_kwonly:
-                    yield make_error(
-                        f'runtime does not have argument "{stub_arg.variable.name}"'
-                    )
-        # We do not check whether stub takes *args when the runtime does, for cases where the stub
-        # just listed out the extra parameters the function takes
-    elif len(stub_args_pos) < len(runtime_args_pos):
-        if stub_args_varpos is None:
-            for runtime_arg in runtime_args_pos[len(stub_args_pos) :]:
-                yield make_error(f'stub does not have argument "{runtime_arg.name}"')
-        elif runtime_args_pos is None:
-            yield make_error(
-                f'runtime does not have *args argument "{stub_args_varpos.variable.name}"'
-            )
-
-    # Check keyword-only args
-    for arg in sorted(set(stub_args_kwonly) & set(runtime_args_kwonly)):
-        stub_arg, runtime_arg = stub_args_kwonly[arg], runtime_args_kwonly[arg]
-        yield from verify_arg_name(stub_arg, runtime_arg)
-        yield from verify_arg_default_value(stub_arg, runtime_arg)
-
-    # Checks involving **kwargs
-    if stub_args_varkw is None and runtime_args_varkw is not None:
-        # We do not check whether stub takes **kwargs when the runtime does, for cases where the
-        # stub just listed out the extra keyword parameters the function takes
-        # Also check against positional parameters, to avoid a nitpicky message when an argument
-        # isn't marked as keyword-only
-        stub_pos_names = set(stub_arg.variable.name for stub_arg in stub_args_pos)
-        if not set(runtime_args_kwonly).issubset(
-            set(stub_args_kwonly) | stub_pos_names
-        ):
-            yield make_error(
-                f'stub does not have **kwargs argument "{runtime_args_varkw.name}"'
-            )
-    if stub_args_varkw is not None and runtime_args_varkw is None:
-        yield make_error(
-            f'runtime does not have **kwargs argument "{stub_args_varkw.variable.name}"'
-        )
-    if runtime_args_varkw is None or not set(runtime_args_kwonly).issubset(
-        set(stub_args_kwonly)
-    ):
-        for arg in sorted(set(stub_args_kwonly) - set(runtime_args_kwonly)):
-            yield make_error(f'runtime does not have argument "{arg}"')
-    if stub_args_varkw is None or not set(stub_args_kwonly).issubset(
-        set(runtime_args_kwonly)
-    ):
-        for arg in sorted(set(runtime_args_kwonly) - set(stub_args_kwonly)):
-            if arg in set(stub_arg.variable.name for stub_arg in stub_args_pos):
-                yield make_error(f'stub argument "{arg}" is not keyword-only')
-            else:
-                yield make_error(f'stub does not have argument "{arg}"')
 
 
 @verify.register(Missing)
