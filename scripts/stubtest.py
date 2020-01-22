@@ -735,6 +735,23 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     return sorted(modules)
 
 
+def get_whitelist_entries(whitelist_file: Optional[str]) -> Iterator[str]:
+    if not whitelist_file:
+        return
+
+    def strip_comments(s: str) -> str:
+        try:
+            return s[: s.index("#")].strip()
+        except ValueError:
+            return s.strip()
+
+    with open(whitelist_file) as f:
+        for line in f.readlines():
+            entry = strip_comments(line)
+            if entry:
+                yield entry
+
+
 def main() -> int:
     assert sys.version_info >= (3, 6), "This script requires at least Python 3.6"
 
@@ -767,12 +784,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    whitelist = {}
-    if args.whitelist:
-        # Load the whitelist. This is a series of strings corresponding to Error.object_desc
-        # Values in the dict will store whether we used the whitelist entry or not.
-        with open(args.whitelist) as f:
-            whitelist = {l.strip(): False for l in f.readlines()}
+    # Load the whitelist. This is a series of strings corresponding to Error.object_desc
+    # Values in the dict will store whether we used the whitelist entry or not.
+    whitelist = {entry: False for entry in get_whitelist_entries(args.whitelist)}
 
     # If we need to generate a whitelist, we store Error.object_desc for each error here.
     generated_whitelist = set()
