@@ -231,7 +231,7 @@ def verify_typeinfo(
 
     for entry in sorted(to_check):
         yield from verify(
-            stub.names[entry].node if entry in stub.names else MISSING,
+            next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING),
             getattr(runtime, entry, MISSING),
             object_path + [entry],
         )
