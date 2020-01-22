@@ -420,7 +420,7 @@ def f(x: A) -> None:
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> m.B, m.f
 
-[case testAdHocIsInstance]
+[case testIsInstanceAdHocIntersectionDeps]
 class A:
     x: int
 
