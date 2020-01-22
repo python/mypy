@@ -254,6 +254,23 @@ def verify_funcitem(
         yield Error(object_path, "is not a function", stub, runtime)
         return
 
+    if isinstance(runtime, classmethod) and not stub.is_class:
+        yield Error(
+            object_path, "runtime is a classmethod but stub is not", stub, runtime
+        )
+    if not isinstance(runtime, classmethod) and stub.is_class:
+        yield Error(
+            object_path, "stub is a classmethod but runtime is not", stub, runtime
+        )
+    if isinstance(runtime, staticmethod) and not stub.is_static:
+        yield Error(
+            object_path, "runtime is a staticmethod but stub is not", stub, runtime
+        )
+    if not isinstance(runtime, classmethod) and stub.is_static:
+        yield Error(
+            object_path, "stub is a staticmethod but runtime is not", stub, runtime
+        )
+
     try:
         signature = inspect.signature(runtime)
     except ValueError:
