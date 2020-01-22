@@ -1235,7 +1235,7 @@ class MessageBuilder:
                   context, code=code)
 
     def unreachable_statement(self, context: Context) -> None:
-        self.fail("Statement is unreachable", context)
+        self.fail("Statement is unreachable", context, code=codes.UNREACHABLE)
 
     def redundant_left_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the left operand of a boolean expression is redundant:

@@ -103,6 +103,8 @@ NO_ANY_UNIMPORTED = ErrorCode(
 NO_ANY_RETURN = ErrorCode(
     'no-any-return', 'Reject returning value with "Any" type if return type is not "Any"',
     'General')  # type: Final
+UNREACHABLE = ErrorCode(
+    'unreachable', "Check control flow", 'General')  # type: Final
 
 # Syntax errors are often blocking.
 SYNTAX = ErrorCode(
