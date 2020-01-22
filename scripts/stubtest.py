@@ -524,10 +524,50 @@ def verify_typevarexpr(
         yield None
 
 
+def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
+    assert stub.func.is_property
+    if isinstance(runtime, property):
+        return
+    if inspect.isdatadescriptor(runtime):
+        # It's enough like a property...
+        return
+    # Sometimes attributes pretend to be properties, for instance, to express that they
+    # are read only. So whitelist if runtime_type matches the return type of stub.
+    runtime_type = get_mypy_type_of_runtime_value(runtime)
+    func_type = (
+        stub.func.type.ret_type
+        if isinstance(stub.func.type, mypy.types.CallableType)
+        else None
+    )
+    if (
+        runtime_type is not None
+        and func_type is not None
+        and is_subtype_helper(runtime_type, func_type)
+    ):
+        return
+    yield "is inconsistent, cannot reconcile @property on stub with runtime object"
+
+
 @verify.register(nodes.Decorator)
 def verify_decorator(
     stub: nodes.Decorator, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error(object_path, "is not present at runtime", stub, runtime)
+        return
+    if not stub.decorators:
+        # semanal.SemanticAnalyzer.visit_decorator lists the decorators that get removed (note they
+        # can still be found in stub.original_decorators).
+        if stub.func.is_property:
+            for message in _verify_property(stub, runtime):
+                yield Error(
+                    object_path, message, stub, runtime,
+                )
+            return
+
+        # For any of those decorators that aren't @property, just delegate to verify_funcitem
+        yield from verify(stub.func, runtime, object_path)
+        return
     if (
         len(stub.decorators) == 1
         and isinstance(stub.decorators[0], nodes.NameExpr)
@@ -535,8 +575,7 @@ def verify_decorator(
     ):
         # If the only decorator is @typing.overload, just delegate to the usual verify_funcitem
         yield from verify(stub.func, runtime, object_path)
-
-    # TODO: See if there are other common decorators we should be checking
+        return
 
 
 @verify.register(nodes.TypeAlias)
