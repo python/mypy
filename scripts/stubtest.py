@@ -386,8 +386,8 @@ def _verify_signature(
             and not function_name.startswith("__")  # noisy for dunder methods
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" should be '
-                "positional-only (rename with a leading double underscore)"
+                f'stub argument "{stub_arg.variable.name}" should be positional-only '
+                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
