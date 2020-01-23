@@ -339,7 +339,7 @@ def semantic_analyze_target(target: str,
     # Clear out some stale data to avoid memory leaks and astmerge
     # validity check confusion
     analyzer.statement = None
-    delattr(analyzer, 'cur_mod_node')
+    del analyzer.cur_mod_node
 
     if analyzer.deferred:
         return [target], analyzer.incomplete, analyzer.progress
