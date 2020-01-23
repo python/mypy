@@ -1239,7 +1239,7 @@ class MessageBuilder:
                   context, code=code)
 
     def unreachable_statement(self, context: Context) -> None:
-        self.fail("Statement is unreachable", context)
+        self.fail("Statement is unreachable", context, code=codes.UNREACHABLE)
 
     def redundant_left_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the left operand of a boolean expression is redundant:
@@ -1253,7 +1253,8 @@ class MessageBuilder:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.fail("Right operand of '{}' is never evaluated".format(op_name), context)
+        self.fail("Right operand of '{}' is never evaluated".format(op_name),
+                  context, code=codes.UNREACHABLE)
 
     def redundant_condition_in_comprehension(self, truthiness: bool, context: Context) -> None:
         self.redundant_expr("If condition in comprehension", truthiness, context)
@@ -1265,7 +1266,8 @@ class MessageBuilder:
         self.redundant_expr("Condition in assert", truthiness, context)
 
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
-        self.fail("{} is always {}".format(description, str(truthiness).lower()), context)
+        self.fail("{} is always {}".format(description, str(truthiness).lower()),
+                  context, code=codes.UNREACHABLE)
 
     def impossible_intersection(self,
                                 formatted_base_class_list: str,

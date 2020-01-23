@@ -1080,12 +1080,31 @@ def _cache_dir_prefix(options: Options) -> str:
     return base
 
 
+def add_catch_all_gitignore(target_dir: str) -> None:
+    """Add catch-all .gitignore to an existing directory.
+
+    No-op if the .gitignore already exists.
+    """
+    gitignore = os.path.join(target_dir, ".gitignore")
+    try:
+        with open(gitignore, "x") as f:
+            print("# Automatically created by mypy", file=f)
+            print("*", file=f)
+    except FileExistsError:
+        pass
+
+
 def create_metastore(options: Options) -> MetadataStore:
     """Create the appropriate metadata store."""
+    # Add catch-all .gitignore to cache dir if we created it
+    cache_dir_existed = os.path.isdir(options.cache_dir)
     if options.sqlite_cache:
-        return SqliteMetadataStore(_cache_dir_prefix(options))
+        mds = SqliteMetadataStore(_cache_dir_prefix(options))  # type: MetadataStore
     else:
-        return FilesystemMetadataStore(_cache_dir_prefix(options))
+        mds = FilesystemMetadataStore(_cache_dir_prefix(options))
+    if not cache_dir_existed and os.path.isdir(options.cache_dir):
+        add_catch_all_gitignore(options.cache_dir)
+    return mds
 
 
 def get_cache_names(id: str, path: str, options: Options) -> Tuple[str, str, Optional[str]]:

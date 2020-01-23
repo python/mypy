@@ -40,7 +40,7 @@ def f() -> None: pass
 ==
 a.py:1: error: invalid syntax  [syntax]
     def f(x: int) ->
-                     ^
+                    ^
 ==
 main:3: error: Too few arguments for "f"  [call-arg]
     a.f()
