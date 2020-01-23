@@ -21,6 +21,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     TypeVar,
     Union,
 )
@@ -305,17 +306,21 @@ def _verify_arg_default_value(
             )
         else:
             runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
+            # Fallback to the type annotation type if var type is missing. The type annotation
+            # is an UnboundType, but I don't know enough to know what the pros and cons here are.
+            # UnboundTypes have ugly question marks following them, so default to var type.
+            # Note we do this same fallback when constructing signatures in from_overloadedfuncdef
+            stub_type = stub_arg.variable.type or stub_arg.type_annotation
             if (
                 runtime_type is not None
-                and stub_arg.variable.type is not None
+                and stub_type is not None
                 # Avoid false positives for marker objects
                 and type(runtime_arg.default) != object
-                and not is_subtype_helper(runtime_type, stub_arg.variable.type)
+                and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
                     f'runtime argument "{runtime_arg.name}" has a default value of type '
-                    f"{runtime_type}, which is incompatible with stub argument type "
-                    f"{stub_arg.variable.type}"
+                    f"{runtime_type}, which is incompatible with stub argument type {stub_type}"
                 )
     else:
         if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
@@ -412,6 +417,99 @@ class Signature(Generic[T]):
             else:
                 raise ValueError
         return runtime_sig
+
+    @staticmethod
+    def from_overloadedfuncdef(
+        stub: nodes.OverloadedFuncDef,
+    ) -> "Signature[nodes.Argument]":
+        """Returns a Signature from an OverloadedFuncDef.
+
+        If life were simple, to verify_overloadedfuncdef, we'd just verify_funcitem for each of its
+        items. Unfortunately, life isn't simple and overloads are pretty deceitful. So instead, we
+        try and combine the overload's items into a single signature that is compatible with any
+        lies it might try to tell.
+
+        """
+
+        def get_funcs() -> Iterator[nodes.FuncItem]:
+            for dec in stub.items:
+                if (
+                    isinstance(dec, nodes.Decorator)
+                    and len(dec.decorators) == 1
+                    and isinstance(dec.decorators[0], nodes.NameExpr)
+                    and dec.decorators[0].fullname == "typing.overload"
+                ):
+                    yield dec.func
+                else:
+                    raise ValueError
+
+        # For all dunder methods other than __init__, just assume all args are positional-only
+        assume_positional_only = stub.name != "__init__" and stub.name.startswith("__")
+
+        all_args: Dict[str, List[Tuple[nodes.Argument, int]]] = {}
+        for func in get_funcs():
+            for index, arg in enumerate(func.arguments):
+                # For positional-only args, we allow overloads to have different names for the same
+                # argument. To accomplish this, we just make up a fake index-based name.
+                name = (
+                    f"__{index}"
+                    if arg.variable.name.startswith("__") or assume_positional_only
+                    else arg.variable.name
+                )
+                all_args.setdefault(name, []).append((arg, index))
+
+        def get_position(arg_name: str) -> int:
+            # We just need this to return the positional args in the correct order.
+            return max(index for _, index in all_args[arg_name])
+
+        def get_type(arg_name: str) -> mypy.types.ProperType:
+            with mypy.state.strict_optional_set(True):
+                all_types = [
+                    arg.variable.type or arg.type_annotation
+                    for arg, _ in all_args[arg_name]
+                ]
+                return mypy.typeops.make_simplified_union([t for t in all_types if t])
+
+        def get_kind(arg_name: str) -> int:
+            kinds = {arg.kind for arg, _ in all_args[arg_name]}
+            if nodes.ARG_STAR in kinds:
+                return nodes.ARG_STAR
+            if nodes.ARG_STAR2 in kinds:
+                return nodes.ARG_STAR2
+            # The logic here is based on two tenets:
+            # 1) If an arg is ever optional (or unspecified), it is optional
+            # 2) If an arg is ever positional, it is positional
+            is_opt = (
+                len(all_args[arg_name]) < len(stub.items)
+                or nodes.ARG_OPT in kinds
+                or nodes.ARG_NAMED_OPT in kinds
+            )
+            is_pos = nodes.ARG_OPT in kinds or nodes.ARG_POS in kinds
+            if is_opt:
+                return nodes.ARG_OPT if is_pos else nodes.ARG_NAMED_OPT
+            return nodes.ARG_POS if is_pos else nodes.ARG_NAMED
+
+        sig: Signature[nodes.Argument] = Signature()
+        for arg_name in sorted(all_args, key=get_position):
+            # example_arg_name gives us a real name (in case we had a fake index-based name)
+            example_arg_name = all_args[arg_name][0][0].variable.name
+            arg = nodes.Argument(
+                nodes.Var(example_arg_name, get_type(arg_name)),
+                type_annotation=None,
+                initializer=None,
+                kind=get_kind(arg_name),
+            )
+            if arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
+                sig.pos.append(arg)
+            elif arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+                sig.kwonly[arg.variable.name] = arg
+            elif arg.kind == nodes.ARG_STAR:
+                sig.varpos = arg
+            elif arg.kind == nodes.ARG_STAR2:
+                sig.varkw = arg
+            else:
+                raise ValueError
+        return sig
 
 
 def _verify_signature(
@@ -582,10 +680,37 @@ def verify_var(
 def verify_overloadedfuncdef(
     stub: nodes.OverloadedFuncDef, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    # TODO: Overloads can be pretty deceitful, so maybe be more permissive when dealing with them
-    # For a motivating example, look at RawConfigParser.items and RawConfigParser.get
-    for func in stub.items:
-        yield from verify(func, runtime, object_path)
+    if isinstance(runtime, Missing):
+        yield Error(object_path, "is not present at runtime", stub, runtime)
+        return
+
+    try:
+        stub_sig = Signature.from_overloadedfuncdef(stub)
+        runtime_sig = Signature.from_inspect_signature(inspect.signature(runtime))
+    except ValueError:
+        return
+
+    def stub_printer(s: Any) -> str:
+        return str(s.type) + "\nInferred signature: " + str(stub_sig)
+
+    def runtime_printer(s: Any) -> str:
+        return "def " + str(inspect.signature(s))
+
+    for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
+        # TODO: This is a little hacky, but the addition here is super useful
+        if "has a default value of type" in message:
+            message += (
+                ". This is often caused by overloads failing to account for explicitly passing "
+                "in the default value."
+            )
+        yield Error(
+            object_path,
+            "is inconsistent, " + message,
+            stub,
+            runtime,
+            stub_printer=stub_printer,
+            runtime_printer=runtime_printer,
+        )
 
 
 @verify.register(nodes.TypeVarExpr)
@@ -640,14 +765,9 @@ def verify_decorator(
         # For any of those decorators that aren't @property, just delegate to verify_funcitem
         yield from verify(stub.func, runtime, object_path)
         return
-    if (
-        len(stub.decorators) == 1
-        and isinstance(stub.decorators[0], nodes.NameExpr)
-        and stub.decorators[0].fullname == "typing.overload"
-    ):
-        # If the only decorator is @typing.overload, just delegate to the usual verify_funcitem
-        yield from verify(stub.func, runtime, object_path)
-        return
+
+    # Just skip checking any other decorators. The only other relevant one when checking stdlib
+    # is @overload, which gets handled by verify_overloadedfuncdef and never reaches here.
 
 
 @verify.register(nodes.TypeAlias)
