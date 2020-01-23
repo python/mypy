@@ -332,6 +332,50 @@ class Signature(Generic[T]):
         self.varpos: Optional[T] = None
         self.varkw: Optional[T] = None
 
+    def __str__(self) -> str:
+        def get_name(arg: Any) -> str:
+            if isinstance(arg, inspect.Parameter):
+                return arg.name
+            if isinstance(arg, nodes.Argument):
+                return arg.variable.name
+            raise ValueError
+
+        def get_type(arg: Any) -> Optional[str]:
+            if isinstance(arg, inspect.Parameter):
+                return None
+            if isinstance(arg, nodes.Argument):
+                return str(arg.variable.type or arg.type_annotation)
+            raise ValueError
+
+        def has_default(arg: Any) -> bool:
+            if isinstance(arg, inspect.Parameter):
+                return arg.default != inspect.Parameter.empty
+            if isinstance(arg, nodes.Argument):
+                return arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT)
+            raise ValueError
+
+        def get_desc(arg: Any) -> str:
+            arg_type = get_type(arg)
+            return (
+                get_name(arg)
+                + (f": {arg_type}" if arg_type else "")
+                + (" = ..." if has_default(arg) else "")
+            )
+
+        ret = "def ("
+        ret += ", ".join(
+            [get_desc(arg) for arg in self.pos]
+            + (
+                ["*" + get_name(self.varpos)]
+                if self.varpos
+                else (["*"] if self.kwonly else [])
+            )
+            + [get_desc(arg) for arg in self.kwonly.values()]
+            + (["**" + get_name(self.varkw)] if self.varkw else [])
+        )
+        ret += ")"
+        return ret
+
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
         stub_sig: Signature[nodes.Argument] = Signature()
