@@ -174,3 +174,18 @@ that ``Cat`` falls back to ``Any`` in a type annotation:
     # Error: Argument 1 to "feed" becomes "Any" due to an unfollowed import  [no-any-unimported]
     def feed(cat: Cat) -> None:
         ...
+
+Check that statement is unreachable [unreachable]
+-----------------------------------------------------------
+
+If you use :option:`--warn-unreachable <mypy --warn-unreachable>`, mypy generates an error if it
+thinks that a statement will never be executed. In most cases, this is due to incorrect control flow.
+
+.. code-block:: python
+
+    # mypy: warn-unreachable
+
+    def example() -> None:
+        return
+        # Error: Statement is unreachable  [unreachable]
+        print('unreachable')
