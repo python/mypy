@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
 
 from mypy.nodes import (
-    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, SYMBOL_FUNCBASE_TYPES,
+    ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
@@ -90,19 +90,40 @@ def add_method(
         self_type: Optional[Type] = None,
         tvar_def: Optional[TypeVarDef] = None,
 ) -> None:
-    """Adds a new method to a class.
     """
-    info = ctx.cls.info
+    Adds a new method to a class.
+    Deprecated, use add_method_to_class() instead.
+    """
+    add_method_to_class(ctx.api, ctx.cls,
+                        name=name,
+                        args=args,
+                        return_type=return_type,
+                        self_type=self_type,
+                        tvar_def=tvar_def)
+
+
+def add_method_to_class(
+        api: SemanticAnalyzerPluginInterface,
+        cls: ClassDef,
+        name: str,
+        args: List[Argument],
+        return_type: Type,
+        self_type: Optional[Type] = None,
+        tvar_def: Optional[TypeVarDef] = None,
+) -> None:
+    """Adds a new method to a class definition.
+    """
+    info = cls.info
 
     # First remove any previously generated methods with the same name
     # to avoid clashes and problems in the semantic analyzer.
     if name in info.names:
         sym = info.names[name]
         if sym.plugin_generated and isinstance(sym.node, FuncDef):
-            ctx.cls.defs.body.remove(sym.node)
+            cls.defs.body.remove(sym.node)
 
     self_type = self_type or fill_typevars(info)
-    function_type = ctx.api.named_type('__builtins__.function')
+    function_type = api.named_type('__builtins__.function')
 
     args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
     arg_types, arg_names, arg_kinds = [], [], []
