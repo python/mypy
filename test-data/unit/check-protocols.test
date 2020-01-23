@@ -1564,7 +1564,7 @@ if isinstance(c1i, P1):
 else:
     reveal_type(c1i) # Unreachable
 if isinstance(c1i, P):
-    reveal_type(c1i) # Unreachable
+    reveal_type(c1i) # N: Revealed type is '__main__.<subclass of "C1[int]" and "P">'
 else:
     reveal_type(c1i) # N: Revealed type is '__main__.C1[builtins.int]'
 
@@ -1576,7 +1576,7 @@ else:
 
 c2: C2
 if isinstance(c2, P):
-    reveal_type(c2) # Unreachable
+    reveal_type(c2) # N: Revealed type is '__main__.<subclass of "C2" and "P">'
 else:
     reveal_type(c2) # N: Revealed type is '__main__.C2'
 

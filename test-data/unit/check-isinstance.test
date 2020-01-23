@@ -1236,7 +1236,10 @@ else:
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceMultiAndSpecialCase]
-class A: pass
+class A:
+    # Ensure A.__add__ and int.__add__ are different to
+    # force 'isinstance(y, int)' checks below to never succeed.
+    def __add__(self, other: A) -> A: pass
 
 class B(A):
     flag = 1
@@ -1357,7 +1360,7 @@ class B: pass
 
 x = B()
 if isinstance(x, A):
-    reveal_type(x)  # unreachable
+    reveal_type(x)  # N: Revealed type is '__main__.<subclass of "B" and "A">'
 else:
     reveal_type(x)  # N: Revealed type is '__main__.B'
 reveal_type(x)  # N: Revealed type is '__main__.B'
@@ -2158,7 +2161,7 @@ def foo2(x: Optional[str]) -> None:
     if x is None:
         reveal_type(x)      # N: Revealed type is 'None'
     elif isinstance(x, A):
-        reveal_type(x)
+        reveal_type(x)      # N: Revealed type is '__main__.<subclass of "str" and "A">'
     else:
         reveal_type(x)      # N: Revealed type is 'builtins.str'
 [builtins fixtures/isinstance.pyi]
@@ -2182,8 +2185,7 @@ def foo2(x: Optional[str]) -> None:
     if x is None:
         reveal_type(x)      # N: Revealed type is 'None'
     elif isinstance(x, A):
-        # Mypy should, however, be able to skip impossible cases
-        reveal_type(x)
+        reveal_type(x)      # N: Revealed type is '__main__.<subclass of "str" and "A">'
     else:
         reveal_type(x)      # N: Revealed type is 'builtins.str'
 [builtins fixtures/isinstance.pyi]
@@ -2284,3 +2286,290 @@ var = 'some string'
 if isinstance(var, *(str, int)):  # E: Too many arguments for "isinstance"
     pass
 [builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceAdHocIntersectionBasic]
+class A:
+    def f1(self) -> int: ...
+class B:
+    def f2(self) -> int: ...
+class C:
+    def f3(self) -> int: ...
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)           # N: Revealed type is '__main__.<subclass of "A" and "B">'
+    if isinstance(x, C):
+        reveal_type(x)       # N: Revealed type is '__main__.<subclass of "A", "B", and "C">'
+        reveal_type(x.f1())  # N: Revealed type is 'builtins.int'
+        reveal_type(x.f2())  # N: Revealed type is 'builtins.int'
+        reveal_type(x.f3())  # N: Revealed type is 'builtins.int'
+        x.bad()              # E: "<subclass of "A", "B", and "C">" has no attribute "bad"
+    else:
+        reveal_type(x)       # N: Revealed type is '__main__.<subclass of "A" and "B">'
+else:
+    reveal_type(x)           # N: Revealed type is '__main__.A'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionRepeatedChecks]
+# flags: --warn-unreachable
+
+class A: pass
+class B: pass
+
+x: A
+if isinstance(x, B):
+    reveal_type(x)      # N: Revealed type is '__main__.<subclass of "A" and "B">'
+    if isinstance(x, A):
+        reveal_type(x)  # N: Revealed type is '__main__.<subclass of "A" and "B">'
+    if isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is '__main__.<subclass of "A" and "B">'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionIncompatibleClasses]
+# flags: --warn-unreachable
+class A:
+    def f(self) -> int: ...
+class B:
+    def f(self) -> str: ...
+class C:
+    def f(self) -> str: ...
+
+class Example(A, B): pass  # E: Definition of "f" in base class "A" is incompatible with definition in base class "B"
+x: A
+if isinstance(x, B):  # E: Subclass of "A" and "B" cannot exist: would have incompatible method signatures
+    reveal_type(x)    # E: Statement is unreachable
+else:
+    reveal_type(x)    # N: Revealed type is '__main__.A'
+
+y: C
+if isinstance(y, B):
+    reveal_type(y)        # N: Revealed type is '__main__.<subclass of "C" and "B">'
+    if isinstance(y, A):  # E: Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
+        reveal_type(y)    # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionGenerics]
+# flags: --warn-unreachable
+from typing import Generic, TypeVar
+
+class Parent: pass
+class Child(Parent): pass
+
+T = TypeVar('T')
+class A(Generic[T]):
+    def f(self) -> T: ...
+class B:
+    def f(self) -> Parent: ...
+
+x: A[int]
+if isinstance(x, B):    # E: Subclass of "A[int]" and "B" cannot exist: would have incompatible method signatures
+    reveal_type(x)      # E: Statement is unreachable
+else:
+    reveal_type(x)      # N: Revealed type is '__main__.A[builtins.int]'
+
+y: A[Parent]
+if isinstance(y, B):
+    reveal_type(y)      # N: Revealed type is '__main__.<subclass of "A[Parent]" and "B">'
+    reveal_type(y.f())  # N: Revealed type is '__main__.Parent*'
+else:
+    reveal_type(y)      # N: Revealed type is '__main__.A[__main__.Parent]'
+
+z: A[Child]
+if isinstance(z, B):
+    reveal_type(z)      # N: Revealed type is '__main__.<subclass of "A[Child]" and "B">'
+    reveal_type(z.f())  # N: Revealed type is '__main__.Child*'
+else:
+    reveal_type(z)      # N: Revealed type is '__main__.A[__main__.Child]'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionGenericsWithValues]
+# flags: --warn-unreachable
+from typing import TypeVar
+
+class A:
+    attr: int
+class B:
+    attr: int
+class C:
+    attr: str
+
+T1 = TypeVar('T1', A, B)
+def f1(x: T1) -> T1:
+    if isinstance(x, A):
+        reveal_type(x)      # N: Revealed type is '__main__.A*' \
+                            # N: Revealed type is '__main__.<subclass of "B" and "A">'
+        if isinstance(x, B):
+            reveal_type(x)  # N: Revealed type is '__main__.<subclass of "A" and "B">' \
+                            # N: Revealed type is '__main__.<subclass of "B" and "A">'
+        else:
+            reveal_type(x)  # N: Revealed type is '__main__.A*'
+    else:
+        reveal_type(x)      # N: Revealed type is '__main__.B*'
+    return x
+
+T2 = TypeVar('T2', B, C)
+def f2(x: T2) -> T2:
+    if isinstance(x, B):
+        reveal_type(x)      # N: Revealed type is '__main__.B*'
+        # Note: even though --warn-unreachable is set, we don't report
+        # errors for the below: we don't yet have a way of filtering out
+        # reachability errors that occur for only one variation of the
+        # TypeVar yet.
+        if isinstance(x, C):
+            reveal_type(x)
+        else:
+            reveal_type(x)  # N: Revealed type is '__main__.B*'
+    else:
+        reveal_type(x)      # N: Revealed type is '__main__.C*'
+    return x
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionGenericsWithValuesDirectReturn]
+# flags: --warn-unreachable
+from typing import TypeVar
+
+class A:
+    attr: int
+class B:
+    attr: int
+class C:
+    attr: str
+
+T1 = TypeVar('T1', A, B)
+def f1(x: T1) -> T1:
+    if isinstance(x, A):
+        # The error message is confusing, but we indeed do run into problems if
+        # 'x' is a subclass of A and B
+        return A()   # E: Incompatible return value type (got "A", expected "B")
+    else:
+        return B()
+
+T2 = TypeVar('T2', B, C)
+def f2(x: T2) -> T2:
+    if isinstance(x, B):
+        # In contrast, it's impossible for a subclass of "B" and "C" to
+        # exist, so this is fine
+        return B()
+    else:
+        return C()
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionUsage]
+# flags: --warn-unreachable
+class A: pass
+class B: pass
+class Concrete(A, B): pass
+
+def accept_a(a: A) -> None: pass
+def accept_b(a: B) -> None: pass
+def accept_concrete(c: Concrete) -> None: pass
+
+x: A
+if isinstance(x, B):
+    var = x
+    reveal_type(var)      # N: Revealed type is '__main__.<subclass of "A" and "B">'
+    accept_a(var)
+    accept_b(var)
+    accept_concrete(var)  # E: Argument 1 to "accept_concrete" has incompatible type "<subclass of "A" and "B">"; expected "Concrete"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionReinfer]
+# flags: --warn-unreachable
+class A: pass
+class B: pass
+
+x: A
+assert isinstance(x, B)
+reveal_type(x)      # N: Revealed type is '__main__.<subclass of "A" and "B">'
+
+y: A
+assert isinstance(y, B)
+reveal_type(y)      # N: Revealed type is '__main__.<subclass of "A" and "B">1'
+
+x = y
+reveal_type(x)      # N: Revealed type is '__main__.<subclass of "A" and "B">1'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionWithUnions]
+# flags: --warn-unreachable
+from typing import Type, Union
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+
+v1: A
+if isinstance(v1, (B, C)):
+    reveal_type(v1)  # N: Revealed type is 'Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]'
+
+v2: Union[A, B]
+if isinstance(v2, C):
+    reveal_type(v2)  # N: Revealed type is 'Union[__main__.<subclass of "A" and "C">1, __main__.<subclass of "B" and "C">]'
+
+v3: Union[A, B]
+if isinstance(v3, (C, D)):
+    reveal_type(v3)  # N: Revealed type is 'Union[__main__.<subclass of "A" and "C">2, __main__.<subclass of "A" and "D">, __main__.<subclass of "B" and "C">1, __main__.<subclass of "B" and "D">]'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionSameNames]
+# flags: --warn-unreachable
+from foo import A as A2
+class A: pass
+
+x: A
+if isinstance(x, A2):
+    reveal_type(x)  # N: Revealed type is '__main__.<subclass of "__main__.A" and "foo.A">'
+
+[file foo.py]
+class A: pass
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionBadMro]
+# flags: --warn-unreachable
+class X: pass
+class Y: pass
+class A(X, Y): pass
+class B(Y, X): pass
+
+foo: A
+if isinstance(foo, B):  # E: Subclass of "A" and "B" cannot exist: would have inconsistent method resolution order
+    reveal_type(foo)    # E: Statement is unreachable
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionAmbiguousClass]
+# flags: --warn-unreachable
+from typing import Any
+
+class Concrete:
+    x: int
+class Ambiguous:
+    x: Any
+
+# We bias towards assuming these two classes could be overlapping
+foo: Concrete
+if isinstance(foo, Ambiguous):
+    reveal_type(foo)    # N: Revealed type is '__main__.<subclass of "Concrete" and "Ambiguous">'
+    reveal_type(foo.x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsSubclassAdHocIntersection]
+# flags: --warn-unreachable
+from typing import Type
+
+class A:
+    x: int
+class B:
+    x: int
+class C:
+    x: str
+
+x: Type[A]
+if issubclass(x, B):
+    reveal_type(x)        # N: Revealed type is 'Type[__main__.<subclass of "A" and "B">]'
+    if issubclass(x, C):  # E: Subclass of "A", "B", and "C" cannot exist: would have incompatible method signatures
+        reveal_type(x)    # E: Statement is unreachable
+    else:
+        reveal_type(x)    # N: Revealed type is 'Type[__main__.<subclass of "A" and "B">]'
+else:
+    reveal_type(x)        # N: Revealed type is 'Type[__main__.A]'
+[builtins fixtures/isinstance.pyi]

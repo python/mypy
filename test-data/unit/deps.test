@@ -410,6 +410,21 @@ class A:
     x: int
 
 class B:
+    x: str
+
+def f(x: A) -> None:
+    if isinstance(x, B):
+        x.y
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testIsInstanceAdHocIntersectionDeps]
+class A:
+    x: int
+
+class B:
     y: int
 
 def f(x: A) -> None:
@@ -417,6 +432,7 @@ def f(x: A) -> None:
         x.y
 [builtins fixtures/isinstancelist.pyi]
 [out]
+<m.<subclass of "A" and "B">.y> -> m.f
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> m.B, m.f
 

@@ -38,7 +38,7 @@ from mypy.types import (
     get_proper_types, is_literal_type, TypeAliasType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
-    MessageBuilder, make_inferred_type_note, append_invariance_notes,
+    MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
     format_type, format_type_bare, format_type_distinctly, SUGGESTED_TEST_FIXTURES
 )
 import mypy.checkexpr
@@ -63,7 +63,7 @@ from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
-from mypy.mro import calculate_mro
+from mypy.mro import calculate_mro, MroError
 from mypy.erasetype import erase_typevars, remove_instance_last_known_values, erase_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -1963,12 +1963,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         for s in b.body:
             if self.binder.is_unreachable():
-                if (self.options.warn_unreachable
-                        and not self.binder.is_unreachable_warning_suppressed()
-                        and not self.is_raising_or_empty(s)):
+                if self.should_report_unreachable_issues() and not self.is_raising_or_empty(s):
                     self.msg.unreachable_statement(s)
                 break
             self.accept(s)
+
+    def should_report_unreachable_issues(self) -> bool:
+        return (self.options.warn_unreachable
+                and not self.binder.is_unreachable_warning_suppressed())
 
     def is_raising_or_empty(self, s: Statement) -> bool:
         """Returns 'true' if the given statement either throws an error of some kind
@@ -3636,6 +3638,100 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.binder.handle_continue()
         return None
 
+    def make_fake_typeinfo(self,
+                           curr_module_fullname: str,
+                           class_gen_name: str,
+                           class_short_name: str,
+                           bases: List[Instance],
+                           ) -> Tuple[ClassDef, TypeInfo]:
+        # Build the fake ClassDef and TypeInfo together.
+        # The ClassDef is full of lies and doesn't actually contain a body.
+        # Use format_bare to generate a nice name for error messages.
+        # We skip fully filling out a handful of TypeInfo fields because they
+        # should be irrelevant for a generated type like this:
+        # is_protocol, protocol_members, is_abstract
+        cdef = ClassDef(class_short_name, Block([]))
+        cdef.fullname = curr_module_fullname + '.' + class_gen_name
+        info = TypeInfo(SymbolTable(), cdef, curr_module_fullname)
+        cdef.info = info
+        info.bases = bases
+        calculate_mro(info)
+        info.calculate_metaclass_type()
+        return cdef, info
+
+    def intersect_instances(self,
+                            instances: Sequence[Instance],
+                            ctx: Context,
+                            ) -> Optional[Instance]:
+        """Try creating an ad-hoc intersection of the given instances.
+
+        Note that this function does *not* try and create a full-fledged
+        intersection type. Instead, it returns an instance of a new ad-hoc
+        subclass of the given instances.
+
+        This is mainly useful when you need a way of representing some
+        theoretical subclass of the instances the user may be trying to use
+        the generated intersection can serve as a placeholder.
+
+        This function will create a fresh subclass every time you call it,
+        even if you pass in the exact same arguments. So this means calling
+        `self.intersect_intersection([inst_1, inst_2], ctx)` twice will result
+        in instances of two distinct subclasses of inst_1 and inst_2.
+
+        This is by design: we want each ad-hoc intersection to be unique since
+        they're supposed represent some other unknown subclass.
+
+        Returns None if creating the subclass is impossible (e.g. due to
+        MRO errors or incompatible signatures). If we do successfully create
+        a subclass, its TypeInfo will automatically be added to the global scope.
+        """
+        curr_module = self.scope.stack[0]
+        assert isinstance(curr_module, MypyFile)
+
+        base_classes = []
+        formatted_names = []
+        for inst in instances:
+            expanded = [inst]
+            if inst.type.is_intersection:
+                expanded = inst.type.bases
+
+            for expanded_inst in expanded:
+                base_classes.append(expanded_inst)
+                formatted_names.append(format_type_bare(expanded_inst))
+
+        pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
+        short_name = '<subclass of {}>'.format(pretty_names_list)
+        full_name = gen_unique_name(short_name, curr_module.names)
+
+        old_msg = self.msg
+        new_msg = self.msg.clean_copy()
+        self.msg = new_msg
+        try:
+            cdef, info = self.make_fake_typeinfo(
+                curr_module.fullname,
+                full_name,
+                short_name,
+                base_classes,
+            )
+            self.check_multiple_inheritance(info)
+            info.is_intersection = True
+        except MroError:
+            if self.should_report_unreachable_issues():
+                old_msg.impossible_intersection(
+                    pretty_names_list, "inconsistent method resolution order", ctx)
+            return None
+        finally:
+            self.msg = old_msg
+
+        if new_msg.is_errors():
+            if self.should_report_unreachable_issues():
+                self.msg.impossible_intersection(
+                    pretty_names_list, "incompatible method signatures", ctx)
+            return None
+
+        curr_module.names[full_name] = SymbolTableNode(GDEF, info)
+        return Instance(info, [])
+
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
         """Creates a fake type that represents the intersection of an Instance and a CallableType.
 
@@ -3650,20 +3746,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         gen_name = gen_unique_name("<callable subtype of {}>".format(typ.type.name),
                                    cur_module.names)
 
-        # Build the fake ClassDef and TypeInfo together.
-        # The ClassDef is full of lies and doesn't actually contain a body.
-        # Use format_bare to generate a nice name for error messages.
-        # We skip fully filling out a handful of TypeInfo fields because they
-        # should be irrelevant for a generated type like this:
-        # is_protocol, protocol_members, is_abstract
+        # Synthesize a fake TypeInfo
         short_name = format_type_bare(typ)
-        cdef = ClassDef(short_name, Block([]))
-        cdef.fullname = cur_module.fullname + '.' + gen_name
-        info = TypeInfo(SymbolTable(), cdef, cur_module.fullname)
-        cdef.info = info
-        info.bases = [typ]
-        calculate_mro(info)
-        info.calculate_metaclass_type()
+        cdef, info = self.make_fake_typeinfo(cur_module.fullname, gen_name, short_name, [typ])
 
         # Build up a fake FuncDef so we can populate the symbol table.
         func_def = FuncDef('__call__', [], Block([]), callable_type)
@@ -3828,9 +3913,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
-                    vartype = type_map[expr]
-                    type = get_isinstance_type(node.args[1], type_map)
-                    return conditional_type_map(expr, vartype, type)
+                    return self.conditional_type_map_with_intersection(
+                        expr,
+                        type_map[expr],
+                        get_isinstance_type(node.args[1], type_map),
+                    )
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
@@ -4309,6 +4396,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if enum_name is not None:
                 expr_type = try_expanding_enum_to_union(expr_type, enum_name)
+
+            # We intentionally use 'conditional_type_map' directly here instead of
+            # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
+            # intersections when working with pure instances.
             partial_type_maps.append(conditional_type_map(expr, expr_type, target_type))
 
         return reduce_conditional_maps(partial_type_maps)
@@ -4726,9 +4817,54 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Any other object whose type we don't know precisely
             # for example, Any or a custom metaclass.
             return {}, {}  # unknown type
-        yes_map, no_map = conditional_type_map(expr, vartype, type)
+        yes_map, no_map = self.conditional_type_map_with_intersection(expr, vartype, type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
+
+    def conditional_type_map_with_intersection(self,
+                                               expr: Expression,
+                                               expr_type: Type,
+                                               type_ranges: Optional[List[TypeRange]],
+                                               ) -> Tuple[TypeMap, TypeMap]:
+        # For some reason, doing "yes_map, no_map = conditional_type_maps(...)"
+        # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
+        initial_maps = conditional_type_map(expr, expr_type, type_ranges)
+        yes_map = initial_maps[0]  # type: TypeMap
+        no_map = initial_maps[1]  # type: TypeMap
+
+        if yes_map is not None or type_ranges is None:
+            return yes_map, no_map
+
+        # If conditions_type_map was unable to successfully narrow the expr_type
+        # using the type_ranges and concluded if-branch is unreachable, we try
+        # computing it again using a different algorithm that tries to generate
+        # an ad-hoc intersection between the expr_type and the type_ranges.
+        expr_type = get_proper_type(expr_type)
+        if isinstance(expr_type, UnionType):
+            possible_expr_types = get_proper_types(expr_type.relevant_items())
+        else:
+            possible_expr_types = [expr_type]
+
+        possible_target_types = []
+        for tr in type_ranges:
+            item = get_proper_type(tr.item)
+            if not isinstance(item, Instance) or tr.is_upper_bound:
+                return yes_map, no_map
+            possible_target_types.append(item)
+
+        out = []
+        for v in possible_expr_types:
+            if not isinstance(v, Instance):
+                return yes_map, no_map
+            for t in possible_target_types:
+                intersection = self.intersect_instances([v, t], expr)
+                if intersection is None:
+                    continue
+                out.append(intersection)
+        if len(out) == 0:
+            return None, {}
+        new_yes_type = make_simplified_union(out)
+        return {expr: new_yes_type}, {}
 
 
 def conditional_type_map(expr: Expression,

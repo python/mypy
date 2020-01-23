@@ -9410,3 +9410,155 @@ x: List[C] = [a.f(), a.f()]
 ==
 a.py:2: error: "C" expects 2 type arguments, but 1 given
 [builtins fixtures/list.pyi]
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange]
+import b
+[file a.py]
+class A: pass
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+==
+b.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange]
+import c
+[file a.py]
+class A: pass
+class B: pass
+class C: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, B)
+        self.x = x
+[file a.py.2]
+class A: pass
+class B: pass
+class C: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, C)
+        self.x = x
+
+[file b.py]
+from a import Foo
+y = Foo().x
+
+[file c.py]
+from b import y
+reveal_type(y)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+==
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "C">'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang]
+import c
+[file a.py]
+class A: pass
+class B: pass
+class C: pass
+Extra = B
+[file a.py.2]
+class A: pass
+class B: pass
+class C: pass
+Extra = C
+
+[file b.py]
+from a import A, Extra
+x: A
+if isinstance(x, Extra):
+    y = x
+
+[file c.py]
+from b import y
+reveal_type(y)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'b.<subclass of "A" and "B">'
+==
+c.py:2: note: Revealed type is 'b.<subclass of "A" and "C">'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable]
+import c
+[file a.py]
+class A:
+    x: int
+class B:
+    x: int
+x: A
+assert isinstance(x, B)
+y = x
+
+[file a.py.2]
+class A:
+    x: int
+class B:
+    x: str
+x: A
+assert isinstance(x, B)
+y = x
+
+[file b.py]
+from a import y
+z = y
+
+[file c.py]
+from b import z
+reveal_type(z)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+==
+c.py:2: note: Revealed type is 'a.A'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection]
+import c
+[file a.py]
+class A:
+    x: int
+class B:
+    x: str
+x: A
+assert isinstance(x, B)
+y = x
+
+[file a.py.2]
+class A:
+    x: int
+class B:
+    x: int
+x: A
+assert isinstance(x, B)
+y = x
+
+[file b.py]
+from a import y
+z = y
+
+[file c.py]
+from b import z
+reveal_type(z)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'a.A'
+==
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
