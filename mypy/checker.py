@@ -3663,6 +3663,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             instances: Sequence[Instance],
                             ctx: Context,
                             ) -> Optional[Instance]:
+        """Try creating an ad-hoc intersection of the given instances.
+
+        Note that this function does *not* try and create a full-fledged
+        intersection type. Instead, it returns an instance of a new ad-hoc
+        subclass of the given instances.
+
+        This is mainly useful when you need a way of representing some
+        theoretical subclass of the instances the user may be trying to use
+        the generated intersection can serve as a placeholder.
+
+        This function will create a fresh subclass every time you call it,
+        even if you pass in the exact same arguments. So this means calling
+        `self.intersect_intersection([inst_1, inst_2], ctx)` twice will result
+        in instances of two distinct subclasses of inst_1 and inst_2.
+
+        This is by design: we want each ad-hoc intersection to be unique since
+        they're supposed represent some other unknown subclass.
+
+        Returns None if creating the subclass is impossible (e.g. due to
+        MRO errors or incompatible signatures). If we do successfully create
+        a subclass, its TypeInfo will automatically be added to the global scope.
+        """
         curr_module = self.scope.stack[0]
         assert isinstance(curr_module, MypyFile)
 
@@ -4813,7 +4835,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if yes_map is not None or type_ranges is None:
             return yes_map, no_map
 
-        # If we couldn't infer anything useful, try again by trying to compute an intersection
+        # If conditions_type_map was unable to successfully narrow the expr_type
+        # using the type_ranges and concluded if-branch is unreachable, we try
+        # computing it again using a different algorithm that tries to generate
+        # an ad-hoc intersection between the expr_type and the type_ranges.
         expr_type = get_proper_type(expr_type)
         if isinstance(expr_type, UnionType):
             possible_expr_types = get_proper_types(expr_type.relevant_items())

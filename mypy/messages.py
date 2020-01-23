@@ -1275,7 +1275,8 @@ class MessageBuilder:
                                 context: Context,
                                 ) -> None:
         template = "Subclass of {} cannot exist: would have {}"
-        self.fail(template.format(formatted_base_class_list, reason), context)
+        self.fail(template.format(formatted_base_class_list, reason), context,
+                  code=codes.UNREACHABLE)
 
     def report_protocol_problems(self,
                                  subtype: Union[Instance, TupleType, TypedDictType],
