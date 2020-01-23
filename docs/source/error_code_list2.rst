@@ -175,17 +175,21 @@ that ``Cat`` falls back to ``Any`` in a type annotation:
     def feed(cat: Cat) -> None:
         ...
 
-Check that statement is unreachable [unreachable]
------------------------------------------------------------
+Check that statement or expression is unreachable [unreachable]
+---------------------------------------------------------------
 
 If you use :option:`--warn-unreachable <mypy --warn-unreachable>`, mypy generates an error if it
-thinks that a statement will never be executed. In most cases, this is due to incorrect control flow.
+thinks that a statement or expression will never be executed. In most cases, this is due to
+incorrect control flow or conditional checks that are accidentally always true or false.
 
 .. code-block:: python
 
     # mypy: warn-unreachable
 
-    def example() -> None:
+    def example(x: int) -> None:
+        # Error: Right operand of 'or' is never evaluated  [unreachable]
+        assert isinstance(x, int) or x == 'unused'
+
         return
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
