@@ -15,7 +15,6 @@ from functools import singledispatch
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
     Dict,
     Generic,
     Iterator,
@@ -64,8 +63,9 @@ class Error:
         message: str,
         stub_object: MaybeMissing[nodes.Node],
         runtime_object: MaybeMissing[Any],
-        stub_printer: Optional[Callable[[nodes.Node], str]] = None,
-        runtime_printer: Optional[Callable[[Any], str]] = None,
+        *,
+        stub_desc: Optional[str] = None,
+        runtime_desc: Optional[str] = None,
     ) -> None:
         """Represents an error found by stubtest.
 
@@ -73,22 +73,16 @@ class Error:
         :param message: Error message
         :param stub_object: The mypy node representing the stub
         :param runtime_object: Actual object obtained from the runtime
-        :param stub_printer: Callable to provide specialised output for a given stub object
-        :param runtime_printer: Callable to provide specialised output for a given runtime object
+        :param stub_desc: Specialised description for the stub object, should you wish
+        :param runtime_desc: Specialised description for the runtime object, should you wish
 
         """
         self.object_desc = ".".join(object_path)
         self.message = message
         self.stub_object = stub_object
         self.runtime_object = runtime_object
-        if stub_printer is None:
-            stub_printer = lambda stub: str(getattr(stub, "type", stub))
-        self.stub_printer = lambda s: s if isinstance(s, Missing) else stub_printer(s)
-        if runtime_printer is None:
-            runtime_printer = lambda runtime: str(runtime)
-        self.runtime_printer = (
-            lambda s: s if isinstance(s, Missing) else runtime_printer(s)
-        )
+        self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
+        self.runtime_desc = runtime_desc or str(runtime_object)
 
     def is_missing_stub(self) -> bool:
         """Whether or not the error is for something missing from the stub."""
@@ -140,13 +134,11 @@ class Error:
             "Stub:",
             _style(stub_loc_str, dim=True),
             "\n",
-            _style(f"{self.stub_printer(self.stub_object)}\n", color="blue", dim=True),
+            _style(self.stub_desc + "\n", color="blue", dim=True),
             "Runtime:",
             _style(runtime_loc_str, dim=True),
             "\n",
-            _style(
-                f"{self.runtime_printer(self.runtime_object)}\n", color="blue", dim=True
-            ),
+            _style(self.runtime_desc + "\n", color="blue", dim=True),
         ]
         return "".join(output)
 
@@ -231,10 +223,16 @@ def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Type[Any]], object_path: List[str]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime)
+        yield Error(
+            object_path,
+            "is not present at runtime",
+            stub,
+            runtime,
+            stub_desc=repr(stub),
+        )
         return
     if not isinstance(runtime, type):
-        yield Error(object_path, "is not a type", stub, runtime)
+        yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
         return
 
     to_check = set(stub.names)
@@ -623,16 +621,13 @@ def verify_funcitem(
     stub_sig = Signature.from_funcitem(stub)
     runtime_sig = Signature.from_inspect_signature(signature)
 
-    def runtime_printer(s: Any) -> str:
-        return "def " + str(inspect.signature(s))
-
     for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
         yield Error(
             object_path,
             "is inconsistent, " + message,
             stub,
             runtime,
-            runtime_printer=runtime_printer,
+            runtime_desc="def " + str(signature),
         )
 
 
@@ -686,15 +681,10 @@ def verify_overloadedfuncdef(
 
     try:
         stub_sig = Signature.from_overloadedfuncdef(stub)
-        runtime_sig = Signature.from_inspect_signature(inspect.signature(runtime))
+        signature = inspect.signature(runtime)
+        runtime_sig = Signature.from_inspect_signature(signature)
     except ValueError:
         return
-
-    def stub_printer(s: Any) -> str:
-        return str(s.type) + "\nInferred signature: " + str(stub_sig)
-
-    def runtime_printer(s: Any) -> str:
-        return "def " + str(inspect.signature(s))
 
     for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
         # TODO: This is a little hacky, but the addition here is super useful
@@ -708,8 +698,8 @@ def verify_overloadedfuncdef(
             "is inconsistent, " + message,
             stub,
             runtime,
-            stub_printer=stub_printer,
-            runtime_printer=runtime_printer,
+            stub_desc=str(stub.type) + f"\nInferred signature: {stub_sig}",
+            runtime_desc="def " + str(signature),
         )
 
 
