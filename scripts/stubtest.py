@@ -13,17 +13,7 @@ import types
 import warnings
 from functools import singledispatch
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from typing_extensions import Type
 
@@ -69,7 +59,8 @@ class Error:
     ) -> None:
         """Represents an error found by stubtest.
 
-        :param object_path: Location of the object with the error, eg, ["module", "Class", "method"]
+        :param object_path: Location of the object with the error,
+            e.g. ``["module", "Class", "method"]``
         :param message: Error message
         :param stub_object: The mypy node representing the stub
         :param runtime_object: Actual object obtained from the runtime
@@ -852,10 +843,7 @@ def build_stubs(modules: List[str], options: Options) -> None:
 
     res = mypy.build.build(sources=sources, options=options)
     if res.errors:
-        output = [
-            _style("error: ", color="red", bold=True),
-            " failed mypy build.\n",
-        ]
+        output = [_style("error: ", color="red", bold=True), " failed mypy build.\n"]
         print("".join(output) + "\n".join(res.errors))
         sys.exit(1)
 
@@ -939,9 +927,7 @@ def main() -> int:
         "--whitelist",
         help="Use file as a whitelist. Whitelists can be created with --generate-whitelist",
     )
-    parser.add_argument(
-        "--concise", action="store_true", help="Make output concise",
-    )
+    parser.add_argument("--concise", action="store_true", help="Make output concise")
     parser.add_argument(
         "--generate-whitelist",
         action="store_true",
