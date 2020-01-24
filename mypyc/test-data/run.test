@@ -4405,40 +4405,6 @@ def foo(x: bool, y: bool) -> Tuple[Optional[A], bool]:
 [file driver.py]
 # really I only care it builds
 
-[case testDictFree]
-# Test that we garbage collect stuff with __dict__ right!
-from typing import Optional, Any, Dict, Generic, List
-from base import Base
-
-class A(Base):
-    z: Any
-
-def make_garbage(x: List[str]) -> None:
-    a = A()
-    b = A()
-    a.x = b
-    b.x = a
-    a.y = [1,2,3,4,5]
-
-[file base.py]
-class Base:
-    x = None  # type: object
-    y = None  # type: object
-
-[file driver.py]
-from native import make_garbage
-import gc
-
-def test():
-    gc.collect(2)
-    x = len(gc.get_objects())
-    make_garbage([1,2,3,4])
-    gc.collect(2)
-    y = len(gc.get_objects())
-    assert x == y
-
-test()
-
 [case testIterTypeTrickiness]
 # Test inferring the type of a for loop body doesn't cause us grief
 # Extracted from somethings that broke in mypy
