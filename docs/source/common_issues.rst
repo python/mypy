@@ -75,10 +75,10 @@ flagged as an error.
 - **:py:meth:`__init__ <object.__init__>` method has no annotated 
   arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
   is considered fully-annotated **if at least one argument is annotated**, 
-  while mypy will infer the return type as 'None'.
+  while mypy will infer the return type as ``None``.
   The implication is that, for a :py:meth:`__init__ <object.__init__>` method
   that has no argument, you'll have to explicitly annotate the return type 
-  as 'None' to type-check this :py:meth:`__init__ <object.__init__>` method:
+  as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
 
   .. code-block:: python
 
