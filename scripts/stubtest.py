@@ -239,15 +239,33 @@ def verify_typeinfo(
 
 
 def _verify_static_class_methods(
-    stub: nodes.FuncItem, runtime: types.FunctionType
+    stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
 ) -> Iterator[str]:
-    if isinstance(runtime, classmethod) and not stub.is_class:
+    if runtime.__name__ == "__new__":
+        # Special cased by Python, so never declared as staticmethod
+        return
+    if inspect.isbuiltin(runtime):
+        # The isinstance checks don't work reliably for builtins, e.g. datetime.datetime.now, so do
+        # something a little hacky that seems to work well
+        probably_class_method = isinstance(getattr(runtime, "__self__", None), type)
+        if probably_class_method and not stub.is_class:
+            yield "runtime is a classmethod but stub is not"
+        if not probably_class_method and stub.is_class:
+            yield "stub is a classmethod but runtime is not"
+        return
+
+    # Look the object up statically, to avoid binding by the descriptor protocol
+    static_runtime = importlib.import_module(object_path[0])
+    for entry in object_path[1:]:
+        static_runtime = inspect.getattr_static(static_runtime, entry)
+
+    if isinstance(static_runtime, classmethod) and not stub.is_class:
         yield "runtime is a classmethod but stub is not"
-    if not isinstance(runtime, classmethod) and stub.is_class:
+    if not isinstance(static_runtime, classmethod) and stub.is_class:
         yield "stub is a classmethod but runtime is not"
-    if isinstance(runtime, staticmethod) and not stub.is_static:
+    if isinstance(static_runtime, staticmethod) and not stub.is_static:
         yield "runtime is a staticmethod but stub is not"
-    if not isinstance(runtime, classmethod) and stub.is_static:
+    if not isinstance(static_runtime, staticmethod) and stub.is_static:
         yield "stub is a staticmethod but runtime is not"
 
 
@@ -590,7 +608,7 @@ def verify_funcitem(
         return
 
     for message in _verify_static_class_methods(stub, runtime, object_path):
-        yield Error(object_path, message, stub, runtime)
+        yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     try:
         signature = inspect.signature(runtime)
