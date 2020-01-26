@@ -321,3 +321,17 @@ class, including an abstract method defined in an abstract base class.
 
 You can implement an abstract property using either a normal
 property or an instance variable.
+
+An abstract class that defines at least one abstract method or
+property and has `@final` decorator will generate an error from
+mypy, since those attributes could never be implemented.
+
+.. code-block:: python
+
+    from abc import ABCMeta, abstractmethod
+    from typing import final
+
+    @final
+    class A(metaclass=ABCMeta):  # Error: Final class A has abstract attributes "f"
+        @abstractmethod
+        def f(self, x: int) -> None: pass
