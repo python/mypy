@@ -219,3 +219,17 @@ Here are some situations where using a final class may be useful:
   base classes and subclasses.
 * You want to retain the freedom to arbitrarily change the class implementation
   in the future, and these changes might break subclasses.
+
+An abstract class that defines at least one abstract method or
+property and has ``@final`` decorator will generate an error from
+mypy, since those attributes could never be implemented.
+
+.. code-block:: python
+
+    from abc import ABCMeta, abstractmethod
+    from typing_extensions import final
+
+    @final
+    class A(metaclass=ABCMeta):  # error: Final class A has abstract attributes "f"
+        @abstractmethod
+        def f(self, x: int) -> None: pass
