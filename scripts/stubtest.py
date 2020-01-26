@@ -823,6 +823,8 @@ def is_dunder(name: str, exclude_init: bool = False) -> bool:
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     """Checks whether ``left`` is a subtype of ``right``."""
+    left = mypy.types.get_proper_type(left)
+    right = mypy.types.get_proper_type(right)
     if (
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
@@ -862,7 +864,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     if not isinstance(type_info, nodes.TypeInfo):
         return None
 
-    anytype = lambda: mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+    def anytype() -> mypy.types.AnyType:
+        return mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
 
     if isinstance(runtime, tuple):
         # Special case tuples so we construct a valid mypy.types.TupleType
