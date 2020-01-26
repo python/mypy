@@ -274,7 +274,7 @@ def _verify_arg_name(
 ) -> Iterator[str]:
     """Checks whether argument names match."""
     # Ignore exact names for all dunder methods other than __init__
-    if function_name != "__init__" and function_name.startswith("__"):
+    if is_dunder(function_name, exclude_init=True):
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
@@ -439,7 +439,7 @@ class Signature(Generic[T]):
 
         """
         # For all dunder methods other than __init__, just assume all args are positional-only
-        assume_positional_only = stub.name != "__init__" and stub.name.startswith("__")
+        assume_positional_only = is_dunder(stub.name, exclude_init=True)
 
         all_args: Dict[str, List[Tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
@@ -521,7 +521,7 @@ def _verify_signature(
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
-            and not function_name.startswith("__")  # noisy for dunder methods
+            and not is_dunder(function_name)  # noisy for dunder methods
         ):
             yield (
                 f'stub argument "{stub_arg.variable.name}" should be positional-only '
@@ -808,6 +808,17 @@ def verify_typealias(
 ) -> Iterator[Error]:
     if False:
         yield None
+
+
+def is_dunder(name: str, exclude_init: bool = False) -> bool:
+    """Returns whether name is a dunder name.
+
+    :param exclude_init: Whether to return False for __init__
+
+    """
+    if exclude_init and name == "__init__":
+        return False
+    return name.startswith("__") and name.endswith("__")
 
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
