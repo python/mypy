@@ -5,6 +5,7 @@ Verify that various things in stubs are consistent with how things behave at run
 """
 
 import argparse
+import copy
 import importlib
 import inspect
 import subprocess
@@ -419,24 +420,12 @@ class Signature(Generic[T]):
         lies it might try to tell.
 
         """
-
-        def get_funcs() -> Iterator[nodes.FuncItem]:
-            for dec in stub.items:
-                if (
-                    isinstance(dec, nodes.Decorator)
-                    and len(dec.decorators) == 1
-                    and isinstance(dec.decorators[0], nodes.NameExpr)
-                    and dec.decorators[0].fullname == "typing.overload"
-                ):
-                    yield dec.func
-                else:
-                    raise ValueError
-
         # For all dunder methods other than __init__, just assume all args are positional-only
         assume_positional_only = stub.name != "__init__" and stub.name.startswith("__")
 
         all_args: Dict[str, List[Tuple[nodes.Argument, int]]] = {}
-        for func in get_funcs():
+        for func in map(_resolve_funcitem_from_decorator, stub.items):
+            assert func is not None
             for index, arg in enumerate(func.arguments):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
@@ -600,7 +589,7 @@ def verify_funcitem(
         yield Error(object_path, "is not a function", stub, runtime)
         return
 
-    for message in _verify_static_class_methods(stub, runtime):
+    for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, message, stub, runtime)
 
     try:
@@ -670,12 +659,17 @@ def verify_overloadedfuncdef(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
+    if stub.is_property:
+        # We get here in cases of overloads from property.setter
+        return
+
     try:
-        stub_sig = Signature.from_overloadedfuncdef(stub)
         signature = inspect.signature(runtime)
-        runtime_sig = Signature.from_inspect_signature(signature)
     except ValueError:
         return
+
+    stub_sig = Signature.from_overloadedfuncdef(stub)
+    runtime_sig = Signature.from_inspect_signature(signature)
 
     for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
         # TODO: This is a little hacky, but the addition here is super useful
@@ -726,6 +720,53 @@ def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     yield "is inconsistent, cannot reconcile @property on stub with runtime object"
 
 
+def _resolve_funcitem_from_decorator(
+    dec: nodes.OverloadPart
+) -> Optional[nodes.FuncItem]:
+    """Returns a FuncItem that corresponds to the output of the decorator.
+
+    Returns None if we can't figure out what that would be. For convenience, this function also
+    accepts FuncItems.
+
+    """
+    if isinstance(dec, nodes.FuncItem):
+        return dec
+    if dec.func.is_property:
+        return None
+
+    def apply_decorator_to_funcitem(
+        decorator: nodes.Expression, func: nodes.FuncItem
+    ) -> Optional[nodes.FuncItem]:
+        if not isinstance(decorator, nodes.NameExpr):
+            return None
+        if decorator.fullname is None:
+            # Happens with namedtuple
+            return None
+        if decorator.fullname in (
+            "builtins.staticmethod",
+            "typing.overload",
+            "abc.abstractmethod",
+        ):
+            return func
+        if decorator.fullname == "builtins.classmethod":
+            assert func.arguments[0].variable.name in ("cls", "metacls")
+            ret = copy.copy(func)
+            # Remove the cls argument, since it's not present in inspect.signature of classmethods
+            ret.arguments = ret.arguments[1:]
+            return ret
+        # Just give up on any other decorators. After excluding properties, we don't run into
+        # anything else when running on typeshed's stdlib.
+        return None
+
+    func: nodes.FuncItem = dec.func
+    for decorator in dec.original_decorators:
+        resulting_func = apply_decorator_to_funcitem(decorator, func)
+        if resulting_func is None:
+            return None
+        func = resulting_func
+    return func
+
+
 @verify.register(nodes.Decorator)
 def verify_decorator(
     stub: nodes.Decorator, runtime: MaybeMissing[Any], object_path: List[str]
@@ -733,22 +774,14 @@ def verify_decorator(
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
-    if not stub.decorators:
-        # semanal.SemanticAnalyzer.visit_decorator lists the decorators that get removed (note they
-        # can still be found in stub.original_decorators).
-        if stub.func.is_property:
-            for message in _verify_property(stub, runtime):
-                yield Error(
-                    object_path, message, stub, runtime,
-                )
-            return
-
-        # For any of those decorators that aren't @property, just delegate to verify_funcitem
-        yield from verify(stub.func, runtime, object_path)
+    if stub.func.is_property:
+        for message in _verify_property(stub, runtime):
+            yield Error(object_path, message, stub, runtime)
         return
 
-    # Just skip checking any other decorators. The only other relevant one when checking stdlib
-    # is @overload, which gets handled by verify_overloadedfuncdef and never reaches here.
+    func = _resolve_funcitem_from_decorator(stub)
+    if func is not None:
+        yield from verify(func, runtime, object_path)
 
 
 @verify.register(nodes.TypeAlias)
