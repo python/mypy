@@ -265,6 +265,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         # When given two fixed-length tuples:
         # * If they have the same length, join their subtypes item-wise:
         #   Tuple[int, bool] + Tuple[bool, bool] becomes Tuple[int, bool]
+        # * If lengths do not match, return a variadic tuple:
+        #   Tuple[bool, int] + Tuple[bool] becomes Tuple[int, ...]
         #
         # Otherwise, `t` is a fixed-length tuple but `self.s` is NOT:
         # * Joining with a variadic tuple returns variadic tuple:
@@ -272,13 +274,16 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         # * Joining with any Sequence also returns a Sequence:
         #   Tuple[int, bool] + List[bool] becomes Sequence[int]
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items = []  # type: List[Type]
-            for i in range(t.length()):
-                items.append(self.join(t.items[i], self.s.items[i]))
             fallback = join_instances(mypy.typeops.tuple_fallback(self.s),
                                       mypy.typeops.tuple_fallback(t))
             assert isinstance(fallback, Instance)
-            return TupleType(items, fallback)
+            if self.s.length() == t.length():
+                items = []  # type: List[Type]
+                for i in range(t.length()):
+                    items.append(self.join(t.items[i], self.s.items[i]))
+                return TupleType(items, fallback)
+            else:
+                return fallback
         else:
             return join_types(self.s, mypy.typeops.tuple_fallback(t))
 
