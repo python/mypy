@@ -456,6 +456,7 @@ if int():
 if int():
     a = 1
     b = ''
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithExtraParentheses]
 
@@ -496,12 +497,14 @@ if int():
     a = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 if int():
     b = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithMixedVariables]
 a = b, c = 1, 1
 x, y = p, q = 1, 1
 u, v, w = r, s = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
+[builtins fixtures/tuple.pyi]
 
 
 -- Assignment to starred expressions
@@ -697,6 +700,7 @@ if int():
 class A: pass
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 [case testNestedTupleAssignment2]
 
@@ -728,6 +732,7 @@ if int():
 class A: pass
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Error messages
@@ -888,6 +893,7 @@ B()[100]
 [case testValidTupleBaseClass]
 from typing import Tuple
 class A(tuple): pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testTupleBaseClass2]
@@ -960,18 +966,21 @@ from typing import Container
 a = None  # type: Container[str]
 a = ()
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testSubtypingTupleIsSized]
 from typing import Sized
 a = None  # type: Sized
 a = ()
 [typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr1]
 
 a = (1, 2)
 b = (*a, '')
 reveal_type(b)  # N: Revealed type is 'Tuple[builtins.int, builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr2]
 a = [1]
@@ -1194,6 +1203,7 @@ x: Iterable[int] = ()
 y: Tuple[int, int] = (1, 2)
 x = y
 reveal_type(x) # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[builtins fixtures/tuple.pyi]
 
 [case testTupleOverlapDifferentTuples]
 from typing import Optional, Tuple

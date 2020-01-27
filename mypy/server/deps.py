@@ -299,7 +299,7 @@ class DependencyVisitor(TraverserVisitor):
                     if name not in info.names:
                         continue
                     # __init__ and __new__ can be overridden with different signatures, so no
-                    # logical depedency.
+                    # logical dependency.
                     if name in ('__init__', '__new__'):
                         continue
                 self.add_dependency(make_trigger(base_info.fullname + '.' + name),

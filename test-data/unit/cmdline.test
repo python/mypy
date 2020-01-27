@@ -1036,6 +1036,16 @@ some_file.py:1: error: invalid syntax  [syntax]
                                                         ^
 == Return code: 2
 
+[case testTabRenderingUponError]
+# cmd: mypy --pretty tabs.py
+[file tabs.py]
+def test_tabs() -> str:
+	return None
+[out]
+tabs.py:2: error: Incompatible return value type (got "None", expected "str")
+            return None
+                   ^
+
 [case testSpecialTypeshedGenericNote]
 # cmd: mypy --disallow-any-generics --python-version=3.6 test.py
 [file test.py]

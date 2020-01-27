@@ -202,7 +202,7 @@ p: Point
 reveal_type(p) # N: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, '_y': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassOverwriting]
+[case testCannotCreateTypedDictWithDuplicateField]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
@@ -214,7 +214,7 @@ b: Bad
 reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassOverwriting2]
+[case testCanCreateTypedDictWithClassOverwriting]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
@@ -222,24 +222,24 @@ class Point1(TypedDict):
     x: int
 class Point2(TypedDict):
     x: float
-class Bad(Point1, Point2): # E: Cannot overwrite TypedDict field "x" while merging
+class Bad(Point1, Point2): # E: Overwriting TypedDict field "x" while merging
     pass
 
 b: Bad
 reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithClassOverwriting2]
+[case testCanCreateTypedDictWithClassOverwriting2]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Point1(TypedDict):
     x: int
 class Point2(Point1):
-    x: float # E: Cannot overwrite TypedDict field "x" while extending
+    x: float # E: Overwriting TypedDict field "x" while extending
 
 p2: Point2
-reveal_type(p2) # N: Revealed type is 'TypedDict('__main__.Point2', {'x': builtins.int})'
+reveal_type(p2) # N: Revealed type is 'TypedDict('__main__.Point2', {'x': builtins.float})'
 [builtins fixtures/dict.pyi]
 
 
@@ -822,6 +822,27 @@ reveal_type(u(c, m_i_i)) # N: Revealed type is 'Union[typing.Mapping*[builtins.i
 reveal_type(u(c, m_s_a)) # N: Revealed type is 'Union[typing.Mapping*[builtins.str, Any], TypedDict('__main__.C', {'a': builtins.int, 'b': builtins.int})]'
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictUnionUnambiguousCase]
+from typing import Union, Mapping, Any, cast
+from typing_extensions import TypedDict, Literal
+
+A = TypedDict('A', {'@type': Literal['a-type'], 'a': str})
+B = TypedDict('B', {'@type': Literal['b-type'], 'b': int})
+
+c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
+reveal_type(c) # N: Revealed type is 'Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]'
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictUnionAmbiguousCase]
+from typing import Union, Mapping, Any, cast
+from typing_extensions import TypedDict, Literal
+
+A = TypedDict('A', {'@type': Literal['a-type'], 'a': str})
+B = TypedDict('B', {'@type': Literal['a-type'], 'a': str})
+
+c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'} # E: Type of TypedDict is ambiguous, could be any of ("A", "B") \
+                                                  # E: Incompatible types in assignment (expression has type "Dict[str, str]", variable has type "Union[A, B]")
+[builtins fixtures/dict.pyi]
 
 -- Use dict literals
 
@@ -1472,6 +1493,7 @@ f4(**a) # E: Extra argument "y" from **args for "f4"
 f5(**a) # E: Too few arguments for "f5"
 f6(**a) # E: Extra argument "y" from **args for "f6"
 f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictAsStarStarArgConstraints]
 from typing import TypeVar, Union
@@ -1484,6 +1506,7 @@ def f1(x: T, y: S) -> Union[T, S]: ...
 A = TypedDict('A', {'y': int, 'x': str})
 a: A
 reveal_type(f1(**a)) # N: Revealed type is 'Union[builtins.str*, builtins.int*]'
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictAsStarStarArgCalleeKwargs]
 from mypy_extensions import TypedDict
@@ -1528,6 +1551,7 @@ f1(**a, **c) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
 f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
+[builtins fixtures/tuple.pyi]
 
 [case testTypedDictNonMappingMethods]
 from typing import List

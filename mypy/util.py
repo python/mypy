@@ -4,7 +4,7 @@ import pathlib
 import re
 import subprocess
 import sys
-import os
+import hashlib
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -142,7 +142,7 @@ def read_py_file(path: str, read: Callable[[str], bytes],
     """
     try:
         source = read(path)
-    except (IOError, OSError):
+    except OSError:
         return None
     else:
         try:
@@ -469,6 +469,18 @@ def soft_wrap(msg: str, max_len: int, first_offset: int,
     return padding.join(lines)
 
 
+def hash_digest(data: bytes) -> str:
+    """Compute a hash digest of some data.
+
+    We use a cryptographic hash because we want a low probability of
+    accidental collision, but we don't really care about any of the
+    cryptographic properties.
+    """
+    # Once we drop Python 3.5 support, we should consider using
+    # blake2b, which is faster.
+    return hashlib.sha256(data).hexdigest()
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
@@ -607,8 +619,11 @@ class FancyFormatter:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
             codepos = msg.rfind('[')
-            code = msg[codepos:]
-            msg = msg[:codepos]
+            if codepos != -1:
+                code = msg[codepos:]
+                msg = msg[:codepos]
+            else:
+                code = ""  # no error code specified
             return (loc + self.style('error:', 'red', bold=True) +
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:

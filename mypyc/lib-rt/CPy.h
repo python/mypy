@@ -930,6 +930,16 @@ static PyObject *CPyDict_FromAny(PyObject *obj) {
     }
 }
 
+static PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
+{
+    Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
+    if (temp_max_split == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+            return NULL;
+    }
+    return PyUnicode_Split(str, sep, temp_max_split);
+}
+
 static PyObject *CPyIter_Next(PyObject *iter)
 {
     return (*iter->ob_type->tp_iternext)(iter);

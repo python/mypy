@@ -5,7 +5,7 @@ flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
 lxml>=4.4.0
 psutil>=4.0
-pytest>=5.1.1
+pytest==5.3.2
 pytest-xdist>=1.22
 # pytest-xdist depends on pytest-forked and 1.1.0 doesn't install clean on macOS 3.5
 pytest-forked>=1.0.0,<1.1.0

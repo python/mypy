@@ -437,6 +437,7 @@ for x in foo:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
+[builtins fixtures/tuple.pyi]
 
 [case testMethodSignatureHookNamesFullyQualified]
 # flags: --config-file tmp/mypy.ini

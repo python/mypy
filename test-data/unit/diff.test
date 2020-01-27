@@ -273,6 +273,7 @@ M = NamedTuple('M', [('x', int), ('y', str)])
 from typing import NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
 M = NamedTuple('M', [('x', int), ('y', str)])
+[builtins fixtures/tuple.pyi]
 [out]
 __main__.A
 __main__.N
@@ -1180,6 +1181,7 @@ class C:
         self.y_instance: Literal[1] = 1
         self.z_instance: Literal[2] = 2
         self.same_instance: Literal[1] = 1
+[builtins fixtures/tuple.pyi]
 [out]
 __main__.C.x_class
 __main__.C.x_instance
@@ -1440,6 +1442,7 @@ class C:
     def method_same(self, x: Literal[1]) -> int: ...
     def method_same(self, x):
         pass
+[builtins fixtures/tuple.pyi]
 [out]
 __main__.C.method
 __main__.func
@@ -1450,6 +1453,7 @@ x: Literal[1, '2']
 [file next.py]
 from typing_extensions import Literal
 x: Literal[1, 2]
+[builtins fixtures/tuple.pyi]
 [out]
 __main__.x
 
@@ -1463,5 +1467,6 @@ from typing import Callable, Union
 from mypy_extensions import Arg
 x: Union[Callable[[Arg(int, 'y')], None],
          Callable[[int], None]]
+[builtins fixtures/tuple.pyi]
 [out]
 __main__.x

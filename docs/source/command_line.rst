@@ -482,6 +482,33 @@ of the above sections.
            # 'items' now has type List[List[str]]
            ...
 
+.. option:: --local-partial-types
+
+    In mypy, the most common cases for partial types are variables initialized using ``None``,
+    but without explicit ``Optional`` annotations. By default, mypy won't check partial types
+    spanning module top level or class top level. This flag changes the behavior to only allow
+    partial types at local level, therefore it disallows inferring variable type for ``None``
+    from two assignments in different scopes. For example:
+
+    .. code-block:: python
+
+        from typing import Optional
+
+        a = None  # Need type annotation here if using --local-partial-types
+        b = None  # type: Optional[int]
+
+        class Foo:
+            bar = None  # Need type annotation here if using --local-partial-types
+            baz = None  # type: Optional[int]
+
+            def __init__(self) -> None
+                self.bar = 1
+
+        reveal_type(Foo().bar)  # Union[int, None] without --local-partial-types
+
+    Note: this option is always implicitly enabled in mypy daemon and will become
+    enabled by default for mypy in a future release.
+
 .. option:: --no-implicit-reexport
 
     By default, imported values to a module are treated as exported and mypy allows

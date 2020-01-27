@@ -109,6 +109,10 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             report("Class {} has abstract attributes {}".format(typ.fullname, attrs), 'error')
             report("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
                    'note')
+    if typ.is_final and abstract:
+        attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
+        errors.report(typ.line, typ.column,
+                      "Final class {} has abstract attributes {}".format(typ.fullname, attrs))
 
 
 def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
