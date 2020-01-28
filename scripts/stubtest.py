@@ -655,8 +655,8 @@ def verify_none(
             # weird things going on. Try to see if we can find a runtime object by importing it,
             # otherwise crash.
             runtime = importlib.import_module(".".join(object_path))
-        except ModuleNotFoundError:
-            assert False
+        except ImportError:
+            raise RuntimeError
     yield Error(object_path, "is not present in stub", stub, runtime)
 
 
@@ -974,9 +974,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     for version in versions:
         base = typeshed_dir / "stdlib" / version
         if base.exists():
-            output = subprocess.check_output(
-                ["find", base, "-type", "f"], encoding="utf-8"
-            )
+            output = subprocess.check_output(["find", str(base), "-type", "f"]).decode("utf-8")
             paths = [Path(p) for p in output.splitlines()]
             for path in paths:
                 if path.stem == "__init__":
@@ -1005,7 +1003,7 @@ def get_whitelist_entries(whitelist_file: Optional[str]) -> Iterator[str]:
 
 
 def main() -> int:
-    assert sys.version_info >= (3, 6), "This script requires at least Python 3.6"
+    assert sys.version_info >= (3, 5), "This script requires at least Python 3.5"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("modules", nargs="*", help="Modules to test")
