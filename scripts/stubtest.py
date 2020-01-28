@@ -887,24 +887,41 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
 _all_stubs: Dict[str, nodes.MypyFile] = {}
 
 
-def build_stubs(modules: List[str], options: Options) -> None:
+def build_stubs(
+    modules: List[str], options: Options, find_submodules: bool = False
+) -> List[str]:
     """Uses mypy to construct stub objects for the given modules.
 
     This sets global state that ``get_stub`` can access.
+
+    Returns all modules we might want to check. If ``find_submodules`` is False, this is equal
+    to ``modules``.
+
+    :param modules: List of modules to build stubs for.
+    :param options: Mypy options for finding and building stubs.
+    :param find_submodules: Whether to attempt to find submodules of the given modules as well.
 
     """
     data_dir = mypy.build.default_data_dir()
     search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
     find_module_cache = mypy.modulefinder.FindModuleCache(search_path)
 
+    all_modules = []
     sources = []
-    # TODO: restore support for automatically recursing into submodules with find_modules_recursive
     for module in modules:
-        module_path = find_module_cache.find_module(module)
-        if module_path is None:
-            # test_module will yield an error later when it can't find stubs
-            continue
-        sources.append(mypy.modulefinder.BuildSource(module_path, module, None))
+        all_modules.append(module)
+        if not find_submodules:
+            module_path = find_module_cache.find_module(module)
+            if module_path is None:
+                # test_module will yield an error later when it can't find stubs
+                continue
+            sources.append(mypy.modulefinder.BuildSource(module_path, module, None))
+        else:
+            found_sources = find_module_cache.find_modules_recursive(module)
+            sources.extend(found_sources)
+            all_modules.extend(
+                s.module for s in found_sources if s.module not in all_modules
+            )
 
     res = mypy.build.build(sources=sources, options=options)
     if res.errors:
@@ -914,6 +931,8 @@ def build_stubs(modules: List[str], options: Options) -> None:
 
     global _all_stubs
     _all_stubs = res.files
+
+    return all_modules
 
 
 def get_stub(module: str) -> Optional[nodes.MypyFile]:
@@ -1021,7 +1040,7 @@ def main() -> int:
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
 
-    build_stubs(modules, options)
+    modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
 
     exit_code = 0
     for module in modules:
