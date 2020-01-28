@@ -97,9 +97,9 @@ class Error:
 
         stub_loc_str = ""
         if stub_line:
-            stub_loc_str += f" at line {stub_line}"
+            stub_loc_str += " at line {}".format(stub_line)
         if stub_file:
-            stub_loc_str += f" in file {stub_file}"
+            stub_loc_str += " in file {}".format(stub_file)
 
         runtime_line = None
         runtime_file = None
@@ -115,14 +115,16 @@ class Error:
 
         runtime_loc_str = ""
         if runtime_line:
-            runtime_loc_str += f" at line {runtime_line}"
+            runtime_loc_str += " at line {}".format(runtime_line)
         if runtime_file:
-            runtime_loc_str += f" in file {runtime_file}"
+            runtime_loc_str += " in file {}".format(runtime_file)
 
         output = [
             _style("error: ", color="red", bold=True),
             _style(self.object_desc, bold=True),
-            f" {self.message}\n",
+            " ",
+            self.message,
+            "\n",
             "Stub:",
             _style(stub_loc_str, dim=True),
             "\n",
@@ -151,7 +153,7 @@ def test_module(module_name: str) -> Iterator[Error]:
     try:
         runtime = importlib.import_module(module_name)
     except Exception as e:
-        yield Error([module_name], f"failed to import: {e}", stub, MISSING)
+        yield Error([module_name], "failed to import: {}".format(e), stub, MISSING)
         return
 
     # collections likes to warn us about the things we're doing
@@ -297,8 +299,9 @@ def _verify_arg_name(
     if stub_arg.variable.name == "_self":
         return
     yield (
-        f'stub argument "{stub_arg.variable.name}" differs from '
-        f'runtime argument "{runtime_arg.name}"'
+        'stub argument "{}" differs from runtime argument "{}"'.format(
+            stub_arg.variable.name, runtime_arg.name
+        )
     )
 
 
@@ -309,8 +312,9 @@ def _verify_arg_default_value(
     if runtime_arg.default != inspect.Parameter.empty:
         if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
             yield (
-                f'runtime argument "{runtime_arg.name}" has a default value '
-                "but stub argument does not"
+                'runtime argument "{}" has a default value but stub argument does not'.format(
+                    runtime_arg.name
+                )
             )
         else:
             runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
@@ -327,14 +331,17 @@ def _verify_arg_default_value(
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
-                    f'runtime argument "{runtime_arg.name}" has a default value of type '
-                    f"{runtime_type}, which is incompatible with stub argument type {stub_type}"
+                    'runtime argument "{}" has a default value of type {}, '
+                    "which is incompatible with stub argument type {}".format(
+                        runtime_arg.name, runtime_type, stub_type
+                    )
                 )
     else:
         if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
             yield (
-                f'stub argument "{stub_arg.variable.name}" has a default '
-                "value but runtime argument does not"
+                'stub argument "{}" has a default value but runtime argument does not'.format(
+                    stub_arg.variable.name
+                )
             )
 
 
@@ -371,7 +378,7 @@ class Signature(Generic[T]):
             arg_type = get_type(arg)
             return (
                 get_name(arg)
-                + (f": {arg_type}" if arg_type else "")
+                + (": {}".format(arg_type) if arg_type else "")
                 + (" = ..." if has_default(arg) else "")
             )
 
@@ -448,7 +455,7 @@ class Signature(Generic[T]):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
                 name = (
-                    f"__{index}"
+                    "__{}".format(index)
                     if arg.variable.name.startswith("__") or assume_positional_only
                     else arg.variable.name
                 )
@@ -524,25 +531,27 @@ def _verify_signature(
             and not is_dunder(function_name)  # noisy for dunder methods
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" should be positional-only '
-                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
+                'stub argument "{}" should be positional-only '
+                '(rename with a leading double underscore, i.e. "__{}")'.format(
+                    stub_arg.variable.name, runtime_arg.name
+                )
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and stub_arg.variable.name.startswith("__")
         ):
             yield (
-                f'stub argument "{stub_arg.variable.name}" is positional or keyword '
-                "(remove leading double underscore)"
+                'stub argument "{}" is positional or keyword '
+                "(remove leading double underscore)".format(stub_arg.variable.name)
             )
 
     # Checks involving *args
     if len(stub.pos) == len(runtime.pos):
         if stub.varpos is None and runtime.varpos is not None:
-            yield f'stub does not have *args argument "{runtime.varpos.name}"'
+            yield 'stub does not have *args argument "{}"'.format(runtime.varpos.name)
         if stub.varpos is not None and runtime.varpos is None:
-            yield (
-                f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+            yield 'runtime does not have *args argument "{}"'.format(
+                stub.varpos.variable.name
             )
     elif len(stub.pos) > len(runtime.pos):
         if runtime.varpos is None:
@@ -550,16 +559,20 @@ def _verify_signature(
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument; we report the error while checking keyword-only arguments
                 if stub_arg.variable.name not in runtime.kwonly:
-                    yield f'runtime does not have argument "{stub_arg.variable.name}"'
+                    yield 'runtime does not have argument "{}"'.format(
+                        stub_arg.variable.name
+                    )
         # We do not check whether stub takes *args when the runtime does, for cases where the stub
         # just listed out the extra parameters the function takes
     elif len(stub.pos) < len(runtime.pos):
         if stub.varpos is None:
             for runtime_arg in runtime.pos[len(stub.pos) :]:
-                yield f'stub does not have argument "{runtime_arg.name}"'
+                yield 'stub does not have argument "{}"'.format(runtime_arg.name)
         elif runtime.pos is None:
             yield (
-                f'runtime does not have *args argument "{stub.varpos.variable.name}"'
+                'runtime does not have *args argument "{}"'.format(
+                    stub.varpos.variable.name
+                )
             )
 
     # Check keyword-only args
@@ -576,18 +589,20 @@ def _verify_signature(
         # isn't marked as keyword-only
         stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
         if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
-            yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
+            yield 'stub does not have **kwargs argument "{}"'.format(runtime.varkw.name)
     if stub.varkw is not None and runtime.varkw is None:
-        yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
+        yield 'runtime does not have **kwargs argument "{}"'.format(
+            stub.varkw.variable.name
+        )
     if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
-            yield f'runtime does not have argument "{arg}"'
+            yield 'runtime does not have argument "{}"'.format(arg)
     if stub.varkw is None or not set(stub.kwonly).issubset(set(runtime.kwonly)):
         for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
             if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
-                yield f'stub argument "{arg}" is not keyword-only'
+                yield 'stub argument "{}" is not keyword-only'.format(arg)
             else:
-                yield f'stub does not have argument "{arg}"'
+                yield 'stub does not have argument "{}"'.format(arg)
 
 
 @verify.register(nodes.FuncItem)
@@ -663,7 +678,7 @@ def verify_var(
     ):
         yield Error(
             object_path,
-            f"variable differs from runtime type {runtime_type}",
+            "variable differs from runtime type {}".format(runtime_type),
             stub,
             runtime,
         )
@@ -701,7 +716,7 @@ def verify_overloadedfuncdef(
             "is inconsistent, " + message,
             stub,
             runtime,
-            stub_desc=str(stub.type) + f"\nInferred signature: {stub_sig}",
+            stub_desc=str(stub.type) + "\nInferred signature: {}".format(stub_sig),
             runtime_desc="def " + str(signature),
         )
 
@@ -953,7 +968,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
 
     versions = ["2and3", "3"]
     for minor in range(sys.version_info.minor + 1):
-        versions.append(f"3.{minor}")
+        versions.append("3.{}".format(minor))
 
     modules = []
     for version in versions:
@@ -1063,7 +1078,7 @@ def main() -> int:
     for w in whitelist:
         if not whitelist[w]:
             exit_code = 1
-            print(f"note: unused whitelist entry {w}")
+            print("note: unused whitelist entry {}".format(w))
 
     # Print the generated whitelist
     if args.generate_whitelist:
