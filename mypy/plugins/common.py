@@ -134,23 +134,24 @@ def add_method(
 
 
 def deserialize_and_fixup_type(
-    data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
+        data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
 ) -> Type:
     typ = deserialize_type(data)
     typ.accept(TypeFixer(api.modules, allow_missing=False))
     return typ
 
 
-def make_typeddict(api: CheckerPluginInterface, fields: 'OrderedDict[str, Type]',
-                   required_keys: Set[str]) -> TypedDictType:
-    # Try to resolve the TypedDict fallback type
-    anonymous_typeddict_type: Optional[Instance] = None
+def get_anonymous_typeddict_type(api: CheckerPluginInterface) -> Instance:
     for type_fullname in TPDICT_FB_NAMES:
         try:
             anonymous_typeddict_type = api.named_generic_type(type_fullname, [])
             if anonymous_typeddict_type is not None:
-                break
+                return anonymous_typeddict_type
         except KeyError:
             continue
-    assert anonymous_typeddict_type is not None
-    return TypedDictType(fields, required_keys=required_keys, fallback=anonymous_typeddict_type)
+    raise RuntimeError("No TypedDict fallback type found")
+
+
+def make_anonymous_typeddict(api: CheckerPluginInterface, fields: 'OrderedDict[str, Type]',
+                             required_keys: Set[str]) -> TypedDictType:
+    return TypedDictType(fields, required_keys=required_keys, fallback=get_anonymous_typeddict_type(api))

@@ -12,7 +12,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, FunctionContext
 from mypy.plugin import SemanticAnalyzerPluginInterface
-from mypy.plugins.common import add_method, _get_decorator_bool_argument, make_typeddict
+from mypy.plugins.common import add_method, _get_decorator_bool_argument, make_anonymous_typeddict
 from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
@@ -411,5 +411,5 @@ def asdict_callback(ctx: FunctionContext) -> Type:
                     typ = sym_node.type
                     assert typ is not None
                     fields[attr.name] = typ
-                return make_typeddict(ctx.api, fields=fields, required_keys=set(fields.keys()))
+                return make_anonymous_typeddict(ctx.api, fields=fields, required_keys=set(fields.keys()))
     return ctx.default_return_type
