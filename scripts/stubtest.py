@@ -347,10 +347,10 @@ def _verify_arg_default_value(
 
 class Signature(Generic[T]):
     def __init__(self) -> None:
-        self.pos: List[T] = []
-        self.kwonly: Dict[str, T] = {}
-        self.varpos: Optional[T] = None
-        self.varkw: Optional[T] = None
+        self.pos = []  # type: List[T]
+        self.kwonly = {}  # type: Dict[str, T]
+        self.varpos = None  # type: Optional[T]
+        self.varkw = None  # type: Optional[T]
 
     def __str__(self) -> str:
         def get_name(arg: Any) -> str:
@@ -398,7 +398,7 @@ class Signature(Generic[T]):
 
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
-        stub_sig: Signature[nodes.Argument] = Signature()
+        stub_sig = Signature()  # type: Signature[nodes.Argument]
         for stub_arg in stub.arguments:
             if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
                 stub_sig.pos.append(stub_arg)
@@ -416,7 +416,7 @@ class Signature(Generic[T]):
     def from_inspect_signature(
         signature: inspect.Signature,
     ) -> "Signature[inspect.Parameter]":
-        runtime_sig: Signature[inspect.Parameter] = Signature()
+        runtime_sig = Signature()  # type: Signature[inspect.Parameter]
         for runtime_arg in signature.parameters.values():
             if runtime_arg.kind in (
                 inspect.Parameter.POSITIONAL_ONLY,
@@ -448,7 +448,7 @@ class Signature(Generic[T]):
         # For all dunder methods other than __init__, just assume all args are positional-only
         assume_positional_only = is_dunder(stub.name, exclude_init=True)
 
-        all_args: Dict[str, List[Tuple[nodes.Argument, int]]] = {}
+        all_args = {}  # type: Dict[str, List[Tuple[nodes.Argument, int]]]
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None
             for index, arg in enumerate(func.arguments):
@@ -492,7 +492,7 @@ class Signature(Generic[T]):
                 return nodes.ARG_OPT if is_pos else nodes.ARG_NAMED_OPT
             return nodes.ARG_POS if is_pos else nodes.ARG_NAMED
 
-        sig: Signature[nodes.Argument] = Signature()
+        sig = Signature()  # type: Signature[nodes.Argument]
         for arg_name in sorted(all_args, key=get_position):
             # example_arg_name gives us a real name (in case we had a fake index-based name)
             example_arg_name = all_args[arg_name][0][0].variable.name
@@ -791,7 +791,7 @@ def _resolve_funcitem_from_decorator(
         # anything else when running on typeshed's stdlib.
         return None
 
-    func: nodes.FuncItem = dec.func
+    func = dec.func  # type: nodes.FuncItem
     for decorator in dec.original_decorators:
         resulting_func = apply_decorator_to_funcitem(decorator, func)
         if resulting_func is None:
@@ -899,7 +899,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     )
 
 
-_all_stubs: Dict[str, nodes.MypyFile] = {}
+_all_stubs = {}  # type: Dict[str, nodes.MypyFile]
 
 
 def build_stubs(
