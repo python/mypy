@@ -56,7 +56,7 @@ class Error:
         runtime_object: MaybeMissing[Any],
         *,
         stub_desc: Optional[str] = None,
-        runtime_desc: Optional[str] = None,
+        runtime_desc: Optional[str] = None
     ) -> None:
         """Represents an error found by stubtest.
 
@@ -181,7 +181,7 @@ def verify(
 def verify_mypyfile(
     stub: nodes.MypyFile,
     runtime: MaybeMissing[types.ModuleType],
-    object_path: List[str],
+    object_path: List[str]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
@@ -518,7 +518,7 @@ class Signature(Generic[T]):
 def _verify_signature(
     stub: Signature[nodes.Argument],
     runtime: Signature[inspect.Parameter],
-    function_name: str,
+    function_name: str
 ) -> Iterator[str]:
     # Check positional arguments match up
     for stub_arg, runtime_arg in zip(stub.pos, runtime.pos):
@@ -609,7 +609,7 @@ def _verify_signature(
 def verify_funcitem(
     stub: nodes.FuncItem,
     runtime: MaybeMissing[types.FunctionType],
-    object_path: List[str],
+    object_path: List[str]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
