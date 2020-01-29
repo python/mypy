@@ -80,6 +80,11 @@ class Error:
         """Whether or not the error is for something missing from the stub."""
         return isinstance(self.stub_object, Missing)
 
+    def is_positional_only_related(self) -> bool:
+        """Whether or not the error is for something being (or not being) positional-only."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return "leading double underscore" in self.message
+
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
 
@@ -520,7 +525,7 @@ def _verify_signature(
             and stub_arg.variable.name.startswith("__")
         ):
             yield (
-                'stub argument "{}" is positional or keyword '
+                'stub argument "{}" should be positional or keyword '
                 "(remove leading double underscore)".format(stub_arg.variable.name)
             )
 
@@ -974,6 +979,11 @@ def main() -> int:
         help="Ignore errors for stub missing things that are present at runtime",
     )
     parser.add_argument(
+        "--ignore-positional-only",
+        action="store_true",
+        help="Ignore errors for whether an argument should or shouldn't be positional-only",
+    )
+    parser.add_argument(
         "--whitelist",
         help="Use file as a whitelist. Whitelists can be created with --generate-whitelist",
     )
@@ -1011,6 +1021,8 @@ def main() -> int:
         for error in test_module(module):
             # Filter errors
             if args.ignore_missing_stub and error.is_missing_stub():
+                continue
+            if args.ignore_positional_only and error.is_positional_only_related():
                 continue
             if error.object_desc in whitelist:
                 whitelist[error.object_desc] = True
