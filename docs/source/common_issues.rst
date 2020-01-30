@@ -710,3 +710,44 @@ You can install the latest development version of mypy from source. Clone the
     git clone --recurse-submodules https://github.com/python/mypy.git
     cd mypy
     sudo python3 -m pip install --upgrade .
+
+Variables vs type aliases
+-----------------------------------
+
+Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
+
+1. Variables with type ``Type[...]`` should be created by assignments with an explicit type annotations:
+
+.. code-block:: python
+
+    class A: ...
+    tp: Type[A] = A
+
+2. Aliases are created by assignments without an explicit type:
+
+.. code-block:: python
+
+    class A: ...
+    Alias = A
+
+3. The difference is that aliases are completely known statically and can be used in type context (annotations):
+
+.. code-block:: python
+
+    class A: ...
+    class B: ...
+
+    if random() > 0.5:
+        Alias = A
+    else:
+        Alias = B  # error: Cannot assign multiple types to name "Alias" without an explicit "Type[...]" annotation \
+                   # error: Incompatible types in assignment (expression has type "Type[B]", variable has type "Type[A]")
+
+    tp: Type[object]  # tp is a type variable
+    if random() > 0.5:
+        tp = A
+    else:
+        tp = B  # This is OK
+
+    def fun1(x: Alias) -> None: ...  # This is OK
+    def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type

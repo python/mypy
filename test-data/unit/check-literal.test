@@ -707,6 +707,7 @@ y: Foo[Foo]     # E: Literal[...] must have at least one parameter
 
 NotAType = 3
 def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Variable "__main__.NotAType" is not valid as a type \
+                                                        # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases \
                                                         # E: Invalid type comment or annotation
 
 # Note: this makes us re-inspect the type (e.g. via '_patch_indirect_dependencies'
@@ -907,10 +908,12 @@ d2t = 3j
 
 a2: a2t
 reveal_type(a2)      # N: Revealed type is 'Any'
-b2: b2t              # E: Variable "__main__.b2t" is not valid as a type
+b2: b2t              # E: Variable "__main__.b2t" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 c2: c2t
 reveal_type(c2)      # N: Revealed type is 'Any'
-d2: d2t              # E: Variable "__main__.d2t" is not valid as a type
+d2: d2t              # E: Variable "__main__.d2t" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/complex_tuple.pyi]
 [out]
 
@@ -949,8 +952,10 @@ c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid a
 from typing_extensions import Literal
 at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias: expression is not a valid type
 bt = {"a": 1, "b": 2}
-a: at                           # E: Variable "__main__.at" is not valid as a type
-b: bt                           # E: Variable "__main__.bt" is not valid as a type
+a: at                           # E: Variable "__main__.at" is not valid as a type \
+                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+b: bt                           # E: Variable "__main__.bt" is not valid as a type \
+                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -959,8 +964,10 @@ b: bt                           # E: Variable "__main__.bt" is not valid as a ty
 from typing_extensions import Literal
 at = Literal[{1, 2, 3}]         # E: Invalid type alias: expression is not a valid type
 bt = {1, 2, 3}
-a: at                           # E: Variable "__main__.at" is not valid as a type
-b: bt                           # E: Variable "__main__.bt" is not valid as a type
+a: at                           # E: Variable "__main__.at" is not valid as a type \
+                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+b: bt                           # E: Variable "__main__.bt" is not valid as a type \
+                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/set.pyi]
 [out]
 
@@ -2868,13 +2875,17 @@ d: Literal[3]
 # "3" wherever it's used and get the same behavior -- so maybe we do need to support
 # at least case "b" for consistency?
 a_wrap: Literal[4, a]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Variable "__main__.a" is not valid as a type
+                       # E: Variable "__main__.a" is not valid as a type \
+                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 b_wrap: Literal[4, b]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Variable "__main__.b" is not valid as a type
+                       # E: Variable "__main__.b" is not valid as a type \
+                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 c_wrap: Literal[4, c]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Variable "__main__.c" is not valid as a type
+                       # E: Variable "__main__.c" is not valid as a type \
+                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 d_wrap: Literal[4, d]  # E: Parameter 2 of Literal[...] is invalid \
-                       # E: Variable "__main__.d" is not valid as a type
+                       # E: Variable "__main__.d" is not valid as a type \
+                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/tuple.pyi]
 [out]
 

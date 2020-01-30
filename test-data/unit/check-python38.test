@@ -238,10 +238,12 @@ def f(x: int = (c := 4)) -> int:
 
     # Just make sure we don't crash on this sort of thing.
     if NT := NamedTuple("NT", [("x", int)]):  # E: "int" not callable
-        z2: NT  # E: Variable "NT" is not valid as a type
+        z2: NT  # E: Variable "NT" is not valid as a type \
+                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
     if Alias := int:
-        z3: Alias  # E: Variable "Alias" is not valid as a type
+        z3: Alias  # E: Variable "Alias" is not valid as a type \
+                   # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
     if (reveal_type(y9 := 3) and   # N: Revealed type is 'Literal[3]?'
             reveal_type(y9)):       # N: Revealed type is 'builtins.int'

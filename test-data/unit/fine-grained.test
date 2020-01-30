@@ -7951,14 +7951,18 @@ x = 1
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
+a.py:7: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
+a.py:11: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 ==
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
+a.py:7: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
+a.py:11: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testRefreshForWithTypeComment1]
 [file a.py]
@@ -8423,6 +8427,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testNamedTupleForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8440,6 +8445,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testNamedTupleForwardFunctionIndirectReveal]
 # flags: --ignore-missing-imports
@@ -8467,8 +8473,10 @@ B = func
 [out]
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
+m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
+m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 m.py:5: note: Revealed type is 'A?'
 m.py:7: note: Revealed type is 'A?'
 
@@ -8484,6 +8492,7 @@ B = int()
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testAliasForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8500,6 +8509,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testLiteralFineGrainedVarConversion]
 import mod
