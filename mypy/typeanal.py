@@ -424,7 +424,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         notes = []  # type: List[str]
         if isinstance(sym.node, Var):
             notes.append('See https://mypy.readthedocs.io/en/'
-                         'latest/common_issues.html#differentiate-variables-and-aliases')
+                         'latest/common_issues.html#variables-vs-type-aliases')
             message = 'Variable "{}" is not valid as a type'
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'

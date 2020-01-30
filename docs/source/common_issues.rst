@@ -711,7 +711,7 @@ You can install the latest development version of mypy from source. Clone the
     cd mypy
     sudo python3 -m pip install --upgrade .
 
-Differentiate variables and aliases
+Variables vs type aliases
 -----------------------------------
 
 Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
