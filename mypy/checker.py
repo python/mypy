@@ -1535,7 +1535,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # covariant overrides.
                 #
                 pass
-            elif not self.is_writable_attribute(base_attr) and is_subtype(typ, original_type):
+            elif (base_attr.node and not self.is_writable_attribute(base_attr.node)
+                  and is_subtype(typ, original_type)):
                 # If the attribute is read-only, allow covariance
                 pass
             else:
