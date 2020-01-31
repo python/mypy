@@ -501,10 +501,21 @@ class JoinSuite(Suite):
 
         self.assert_join(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
-                         self.fx.o)
+                         self.var_tuple(self.fx.anyt))
         self.assert_join(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
-                         self.fx.o)
+                         self.var_tuple(self.fx.a))
+
+    def test_var_tuples(self) -> None:
+        self.assert_join(self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.var_tuple(self.fx.a),
+                         self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.var_tuple(self.fx.a),
+                         self.tuple(),
+                         self.var_tuple(self.fx.a))
 
     def test_function_types(self) -> None:
         self.assert_join(self.callable(self.fx.a, self.fx.b),
@@ -759,6 +770,10 @@ class JoinSuite(Suite):
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
+
+    def var_tuple(self, t: Type) -> Instance:
+        """Construct a variable-length tuple type"""
+        return Instance(self.fx.std_tuplei, [t])
 
     def callable(self, *a: Type) -> CallableType:
         """callable(a1, ..., an, r) constructs a callable with argument types

@@ -177,6 +177,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return join_types(t, self.s)
         elif isinstance(self.s, TypedDictType):
             return join_types(t, self.s)
+        elif isinstance(self.s, TupleType):
+            return join_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return join_types(t, self.s)
         else:
@@ -260,6 +262,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
+        # When given two fixed-length tuples:
+        # * If they have the same length, join their subtypes item-wise:
+        #   Tuple[int, bool] + Tuple[bool, bool] becomes Tuple[int, bool]
+        #
+        # Otherwise, `t` is a fixed-length tuple but `self.s` is NOT:
+        # * Joining with a variadic tuple returns variadic tuple:
+        #   Tuple[int, bool] + Tuple[bool, ...] becomes Tuple[int, ...]
+        # * Joining with any Sequence also returns a Sequence:
+        #   Tuple[int, bool] + List[bool] becomes Sequence[int]
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
             items = []  # type: List[Type]
             for i in range(t.length()):
@@ -269,7 +280,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             assert isinstance(fallback, Instance)
             return TupleType(items, fallback)
         else:
-            return self.default(self.s)
+            return join_types(self.s, mypy.typeops.tuple_fallback(t))
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):

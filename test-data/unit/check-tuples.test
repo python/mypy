@@ -1077,6 +1077,87 @@ x, y = g(z) # E: Argument 1 to "g" has incompatible type "int"; expected "Tuple[
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testFixedTupleJoinVarTuple]
+from typing import Tuple
+
+class A: pass
+class B(A): pass
+
+fixtup = None  # type: Tuple[B, B]
+
+vartup_b = None  # type: Tuple[B, ...]
+reveal_type(fixtup if int() else vartup_b)  # N: Revealed type is 'builtins.tuple[__main__.B]'
+reveal_type(vartup_b if int() else fixtup)  # N: Revealed type is 'builtins.tuple[__main__.B]'
+
+vartup_a = None  # type: Tuple[A, ...]
+reveal_type(fixtup if int() else vartup_a)  # N: Revealed type is 'builtins.tuple[__main__.A]'
+reveal_type(vartup_a if int() else fixtup)  # N: Revealed type is 'builtins.tuple[__main__.A]'
+
+
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testFixedTupleJoinList]
+from typing import Tuple, List
+
+class A: pass
+class B(A): pass
+
+fixtup = None  # type: Tuple[B, B]
+
+lst_b = None  # type: List[B]
+reveal_type(fixtup if int() else lst_b)  # N: Revealed type is 'typing.Sequence[__main__.B]'
+reveal_type(lst_b if int() else fixtup)  # N: Revealed type is 'typing.Sequence[__main__.B]'
+
+lst_a = None  # type: List[A]
+reveal_type(fixtup if int() else lst_a)  # N: Revealed type is 'typing.Sequence[__main__.A]'
+reveal_type(lst_a if int() else fixtup)  # N: Revealed type is 'typing.Sequence[__main__.A]'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testEmptyTupleJoin]
+from typing import Tuple, List
+
+class A: pass
+
+empty = ()
+
+fixtup = None  # type: Tuple[A]
+reveal_type(fixtup if int() else empty)  # N: Revealed type is 'builtins.tuple[__main__.A]'
+reveal_type(empty if int() else fixtup)  # N: Revealed type is 'builtins.tuple[__main__.A]'
+
+vartup = None  # type: Tuple[A, ...]
+reveal_type(empty if int() else vartup)  # N: Revealed type is 'builtins.tuple[__main__.A]'
+reveal_type(vartup if int() else empty)  # N: Revealed type is 'builtins.tuple[__main__.A]'
+
+lst = None  # type: List[A]
+reveal_type(empty if int() else lst)  # N: Revealed type is 'typing.Sequence[__main__.A*]'
+reveal_type(lst if int() else empty)  # N: Revealed type is 'typing.Sequence[__main__.A*]'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testTupleSubclassJoin]
+from typing import Tuple, NamedTuple
+
+class NTup(NamedTuple):
+    a: bool
+    b: bool
+
+class SubTuple(Tuple[bool]): ...
+class SubVarTuple(Tuple[int, ...]): ...
+
+ntup = None  # type: NTup
+subtup = None  # type: SubTuple
+vartup = None  # type: SubVarTuple
+
+reveal_type(ntup if int() else vartup)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(subtup if int() else vartup)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 if int():
