@@ -1528,13 +1528,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     original_class_or_static,
                                     override_class_or_static,
                                     context)
-            # TODO:
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
                 # covariant overrides.
                 #
-                # TODO: Allow covariance for read-only attributes?
+                pass
+            elif not self.is_writable_attribute(base_attr) and is_subtype(typ, original_type):
+                # If the attribute is read-only, allow covariance
                 pass
             else:
                 self.msg.signature_incompatible_with_supertype(
@@ -4487,6 +4488,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         yes_map, no_map = conditional_type_map(expr, vartype, type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
+
+    def is_writable_attribute(self, node: Node) -> bool:
+        """Check if an attribute is writable"""
+        if isinstance(node, Var):
+            return True
+        elif isinstance(node, OverloadedFuncDef) and node.is_property:
+            first_item = cast(Decorator, node.items[0])
+            return first_item.var.is_settable_property
+        else:
+            return False
 
 
 def conditional_type_map(expr: Expression,
