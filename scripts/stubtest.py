@@ -601,8 +601,9 @@ def verify_funcitem(
 
     try:
         signature = inspect.signature(runtime)
-    except ValueError:
+    except (ValueError, RuntimeError):
         # inspect.signature throws sometimes
+        # catch RuntimeError because of https://bugs.python.org/issue39504
         return
 
     stub_sig = Signature.from_funcitem(stub)
