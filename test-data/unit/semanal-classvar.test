@@ -132,6 +132,7 @@ main:2: error: Invalid type: ClassVar nested inside other type
 [case testTupleClassVar]
 from typing import ClassVar, Tuple
 x = None  # type: Tuple[ClassVar, int]
+[builtins fixtures/tuple.pyi]
 [out]
 main:2: error: Invalid type: ClassVar nested inside other type
 

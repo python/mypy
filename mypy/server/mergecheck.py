@@ -3,7 +3,7 @@
 from typing import Dict, List, Tuple
 from typing_extensions import Final
 
-from mypy.nodes import SymbolNode, Var, Decorator, FuncDef
+from mypy.nodes import FakeInfo, SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
 # If True, print more verbose output on failure.
@@ -21,6 +21,9 @@ def check_consistency(o: object) -> None:
 
     m = {}  # type: Dict[str, SymbolNode]
     for sym in syms:
+        if isinstance(sym, FakeInfo):
+            continue
+
         fn = sym.fullname
         # Skip None names, since they are ambiguous.
         # TODO: Everything should have a proper full name?

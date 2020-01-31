@@ -471,6 +471,7 @@ def f(x: 'A') -> 'A': pass
 def f(x: 'B') -> 'B': pass
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testCallToOverloadedMethod]
 from foo import *
@@ -512,6 +513,7 @@ class A:
   @overload
   def f(self, x: 'B') -> 'B': pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadsWithDifferentArgumentCounts]
 from foo import *
@@ -545,6 +547,7 @@ def f(x: 'A') -> 'A': pass
 def f(x: 'B', y: 'A') -> 'B': pass
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testGenericOverloadVariant]
 from foo import *
@@ -565,6 +568,7 @@ def f(x: 'B') -> 'B': pass
 class A(Generic[t]): pass
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadedInit]
 from foo import *
@@ -584,6 +588,7 @@ class A:
   @overload
   def __init__(self, b: 'B') -> None: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testIntersectionTypeCompatibility]
 from foo import *
@@ -619,6 +624,7 @@ class A:
     @overload
     def __init__(self, a: 'B') -> None: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadedGetitem]
 from foo import *
@@ -639,6 +645,7 @@ class A:
     def __getitem__(self, a: int) -> int: pass
     @overload
     def __getitem__(self, b: str) -> str: pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadedGetitemWithGenerics]
 from foo import *
@@ -660,6 +667,7 @@ class C(Generic[t]):
     def __getitem__(self, b: 'B') -> t: pass
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testImplementingOverloadedMethod]
 from foo import *
@@ -774,6 +782,7 @@ class A:
    def __init__(self, a: 'A') -> None: pass
 class B:
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverlappingErasedSignatures]
 from foo import *
@@ -1174,6 +1183,7 @@ f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "Tuple[in
                  # N: Possible overload variant: \
                  # N:     def f(*x: str) -> str \
                  # N:     <1 more non-matching overload not shown>
+[builtins fixtures/tuple.pyi]
 
 [case testPreferExactSignatureMatchInOverload]
 from foo import *
@@ -1428,6 +1438,7 @@ class A(Generic[T]):
 b = A()  # type: A[Tuple[int, int]]
 b.f((0, 0))
 b.f((0, '')) # E: Argument 1 to "f" of "A" has incompatible type "Tuple[int, str]"; expected "Tuple[int, int]"
+[builtins fixtures/tuple.pyi]
 
 [case testSingleOverloadStub]
 from foo import *
@@ -1834,6 +1845,7 @@ class MyInt:
     def __init__(self, x: str) -> None: pass
     @overload
     def __init__(self, x: str, y: int) -> None: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testOverloadTupleInstance]
@@ -1858,6 +1870,7 @@ def f(x: Tuple[A, int]) -> D: ...
 @overload
 def f(x: Tuple[()]) -> D: ...
 def f(x: Any) -> Any:...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadTupleEllipsisNumargs]
 from typing import overload, Tuple, Any
@@ -1953,7 +1966,7 @@ class Child4(Parent):
     @overload
     def f(self, arg: str) -> str: ...
     def f(self, arg: Union[int, str]) -> Union[int, str]:
-        return True  # E: Incompatible return value type (got "bool", expected "Union[int, str]")
+        return b''  # E: Incompatible return value type (got "bytes", expected "Union[int, str]")
 
 [builtins fixtures/tuple.pyi]
 
@@ -2082,6 +2095,7 @@ def bar1(*x: int) -> int: ...
 def bar2(x: int, y: str, z: int) -> str: ...
 @overload
 def bar2(*x: int) -> int: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadDetectsPossibleMatchesWithGenerics]
 from typing import overload, TypeVar, Generic
@@ -2169,6 +2183,7 @@ def foo2(*args2: str) -> int: ...
 def foo3(*args: int) -> str: ...
 @overload
 def foo3(*args: str) -> int: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapWithVarargs2]
 from wrapper import *
@@ -2194,6 +2209,7 @@ def foo3(x: int, *args2: int) -> str: ...
 def foo4(x: int, *args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def foo4(*args2: int) -> int: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapWithVarargs3]
 from wrapper import *
@@ -2221,6 +2237,7 @@ def foo3(*args: str) -> int: ...
 def foo4(*args: int) -> str: ...
 @overload
 def foo4(x: Other = ..., *args: str) -> int: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapWithVarargs4]
 from typing import overload
@@ -2236,6 +2253,7 @@ def foo2(*xs: int) -> str: ...  # E: Overloaded function signatures 1 and 2 over
 @overload
 def foo2(x: int = 0, y: int = 0) -> int: ...
 def foo2(*args): pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapWithKwargs]
 from wrapper import *
@@ -2272,6 +2290,7 @@ def foo1(*x: str) -> int: ...
 def foo2(*x: str) -> int: ...
 @overload
 def foo2(x: str, *, y: str) -> str: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapMixingOptionalArgsWithVarargs]
 from wrapper import *
@@ -2292,6 +2311,7 @@ def foo2(x: str, y: str = ..., z: str = ...) -> str: ...
 def foo3(x: int, y: str = ..., z: str = ...) -> str: ...
 @overload
 def foo3(*x: str) -> int: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapMixingOptionalArgsWithVarargs2]
 from wrapper import *
@@ -2307,6 +2327,7 @@ def foo1(*x: str) -> int: ...
 def foo2(x: str, y: str = ..., z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def foo2(*x: str) -> int: ...
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadPossibleOverlapMixingNamedArgsWithKwargs]
 from wrapper import *
@@ -3153,6 +3174,7 @@ def f(*args): ...
 x: Union[A, B]
 reveal_type(f(x))  # N: Revealed type is '__main__.Parent'
 f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "B"
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadInferUnionWithMixOfPositionalAndOptionalArgs]
 # flags: --strict-optional
@@ -3174,6 +3196,7 @@ reveal_type(f(x))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 reveal_type(f(y))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 reveal_type(f(z))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 reveal_type(f())   # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadingInferUnionReturnWithTypevarWithValueRestriction]
 from typing import overload, Union, TypeVar, Generic
@@ -4562,6 +4585,7 @@ def f(*args):
 
 x: Union[int, str]
 f(x, x, x, x, x, x, x, x)
+[builtins fixtures/tuple.pyi]
 [out]
 main:11: error: Not all union combinations were tried because there are too many unions
 main:11: error: Argument 1 to "f" has incompatible type "Union[int, str]"; expected "int"
@@ -4665,6 +4689,7 @@ g(3)  # E: No overload variant of "g" matches argument type "int" \
       # N:     def g(x: A) -> None \
       # N:     def g(x: B) -> None \
       # N:     def g(x: C) -> None
+[builtins fixtures/tuple.pyi]
 
 [case testOverloadedInIter]
 from lib import f, g
@@ -5027,6 +5052,7 @@ def asdf() -> None:
 @dec
 def lol(x: int, y: int) -> int:
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testVeryBrokenOverload]
 import lib
@@ -5072,3 +5098,4 @@ def foo(x: Literal[0]) -> None: ...  # E: Overloaded function signatures 1 and 2
 def foo(x: MyInt) -> int: ...
 def foo(x):
     ...
+[builtins fixtures/tuple.pyi]

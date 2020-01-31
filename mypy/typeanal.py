@@ -423,7 +423,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # TODO: Move this message building logic to messages.py.
         notes = []  # type: List[str]
         if isinstance(sym.node, Var):
-            # TODO: add a link to alias docs, see #3494.
+            notes.append('See https://mypy.readthedocs.io/en/'
+                         'latest/common_issues.html#variables-vs-type-aliases')
             message = 'Variable "{}" is not valid as a type'
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'

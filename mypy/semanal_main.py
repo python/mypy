@@ -335,6 +335,12 @@ def semantic_analyze_target(target: str,
         priority = mypy.build.PRI_LOW
         if priority <= state.priorities.get(dep, priority):
             state.priorities[dep] = priority
+
+    # Clear out some stale data to avoid memory leaks and astmerge
+    # validity check confusion
+    analyzer.statement = None
+    del analyzer.cur_mod_node
+
     if analyzer.deferred:
         return [target], analyzer.incomplete, analyzer.progress
     else:

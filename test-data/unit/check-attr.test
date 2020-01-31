@@ -1244,3 +1244,18 @@ class A2:
     b: int = attr.ib()
 
 [builtins fixtures/list.pyi]
+
+[case testAttrsInheritanceNoAnnotation]
+import attr
+
+@attr.s
+class A:
+    foo = attr.ib()  # type: int
+
+x = 0
+@attr.s
+class B(A):
+    foo = x
+
+reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
+[builtins fixtures/bool.pyi]

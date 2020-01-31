@@ -276,7 +276,8 @@ def f() -> None:
     # NOTE: '"int" not callable' is due to test stubs
     y = TypeVar('y')  # E: Cannot redefine 'y' as a type variable \
                       # E: "int" not callable
-    def h(a: y) -> y: return a # E: Variable "y" is not valid as a type
+    def h(a: y) -> y: return a # E: Variable "y" is not valid as a type \
+                               # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testCannotRedefineVarAsModule]
 # flags: --allow-redefinition

@@ -72,6 +72,32 @@ flagged as an error.
   e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
+- **:py:meth:`__init__ <object.__init__>` method has no annotated 
+  arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
+  is considered fully-annotated **if at least one argument is annotated**, 
+  while mypy will infer the return type as ``None``.
+  The implication is that, for a :py:meth:`__init__ <object.__init__>` method
+  that has no argument, you'll have to explicitly annotate the return type 
+  as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
+
+  .. code-block:: python
+
+      def foo(s: str) -> str:
+          return s
+
+      class A():
+          def __init__(self, value: str): # Return type inferred as None, considered as typed method
+              self.value = value
+              foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
+      class B():
+          def __init__(self):  # No argument is annotated, considered as untyped method
+              foo(1)  # No error!
+      
+      class C():
+          def __init__(self) -> None:  # Must specify return type to type-check
+              foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
 - **Some imports may be silently ignored**.  Another source of
   unexpected ``Any`` values are the :option:`--ignore-missing-imports
   <mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
@@ -684,3 +710,44 @@ You can install the latest development version of mypy from source. Clone the
     git clone --recurse-submodules https://github.com/python/mypy.git
     cd mypy
     sudo python3 -m pip install --upgrade .
+
+Variables vs type aliases
+-----------------------------------
+
+Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
+
+1. Variables with type ``Type[...]`` should be created by assignments with an explicit type annotations:
+
+.. code-block:: python
+
+    class A: ...
+    tp: Type[A] = A
+
+2. Aliases are created by assignments without an explicit type:
+
+.. code-block:: python
+
+    class A: ...
+    Alias = A
+
+3. The difference is that aliases are completely known statically and can be used in type context (annotations):
+
+.. code-block:: python
+
+    class A: ...
+    class B: ...
+
+    if random() > 0.5:
+        Alias = A
+    else:
+        Alias = B  # error: Cannot assign multiple types to name "Alias" without an explicit "Type[...]" annotation \
+                   # error: Incompatible types in assignment (expression has type "Type[B]", variable has type "Type[A]")
+
+    tp: Type[object]  # tp is a type variable
+    if random() > 0.5:
+        tp = A
+    else:
+        tp = B  # This is OK
+
+    def fun1(x: Alias) -> None: ...  # This is OK
+    def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
