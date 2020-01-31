@@ -127,7 +127,6 @@ Python 3 supports an annotation syntax for function declarations.
    quux(3)  # Fine
    quux(__x=3)  # Error
 
-
 When you're puzzled or when things are complicated
 **************************************************
 
@@ -311,3 +310,22 @@ Miscellaneous
    # class of that name later on in the file
    def f(foo: 'A') -> int:  # Ok
        ...
+
+
+Decorators
+**********
+
+Decorator functions can be expressed via generics. See
+:ref:`declaring-decorators` for the more details.
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def bare_decorator(func: F) -> F:
+        ...
+
+    def decorator_args(url: str) -> Callable[[F], F]:
+        ...
