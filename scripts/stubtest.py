@@ -978,14 +978,11 @@ def get_whitelist_entries(whitelist_file: Optional[str]) -> Iterator[str]:
 def main() -> int:
     assert sys.version_info >= (3, 5), "This script requires at least Python 3.5"
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Compares stubs to objects introspected from the runtime."
+    )
     parser.add_argument("modules", nargs="*", help="Modules to test")
-    parser.add_argument(
-        "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
-    )
-    parser.add_argument(
-        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
-    )
+    parser.add_argument("--concise", action="store_true", help="Make output concise")
     parser.add_argument(
         "--ignore-missing-stub",
         action="store_true",
@@ -997,6 +994,12 @@ def main() -> int:
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
     )
     parser.add_argument(
+        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
+    )
+    parser.add_argument(
+        "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
+    )
+    parser.add_argument(
         "--whitelist",
         action="append",
         metavar="FILE",
@@ -1006,7 +1009,6 @@ def main() -> int:
             "whitelists. Whitelist can be created with --generate-whitelist"
         ),
     )
-    parser.add_argument("--concise", action="store_true", help="Make output concise")
     parser.add_argument(
         "--generate-whitelist",
         action="store_true",
