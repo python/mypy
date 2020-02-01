@@ -998,7 +998,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--whitelist",
-        help="Use file as a whitelist. Whitelists can be created with --generate-whitelist",
+        action="append",
+        metavar="FILE",
+        default=[],
+        help=(
+            "Use file as a whitelist. Can be passed multiple times to combine multiple "
+            "whitelists. Whitelist can be created with --generate-whitelist"
+        ),
     )
     parser.add_argument("--concise", action="store_true", help="Make output concise")
     parser.add_argument(
@@ -1010,7 +1016,11 @@ def main() -> int:
 
     # Load the whitelist. This is a series of strings corresponding to Error.object_desc
     # Values in the dict will store whether we used the whitelist entry or not.
-    whitelist = {entry: False for entry in get_whitelist_entries(args.whitelist)}
+    whitelist = {
+        entry: False
+        for whitelist_file in args.whitelist
+        for entry in get_whitelist_entries(whitelist_file)
+    }
 
     # If we need to generate a whitelist, we store Error.object_desc for each error here.
     generated_whitelist = set()
