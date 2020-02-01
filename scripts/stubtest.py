@@ -6,6 +6,7 @@ Verify that various things in stubs are consistent with how things behave at run
 
 import argparse
 import copy
+import enum
 import importlib
 import inspect
 import subprocess
@@ -651,12 +652,21 @@ def verify_var(
         and stub.type is not None
         and not is_subtype_helper(runtime_type, stub.type)
     ):
-        yield Error(
-            object_path,
-            "variable differs from runtime type {}".format(runtime_type),
-            stub,
-            runtime,
-        )
+        should_error = True
+        # Avoid errors when defining enums, since runtime_type is the enum itself, but we'd
+        # annotate it with the type of runtime.value
+        if isinstance(runtime, enum.Enum):
+            runtime_type = get_mypy_type_of_runtime_value(runtime.value)
+            if runtime_type is not None and is_subtype_helper(runtime_type, stub.type):
+                should_error = False
+
+        if should_error:
+            yield Error(
+                object_path,
+                "variable differs from runtime type {}".format(runtime_type),
+                stub,
+                runtime,
+            )
 
 
 @verify.register(nodes.OverloadedFuncDef)
