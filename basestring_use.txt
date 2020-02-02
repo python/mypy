@@ -1,0 +1,23 @@
+﻿basestring
+Description
+This abstract type is the superclass for str and unicode. It cannot be called or instantiated, but it can be used to test whether an object is an instance of str or unicode.
+
+Syntax
+basestring()
+
+Return Value
+#TODO
+
+Time Complexity
+#TODO
+
+Example
+>>> isinstance('hello', basestring)
+True
+>>> isinstance(u'hello', basestring)
+True
+
+TO SOLVE ERRORS:
+
+The reason for error can be that version is below version 2.5 requires Python 2.6 or 2.7 on the control host: Control Machine Requirements and basestring is no longer available in Python 3.
+The documentation says that the builtin basestring abstract type was removed. Use str instead. The str and bytes types don’t have functionality enough in common to warrant a shared base class. The 2to3 tool (see below) replaces every occurrence of basestring with str. If we install ansible using pip and pip3, it erroneously points to python3, but if you do pip2 install ansible, it will work fine, putting this at the top of each ansible utility: #!/usr/local/opt/python/bin/python2.7
