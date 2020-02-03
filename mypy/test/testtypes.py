@@ -505,6 +505,12 @@ class JoinSuite(Suite):
         self.assert_join(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
                          self.var_tuple(self.fx.a))
+        self.assert_join(self.tuple(self.fx.b),
+                         self.tuple(self.fx.a, self.fx.c),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.tuple(),
+                         self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
 
     def test_var_tuples(self) -> None:
         self.assert_join(self.tuple(self.fx.a),

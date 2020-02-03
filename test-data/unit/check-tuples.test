@@ -1158,6 +1158,52 @@ reveal_type(subtup if int() else vartup)  # N: Revealed type is 'builtins.tuple[
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testTupleJoinIrregular]
+from typing import Tuple
+
+tup1 = None  # type: Tuple[bool, int]
+tup2 = None  # type: Tuple[bool]
+
+reveal_type(tup1 if int() else tup2)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(tup2 if int() else tup1)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+reveal_type(tup1 if int() else ())  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(() if int() else tup1)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+reveal_type(tup2 if int() else ())  # N: Revealed type is 'builtins.tuple[builtins.bool]'
+reveal_type(() if int() else tup2)  # N: Revealed type is 'builtins.tuple[builtins.bool]'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testTupleSubclassJoinIrregular]
+from typing import Tuple, NamedTuple
+
+class NTup1(NamedTuple):
+    a: bool
+
+class NTup2(NamedTuple):
+    a: bool
+    b: bool
+
+class SubTuple(Tuple[bool, int, int]): ...
+
+tup1 = None  # type: NTup1
+tup2 = None  # type: NTup2
+subtup = None  # type: SubTuple
+
+reveal_type(tup1 if int() else tup2)  # N: Revealed type is 'builtins.tuple[builtins.bool]'
+reveal_type(tup2 if int() else tup1)  # N: Revealed type is 'builtins.tuple[builtins.bool]'
+
+reveal_type(tup1 if int() else subtup)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(subtup if int() else tup1)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+reveal_type(tup2 if int() else subtup)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(subtup if int() else tup2)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testTupleWithUndersizedContext]
 a = ([1], 'x')
 if int():
