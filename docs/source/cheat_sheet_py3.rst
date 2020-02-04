@@ -65,8 +65,11 @@ Built-in types
    # For mappings, we need the types of both keys and values
    x: Dict[str, float] = {'field': 2.0}
 
-   # For tuples, we specify the types of all the elements
+   # For tuples of fixed size, we specify the types of all the elements
    x: Tuple[int, str, float] = (3, "yes", 7.5)
+   
+   # For tuples of variable size, we use one type and ellipsis
+   x: Tuple[int, ...] = (1, 2, 3)
 
    # Use Optional[] for values that could be None
    x: Optional[str] = some_function()
