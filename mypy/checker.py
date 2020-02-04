@@ -3001,7 +3001,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             dunder_set_type,
             [TempNode(instance_type, context=context), rvalue],
             [nodes.ARG_POS, nodes.ARG_POS],
-            context)
+            context, object_type=attribute_type,
+            callable_name=attribute_type.type.fullname + ".__set__")
         self.msg.enable_errors()
 
         # And now we type check the call second time, to show errors related
@@ -3011,7 +3012,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [TempNode(instance_type, context=context),
              TempNode(AnyType(TypeOfAny.special_form), context=context)],
             [nodes.ARG_POS, nodes.ARG_POS],
-            context)
+            context, object_type=attribute_type,
+            callable_name=attribute_type.type.fullname + ".__set__")
 
         # should be handled by get_method above
         assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
