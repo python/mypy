@@ -43,6 +43,7 @@ type_constructors = {
     'typing.Union',
     'typing.Literal',
     'typing_extensions.Literal',
+    'typing.Annotated',
     'typing_extensions.Annotated',
 }  # type: Final
 
@@ -311,7 +312,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return UninhabitedType(is_noreturn=True)
         elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
             return self.analyze_literal_type(t)
-        elif fullname == 'typing_extensions.Annotated':
+        elif fullname in ('typing_extensions.Annotated', 'typing.Annotated'):
             if len(t.args) < 2:
                 self.fail("Annotated[...] must have exactly one type argument"
                           " and at least one annotation", t)
