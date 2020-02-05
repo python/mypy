@@ -501,7 +501,7 @@ of the above sections.
             bar = None  # Need type annotation here if using --local-partial-types
             baz = None  # type: Optional[int]
 
-            def __init__(self) -> None
+            def __init__(self) -> None:
                 self.bar = 1
 
         reveal_type(Foo().bar)  # Union[int, None] without --local-partial-types
