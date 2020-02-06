@@ -532,26 +532,34 @@ def _verify_signature(
                 "(remove leading double underscore)".format(stub_arg.variable.name)
             )
 
-    # Checks involving *args
-    if len(stub.pos) == len(runtime.pos):
-        if stub.varpos is None and runtime.varpos is not None:
-            yield 'stub does not have *args argument "{}"'.format(runtime.varpos.name)
-        if stub.varpos is not None and runtime.varpos is None:
-            yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
-    elif len(stub.pos) > len(runtime.pos):
+    # Check unmatched positional args
+    if len(stub.pos) > len(runtime.pos):
+        # There are cases where the stub exhaustively lists out the extra parameters the function
+        # would take through *args. Hence, a) we can't check that the runtime actually takes those
+        # parameters and b) below, we don't enforce that the stub takes *args, since runtime logic
+        # may prevent those arguments from actually being accepted.
         if runtime.varpos is None:
             for stub_arg in stub.pos[len(runtime.pos) :]:
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
-                # keyword-only argument; we report the error while checking keyword-only arguments
+                # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
                     yield 'runtime does not have argument "{}"'.format(stub_arg.variable.name)
-        # We do not check whether stub takes *args when the runtime does, for cases where the stub
-        # just listed out the extra parameters the function takes
+                else:
+                    yield 'stub argument "{}" is not keyword-only'.format(stub_arg.variable.name)
+            if stub.varpos is not None:
+                yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
     elif len(stub.pos) < len(runtime.pos):
-        if stub.varpos is None:
-            for runtime_arg in runtime.pos[len(stub.pos) :]:
+        for runtime_arg in runtime.pos[len(stub.pos) :]:
+            if runtime_arg.name not in stub.kwonly:
                 yield 'stub does not have argument "{}"'.format(runtime_arg.name)
-        elif runtime.pos is None:
+            else:
+                yield 'runtime argument "{}" is not keyword-only'.format(runtime_arg.name)
+
+    # Checks involving *args
+    if len(stub.pos) <= len(runtime.pos) or runtime.varpos is None:
+        if stub.varpos is None and runtime.varpos is not None:
+            yield 'stub does not have *args argument "{}"'.format(runtime.varpos.name)
+        if stub.varpos is not None and runtime.varpos is None:
             yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
 
     # Check keyword-only args
@@ -560,26 +568,31 @@ def _verify_signature(
         yield from _verify_arg_name(stub_arg, runtime_arg, function_name)
         yield from _verify_arg_default_value(stub_arg, runtime_arg)
 
-    # Checks involving **kwargs
-    if stub.varkw is None and runtime.varkw is not None:
-        # We do not check whether stub takes **kwargs when the runtime does, for cases where the
-        # stub just listed out the extra keyword parameters the function takes
-        # Also check against positional parameters, to avoid a nitpicky message when an argument
-        # isn't marked as keyword-only
-        stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
-        if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
-            yield 'stub does not have **kwargs argument "{}"'.format(runtime.varkw.name)
-    if stub.varkw is not None and runtime.varkw is None:
-        yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
+    # Check unmatched keyword-only args
     if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
             yield 'runtime does not have argument "{}"'.format(arg)
     if stub.varkw is None or not set(stub.kwonly).issubset(set(runtime.kwonly)):
         for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
             if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
-                yield 'stub argument "{}" is not keyword-only'.format(arg)
+                # Don't report this if we've reported it before
+                if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
+                    yield 'stub argument "{}" is not keyword-only'.format(arg)
             else:
                 yield 'stub does not have argument "{}"'.format(arg)
+
+    # Checks involving **kwargs
+    if stub.varkw is None and runtime.varkw is not None:
+        # There are cases where the stub exhaustively lists out the extra parameters the function
+        # would take through **kwargs, so we don't enforce that the stub takes **kwargs.
+        # Also check against positional parameters, to avoid a nitpicky message when an argument
+        # isn't marked as keyword-only
+        stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
+        # Ideally we'd do a strict subset check, but in practice the errors from that aren't useful
+        if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
+            yield 'stub does not have **kwargs argument "{}"'.format(runtime.varkw.name)
+    if stub.varkw is not None and runtime.varkw is None:
+        yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
 
 
 @verify.register(nodes.FuncItem)
