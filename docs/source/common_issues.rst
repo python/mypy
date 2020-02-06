@@ -751,3 +751,51 @@ Mypy has both type aliases and variables with types like ``Type[...]`` and it is
 
     def fun1(x: Alias) -> None: ...  # This is OK
     def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
+   
+Incompatible overrides
+------------------------------
+
+It's unsafe to override a method with a more specific argument type, as it violates
+the `Liskov substitution principle <https://stackoverflow.com/questions/56860/what-is-an-example-of-the-liskov-substitution-principle>`_. For return types, it's unsafe to override a method with a more general return type.
+
+Here is an example taken from `github <https://github.com/python/mypy/issues/8049>`_ to demonstrate this
+
+.. code-block:: python
+
+    from typing import TypedDict
+
+    class TopDict(TypedDict):
+        x: int
+
+    class BaseDict(TopDict):
+        y: int
+
+    class SuperDict(BaseDict, total=False):
+        z: int
+
+    class ParentClass:
+        def f(self, a: BaseDict) -> BaseDict:
+            pass
+
+    # --- specific return Type Works ---
+    class OverwriteReturnSpecific(ParentClass):
+        def f(self, a: BaseDict) -> SuperDict:
+            pass
+    
+    # --- general return type doesn't work ---
+    class OverwriteReturnGeneral(ParentClass):
+        def f(self, a: BaseDict) -> TopDict:
+            pass
+
+    # --- specific Argument doesn't Work ---
+    class OverwriteArgumentSpecific(ParentClass):
+        def f(self, a: SuperDict) -> BaseDict: 
+            pass
+            
+mypy won't report an error for ``OverwriteReturnSpecific`` but it does for ``OverwriteReturnGeneral`` and ``OverwriteArgumentSpecific``.
+
+.. code-block:: text
+        error: Return type "TopDict" of "f" incompatible with return type "BaseDict" in supertype "ParentClass"
+        error: Argument 1 of "f" is incompatible with supertype "ParentClass"; supertype defines the argument type as "BaseDict"
+        
+We can use ``# type: ignore[override]`` to silence the error (add it to the line that genreates the error) if type safety is not needed.
