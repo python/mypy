@@ -976,7 +976,7 @@ def get_whitelist_entries(whitelist_file: Optional[str]) -> Iterator[str]:
 
 
 def main() -> int:
-    assert sys.version_info >= (3, 5), "This script requires at least Python 3.5"
+    mypy.util.check_python_version("stubtest")
 
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
