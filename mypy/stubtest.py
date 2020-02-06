@@ -917,7 +917,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     if res.errors:
         output = [_style("error: ", color="red", bold=True), " failed mypy build.\n"]
         print("".join(output) + "\n".join(res.errors))
-        sys.exit(1)
+        raise RuntimeError
 
     global _all_stubs
     _all_stubs = res.files
@@ -975,9 +975,71 @@ def get_whitelist_entries(whitelist_file: Optional[str]) -> Iterator[str]:
                 yield entry
 
 
-def main() -> int:
-    mypy.util.check_python_version("stubtest")
+def test_stubs(args: argparse.Namespace) -> int:
+    """This is stubtest! It's time to test the stubs!"""
+    # Load the whitelist. This is a series of strings corresponding to Error.object_desc
+    # Values in the dict will store whether we used the whitelist entry or not.
+    whitelist = {
+        entry: False
+        for whitelist_file in args.whitelist
+        for entry in get_whitelist_entries(whitelist_file)
+    }
 
+    # If we need to generate a whitelist, we store Error.object_desc for each error here.
+    generated_whitelist = set()
+
+    modules = args.modules
+    if args.check_typeshed:
+        assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
+        modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
+        modules.remove("antigravity")  # it's super annoying
+
+    assert modules, "No modules to check"
+
+    options = Options()
+    options.incremental = False
+    options.custom_typeshed_dir = args.custom_typeshed_dir
+
+    try:
+        modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
+    except RuntimeError:
+        return 1
+
+    exit_code = 0
+    for module in modules:
+        for error in test_module(module):
+            # Filter errors
+            if args.ignore_missing_stub and error.is_missing_stub():
+                continue
+            if args.ignore_positional_only and error.is_positional_only_related():
+                continue
+            if error.object_desc in whitelist:
+                whitelist[error.object_desc] = True
+                continue
+
+            # We have errors, so change exit code, and output whatever necessary
+            exit_code = 1
+            if args.generate_whitelist:
+                generated_whitelist.add(error.object_desc)
+                continue
+            print(error.get_description(concise=args.concise))
+
+    # Print unused whitelist entries
+    for w in whitelist:
+        if not whitelist[w]:
+            exit_code = 1
+            print("note: unused whitelist entry {}".format(w))
+
+    # Print the generated whitelist
+    if args.generate_whitelist:
+        for e in sorted(generated_whitelist):
+            print(e)
+        exit_code = 0
+
+    return exit_code
+
+
+def parse_options(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
@@ -1014,65 +1076,12 @@ def main() -> int:
         action="store_true",
         help="Print a whitelist (to stdout) to be used with --whitelist",
     )
-    args = parser.parse_args()
+    return parser.parse_args(args)
 
-    # Load the whitelist. This is a series of strings corresponding to Error.object_desc
-    # Values in the dict will store whether we used the whitelist entry or not.
-    whitelist = {
-        entry: False
-        for whitelist_file in args.whitelist
-        for entry in get_whitelist_entries(whitelist_file)
-    }
 
-    # If we need to generate a whitelist, we store Error.object_desc for each error here.
-    generated_whitelist = set()
-
-    modules = args.modules
-    if args.check_typeshed:
-        assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
-        modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        modules.remove("antigravity")  # it's super annoying
-
-    assert modules, "No modules to check"
-
-    options = Options()
-    options.incremental = False
-    options.custom_typeshed_dir = args.custom_typeshed_dir
-
-    modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
-
-    exit_code = 0
-    for module in modules:
-        for error in test_module(module):
-            # Filter errors
-            if args.ignore_missing_stub and error.is_missing_stub():
-                continue
-            if args.ignore_positional_only and error.is_positional_only_related():
-                continue
-            if error.object_desc in whitelist:
-                whitelist[error.object_desc] = True
-                continue
-
-            # We have errors, so change exit code, and output whatever necessary
-            exit_code = 1
-            if args.generate_whitelist:
-                generated_whitelist.add(error.object_desc)
-                continue
-            print(error.get_description(concise=args.concise))
-
-    # Print unused whitelist entries
-    for w in whitelist:
-        if not whitelist[w]:
-            exit_code = 1
-            print("note: unused whitelist entry {}".format(w))
-
-    # Print the generated whitelist
-    if args.generate_whitelist:
-        for e in sorted(generated_whitelist):
-            print(e)
-        exit_code = 0
-
-    return exit_code
+def main() -> int:
+    mypy.util.check_python_version("stubtest")
+    return test_stubs(parse_options(sys.argv[1:]))
 
 
 if __name__ == "__main__":
