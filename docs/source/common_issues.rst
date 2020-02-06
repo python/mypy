@@ -783,19 +783,17 @@ Here is an example taken from `github <https://github.com/python/mypy/issues/804
             pass
     
     # --- general return type doesn't work ---
+    # error: Return type "TopDict" of "f" incompatible with return type "BaseDict" in supertype "ParentClass"
     class OverwriteReturnGeneral(ParentClass):
         def f(self, a: BaseDict) -> TopDict:
             pass
 
     # --- specific Argument doesn't Work ---
+    # error: Argument 1 of "f" is incompatible with supertype "ParentClass"; supertype defines the argument type as "BaseDict"
     class OverwriteArgumentSpecific(ParentClass):
         def f(self, a: SuperDict) -> BaseDict: 
             pass
             
 mypy won't report an error for ``OverwriteReturnSpecific`` but it does for ``OverwriteReturnGeneral`` and ``OverwriteArgumentSpecific``.
 
-.. code-block:: text
-        error: Return type "TopDict" of "f" incompatible with return type "BaseDict" in supertype "ParentClass"
-        error: Argument 1 of "f" is incompatible with supertype "ParentClass"; supertype defines the argument type as "BaseDict"
-        
 We can use ``# type: ignore[override]`` to silence the error (add it to the line that genreates the error) if type safety is not needed.
