@@ -758,42 +758,31 @@ Incompatible overrides
 It's unsafe to override a method with a more specific argument type, as it violates
 the `Liskov substitution principle <https://stackoverflow.com/questions/56860/what-is-an-example-of-the-liskov-substitution-principle>`_. For return types, it's unsafe to override a method with a more general return type.
 
-Here is an example taken from `github <https://github.com/python/mypy/issues/8049>`_ to demonstrate this
+Here is an example to demonstrate this
 
 .. code-block:: python
 
-    from typing import TypedDict
+    from typing import Sequence, List, Iterable
 
-    class TopDict(TypedDict):
-        x: int
-
-    class BaseDict(TopDict):
-        y: int
-
-    class SuperDict(BaseDict, total=False):
-        z: int
-
-    class ParentClass:
-        def f(self, a: BaseDict) -> BaseDict:
+    class A:
+        def test(self, t: Sequence[int]) -> Sequence[str]:
             pass
-
-    # --- specific return Type Works ---
-    class OverwriteReturnSpecific(ParentClass):
-        def f(self, a: BaseDict) -> SuperDict:
+      
+    # Specific argument type doesn't work
+    class OverwriteArgumentSpecific(A):
+        def test(self, t: List[int]) -> Sequence[str]:
             pass
     
-    # --- general return type doesn't work ---
-    # error: Return type "TopDict" of "f" incompatible with return type "BaseDict" in supertype "ParentClass"
-    class OverwriteReturnGeneral(ParentClass):
-        def f(self, a: BaseDict) -> TopDict:
+    # Specific return type works
+    class OverwriteReturnSpecific(A):
+        def test(self, t: Sequence[int]) -> List[str]:
             pass
-
-    # --- specific Argument doesn't Work ---
-    # error: Argument 1 of "f" is incompatible with supertype "ParentClass"; supertype defines the argument type as "BaseDict"
-    class OverwriteArgumentSpecific(ParentClass):
-        def f(self, a: SuperDict) -> BaseDict: 
+    
+    # Generic return type doesn't work
+    class OverwriteReturnGeneric(A):
+        def test(self, t: Sequence[int]) -> Iterable[str]:
             pass
             
-mypy won't report an error for ``OverwriteReturnSpecific`` but it does for ``OverwriteReturnGeneral`` and ``OverwriteArgumentSpecific``.
+mypy won't report an error for ``OverwriteReturnSpecific`` but it does for ``OverwriteReturnGeneric`` and ``OverwriteArgumentSpecific``.
 
 We can use ``# type: ignore[override]`` to silence the error (add it to the line that genreates the error) if type safety is not needed.
