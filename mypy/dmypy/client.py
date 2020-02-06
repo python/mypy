@@ -413,7 +413,7 @@ def show_stats(response: Mapping[str, object]) -> None:
         if key not in ('out', 'err'):
             print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
         else:
-            value = str(value).replace('\n', '\\n')
+            value = repr(value)[1:-1]
             if len(value) > 50:
                 value = value[:40] + ' ...'
             print("%-24s: %s" % (key, value))
