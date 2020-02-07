@@ -356,21 +356,21 @@ class Signature(Generic[T]):
                 return arg.name
             if isinstance(arg, nodes.Argument):
                 return arg.variable.name
-            raise ValueError
+            raise AssertionError
 
         def get_type(arg: Any) -> Optional[str]:
             if isinstance(arg, inspect.Parameter):
                 return None
             if isinstance(arg, nodes.Argument):
                 return str(arg.variable.type or arg.type_annotation)
-            raise ValueError
+            raise AssertionError
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
                 return arg.default != inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
                 return arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT)
-            raise ValueError
+            raise AssertionError
 
         def get_desc(arg: Any) -> str:
             arg_type = get_type(arg)
@@ -403,7 +403,7 @@ class Signature(Generic[T]):
             elif stub_arg.kind == nodes.ARG_STAR2:
                 stub_sig.varkw = stub_arg
             else:
-                raise ValueError
+                raise AssertionError
         return stub_sig
 
     @staticmethod
@@ -422,7 +422,7 @@ class Signature(Generic[T]):
             elif runtime_arg.kind == inspect.Parameter.VAR_KEYWORD:
                 runtime_sig.varkw = runtime_arg
             else:
-                raise ValueError
+                raise AssertionError
         return runtime_sig
 
     @staticmethod
@@ -500,7 +500,7 @@ class Signature(Generic[T]):
             elif arg.kind == nodes.ARG_STAR2:
                 sig.varkw = arg
             else:
-                raise ValueError
+                raise AssertionError
         return sig
 
 
