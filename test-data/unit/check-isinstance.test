@@ -2369,14 +2369,14 @@ else:
 
 y: A[Parent]
 if isinstance(y, B):
-    reveal_type(y)      # N: Revealed type is '__main__.<subclass of "A[Parent]" and "B">'
+    reveal_type(y)      # N: Revealed type is '__main__.<subclass of "A" and "B">'
     reveal_type(y.f())  # N: Revealed type is '__main__.Parent*'
 else:
     reveal_type(y)      # N: Revealed type is '__main__.A[__main__.Parent]'
 
 z: A[Child]
 if isinstance(z, B):
-    reveal_type(z)      # N: Revealed type is '__main__.<subclass of "A[Child]" and "B">'
+    reveal_type(z)      # N: Revealed type is '__main__.<subclass of "A" and "B">1'
     reveal_type(z.f())  # N: Revealed type is '__main__.Child*'
 else:
     reveal_type(z)      # N: Revealed type is '__main__.A[__main__.Child]'
@@ -2518,7 +2518,7 @@ class A: pass
 
 x: A
 if isinstance(x, A2):
-    reveal_type(x)  # N: Revealed type is '__main__.<subclass of "__main__.A" and "foo.A">'
+    reveal_type(x)  # N: Revealed type is '__main__.<subclass of "A" and "A">'
 
 [file foo.py]
 class A: pass
