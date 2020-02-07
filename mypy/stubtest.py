@@ -380,11 +380,12 @@ class Signature(Generic[T]):
                 + (" = ..." if has_default(arg) else "")
             )
 
+        kw_only = sorted(self.kwonly.values(), key=lambda a: (has_default(a), get_name(a)))
         ret = "def ("
         ret += ", ".join(
             [get_desc(arg) for arg in self.pos]
             + (["*" + get_name(self.varpos)] if self.varpos else (["*"] if self.kwonly else []))
-            + [get_desc(arg) for arg in self.kwonly.values()]
+            + [get_desc(arg) for arg in kw_only]
             + (["**" + get_name(self.varkw)] if self.varkw else [])
         )
         ret += ")"
