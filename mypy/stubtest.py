@@ -971,10 +971,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     return sorted(modules)
 
 
-def get_whitelist_entries(whitelist_file: Optional[str]) -> Iterator[str]:
-    if not whitelist_file:
-        return
-
+def get_whitelist_entries(whitelist_file: str) -> Iterator[str]:
     def strip_comments(s: str) -> str:
         try:
             return s[: s.index("#")].strip()
