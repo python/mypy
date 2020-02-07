@@ -5187,6 +5187,51 @@ reveal_type(Foo().x)
 [out2]
 tmp/b.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
 
+[case testIsInstanceAdHocIntersectionIncrementalNoChangeSameName]
+import b
+[file c.py]
+class B: pass
+[file a.py]
+import c
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: c.B
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is 'a.<subclass of "B" and "B">'
+
+
+[case testIsInstanceAdHocIntersectionIncrementalNoChangeTuple]
+import b
+[file a.py]
+from typing import Tuple
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: Tuple[int, ...]
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is 'a.<subclass of "tuple" and "B">'
+
 [case testIsInstanceAdHocIntersectionIncrementalIsInstanceChange]
 import c
 [file a.py]
@@ -5316,4 +5361,3 @@ reveal_type(z)
 tmp/c.py:2: note: Revealed type is 'a.A'
 [out2]
 tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
-

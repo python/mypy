@@ -3689,7 +3689,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         assert isinstance(curr_module, MypyFile)
 
         base_classes = []
-        formatted_names = []
         for inst in instances:
             expanded = [inst]
             if inst.type.is_intersection:
@@ -3697,10 +3696,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             for expanded_inst in expanded:
                 base_classes.append(expanded_inst)
-                formatted_names.append(format_type_bare(expanded_inst))
 
+        # We use the pretty_names_list for error messages but can't
+        # use it for the real name that goes into the symbol table
+        # because it can have dots in it.
         pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
-        short_name = '<subclass of {}>'.format(pretty_names_list)
+        names_list = pretty_seq([x.type.name for x in base_classes], "and")
+        short_name = '<subclass of {}>'.format(names_list)
         full_name = gen_unique_name(short_name, curr_module.names)
 
         old_msg = self.msg
