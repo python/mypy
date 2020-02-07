@@ -9,7 +9,6 @@ import copy
 import enum
 import importlib
 import inspect
-import subprocess
 import sys
 import types
 import warnings
@@ -970,9 +969,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     for version in versions:
         base = typeshed_dir / "stdlib" / version
         if base.exists():
-            output = subprocess.check_output(["find", str(base), "-type", "f"]).decode("utf-8")
-            paths = [Path(p) for p in output.splitlines()]
-            for path in paths:
+            for path in base.rglob("*.pyi"):
                 if path.stem == "__init__":
                     path = path.parent
                 modules.append(".".join(path.relative_to(base).parts[:-1] + (path.stem,)))
