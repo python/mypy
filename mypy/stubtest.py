@@ -655,7 +655,7 @@ def verify_var(
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         # Don't always yield an error here, because we often can't find instance variables
-        if len(object_path) <= 1:
+        if len(object_path) <= 2:
             yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
