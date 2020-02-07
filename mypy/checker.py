@@ -1439,7 +1439,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.cant_override_final(name, base.name, defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
-                    self.check_no_writable(name, base_attr.node, defn)
+                    self.check_if_final_var_override_writable(name, base_attr.node, defn)
 
             # Check the type of override.
             if name not in ('__init__', '__new__', '__init_subclass__'):
@@ -1534,7 +1534,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that this doesn't affect read-only properties which can have
                 # covariant overrides.
                 #
-                # TODO: Allow covariance for read-only attributes?
+                pass
+            elif (base_attr.node and not self.is_writable_attribute(base_attr.node)
+                  and is_subtype(typ, original_type)):
+                # If the attribute is read-only, allow covariance
                 pass
             else:
                 self.msg.signature_incompatible_with_supertype(
@@ -1920,7 +1923,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_final_node(second.node):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
-            self.check_no_writable(name, second.node, ctx)
+            self.check_if_final_var_override_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -2385,10 +2388,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name, base.name, node)
             return False
         if node.is_final:
-            self.check_no_writable(node.name, base_node, node)
+            self.check_if_final_var_override_writable(node.name, base_node, node)
         return True
 
-    def check_no_writable(self, name: str, base_node: Optional[Node], ctx: Context) -> None:
+    def check_if_final_var_override_writable(self,
+                                             name: str,
+                                             base_node:
+                                             Optional[Node],
+                                             ctx: Context) -> None:
         """Check that a final variable doesn't override writeable attribute.
 
         This is done to prevent situations like this:
@@ -2400,14 +2407,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             x: C = D()
             x.attr = 3  # Oops!
         """
-        if isinstance(base_node, Var):
-            ok = False
-        elif isinstance(base_node, OverloadedFuncDef) and base_node.is_property:
-            first_item = cast(Decorator, base_node.items[0])
-            ok = not first_item.var.is_settable_property
-        else:
-            ok = True
-        if not ok:
+        writable = True
+        if base_node:
+            writable = self.is_writable_attribute(base_node)
+        if writable:
             self.msg.final_cant_override_writable(name, ctx)
 
     def get_final_context(self) -> bool:
@@ -4867,6 +4870,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None, {}
         new_yes_type = make_simplified_union(out)
         return {expr: new_yes_type}, {}
+
+    def is_writable_attribute(self, node: Node) -> bool:
+        """Check if an attribute is writable"""
+        if isinstance(node, Var):
+            return True
+        elif isinstance(node, OverloadedFuncDef) and node.is_property:
+            first_item = cast(Decorator, node.items[0])
+            return first_item.var.is_settable_property
+        else:
+            return False
 
 
 def conditional_type_map(expr: Expression,

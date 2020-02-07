@@ -512,6 +512,28 @@ class B(A):
     def h(cls) -> int: pass
 [builtins fixtures/classmethod.pyi]
 
+[case testAllowCovarianceInReadOnlyAttributes]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+
+class X:
+    pass
+
+
+class Y(X):
+    pass
+
+def dec(f: Callable[..., T]) -> T: pass
+
+class A:
+    @dec
+    def f(self) -> X: pass
+
+class B(A):
+    @dec
+    def f(self) -> Y: pass
+
 
 -- Constructors
 -- ------------
