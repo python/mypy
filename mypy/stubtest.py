@@ -157,12 +157,13 @@ def test_module(module_name: str) -> Iterator[Error]:
         return
 
     try:
-        runtime = importlib.import_module(module_name)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            runtime = importlib.import_module(module_name)
     except Exception as e:
         yield Error([module_name], "failed to import: {}".format(e), stub, MISSING)
         return
 
-    # collections likes to warn us about the things we're doing
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         yield from verify(stub, runtime, [module_name])
