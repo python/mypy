@@ -407,7 +407,7 @@ class Signature(Generic[T]):
         return stub_sig
 
     @staticmethod
-    def from_inspect_signature(signature: inspect.Signature,) -> "Signature[inspect.Parameter]":
+    def from_inspect_signature(signature: inspect.Signature) -> "Signature[inspect.Parameter]":
         runtime_sig = Signature()  # type: Signature[inspect.Parameter]
         for runtime_arg in signature.parameters.values():
             if runtime_arg.kind in (
@@ -426,7 +426,7 @@ class Signature(Generic[T]):
         return runtime_sig
 
     @staticmethod
-    def from_overloadedfuncdef(stub: nodes.OverloadedFuncDef,) -> "Signature[nodes.Argument]":
+    def from_overloadedfuncdef(stub: nodes.OverloadedFuncDef) -> "Signature[nodes.Argument]":
         """Returns a Signature from an OverloadedFuncDef.
 
         If life were simple, to verify_overloadedfuncdef, we'd just verify_funcitem for each of its
