@@ -276,7 +276,7 @@ def _verify_arg_name(
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
-        return s[len(prefix) :] if s.startswith(prefix) else s
+        return s[len(prefix):] if s.startswith(prefix) else s
 
     if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
         return
@@ -539,7 +539,7 @@ def _verify_signature(
         # parameters and b) below, we don't enforce that the stub takes *args, since runtime logic
         # may prevent those arguments from actually being accepted.
         if runtime.varpos is None:
-            for stub_arg in stub.pos[len(runtime.pos) :]:
+            for stub_arg in stub.pos[len(runtime.pos):]:
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
@@ -549,7 +549,7 @@ def _verify_signature(
             if stub.varpos is not None:
                 yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
     elif len(stub.pos) < len(runtime.pos):
-        for runtime_arg in runtime.pos[len(stub.pos) :]:
+        for runtime_arg in runtime.pos[len(stub.pos):]:
             if runtime_arg.name not in stub.kwonly:
                 yield 'stub does not have argument "{}"'.format(runtime_arg.name)
             else:
