@@ -736,10 +736,10 @@ class JoinSuite(Suite):
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
         self.assert_join(UnionType([lit1, lit2]), a, a)
         self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
-        self.assert_join(UnionType([d, lit3]), lit3, UnionType([d, lit3]))
+        self.assert_join(UnionType([d, lit3]), lit3, d)
         self.assert_join(UnionType([d, lit3]), d, UnionType([d, lit3]))
-        self.assert_join(UnionType([a, lit1]), lit1, UnionType([a, lit1]))
-        self.assert_join(UnionType([a, lit1]), lit2, UnionType([a, lit1]))
+        self.assert_join(UnionType([a, lit1]), lit1, a)
+        self.assert_join(UnionType([a, lit1]), lit2, a)
         self.assert_join(UnionType([lit1, lit2]),
                          UnionType([lit1, lit2]),
                          UnionType([lit1, lit2]))
