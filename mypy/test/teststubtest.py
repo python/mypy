@@ -69,7 +69,7 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         output = run_stubtest(
             stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
             runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
-            options=["--generate-whitelist"]
+            options=["--generate-whitelist"],
         )
 
         actual_errors = set(output.splitlines())
@@ -609,19 +609,23 @@ class StubtestMiscUnit(unittest.TestCase):
         assert not output
 
     def test_whitelist(self) -> None:
-        with tempfile.NamedTemporaryFile() as f:
-            f.write("{}.bad\n# a comment".format(TEST_MODULE_NAME).encode("utf-8"))
-            f.flush()
+        # Can't use this as a context because Windows
+        whitelist = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        try:
+            with whitelist:
+                whitelist.write("{}.bad\n# a comment".format(TEST_MODULE_NAME))
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
                 runtime="def bad(num, text) -> None: pass",
-                options=["--whitelist", f.name],
+                options=["--whitelist", whitelist.name],
             )
             assert not output
 
-            output = run_stubtest(stub="", runtime="", options=["--whitelist", f.name])
+            output = run_stubtest(stub="", runtime="", options=["--whitelist", whitelist.name])
             assert output == "note: unused whitelist entry {}.bad\n".format(TEST_MODULE_NAME)
+        finally:
+            os.unlink(whitelist.name)
 
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])
