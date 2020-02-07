@@ -96,7 +96,7 @@ class Error:
             return _style(self.object_desc, bold=True) + " " + self.message
 
         stub_line = None
-        stub_file = None
+        stub_file = None  # type: None
         if not isinstance(self.stub_object, Missing):
             stub_line = self.stub_object.line
         # TODO: Find a way of getting the stub file
