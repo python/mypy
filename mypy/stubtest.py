@@ -105,7 +105,7 @@ class Error:
         if stub_line:
             stub_loc_str += " at line {}".format(stub_line)
         if stub_file:
-            stub_loc_str += " in file {}".format(stub_file)
+            stub_loc_str += " in file {}".format(Path(stub_file))
 
         runtime_line = None
         runtime_file = None
@@ -123,7 +123,7 @@ class Error:
         if runtime_line:
             runtime_loc_str += " at line {}".format(runtime_line)
         if runtime_file:
-            runtime_loc_str += " in file {}".format(runtime_file)
+            runtime_loc_str += " in file {}".format(Path(runtime_file))
 
         output = [
             _style("error: ", color="red", bold=True),
