@@ -870,6 +870,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     if type_name not in stub.names:
         return None
     type_info = stub.names[type_name].node
+    if isinstance(type_info, nodes.Var):
+        return type_info.type
     if not isinstance(type_info, nodes.TypeInfo):
         return None
 
