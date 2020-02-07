@@ -926,9 +926,14 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
             sources.extend(found_sources)
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
 
-    res = mypy.build.build(sources=sources, options=options)
+    try:
+        res = mypy.build.build(sources=sources, options=options)
+    except mypy.errors.CompileError as e:
+        output = [_style("error: ", color="red", bold=True), "failed mypy compile.\n", str(e)]
+        print("".join(output))
+        raise RuntimeError
     if res.errors:
-        output = [_style("error: ", color="red", bold=True), " failed mypy build.\n"]
+        output = [_style("error: ", color="red", bold=True), "failed mypy build.\n"]
         print("".join(output) + "\n".join(res.errors))
         raise RuntimeError
 
