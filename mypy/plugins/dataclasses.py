@@ -10,14 +10,14 @@ from mypy.nodes import (
     Context, Expression, JsonDict, NameExpr, RefExpr,
     SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
 )
-from mypy.plugin import ClassDefContext, FunctionContext
+from mypy.plugin import ClassDefContext, FunctionContext, CheckerPluginInterface
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import add_method, _get_decorator_bool_argument, make_anonymous_typeddict
 from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
-from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -402,14 +402,46 @@ def asdict_callback(ctx: FunctionContext) -> Type:
         dataclass_instance = arg_types[0]
         if isinstance(dataclass_instance, Instance):
             info = dataclass_instance.type
-            if is_type_dataclass(info):
-                attrs = info.metadata['dataclass']['attributes']
-                fields = OrderedDict()  # type: OrderedDict[str, Type]
-                for data in attrs:
-                    attr = DataclassAttribute.deserialize(info, data, ctx.api)
-                    sym_node = info.names[attr.name]
-                    typ = sym_node.type
-                    assert typ is not None
-                    fields[attr.name] = typ
-                return make_anonymous_typeddict(ctx.api, fields=fields, required_keys=set(fields.keys()))
+            if not is_type_dataclass(info):
+                ctx.api.fail('asdict() should be called on dataclass instances', dataclass_instance)
+            return _type_asdict_inner(ctx.api, dataclass_instance)
     return ctx.default_return_type
+
+
+def _type_asdict_inner(api: CheckerPluginInterface, typ: Type) -> Type:
+    """Convert dataclasses into TypedDicts, recursively looking into built-in containers.
+
+    It will look for dataclasses inside of tuples, lists, and dicts and convert them to TypedDicts.
+    """
+    # TODO: detect recursive references and replace them with Any, and
+    #  perhaps generate an error about recursive types not being supported
+    if isinstance(typ, Instance):
+        info = typ.type
+        if is_type_dataclass(info):
+            attrs = info.metadata['dataclass']['attributes']
+            fields = OrderedDict()  # type: OrderedDict[str, Type]
+            for data in attrs:
+                attr = DataclassAttribute.deserialize(info, data, api)
+                sym_node = info.names[attr.name]
+                typ = sym_node.type
+                assert typ is not None
+                fields[attr.name] = _type_asdict_inner(api, typ)
+            return make_anonymous_typeddict(api, fields=fields, required_keys=set(fields.keys()))
+        elif info.has_base('builtins.list'):
+            # TODO: Support subclasses properly
+            # TODO: Does List[Any] work?
+            assert len(typ.args) == 1
+            arg = typ.args[0]
+            return Instance(typ.type, [_type_asdict_inner(api, arg)])
+        elif info.has_base('builtins.dict'):
+            # TODO: Support subclasses properly
+            assert len(typ.args) == 2
+            return Instance(typ.type, [_type_asdict_inner(api, typ.args[0]), _type_asdict_inner(api, typ.args[1])])
+    elif isinstance(typ, TupleType):
+        # Is this really the proper way to do it? or is it an Instance instead?
+        # TODO: Handle namedtuples properly.
+        # TODO: Handle the fact that the tuple type is still an "instance" of the original tuple type
+        return TupleType([_type_asdict_inner(api, item) for item in typ.items],
+                         # TODO: Recalculate fallback using tuple_fallback?
+                         typ.partial_fallback, implicit=typ.implicit)
+    return typ

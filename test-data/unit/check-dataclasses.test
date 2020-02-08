@@ -1058,43 +1058,139 @@ reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name
 [builtins fixtures/list.pyi]
 [builtins fixtures/dict.pyi]
 
-[case testDataclassesAsdictRecursive]
+
+[case testDataclassesAsdictList]
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Tuple, NamedTuple
+from typing import List
 
 @dataclass
 class Person:
     name: str
     age: int
 
-class NT(NamedTuple):
-    nt: Dict[str, Tuple[int, Person]]
-
-class PersonList(List[Person]):
-    pass
-
 @dataclass
-class Recurse:
-    foo: NT
-    bar: PersonList
+class Course:
+    participants: List[Person]
 
-# asdict should recurse into dataclasses, dicts, lists, and tuples
-instance = Recurse(NT({'key': (1, Person("Joe", 32))}), PersonList([Person("Dave", 32)]))
+instance = Course(participants=[Person("Joe", 32)])
+result = asdict(instance)
+reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
 
-# Problem 1: There is a problem when subclassing List (and I assume also Dict?)
-# The type returned will contain an instance of PersonList, but it will contain dicts instead of Person instances
-# How can we say it still is an instance of PersonList when it has values of the wrong type?
-# We could copy the existing PersonList type and modify its generic parameter to List...
-# but at runtime: isinstance(asdict(instance)['bar'], PersonList) == True
-
-# Problem 2: The same problem occurs for namedtuples: they should be instances of the original namedtuple class,
-# but their values which originally were instances of dataclasses should be dicts instead.
-
-# I'm expecting the revealed type to be something like this, but this wouldn't really be correct due to the above...
-reveal_type(asdict(instance)) # N: Revealed type is 'TypedDict({'foo': builtins.tuple[Dict[str, Tuple[int, TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.NT]]], 'bar': __main__.PersonList})'
-
-# TODO: Handle dict_factory param -- what type to give the return value then?
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
+
+
+[case testDataclassesAsdictDict]
+from dataclasses import dataclass, asdict
+from typing import Dict
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+@dataclass
+class Course:
+    participants_by_name: Dict[str, Person]
+
+instance = Course(participants_by_name={"Joe": Person("Joe", 32)})
+result = asdict(instance)
+reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str, TypedDict({'name': builtins.str, 'age': builtins.int})]'
+
+
+[typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testDataclassesAsdictTuple]
+from dataclasses import dataclass, asdict
+from typing import Tuple
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+@dataclass
+class Course:
+    partners: Tuple[Person, Person]
+
+instance = Course(partners=(Person("Joe", 32), Person("John", 23)))
+result = asdict(instance)
+reveal_type(result['partners']) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), TypedDict({'name': builtins.str, 'age': builtins.int})]'
+
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+
+[case testDataclassesAsdictNamedTuple]
+from dataclasses import dataclass, asdict
+from typing import NamedTuple
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+
+class Staff(NamedTuple):
+    teacher: Person
+    assistant: Person
+
+@dataclass
+class Course:
+    staff: Staff
+
+instance = Course(staff=Staff(teacher=Person("Joe", 32), assistant=Person("John", 23)))
+result = asdict(instance)
+reveal_type(result['staff']) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.Staff]'
+staff = result['staff']
+if isinstance(staff, Staff):
+    # TODO: Make this pass: at runtime it succeeds
+    reveal_type(staff) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.Staff]'
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+#
+# [case testDataclassesAsdictRecursive]
+# from dataclasses import dataclass, asdict
+# from typing import List, Dict, Tuple, NamedTuple
+#
+# @dataclass
+# class Person:
+#     name: str
+#     age: int
+#
+# class NT(NamedTuple):
+#     nt: Dict[str, Tuple[int, Person]]
+#
+# class PersonList(List[Person]):
+#     pass
+#
+# @dataclass
+# class Recurse:
+#     foo: NT
+#     bar: PersonList
+#
+# # asdict should recurse into dataclasses, dicts, lists, and tuples
+# instance = Recurse(NT({'key': (1, Person("Joe", 32))}), PersonList([Person("Dave", 32)]))
+#
+# # Problem 1: There is a problem when subclassing List (and I assume also Dict?)
+# # The type returned will contain an instance of PersonList, but it will contain dicts instead of Person instances
+# # How can we say it still is an instance of PersonList when it has values of the wrong type?
+# # We could copy the existing PersonList type and modify its generic parameter to List...
+# # but at runtime: isinstance(asdict(instance)['bar'], PersonList) == True
+#
+# # Problem 2: The same problem occurs for namedtuples: they should be instances of the original namedtuple class,
+# # but their values which originally were instances of dataclasses should be dicts instead.
+#
+# # I'm expecting the revealed type to be something like this, but this wouldn't really be correct due to the above...
+# reveal_type(asdict(instance)) # N: Revealed type is 'TypedDict({'foo': builtins.tuple[Dict[str, Tuple[int, TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.NT]]], 'bar': __main__.PersonList})'
+#
+# # TODO: Handle dict_factory param -- what type to give the return value then?
+#
+# [typing fixtures/typing-full.pyi]
+# [builtins fixtures/list.pyi]
+# [builtins fixtures/dict.pyi]
