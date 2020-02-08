@@ -881,17 +881,22 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
 
     if isinstance(runtime, tuple):
         # Special case tuples so we construct a valid mypy.types.TupleType
-        opt_items = [get_mypy_type_of_runtime_value(v) for v in runtime]
-        items = [(i if i is not None else anytype()) for i in opt_items]
+        optional_items = [get_mypy_type_of_runtime_value(v) for v in runtime]
+        items = [(i if i is not None else anytype()) for i in optional_items]
         fallback = mypy.types.Instance(type_info, [anytype()])
         return mypy.types.TupleType(items, fallback)
 
-    # Technically, Literals are supposed to be only bool, int, str or bytes, but this
-    # seems to work fine
-    return mypy.types.LiteralType(
-        value=runtime,
-        fallback=mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars]),
-    )
+    fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
+    try:
+        # Literals are supposed to be only bool, int, str, bytes or enums, but this seems to work
+        # well (when not using mypyc, for which bytes and enums are also problematic).
+        return mypy.types.LiteralType(
+            value=runtime,
+            fallback=fallback,
+        )
+    except TypeError:
+        # Ask for forgiveness if we're using mypyc.
+        return fallback
 
 
 _all_stubs = {}  # type: Dict[str, nodes.MypyFile]
