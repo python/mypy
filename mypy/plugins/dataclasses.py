@@ -429,7 +429,6 @@ def _type_asdict_inner(api: CheckerPluginInterface, typ: Type) -> Type:
             return make_anonymous_typeddict(api, fields=fields, required_keys=set(fields.keys()))
         elif info.has_base('builtins.list'):
             # TODO: Support subclasses properly
-            # TODO: Does List[Any] work?
             assert len(typ.args) == 1
             arg = typ.args[0]
             return Instance(typ.type, [_type_asdict_inner(api, arg)])
@@ -438,9 +437,7 @@ def _type_asdict_inner(api: CheckerPluginInterface, typ: Type) -> Type:
             assert len(typ.args) == 2
             return Instance(typ.type, [_type_asdict_inner(api, typ.args[0]), _type_asdict_inner(api, typ.args[1])])
     elif isinstance(typ, TupleType):
-        # Is this really the proper way to do it? or is it an Instance instead?
-        # TODO: Handle namedtuples properly.
-        # TODO: Handle the fact that the tuple type is still an "instance" of the original tuple type
+        # TODO: Support subclasses properly
         return TupleType([_type_asdict_inner(api, item) for item in typ.items],
                          # TODO: Recalculate fallback using tuple_fallback?
                          typ.partial_fallback, implicit=typ.implicit)

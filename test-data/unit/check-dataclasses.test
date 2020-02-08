@@ -1061,7 +1061,7 @@ reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name
 
 [case testDataclassesAsdictList]
 from dataclasses import dataclass, asdict
-from typing import List
+from typing import List, Any
 
 @dataclass
 class Person:
@@ -1071,10 +1071,14 @@ class Person:
 @dataclass
 class Course:
     participants: List[Person]
+    any_list: List[Any]
+    list_no_generic: list
 
-instance = Course(participants=[Person("Joe", 32)])
+instance = Course(participants=[Person("Joe", 32)], any_list=[], list_no_generic=[])
 result = asdict(instance)
 reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+reveal_type(result['any_list']) # N: Revealed type is 'builtins.list[Any]'
+reveal_type(result['list_no_generic']) # N: Revealed type is 'builtins.list[Any]'
 
 
 [typing fixtures/typing-full.pyi]
