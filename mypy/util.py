@@ -387,13 +387,14 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 5):
+    if sys.version_info < (3, 5):
         sys.exit("Running {name} with Python 3.4 or lower is not supported; "
                  "please upgrade to 3.5 or newer".format(name=program))
     # this can be deleted once we drop support for 3.5
-    if sys.version_info[:3] == (3, 5, 0):
-        sys.exit("Running {name} with Python 3.5.0 is not supported; "
-                 "please upgrade to 3.5.1 or newer".format(name=program))
+    if sys.version_info < (3, 5, 3):
+        version = ".".join(map(str, sys.version_info[:3]))
+        sys.exit("Running {name} with Python {version} is not supported; "
+                 "please upgrade to 3.5.3 or newer".format(name=program, version=version))
 
 
 def count_stats(errors: List[str]) -> Tuple[int, int]:

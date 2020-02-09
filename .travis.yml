@@ -23,9 +23,8 @@ env:
 
 jobs:
   include:
-  # Specifically request 3.5.1 because we need to be compatible with that.
-  - name: "run test suite with python 3.5.1 (compiled with mypyc)"
-    python: 3.5.1
+  - name: "run test suite with python 3.5.3 (compiled with mypyc)"
+    python: 3.5.3
     dist: trusty
     env:
     - TOXENV=py
