@@ -36,7 +36,17 @@ class Missing:
 MISSING = Missing()
 
 T = TypeVar("T")
-MaybeMissing = Union[T, Missing]
+if sys.version_info >= (3, 5, 3):
+    MaybeMissing = Union[T, Missing]
+else:
+    # work around a bug in 3.5.2 and earlier's typing.py
+    class MaybeMissingMeta(type):
+        def __getitem__(self, arg: Any) -> Any:
+            return Union[arg, Missing]
+
+    class MaybeMissing(metaclass=MaybeMissingMeta):  # type: ignore
+        pass
+
 
 _formatter = FancyFormatter(sys.stdout, sys.stderr, False)
 
