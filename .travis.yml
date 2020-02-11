@@ -81,6 +81,7 @@ jobs:
 
 install:
 - pip install -U pip setuptools
+- pip install -U 'virtualenv<20'
 - pip install -U tox==3.9.0
 - tox --notest
 
