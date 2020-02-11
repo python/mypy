@@ -1071,6 +1071,25 @@ reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name
 
 [typing fixtures/typing-full.pyi]
 
+
+[case testDataclassesAsdictUnions]
+from dataclasses import dataclass, asdict
+from typing import Union
+
+# TODO: Recursion, Unions, subclasses
+
+@dataclass
+class Card:
+    last4: int
+
+@dataclass
+class Customer:
+    card: Union[str, Card]
+
+reveal_type(asdict(Customer("foo")))  # N: Revealed type is 'TypedDict({'card': Union[builtins.str, TypedDict({'last4': builtins.int})]})'
+
+[typing fixtures/typing-full.pyi]
+
 [case testDataclassesAsdictDictFactory]
 from dataclasses import dataclass, asdict
 from typing import List, Tuple, Dict, Any

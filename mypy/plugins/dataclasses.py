@@ -18,7 +18,7 @@ from mypy.plugins.common import (
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.typeops import tuple_fallback
-from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, UnionType
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -421,6 +421,8 @@ def _type_asdict_inner(api: CheckerPluginInterface, typ: Type) -> Type:
     """
     # TODO: detect recursive references and replace them with Any, and
     #  perhaps generate an error about recursive types not being supported
+    if isinstance(typ, UnionType):
+        return UnionType([_type_asdict_inner(api, item) for item in typ.items])
     if isinstance(typ, Instance):
         info = typ.type
         if is_type_dataclass(info):
