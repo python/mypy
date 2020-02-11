@@ -12,6 +12,6 @@ pytest-forked>=1.0.0,<1.1.0
 pytest-cov>=2.4.0
 typing>=3.5.2; python_version < '3.5'
 py>=1.5.2
-virtualenv
+virtualenv<20
 setuptools
 importlib-metadata==0.20
