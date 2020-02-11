@@ -542,7 +542,14 @@ class FancyFormatter:
         if not CURSES_ENABLED:
             return False
         try:
-            curses.setupterm()
+            # setupterm wants a fd to potentially write an "initialization sequence".
+            # We override sys.stdout for the daemon API so if stdout doesn't have an fd,
+            # just give it /dev/null.
+            if hasattr(sys.stdout, 'fileno'):
+                curses.setupterm()
+            else:
+                with open("/dev/null", "rb") as f:
+                    curses.setupterm(fd=f.fileno())
         except curses.error:
             # Most likely terminfo not found.
             return False
