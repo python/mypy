@@ -1055,9 +1055,40 @@ NotQuiteAPerson(**asdict(Person('John', 32)))  # E: Extra argument "age" from **
 reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
 
 [typing fixtures/typing-full.pyi]
-[builtins fixtures/list.pyi]
-[builtins fixtures/dict.pyi]
 
+
+[case testDataclassesAsdict]
+from dataclasses import dataclass, asdict
+
+# TODO: Recursion, Unions, subclasses
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
+
+[typing fixtures/typing-full.pyi]
+
+[case testDataclassesAsdictDictFactory]
+from dataclasses import dataclass, asdict
+from typing import List, Tuple, Dict, Any
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+def my_dict_factory(seq: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    pass
+
+# Passing in any a dict_factory falls back to default return value
+reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
+
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictList]
 from dataclasses import dataclass, asdict
@@ -1142,6 +1173,9 @@ class Staff(NamedTuple):
     teacher: Person
     assistant: Person
 
+    def staff_method(self):
+        pass
+
 @dataclass
 class Course:
     staff: Staff
@@ -1151,8 +1185,21 @@ result = asdict(instance)
 reveal_type(result['staff']) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.Staff]'
 staff = result['staff']
 if isinstance(staff, Staff):
-    # TODO: Make this pass: at runtime it succeeds
-    reveal_type(staff) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.Staff]'
+    # It's unclear what the behavior should be here.
+    # At runtime, this isinstance check succeeds, but it is not sound, because
+    # the instance of Staff would have any field that is a dataclass replaced with dicts (TypedDicts),
+    # and there could be other transformations (e.g. to collection types) such that the resultant type is
+    # not compatible with the original.
+    # So, to be conservative, we are saying that staff is a "new" type with a fallback of type Staff.
+    # This reveal_type should produce no output by the type-checker since the code is unreachable, due to
+    # staff NOT being an instance of Staff.
+    reveal_type(staff)
+
+# This is OK, because although staff is not an instance of Staff,
+# it has Staff as a fallback, so method calls should work
+staff.staff_method() # E: Invalid self argument "Staff" to attribute function "staff_method" with type "Callable[[Staff], Any]"
+reveal_type(staff[0]) # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
+reveal_type(staff.teacher) # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]

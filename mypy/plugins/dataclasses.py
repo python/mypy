@@ -17,6 +17,7 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.typeops import tuple_fallback
 from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType
 
 # The set of decorators that generate dataclasses.
@@ -397,9 +398,14 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
 
 
 def asdict_callback(ctx: FunctionContext) -> Type:
-    arg_types = ctx.arg_types[0]
-    if arg_types:
-        dataclass_instance = arg_types[0]
+    positional_arg_types = ctx.arg_types[0]
+    if positional_arg_types:
+        if len(ctx.arg_types) == 2:
+            # We can't infer a more precise for calls where dict_factory is set.
+            # At least for now, typeshed stubs for asdict don't allow you to pass in `dict` as dict_factory,
+            # so we can't special-case that.
+            return ctx.default_return_type
+        dataclass_instance = positional_arg_types[0]
         if isinstance(dataclass_instance, Instance):
             info = dataclass_instance.type
             if not is_type_dataclass(info):
@@ -437,8 +443,7 @@ def _type_asdict_inner(api: CheckerPluginInterface, typ: Type) -> Type:
             assert len(typ.args) == 2
             return Instance(typ.type, [_type_asdict_inner(api, typ.args[0]), _type_asdict_inner(api, typ.args[1])])
     elif isinstance(typ, TupleType):
-        # TODO: Support subclasses properly
+        # TODO: Support subclasses/namedtuples properly
         return TupleType([_type_asdict_inner(api, item) for item in typ.items],
-                         # TODO: Recalculate fallback using tuple_fallback?
-                         typ.partial_fallback, implicit=typ.implicit)
+                         tuple_fallback(typ), implicit=typ.implicit)
     return typ
