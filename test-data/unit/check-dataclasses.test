@@ -1056,7 +1056,6 @@ reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name
 
 [typing fixtures/typing-full.pyi]
 
-
 [case testDataclassesAsdict]
 from dataclasses import dataclass, asdict
 
@@ -1071,12 +1070,33 @@ reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name
 
 [typing fixtures/typing-full.pyi]
 
+[case testDataclassesAsdictRecursion]
+from dataclasses import dataclass, asdict
+from typing import Optional
+
+@dataclass
+class C:
+    a: 'A'
+
+@dataclass
+class B:
+    c: C
+
+@dataclass
+class A:
+    b: Optional[B] = None
+
+# Recursion is not supported, so fall back
+result = asdict(A(B(C(A()))))  # E: Recursive types are not supported in call to asdict, so falling back to Dict[str, Any]
+reveal_type(result)  # N: Revealed type is 'TypedDict({'b': Union[TypedDict({'c': TypedDict({'a': builtins.dict[builtins.str, Any]})}), None]})'
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictUnions]
 from dataclasses import dataclass, asdict
 from typing import Union
-
-# TODO: Recursion, Unions, subclasses
 
 @dataclass
 class Card:
@@ -1105,7 +1125,6 @@ def my_dict_factory(seq: List[Tuple[str, Any]]) -> Dict[str, Any]:
 # Passing in any a dict_factory falls back to default return value
 reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
 
-
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
 
@@ -1130,10 +1149,8 @@ reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDi
 reveal_type(result['any_list']) # N: Revealed type is 'builtins.list[Any]'
 reveal_type(result['list_no_generic']) # N: Revealed type is 'builtins.list[Any]'
 
-
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
-
 
 [case testDataclassesAsdictDict]
 from dataclasses import dataclass, asdict
@@ -1151,7 +1168,6 @@ class Course:
 instance = Course(participants_by_name={"Joe": Person("Joe", 32)})
 result = asdict(instance)
 reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str, TypedDict({'name': builtins.str, 'age': builtins.int})]'
-
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
@@ -1176,7 +1192,6 @@ reveal_type(result['partners']) # N: Revealed type is 'Tuple[TypedDict({'name': 
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
-
 
 [case testDataclassesAsdictNamedTuple]
 from dataclasses import dataclass, asdict
@@ -1214,53 +1229,14 @@ if isinstance(staff, Staff):
     # staff NOT being an instance of Staff.
     reveal_type(staff)
 
+reveal_type(staff[0]) # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
+
+# TODO: Make this work:
 # This is OK, because although staff is not an instance of Staff,
 # it has Staff as a fallback, so method calls should work
-staff.staff_method() # E: Invalid self argument "Staff" to attribute function "staff_method" with type "Callable[[Staff], Any]"
-reveal_type(staff[0]) # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
-reveal_type(staff.teacher) # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
+# staff.staff_method()
+# TODO: Make this work:
+# reveal_type(staff.teacher) # Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
-
-#
-# [case testDataclassesAsdictRecursive]
-# from dataclasses import dataclass, asdict
-# from typing import List, Dict, Tuple, NamedTuple
-#
-# @dataclass
-# class Person:
-#     name: str
-#     age: int
-#
-# class NT(NamedTuple):
-#     nt: Dict[str, Tuple[int, Person]]
-#
-# class PersonList(List[Person]):
-#     pass
-#
-# @dataclass
-# class Recurse:
-#     foo: NT
-#     bar: PersonList
-#
-# # asdict should recurse into dataclasses, dicts, lists, and tuples
-# instance = Recurse(NT({'key': (1, Person("Joe", 32))}), PersonList([Person("Dave", 32)]))
-#
-# # Problem 1: There is a problem when subclassing List (and I assume also Dict?)
-# # The type returned will contain an instance of PersonList, but it will contain dicts instead of Person instances
-# # How can we say it still is an instance of PersonList when it has values of the wrong type?
-# # We could copy the existing PersonList type and modify its generic parameter to List...
-# # but at runtime: isinstance(asdict(instance)['bar'], PersonList) == True
-#
-# # Problem 2: The same problem occurs for namedtuples: they should be instances of the original namedtuple class,
-# # but their values which originally were instances of dataclasses should be dicts instead.
-#
-# # I'm expecting the revealed type to be something like this, but this wouldn't really be correct due to the above...
-# reveal_type(asdict(instance)) # N: Revealed type is 'TypedDict({'foo': builtins.tuple[Dict[str, Tuple[int, TypedDict({'name': builtins.str, 'age': builtins.int}), fallback=__main__.NT]]], 'bar': __main__.PersonList})'
-#
-# # TODO: Handle dict_factory param -- what type to give the return value then?
-#
-# [typing fixtures/typing-full.pyi]
-# [builtins fixtures/list.pyi]
-# [builtins fixtures/dict.pyi]

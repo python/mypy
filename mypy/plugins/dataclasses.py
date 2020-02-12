@@ -1,7 +1,7 @@
 """Plugin that provides support for dataclasses."""
 
 from collections import OrderedDict
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, FrozenSet
 
 from typing_extensions import Final
 
@@ -18,7 +18,8 @@ from mypy.plugins.common import (
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.typeops import tuple_fallback
-from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, UnionType
+from mypy.types import Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, UnionType, \
+    AnyType, TypeOfAny
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -399,6 +400,7 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
 
 def asdict_callback(ctx: FunctionContext) -> Type:
     positional_arg_types = ctx.arg_types[0]
+
     if positional_arg_types:
         if len(ctx.arg_types) == 2:
             # We can't infer a more precise for calls where dict_factory is set.
@@ -410,42 +412,54 @@ def asdict_callback(ctx: FunctionContext) -> Type:
             info = dataclass_instance.type
             if not is_type_dataclass(info):
                 ctx.api.fail('asdict() should be called on dataclass instances', dataclass_instance)
-            return _type_asdict_inner(ctx.api, dataclass_instance)
+            return _type_asdict(ctx.api, ctx.context, dataclass_instance)
     return ctx.default_return_type
 
 
-def _type_asdict_inner(api: CheckerPluginInterface, typ: Type) -> Type:
+def _type_asdict(api: CheckerPluginInterface, context: Context, typ: Type) -> Type:
     """Convert dataclasses into TypedDicts, recursively looking into built-in containers.
 
     It will look for dataclasses inside of tuples, lists, and dicts and convert them to TypedDicts.
     """
-    # TODO: detect recursive references and replace them with Any, and
-    #  perhaps generate an error about recursive types not being supported
-    if isinstance(typ, UnionType):
-        return UnionType([_type_asdict_inner(api, item) for item in typ.items])
-    if isinstance(typ, Instance):
-        info = typ.type
-        if is_type_dataclass(info):
-            attrs = info.metadata['dataclass']['attributes']
-            fields = OrderedDict()  # type: OrderedDict[str, Type]
-            for data in attrs:
-                attr = DataclassAttribute.deserialize(info, data, api)
-                sym_node = info.names[attr.name]
-                typ = sym_node.type
-                assert typ is not None
-                fields[attr.name] = _type_asdict_inner(api, typ)
-            return make_anonymous_typeddict(api, fields=fields, required_keys=set(fields.keys()))
-        elif info.has_base('builtins.list'):
-            # TODO: Support subclasses properly
-            assert len(typ.args) == 1
-            arg = typ.args[0]
-            return Instance(typ.type, [_type_asdict_inner(api, arg)])
-        elif info.has_base('builtins.dict'):
-            # TODO: Support subclasses properly
-            assert len(typ.args) == 2
-            return Instance(typ.type, [_type_asdict_inner(api, typ.args[0]), _type_asdict_inner(api, typ.args[1])])
-    elif isinstance(typ, TupleType):
-        # TODO: Support subclasses/namedtuples properly
-        return TupleType([_type_asdict_inner(api, item) for item in typ.items],
-                         tuple_fallback(typ), implicit=typ.implicit)
-    return typ
+
+    def _type_asdict_inner(typ: Type, seen_dataclasses: FrozenSet[str]) -> Type:
+        if isinstance(typ, UnionType):
+            return UnionType([_type_asdict_inner(item, seen_dataclasses) for item in typ.items])
+        if isinstance(typ, Instance):
+            info = typ.type
+            if is_type_dataclass(info):
+                if info.fullname in seen_dataclasses:
+                    api.fail("Recursive types are not supported in call to asdict, so falling back to Dict[str, Any]",
+                             context)
+                    # Note: Would be nicer to fallback to default_return_type, but that is Any (due to overloads?)
+                    return api.named_generic_type('builtins.dict', [api.named_generic_type('builtins.str', []),
+                                                                    AnyType(TypeOfAny.implementation_artifact)])
+                seen_dataclasses |= frozenset([info.fullname])
+                attrs = info.metadata['dataclass']['attributes']
+                fields = OrderedDict()  # type: OrderedDict[str, Type]
+                for data in attrs:
+                    # TODO: DataclassAttribute.deserialize takes SemanticAnalyzerPluginInterface but we have
+                    #  CheckerPluginInterface here.
+                    attr = DataclassAttribute.deserialize(info, data, api)
+                    sym_node = info.names[attr.name]
+                    typ = sym_node.type
+                    assert typ is not None
+                    fields[attr.name] = _type_asdict_inner(typ, seen_dataclasses)
+                return make_anonymous_typeddict(api, fields=fields, required_keys=set(fields.keys()))
+            elif info.has_base('builtins.list'):
+                # TODO: Support subclasses properly
+                assert len(typ.args) == 1
+                arg = typ.args[0]
+                return Instance(typ.type, [_type_asdict_inner(arg, seen_dataclasses)])
+            elif info.has_base('builtins.dict'):
+                # TODO: Support subclasses properly
+                assert len(typ.args) == 2
+                return Instance(typ.type, [_type_asdict_inner(typ.args[0], seen_dataclasses),
+                                           _type_asdict_inner(typ.args[1], seen_dataclasses)])
+        elif isinstance(typ, TupleType):
+            # TODO: Support subclasses/namedtuples properly
+            return TupleType([_type_asdict_inner(item, seen_dataclasses) for item in typ.items],
+                             tuple_fallback(typ), implicit=typ.implicit)
+        return typ
+
+    return _type_asdict_inner(typ, seen_dataclasses=frozenset())
