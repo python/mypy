@@ -1,10 +1,11 @@
 """Plugin that provides support for dataclasses."""
 
 from collections import OrderedDict
-from typing import Dict, List, Set, Tuple, Optional, FrozenSet
+from typing import Dict, List, Set, Tuple, Optional, FrozenSet, Callable
 
 from typing_extensions import Final
 
+from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Expression, JsonDict, NameExpr, RefExpr,
@@ -416,6 +417,22 @@ def asdict_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
+def _transform_type_args_used_in_supertype(*, typ: Instance, supertype: TypeInfo, transform: Callable[[Instance], Type]) -> \
+        List[Type]:
+    """For each type arg used in typ, call transform function if the arg is used in the given supertype."""
+    supertype_instance = map_instance_to_supertype(typ, supertype)
+    supertype_args = set([arg for arg in supertype_instance.args if isinstance(arg, Instance)])
+    new_args = []
+    # Transform existing type args if they are part of the supertype's type args
+    for arg in typ.args:
+        if isinstance(arg, Instance) and arg in supertype_args:
+            new_arg = transform(arg)
+        else:
+            new_arg = arg
+        new_args.append(new_arg)
+    return new_args
+
+
 def _type_asdict(api: CheckerPluginInterface, context: Context, typ: Type) -> Type:
     """Convert dataclasses into TypedDicts, recursively looking into built-in containers.
 
@@ -447,15 +464,19 @@ def _type_asdict(api: CheckerPluginInterface, context: Context, typ: Type) -> Ty
                     fields[attr.name] = _type_asdict_inner(typ, seen_dataclasses)
                 return make_anonymous_typeddict(api, fields=fields, required_keys=set(fields.keys()))
             elif info.has_base('builtins.list'):
-                # TODO: Support subclasses properly
-                assert len(typ.args) == 1
-                arg = typ.args[0]
-                return Instance(typ.type, [_type_asdict_inner(arg, seen_dataclasses)])
+                new_args = _transform_type_args_used_in_supertype(
+                    typ=typ,
+                    supertype=api.named_generic_type('builtins.list', []).type,
+                    transform=lambda arg: _type_asdict_inner(arg, seen_dataclasses)
+                )
+                return Instance(typ.type, new_args)
             elif info.has_base('builtins.dict'):
-                # TODO: Support subclasses properly
-                assert len(typ.args) == 2
-                return Instance(typ.type, [_type_asdict_inner(typ.args[0], seen_dataclasses),
-                                           _type_asdict_inner(typ.args[1], seen_dataclasses)])
+                new_args = _transform_type_args_used_in_supertype(
+                    typ=typ,
+                    supertype=api.named_generic_type('builtins.dict', []).type,
+                    transform=lambda arg: _type_asdict_inner(arg, seen_dataclasses)
+                )
+                return Instance(typ.type, new_args)
         elif isinstance(typ, TupleType):
             # TODO: Support subclasses/namedtuples properly
             return TupleType([_type_asdict_inner(item, seen_dataclasses) for item in typ.items],
