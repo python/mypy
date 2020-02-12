@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import hashlib
+import io
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -545,11 +546,13 @@ class FancyFormatter:
             # setupterm wants a fd to potentially write an "initialization sequence".
             # We override sys.stdout for the daemon API so if stdout doesn't have an fd,
             # just give it /dev/null.
-            if hasattr(sys.stdout, 'fileno'):
-                curses.setupterm()
-            else:
+            try:
+                fd = sys.stdout.fileno()
+            except io.UnsupportedOperation:
                 with open("/dev/null", "rb") as f:
                     curses.setupterm(fd=f.fileno())
+            else:
+                curses.setupterm(fd=fd)
         except curses.error:
             # Most likely terminfo not found.
             return False
