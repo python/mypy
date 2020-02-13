@@ -100,6 +100,9 @@ if USE_MYPYC:
         # We don't populate __file__ properly at the top level or something?
         # Also I think there would be problems with how we generate version.py.
         'version.py',
+
+        # Written by someone who doesn't know how to deal with mypyc
+        'stubtest.py',
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
@@ -182,6 +185,7 @@ setup(name='mypy',
       scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
+                                        'stubtest=mypy.stubtest:main',
                                         'dmypy=mypy.dmypy.client:console_entry',
                                         ]},
       classifiers=classifiers,
