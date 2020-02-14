@@ -353,8 +353,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
 
 def join_instances(t: Instance, s: Instance) -> ProperType:
-    """Calculate the join of two instance types.
-    """
+    """Calculate the join of two instance types."""
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
@@ -395,6 +394,11 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> ProperType:
         if best is None or is_better(res, best):
             best = res
     assert best is not None
+    promote = get_proper_type(t.type._promote)
+    if isinstance(promote, Instance):
+        res = join_instances(promote, s)
+        if is_better(res, best):
+            best = res
     return best
 
 
