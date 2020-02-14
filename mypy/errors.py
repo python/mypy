@@ -11,7 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
-from mypy.util import DEFAULT_SOURCE_OFFSET
+from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -372,17 +372,13 @@ class Errors:
 
     def generate_unused_ignore_errors(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
-        if not self.is_typeshed_file(file) and file not in self.ignored_files:
+        if not is_typeshed_file(file) and file not in self.ignored_files:
             for line in set(ignored_lines) - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'error', "unused 'type: ignore' comment",
                                  None, False, False)
                 self._add_error_info(file, info)
-
-    def is_typeshed_file(self, file: str) -> bool:
-        # gross, but no other clear way to tell
-        return 'typeshed' in os.path.normpath(file).split(os.sep)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""

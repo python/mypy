@@ -44,6 +44,7 @@ from mypy.errors import Errors
 from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
 from mypy.server.aststrip import SavedAttributes
+from mypy.util import is_typeshed_file
 import mypy.build
 
 if TYPE_CHECKING:
@@ -353,7 +354,7 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
         assert state.tree
         analyzer = TypeArgumentAnalyzer(errors,
                                         state.options,
-                                        errors.is_typeshed_file(state.path or ''))
+                                        is_typeshed_file(state.path or ''))
         with state.wrap_context():
             with strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
@@ -368,7 +369,7 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
     """
     analyzer = TypeArgumentAnalyzer(errors,
                                     state.options,
-                                    errors.is_typeshed_file(state.path or ''))
+                                    is_typeshed_file(state.path or ''))
     with state.wrap_context():
         with strict_optional_set(state.options.strict_optional):
             for target in targets:
