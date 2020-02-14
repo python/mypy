@@ -3137,3 +3137,10 @@ y = defaultdict(list)  # E: Need type annotation for 'y'
 y['a'] = []
 reveal_type(y)  # N: Revealed type is 'collections.defaultdict[Any, Any]'
 [builtins fixtures/dict.pyi]
+
+[case testJoinOfStrAndUnicodeSubclass_python2]
+class S(unicode): pass
+reveal_type(S() if bool() else '')  # N: Revealed type is 'builtins.unicode'
+reveal_type('' if bool() else S())  # N: Revealed type is 'builtins.unicode'
+reveal_type(S() if bool() else str())  # N: Revealed type is 'builtins.unicode'
+reveal_type(str() if bool() else S())  # N: Revealed type is 'builtins.unicode'
