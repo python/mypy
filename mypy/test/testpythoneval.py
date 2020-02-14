@@ -93,7 +93,11 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         # Execute the program.
         proc = subprocess.run([interpreter, '-Wignore', program],
                               cwd=test_temp_dir, stdout=PIPE, stderr=PIPE)
-        output.extend(split_lines(proc.stdout, proc.stderr))
+        lines = split_lines(proc.stdout, proc.stderr)
+        if sys.platform == 'win32':
+            # Normalize any paths that might appear in the output
+            lines = [line.replace('\\', '/') for line in lines]
+        output.extend(lines)
     # Remove temp file.
     os.remove(program_path)
     for i, line in enumerate(output):
