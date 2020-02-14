@@ -103,7 +103,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import correct_relative_import, unmangle, module_prefix
+from mypy.util import correct_relative_import, unmangle, module_prefix, is_typeshed_file
 from mypy.scope import Scope
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -481,7 +481,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.cur_mod_id = file_node.fullname
         scope.enter_file(self.cur_mod_id)
         self.is_stub_file = file_node.path.lower().endswith('.pyi')
-        self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
+        self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
 
