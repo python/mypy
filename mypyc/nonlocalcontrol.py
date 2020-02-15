@@ -7,7 +7,8 @@ from mypyc.ops import (
 )
 from mypyc.ops_exc import set_stop_iteration_value, restore_exc_info_op
 
-if TYPE_CHECKING:
+MYPY = False
+if MYPY:
     from mypyc.genops import IRBuilder
 
 
