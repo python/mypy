@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from mypyc.genops import IRBuilder
 
 
-
 class NonlocalControl:
     """Represents a stack frame of constructs that modify nonlocal control flow.
 
