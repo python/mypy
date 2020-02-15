@@ -20,7 +20,9 @@ from mypyc.ops_misc import (
 )
 from mypyc.ops_dict import dict_set_item_op, new_dict_op
 from mypyc.ops_tuple import new_tuple_op
-from mypyc.genopsutil import is_dataclass_decorator, get_func_def, is_dataclass
+from mypyc.genopsutil import (
+    is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
+)
 from mypyc.common import SELF_NAME
 
 MYPY = False
@@ -316,12 +318,12 @@ class BuildClassIR:
         self.builder.ret_types[-1] = bool_rprimitive
 
         rt_args = (RuntimeArg(SELF_NAME, RInstance(cls)),)
-        self_var = self.builder.read(self.builder.add_self_to_env(cls), -1)
+        self_var = self.builder.read(add_self_to_env(self.builder.environment, cls), -1)
 
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            if not stmt.is_final_def and not self.builder.is_constant(stmt.rvalue):
+            if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 self.builder.warning('Unsupported default attribute value', stmt.rvalue.line)
 
             # If the attribute is initialized to None and type isn't optional,
