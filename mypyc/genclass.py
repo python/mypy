@@ -1,4 +1,5 @@
-from typing import List, Optional, Union, overload
+from typing import List, Optional, Union
+from typing_extensions import overload
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
