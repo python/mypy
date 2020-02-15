@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, Union
 
 from mypyc.ops import (
     Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
