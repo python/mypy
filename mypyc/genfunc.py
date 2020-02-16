@@ -3,7 +3,7 @@
 This also deals with generators, async functions and nested functions.
 """
 
-from typing import Optional, List, Tuple, Union, TYPE_CHECKING
+from typing import Optional, List, Tuple, Union
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
@@ -30,7 +30,8 @@ from mypyc.sametype import is_same_method_signature
 from mypyc.genopsutil import concrete_arg_kind, is_constant, add_self_to_env
 from mypyc.genopscontext import FuncInfo, GeneratorClass, ImplicitClass
 
-if TYPE_CHECKING:
+MYPY = False
+if MYPY:
     from mypyc.genops import IRBuilder
 
 
