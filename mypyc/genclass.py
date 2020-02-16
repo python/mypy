@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from typing_extensions import overload
+from typing_extensions import overload, TYPE_CHECKING
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
@@ -25,8 +25,7 @@ from mypyc.genopsutil import (
 )
 from mypyc.common import SELF_NAME
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     from mypyc.genops import IRBuilder
 
 

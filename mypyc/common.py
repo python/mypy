@@ -1,6 +1,4 @@
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 PREFIX = 'CPyPy_'  # type: Final # Python wrappers
 NATIVE_PREFIX = 'CPyDef_'  # type: Final # Native functions etc.

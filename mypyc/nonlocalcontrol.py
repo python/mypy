@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Optional, Union
+from typing_extensions import TYPE_CHECKING
 
 from mypyc.ops import (
     Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
@@ -7,8 +8,7 @@ from mypyc.ops import (
 )
 from mypyc.ops_exc import set_stop_iteration_value, restore_exc_info_op
 
-MYPY = False
-if MYPY:
+if TYPE_CHECKING:
     from mypyc.genops import IRBuilder
 
 
