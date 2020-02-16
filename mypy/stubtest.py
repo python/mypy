@@ -14,7 +14,7 @@ import types
 import warnings
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 
 from typing_extensions import Type
 
@@ -236,7 +236,8 @@ def verify_typeinfo(
         return
 
     to_check = set(stub.names)
-    to_check.update(m for m in vars(runtime) if not m.startswith("_"))
+    # cast to workaround mypyc complaints
+    to_check.update(m for m in cast(Any, vars)(runtime) if not m.startswith("_"))
 
     for entry in sorted(to_check):
         yield from verify(
