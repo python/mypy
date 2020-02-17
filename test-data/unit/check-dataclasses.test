@@ -1130,6 +1130,36 @@ reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Reve
 
 [case testDataclassesAsdictList]
 from dataclasses import dataclass, asdict
+from typing import List, Any
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+
+@dataclass
+class Course:
+    participants: List[Person]
+    any_list: List[Any]
+    list_no_generic: list
+
+instance = Course(
+    participants=[Person("Joe", 32)],
+    any_list=[],
+    list_no_generic=[],
+)
+result = asdict(instance)
+reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+reveal_type(result['any_list']) # N: Revealed type is 'builtins.list[Any]'
+reveal_type(result['list_no_generic']) # N: Revealed type is 'builtins.list[Any]'
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesAsdictListSubclass]
+from dataclasses import dataclass, asdict
 from typing import List, Any, TypeVar, Generic
 
 @dataclass
@@ -1151,34 +1181,26 @@ _C = TypeVar("_C", Person, int)
 class MyListWithConstraint(List[_C], Generic[_C]):
     pass
 
+
 @dataclass
 class Course:
-    participants: List[Person]
-    any_list: List[Any]
-    list_no_generic: list
     list_subclass: MyList[Person]
     list_subclass_2_typevars: MyListWith2TypeVars[Person, int]
     list_subclass_with_constraint: MyListWithConstraint[Person]
 
 instance = Course(
-    participants=[Person("Joe", 32)],
-    any_list=[],
-    list_no_generic=[],
     list_subclass=MyList([]),
     list_subclass_2_typevars=MyListWith2TypeVars[Person, int]([Person("John", 23)]),
     list_subclass_with_constraint=MyListWithConstraint([Person("Tim", 29)])
 )
 result = asdict(instance)
-reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
-reveal_type(result['any_list']) # N: Revealed type is 'builtins.list[Any]'
-reveal_type(result['list_no_generic']) # N: Revealed type is 'builtins.list[Any]'
-reveal_type(result['list_subclass']) # N: Revealed type is '__main__.MyList[TypedDict({'name': builtins.str, 'age': builtins.int})]'
-reveal_type(result['list_subclass_2_typevars']) # N: Revealed type is '__main__.MyListWith2TypeVars[TypedDict({'name': builtins.str, 'age': builtins.int}), builtins.int]'
 
-# TODO: actually, error should be expected since constraints are violated.
-#  So how to handle this? Should we just say it is not actually a MyListWithConstraint, but Any?
-#  Or should it genuinely throw a type checking error
-reveal_type(result['list_subclass_with_constraint']) # N: Revealed type is '__main__.MyListWithConstraint[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+# Supertypes (list) are returned, since there could be a constraint on the TypeVar
+# used on the subclass such that when the type argument to the subclass is substituted with a TypedDict,
+# it may not type-check.
+reveal_type(result['list_subclass']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+reveal_type(result['list_subclass_2_typevars']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+reveal_type(result['list_subclass_with_constraint']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
@@ -1203,6 +1225,33 @@ reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testDataclassesAsdictDictSubclass]
+from dataclasses import dataclass, asdict
+from typing import Dict, Generic, TypeVar
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
+_Other = TypeVar("_Other")
+class MyDict(Dict[_KT, _VT], Generic[_Other, _KT, _VT]):
+    pass
+
+@dataclass
+class Course:
+    participants_by_name: MyDict[int, str, Person]
+
+instance = Course(participants_by_name=MyDict[int, str, Person]([("Joe", Person("Joe", 32))]))
+result = asdict(instance)
+reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str*, TypedDict({'name': builtins.str, 'age': builtins.int})]'
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
+
 
 [case testDataclassesAsdictTuple]
 from dataclasses import dataclass, asdict
