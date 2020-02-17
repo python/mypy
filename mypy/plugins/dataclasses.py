@@ -451,7 +451,7 @@ def _type_asdict(api: CheckerPluginInterface, context: Context, typ: Type) -> Ty
                     # Note: Would be nicer to fallback to default_return_type, but that is Any (due to overloads?)
                     return api.named_generic_type('builtins.dict', [api.named_generic_type('builtins.str', []),
                                                                     AnyType(TypeOfAny.implementation_artifact)])
-                seen_dataclasses |= frozenset([info.fullname])
+                seen_dataclasses |= {info.fullname}
                 attrs = info.metadata['dataclass']['attributes']
                 fields = OrderedDict()  # type: OrderedDict[str, Type]
                 for data in attrs:
