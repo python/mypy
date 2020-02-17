@@ -17,12 +17,11 @@ The IR is implemented in mypyc.ops.
 """
 
 from typing import (
-    TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterable, cast
+    TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast
 )
 from typing_extensions import overload, NoReturn
 from collections import OrderedDict
 import importlib.util
-import itertools
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -40,10 +39,7 @@ from mypy.nodes import (
     ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
 )
 from mypy.types import (
-    Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
-    TypeType, Overloaded, TypeOfAny, UninhabitedType, UnboundType, TypedDictType,
-    LiteralType,
-    get_proper_type,
+    Type, Instance, TupleType, AnyType, TypeOfAny, UninhabitedType, get_proper_type
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.checkexpr import map_actuals_to_formals
@@ -51,25 +47,22 @@ from mypy.state import strict_optional_set
 from mypy.util import split_target
 
 from mypyc.common import (
-    TEMP_ATTR_NAME, MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME,
-    FAST_ISINSTANCE_MAX_SUBCLASSES, PROPSET_PREFIX
+    TEMP_ATTR_NAME, MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME, FAST_ISINSTANCE_MAX_SUBCLASSES
 )
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
-    FuncIR, Assign, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable,
+    FuncIR, Assign, Branch, Goto, Call, Box, Unbox, Cast, RTuple, Unreachable,
     TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
     LoadStatic, InitStatic, MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
-    str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple,
-    PrimitiveOp, ControlOp, OpDescription, RegisterOp,
-    is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
-    NAMESPACE_TYPE, NAMESPACE_MODULE,
+    str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
+    exc_rtuple, PrimitiveOp, ControlOp, OpDescription, RegisterOp, is_object_rprimitive,
+    FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
-    FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
-    RUnion, optional_value_type, all_concrete_classes, DeserMaps,
+    FUNC_STATICMETHOD, FUNC_CLASSMETHOD, RUnion, optional_value_type,
+    all_concrete_classes
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -95,7 +88,7 @@ from mypyc.ops_exc import (
 from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
-from mypyc.sametype import is_same_type, is_same_method_signature
+from mypyc.sametype import is_same_type
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -103,12 +96,12 @@ from mypyc.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, ExceptNonlocalControl,
     FinallyNonlocalControl, TryFinallyNonlocalControl, GeneratorNonlocalControl
 )
-from mypyc.genopsutil import (
-    is_dataclass, get_func_def, get_mypyc_attrs, is_extension_class, is_trait
-)
 from mypyc.genclass import BuildClassIR
 from mypyc.genfunc import BuildFuncIR
 from mypyc.genopscontext import FuncInfo, ImplicitClass
+from mypyc.genopsmapper import Mapper
+from mypyc.genopsvtable import compute_vtable
+from mypyc.genopsprepare import build_type_map
 
 GenFunc = Callable[[], None]
 DictEntry = Tuple[Optional[Value], Value]
@@ -122,62 +115,6 @@ class UnsupportedException(Exception):
 # right type...
 F = TypeVar('F', bound=Callable[..., Any])
 strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
-
-
-def build_type_map(mapper: 'Mapper',
-                   modules: List[MypyFile],
-                   graph: Graph,
-                   types: Dict[Expression, Type],
-                   options: CompilerOptions,
-                   errors: Errors) -> None:
-    # Collect all classes defined in everything we are compiling
-    classes = []
-    for module in modules:
-        module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
-        classes.extend([(module, cdef) for cdef in module_classes])
-
-    # Collect all class mappings so that we can bind arbitrary class name
-    # references even if there are import cycles.
-    for module, cdef in classes:
-        class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
-                           is_abstract=cdef.info.is_abstract)
-        class_ir.is_ext_class = is_extension_class(cdef)
-        # If global optimizations are disabled, turn of tracking of class children
-        if not options.global_opts:
-            class_ir.children = None
-        mapper.type_to_ir[cdef.info] = class_ir
-
-    # Populate structural information in class IR for extension classes.
-    for module, cdef in classes:
-        with catch_errors(module.path, cdef.line):
-            if mapper.type_to_ir[cdef.info].is_ext_class:
-                prepare_class_def(module.path, module.fullname, cdef, errors, mapper)
-            else:
-                prepare_non_ext_class_def(module.path, module.fullname, cdef, errors, mapper)
-
-    # Collect all the functions also. We collect from the symbol table
-    # so that we can easily pick out the right copy of a function that
-    # is conditionally defined.
-    for module in modules:
-        for func in get_module_func_defs(module):
-            prepare_func_def(module.fullname, None, func, mapper)
-            # TODO: what else?
-
-
-def load_type_map(mapper: 'Mapper',
-                  modules: List[MypyFile],
-                  deser_ctx: DeserMaps) -> None:
-    """Populate a Mapper with deserialized IR from a list of modules."""
-    for module in modules:
-        for name, node in module.names.items():
-            if isinstance(node.node, TypeInfo):
-                ir = deser_ctx.classes[node.node.fullname]
-                mapper.type_to_ir[node.node] = ir
-                mapper.func_to_decl[node.node] = ir.ctor
-
-    for module in modules:
-        for func in get_module_func_defs(module):
-            mapper.func_to_decl[func] = deser_ctx.functions[func.fullname].decl
 
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
@@ -221,432 +158,6 @@ def build_ir(modules: List[MypyFile],
             compute_vtable(cir)
 
     return result
-
-
-def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
-    """Collect all of the (non-method) functions declared in a module."""
-    for name, node in module.names.items():
-        # We need to filter out functions that are imported or
-        # aliases.  The best way to do this seems to be by
-        # checking that the fullname matches.
-        if (isinstance(node.node, (FuncDef, Decorator, OverloadedFuncDef))
-                and node.fullname == module.fullname + '.' + name):
-            yield get_func_def(node.node)
-
-
-def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
-    """Generate the part of a vtable corresponding to a parent class or trait"""
-    updated = []
-    for entry in parent.vtable_entries:
-        if isinstance(entry, VTableMethod):
-            # Find the original method corresponding to this vtable entry.
-            # (This may not be the method in the entry, if it was overridden.)
-            orig_parent_method = entry.cls.get_method(entry.name)
-            assert orig_parent_method
-            method_cls = cls.get_method_and_class(entry.name)
-            if method_cls:
-                child_method, defining_cls = method_cls
-                # TODO: emit a wrapper for __init__ that raises or something
-                if (is_same_method_signature(orig_parent_method.sig, child_method.sig)
-                        or orig_parent_method.name == '__init__'):
-                    entry = VTableMethod(entry.cls, entry.name, child_method, entry.shadow_method)
-                else:
-                    entry = VTableMethod(entry.cls, entry.name,
-                                         defining_cls.glue_methods[(entry.cls, entry.name)],
-                                         entry.shadow_method)
-        else:
-            # If it is an attribute from a trait, we need to find out
-            # the real class it got mixed in at and point to that.
-            if parent.is_trait:
-                _, origin_cls = cls.attr_details(entry.name)
-                entry = VTableAttr(origin_cls, entry.name, entry.is_setter)
-        updated.append(entry)
-    return updated
-
-
-def compute_vtable(cls: ClassIR) -> None:
-    """Compute the vtable structure for a class."""
-    if cls.vtable is not None: return
-
-    if not cls.is_generated:
-        cls.has_dict = any(x.inherits_python for x in cls.mro)
-
-    for t in cls.mro[1:]:
-        # Make sure all ancestors are processed first
-        compute_vtable(t)
-        # Merge attributes from traits into the class
-        if not t.is_trait:
-            continue
-        for name, typ in t.attributes.items():
-            if not cls.is_trait and not any(name in b.attributes for b in cls.base_mro):
-                cls.attributes[name] = typ
-
-    cls.vtable = {}
-    if cls.base:
-        assert cls.base.vtable is not None
-        cls.vtable.update(cls.base.vtable)
-        cls.vtable_entries = specialize_parent_vtable(cls, cls.base)
-
-    # Include the vtable from the parent classes, but handle method overrides.
-    entries = cls.vtable_entries
-
-    # Traits need to have attributes in the vtable, since the
-    # attributes can be at different places in different classes, but
-    # regular classes can just directly get them.
-    if cls.is_trait:
-        # Traits also need to pull in vtable entries for non-trait
-        # parent classes explicitly.
-        for t in cls.mro:
-            for attr in t.attributes:
-                if attr in cls.vtable:
-                    continue
-                cls.vtable[attr] = len(entries)
-                entries.append(VTableAttr(t, attr, is_setter=False))
-                entries.append(VTableAttr(t, attr, is_setter=True))
-
-    all_traits = [t for t in cls.mro if t.is_trait]
-
-    for t in [cls] + cls.traits:
-        for fn in itertools.chain(t.methods.values()):
-            # TODO: don't generate a new entry when we overload without changing the type
-            if fn == cls.get_method(fn.name):
-                cls.vtable[fn.name] = len(entries)
-                # If the class contains a glue method referring to itself, that is a
-                # shadow glue method to support interpreted subclasses.
-                shadow = cls.glue_methods.get((cls, fn.name))
-                entries.append(VTableMethod(t, fn.name, fn, shadow))
-
-    # Compute vtables for all of the traits that the class implements
-    if not cls.is_trait:
-        for trait in all_traits:
-            compute_vtable(trait)
-            cls.trait_vtables[trait] = specialize_parent_vtable(cls, trait)
-
-
-class Mapper:
-    """Keep track of mappings from mypy concepts to IR concepts.
-
-    This state is shared across all modules being compiled in all
-    compilation groups.
-    """
-
-    def __init__(self, group_map: Dict[str, Optional[str]]) -> None:
-        self.group_map = group_map
-        self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
-        self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
-        # LiteralsMap maps literal values to a static name. Each
-        # compilation group has its own LiteralsMap. (Since they can't
-        # share literals.)
-        self.literals = {
-            v: OrderedDict() for v in group_map.values()
-        }  # type: Dict[Optional[str], LiteralsMap]
-
-    def type_to_rtype(self, typ: Optional[Type]) -> RType:
-        if typ is None:
-            return object_rprimitive
-
-        typ = get_proper_type(typ)
-        if isinstance(typ, Instance):
-            if typ.type.fullname == 'builtins.int':
-                return int_rprimitive
-            elif typ.type.fullname == 'builtins.float':
-                return float_rprimitive
-            elif typ.type.fullname == 'builtins.str':
-                return str_rprimitive
-            elif typ.type.fullname == 'builtins.bool':
-                return bool_rprimitive
-            elif typ.type.fullname == 'builtins.list':
-                return list_rprimitive
-            # Dict subclasses are at least somewhat common and we
-            # specifically support them, so make sure that dict operations
-            # get optimized on them.
-            elif any(cls.fullname == 'builtins.dict' for cls in typ.type.mro):
-                return dict_rprimitive
-            elif typ.type.fullname == 'builtins.set':
-                return set_rprimitive
-            elif typ.type.fullname == 'builtins.tuple':
-                return tuple_rprimitive  # Varying-length tuple
-            elif typ.type in self.type_to_ir:
-                return RInstance(self.type_to_ir[typ.type])
-            else:
-                return object_rprimitive
-        elif isinstance(typ, TupleType):
-            # Use our unboxed tuples for raw tuples but fall back to
-            # being boxed for NamedTuple.
-            if typ.partial_fallback.type.fullname == 'builtins.tuple':
-                return RTuple([self.type_to_rtype(t) for t in typ.items])
-            else:
-                return tuple_rprimitive
-        elif isinstance(typ, CallableType):
-            return object_rprimitive
-        elif isinstance(typ, NoneTyp):
-            return none_rprimitive
-        elif isinstance(typ, UnionType):
-            return RUnion([self.type_to_rtype(item)
-                           for item in typ.items])
-        elif isinstance(typ, AnyType):
-            return object_rprimitive
-        elif isinstance(typ, TypeType):
-            return object_rprimitive
-        elif isinstance(typ, TypeVarType):
-            # Erase type variable to upper bound.
-            # TODO: Erase to union if object has value restriction?
-            return self.type_to_rtype(typ.upper_bound)
-        elif isinstance(typ, PartialType):
-            assert typ.var.type is not None
-            return self.type_to_rtype(typ.var.type)
-        elif isinstance(typ, Overloaded):
-            return object_rprimitive
-        elif isinstance(typ, TypedDictType):
-            return dict_rprimitive
-        elif isinstance(typ, LiteralType):
-            return self.type_to_rtype(typ.fallback)
-        elif isinstance(typ, (UninhabitedType, UnboundType)):
-            # Sure, whatever!
-            return object_rprimitive
-
-        # I think we've covered everything that is supposed to
-        # actually show up, so anything else is a bug somewhere.
-        assert False, 'unexpected type %s' % type(typ)
-
-    def get_arg_rtype(self, typ: Type, kind: int) -> RType:
-        if kind == ARG_STAR:
-            return tuple_rprimitive
-        elif kind == ARG_STAR2:
-            return dict_rprimitive
-        else:
-            return self.type_to_rtype(typ)
-
-    def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
-        if isinstance(fdef.type, CallableType):
-            arg_types = [self.get_arg_rtype(typ, kind)
-                         for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)]
-            ret = self.type_to_rtype(fdef.type.ret_type)
-        else:
-            # Handle unannotated functions
-            arg_types = [object_rprimitive for arg in fdef.arguments]
-            ret = object_rprimitive
-
-        args = [RuntimeArg(arg_name, arg_type, arg_kind)
-                for arg_name, arg_kind, arg_type in zip(fdef.arg_names, fdef.arg_kinds, arg_types)]
-
-        # We force certain dunder methods to return objects to support letting them
-        # return NotImplemented. It also avoids some pointless boxing and unboxing,
-        # since tp_richcompare needs an object anyways.
-        if fdef.name in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
-            ret = object_rprimitive
-        return FuncSignature(args, ret)
-
-    def literal_static_name(self, module: str,
-                            value: Union[int, float, complex, str, bytes]) -> str:
-        # Literals are shared between modules in a compilation group
-        # but not outside the group.
-        literals = self.literals[self.group_map.get(module)]
-
-        # Include type to distinguish between 1 and 1.0, and so on.
-        key = (type(value), value)
-        if key not in literals:
-            if isinstance(value, str):
-                prefix = 'unicode_'
-            else:
-                prefix = type(value).__name__ + '_'
-            literals[key] = prefix + str(len(literals))
-        return literals[key]
-
-
-def prepare_func_def(module_name: str, class_name: Optional[str],
-                     fdef: FuncDef, mapper: Mapper) -> FuncDecl:
-    kind = FUNC_STATICMETHOD if fdef.is_static else (
-        FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
-    decl = FuncDecl(fdef.name, class_name, module_name, mapper.fdef_to_sig(fdef), kind)
-    mapper.func_to_decl[fdef] = decl
-    return decl
-
-
-def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Mapper,
-                       node: Union[FuncDef, Decorator]) -> None:
-    if isinstance(node, FuncDef):
-        ir.method_decls[node.name] = prepare_func_def(module_name, cdef.name, node, mapper)
-    elif isinstance(node, Decorator):
-        # TODO: do something about abstract methods here. Currently, they are handled just like
-        # normal methods.
-        decl = prepare_func_def(module_name, cdef.name, node.func, mapper)
-        if not node.decorators:
-            ir.method_decls[node.name] = decl
-        elif isinstance(node.decorators[0], MemberExpr) and node.decorators[0].name == 'setter':
-            # Make property setter name different than getter name so there are no
-            # name clashes when generating C code, and property lookup at the IR level
-            # works correctly.
-            decl.name = PROPSET_PREFIX + decl.name
-            decl.is_prop_setter = True
-            ir.method_decls[PROPSET_PREFIX + node.name] = decl
-
-        if node.func.is_property:
-            assert node.func.type
-            decl.is_prop_getter = True
-            ir.property_types[node.name] = decl.sig.ret_type
-
-
-def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
-    # Checks to ensure supported property decorator semantics
-    if len(prop.items) == 2:
-        getter = prop.items[0]
-        setter = prop.items[1]
-        if isinstance(getter, Decorator) and isinstance(setter, Decorator):
-            if getter.func.is_property and len(setter.decorators) == 1:
-                if isinstance(setter.decorators[0], MemberExpr):
-                    if setter.decorators[0].name == "setter":
-                        return True
-    return False
-
-
-def can_subclass_builtin(builtin_base: str) -> bool:
-    # BaseException and dict are special cased.
-    return builtin_base in (
-        ('builtins.Exception', 'builtins.LookupError', 'builtins.IndexError',
-        'builtins.Warning', 'builtins.UserWarning', 'builtins.ValueError',
-        'builtins.object', ))
-
-
-def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
-                      errors: Errors, mapper: Mapper) -> None:
-
-    ir = mapper.type_to_ir[cdef.info]
-    info = cdef.info
-
-    attrs = get_mypyc_attrs(cdef)
-    if attrs.get("allow_interpreted_subclasses") is True:
-        ir.allow_interpreted_subclasses = True
-
-    # We sort the table for determinism here on Python 3.5
-    for name, node in sorted(info.names.items()):
-        # Currently all plugin generated methods are dummies and not included.
-        if node.plugin_generated:
-            continue
-
-        if isinstance(node.node, Var):
-            assert node.node.type, "Class member %s missing type" % name
-            if not node.node.is_classvar and name != '__slots__':
-                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
-        elif isinstance(node.node, (FuncDef, Decorator)):
-            prepare_method_def(ir, module_name, cdef, mapper, node.node)
-        elif isinstance(node.node, OverloadedFuncDef):
-            # Handle case for property with both a getter and a setter
-            if node.node.is_property:
-                if is_valid_multipart_property_def(node.node):
-                    for item in node.node.items:
-                        prepare_method_def(ir, module_name, cdef, mapper, item)
-                else:
-                    errors.error("Unsupported property decorator semantics", path, cdef.line)
-
-            # Handle case for regular function overload
-            else:
-                assert node.node.impl
-                prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
-
-    # Check for subclassing from builtin types
-    for cls in info.mro:
-        # Special case exceptions and dicts
-        # XXX: How do we handle *other* things??
-        if cls.fullname == 'builtins.BaseException':
-            ir.builtin_base = 'PyBaseExceptionObject'
-        elif cls.fullname == 'builtins.dict':
-            ir.builtin_base = 'PyDictObject'
-        elif cls.fullname.startswith('builtins.'):
-            if not can_subclass_builtin(cls.fullname):
-                # Note that if we try to subclass a C extension class that
-                # isn't in builtins, bad things will happen and we won't
-                # catch it here! But this should catch a lot of the most
-                # common pitfalls.
-                errors.error("Inheriting from most builtin types is unimplemented",
-                             path, cdef.line)
-
-    if ir.builtin_base:
-        ir.attributes.clear()
-
-    # Set up a constructor decl
-    init_node = cdef.info['__init__'].node
-    if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
-        init_sig = mapper.fdef_to_sig(init_node)
-
-        defining_ir = mapper.type_to_ir.get(init_node.info)
-        # If there is a nontrivial __init__ that wasn't defined in an
-        # extension class, we need to make the constructor take *args,
-        # **kwargs so it can call tp_init.
-        if ((defining_ir is None or not defining_ir.is_ext_class
-             or cdef.info['__init__'].plugin_generated)
-                and init_node.info.fullname != 'builtins.object'):
-            init_sig = FuncSignature(
-                [init_sig.args[0],
-                 RuntimeArg("args", tuple_rprimitive, ARG_STAR),
-                 RuntimeArg("kwargs", dict_rprimitive, ARG_STAR2)],
-                init_sig.ret_type)
-
-        ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
-        ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
-        mapper.func_to_decl[cdef.info] = ir.ctor
-
-    # Set up the parent class
-    bases = [mapper.type_to_ir[base.type] for base in info.bases
-             if base.type in mapper.type_to_ir]
-    if not all(c.is_trait for c in bases[1:]):
-        errors.error("Non-trait bases must appear first in parent list", path, cdef.line)
-    ir.traits = [c for c in bases if c.is_trait]
-
-    mro = []
-    base_mro = []
-    for cls in info.mro:
-        if cls not in mapper.type_to_ir:
-            if cls.fullname != 'builtins.object':
-                ir.inherits_python = True
-            continue
-        base_ir = mapper.type_to_ir[cls]
-        if not base_ir.is_trait:
-            base_mro.append(base_ir)
-        mro.append(base_ir)
-
-        if cls.defn.removed_base_type_exprs or not base_ir.is_ext_class:
-            ir.inherits_python = True
-
-    base_idx = 1 if not ir.is_trait else 0
-    if len(base_mro) > base_idx:
-        ir.base = base_mro[base_idx]
-    ir.mro = mro
-    ir.base_mro = base_mro
-
-    for base in bases:
-        if base.children is not None:
-            base.children.append(ir)
-
-    if is_dataclass(cdef):
-        ir.is_augmented = True
-
-
-def prepare_non_ext_class_def(path: str, module_name: str, cdef: ClassDef,
-                              errors: Errors, mapper: Mapper) -> None:
-
-    ir = mapper.type_to_ir[cdef.info]
-    info = cdef.info
-
-    for name, node in info.names.items():
-        if isinstance(node.node, (FuncDef, Decorator)):
-            prepare_method_def(ir, module_name, cdef, mapper, node.node)
-        elif isinstance(node.node, OverloadedFuncDef):
-            # Handle case for property with both a getter and a setter
-            if node.node.is_property:
-                if not is_valid_multipart_property_def(node.node):
-                    errors.error("Unsupported property decorator semantics", path, cdef.line)
-                for item in node.node.items:
-                    prepare_method_def(ir, module_name, cdef, mapper, item)
-            # Handle case for regular function overload
-            else:
-                prepare_method_def(ir, module_name, cdef, mapper, get_func_def(node.node))
-
-    if any(
-        cls in mapper.type_to_ir and mapper.type_to_ir[cls].is_ext_class for cls in info.mro
-    ):
-        errors.error(
-            "Non-extension classes may not inherit from extension classes", path, cdef.line)
 
 
 # Infrastructure for special casing calls to builtin functions in a

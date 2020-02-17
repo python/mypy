@@ -20,6 +20,7 @@ from mypy.fscache import FileSystemCache
 from mypy.util import hash_digest
 
 from mypyc import genops
+from mypyc.genopsprepare import load_type_map
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
@@ -370,7 +371,7 @@ def load_scc_from_cache(
         )['ir'] for k in scc
     }
     modules = deserialize_modules(cache_data, ctx)
-    genops.load_type_map(mapper, scc, ctx)
+    load_type_map(mapper, scc, ctx)
     return modules
 
 
