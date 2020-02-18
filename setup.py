@@ -101,7 +101,7 @@ if USE_MYPYC:
         # Also I think there would be problems with how we generate version.py.
         'version.py',
 
-        # Written by someone who doesn't know how to deal with mypyc
+        # Can be removed once we drop support for Python 3.5.2 and lower.
         'stubtest.py',
     )) + (
         # Don't want to grab this accidentally
