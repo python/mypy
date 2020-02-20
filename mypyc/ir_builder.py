@@ -62,35 +62,40 @@ class LowLevelIRBuilder:
         self.current_module = current_module
         self.mapper = mapper
         self.environment = Environment()
-        self.environments = [self.environment]
-        self.blocks = []  # type: List[List[BasicBlock]]
+        self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
     def add(self, op: Op) -> Value:
-        if self.blocks[-1][-1].ops:
-            assert not isinstance(self.blocks[-1][-1].ops[-1], ControlOp), (
+        if self.blocks[-1].ops:
+            assert not isinstance(self.blocks[-1].ops[-1], ControlOp), (
                 "Can't add to finished block")
 
-        self.blocks[-1][-1].ops.append(op)
+        self.blocks[-1].ops.append(op)
         if isinstance(op, RegisterOp):
             self.environment.add_op(op)
         return op
 
     def goto(self, target: BasicBlock) -> None:
-        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], ControlOp):
+        if not self.blocks[-1].ops or not isinstance(self.blocks[-1].ops[-1], ControlOp):
             self.add(Goto(target))
 
     def activate_block(self, block: BasicBlock) -> None:
-        if self.blocks[-1]:
-            assert isinstance(self.blocks[-1][-1].ops[-1], ControlOp)
+        if self.blocks:
+            assert isinstance(self.blocks[-1].ops[-1], ControlOp)
 
         block.error_handler = self.error_handlers[-1]
-        self.blocks[-1].append(block)
+        self.blocks.append(block)
 
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.goto(block)
         self.activate_block(block)
+
+    def push_error_handler(self, handler: Optional[BasicBlock]) -> None:
+        self.error_handlers.append(handler)
+
+    def pop_error_handler(self) -> Optional[BasicBlock]:
+        return self.error_handlers.pop()
 
     ##
 

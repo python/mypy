@@ -39,7 +39,6 @@ class BuildFuncIR:
     def __init__(self, builder: 'IRBuilder') -> None:
         self.builder = builder
         self.module_name = builder.module_name
-        self.environments = builder.environments
         self.functions = builder.functions
         self.mapper = builder.mapper
 
@@ -1218,13 +1217,13 @@ class BuildFuncIR:
         return env
 
     def load_outer_envs(self, base: ImplicitClass) -> None:
-        index = len(self.environments) - 2
+        index = len(self.builder.builders) - 2
 
         # Load the first outer environment. This one is special because it gets saved in the
         # FuncInfo instance's prev_env_reg field.
         if index > 1:
             # outer_env = self.fn_infos[index].environment
-            outer_env = self.environments[index]
+            outer_env = self.builder.builders[index].environment
             if isinstance(base, GeneratorClass):
                 base.prev_env_reg = self.load_outer_env(base.curr_env_reg, outer_env)
             else:
@@ -1235,7 +1234,7 @@ class BuildFuncIR:
         # Load the remaining outer environments into registers.
         while index > 1:
             # outer_env = self.fn_infos[index].environment
-            outer_env = self.environments[index]
+            outer_env = self.builder.builders[index].environment
             env_reg = self.load_outer_env(env_reg, outer_env)
             index -= 1
 

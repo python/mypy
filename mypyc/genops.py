@@ -194,11 +194,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                  pbv: PreBuildVisitor,
                  options: CompilerOptions) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper)
-
-        # FIXME: We would like this to not be handled in this ad-hoc way
-        self.error_handlers = self.builder.error_handlers
-        self.blocks = self.builder.blocks
-        self.environments = self.builder.environments
+        self.builders = [self.builder]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -307,6 +303,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def load_module(self, name: str) -> Value:
         return self.builder.load_module(name)
+
+    @property
+    def environment(self) -> Environment:
+        return self.builder.environment
 
     ##
 
@@ -460,13 +460,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         BuildFuncIR(self).visit_overloaded_func_def(o)
 
     def add_implicit_return(self) -> None:
-        block = self.blocks[-1][-1]
+        block = self.builder.blocks[-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
             retval = self.coerce(self.builder.none(), self.ret_types[-1], -1)
             self.nonlocal_control[-1].gen_return(self, retval, self.fn_info.fitem.line)
 
     def add_implicit_unreachable(self) -> None:
-        block = self.blocks[-1][-1]
+        block = self.builder.blocks[-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
             self.add(Unreachable())
 
@@ -1625,11 +1625,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else_block = BasicBlock() if else_body else exit_block
 
         # Compile the try block with an error handler
-        self.error_handlers.append(except_entry)
+        self.builder.push_error_handler(except_entry)
         self.goto_and_activate(BasicBlock())
         body()
         self.goto(else_block)
-        self.error_handlers.pop()
+        self.builder.pop_error_handler()
 
         # The error handler catches the error and then checks it
         # against the except clauses. We compile the error handler
@@ -1637,7 +1637,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # the *old* exc_info if an exception occurs.
         # The exception chaining will be done automatically when the
         # exception is raised, based on the exception in exc_info.
-        self.error_handlers.append(double_except_block)
+        self.builder.push_error_handler(double_except_block)
         self.activate_block(except_entry)
         old_exc = self.maybe_spill(self.primitive_op(error_catch_op, [], line))
         # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
@@ -1666,7 +1666,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Unreachable())
 
         self.nonlocal_control.pop()
-        self.error_handlers.pop()
+        self.builder.pop_error_handler()
 
         # Cleanup for if we leave except through normal control flow:
         # restore the saved exc_info information and continue propagating
@@ -1708,14 +1708,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                         main_entry: BasicBlock, try_body: GenFunc) -> Optional[Register]:
         # Compile the try block with an error handler
         control = TryFinallyNonlocalControl(return_entry)
-        self.error_handlers.append(err_handler)
+        self.builder.push_error_handler(err_handler)
 
         self.nonlocal_control.append(control)
         self.goto_and_activate(BasicBlock())
         try_body()
         self.goto(main_entry)
         self.nonlocal_control.pop()
-        self.error_handlers.pop()
+        self.builder.pop_error_handler()
 
         return control.ret_reg
 
@@ -1750,7 +1750,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                                'FinallyNonlocalControl']:
         cleanup_block = BasicBlock()
         # Compile the finally block with the nonlocal control flow overridden to restore exc_info
-        self.error_handlers.append(cleanup_block)
+        self.builder.push_error_handler(cleanup_block)
         finally_control = FinallyNonlocalControl(
             self.nonlocal_control[-1], ret_reg, old_exc)
         self.nonlocal_control.append(finally_control)
@@ -1775,7 +1775,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.activate_block(reraise)
         self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         self.add(Unreachable())
-        self.error_handlers.pop()
+        self.builder.pop_error_handler()
 
         # If there was a return, keep returning
         if ret_reg:
@@ -2337,31 +2337,25 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.environment = Environment(fn_info.name)
-        self.builder.environment = self.environment
-        self.environments.append(self.environment)
+        self.builder = LowLevelIRBuilder(self.current_module, self.mapper)
+        self.builders.append(self.builder)
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
-        self.error_handlers.append(None)
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:
             self.nonlocal_control.append(BaseNonlocalControl())
-        self.blocks.append([])
         self.activate_block(BasicBlock())
 
     def leave(self) -> Tuple[List[BasicBlock], Environment, RType, FuncInfo]:
-        blocks = self.blocks.pop()
-        env = self.environments.pop()
+        builder = self.builders.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
-        self.error_handlers.pop()
         self.nonlocal_control.pop()
-        self.environment = self.environments[-1]
-        self.builder.environment = self.environment
+        self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return blocks, env, ret_type, fn_info
+        return builder.blocks, builder.environment, ret_type, fn_info
 
     @overload
     def accept(self, node: Expression) -> Value: ...
