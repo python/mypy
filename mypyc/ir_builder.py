@@ -1,54 +1,60 @@
+"""A "low-level" IR builder class.
+
+LowLevelIRBuilder provides core abstractions we use for constructing
+IR as well as a number of higher-level ones (accessing attributes,
+calling functions and methods, and coercing between types, for
+example). The core principle of the low-level IR builder is that all
+of its facilities operate solely on the IR level and not the AST
+level---it has *no knowledge* of mypy types or expressions.
+
+Currently LowLevelIRBuilder does not have a clean API and the
+higher-level IR builder in genops uses LowLevelIRBuilder by inheriting
+from it. A next step is to fix this.
+"""
+
 from typing import (
-    TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast
+    Callable, List, Tuple, Optional, Union, Sequence, cast
 )
 
 from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
-from mypy.types import (
-    Type, Instance, TupleType, AnyType, TypeOfAny, UninhabitedType, get_proper_type
-)
+from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ops import (
-    BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
-    FuncIR, Assign, Branch, Goto, Call, Box, Unbox, Cast, RTuple, Unreachable,
-    TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
-    LoadStatic, InitStatic, MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
-    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
-    str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple, PrimitiveOp, ControlOp, OpDescription, RegisterOp, is_object_rprimitive,
+    BasicBlock, Environment, Op, LoadInt, RType, Value, Register,
+    Assign, Branch, Goto, Call, Box, Unbox, Cast, ClassIR, RInstance, GetAttr,
+    LoadStatic, MethodCall, int_rprimitive, float_rprimitive, bool_rprimitive, list_rprimitive,
+    str_rprimitive, is_none_rprimitive, object_rprimitive,
+    PrimitiveOp, ControlOp, OpDescription, RegisterOp,
     FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
-    RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD, RUnion, optional_value_type,
-    all_concrete_classes
+    LoadErrorValue, FuncDecl, RUnion, optional_value_type, all_concrete_classes
 )
 from mypyc.common import (
-    TEMP_ATTR_NAME, MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME, FAST_ISINSTANCE_MAX_SUBCLASSES
+    FAST_ISINSTANCE_MAX_SUBCLASSES
 )
-from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
+from mypyc.ops_primitive import binary_ops, unary_ops, method_ops
 from mypyc.ops_list import (
-    list_append_op, list_extend_op, list_len_op, new_list_op, to_list, list_pop_last
+    list_extend_op, list_len_op, new_list_op
 )
 from mypyc.ops_tuple import list_tuple_op, new_tuple_op
 from mypyc.ops_dict import (
-    new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_in_display_op,
+    new_dict_op, dict_update_in_display_op,
 )
-from mypyc.ops_set import new_set_op, set_add_op, set_update_op
 from mypyc.ops_misc import (
-    none_op, none_object_op, true_op, false_op, iter_op, next_op,
-    py_getattr_op, py_setattr_op, py_delattr_op,
-    py_call_op, py_call_with_kwargs_op, py_method_call_op,
-    fast_isinstance_op, bool_op, new_slice_op, type_op, import_op,
-    get_module_dict_op, ellipsis_op, type_is_op,
+    none_op, none_object_op, false_op,
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
+    fast_isinstance_op, bool_op, type_is_op,
 )
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
 from mypyc.genopsmapper import Mapper
 
+
 DictEntry = Tuple[Optional[Value], Value]
 
-class IRBuilderBase:
+
+class LowLevelIRBuilder:
     def __init__(
         self,
         current_module: str,

@@ -36,49 +36,44 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_NAMED, ARG_STAR, ARG_STAR2,
+    ARG_NAMED,
 )
 from mypy.types import (
     Type, Instance, TupleType, AnyType, TypeOfAny, UninhabitedType, get_proper_type
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
-from mypy.checkexpr import map_actuals_to_formals
 from mypy.state import strict_optional_set
 from mypy.util import split_target
 
 from mypyc.common import (
-    TEMP_ATTR_NAME, MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME, FAST_ISINSTANCE_MAX_SUBCLASSES
+    TEMP_ATTR_NAME, MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME,
 )
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
-    FuncIR, Assign, Branch, Goto, Call, Box, Unbox, Cast, RTuple, Unreachable,
+    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value, Register,
+    FuncIR, Assign, Branch, RTuple, Unreachable,
     TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
-    LoadStatic, InitStatic, MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
+    LoadStatic, InitStatic, INVALID_FUNC_DEF, int_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple, PrimitiveOp, ControlOp, OpDescription, RegisterOp, is_object_rprimitive,
-    FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
+    exc_rtuple, PrimitiveOp, ControlOp, OpDescription, is_object_rprimitive,
+    FuncSignature, NAMESPACE_MODULE,
     RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD, RUnion, optional_value_type,
-    all_concrete_classes
+    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
-from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
+from mypyc.ops_primitive import func_ops, name_ref_ops
 from mypyc.ops_list import (
     list_append_op, list_extend_op, list_len_op, new_list_op, to_list, list_pop_last
 )
-from mypyc.ops_tuple import list_tuple_op, new_tuple_op
+from mypyc.ops_tuple import list_tuple_op
 from mypyc.ops_dict import (
-    new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_in_display_op,
+    new_dict_op, dict_get_item_op, dict_set_item_op
 )
 from mypyc.ops_set import new_set_op, set_add_op, set_update_op
 from mypyc.ops_misc import (
-    none_op, none_object_op, true_op, false_op, iter_op, next_op,
-    py_getattr_op, py_setattr_op, py_delattr_op,
-    py_call_op, py_call_with_kwargs_op, py_method_call_op,
-    fast_isinstance_op, bool_op, new_slice_op, type_op, import_op,
-    get_module_dict_op, ellipsis_op, type_is_op,
+    true_op, false_op, iter_op, next_op, py_setattr_op, py_delattr_op,
+    new_slice_op, type_op, import_op, get_module_dict_op, ellipsis_op,
 )
 from mypyc.ops_exc import (
     raise_exception_op, reraise_exception_op,
@@ -86,9 +81,6 @@ from mypyc.ops_exc import (
     get_exc_info_op, keep_propagating_op
 )
 from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
-from mypyc.rt_subtype import is_runtime_subtype
-from mypyc.subtype import is_subtype
-from mypyc.sametype import is_same_type
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -102,9 +94,10 @@ from mypyc.genopscontext import FuncInfo, ImplicitClass
 from mypyc.genopsmapper import Mapper
 from mypyc.genopsvtable import compute_vtable
 from mypyc.genopsprepare import build_type_map
-from mypyc.ir_builder import IRBuilderBase
+from mypyc.ir_builder import LowLevelIRBuilder
 
 GenFunc = Callable[[], None]
+
 
 class UnsupportedException(Exception):
     pass
@@ -193,7 +186,7 @@ def specialize_function(
     return wrapper
 
 
-class IRBuilder(IRBuilderBase, ExpressionVisitor[Value], StatementVisitor[None]):
+class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
                  current_module: str,
                  types: Dict[Expression, Type],
