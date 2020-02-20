@@ -6,9 +6,6 @@ calling functions and methods, and coercing between types, for
 example). The core principle of the low-level IR builder is that all
 of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
-
-Currently LowLevelIRBuilder does not have a particularly clean API.
-A next step is to fix this.
 """
 
 from typing import (
@@ -24,7 +21,7 @@ from mypyc.ops import (
     Assign, Branch, Goto, Call, Box, Unbox, Cast, ClassIR, RInstance, GetAttr,
     LoadStatic, MethodCall, int_rprimitive, float_rprimitive, bool_rprimitive, list_rprimitive,
     str_rprimitive, is_none_rprimitive, object_rprimitive,
-    PrimitiveOp, ControlOp, OpDescription, RegisterOp,
+    PrimitiveOp, OpDescription, RegisterOp,
     FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
     LoadErrorValue, FuncDecl, RUnion, optional_value_type, all_concrete_classes
 )
@@ -67,9 +64,7 @@ class LowLevelIRBuilder:
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
     def add(self, op: Op) -> Value:
-        if self.blocks[-1].ops:
-            assert not isinstance(self.blocks[-1].ops[-1], ControlOp), (
-                "Can't add to finished block")
+        assert not self.blocks[-1].terminated, "Can't add to finished block"
 
         self.blocks[-1].ops.append(op)
         if isinstance(op, RegisterOp):
@@ -77,12 +72,12 @@ class LowLevelIRBuilder:
         return op
 
     def goto(self, target: BasicBlock) -> None:
-        if not self.blocks[-1].ops or not isinstance(self.blocks[-1].ops[-1], ControlOp):
+        if not self.blocks[-1].terminated:
             self.add(Goto(target))
 
     def activate_block(self, block: BasicBlock) -> None:
         if self.blocks:
-            assert isinstance(self.blocks[-1].ops[-1], ControlOp)
+            assert self.blocks[-1].terminated
 
         block.error_handler = self.error_handlers[-1]
         self.blocks.append(block)

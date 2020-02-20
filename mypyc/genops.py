@@ -49,16 +49,16 @@ from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value, Register,
+    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value, Register, Op,
     FuncIR, Assign, Branch, RTuple, Unreachable,
     TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
     LoadStatic, InitStatic, INVALID_FUNC_DEF, int_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple, PrimitiveOp, ControlOp, OpDescription, is_object_rprimitive,
+    exc_rtuple, PrimitiveOp, OpDescription, is_object_rprimitive,
     FuncSignature, NAMESPACE_MODULE,
     RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD, Op,
+    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.ops_primitive import func_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -428,7 +428,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             as_name = maybe_as_name or name
             obj = self.py_get_attr(module, name, node.line)
-            self.builder.translate_special_method_call(
+            self.gen_method_call(
                 globals, '__setitem__', [self.load_static_unicode(as_name), obj],
                 result_type=None, line=node.line)
 
@@ -461,13 +461,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def add_implicit_return(self) -> None:
         block = self.builder.blocks[-1]
-        if not block.ops or not isinstance(block.ops[-1], ControlOp):
+        if not block.terminated:
             retval = self.coerce(self.builder.none(), self.ret_types[-1], -1)
             self.nonlocal_control[-1].gen_return(self, retval, self.fn_info.fitem.line)
 
     def add_implicit_unreachable(self) -> None:
         block = self.builder.blocks[-1]
-        if not block.ops or not isinstance(block.ops[-1], ControlOp):
+        if not block.terminated:
             self.add(Unreachable())
 
     def visit_block(self, block: Block) -> None:
