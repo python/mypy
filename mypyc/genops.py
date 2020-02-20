@@ -45,9 +45,7 @@ from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.state import strict_optional_set
 from mypy.util import split_target
 
-from mypyc.common import (
-    TEMP_ATTR_NAME, MAX_LITERAL_SHORT_INT, TOP_LEVEL_NAME,
-)
+from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
@@ -60,7 +58,7 @@ from mypyc.ops import (
     exc_rtuple, PrimitiveOp, ControlOp, OpDescription, is_object_rprimitive,
     FuncSignature, NAMESPACE_MODULE,
     RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD, FUNC_CLASSMETHOD, Op,
 )
 from mypyc.ops_primitive import func_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -186,7 +184,7 @@ def specialize_function(
     return wrapper
 
 
-class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[None]):
+class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
                  current_module: str,
                  types: Dict[Expression, Type],
@@ -195,9 +193,15 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
                  mapper: Mapper,
                  pbv: PreBuildVisitor,
                  options: CompilerOptions) -> None:
-        super().__init__(current_module, mapper)
+        self.builder = LowLevelIRBuilder(current_module, mapper)
+
+        # FIXME: We would like this to not be handled in this ad-hoc way
+        self.error_handlers = self.builder.error_handlers
+        self.blocks = self.builder.blocks
+        self.environments = self.builder.environments
 
         self.current_module = current_module
+        self.mapper = mapper
         self.types = types
         self.graph = graph
         self.ret_types = []  # type: List[RType]
@@ -237,6 +241,74 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         # module being compiled, but stored as an OrderedDict so we
         # can also do quick lookups.
         self.imports = OrderedDict()  # type: OrderedDict[str, None]
+
+    # Pass through methods for the most common low-level builder ops, for convenience.
+    def add(self, op: Op) -> Value:
+        return self.builder.add(op)
+
+    def goto(self, target: BasicBlock) -> None:
+        self.builder.goto(target)
+
+    def activate_block(self, block: BasicBlock) -> None:
+        self.builder.activate_block(block)
+
+    def goto_and_activate(self, block: BasicBlock) -> None:
+        self.builder.goto_and_activate(block)
+
+    def alloc_temp(self, type: RType) -> Register:
+        return self.builder.alloc_temp(type)
+
+    def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
+        return self.builder.py_get_attr(obj, attr, line)
+
+    def load_static_unicode(self, value: str) -> Value:
+        return self.builder.load_static_unicode(value)
+
+    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
+        return self.builder.primitive_op(desc, args, line)
+
+    def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
+        return self.builder.unary_op(lreg, expr_op, line)
+
+    def binary_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
+        return self.builder.binary_op(lreg, rreg, expr_op, line)
+
+    def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
+        return self.builder.coerce(src, target_type, line, force)
+
+    def none_object(self) -> Value:
+        return self.builder.none_object()
+
+    def py_call(self,
+                function: Value,
+                arg_values: List[Value],
+                line: int,
+                arg_kinds: Optional[List[int]] = None,
+                arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
+        return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
+
+    def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
+        self.builder.add_bool_branch(value, true, false)
+
+    def load_native_type_object(self, fullname: str) -> Value:
+        return self.builder.load_native_type_object(fullname)
+
+    def gen_method_call(self,
+                        base: Value,
+                        name: str,
+                        arg_values: List[Value],
+                        result_type: Optional[RType],
+                        line: int,
+                        arg_kinds: Optional[List[int]] = None,
+                        arg_names: Optional[List[Optional[str]]] = None) -> Value:
+        return self.builder.gen_method_call(
+            base, name, arg_values, result_type, line, arg_kinds, arg_names
+        )
+
+    def load_module(self, name: str) -> Value:
+        return self.builder.load_module(name)
+
+    ##
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
         if mypyfile.fullname in ('typing', 'abc'):
@@ -323,7 +395,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             mod_dict = self.primitive_op(get_module_dict_op, [], node.line)
             obj = self.primitive_op(dict_get_item_op,
                                     [mod_dict, self.load_static_unicode(base)], node.line)
-            self.translate_special_method_call(
+            self.gen_method_call(
                 globals, '__setitem__', [self.load_static_unicode(name), obj],
                 result_type=None, line=node.line)
 
@@ -356,7 +428,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
 
             as_name = maybe_as_name or name
             obj = self.py_get_attr(module, name, node.line)
-            self.translate_special_method_call(
+            self.builder.translate_special_method_call(
                 globals, '__setitem__', [self.load_static_unicode(as_name), obj],
                 result_type=None, line=node.line)
 
@@ -390,7 +462,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
-            retval = self.coerce(self.none(), self.ret_types[-1], -1)
+            retval = self.coerce(self.builder.none(), self.ret_types[-1], -1)
             self.nonlocal_control[-1].gen_return(self, retval, self.fn_info.fitem.line)
 
     def add_implicit_unreachable(self) -> None:
@@ -422,7 +494,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         if stmt.expr:
             retval = self.accept(stmt.expr)
         else:
-            retval = self.none()
+            retval = self.builder.none()
         retval = self.coerce(retval, self.ret_types[-1], stmt.line)
         self.nonlocal_control[-1].gen_return(self, retval, stmt.line)
 
@@ -486,15 +558,13 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
-            if val > MAX_LITERAL_SHORT_INT:
-                return self.load_static_int(val)
-            return self.add(LoadInt(val))
+            return self.builder.load_static_int(val)
         elif isinstance(val, float):
-            return self.load_static_float(val)
+            return self.builder.load_static_float(val)
         elif isinstance(val, str):
-            return self.load_static_unicode(val)
+            return self.builder.load_static_unicode(val)
         elif isinstance(val, bytes):
-            return self.load_static_bytes(val)
+            return self.builder.load_static_bytes(val)
         else:
             assert False, "Unsupported final literal value"
 
@@ -625,7 +695,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
                 self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_static_unicode(target.attr)
-                boxed_reg = self.box(rvalue_reg)
+                boxed_reg = self.builder.box(rvalue_reg)
                 self.add(PrimitiveOp([target.obj, key, boxed_reg], py_setattr_op, line))
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
@@ -846,7 +916,8 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         for_gen = self.make_for_loop_generator(index, expr, body_block, normal_loop_exit, line)
 
         self.push_loop_stack(step_block, exit_block)
-        condition_block = self.goto_new_block()
+        condition_block = BasicBlock()
+        self.goto_and_activate(condition_block)
 
         # Add loop condition check.
         for_gen.gen_condition()
@@ -1019,19 +1090,17 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             base, '__getitem__', [index_reg], self.node_type(expr), expr.line)
 
     def visit_int_expr(self, expr: IntExpr) -> Value:
-        if expr.value > MAX_LITERAL_SHORT_INT:
-            return self.load_static_int(expr.value)
-        return self.add(LoadInt(expr.value))
+        return self.builder.load_static_int(expr.value)
 
     def visit_float_expr(self, expr: FloatExpr) -> Value:
-        return self.load_static_float(expr.value)
+        return self.builder.load_static_float(expr.value)
 
     def visit_complex_expr(self, expr: ComplexExpr) -> Value:
-        return self.load_static_complex(expr.value)
+        return self.builder.load_static_complex(expr.value)
 
     def visit_bytes_expr(self, expr: BytesExpr) -> Value:
         value = bytes(expr.value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
-        return self.load_static_bytes(value)
+        return self.builder.load_static_bytes(value)
 
     def is_native_module(self, module: str) -> bool:
         """Is the given module one compiled by mypyc?"""
@@ -1158,7 +1227,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             return self.load_module(expr.node.fullname)
 
         obj = self.accept(expr.expr)
-        return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
+        return self.builder.get_attr(obj, expr.name, self.node_type(expr), expr.line)
 
     def visit_call_expr(self, expr: CallExpr) -> Value:
         if isinstance(expr.analyzed, CastExpr):
@@ -1208,7 +1277,9 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
             ops = func_ops.get(callee.fullname, [])
-            target = self.matching_primitive_op(ops, arg_values, expr.line, self.node_type(expr))
+            target = self.builder.matching_primitive_op(
+                ops, arg_values, expr.line, self.node_type(expr)
+            )
             if target:
                 return target
 
@@ -1222,7 +1293,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
                 and callee_node in self.mapper.func_to_decl
                 and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)):
             decl = self.mapper.func_to_decl[callee_node]
-            return self.call(decl, arg_values, expr.arg_kinds, expr.arg_names, expr.line)
+            return self.builder.call(decl, arg_values, expr.arg_kinds, expr.arg_names, expr.line)
 
         # Fall back to a Python call
         function = self.accept(callee)
@@ -1257,7 +1328,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             args += [self.accept(arg) for arg in expr.args]
 
             if ir.is_ext_class:
-                return self.call(decl, args, arg_kinds, arg_names, expr.line)
+                return self.builder.call(decl, args, arg_kinds, arg_names, expr.line)
             else:
                 obj = self.accept(callee.expr)
                 return self.gen_method_call(obj,
@@ -1324,7 +1395,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             arg_kinds.insert(0, ARG_POS)
             arg_names.insert(0, None)
 
-        return self.call(decl, arg_values, arg_kinds, arg_names, expr.line)
+        return self.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
     def translate_cast_expr(self, expr: CastExpr) -> Value:
         src = self.accept(expr.expr)
@@ -1332,7 +1403,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         return self.coerce(src, target_type, expr.line)
 
     def shortcircuit_expr(self, expr: OpExpr) -> Value:
-        return self.shortcircuit_helper(
+        return self.builder.shortcircuit_helper(
             expr.op, self.node_type(expr),
             lambda: self.accept(expr.left),
             lambda: self.accept(expr.right),
@@ -1437,7 +1508,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             value = self.accept(value_expr)
             key_value_pairs.append((key, value))
 
-        return self.make_dict(key_value_pairs, expr.line)
+        return self.builder.make_dict(key_value_pairs, expr.line)
 
     def visit_set_expr(self, expr: SetExpr) -> Value:
         return self._visit_display(
@@ -1503,7 +1574,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
                     e.operators[i], prev, self.accept(e.operands[i + 1]), e.line)
 
             next = self.accept(e.operands[i + 1])
-            return self.shortcircuit_helper(
+            return self.builder.shortcircuit_helper(
                 'and', expr_type,
                 lambda: self.visit_basic_comparison(
                     e.operators[i], prev, next, e.line),
@@ -1968,7 +2039,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
 
     def visit_del_item(self, target: AssignmentTarget, line: int) -> None:
         if isinstance(target, AssignmentTargetIndex):
-            self.translate_special_method_call(
+            self.gen_method_call(
                 target.base,
                 '__delitem__',
                 [target.index],
@@ -2175,7 +2246,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
                 and isinstance(expr.args[1], (RefExpr, TupleExpr))):
             irs = self.flatten_classes(expr.args[1])
             if irs is not None:
-                return self.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)
+                return self.builder.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)
         return None
 
     def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
@@ -2267,6 +2338,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
         self.environment = Environment(fn_info.name)
+        self.builder.environment = self.environment
         self.environments.append(self.environment)
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
@@ -2277,7 +2349,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         else:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.blocks.append([])
-        self.new_block()
+        self.activate_block(BasicBlock())
 
     def leave(self) -> Tuple[List[BasicBlock], Environment, RType, FuncInfo]:
         blocks = self.blocks.pop()
@@ -2287,6 +2359,7 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
         self.error_handlers.pop()
         self.nonlocal_control.pop()
         self.environment = self.environments[-1]
+        self.builder.environment = self.environment
         self.fn_info = self.fn_infos[-1]
         return blocks, env, ret_type, fn_info
 
@@ -2327,9 +2400,6 @@ class IRBuilder(LowLevelIRBuilder, ExpressionVisitor[Value], StatementVisitor[No
             return object_rprimitive
         mypy_type = self.types[node]
         return self.type_to_rtype(mypy_type)
-
-    def box_expr(self, expr: Expression) -> Value:
-        return self.box(self.accept(expr))
 
     def add_var_to_env_class(self,
                              var: SymbolNode,

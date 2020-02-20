@@ -7,9 +7,8 @@ example). The core principle of the low-level IR builder is that all
 of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
 
-Currently LowLevelIRBuilder does not have a clean API and the
-higher-level IR builder in genops uses LowLevelIRBuilder by inheriting
-from it. A next step is to fix this.
+Currently LowLevelIRBuilder does not have a particularly clean API.
+A next step is to fix this.
 """
 
 from typing import (
@@ -30,7 +29,7 @@ from mypyc.ops import (
     LoadErrorValue, FuncDecl, RUnion, optional_value_type, all_concrete_classes
 )
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, method_ops
 from mypyc.ops_list import (
@@ -92,16 +91,6 @@ class LowLevelIRBuilder:
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.goto(block)
         self.activate_block(block)
-
-    def new_block(self) -> BasicBlock:
-        block = BasicBlock()
-        self.activate_block(block)
-        return block
-
-    def goto_new_block(self) -> BasicBlock:
-        block = BasicBlock()
-        self.goto_and_activate(block)
-        return block
 
     ##
 
@@ -445,8 +434,11 @@ class LowLevelIRBuilder:
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
-        static_symbol = self.literal_static_name(value)
-        return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
+        if abs(value) > MAX_LITERAL_SHORT_INT:
+            static_symbol = self.literal_static_name(value)
+            return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
+        else:
+            return self.add(LoadInt(value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
@@ -594,7 +586,8 @@ class LowLevelIRBuilder:
 
                 if not always_truthy:
                     # Optional[X] where X may be falsey and requires a check
-                    branch.true = self.new_block()
+                    branch.true = BasicBlock()
+                    self.activate_block(branch.true)
                     # unbox_or_cast instead of coerce because we want the
                     # type to change even if it is a subtype.
                     remaining = self.unbox_or_cast(value, value_type, value.line)
@@ -664,7 +657,7 @@ class LowLevelIRBuilder:
                         base: Value,
                         name: str,
                         arg_values: List[Value],
-                        return_rtype: Optional[RType],
+                        result_type: Optional[RType],
                         line: int,
                         arg_kinds: Optional[List[int]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
@@ -697,12 +690,12 @@ class LowLevelIRBuilder:
                                     arg_kinds=arg_kinds, arg_names=arg_names)
 
         elif isinstance(base.type, RUnion):
-            return self.union_method_call(base, base.type, name, arg_values, return_rtype, line,
+            return self.union_method_call(base, base.type, name, arg_values, result_type, line,
                                           arg_kinds, arg_names)
 
         # Try to do a special-cased method call
         if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
-            target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
+            target = self.translate_special_method_call(base, name, arg_values, result_type, line)
             if target:
                 return target
 

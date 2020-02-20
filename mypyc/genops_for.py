@@ -106,7 +106,7 @@ class ForIterable(ForGenerator):
         line = self.line
         # We unbox here so that iterating with tuple unpacking generates a tuple based
         # unpack instead of an iterator based one.
-        next_reg = builder.unbox_or_cast(self.next_reg, self.target_type, line)
+        next_reg = builder.coerce(self.next_reg, self.target_type, line)
         builder.assign(builder.get_assignment_target(self.index), next_reg, line)
 
     def gen_step(self) -> None:
@@ -178,7 +178,7 @@ class ForList(ForGenerator):
         # iterating with tuple unpacking generates a tuple based
         # unpack instead of an iterator based one.
         builder.assign(builder.get_assignment_target(self.index),
-                       builder.unbox_or_cast(value_box, self.target_type, line), line)
+                       builder.coerce(value_box, self.target_type, line), line)
 
     def gen_step(self) -> None:
         # Step to the next item.

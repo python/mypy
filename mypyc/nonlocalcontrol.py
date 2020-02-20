@@ -73,7 +73,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # doing so, create a new block without an error handler set so that the implicitly thrown
         # StopIteration isn't caught by except blocks inside of the generator function.
         builder.error_handlers.append(None)
-        builder.goto_new_block()
+        builder.goto_and_activate(BasicBlock())
         # Skip creating a traceback frame when we raise here, because
         # we don't care about the traceback frame and it is kind of
         # expensive since raising StopIteration is an extremely common case.
