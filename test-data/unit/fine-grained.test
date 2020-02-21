@@ -5137,8 +5137,8 @@ def g(x: T) -> T:
     pass
 [out]
 ==
-a.py:2: error: Incompatible types in assignment (expression has type "T", variable has type "int")
-a.py:2: error: Argument "x" has incompatible type "int"; expected "T"
+a.py:2: error: Incompatible types in assignment (expression has type "c.T", variable has type "int")
+a.py:2: error: Argument "x" has incompatible type "int"; expected "c.T"
 
 [case testGenericFineCallableToGenericClass]
 import a
@@ -7055,7 +7055,7 @@ class T: pass
 a.py:2: error: No overload variant of "f" matches argument type "int"
 a.py:2: note: Possible overload variants:
 a.py:2: note:     def f(x: C) -> None
-a.py:2: note:     def f(x: T) -> T
+a.py:2: note:     def f(x: c.T) -> c.T
 
 [case testOverloadsToNonOverloaded]
 import a

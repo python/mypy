@@ -904,7 +904,7 @@ reveal_type(o6)
 
 [out]
 _testCollectionsAliases.py:5: note: Revealed type is 'collections.Counter[builtins.int]'
-_testCollectionsAliases.py:6: error: Invalid index type "str" for "Counter[int]"; expected type "int"
+_testCollectionsAliases.py:6: error: Invalid index type "str" for "collections.Counter[int]"; expected type "int"
 _testCollectionsAliases.py:9: note: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
 _testCollectionsAliases.py:12: note: Revealed type is 'collections.deque[builtins.int]'
 _testCollectionsAliases.py:15: note: Revealed type is 'collections.Counter[builtins.int*]'
