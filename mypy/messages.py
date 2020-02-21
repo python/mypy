@@ -13,7 +13,9 @@ from collections import OrderedDict
 import re
 import difflib
 from textwrap import dedent
+import builtins
 
+import typing
 from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 from typing_extensions import Final
 
@@ -1717,9 +1719,15 @@ def find_type_overlaps(*types: Type) -> Set[str]:
     with their fullname.
     """
     d = {}  # type: Dict[str, Set[str]]
+    builtin_types = set(dir(builtins))
+    typing_types = set(dir(typing))
     for type in types:
         for inst in collect_all_instances(type):
             d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+            if inst.type.name in builtin_types:
+                d[inst.type.name].add('builtins.{}'.format(inst.type.name))
+            if inst.type.name in typing_types:
+                d[inst.type.name].add('typing.{}'.format(inst.type.name))
 
     overlaps = set()  # type: Set[str]
     for fullnames in d.values():
