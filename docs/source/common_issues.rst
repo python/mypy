@@ -751,3 +751,38 @@ Mypy has both type aliases and variables with types like ``Type[...]`` and it is
 
     def fun1(x: Alias) -> None: ...  # This is OK
     def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
+   
+Incompatible overrides
+------------------------------
+
+It's unsafe to override a method with a more specific argument type, as it violates
+the `Liskov substitution principle <https://stackoverflow.com/questions/56860/what-is-an-example-of-the-liskov-substitution-principle>`_. For return types, it's unsafe to override a method with a more general return type.
+
+Here is an example to demonstrate this
+
+.. code-block:: python
+
+    from typing import Sequence, List, Iterable
+
+    class A:
+        def test(self, t: Sequence[int]) -> Sequence[str]:
+            pass
+      
+    # Specific argument type doesn't work
+    class OverwriteArgumentSpecific(A):
+        def test(self, t: List[int]) -> Sequence[str]:
+            pass
+    
+    # Specific return type works
+    class OverwriteReturnSpecific(A):
+        def test(self, t: Sequence[int]) -> List[str]:
+            pass
+    
+    # Generic return type doesn't work
+    class OverwriteReturnGeneric(A):
+        def test(self, t: Sequence[int]) -> Iterable[str]:
+            pass
+            
+mypy won't report an error for ``OverwriteReturnSpecific`` but it does for ``OverwriteReturnGeneric`` and ``OverwriteArgumentSpecific``.
+
+We can use ``# type: ignore[override]`` to silence the error (add it to the line that genreates the error) if type safety is not needed.
