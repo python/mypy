@@ -806,15 +806,19 @@ def process_options(args: List[str],
     if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
-    # Parse config file first, so command line can override.
     options = Options()
-    parse_config_file(options, config_file, stdout, stderr)
+
+    def set_strict_flags() -> None:
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
+
+    # Parse config file first, so command line can override.
+    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
     if getattr(dummy, 'special-opts:strict'):  # noqa
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
+        set_strict_flags()
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')

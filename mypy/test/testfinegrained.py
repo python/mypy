@@ -193,7 +193,7 @@ class FineGrainedSuite(DataSuite):
 
         for name, _ in testcase.files:
             if 'mypy.ini' in name:
-                parse_config_file(options, name)
+                parse_config_file(options, lambda: None, name)
                 break
 
         return options
