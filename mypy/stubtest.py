@@ -582,21 +582,24 @@ def _verify_signature(
 
     # Check unmatched keyword-only args
     if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
+        # There are cases where the stub exhaustively lists out the extra parameters the function
+        # would take through *kwargs. Hence, a) we only check if the runtime actually takes those
+        # parameters when the above condition holds and b) below, we don't enforce that the stub
+        # takes *kwargs, since runtime logic may prevent additional arguments from actually being
+        # accepted.
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
             yield 'runtime does not have argument "{}"'.format(arg)
-    if stub.varkw is None or not set(stub.kwonly).issubset(set(runtime.kwonly)):
-        for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
-            if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
-                # Don't report this if we've reported it before
-                if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
-                    yield 'stub argument "{}" is not keyword-only'.format(arg)
-            else:
-                yield 'stub does not have argument "{}"'.format(arg)
+    for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
+        if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
+            # Don't report this if we've reported it before
+            if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
+                yield 'stub argument "{}" is not keyword-only'.format(arg)
+        else:
+            yield 'stub does not have argument "{}"'.format(arg)
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
-        # There are cases where the stub exhaustively lists out the extra parameters the function
-        # would take through **kwargs, so we don't enforce that the stub takes **kwargs.
+        # As mentioned above, don't enforce that the stub takes **kwargs.
         # Also check against positional parameters, to avoid a nitpicky message when an argument
         # isn't marked as keyword-only
         stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)

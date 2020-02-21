@@ -369,6 +369,11 @@ class StubtestUnit(unittest.TestCase):
             runtime="def k5(a, *, b, c, **kwargs): pass",
             error="k5",
         )
+        yield Case(
+            stub="def k6(a, *, b, **kwargs) -> None: ...",
+            runtime="def k6(a, *, b, c, **kwargs): pass",
+            error="k6",
+        )
 
     @collect_cases
     def test_overload(self) -> Iterator[Case]:
