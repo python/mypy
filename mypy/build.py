@@ -36,7 +36,7 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file, hash_digest,
+    read_py_file, hash_digest, is_typeshed_file
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -65,6 +65,18 @@ from mypy import errorcodes as codes
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
 DEBUG_FINE_GRAINED = False  # type: Final
+
+# These modules are special and should always come from typeshed.
+CORE_BUILTIN_MODULES = {
+    'builtins',
+    'typing',
+    'types',
+    'typing_extensions',
+    'mypy_extensions',
+    '_importlib_modulespec',
+    'sys',
+    'abc',
+}
 
 
 Graph = Dict[str, 'State']
@@ -2390,6 +2402,14 @@ def find_module_and_diagnose(manager: BuildManager,
                 if is_sub_path(path, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = 'silent'
+        if (id in CORE_BUILTIN_MODULES
+                and not is_typeshed_file(path)
+                and not options.use_builtins_fixtures
+                and not options.custom_typeshed_dir):
+            raise CompileError([
+                'mypy: "%s" shadows library module "%s"' % (path, id),
+                'note: A user-defined top-level module with name "%s" is not supported' % id
+            ])
         return (path, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a

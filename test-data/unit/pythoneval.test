@@ -1501,3 +1501,12 @@ from typing import List
 async def foo() -> None:
     f = []  # type: List[Future[None]]
     await wait(f)
+
+[case testShadowTypingModule]
+1 + ''
+[file typing.py]
+x = 0
+1 + ''
+[out]
+mypy: "tmp/typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported
