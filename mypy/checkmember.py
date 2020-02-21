@@ -486,11 +486,20 @@ def analyze_descriptor_access(instance_type: Type,
     else:
         owner_type = instance_type
 
+    callable_name = chk.expr_checker.method_fullname(descriptor_type, "__get__")
+    dunder_get_type = chk.expr_checker.transform_callee_type(
+        callable_name, dunder_get_type,
+        [TempNode(instance_type, context=context),
+         TempNode(TypeType.make_normalized(owner_type), context=context)],
+        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+    )
+
     _, inferred_dunder_get_type = chk.expr_checker.check_call(
         dunder_get_type,
         [TempNode(instance_type, context=context),
          TempNode(TypeType.make_normalized(owner_type), context=context)],
-        [ARG_POS, ARG_POS], context)
+        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+        callable_name=callable_name)
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):

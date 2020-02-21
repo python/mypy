@@ -698,3 +698,26 @@ class A: pass
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customize_mro.py
+
+[case testDescriptorMethods]
+# flags: --config-file tmp/mypy.ini
+
+class Desc:
+    def __get__(self, obj, cls):
+        pass
+
+    def __set__(self, obj, val):
+        pass
+
+class Cls:
+    attr = Desc()
+
+reveal_type(Cls().attr)  # N: Revealed type is 'builtins.int'
+reveal_type(Cls.attr)  # N: Revealed type is 'builtins.str'
+
+Cls().attr = 3
+Cls().attr = "foo"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/descriptor.py

@@ -2995,6 +2995,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
+        callable_name = self.expr_checker.method_fullname(attribute_type, "__set__")
+        dunder_set_type = self.expr_checker.transform_callee_type(
+            callable_name, dunder_set_type,
+            [TempNode(instance_type, context=context), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context, object_type=attribute_type,
+        )
+
         # Here we just infer the type, the result should be type-checked like a normal assignment.
         # For this we use the rvalue as type context.
         self.msg.disable_errors()
@@ -3002,7 +3010,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             dunder_set_type,
             [TempNode(instance_type, context=context), rvalue],
             [nodes.ARG_POS, nodes.ARG_POS],
-            context)
+            context, object_type=attribute_type,
+            callable_name=callable_name)
         self.msg.enable_errors()
 
         # And now we type check the call second time, to show errors related
@@ -3012,7 +3021,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [TempNode(instance_type, context=context),
              TempNode(AnyType(TypeOfAny.special_form), context=context)],
             [nodes.ARG_POS, nodes.ARG_POS],
-            context)
+            context, object_type=attribute_type,
+            callable_name=callable_name)
 
         # should be handled by get_method above
         assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
