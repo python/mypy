@@ -88,16 +88,14 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         if line.startswith(test_temp_dir + os.sep):
             output.append(line[len(test_temp_dir + os.sep):].rstrip("\r\n"))
         else:
+            # Normalize paths so that the output is the same on Windows and Linux/macOS.
+            line = line.replace(test_temp_dir + os.sep, test_temp_dir + '/')
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
         proc = subprocess.run([interpreter, '-Wignore', program],
                               cwd=test_temp_dir, stdout=PIPE, stderr=PIPE)
-        lines = split_lines(proc.stdout, proc.stderr)
-        if sys.platform == 'win32':
-            # Normalize any paths that might appear in the output
-            lines = [line.replace('\\', '/') for line in lines]
-        output.extend(lines)
+        output.extend(split_lines(proc.stdout, proc.stderr))
     # Remove temp file.
     os.remove(program_path)
     for i, line in enumerate(output):
