@@ -705,4 +705,4 @@ class FancyFormatter:
 
 def is_typeshed_file(file: str) -> bool:
     # gross, but no other clear way to tell
-    return 'typeshed' in os.path.normpath(file).split(os.sep)
+    return 'typeshed' in os.path.abspath(file).split(os.sep)
