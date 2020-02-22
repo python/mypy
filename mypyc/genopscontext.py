@@ -146,7 +146,7 @@ class GeneratorClass(ImplicitClass):
         # The switch block is used to decide which instruction to go using the value held in the
         # next-label register.
         self.switch_block = BasicBlock()
-        self.blocks = []  # type: List[BasicBlock]
+        self.continuation_blocks = []  # type: List[BasicBlock]
 
     @property
     def next_label_reg(self) -> Value:

@@ -6,10 +6,6 @@ calling functions and methods, and coercing between types, for
 example). The core principle of the low-level IR builder is that all
 of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
-
-Currently LowLevelIRBuilder does not have a clean API and the
-higher-level IR builder in genops uses LowLevelIRBuilder by inheriting
-from it. A next step is to fix this.
 """
 
 from typing import (
@@ -25,12 +21,12 @@ from mypyc.ops import (
     Assign, Branch, Goto, Call, Box, Unbox, Cast, ClassIR, RInstance, GetAttr,
     LoadStatic, MethodCall, int_rprimitive, float_rprimitive, bool_rprimitive, list_rprimitive,
     str_rprimitive, is_none_rprimitive, object_rprimitive,
-    PrimitiveOp, ControlOp, OpDescription, RegisterOp,
+    PrimitiveOp, OpDescription, RegisterOp,
     FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
     LoadErrorValue, FuncDecl, RUnion, optional_value_type, all_concrete_classes
 )
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, method_ops
 from mypyc.ops_list import (
@@ -63,45 +59,38 @@ class LowLevelIRBuilder:
         self.current_module = current_module
         self.mapper = mapper
         self.environment = Environment()
-        self.environments = [self.environment]
-        self.blocks = []  # type: List[List[BasicBlock]]
+        self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
     def add(self, op: Op) -> Value:
-        if self.blocks[-1][-1].ops:
-            assert not isinstance(self.blocks[-1][-1].ops[-1], ControlOp), (
-                "Can't add to finished block")
+        assert not self.blocks[-1].terminated, "Can't add to finished block"
 
-        self.blocks[-1][-1].ops.append(op)
+        self.blocks[-1].ops.append(op)
         if isinstance(op, RegisterOp):
             self.environment.add_op(op)
         return op
 
     def goto(self, target: BasicBlock) -> None:
-        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], ControlOp):
+        if not self.blocks[-1].terminated:
             self.add(Goto(target))
 
     def activate_block(self, block: BasicBlock) -> None:
-        if self.blocks[-1]:
-            assert isinstance(self.blocks[-1][-1].ops[-1], ControlOp)
+        if self.blocks:
+            assert self.blocks[-1].terminated
 
         block.error_handler = self.error_handlers[-1]
-        self.blocks[-1].append(block)
+        self.blocks.append(block)
 
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.goto(block)
         self.activate_block(block)
 
-    def new_block(self) -> BasicBlock:
-        block = BasicBlock()
-        self.activate_block(block)
-        return block
+    def push_error_handler(self, handler: Optional[BasicBlock]) -> None:
+        self.error_handlers.append(handler)
 
-    def goto_new_block(self) -> BasicBlock:
-        block = BasicBlock()
-        self.goto_and_activate(block)
-        return block
+    def pop_error_handler(self) -> Optional[BasicBlock]:
+        return self.error_handlers.pop()
 
     ##
 
@@ -445,8 +434,11 @@ class LowLevelIRBuilder:
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
-        static_symbol = self.literal_static_name(value)
-        return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
+        if abs(value) > MAX_LITERAL_SHORT_INT:
+            static_symbol = self.literal_static_name(value)
+            return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
+        else:
+            return self.add(LoadInt(value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
@@ -594,7 +586,8 @@ class LowLevelIRBuilder:
 
                 if not always_truthy:
                     # Optional[X] where X may be falsey and requires a check
-                    branch.true = self.new_block()
+                    branch.true = BasicBlock()
+                    self.activate_block(branch.true)
                     # unbox_or_cast instead of coerce because we want the
                     # type to change even if it is a subtype.
                     remaining = self.unbox_or_cast(value, value_type, value.line)
@@ -664,7 +657,7 @@ class LowLevelIRBuilder:
                         base: Value,
                         name: str,
                         arg_values: List[Value],
-                        return_rtype: Optional[RType],
+                        result_type: Optional[RType],
                         line: int,
                         arg_kinds: Optional[List[int]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
@@ -697,12 +690,12 @@ class LowLevelIRBuilder:
                                     arg_kinds=arg_kinds, arg_names=arg_names)
 
         elif isinstance(base.type, RUnion):
-            return self.union_method_call(base, base.type, name, arg_values, return_rtype, line,
+            return self.union_method_call(base, base.type, name, arg_values, result_type, line,
                                           arg_kinds, arg_names)
 
         # Try to do a special-cased method call
         if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
-            target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
+            target = self.translate_special_method_call(base, name, arg_values, result_type, line)
             if target:
                 return target
 
