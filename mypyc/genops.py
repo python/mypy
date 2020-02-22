@@ -51,27 +51,20 @@ from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value, Register, Op,
     FuncIR, Assign, Branch, RTuple, Unreachable,
-    TupleGet, TupleSet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
+    TupleGet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, ModuleIRs, GetAttr, SetAttr,
     LoadStatic, InitStatic, INVALID_FUNC_DEF, int_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
     exc_rtuple, PrimitiveOp, OpDescription, is_object_rprimitive,
     FuncSignature, NAMESPACE_MODULE,
     RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
-from mypyc.ops_primitive import func_ops, name_ref_ops
-from mypyc.ops_list import (
-    list_append_op, list_extend_op, list_len_op, new_list_op, to_list, list_pop_last
-)
-from mypyc.ops_tuple import list_tuple_op
-from mypyc.ops_dict import (
-    new_dict_op, dict_get_item_op, dict_set_item_op
-)
-from mypyc.ops_set import new_set_op, set_add_op, set_update_op
+from mypyc.ops_primitive import func_ops
+from mypyc.ops_list import list_append_op, list_len_op, new_list_op, to_list, list_pop_last
+from mypyc.ops_dict import dict_get_item_op, dict_set_item_op
 from mypyc.ops_misc import (
     true_op, false_op, iter_op, next_op, py_setattr_op, py_delattr_op,
-    new_slice_op, type_op, import_op, get_module_dict_op, ellipsis_op,
+    type_op, import_op, get_module_dict_op
 )
 from mypyc.ops_exc import (
     raise_exception_op, reraise_exception_op,
@@ -88,11 +81,13 @@ from mypyc.nonlocalcontrol import (
 )
 from mypyc.genclass import BuildClassIR
 from mypyc.genfunc import BuildFuncIR
+from mypyc.genexpr import BuildExpressionIR
 from mypyc.genopscontext import FuncInfo, ImplicitClass
 from mypyc.genopsmapper import Mapper
 from mypyc.genopsvtable import compute_vtable
 from mypyc.genopsprepare import build_type_map
 from mypyc.ir_builder import LowLevelIRBuilder
+from mypyc.specialize import specialize_function
 
 GenFunc = Callable[[], None]
 
@@ -150,40 +145,6 @@ def build_ir(modules: List[MypyFile],
     return result
 
 
-# Infrastructure for special casing calls to builtin functions in a
-# programmatic way.  Most special cases should be handled using the
-# data driven "primitive ops" system, but certain operations require
-# special handling that has access to the AST/IR directly and can make
-# decisions/optimizations based on it.
-#
-# For example, we use specializers to statically emit the length of a
-# fixed length tuple and to emit optimized code for any/all calls with
-# generator comprehensions as the argument.
-#
-# Specalizers are attempted before compiling the arguments to the
-# function.  Specializers can return None to indicate that they failed
-# and the call should be compiled normally. Otherwise they should emit
-# code for the call and return a value containing the result.
-#
-# Specializers take three arguments: the IRBuilder, the CallExpr being
-# compiled, and the RefExpr that is the left hand side of the call.
-#
-# Specializers can operate on methods as well, and are keyed on the
-# name and RType in that case.
-Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
-
-specializers = {}  # type: Dict[Tuple[str, Optional[RType]], Specializer]
-
-
-def specialize_function(
-        name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
-    """Decorator to register a function as being a specializer."""
-    def wrapper(f: Specializer) -> Specializer:
-        specializers[name, typ] = f
-        return f
-    return wrapper
-
-
 class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
                  current_module: str,
@@ -239,6 +200,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.imports = OrderedDict()  # type: OrderedDict[str, None]
 
     # Pass through methods for the most common low-level builder ops, for convenience.
+
     def add(self, op: Op) -> Value:
         return self.builder.add(op)
 
@@ -1071,37 +1033,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_continue_stmt(self, node: ContinueStmt) -> None:
         self.nonlocal_control[-1].gen_continue(self, node.line)
 
-    def visit_unary_expr(self, expr: UnaryExpr) -> Value:
-        return self.unary_op(self.accept(expr.expr), expr.op, expr.line)
-
-    def visit_op_expr(self, expr: OpExpr) -> Value:
-        if expr.op in ('and', 'or'):
-            return self.shortcircuit_expr(expr)
-        return self.binary_op(self.accept(expr.left), self.accept(expr.right), expr.op, expr.line)
-
-    def visit_index_expr(self, expr: IndexExpr) -> Value:
-        base = self.accept(expr.base)
-
-        if isinstance(base.type, RTuple) and isinstance(expr.index, IntExpr):
-            return self.add(TupleGet(base, expr.index.value, expr.line))
-
-        index_reg = self.accept(expr.index)
-        return self.gen_method_call(
-            base, '__getitem__', [index_reg], self.node_type(expr), expr.line)
-
-    def visit_int_expr(self, expr: IntExpr) -> Value:
-        return self.builder.load_static_int(expr.value)
-
-    def visit_float_expr(self, expr: FloatExpr) -> Value:
-        return self.builder.load_static_float(expr.value)
-
-    def visit_complex_expr(self, expr: ComplexExpr) -> Value:
-        return self.builder.load_static_complex(expr.value)
-
-    def visit_bytes_expr(self, expr: BytesExpr) -> Value:
-        value = bytes(expr.value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
-        return self.builder.load_static_bytes(value)
-
     def is_native_module(self, module: str) -> bool:
         """Is the given module one compiled by mypyc?"""
         return module in self.mapper.group_map
@@ -1171,105 +1102,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             return None
 
-    def visit_name_expr(self, expr: NameExpr) -> Value:
-        assert expr.node, "RefExpr not resolved"
-        fullname = expr.node.fullname
-        if fullname in name_ref_ops:
-            # Use special access op for this particular name.
-            desc = name_ref_ops[fullname]
-            assert desc.result_type is not None
-            return self.add(PrimitiveOp([], desc, expr.line))
-
-        if isinstance(expr.node, Var) and expr.node.is_final:
-            value = self.emit_load_final(expr.node, fullname, expr.name,
-                                         self.is_native_ref_expr(expr), self.types[expr],
-                                         expr.line)
-            if value is not None:
-                return value
-
-        if isinstance(expr.node, MypyFile) and expr.node.fullname in self.imports:
-            return self.load_module(expr.node.fullname)
-
-        # If the expression is locally defined, then read the result from the corresponding
-        # assignment target and return it. Otherwise if the expression is a global, load it from
-        # the globals dictionary.
-        # Except for imports, that currently always happens in the global namespace.
-        if expr.kind == LDEF and not (isinstance(expr.node, Var)
-                                      and expr.node.is_suppressed_import):
-            # Try to detect and error when we hit the irritating mypy bug
-            # where a local variable is cast to None. (#5423)
-            if (isinstance(expr.node, Var) and is_none_rprimitive(self.node_type(expr))
-                    and expr.node.is_inferred):
-                self.error(
-                    "Local variable '{}' has inferred type None; add an annotation".format(
-                        expr.node.name),
-                    expr.node.line)
-
-            # TODO: Behavior currently only defined for Var and FuncDef node types.
-            return self.read(self.get_assignment_target(expr), expr.line)
-
-        return self.load_global(expr)
-
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and isinstance(expr.expr.node, MypyFile)
-
-    def visit_member_expr(self, expr: MemberExpr) -> Value:
-        # First check if this is maybe a final attribute.
-        final = self.get_final_ref(expr)
-        if final is not None:
-            fullname, final_var, native = final
-            value = self.emit_load_final(final_var, fullname, final_var.name, native,
-                                         self.types[expr], expr.line)
-            if value is not None:
-                return value
-
-        if isinstance(expr.node, MypyFile) and expr.node.fullname in self.imports:
-            return self.load_module(expr.node.fullname)
-
-        obj = self.accept(expr.expr)
-        return self.builder.get_attr(obj, expr.name, self.node_type(expr), expr.line)
-
-    def visit_call_expr(self, expr: CallExpr) -> Value:
-        if isinstance(expr.analyzed, CastExpr):
-            return self.translate_cast_expr(expr.analyzed)
-
-        callee = expr.callee
-        if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
-            callee = callee.analyzed.expr  # Unwrap type application
-
-        if isinstance(callee, MemberExpr):
-            return self.translate_method_call(expr, callee)
-        elif isinstance(callee, SuperExpr):
-            return self.translate_super_method_call(expr, callee)
-        else:
-            return self.translate_call(expr, callee)
-
-    def translate_call(self, expr: CallExpr, callee: Expression) -> Value:
-        # The common case of calls is refexprs
-        if isinstance(callee, RefExpr):
-            return self.translate_refexpr_call(expr, callee)
-
-        function = self.accept(callee)
-        args = [self.accept(arg) for arg in expr.args]
-        return self.py_call(function, args, expr.line,
-                            arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
-
-    def translate_refexpr_call(self, expr: CallExpr, callee: RefExpr) -> Value:
-        """Translate a non-method call."""
-
-        # TODO: Allow special cases to have default args or named args. Currently they don't since
-        # they check that everything in arg_kinds is ARG_POS.
-
-        # If there is a specializer for this function, try calling it.
-        if callee.fullname and (callee.fullname, None) in specializers:
-            val = specializers[callee.fullname, None](self, expr, callee)
-            if val is not None:
-                return val
-
-        # Gen the argument values
-        arg_values = [self.accept(arg) for arg in expr.args]
-
-        return self.call_refexpr_with_args(expr, callee, arg_values)
 
     def call_refexpr_with_args(
             self, expr: CallExpr, callee: RefExpr, arg_values: List[Value]) -> Value:
@@ -1300,108 +1134,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.py_call(function, arg_values, expr.line,
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
-    def translate_method_call(self, expr: CallExpr, callee: MemberExpr) -> Value:
-        """Generate IR for an arbitrary call of form e.m(...).
-
-        This can also deal with calls to module-level functions.
-        """
-        if self.is_native_ref_expr(callee):
-            # Call to module-level native function or such
-            return self.translate_call(expr, callee)
-        elif (
-            isinstance(callee.expr, RefExpr)
-            and isinstance(callee.expr.node, TypeInfo)
-            and callee.expr.node in self.mapper.type_to_ir
-            and self.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
-        ):
-            # Call a method via the *class*
-            assert isinstance(callee.expr.node, TypeInfo)
-            ir = self.mapper.type_to_ir[callee.expr.node]
-            decl = ir.method_decl(callee.name)
-            args = []
-            arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
-            # Add the class argument for class methods in extension classes
-            if decl.kind == FUNC_CLASSMETHOD and ir.is_ext_class:
-                args.append(self.load_native_type_object(callee.expr.node.fullname))
-                arg_kinds.insert(0, ARG_POS)
-                arg_names.insert(0, None)
-            args += [self.accept(arg) for arg in expr.args]
-
-            if ir.is_ext_class:
-                return self.builder.call(decl, args, arg_kinds, arg_names, expr.line)
-            else:
-                obj = self.accept(callee.expr)
-                return self.gen_method_call(obj,
-                                            callee.name,
-                                            args,
-                                            self.node_type(expr),
-                                            expr.line,
-                                            expr.arg_kinds,
-                                            expr.arg_names)
-
-        elif self.is_module_member_expr(callee):
-            # Fall back to a PyCall for non-native module calls
-            function = self.accept(callee)
-            args = [self.accept(arg) for arg in expr.args]
-            return self.py_call(function, args, expr.line,
-                                arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
-        else:
-            receiver_typ = self.node_type(callee.expr)
-
-            # If there is a specializer for this method name/type, try calling it.
-            if (callee.name, receiver_typ) in specializers:
-                val = specializers[callee.name, receiver_typ](self, expr, callee)
-                if val is not None:
-                    return val
-
-            obj = self.accept(callee.expr)
-            args = [self.accept(arg) for arg in expr.args]
-            return self.gen_method_call(obj,
-                                        callee.name,
-                                        args,
-                                        self.node_type(expr),
-                                        expr.line,
-                                        expr.arg_kinds,
-                                        expr.arg_names)
-
-    def translate_super_method_call(self, expr: CallExpr, callee: SuperExpr) -> Value:
-        if callee.info is None or callee.call.args:
-            return self.translate_call(expr, callee)
-        ir = self.mapper.type_to_ir[callee.info]
-        # Search for the method in the mro, skipping ourselves.
-        for base in ir.mro[1:]:
-            if callee.name in base.method_decls:
-                break
-        else:
-            return self.translate_call(expr, callee)
-
-        decl = base.method_decl(callee.name)
-        arg_values = [self.accept(arg) for arg in expr.args]
-        arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
-
-        if decl.kind != FUNC_STATICMETHOD:
-            vself = next(iter(self.environment.indexes))  # grab first argument
-            if decl.kind == FUNC_CLASSMETHOD:
-                vself = self.primitive_op(type_op, [vself], expr.line)
-            elif self.fn_info.is_generator:
-                # For generator classes, the self target is the 6th value
-                # in the symbol table (which is an ordered dict). This is sort
-                # of ugly, but we can't search by name since the 'self' parameter
-                # could be named anything, and it doesn't get added to the
-                # environment indexes.
-                self_targ = list(self.environment.symtable.values())[6]
-                vself = self.read(self_targ, self.fn_info.fitem.line)
-            arg_values.insert(0, vself)
-            arg_kinds.insert(0, ARG_POS)
-            arg_names.insert(0, None)
-
-        return self.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
-
-    def translate_cast_expr(self, expr: CastExpr) -> Value:
-        src = self.accept(expr.expr)
-        target_type = self.type_to_rtype(expr.type)
-        return self.coerce(src, target_type, expr.line)
-
     def shortcircuit_expr(self, expr: OpExpr) -> Value:
         return self.builder.shortcircuit_helper(
             expr.op, self.node_type(expr),
@@ -1409,118 +1141,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             lambda: self.accept(expr.right),
             expr.line
         )
-
-    def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
-        if_body, else_body, next = BasicBlock(), BasicBlock(), BasicBlock()
-
-        self.process_conditional(expr.cond, if_body, else_body)
-        expr_type = self.node_type(expr)
-        # Having actual Phi nodes would be really nice here!
-        target = self.alloc_temp(expr_type)
-
-        self.activate_block(if_body)
-        true_value = self.accept(expr.if_expr)
-        true_value = self.coerce(true_value, expr_type, expr.line)
-        self.add(Assign(target, true_value))
-        self.goto(next)
-
-        self.activate_block(else_body)
-        false_value = self.accept(expr.else_expr)
-        false_value = self.coerce(false_value, expr_type, expr.line)
-        self.add(Assign(target, false_value))
-        self.goto(next)
-
-        self.activate_block(next)
-
-        return target
-
-    def visit_list_expr(self, expr: ListExpr) -> Value:
-        return self._visit_list_display(expr.items, expr.line)
-
-    def _visit_list_display(self, items: List[Expression], line: int) -> Value:
-        return self._visit_display(
-            items,
-            new_list_op,
-            list_append_op,
-            list_extend_op,
-            line
-        )
-
-    def _visit_display(self,
-                       items: List[Expression],
-                       constructor_op: OpDescription,
-                       append_op: OpDescription,
-                       extend_op: OpDescription,
-                       line: int
-                       ) -> Value:
-        accepted_items = []
-        for item in items:
-            if isinstance(item, StarExpr):
-                accepted_items.append((True, self.accept(item.expr)))
-            else:
-                accepted_items.append((False, self.accept(item)))
-
-        result = None  # type: Union[Value, None]
-        initial_items = []
-        for starred, value in accepted_items:
-            if result is None and not starred and constructor_op.is_var_arg:
-                initial_items.append(value)
-                continue
-
-            if result is None:
-                result = self.primitive_op(constructor_op, initial_items, line)
-
-            self.primitive_op(extend_op if starred else append_op, [result, value], line)
-
-        if result is None:
-            result = self.primitive_op(constructor_op, initial_items, line)
-
-        return result
-
-    def visit_tuple_expr(self, expr: TupleExpr) -> Value:
-        if any(isinstance(item, StarExpr) for item in expr.items):
-            # create a tuple of unknown length
-            return self._visit_tuple_display(expr)
-
-        # create a tuple of fixed length (RTuple)
-        tuple_type = self.node_type(expr)
-        # When handling NamedTuple et. al we might not have proper type info,
-        # so make some up if we need it.
-        types = (tuple_type.types if isinstance(tuple_type, RTuple)
-                 else [object_rprimitive] * len(expr.items))
-
-        items = []
-        for item_expr, item_type in zip(expr.items, types):
-            reg = self.accept(item_expr)
-            items.append(self.coerce(reg, item_type, item_expr.line))
-        return self.add(TupleSet(items, expr.line))
-
-    def _visit_tuple_display(self, expr: TupleExpr) -> Value:
-        """Create a list, then turn it into a tuple."""
-        val_as_list = self._visit_list_display(expr.items, expr.line)
-        return self.primitive_op(list_tuple_op, [val_as_list], expr.line)
-
-    def visit_dict_expr(self, expr: DictExpr) -> Value:
-        """First accepts all keys and values, then makes a dict out of them."""
-        key_value_pairs = []
-        for key_expr, value_expr in expr.items:
-            key = self.accept(key_expr) if key_expr is not None else None
-            value = self.accept(value_expr)
-            key_value_pairs.append((key, value))
-
-        return self.builder.make_dict(key_value_pairs, expr.line)
-
-    def visit_set_expr(self, expr: SetExpr) -> Value:
-        return self._visit_display(
-            expr.items,
-            new_set_op,
-            set_add_op,
-            set_update_op,
-            expr.line
-        )
-
-    def visit_str_expr(self, expr: StrExpr) -> Value:
-        return self.load_static_unicode(expr.value)
 
     # Conditional expressions
 
@@ -1545,58 +1165,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
 
-    def visit_basic_comparison(self, op: str, left: Value, right: Value, line: int) -> Value:
-        negate = False
-        if op == 'is not':
-            op, negate = 'is', True
-        elif op == 'not in':
-            op, negate = 'in', True
-
-        target = self.binary_op(left, right, op, line)
-
-        if negate:
-            target = self.unary_op(target, 'not', line)
-        return target
-
-    def visit_comparison_expr(self, e: ComparisonExpr) -> Value:
-        # TODO: Don't produce an expression when used in conditional context
-
-        # All of the trickiness here is due to support for chained conditionals
-        # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
-        # `e1 < e2 and e2 > e3` except that `e2` is only evaluated once.
-        expr_type = self.node_type(e)
-
-        # go(i, prev) generates code for `ei opi e{i+1} op{i+1} ... en`,
-        # assuming that prev contains the value of `ei`.
-        def go(i: int, prev: Value) -> Value:
-            if i == len(e.operators) - 1:
-                return self.visit_basic_comparison(
-                    e.operators[i], prev, self.accept(e.operands[i + 1]), e.line)
-
-            next = self.accept(e.operands[i + 1])
-            return self.builder.shortcircuit_helper(
-                'and', expr_type,
-                lambda: self.visit_basic_comparison(
-                    e.operators[i], prev, next, e.line),
-                lambda: go(i + 1, next),
-                e.line)
-
-        return go(0, self.accept(e.operands[0]))
-
     def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
         pass
-
-    def visit_slice_expr(self, expr: SliceExpr) -> Value:
-        def get_arg(arg: Optional[Expression]) -> Value:
-            if arg is None:
-                return self.none_object()
-            else:
-                return self.accept(arg)
-
-        args = [get_arg(expr.begin_index),
-                get_arg(expr.end_index),
-                get_arg(expr.stride)]
-        return self.primitive_op(new_slice_op, args, expr.line)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         if s.expr is None:
@@ -1901,9 +1471,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         generate(0)
 
-    def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
-        return BuildFuncIR(self).visit_lambda_expr(expr)
-
     def visit_pass_stmt(self, o: PassStmt) -> None:
         pass
 
@@ -1944,37 +1511,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
         return list_ops
-
-    def visit_list_comprehension(self, o: ListComprehension) -> Value:
-        return self.translate_list_comprehension(o.generator)
-
-    def visit_set_comprehension(self, o: SetComprehension) -> Value:
-        gen = o.generator
-        set_ops = self.primitive_op(new_set_op, [], o.line)
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-
-        def gen_inner_stmts() -> None:
-            e = self.accept(gen.left_expr)
-            self.primitive_op(set_add_op, [set_ops, e], o.line)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
-        return set_ops
-
-    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> Value:
-        d = self.primitive_op(new_dict_op, [], o.line)
-        loop_params = list(zip(o.indices, o.sequences, o.condlists))
-
-        def gen_inner_stmts() -> None:
-            k = self.accept(o.key)
-            v = self.accept(o.value)
-            self.primitive_op(dict_set_item_op, [d, k, v], o.line)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
-        return d
-
-    def visit_generator_expr(self, o: GeneratorExpr) -> Value:
-        self.warning('Treating generator comprehension as list', o.line)
-        return self.primitive_op(iter_op, [self.translate_list_comprehension(o)], o.line)
 
     def comprehension_helper(self,
                              loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
@@ -2058,35 +1594,88 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             for subtarget in target.items:
                 self.visit_del_item(subtarget, line)
 
-    def visit_super_expr(self, o: SuperExpr) -> Value:
-        # self.warning('can not optimize super() expression', o.line)
-        sup_val = self.load_module_attr_by_fullname('builtins.super', o.line)
-        if o.call.args:
-            args = [self.accept(arg) for arg in o.call.args]
-        else:
-            assert o.info is not None
-            typ = self.load_native_type_object(o.info.fullname)
-            ir = self.mapper.type_to_ir[o.info]
-            iter_env = iter(self.environment.indexes)
-            vself = next(iter_env)  # grab first argument
-            if self.fn_info.is_generator:
-                # grab sixth argument (see comment in translate_super_method_call)
-                self_targ = list(self.environment.symtable.values())[6]
-                vself = self.read(self_targ, self.fn_info.fitem.line)
-            elif not ir.is_ext_class:
-                vself = next(iter_env)  # second argument is self if non_extension class
-            args = [typ, vself]
-        res = self.py_call(sup_val, args, o.line)
-        return self.py_get_attr(res, o.name, o.line)
+    # Expressions
+
+    def visit_name_expr(self, expr: NameExpr) -> Value:
+        return BuildExpressionIR(self).visit_name_expr(expr)
+
+    def visit_member_expr(self, expr: MemberExpr) -> Value:
+        return BuildExpressionIR(self).visit_member_expr(expr)
+
+    def visit_super_expr(self, expr: SuperExpr) -> Value:
+        return BuildExpressionIR(self).visit_super_expr(expr)
+
+    def visit_call_expr(self, expr: CallExpr) -> Value:
+        return BuildExpressionIR(self).visit_call_expr(expr)
+
+    def visit_unary_expr(self, expr: UnaryExpr) -> Value:
+        return BuildExpressionIR(self).visit_unary_expr(expr)
+
+    def visit_op_expr(self, expr: OpExpr) -> Value:
+        return BuildExpressionIR(self).visit_op_expr(expr)
+
+    def visit_index_expr(self, expr: IndexExpr) -> Value:
+        return BuildExpressionIR(self).visit_index_expr(expr)
+
+    def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
+        return BuildExpressionIR(self).visit_conditional_expr(expr)
+
+    def visit_comparison_expr(self, expr: ComparisonExpr) -> Value:
+        return BuildExpressionIR(self).visit_comparison_expr(expr)
+
+    def visit_int_expr(self, expr: IntExpr) -> Value:
+        return BuildExpressionIR(self).visit_int_expr(expr)
+
+    def visit_float_expr(self, expr: FloatExpr) -> Value:
+        return BuildExpressionIR(self).visit_float_expr(expr)
+
+    def visit_complex_expr(self, expr: ComplexExpr) -> Value:
+        return BuildExpressionIR(self).visit_complex_expr(expr)
+
+    def visit_str_expr(self, expr: StrExpr) -> Value:
+        return BuildExpressionIR(self).visit_str_expr(expr)
+
+    def visit_bytes_expr(self, expr: BytesExpr) -> Value:
+        return BuildExpressionIR(self).visit_bytes_expr(expr)
+
+    def visit_ellipsis(self, expr: EllipsisExpr) -> Value:
+        return BuildExpressionIR(self).visit_ellipsis(expr)
+
+    def visit_list_expr(self, expr: ListExpr) -> Value:
+        return BuildExpressionIR(self).visit_list_expr(expr)
+
+    def visit_tuple_expr(self, expr: TupleExpr) -> Value:
+        return BuildExpressionIR(self).visit_tuple_expr(expr)
+
+    def visit_dict_expr(self, expr: DictExpr) -> Value:
+        return BuildExpressionIR(self).visit_dict_expr(expr)
+
+    def visit_set_expr(self, expr: SetExpr) -> Value:
+        return BuildExpressionIR(self).visit_set_expr(expr)
+
+    def visit_list_comprehension(self, expr: ListComprehension) -> Value:
+        return BuildExpressionIR(self).visit_list_comprehension(expr)
+
+    def visit_set_comprehension(self, expr: SetComprehension) -> Value:
+        return BuildExpressionIR(self).visit_set_comprehension(expr)
+
+    def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> Value:
+        return BuildExpressionIR(self).visit_dictionary_comprehension(expr)
+
+    def visit_slice_expr(self, expr: SliceExpr) -> Value:
+        return BuildExpressionIR(self).visit_slice_expr(expr)
+
+    def visit_generator_expr(self, expr: GeneratorExpr) -> Value:
+        return BuildExpressionIR(self).visit_generator_expr(expr)
+
+    def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
+        return BuildFuncIR(self).visit_lambda_expr(expr)
 
     def visit_yield_expr(self, expr: YieldExpr) -> Value:
         return BuildFuncIR(self).visit_yield_expr(expr)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
         return BuildFuncIR(self).visit_yield_from_expr(o)
-
-    def visit_ellipsis(self, o: EllipsisExpr) -> Value:
-        return self.primitive_op(ellipsis_op, [], o.line)
 
     # Builtin function special cases
 
