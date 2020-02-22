@@ -16,16 +16,14 @@ It would be translated to something that conceptually looks like this:
 The IR is implemented in mypyc.ops.
 """
 
-from typing import (
-    TypeVar, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast
-)
-from typing_extensions import overload, NoReturn
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
+from typing_extensions import overload
 from collections import OrderedDict
 import importlib.util
 
 from mypy.build import Graph
 from mypy.nodes import (
-    MypyFile, SymbolNode, Statement, FuncDef, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
+    MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr, ClassDef,
     TypeInfo, Import, ImportFrom, ImportAll, Decorator, GeneratorExpr, OverloadedFuncDef,
     StarExpr, GDEF, ARG_POS, ARG_NAMED
@@ -42,7 +40,7 @@ from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value, Register, Op,
     FuncIR, Assign, Branch, RTuple, Unreachable,
-    TupleGet, ClassIR, NonExtClassInfo, RInstance, ModuleIR, GetAttr, SetAttr,
+    TupleGet, ClassIR, NonExtClassInfo, RInstance, GetAttr, SetAttr,
     LoadStatic, InitStatic, INVALID_FUNC_DEF, int_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
@@ -1035,7 +1033,6 @@ class IRBuilder:
                 gen_inner_stmts()
 
         handle_loop(loop_params)
-
 
     # Builtin function special cases
 
