@@ -878,7 +878,7 @@ class BuildFuncIR:
         decorators = self.builder.fdefs_to_decorators[fdef]
         func_reg = orig_func_reg
         for d in reversed(decorators):
-            decorator = d.accept(self.builder)
+            decorator = d.accept(self.builder.visitor)
             assert isinstance(decorator, Value)
             func_reg = self.builder.py_call(decorator, [func_reg], func_reg.line)
         return func_reg

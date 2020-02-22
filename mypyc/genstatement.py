@@ -50,7 +50,7 @@ class BuildStatementIR:
             # Docstring. Ignore
             return
         # ExpressionStmts do not need to be coerced like other Expressions.
-        stmt.expr.accept(self.builder)
+        stmt.expr.accept(self.builder.visitor)
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         if stmt.expr:

@@ -13,24 +13,23 @@ from mypy.nodes import (
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr
 )
-from mypy.visitor import ExpressionVisitor, StatementVisitor
 
 from mypyc.ops import Value
-from mypyc.genops import IRBuilder, UnsupportedException
+from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
 from mypyc.genclass import BuildClassIR
 from mypyc.genfunc import BuildFuncIR
 from mypyc.genstatement import BuildStatementIR
 from mypyc.genexpr import BuildExpressionIR
 
 
-class IRBuilderVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
+class IRBuilderVisitor(IRVisitor):
     builder = None  # type: IRBuilder
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
         self.builder.visit_mypy_file(mypyfile)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
-        BuildClassIR(self).visit_class_def(cdef)
+        BuildClassIR(self.builder).visit_class_def(cdef)
 
     def visit_import(self, node: Import) -> None:
         self.builder.visit_import(node)

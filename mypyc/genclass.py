@@ -23,6 +23,7 @@ from mypyc.ops_tuple import new_tuple_op
 from mypyc.genopsutil import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
 )
+from mypyc.genfunc import BuildFuncIR
 from mypyc.common import SELF_NAME
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ class BuildClassIR:
                                stmt.line)
                 for item in stmt.items:
                     with self.builder.catch_errors(stmt.line):
-                        self.builder.visit_method(cdef, non_ext, get_func_def(item))
+                        BuildFuncIR(self.builder).visit_method(cdef, non_ext, get_func_def(item))
             elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
                 # Ignore plugin generated methods (since they have no
                 # bodies to compile and will need to have the bodies
@@ -90,7 +91,7 @@ class BuildClassIR:
                 if cdef.info.names[stmt.name].plugin_generated:
                     continue
                 with self.builder.catch_errors(stmt.line):
-                    self.builder.visit_method(cdef, non_ext, get_func_def(stmt))
+                    BuildFuncIR(self.builder).visit_method(cdef, non_ext, get_func_def(stmt))
             elif isinstance(stmt, PassStmt):
                 continue
             elif isinstance(stmt, AssignmentStmt):
@@ -417,7 +418,7 @@ class BuildClassIR:
         decorators = cdef.decorators
         dec_class = type_obj
         for d in reversed(decorators):
-            decorator = d.accept(self.builder)
+            decorator = d.accept(self.builder.visitor)
             assert isinstance(decorator, Value)
             dec_class = self.builder.py_call(decorator, [dec_class], dec_class.line)
         return dec_class

@@ -73,6 +73,10 @@ from mypyc.specialize import specialize_function
 GenFunc = Callable[[], None]
 
 
+class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
+    pass
+
+
 class UnsupportedException(Exception):
     pass
 
@@ -103,10 +107,17 @@ def build_ir(modules: List[MypyFile],
         pbv = PreBuildVisitor()
         module.accept(pbv)
 
+        # TODO: Get rid of cyclic dependency by extractring build_ir to a new module
+        from mypyc.genopsvisitor import IRBuilderVisitor
+        visitor = IRBuilderVisitor()
+
         # Second pass.
         builder = IRBuilder(
-            module.fullname, types, graph, errors, mapper, pbv, options
+            module.fullname, types, graph, errors, mapper, pbv, visitor, options
         )
+
+        visitor.builder = builder
+
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             module.fullname,
@@ -134,6 +145,7 @@ class IRBuilder:
                  errors: Errors,
                  mapper: Mapper,
                  pbv: PreBuildVisitor,
+                 visitor: IRVisitor,
                  options: CompilerOptions) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper)
         self.builders = [self.builder]
@@ -161,6 +173,8 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+
+        self.visitor = visitor
 
         # This list operates similarly to a function call stack for nested functions. Whenever a
         # function definition begins to be generated, a FuncInfo instance is added to the stack,
@@ -285,10 +299,6 @@ class IRBuilder:
         func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env,
                          traceback_name="<module>")
         self.functions.append(func_ir)
-
-    def visit_method(
-            self, cdef: ClassDef, non_ext: Optional[NonExtClassInfo], fdef: FuncDef) -> None:
-        BuildFuncIR(self).visit_method(cdef, non_ext, fdef)
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
@@ -1305,7 +1315,7 @@ class IRBuilder:
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
                 try:
-                    res = node.accept(self)
+                    res = node.accept(self.visitor)
                     res = self.coerce(res, self.node_type(node), node.line)
                 # If we hit an error during compilation, we want to
                 # keep trying, so we can produce more error
@@ -1316,7 +1326,7 @@ class IRBuilder:
                 return res
             else:
                 try:
-                    node.accept(self)
+                    node.accept(self.visitor)
                 except UnsupportedException:
                     pass
                 return None
