@@ -1,3 +1,8 @@
+"""Dispatcher used when transforming a mypy AST to the IR form.
+
+mypyc.genops and mypyc.genopsmain are closely related.
+"""
+
 from typing_extensions import NoReturn
 
 from mypy.nodes import (
@@ -23,6 +28,20 @@ from mypyc.genexpr import BuildExpressionIR
 
 
 class IRBuilderVisitor(IRVisitor):
+    """Mypy node visitor that dispatches to node transform implementations.
+
+    This class should have no non-trivial logic.
+
+    This visitor is separated from the rest of code to improve modularity and
+    to avoid import cycles.
+
+    This is based on the visitor pattern
+    (https://en.wikipedia.org/wiki/Visitor_pattern).
+    """
+
+    # This gets passed to all the implementations and contains all the
+    # state and many helpers. The attribute is initialized outside
+    # this class since this class and IRBuilder form a reference loop.
     builder = None  # type: IRBuilder
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
@@ -194,10 +213,12 @@ class IRBuilderVisitor(IRVisitor):
         return BuildFuncIR(self.builder).visit_await_expr(o)
 
     # Unimplemented constructs
+
     def visit_assignment_expr(self, o: AssignmentExpr) -> Value:
         self.bail("I Am The Walrus (unimplemented)", o.line)
 
     # Unimplemented constructs that shouldn't come up because they are py2 only
+
     def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
         self.bail("Python 2 features are unsupported", o.line)
 
@@ -211,6 +232,7 @@ class IRBuilderVisitor(IRVisitor):
         self.bail("Python 2 features are unsupported", o.line)
 
     # Constructs that shouldn't ever show up
+
     def visit_enum_call_expr(self, o: EnumCallExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
@@ -249,6 +271,8 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_star_expr(self, o: StarExpr) -> Value:
         assert False, "should have been handled in Tuple/List/Set/DictExpr or CallExpr"
+
+    # Helpers
 
     def bail(self, msg: str, line: int) -> NoReturn:
         """Reports an error and aborts compilation up until the last accept() call

@@ -1,19 +1,14 @@
-"""Transform a mypy AST to the IR form (Intermediate Representation).
+"""Builder class used to transform a mypy AST to the IR form.
 
-For example, consider a function like this:
+The IRBuilder class maintains transformation state and provides access
+to various helpers used to implement the transform.
 
-   def f(x: int) -> int:
-       return x * 2 + 1
+The top-level transform control logic is in mypyc.genopsmain.
 
-It would be translated to something that conceptually looks like this:
-
-   r0 = 2
-   r1 = 1
-   r2 = x * r0 :: int
-   r3 = r2 + r1 :: int
-   return r3
-
-The IR is implemented in mypyc.ops.
+mypyc.genopsvisitor.IRBuilderVisitor is used to dispatch based on mypy
+AST node type to code that actually does the bulk of the work. For
+example, expressions are transformed in mypyc.genexpr and functions are
+transformed in mypyc.genfunc.
 """
 
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any

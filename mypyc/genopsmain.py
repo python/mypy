@@ -1,3 +1,24 @@
+"""Transform a mypy AST to the IR form (Intermediate Representation).
+
+For example, consider a function like this:
+
+   def f(x: int) -> int:
+       return x * 2 + 1
+
+It would be translated to something that conceptually looks like this:
+
+   r0 = 2
+   r1 = 1
+   r2 = x * r0 :: int
+   r3 = r2 + r1 :: int
+   return r3
+
+The IR is implemented in mypyc.ops.
+
+For the core of the implementation, look at build_ir() below,
+mypyc.genops, and mypyc.genopsvisitor.
+"""
+
 from collections import OrderedDict
 from typing import List, Dict, Callable, Any, TypeVar, cast
 
