@@ -4,7 +4,6 @@ This also deals with generators, async functions and nested functions.
 """
 
 from typing import Optional, List, Tuple, Union
-from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
@@ -31,13 +30,11 @@ from mypyc.sametype import is_same_method_signature
 from mypyc.genopsutil import concrete_arg_kind, is_constant, add_self_to_env
 from mypyc.genopscontext import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.genstatement import BuildStatementIR
-
-if TYPE_CHECKING:
-    from mypyc.genops import IRBuilder
+from mypyc.genops import IRBuilder
 
 
 class BuildFuncIR:
-    def __init__(self, builder: 'IRBuilder') -> None:
+    def __init__(self, builder: IRBuilder) -> None:
         self.builder = builder
         self.module_name = builder.module_name
         self.functions = builder.functions
@@ -878,7 +875,7 @@ class BuildFuncIR:
         decorators = self.builder.fdefs_to_decorators[fdef]
         func_reg = orig_func_reg
         for d in reversed(decorators):
-            decorator = d.accept(self.builder)
+            decorator = d.accept(self.builder.visitor)
             assert isinstance(decorator, Value)
             func_reg = self.builder.py_call(decorator, [func_reg], func_reg.line)
         return func_reg

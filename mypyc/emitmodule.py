@@ -19,8 +19,9 @@ from mypy.plugin import Plugin, ReportConfigContext
 from mypy.fscache import FileSystemCache
 from mypy.util import hash_digest
 
-from mypyc import genops
+from mypyc import genopsmain
 from mypyc.genopsprepare import load_type_map
+from mypyc.genopsmapper import Mapper
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
@@ -178,7 +179,7 @@ def parse_and_typecheck(
 def compile_scc_to_ir(
     scc: List[MypyFile],
     result: BuildResult,
-    mapper: genops.Mapper,
+    mapper: Mapper,
     compiler_options: CompilerOptions,
     errors: Errors,
 ) -> ModuleIRs:
@@ -201,7 +202,7 @@ def compile_scc_to_ir(
         print("Compiling {}".format(", ".join(x.name for x in scc)))
 
     # Generate basic IR, with missing exception and refcount handling.
-    modules = genops.build_ir(
+    modules = genopsmain.build_ir(
         scc, result.graph, result.types, mapper, compiler_options, errors
     )
     if errors.num_errors > 0:
@@ -225,7 +226,7 @@ def compile_scc_to_ir(
 
 def compile_modules_to_ir(
     result: BuildResult,
-    mapper: genops.Mapper,
+    mapper: Mapper,
     compiler_options: CompilerOptions,
     errors: Errors,
 ) -> ModuleIRs:
@@ -260,7 +261,7 @@ def compile_ir_to_c(
     groups: Groups,
     modules: ModuleIRs,
     result: BuildResult,
-    mapper: genops.Mapper,
+    mapper: Mapper,
     compiler_options: CompilerOptions,
 ) -> Dict[Optional[str], List[Tuple[str, str]]]:
     """Compile a collection of ModuleIRs to C source text.
@@ -358,7 +359,7 @@ def write_cache(
 def load_scc_from_cache(
     scc: List[MypyFile],
     result: BuildResult,
-    mapper: genops.Mapper,
+    mapper: Mapper,
     ctx: DeserMaps,
 ) -> ModuleIRs:
     """Load IR for an SCC of modules from the cache.
@@ -401,7 +402,7 @@ def compile_modules_to_c(
     """
     # Construct a map from modules to what group they belong to
     group_map = {source.module: lib_name for group, lib_name in groups for source in group}
-    mapper = genops.Mapper(group_map)
+    mapper = Mapper(group_map)
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)

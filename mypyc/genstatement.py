@@ -1,5 +1,4 @@
 from typing import Optional, List, Tuple, Sequence, Callable
-from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import (
     Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
@@ -20,16 +19,13 @@ from mypyc.ops_exc import (
 from mypyc.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
-
-
-if TYPE_CHECKING:
-    from mypyc.genops import IRBuilder
+from mypyc.genops import IRBuilder
 
 GenFunc = Callable[[], None]
 
 
 class BuildStatementIR:
-    def __init__(self, builder: 'IRBuilder') -> None:
+    def __init__(self, builder: IRBuilder) -> None:
         self.builder = builder
 
     def visit_block(self, block: Block) -> None:
@@ -50,7 +46,7 @@ class BuildStatementIR:
             # Docstring. Ignore
             return
         # ExpressionStmts do not need to be coerced like other Expressions.
-        stmt.expr.accept(self.builder)
+        stmt.expr.accept(self.builder.visitor)
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         if stmt.expr:

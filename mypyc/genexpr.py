@@ -4,7 +4,6 @@ The top-level AST transformation logic is implemented in mypyc.genops.
 """
 
 from typing import List, Optional, Union
-from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -25,13 +24,11 @@ from mypyc.ops_tuple import list_tuple_op
 from mypyc.ops_dict import new_dict_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op, set_update_op
 from mypyc.specialize import specializers
-
-if TYPE_CHECKING:
-    from mypyc.genops import IRBuilder
+from mypyc.genops import IRBuilder
 
 
 class BuildExpressionIR:
-    def __init__(self, builder: 'IRBuilder') -> None:
+    def __init__(self, builder: IRBuilder) -> None:
         self.builder = builder
 
     # Name and attribute references
