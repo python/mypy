@@ -29,7 +29,7 @@ from mypyc.common import (
 from mypyc.sametype import is_same_method_signature
 from mypyc.genopsutil import concrete_arg_kind, is_constant, add_self_to_env
 from mypyc.genopscontext import FuncInfo, GeneratorClass, ImplicitClass
-from mypyc.genstatement import BuildStatementIR
+from mypyc.genstatement import transform_try_except
 from mypyc.genops import IRBuilder
 
 
@@ -852,8 +852,8 @@ class BuildFuncIR:
             self.builder.nonlocal_control[-1].gen_break(self.builder, o.line)
 
         self.builder.push_loop_stack(loop_block, done_block)
-        BuildStatementIR(self.builder).visit_try_except(
-            try_body, [(None, None, except_body)], else_body, o.line
+        transform_try_except(
+            self.builder, try_body, [(None, None, except_body)], else_body, o.line
         )
         self.builder.pop_loop_stack()
 

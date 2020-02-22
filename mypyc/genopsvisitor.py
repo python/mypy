@@ -23,7 +23,23 @@ from mypyc.ops import Value
 from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
 from mypyc.genclass import BuildClassIR
 from mypyc.genfunc import BuildFuncIR
-from mypyc.genstatement import BuildStatementIR
+from mypyc.genstatement import (
+    transform_block,
+    transform_expression_stmt,
+    transform_return_stmt,
+    transform_assignment_stmt,
+    transform_operator_assignment_stmt,
+    transform_if_stmt,
+    transform_while_stmt,
+    transform_for_stmt,
+    transform_break_stmt,
+    transform_continue_stmt,
+    transform_raise_stmt,
+    transform_try_stmt,
+    transform_with_stmt,
+    transform_assert_stmt,
+    transform_del_stmt,
+)
 from mypyc.genexpr import BuildExpressionIR
 
 
@@ -69,54 +85,54 @@ class IRBuilderVisitor(IRVisitor):
         BuildFuncIR(self.builder).visit_decorator(dec)
 
     def visit_block(self, block: Block) -> None:
-        BuildStatementIR(self.builder).visit_block(block)
+        transform_block(self.builder, block)
 
     # Statements
 
     def visit_expression_stmt(self, stmt: ExpressionStmt) -> None:
-        BuildStatementIR(self.builder).visit_expression_stmt(stmt)
+        transform_expression_stmt(self.builder, stmt)
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
-        BuildStatementIR(self.builder).visit_return_stmt(stmt)
+        transform_return_stmt(self.builder, stmt)
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
-        BuildStatementIR(self.builder).visit_assignment_stmt(stmt)
+        transform_assignment_stmt(self.builder, stmt)
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
-        BuildStatementIR(self.builder).visit_operator_assignment_stmt(stmt)
+        transform_operator_assignment_stmt(self.builder, stmt)
 
     def visit_if_stmt(self, stmt: IfStmt) -> None:
-        BuildStatementIR(self.builder).visit_if_stmt(stmt)
+        transform_if_stmt(self.builder, stmt)
 
     def visit_while_stmt(self, stmt: WhileStmt) -> None:
-        BuildStatementIR(self.builder).visit_while_stmt(stmt)
+        transform_while_stmt(self.builder, stmt)
 
     def visit_for_stmt(self, stmt: ForStmt) -> None:
-        BuildStatementIR(self.builder).visit_for_stmt(stmt)
+        transform_for_stmt(self.builder, stmt)
 
     def visit_break_stmt(self, stmt: BreakStmt) -> None:
-        BuildStatementIR(self.builder).visit_break_stmt(stmt)
+        transform_break_stmt(self.builder, stmt)
 
     def visit_continue_stmt(self, stmt: ContinueStmt) -> None:
-        BuildStatementIR(self.builder).visit_continue_stmt(stmt)
+        transform_continue_stmt(self.builder, stmt)
 
     def visit_raise_stmt(self, stmt: RaiseStmt) -> None:
-        BuildStatementIR(self.builder).visit_raise_stmt(stmt)
+        transform_raise_stmt(self.builder, stmt)
 
     def visit_try_stmt(self, stmt: TryStmt) -> None:
-        BuildStatementIR(self.builder).visit_try_stmt(stmt)
+        transform_try_stmt(self.builder, stmt)
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
-        BuildStatementIR(self.builder).visit_with_stmt(stmt)
+        transform_with_stmt(self.builder, stmt)
 
     def visit_pass_stmt(self, stmt: PassStmt) -> None:
         pass
 
     def visit_assert_stmt(self, stmt: AssertStmt) -> None:
-        BuildStatementIR(self.builder).visit_assert_stmt(stmt)
+        transform_assert_stmt(self.builder, stmt)
 
     def visit_del_stmt(self, stmt: DelStmt) -> None:
-        BuildStatementIR(self.builder).visit_del_stmt(stmt)
+        transform_del_stmt(self.builder, stmt)
 
     def visit_global_decl(self, stmt: GlobalDecl) -> None:
         # Pure declaration -- no runtime effect
