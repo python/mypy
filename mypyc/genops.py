@@ -24,7 +24,7 @@ from mypy.nodes import (
     StarExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
-    Type, Instance, TupleType, AnyType, TypeOfAny, UninhabitedType, get_proper_type
+    Type, Instance, TupleType, UninhabitedType, get_proper_type
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
@@ -33,14 +33,12 @@ from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value, Register, Op,
-    FuncIR, Assign, Branch, RTuple, Unreachable,
-    TupleGet, ClassIR, NonExtClassInfo, RInstance, GetAttr, SetAttr,
-    LoadStatic, InitStatic, INVALID_FUNC_DEF, int_rprimitive,
-    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
-    str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    PrimitiveOp, OpDescription, is_object_rprimitive,
-    FuncSignature, NAMESPACE_MODULE, RaiseStandardError, FuncDecl
+    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value,
+    Register, Op, FuncIR, Assign, Branch, RTuple, Unreachable, TupleGet, ClassIR,
+    NonExtClassInfo, RInstance, GetAttr, SetAttr, LoadStatic, InitStatic, INVALID_FUNC_DEF,
+    int_rprimitive, is_list_rprimitive, dict_rprimitive, none_rprimitive,
+    is_none_rprimitive, object_rprimitive, PrimitiveOp, OpDescription,
+    is_object_rprimitive, FuncSignature, NAMESPACE_MODULE, RaiseStandardError, FuncDecl
 )
 from mypyc.ops_primitive import func_ops
 from mypyc.ops_list import list_append_op, list_len_op, new_list_op, to_list, list_pop_last
@@ -58,7 +56,6 @@ from mypyc.nonlocalcontrol import (
 from mypyc.genopscontext import FuncInfo, ImplicitClass
 from mypyc.genopsmapper import Mapper
 from mypyc.ir_builder import LowLevelIRBuilder
-from mypyc.specialize import specialize_function
 
 GenFunc = Callable[[], None]
 
@@ -1028,167 +1025,6 @@ class IRBuilder:
                 gen_inner_stmts()
 
         handle_loop(loop_params)
-
-    # Builtin function special cases
-
-    @specialize_function('builtins.globals')
-    def translate_globals(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        # Special case builtins.globals
-        if len(expr.args) == 0:
-            return self.load_globals_dict()
-        return None
-
-    @specialize_function('builtins.len')
-    def translate_len(
-            self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        # Special case builtins.len
-        if (len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]):
-            expr_rtype = self.node_type(expr.args[0])
-            if isinstance(expr_rtype, RTuple):
-                # len() of fixed-length tuple can be trivially determined statically,
-                # though we still need to evaluate it.
-                self.accept(expr.args[0])
-                return self.add(LoadInt(len(expr_rtype.types)))
-        return None
-
-    # Special cases for things that consume iterators where we know we
-    # can safely compile a generator into a list.
-    @specialize_function('builtins.tuple')
-    @specialize_function('builtins.set')
-    @specialize_function('builtins.dict')
-    @specialize_function('builtins.sum')
-    @specialize_function('builtins.min')
-    @specialize_function('builtins.max')
-    @specialize_function('builtins.sorted')
-    @specialize_function('collections.OrderedDict')
-    @specialize_function('join', str_rprimitive)
-    @specialize_function('extend', list_rprimitive)
-    @specialize_function('update', dict_rprimitive)
-    @specialize_function('update', set_rprimitive)
-    def translate_safe_generator_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        if (len(expr.args) > 0
-                and expr.arg_kinds[0] == ARG_POS
-                and isinstance(expr.args[0], GeneratorExpr)):
-            if isinstance(callee, MemberExpr):
-                return self.gen_method_call(
-                    self.accept(callee.expr), callee.name,
-                    ([self.translate_list_comprehension(expr.args[0])]
-                        + [self.accept(arg) for arg in expr.args[1:]]),
-                    self.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
-            else:
-                return self.call_refexpr_with_args(
-                    expr, callee,
-                    ([self.translate_list_comprehension(expr.args[0])]
-                        + [self.accept(arg) for arg in expr.args[1:]]))
-        return None
-
-    @specialize_function('builtins.any')
-    def translate_any_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        if (len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]
-                and isinstance(expr.args[0], GeneratorExpr)):
-            return self.any_all_helper(expr.args[0], false_op, lambda x: x, true_op)
-        return None
-
-    @specialize_function('builtins.all')
-    def translate_all_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        if (len(expr.args) == 1
-                and expr.arg_kinds == [ARG_POS]
-                and isinstance(expr.args[0], GeneratorExpr)):
-            return self.any_all_helper(expr.args[0],
-                                       true_op,
-                                       lambda x: self.unary_op(x, 'not', expr.line),
-                                       false_op)
-        return None
-
-    # Special case for 'dataclasses.field' and 'attr.Factory' function calls
-    # because the results of such calls are typechecked by mypy using the types
-    # of the arguments to their respective functions, resulting in attempted
-    # coercions by mypyc that throw a runtime error.
-    @specialize_function('dataclasses.field')
-    @specialize_function('attr.Factory')
-    def translate_dataclasses_field_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        self.types[expr] = AnyType(TypeOfAny.from_error)
-        return None
-
-    def any_all_helper(self,
-                       gen: GeneratorExpr,
-                       initial_value_op: OpDescription,
-                       modify: Callable[[Value], Value],
-                       new_value_op: OpDescription) -> Value:
-        retval = self.alloc_temp(bool_rprimitive)
-        self.assign(retval, self.primitive_op(initial_value_op, [], -1), -1)
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-        true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
-
-        def gen_inner_stmts() -> None:
-            comparison = modify(self.accept(gen.left_expr))
-            self.add_bool_branch(comparison, true_block, false_block)
-            self.activate_block(true_block)
-            self.assign(retval, self.primitive_op(new_value_op, [], -1), -1)
-            self.goto(exit_block)
-            self.activate_block(false_block)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
-        self.goto_and_activate(exit_block)
-
-        return retval
-
-    # Special case for calling next() on a generator expression, an
-    # idiom that shows up some in mypy.
-    #
-    # For example, next(x for x in l if x.id == 12, None) will
-    # generate code that searches l for an element where x.id == 12
-    # and produce the first such object, or None if no such element
-    # exists.
-    @specialize_function('builtins.next')
-    def translate_next_call(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        if not (expr.arg_kinds in ([ARG_POS], [ARG_POS, ARG_POS])
-                and isinstance(expr.args[0], GeneratorExpr)):
-            return None
-
-        gen = expr.args[0]
-
-        retval = self.alloc_temp(self.node_type(expr))
-        default_val = None
-        if len(expr.args) > 1:
-            default_val = self.accept(expr.args[1])
-
-        exit_block = BasicBlock()
-
-        def gen_inner_stmts() -> None:
-            # next takes the first element of the generator, so if
-            # something gets produced, we are done.
-            self.assign(retval, self.accept(gen.left_expr), gen.left_expr.line)
-            self.goto(exit_block)
-
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
-
-        # Now we need the case for when nothing got hit. If there was
-        # a default value, we produce it, and otherwise we raise
-        # StopIteration.
-        if default_val:
-            self.assign(retval, default_val, gen.left_expr.line)
-            self.goto(exit_block)
-        else:
-            self.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, None, expr.line))
-            self.add(Unreachable())
-
-        self.activate_block(exit_block)
-        return retval
-
-    @specialize_function('builtins.isinstance')
-    def translate_isinstance(self, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-        # Special case builtins.isinstance
-        if (len(expr.args) == 2
-                and expr.arg_kinds == [ARG_POS, ARG_POS]
-                and isinstance(expr.args[1], (RefExpr, TupleExpr))):
-            irs = self.flatten_classes(expr.args[1])
-            if irs is not None:
-                return self.builder.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)
-        return None
 
     def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
         """Flatten classes in isinstance(obj, (A, (B, C))).
