@@ -204,10 +204,14 @@ From the mypy directory, use pip to install mypy:
     $ cd mypy
     $ python3 -m pip install -U .
 
+NOTE:- Don't forget to use . at the end
+
 Replace `python3` with your Python 3 interpreter.  You may have to do
 the above as root. For example, in Ubuntu:
 
     $ sudo python3 -m pip install -U .
+
+NOTE:- Don't forget to use . at the end
 
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
