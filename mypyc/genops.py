@@ -55,32 +55,25 @@ from mypyc.ops import (
     LoadStatic, InitStatic, INVALID_FUNC_DEF, int_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple, PrimitiveOp, OpDescription, is_object_rprimitive,
-    FuncSignature, NAMESPACE_MODULE,
-    RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
+    PrimitiveOp, OpDescription, is_object_rprimitive,
+    FuncSignature, NAMESPACE_MODULE, RaiseStandardError, FuncDecl
 )
 from mypyc.ops_primitive import func_ops
 from mypyc.ops_list import list_append_op, list_len_op, new_list_op, to_list, list_pop_last
 from mypyc.ops_dict import dict_get_item_op, dict_set_item_op
 from mypyc.ops_misc import (
-    true_op, false_op, iter_op, next_op, py_setattr_op, py_delattr_op,
-    type_op, import_op, get_module_dict_op
-)
-from mypyc.ops_exc import (
-    raise_exception_op, reraise_exception_op,
-    error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
-    get_exc_info_op, keep_propagating_op
+    true_op, false_op, iter_op, next_op, py_setattr_op, import_op, get_module_dict_op
 )
 from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.nonlocalcontrol import (
-    NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, ExceptNonlocalControl,
-    FinallyNonlocalControl, TryFinallyNonlocalControl, GeneratorNonlocalControl
+    NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
 from mypyc.genclass import BuildClassIR
 from mypyc.genfunc import BuildFuncIR
+from mypyc.genstatement import BuildStatementIR
 from mypyc.genexpr import BuildExpressionIR
 from mypyc.genopscontext import FuncInfo, ImplicitClass
 from mypyc.genopsmapper import Mapper
@@ -432,34 +425,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if not block.terminated:
             self.add(Unreachable())
 
-    def visit_block(self, block: Block) -> None:
-        if not block.is_unreachable:
-            for stmt in block.body:
-                self.accept(stmt)
-        # Raise a RuntimeError if we hit a non-empty unreachable block.
-        # Don't complain about empty unreachable blocks, since mypy inserts
-        # those after `if MYPY`.
-        elif block.body:
-            self.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
-                                        'Reached allegedly unreachable code!',
-                                        block.line))
-            self.add(Unreachable())
-
-    def visit_expression_stmt(self, stmt: ExpressionStmt) -> None:
-        if isinstance(stmt.expr, StrExpr):
-            # Docstring. Ignore
-            return
-        # ExpressionStmts do not need to be coerced like other Expressions.
-        stmt.expr.accept(self)
-
-    def visit_return_stmt(self, stmt: ReturnStmt) -> None:
-        if stmt.expr:
-            retval = self.accept(stmt.expr)
-        else:
-            retval = self.builder.none()
-        retval = self.coerce(retval, self.ret_types[-1], stmt.line)
-        self.nonlocal_control[-1].gen_return(self, retval, stmt.line)
-
     def disallow_class_assignments(self, lvalues: List[Lvalue], line: int) -> None:
         # Some best-effort attempts to disallow assigning to class
         # variables that aren't marked ClassVar, since we blatantly
@@ -529,38 +494,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.builder.load_static_bytes(val)
         else:
             assert False, "Unsupported final literal value"
-
-    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
-        assert len(stmt.lvalues) >= 1
-        self.disallow_class_assignments(stmt.lvalues, stmt.line)
-        lvalue = stmt.lvalues[0]
-        if stmt.type and isinstance(stmt.rvalue, TempNode):
-            # This is actually a variable annotation without initializer. Don't generate
-            # an assignment but we need to call get_assignment_target since it adds a
-            # name binding as a side effect.
-            self.get_assignment_target(lvalue, stmt.line)
-            return
-
-        line = stmt.rvalue.line
-        rvalue_reg = self.accept(stmt.rvalue)
-        if self.non_function_scope() and stmt.is_final_def:
-            self.init_final_static(lvalue, rvalue_reg)
-        for lvalue in stmt.lvalues:
-            target = self.get_assignment_target(lvalue)
-            self.assign(target, rvalue_reg, line)
-
-    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
-        """Operator assignment statement such as x += 1"""
-        self.disallow_class_assignments([stmt.lvalue], stmt.line)
-        target = self.get_assignment_target(stmt.lvalue)
-        target_value = self.read(target, stmt.line)
-        rreg = self.accept(stmt.rvalue)
-        # the Python parser strips the '=' from operator assignment statements, so re-add it
-        op = stmt.op + '='
-        res = self.binary_op(target_value, rreg, op, stmt.line)
-        # usually operator assignments are done in-place
-        # but when target doesn't support that we need to manually assign
-        self.assign(target, res, res.line)
 
     def get_assignment_target(self, lvalue: Lvalue,
                               line: int = -1) -> AssignmentTarget:
@@ -753,64 +686,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             self.activate_block(ok_block)
 
-    def visit_if_stmt(self, stmt: IfStmt) -> None:
-        if_body, next = BasicBlock(), BasicBlock()
-        else_body = BasicBlock() if stmt.else_body else next
-
-        # If statements are normalized
-        assert len(stmt.expr) == 1
-
-        self.process_conditional(stmt.expr[0], if_body, else_body)
-        self.activate_block(if_body)
-        self.accept(stmt.body[0])
-        self.goto(next)
-        if stmt.else_body:
-            self.activate_block(else_body)
-            self.accept(stmt.else_body)
-            self.goto(next)
-        self.activate_block(next)
-
     def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
         self.nonlocal_control.append(
             LoopNonlocalControl(self.nonlocal_control[-1], continue_block, break_block))
 
     def pop_loop_stack(self) -> None:
         self.nonlocal_control.pop()
-
-    def visit_while_stmt(self, s: WhileStmt) -> None:
-        body, next, top, else_block = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
-        normal_loop_exit = else_block if s.else_body is not None else next
-
-        self.push_loop_stack(top, next)
-
-        # Split block so that we get a handle to the top of the loop.
-        self.goto_and_activate(top)
-        self.process_conditional(s.expr, body, normal_loop_exit)
-
-        self.activate_block(body)
-        self.accept(s.body)
-        # Add branch to the top at the end of the body.
-        self.goto(top)
-
-        self.pop_loop_stack()
-
-        if s.else_body is not None:
-            self.activate_block(else_block)
-            self.accept(s.else_body)
-            self.goto(next)
-
-        self.activate_block(next)
-
-    def visit_for_stmt(self, s: ForStmt) -> None:
-        def body() -> None:
-            self.accept(s.body)
-
-        def else_block() -> None:
-            assert s.else_body is not None
-            self.accept(s.else_body)
-
-        self.for_loop_helper(s.index, s.expr, body,
-                             else_block if s.else_body else None, s.line)
 
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
@@ -1027,12 +908,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Non-tuple iterable.
             return echk.check_method_call_by_name('__next__', iterator, [], [], expr)[0]
 
-    def visit_break_stmt(self, node: BreakStmt) -> None:
-        self.nonlocal_control[-1].gen_break(self, node.line)
-
-    def visit_continue_stmt(self, node: ContinueStmt) -> None:
-        self.nonlocal_control[-1].gen_continue(self, node.line)
-
     def is_native_module(self, module: str) -> bool:
         """Is the given module one compiled by mypyc?"""
         return module in self.mapper.group_map
@@ -1165,342 +1040,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
 
-    def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
-        pass
-
-    def visit_raise_stmt(self, s: RaiseStmt) -> None:
-        if s.expr is None:
-            self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-            self.add(Unreachable())
-            return
-
-        exc = self.accept(s.expr)
-        self.primitive_op(raise_exception_op, [exc], s.line)
-        self.add(Unreachable())
-
-    def visit_try_except(self,
-                         body: GenFunc,
-                         handlers: Sequence[
-                             Tuple[Optional[Expression], Optional[Expression], GenFunc]],
-                         else_body: Optional[GenFunc],
-                         line: int) -> None:
-        """Generalized try/except/else handling that takes functions to gen the bodies.
-
-        The point of this is to also be able to support with."""
-        assert handlers, "try needs except"
-
-        except_entry, exit_block, cleanup_block = BasicBlock(), BasicBlock(), BasicBlock()
-        double_except_block = BasicBlock()
-        # If there is an else block, jump there after the try, otherwise just leave
-        else_block = BasicBlock() if else_body else exit_block
-
-        # Compile the try block with an error handler
-        self.builder.push_error_handler(except_entry)
-        self.goto_and_activate(BasicBlock())
-        body()
-        self.goto(else_block)
-        self.builder.pop_error_handler()
-
-        # The error handler catches the error and then checks it
-        # against the except clauses. We compile the error handler
-        # itself with an error handler so that it can properly restore
-        # the *old* exc_info if an exception occurs.
-        # The exception chaining will be done automatically when the
-        # exception is raised, based on the exception in exc_info.
-        self.builder.push_error_handler(double_except_block)
-        self.activate_block(except_entry)
-        old_exc = self.maybe_spill(self.primitive_op(error_catch_op, [], line))
-        # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
-        self.nonlocal_control.append(
-            ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
-
-        # Process the bodies
-        for type, var, handler_body in handlers:
-            next_block = None
-            if type:
-                next_block, body_block = BasicBlock(), BasicBlock()
-                matches = self.primitive_op(exc_matches_op, [self.accept(type)], type.line)
-                self.add(Branch(matches, body_block, next_block, Branch.BOOL_EXPR))
-                self.activate_block(body_block)
-            if var:
-                target = self.get_assignment_target(var)
-                self.assign(target, self.primitive_op(get_exc_value_op, [], var.line), var.line)
-            handler_body()
-            self.goto(cleanup_block)
-            if next_block:
-                self.activate_block(next_block)
-
-        # Reraise the exception if needed
-        if next_block:
-            self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-            self.add(Unreachable())
-
-        self.nonlocal_control.pop()
-        self.builder.pop_error_handler()
-
-        # Cleanup for if we leave except through normal control flow:
-        # restore the saved exc_info information and continue propagating
-        # the exception if it exists.
-        self.activate_block(cleanup_block)
-        self.primitive_op(restore_exc_info_op, [self.read(old_exc)], line)
-        self.goto(exit_block)
-
-        # Cleanup for if we leave except through a raised exception:
-        # restore the saved exc_info information and continue propagating
-        # the exception.
-        self.activate_block(double_except_block)
-        self.primitive_op(restore_exc_info_op, [self.read(old_exc)], line)
-        self.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
-        self.add(Unreachable())
-
-        # If present, compile the else body in the obvious way
-        if else_body:
-            self.activate_block(else_block)
-            else_body()
-            self.goto(exit_block)
-
-        self.activate_block(exit_block)
-
-    def visit_try_except_stmt(self, t: TryStmt) -> None:
-        def body() -> None:
-            self.accept(t.body)
-
-        # Work around scoping woes
-        def make_handler(body: Block) -> GenFunc:
-            return lambda: self.accept(body)
-
-        handlers = [(type, var, make_handler(body)) for type, var, body in
-                    zip(t.types, t.vars, t.handlers)]
-        else_body = (lambda: self.accept(t.else_body)) if t.else_body else None
-        self.visit_try_except(body, handlers, else_body, t.line)
-
-    def try_finally_try(self, err_handler: BasicBlock, return_entry: BasicBlock,
-                        main_entry: BasicBlock, try_body: GenFunc) -> Optional[Register]:
-        # Compile the try block with an error handler
-        control = TryFinallyNonlocalControl(return_entry)
-        self.builder.push_error_handler(err_handler)
-
-        self.nonlocal_control.append(control)
-        self.goto_and_activate(BasicBlock())
-        try_body()
-        self.goto(main_entry)
-        self.nonlocal_control.pop()
-        self.builder.pop_error_handler()
-
-        return control.ret_reg
-
-    def try_finally_entry_blocks(self,
-                                 err_handler: BasicBlock, return_entry: BasicBlock,
-                                 main_entry: BasicBlock, finally_block: BasicBlock,
-                                 ret_reg: Optional[Register]) -> Value:
-        old_exc = self.alloc_temp(exc_rtuple)
-
-        # Entry block for non-exceptional flow
-        self.activate_block(main_entry)
-        if ret_reg:
-            self.add(Assign(ret_reg, self.add(LoadErrorValue(self.ret_types[-1]))))
-        self.goto(return_entry)
-
-        self.activate_block(return_entry)
-        self.add(Assign(old_exc, self.add(LoadErrorValue(exc_rtuple))))
-        self.goto(finally_block)
-
-        # Entry block for errors
-        self.activate_block(err_handler)
-        if ret_reg:
-            self.add(Assign(ret_reg, self.add(LoadErrorValue(self.ret_types[-1]))))
-        self.add(Assign(old_exc, self.primitive_op(error_catch_op, [], -1)))
-        self.goto(finally_block)
-
-        return old_exc
-
-    def try_finally_body(
-            self, finally_block: BasicBlock, finally_body: GenFunc,
-            ret_reg: Optional[Value], old_exc: Value) -> Tuple[BasicBlock,
-                                                               'FinallyNonlocalControl']:
-        cleanup_block = BasicBlock()
-        # Compile the finally block with the nonlocal control flow overridden to restore exc_info
-        self.builder.push_error_handler(cleanup_block)
-        finally_control = FinallyNonlocalControl(
-            self.nonlocal_control[-1], ret_reg, old_exc)
-        self.nonlocal_control.append(finally_control)
-        self.activate_block(finally_block)
-        finally_body()
-        self.nonlocal_control.pop()
-
-        return cleanup_block, finally_control
-
-    def try_finally_resolve_control(self, cleanup_block: BasicBlock,
-                                    finally_control: FinallyNonlocalControl,
-                                    old_exc: Value, ret_reg: Optional[Value]) -> BasicBlock:
-        """Resolve the control flow out of a finally block.
-
-        This means returning if there was a return, propagating
-        exceptions, break/continue (soon), or just continuing on.
-        """
-        reraise, rest = BasicBlock(), BasicBlock()
-        self.add(Branch(old_exc, rest, reraise, Branch.IS_ERROR))
-
-        # Reraise the exception if there was one
-        self.activate_block(reraise)
-        self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-        self.add(Unreachable())
-        self.builder.pop_error_handler()
-
-        # If there was a return, keep returning
-        if ret_reg:
-            self.activate_block(rest)
-            return_block, rest = BasicBlock(), BasicBlock()
-            self.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR))
-
-            self.activate_block(return_block)
-            self.nonlocal_control[-1].gen_return(self, ret_reg, -1)
-
-        # TODO: handle break/continue
-        self.activate_block(rest)
-        out_block = BasicBlock()
-        self.goto(out_block)
-
-        # If there was an exception, restore again
-        self.activate_block(cleanup_block)
-        finally_control.gen_cleanup(self, -1)
-        self.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
-        self.add(Unreachable())
-
-        return out_block
-
-    def visit_try_finally_stmt(self, try_body: GenFunc, finally_body: GenFunc) -> None:
-        """Generalized try/finally handling that takes functions to gen the bodies.
-
-        The point of this is to also be able to support with."""
-        # Finally is a big pain, because there are so many ways that
-        # exits can occur. We emit 10+ basic blocks for every finally!
-
-        err_handler, main_entry, return_entry, finally_block = (
-            BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock())
-
-        # Compile the body of the try
-        ret_reg = self.try_finally_try(
-            err_handler, return_entry, main_entry, try_body)
-
-        # Set up the entry blocks for the finally statement
-        old_exc = self.try_finally_entry_blocks(
-            err_handler, return_entry, main_entry, finally_block, ret_reg)
-
-        # Compile the body of the finally
-        cleanup_block, finally_control = self.try_finally_body(
-            finally_block, finally_body, ret_reg, old_exc)
-
-        # Resolve the control flow out of the finally block
-        out_block = self.try_finally_resolve_control(
-            cleanup_block, finally_control, old_exc, ret_reg)
-
-        self.activate_block(out_block)
-
-    def visit_try_stmt(self, t: TryStmt) -> None:
-        # Our compilation strategy for try/except/else/finally is to
-        # treat try/except/else and try/finally as separate language
-        # constructs that we compile separately. When we have a
-        # try/except/else/finally, we treat the try/except/else as the
-        # body of a try/finally block.
-        if t.finally_body:
-            def visit_try_body() -> None:
-                if t.handlers:
-                    self.visit_try_except_stmt(t)
-                else:
-                    self.accept(t.body)
-            body = t.finally_body
-
-            self.visit_try_finally_stmt(visit_try_body, lambda: self.accept(body))
-        else:
-            self.visit_try_except_stmt(t)
-
-    def get_sys_exc_info(self) -> List[Value]:
-        exc_info = self.primitive_op(get_exc_info_op, [], -1)
-        return [self.add(TupleGet(exc_info, i, -1)) for i in range(3)]
-
-    def visit_with(self, expr: Expression, target: Optional[Lvalue],
-                   body: GenFunc, line: int) -> None:
-
-        # This is basically a straight transcription of the Python code in PEP 343.
-        # I don't actually understand why a bunch of it is the way it is.
-        # We could probably optimize the case where the manager is compiled by us,
-        # but that is not our common case at all, so.
-        mgr_v = self.accept(expr)
-        typ = self.primitive_op(type_op, [mgr_v], line)
-        exit_ = self.maybe_spill(self.py_get_attr(typ, '__exit__', line))
-        value = self.py_call(self.py_get_attr(typ, '__enter__', line), [mgr_v], line)
-        mgr = self.maybe_spill(mgr_v)
-        exc = self.maybe_spill_assignable(self.primitive_op(true_op, [], -1))
-
-        def try_body() -> None:
-            if target:
-                self.assign(self.get_assignment_target(target), value, line)
-            body()
-
-        def except_body() -> None:
-            self.assign(exc, self.primitive_op(false_op, [], -1), line)
-            out_block, reraise_block = BasicBlock(), BasicBlock()
-            self.add_bool_branch(self.py_call(self.read(exit_),
-                                              [self.read(mgr)] + self.get_sys_exc_info(), line),
-                                 out_block, reraise_block)
-            self.activate_block(reraise_block)
-            self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-            self.add(Unreachable())
-            self.activate_block(out_block)
-
-        def finally_body() -> None:
-            out_block, exit_block = BasicBlock(), BasicBlock()
-            self.add(Branch(self.read(exc), exit_block, out_block, Branch.BOOL_EXPR))
-            self.activate_block(exit_block)
-            none = self.none_object()
-            self.py_call(self.read(exit_), [self.read(mgr), none, none, none], line)
-            self.goto_and_activate(out_block)
-
-        self.visit_try_finally_stmt(
-            lambda: self.visit_try_except(try_body, [(None, None, except_body)], None, line),
-            finally_body)
-
-    def visit_with_stmt(self, o: WithStmt) -> None:
-        # Generate separate logic for each expr in it, left to right
-        def generate(i: int) -> None:
-            if i >= len(o.expr):
-                self.accept(o.body)
-            else:
-                self.visit_with(o.expr[i], o.target[i], lambda: generate(i + 1), o.line)
-
-        generate(0)
-
-    def visit_pass_stmt(self, o: PassStmt) -> None:
-        pass
-
-    def visit_global_decl(self, o: GlobalDecl) -> None:
-        # Pure declaration -- no runtime effect
-        pass
-
-    def visit_assert_stmt(self, a: AssertStmt) -> None:
-        if self.options.strip_asserts:
-            return
-        cond = self.accept(a.expr)
-        ok_block, error_block = BasicBlock(), BasicBlock()
-        self.add_bool_branch(cond, ok_block, error_block)
-        self.activate_block(error_block)
-        if a.msg is None:
-            # Special case (for simpler generated code)
-            self.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, None, a.line))
-        elif isinstance(a.msg, StrExpr):
-            # Another special case
-            self.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, a.msg.value,
-                                        a.line))
-        else:
-            # The general case -- explicitly construct an exception instance
-            message = self.accept(a.msg)
-            exc_type = self.load_module_attr_by_fullname('builtins.AssertionError', a.line)
-            exc = self.py_call(exc_type, [message], a.line)
-            self.primitive_op(raise_exception_op, [exc], a.line)
-        self.add(Unreachable())
-        self.activate_block(ok_block)
-
     def translate_list_comprehension(self, gen: GeneratorExpr) -> Value:
         list_ops = self.primitive_op(new_list_op, [], gen.line)
         loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
@@ -1570,29 +1109,63 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_decorator(self, dec: Decorator) -> None:
         BuildFuncIR(self).visit_decorator(dec)
 
-    def visit_del_stmt(self, o: DelStmt) -> None:
-        self.visit_del_item(self.get_assignment_target(o.expr), o.line)
+    def visit_block(self, block: Block) -> None:
+        BuildStatementIR(self).visit_block(block)
 
-    def visit_del_item(self, target: AssignmentTarget, line: int) -> None:
-        if isinstance(target, AssignmentTargetIndex):
-            self.gen_method_call(
-                target.base,
-                '__delitem__',
-                [target.index],
-                result_type=None,
-                line=line
-            )
-        elif isinstance(target, AssignmentTargetAttr):
-            key = self.load_static_unicode(target.attr)
-            self.add(PrimitiveOp([target.obj, key], py_delattr_op, line))
-        elif isinstance(target, AssignmentTargetRegister):
-            # Delete a local by assigning an error value to it, which will
-            # prompt the insertion of uninit checks.
-            self.add(Assign(target.register,
-                            self.add(LoadErrorValue(target.type, undefines=True))))
-        elif isinstance(target, AssignmentTargetTuple):
-            for subtarget in target.items:
-                self.visit_del_item(subtarget, line)
+    # Statements
+
+    def visit_expression_stmt(self, stmt: ExpressionStmt) -> None:
+        BuildStatementIR(self).visit_expression_stmt(stmt)
+
+    def visit_return_stmt(self, stmt: ReturnStmt) -> None:
+        BuildStatementIR(self).visit_return_stmt(stmt)
+
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
+        BuildStatementIR(self).visit_assignment_stmt(stmt)
+
+    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
+        BuildStatementIR(self).visit_operator_assignment_stmt(stmt)
+
+    def visit_if_stmt(self, stmt: IfStmt) -> None:
+        BuildStatementIR(self).visit_if_stmt(stmt)
+
+    def visit_while_stmt(self, stmt: WhileStmt) -> None:
+        BuildStatementIR(self).visit_while_stmt(stmt)
+
+    def visit_for_stmt(self, stmt: ForStmt) -> None:
+        BuildStatementIR(self).visit_for_stmt(stmt)
+
+    def visit_break_stmt(self, stmt: BreakStmt) -> None:
+        BuildStatementIR(self).visit_break_stmt(stmt)
+
+    def visit_continue_stmt(self, stmt: ContinueStmt) -> None:
+        BuildStatementIR(self).visit_continue_stmt(stmt)
+
+    def visit_raise_stmt(self, stmt: RaiseStmt) -> None:
+        BuildStatementIR(self).visit_raise_stmt(stmt)
+
+    def visit_try_stmt(self, stmt: TryStmt) -> None:
+        BuildStatementIR(self).visit_try_stmt(stmt)
+
+    def visit_with_stmt(self, stmt: WithStmt) -> None:
+        BuildStatementIR(self).visit_with_stmt(stmt)
+
+    def visit_pass_stmt(self, stmt: PassStmt) -> None:
+        pass
+
+    def visit_assert_stmt(self, stmt: AssertStmt) -> None:
+        BuildStatementIR(self).visit_assert_stmt(stmt)
+
+    def visit_del_stmt(self, stmt: DelStmt) -> None:
+        BuildStatementIR(self).visit_del_stmt(stmt)
+
+    def visit_global_decl(self, stmt: GlobalDecl) -> None:
+        # Pure declaration -- no runtime effect
+        pass
+
+    def visit_nonlocal_decl(self, stmt: NonlocalDecl) -> None:
+        # Pure declaration -- no runtime effect
+        pass
 
     # Expressions
 
