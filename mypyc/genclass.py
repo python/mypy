@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from typing_extensions import overload, TYPE_CHECKING
+from typing_extensions import overload
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
@@ -25,13 +25,11 @@ from mypyc.genopsutil import (
 )
 from mypyc.genfunc import BuildFuncIR
 from mypyc.common import SELF_NAME
-
-if TYPE_CHECKING:
-    from mypyc.genops import IRBuilder
+from mypyc.genops import IRBuilder
 
 
 class BuildClassIR:
-    def __init__(self, builder: 'IRBuilder') -> None:
+    def __init__(self, builder: IRBuilder) -> None:
         self.builder = builder
         self.mapper = builder.mapper
         self.module_name = builder.module_name
