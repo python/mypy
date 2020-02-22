@@ -25,18 +25,10 @@ import importlib.util
 
 from mypy.build import Graph
 from mypy.nodes import (
-    MypyFile, SymbolNode, Statement, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
-    IntExpr, NameExpr, LDEF, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, CallExpr,
-    IndexExpr, Block, Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue,
-    BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
-    TypeInfo, Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode,
-    PassStmt, PromoteExpr, AssignmentExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr,
-    ComplexExpr, Decorator, DelStmt, DictionaryComprehension, EllipsisExpr, EnumCallExpr, ExecStmt,
-    FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
-    NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
-    RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
-    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_NAMED,
+    MypyFile, SymbolNode, Statement, FuncDef, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
+    CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr, ClassDef,
+    TypeInfo, Import, ImportFrom, ImportAll, Decorator, GeneratorExpr, OverloadedFuncDef,
+    StarExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, AnyType, TypeOfAny, UninhabitedType, get_proper_type
@@ -71,10 +63,6 @@ from mypyc.errors import Errors
 from mypyc.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
-from mypyc.genclass import BuildClassIR
-from mypyc.genfunc import BuildFuncIR
-from mypyc.genstatement import BuildStatementIR
-from mypyc.genexpr import BuildExpressionIR
 from mypyc.genopscontext import FuncInfo, ImplicitClass
 from mypyc.genopsmapper import Mapper
 from mypyc.genopsvtable import compute_vtable
@@ -138,7 +126,7 @@ def build_ir(modules: List[MypyFile],
     return result
 
 
-class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
+class IRBuilder:
     def __init__(self,
                  current_module: str,
                  types: Dict[Expression, Type],
@@ -302,9 +290,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self, cdef: ClassDef, non_ext: Optional[NonExtClassInfo], fdef: FuncDef) -> None:
         BuildFuncIR(self).visit_method(cdef, non_ext, fdef)
 
-    def visit_class_def(self, cdef: ClassDef) -> None:
-        BuildClassIR(self).visit_class_def(cdef)
-
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
@@ -407,12 +392,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_implicit_return()
         else:
             self.add_implicit_unreachable()
-
-    def visit_func_def(self, fdef: FuncDef) -> None:
-        BuildFuncIR(self).visit_func_def(fdef)
-
-    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
-        BuildFuncIR(self).visit_overloaded_func_def(o)
 
     def add_implicit_return(self) -> None:
         block = self.builder.blocks[-1]
@@ -1106,149 +1085,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         handle_loop(loop_params)
 
-    def visit_decorator(self, dec: Decorator) -> None:
-        BuildFuncIR(self).visit_decorator(dec)
-
-    def visit_block(self, block: Block) -> None:
-        BuildStatementIR(self).visit_block(block)
-
-    # Statements
-
-    def visit_expression_stmt(self, stmt: ExpressionStmt) -> None:
-        BuildStatementIR(self).visit_expression_stmt(stmt)
-
-    def visit_return_stmt(self, stmt: ReturnStmt) -> None:
-        BuildStatementIR(self).visit_return_stmt(stmt)
-
-    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
-        BuildStatementIR(self).visit_assignment_stmt(stmt)
-
-    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
-        BuildStatementIR(self).visit_operator_assignment_stmt(stmt)
-
-    def visit_if_stmt(self, stmt: IfStmt) -> None:
-        BuildStatementIR(self).visit_if_stmt(stmt)
-
-    def visit_while_stmt(self, stmt: WhileStmt) -> None:
-        BuildStatementIR(self).visit_while_stmt(stmt)
-
-    def visit_for_stmt(self, stmt: ForStmt) -> None:
-        BuildStatementIR(self).visit_for_stmt(stmt)
-
-    def visit_break_stmt(self, stmt: BreakStmt) -> None:
-        BuildStatementIR(self).visit_break_stmt(stmt)
-
-    def visit_continue_stmt(self, stmt: ContinueStmt) -> None:
-        BuildStatementIR(self).visit_continue_stmt(stmt)
-
-    def visit_raise_stmt(self, stmt: RaiseStmt) -> None:
-        BuildStatementIR(self).visit_raise_stmt(stmt)
-
-    def visit_try_stmt(self, stmt: TryStmt) -> None:
-        BuildStatementIR(self).visit_try_stmt(stmt)
-
-    def visit_with_stmt(self, stmt: WithStmt) -> None:
-        BuildStatementIR(self).visit_with_stmt(stmt)
-
-    def visit_pass_stmt(self, stmt: PassStmt) -> None:
-        pass
-
-    def visit_assert_stmt(self, stmt: AssertStmt) -> None:
-        BuildStatementIR(self).visit_assert_stmt(stmt)
-
-    def visit_del_stmt(self, stmt: DelStmt) -> None:
-        BuildStatementIR(self).visit_del_stmt(stmt)
-
-    def visit_global_decl(self, stmt: GlobalDecl) -> None:
-        # Pure declaration -- no runtime effect
-        pass
-
-    def visit_nonlocal_decl(self, stmt: NonlocalDecl) -> None:
-        # Pure declaration -- no runtime effect
-        pass
-
-    # Expressions
-
-    def visit_name_expr(self, expr: NameExpr) -> Value:
-        return BuildExpressionIR(self).visit_name_expr(expr)
-
-    def visit_member_expr(self, expr: MemberExpr) -> Value:
-        return BuildExpressionIR(self).visit_member_expr(expr)
-
-    def visit_super_expr(self, expr: SuperExpr) -> Value:
-        return BuildExpressionIR(self).visit_super_expr(expr)
-
-    def visit_call_expr(self, expr: CallExpr) -> Value:
-        return BuildExpressionIR(self).visit_call_expr(expr)
-
-    def visit_unary_expr(self, expr: UnaryExpr) -> Value:
-        return BuildExpressionIR(self).visit_unary_expr(expr)
-
-    def visit_op_expr(self, expr: OpExpr) -> Value:
-        return BuildExpressionIR(self).visit_op_expr(expr)
-
-    def visit_index_expr(self, expr: IndexExpr) -> Value:
-        return BuildExpressionIR(self).visit_index_expr(expr)
-
-    def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
-        return BuildExpressionIR(self).visit_conditional_expr(expr)
-
-    def visit_comparison_expr(self, expr: ComparisonExpr) -> Value:
-        return BuildExpressionIR(self).visit_comparison_expr(expr)
-
-    def visit_int_expr(self, expr: IntExpr) -> Value:
-        return BuildExpressionIR(self).visit_int_expr(expr)
-
-    def visit_float_expr(self, expr: FloatExpr) -> Value:
-        return BuildExpressionIR(self).visit_float_expr(expr)
-
-    def visit_complex_expr(self, expr: ComplexExpr) -> Value:
-        return BuildExpressionIR(self).visit_complex_expr(expr)
-
-    def visit_str_expr(self, expr: StrExpr) -> Value:
-        return BuildExpressionIR(self).visit_str_expr(expr)
-
-    def visit_bytes_expr(self, expr: BytesExpr) -> Value:
-        return BuildExpressionIR(self).visit_bytes_expr(expr)
-
-    def visit_ellipsis(self, expr: EllipsisExpr) -> Value:
-        return BuildExpressionIR(self).visit_ellipsis(expr)
-
-    def visit_list_expr(self, expr: ListExpr) -> Value:
-        return BuildExpressionIR(self).visit_list_expr(expr)
-
-    def visit_tuple_expr(self, expr: TupleExpr) -> Value:
-        return BuildExpressionIR(self).visit_tuple_expr(expr)
-
-    def visit_dict_expr(self, expr: DictExpr) -> Value:
-        return BuildExpressionIR(self).visit_dict_expr(expr)
-
-    def visit_set_expr(self, expr: SetExpr) -> Value:
-        return BuildExpressionIR(self).visit_set_expr(expr)
-
-    def visit_list_comprehension(self, expr: ListComprehension) -> Value:
-        return BuildExpressionIR(self).visit_list_comprehension(expr)
-
-    def visit_set_comprehension(self, expr: SetComprehension) -> Value:
-        return BuildExpressionIR(self).visit_set_comprehension(expr)
-
-    def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> Value:
-        return BuildExpressionIR(self).visit_dictionary_comprehension(expr)
-
-    def visit_slice_expr(self, expr: SliceExpr) -> Value:
-        return BuildExpressionIR(self).visit_slice_expr(expr)
-
-    def visit_generator_expr(self, expr: GeneratorExpr) -> Value:
-        return BuildExpressionIR(self).visit_generator_expr(expr)
-
-    def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
-        return BuildFuncIR(self).visit_lambda_expr(expr)
-
-    def visit_yield_expr(self, expr: YieldExpr) -> Value:
-        return BuildFuncIR(self).visit_yield_expr(expr)
-
-    def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
-        return BuildFuncIR(self).visit_yield_from_expr(o)
 
     # Builtin function special cases
 
@@ -1434,66 +1270,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     return None
             return res
 
-    def visit_await_expr(self, o: AwaitExpr) -> Value:
-        return BuildFuncIR(self).visit_await_expr(o)
-
-    # Unimplemented constructs
-    def visit_assignment_expr(self, o: AssignmentExpr) -> Value:
-        self.bail("I Am The Walrus (unimplemented)", o.line)
-
-    # Unimplemented constructs that shouldn't come up because they are py2 only
-    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
-        self.bail("Python 2 features are unsupported", o.line)
-
-    # Constructs that shouldn't ever show up
-    def visit_enum_call_expr(self, o: EnumCallExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit__promote_expr(self, o: PromoteExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_namedtuple_expr(self, o: NamedTupleExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_newtype_expr(self, o: NewTypeExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_temp_node(self, o: TempNode) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_type_alias_expr(self, o: TypeAliasExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_type_application(self, o: TypeApplication) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_type_var_expr(self, o: TypeVarExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_reveal_expr(self, o: RevealExpr) -> Value:
-        assert False, "can't compile analysis-only expressions"
-
-    def visit_var(self, o: Var) -> None:
-        assert False, "can't compile Var; should have been handled already?"
-
-    def visit_cast_expr(self, o: CastExpr) -> Value:
-        assert False, "CastExpr should have been handled in CallExpr"
-
-    def visit_star_expr(self, o: StarExpr) -> Value:
-        assert False, "should have been handled in Tuple/List/Set/DictExpr or CallExpr"
-
     # Helpers
 
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
@@ -1619,13 +1395,3 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def error(self, msg: str, line: int) -> None:
         self.errors.error(msg, self.module_path, line)
-
-    def bail(self, msg: str, line: int) -> 'NoReturn':
-        """Reports an error and aborts compilation up until the last accept() call
-
-        (accept() catches the UnsupportedException and keeps on
-        processing. This allows errors to be non-blocking without always
-        needing to write handling for them.
-        """
-        self.error(msg, line)
-        raise UnsupportedException()
