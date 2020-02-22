@@ -81,7 +81,9 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES
+from mypy.messages import (
+    best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES, TYPES_FOR_UNIMPORTED_HINTS
+)
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
@@ -119,21 +121,6 @@ from mypy.reachability import (
 from mypy.mro import calculate_mro, MroError
 
 T = TypeVar('T')
-
-TYPES_FOR_UNIMPORTED_HINTS = {
-    'typing.Any',
-    'typing.Callable',
-    'typing.Dict',
-    'typing.Iterable',
-    'typing.Iterator',
-    'typing.List',
-    'typing.Optional',
-    'typing.Set',
-    'typing.Tuple',
-    'typing.TypeVar',
-    'typing.Union',
-    'typing.cast',
-}  # type: Final
 
 
 # Special cased built-in classes that are needed for basic functionality and need to be
