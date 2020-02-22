@@ -14,10 +14,11 @@ from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc import genops
+from mypyc.genopsmain import build_ir
 from mypyc.options import CompilerOptions
 from mypyc.ops import FuncIR
 from mypyc.errors import Errors
+from mypyc.genopsmapper import Mapper
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.
@@ -105,9 +106,9 @@ def build_ir_for_single_file(input_lines: List[str],
         raise CompileError(result.errors)
 
     errors = Errors()
-    modules = genops.build_ir(
+    modules = build_ir(
         [result.files['__main__']], result.graph, result.types,
-        genops.Mapper({'__main__': None}),
+        Mapper({'__main__': None}),
         compiler_options, errors)
     assert errors.num_errors == 0
 

@@ -12,7 +12,7 @@ from mypyc.ops import (
     ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
     list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
 )
-from mypyc.genops import compute_vtable
+from mypyc.genopsvtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.ops_primitive import binary_ops
