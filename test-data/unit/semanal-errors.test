@@ -1294,12 +1294,6 @@ x = 1
 y = 1
 [out]
 
-[case testMissingStubForThirdPartyModule]
-import __dummy_third_party1
-[out]
-main:1: error: No library stub file for module '__dummy_third_party1'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-
 [case testMissingStubForStdLibModule]
 import __dummy_stdlib1
 [out]

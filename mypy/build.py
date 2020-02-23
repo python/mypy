@@ -42,7 +42,10 @@ if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
-from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
+from mypy.modulefinder import (
+    BuildSource, compute_search_paths, FindModuleCache, SearchPaths, ModuleSearchResult,
+    ModuleNotFoundReason
+)
 from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
@@ -2369,15 +2372,15 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = find_module_simple(file_id, manager)
-    if path:
+    result = find_module_with_reason(file_id, manager)
+    if isinstance(result, str):
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
         # - silent -> analyze but silence errors
         # - skip -> don't analyze, make the type Any
         follow_imports = options.follow_imports
         if (root_source  # Honor top-level modules
-                or (not path.endswith('.py')  # Stubs are always normal
+                or (not result.endswith('.py')  # Stubs are always normal
                     and not options.follow_imports_for_stubs)  # except when they aren't
                 or id in mypy.semanal_main.core_modules):  # core is always normal
             follow_imports = 'normal'
@@ -2385,32 +2388,32 @@ def find_module_and_diagnose(manager: BuildManager,
             pass
         elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
-            manager.log("Silencing %s (%s)" % (path, id))
+            manager.log("Silencing %s (%s)" % (result, id))
         elif follow_imports == 'skip' or follow_imports == 'error':
             # In 'error' mode, produce special error messages.
             if id not in manager.missing_modules:
-                manager.log("Skipping %s (%s)" % (path, id))
+                manager.log("Skipping %s (%s)" % (result, id))
             if follow_imports == 'error':
                 if ancestor_for:
-                    skipping_ancestor(manager, id, path, ancestor_for)
+                    skipping_ancestor(manager, id, result, ancestor_for)
                 else:
                     skipping_module(manager, caller_line, caller_state,
-                                    id, path)
+                                    id, result)
             raise ModuleNotFound
         if not manager.options.no_silence_site_packages:
             for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-                if is_sub_path(path, dir):
+                if is_sub_path(result, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = 'silent'
         if (id in CORE_BUILTIN_MODULES
-                and not is_typeshed_file(path)
+                and not is_typeshed_file(result)
                 and not options.use_builtins_fixtures
                 and not options.custom_typeshed_dir):
             raise CompileError([
-                'mypy: "%s" shadows library module "%s"' % (path, id),
+                'mypy: "%s" shadows library module "%s"' % (result, id),
                 'note: A user-defined top-level module with name "%s" is not supported' % id
             ])
-        return (path, follow_imports)
+        return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
@@ -2419,7 +2422,7 @@ def find_module_and_diagnose(manager: BuildManager,
             raise ModuleNotFound
         if caller_state:
             if not (options.ignore_missing_imports or in_partial_package(id, manager)):
-                module_not_found(manager, caller_line, caller_state, id)
+                module_not_found(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
         elif root_source:
             # If we can't find a root source it's always fatal.
@@ -2456,10 +2459,17 @@ def exist_added_packages(suppressed: List[str],
 
 def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
     """Find a filesystem path for module `id` or `None` if not found."""
+    x = find_module_with_reason(id, manager)
+    if isinstance(x, ModuleNotFoundReason):
+        return None
+    return x
+
+
+def find_module_with_reason(id: str, manager: BuildManager) -> ModuleSearchResult:
+    """Find a filesystem path for module `id` or the reason it can't be found."""
     t0 = time.time()
     x = manager.find_module_cache.find_module(id)
     manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
-
     return x
 
 
@@ -2493,35 +2503,23 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
 
 
 def module_not_found(manager: BuildManager, line: int, caller_state: State,
-                     target: str) -> None:
+                     target: str, reason: ModuleNotFoundReason) -> None:
     errors = manager.errors
     save_import_context = errors.import_context()
     errors.set_import_context(caller_state.import_context)
     errors.set_file(caller_state.xpath, caller_state.id)
-    stub_msg = "(Stub files are from https://github.com/python/typeshed)"
     if target == 'builtins':
         errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
                       blocker=True)
         errors.raise_error()
-    elif ((manager.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target))
-          or (manager.options.python_version[0] >= 3
-              and moduleinfo.is_py3_std_lib_module(target))):
-        errors.report(
-            line, 0, "No library stub file for standard library module '{}'".format(target),
-            code=codes.IMPORT)
-        errors.report(line, 0, stub_msg, severity='note', only_once=True, code=codes.IMPORT)
-    elif moduleinfo.is_third_party_module(target):
-        errors.report(line, 0, "No library stub file for module '{}'".format(target),
-                      code=codes.IMPORT)
-        errors.report(line, 0, stub_msg, severity='note', only_once=True, code=codes.IMPORT)
+    elif moduleinfo.is_std_lib_module(manager.options.python_version, target):
+        msg = "No library stub file for standard library module '{}'".format(target)
+        note = "(Stub files are from https://github.com/python/typeshed)"
+        errors.report(line, 0, msg, code=codes.IMPORT)
+        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     else:
-        note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
-        errors.report(
-            line,
-            0,
-            "Cannot find implementation or library stub for module named '{}'".format(target),
-            code=codes.IMPORT
-        )
+        msg, note = reason.error_message_templates()
+        errors.report(line, 0, msg.format(target), code=codes.IMPORT)
         errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     errors.set_import_context(save_import_context)
 
