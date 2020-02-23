@@ -41,7 +41,7 @@ def split_blocks_at_uninits(env: Environment,
         for i, op in enumerate(ops):
             defined = pre_must_defined[block, i]
             for src in op.unique_sources():
-                # If a register operand is not guarenteed to be
+                # If a register operand is not guaranteed to be
                 # initialized is an operand to something other than a
                 # check that it is defined, insert a check.
                 if (isinstance(src, Register) and src not in defined

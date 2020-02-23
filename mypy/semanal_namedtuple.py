@@ -314,7 +314,7 @@ class NamedTupleAnalyzer:
                                                          bool]]:
         """Parse typed named tuple fields.
 
-        Return (names, types, defaults, error ocurred), or None if at least one of
+        Return (names, types, defaults, error occurred), or None if at least one of
         the types is not ready.
         """
         items = []  # type: List[str]

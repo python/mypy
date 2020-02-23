@@ -906,6 +906,7 @@ class A:
 
     def f(self, *args) -> None: pass
 A.f
+[builtins fixtures/tuple.pyi]
 [out]
 MemberExpr(10) : Overload(def (self: A), def (self: A, builtins.object))
 
@@ -920,6 +921,7 @@ class A:
 
     def f(self, *args): pass
 A.f
+[builtins fixtures/tuple.pyi]
 [out]
 MemberExpr(10) : Overload(def (self: A) -> Any, def (self: A, Any) -> Any)
 
@@ -974,6 +976,7 @@ class A(Generic[t]):
 
 ab, b = None, None # type: (A[B], B)
 A.f(ab, b)
+[builtins fixtures/tuple.pyi]
 [out]
 CallExpr(13) : B
 

@@ -51,7 +51,7 @@ from mypy.nodes import (
     MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    CastExpr,
+    CastExpr, TypeAlias,
     MDEF
 )
 from mypy.traverser import TraverserVisitor
@@ -213,7 +213,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             node.node = self.fixup(node.node)
             if isinstance(node.node, Var):
                 # The Var node may be an orphan and won't otherwise be processed.
-                fixup_var(node.node, self.replacements)
+                node.node.accept(self)
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
@@ -265,6 +265,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.info = self.fixup(node.info)
         self.fixup_type(node.type)
         super().visit_var(node)
+
+    def visit_type_alias(self, node: TypeAlias) -> None:
+        self.fixup_type(node.target)
+        super().visit_type_alias(node)
 
     # Helpers
 
@@ -459,13 +463,6 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 old = node.node
                 replace_object_state(new, old)
                 node.node = new
-            if isinstance(node.node, Var):
+            if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.
-                # TODO: Is this necessary?
-                fixup_var(node.node, replacements)
-
-
-def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:
-    if node.type:
-        node.type.accept(TypeReplaceVisitor(replacements))
-    node.info = cast(TypeInfo, replacements.get(node.info, node.info))
+                node.node.accept(NodeReplaceVisitor(replacements))

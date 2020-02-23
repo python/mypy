@@ -8,7 +8,7 @@ Type                   Description
 ====================== ===============================
 ``int``                integer
 ``float``              floating point number
-``bool``               boolean value
+``bool``               boolean value (subclass of ``int``)
 ``str``                string (unicode)
 ``bytes``              8-bit string
 ``object``             an arbitrary object (``object`` is the common base class)

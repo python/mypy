@@ -1,5 +1,6 @@
 """Code generation for native function bodies."""
 
+from typing_extensions import Final
 
 from mypyc.common import (
     REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
@@ -14,10 +15,6 @@ from mypyc.ops import (
     FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.namegen import NameGenerator
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.

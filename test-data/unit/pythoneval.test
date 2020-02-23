@@ -1479,6 +1479,20 @@ def f_suppresses() -> int:
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
 
+[case testIsInstanceAdHocIntersectionWithStrAndBytes]
+# mypy: warn-unreachable
+x: str
+if isinstance(x, bytes):
+    reveal_type(x)
+y: str
+if isinstance(x, int):
+    reveal_type(x)
+[out]
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
+
 [case testAsyncioFutureWait]
 # mypy: strict-optional
 from asyncio import Future, wait
@@ -1487,3 +1501,12 @@ from typing import List
 async def foo() -> None:
     f = []  # type: List[Future[None]]
     await wait(f)
+
+[case testShadowTypingModule]
+1 + ''
+[file typing.py]
+x = 0
+1 + ''
+[out]
+mypy: "tmp/typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported

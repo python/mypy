@@ -486,11 +486,20 @@ def analyze_descriptor_access(instance_type: Type,
     else:
         owner_type = instance_type
 
+    callable_name = chk.expr_checker.method_fullname(descriptor_type, "__get__")
+    dunder_get_type = chk.expr_checker.transform_callee_type(
+        callable_name, dunder_get_type,
+        [TempNode(instance_type, context=context),
+         TempNode(TypeType.make_normalized(owner_type), context=context)],
+        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+    )
+
     _, inferred_dunder_get_type = chk.expr_checker.check_call(
         dunder_get_type,
         [TempNode(instance_type, context=context),
          TempNode(TypeType.make_normalized(owner_type), context=context)],
-        [ARG_POS, ARG_POS], context)
+        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+        callable_name=callable_name)
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
     if isinstance(inferred_dunder_get_type, AnyType):
@@ -565,7 +574,7 @@ def analyze_var(name: str,
                 # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
                 # * x: Union[A1, B1]
                 # In `x.f`, when checking `x` against A1 we assume x is compatible with A
-                # and similarly for B1 when checking agains B
+                # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_function_type_vars(functype)
                 signature = check_self_arg(signature, dispatched_type, var.is_classmethod,
@@ -705,19 +714,9 @@ def analyze_class_attribute_access(itype: Instance,
         check_final_member(name, info, mx.msg, mx.context)
 
     if info.is_enum and not (mx.is_lvalue or is_decorated or is_method):
-        # Skip "_order_" and "__order__", since Enum will remove it
-        if name in ("_order_", "__order__"):
-            return mx.msg.has_no_attr(
-                mx.original_type, itype, name, mx.context, mx.module_symbol_table
-            )
-
-        enum_literal = LiteralType(name, fallback=itype)
-        # When we analyze enums, the corresponding Instance is always considered to be erased
-        # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
-        # in typeshed. However, this is really more of an implementation detail of how Enums
-        # are typed, and we really don't want to treat every single Enum value as if it were
-        # from type variable substitution. So we reset the 'erased' field here.
-        return itype.copy_modified(erased=False, last_known_value=enum_literal)
+        enum_class_attribute_type = analyze_enum_class_attribute_access(itype, name, mx)
+        if enum_class_attribute_type:
+            return enum_class_attribute_type
 
     t = node.type
     if t:
@@ -813,6 +812,28 @@ def analyze_class_attribute_access(itype: Instance,
         if node.node.is_class:
             typ = bind_self(typ, is_classmethod=True)
         return typ
+
+
+def analyze_enum_class_attribute_access(itype: Instance,
+                                        name: str,
+                                        mx: MemberContext,
+                                        ) -> Optional[Type]:
+    # Skip "_order_" and "__order__", since Enum will remove it
+    if name in ("_order_", "__order__"):
+        return mx.msg.has_no_attr(
+            mx.original_type, itype, name, mx.context, mx.module_symbol_table
+        )
+    # For other names surrendered by underscores, we don't make them Enum members
+    if name.startswith('__') and name.endswith("__") and name.replace('_', '') != '':
+        return None
+
+    enum_literal = LiteralType(name, fallback=itype)
+    # When we analyze enums, the corresponding Instance is always considered to be erased
+    # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
+    # in typeshed. However, this is really more of an implementation detail of how Enums
+    # are typed, and we really don't want to treat every single Enum value as if it were
+    # from type variable substitution. So we reset the 'erased' field here.
+    return itype.copy_modified(erased=False, last_known_value=enum_literal)
 
 
 def add_class_tvars(t: ProperType, isuper: Optional[Instance],

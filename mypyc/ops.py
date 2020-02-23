@@ -628,6 +628,10 @@ class BasicBlock:
         self.ops = []  # type: List[Op]
         self.error_handler = None  # type: Optional[BasicBlock]
 
+    @property
+    def terminated(self) -> bool:
+        return bool(self.ops) and isinstance(self.ops[-1], ControlOp)
+
 
 # Never generates an exception
 ERR_NEVER = 0  # type: Final

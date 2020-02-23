@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, TextIO
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, TextIO
 from typing_extensions import Final
 
 from mypy import defaults
@@ -88,7 +88,8 @@ config_types = {
 }  # type: Final
 
 
-def parse_config_file(options: Options, filename: Optional[str],
+def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
+                      filename: Optional[str],
                       stdout: Optional[TextIO] = None,
                       stderr: Optional[TextIO] = None) -> None:
     """Parse a config file into an Options object.
@@ -127,7 +128,7 @@ def parse_config_file(options: Options, filename: Optional[str],
     else:
         section = parser['mypy']
         prefix = '%s: [%s]: ' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, section, stderr)
+        updates, report_dirs = parse_section(prefix, options, set_strict_flags, section, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
@@ -135,7 +136,8 @@ def parse_config_file(options: Options, filename: Optional[str],
     for name, section in parser.items():
         if name.startswith('mypy-'):
             prefix = '%s: [%s]: ' % (file_read, name)
-            updates, report_dirs = parse_section(prefix, options, section, stderr)
+            updates, report_dirs = parse_section(
+                prefix, options, set_strict_flags, section, stderr)
             if report_dirs:
                 print("%sPer-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
@@ -163,6 +165,7 @@ def parse_config_file(options: Options, filename: Optional[str],
 
 
 def parse_section(prefix: str, template: Options,
+                  set_strict_flags: Callable[[], None],
                   section: Mapping[str, str],
                   stderr: TextIO = sys.stderr
                   ) -> Tuple[Dict[str, object], Dict[str, str]]:
@@ -205,9 +208,7 @@ def parse_section(prefix: str, template: Options,
                     options_key = key[3:]
                     invert = True
                 elif key == 'strict':
-                    print("%sStrict mode is not supported in configuration files: specify "
-                          "individual flags instead (see 'mypy -h' for the list of flags enabled "
-                          "in strict mode)" % prefix, file=stderr)
+                    set_strict_flags()
                 else:
                     print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=stderr)
@@ -330,10 +331,23 @@ def parse_mypy_comments(
         errors.extend((lineno, x) for x in parse_errors)
 
         stderr = StringIO()
-        new_sections, reports = parse_section('', template, parser['dummy'], stderr=stderr)
+        strict_found = False
+
+        def set_strict_flags() -> None:
+            nonlocal strict_found
+            strict_found = True
+
+        new_sections, reports = parse_section(
+            '', template, set_strict_flags, parser['dummy'], stderr=stderr)
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split('\n') if x)
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
+        if strict_found:
+            errors.append((lineno,
+                           "Setting 'strict' not supported in inline configuration: specify it in "
+                           "a configuration file instead, or set individual inline flags "
+                           "(see 'mypy -h' for the list of flags enabled in strict mode)"))
+
         sections.update(new_sections)
 
     return sections, errors

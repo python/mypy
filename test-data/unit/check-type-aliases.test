@@ -14,6 +14,7 @@ f(1)
 f('')
 f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
 [targets __main__, __main__.f]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -22,6 +23,7 @@ def f(x: T) -> None: pass
 f((1, 'x'))
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
 [targets __main__, __main__.f]
+[builtins fixtures/tuple.pyi]
 
 [case testCallableTypeAlias]
 from typing import Callable
@@ -86,6 +88,7 @@ if int():
     A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
                    # E: Value of type "int" is not indexable
                    # the second error is because of `Union = 0` in lib-stub/typing.pyi
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes]
@@ -96,8 +99,10 @@ T = TypeVar('T')
 A: Type[float] = int
 if int():
     A = float  # OK
-x: A  # E: Variable "__main__.A" is not valid as a type
-def bad(tp: A) -> None:  # E: Variable "__main__.A" is not valid as a type
+x: A  # E: Variable "__main__.A" is not valid as a type \
+      # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+def bad(tp: A) -> None:  # E: Variable "__main__.A" is not valid as a type \
+                         # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
     pass
 
 Alias = int
@@ -180,6 +185,7 @@ def f(p: 'Alias[str]') -> None:
 reveal_type(f) # N: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])'
 T = TypeVar('T')
 Alias = Tuple[int, T]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testRecursiveAliasesErrors1]

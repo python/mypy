@@ -474,3 +474,29 @@ from typing import Any
 def f() -> object:
     x: Any = 1
     return x
+
+[case testImportModuleAsClassMember]
+import test
+
+class A:
+    def __init__(self) -> None:
+        self.test = test
+
+    def __call__(self) -> None:
+      self.test.foo("Message")
+
+[file test.py]
+def foo(s: str) -> None: ...
+
+[case testLocalImportModuleAsClassMember]
+class A:
+    def __init__(self) -> None:
+        import test
+
+        self.test = test
+
+    def __call__(self) -> None:
+      self.test.foo("Message")
+
+[file test.py]
+def foo(s: str) -> None: ...

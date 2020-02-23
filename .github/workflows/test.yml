@@ -1,0 +1,49 @@
+name: main
+
+on:
+  push:
+    branches: [master]
+    tags: ['*']
+  pull_request:
+    paths-ignore:
+    - 'docs/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - .gitignore
+    - .travis.yml
+    - CREDITS
+    - LICENSE
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [windows-py37-32, windows-py37-64]
+        include:
+        - name: windows-py37-32
+          python: '3.7'
+          arch: x86
+          os: windows-latest
+          toxenv: py37
+        - name: windows-py37-64
+          python: '3.7'
+          arch: x64
+          os: windows-latest
+          toxenv: py37
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: initialize submodules
+      run: git submodule update --init
+    - uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python }}
+        architecture: ${{ matrix.arch }}
+    - name: install tox
+      run: pip install --upgrade setuptools 'virtualenv<20' tox==3.9.0
+    - name: setup tox environment
+      run: tox -e ${{ matrix.toxenv }} --notest
+    - name: test
+      run: tox -e ${{ matrix.toxenv }}

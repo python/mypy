@@ -116,6 +116,7 @@ def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
 from typing import Tuple
 class A: pass
 x = None # type: Tuple[A[int]] # E: "A" expects no type arguments, but 1 given
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testInvalidNumberOfGenericArgsInFunctionType]
@@ -136,6 +137,7 @@ z = 0 # type: x
 main:5: error: Function "__main__.f" is not valid as a type
 main:5: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:6: error: Variable "__main__.x" is not valid as a type
+main:6: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testGlobalVarRedefinition]
 import typing
@@ -801,7 +803,8 @@ cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a typ
 
 from typing import cast
 x = 0
-cast(x, None)        # E: Variable "__main__.x" is not valid as a type
+cast(x, None)        # E: Variable "__main__.x" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 cast(t, None)        # E: Name 't' is not defined
 cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
 [out]
@@ -896,7 +899,8 @@ main:4: error: Type cannot be declared in assignment to non-self attribute
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
-A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type
+A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type \
+           # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 [out]
 
 [case testInvalidTypeInTypeApplication2]
@@ -908,26 +912,32 @@ A[1] # E: Invalid type: try using Literal[1] instead?
 
 [case testVariableDeclWithInvalidNumberOfTypes]
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested]
 x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested2]
 x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested3]
 x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested4]
 x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested5]
 x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidType]
@@ -952,6 +962,7 @@ a.y, a.x = None, None # type: int, int \
     # E: Type cannot be declared in assignment to non-self attribute
 a[1], a[2] = None, None # type: int, int \
     # E: Unexpected type declaration
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testMissingGenericImport]
@@ -1312,6 +1323,7 @@ from typing import Tuple
 a = 1  # type: int
 a = 's'  # type: str
 a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
+[builtins fixtures/tuple.pyi]
 
 [out]
 main:3: error: Name 'a' already defined on line 2
@@ -1361,6 +1373,7 @@ N = NamedTuple('N', [('a', int),
 
 class N:  # E: Name 'N' already defined on line 2
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testDuplicateDefTypedDict]

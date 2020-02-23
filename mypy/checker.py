@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
-    Sequence, Mapping, Generic, AbstractSet
+    Sequence, Mapping, Generic, AbstractSet, Callable
 )
 from typing_extensions import Final
 
@@ -38,8 +38,8 @@ from mypy.types import (
     get_proper_types, is_literal_type, TypeAliasType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
-    MessageBuilder, make_inferred_type_note, append_invariance_notes,
-    format_type, format_type_bare, format_type_distinctly,
+    MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
+    format_type, format_type_bare, format_type_distinctly, SUGGESTED_TEST_FIXTURES
 )
 import mypy.checkexpr
 from mypy.checkmember import (
@@ -50,7 +50,8 @@ from mypy.typeops import (
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
-    true_only, false_only, function_type, TypeVarExtractor,
+    true_only, false_only, function_type, TypeVarExtractor, custom_special_method,
+    is_literal_type_like,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -62,7 +63,7 @@ from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
-from mypy.mro import calculate_mro
+from mypy.mro import calculate_mro, MroError
 from mypy.erasetype import erase_typevars, remove_instance_last_known_values, erase_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -77,6 +78,7 @@ from mypy.scope import Scope
 from mypy import state, errorcodes as codes
 from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode
+from mypy.util import is_typeshed_file
 
 T = TypeVar('T')
 
@@ -232,7 +234,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.pass_num = 0
         self.current_node_deferred = False
         self.is_stub = tree.is_stub
-        self.is_typeshed_stub = errors.is_typeshed_file(path)
+        self.is_typeshed_stub = is_typeshed_file(path)
         self.inferred_attribute_types = None
         if options.strict_optional_whitelist is None:
             self.suppress_none_errors = not options.show_none_errors
@@ -1438,7 +1440,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.cant_override_final(name, base.name, defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
-                    self.check_no_writable(name, base_attr.node, defn)
+                    self.check_if_final_var_override_writable(name, base_attr.node, defn)
 
             # Check the type of override.
             if name not in ('__init__', '__new__', '__init_subclass__'):
@@ -1533,7 +1535,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that this doesn't affect read-only properties which can have
                 # covariant overrides.
                 #
-                # TODO: Allow covariance for read-only attributes?
+                pass
+            elif (base_attr.node and not self.is_writable_attribute(base_attr.node)
+                  and is_subtype(typ, original_type)):
+                # If the attribute is read-only, allow covariance
                 pass
             else:
                 self.msg.signature_incompatible_with_supertype(
@@ -1919,7 +1924,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_final_node(second.node):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
-            self.check_no_writable(name, second.node, ctx)
+            self.check_if_final_var_override_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -1962,12 +1967,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
         for s in b.body:
             if self.binder.is_unreachable():
-                if (self.options.warn_unreachable
-                        and not self.binder.is_unreachable_warning_suppressed()
-                        and not self.is_raising_or_empty(s)):
+                if self.should_report_unreachable_issues() and not self.is_raising_or_empty(s):
                     self.msg.unreachable_statement(s)
                 break
             self.accept(s)
+
+    def should_report_unreachable_issues(self) -> bool:
+        return (self.options.warn_unreachable
+                and not self.binder.is_unreachable_warning_suppressed())
 
     def is_raising_or_empty(self, s: Statement) -> bool:
         """Returns 'true' if the given statement either throws an error of some kind
@@ -2382,10 +2389,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name, base.name, node)
             return False
         if node.is_final:
-            self.check_no_writable(node.name, base_node, node)
+            self.check_if_final_var_override_writable(node.name, base_node, node)
         return True
 
-    def check_no_writable(self, name: str, base_node: Optional[Node], ctx: Context) -> None:
+    def check_if_final_var_override_writable(self,
+                                             name: str,
+                                             base_node:
+                                             Optional[Node],
+                                             ctx: Context) -> None:
         """Check that a final variable doesn't override writeable attribute.
 
         This is done to prevent situations like this:
@@ -2397,14 +2408,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             x: C = D()
             x.attr = 3  # Oops!
         """
-        if isinstance(base_node, Var):
-            ok = False
-        elif isinstance(base_node, OverloadedFuncDef) and base_node.is_property:
-            first_item = cast(Decorator, base_node.items[0])
-            ok = not first_item.var.is_settable_property
-        else:
-            ok = True
-        if not ok:
+        writable = True
+        if base_node:
+            writable = self.is_writable_attribute(base_node)
+        if writable:
             self.msg.final_cant_override_writable(name, ctx)
 
     def get_final_context(self) -> bool:
@@ -2988,6 +2995,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
+        callable_name = self.expr_checker.method_fullname(attribute_type, "__set__")
+        dunder_set_type = self.expr_checker.transform_callee_type(
+            callable_name, dunder_set_type,
+            [TempNode(instance_type, context=context), rvalue],
+            [nodes.ARG_POS, nodes.ARG_POS],
+            context, object_type=attribute_type,
+        )
+
         # Here we just infer the type, the result should be type-checked like a normal assignment.
         # For this we use the rvalue as type context.
         self.msg.disable_errors()
@@ -2995,7 +3010,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             dunder_set_type,
             [TempNode(instance_type, context=context), rvalue],
             [nodes.ARG_POS, nodes.ARG_POS],
-            context)
+            context, object_type=attribute_type,
+            callable_name=callable_name)
         self.msg.enable_errors()
 
         # And now we type check the call second time, to show errors related
@@ -3005,7 +3021,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             [TempNode(instance_type, context=context),
              TempNode(AnyType(TypeOfAny.special_form), context=context)],
             [nodes.ARG_POS, nodes.ARG_POS],
-            context)
+            context, object_type=attribute_type,
+            callable_name=callable_name)
 
         # should be handled by get_method above
         assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
@@ -3460,6 +3477,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             super_instance = map_instance_to_supertype(typ, supertype)
             assert len(super_instance.args) == 1
             return super_instance.args[0]
+        if isinstance(typ, TupleType):
+            return self.analyze_container_item_type(tuple_fallback(typ))
         return None
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
@@ -3633,6 +3652,102 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.binder.handle_continue()
         return None
 
+    def make_fake_typeinfo(self,
+                           curr_module_fullname: str,
+                           class_gen_name: str,
+                           class_short_name: str,
+                           bases: List[Instance],
+                           ) -> Tuple[ClassDef, TypeInfo]:
+        # Build the fake ClassDef and TypeInfo together.
+        # The ClassDef is full of lies and doesn't actually contain a body.
+        # Use format_bare to generate a nice name for error messages.
+        # We skip fully filling out a handful of TypeInfo fields because they
+        # should be irrelevant for a generated type like this:
+        # is_protocol, protocol_members, is_abstract
+        cdef = ClassDef(class_short_name, Block([]))
+        cdef.fullname = curr_module_fullname + '.' + class_gen_name
+        info = TypeInfo(SymbolTable(), cdef, curr_module_fullname)
+        cdef.info = info
+        info.bases = bases
+        calculate_mro(info)
+        info.calculate_metaclass_type()
+        return cdef, info
+
+    def intersect_instances(self,
+                            instances: Sequence[Instance],
+                            ctx: Context,
+                            ) -> Optional[Instance]:
+        """Try creating an ad-hoc intersection of the given instances.
+
+        Note that this function does *not* try and create a full-fledged
+        intersection type. Instead, it returns an instance of a new ad-hoc
+        subclass of the given instances.
+
+        This is mainly useful when you need a way of representing some
+        theoretical subclass of the instances the user may be trying to use
+        the generated intersection can serve as a placeholder.
+
+        This function will create a fresh subclass every time you call it,
+        even if you pass in the exact same arguments. So this means calling
+        `self.intersect_intersection([inst_1, inst_2], ctx)` twice will result
+        in instances of two distinct subclasses of inst_1 and inst_2.
+
+        This is by design: we want each ad-hoc intersection to be unique since
+        they're supposed represent some other unknown subclass.
+
+        Returns None if creating the subclass is impossible (e.g. due to
+        MRO errors or incompatible signatures). If we do successfully create
+        a subclass, its TypeInfo will automatically be added to the global scope.
+        """
+        curr_module = self.scope.stack[0]
+        assert isinstance(curr_module, MypyFile)
+
+        base_classes = []
+        for inst in instances:
+            expanded = [inst]
+            if inst.type.is_intersection:
+                expanded = inst.type.bases
+
+            for expanded_inst in expanded:
+                base_classes.append(expanded_inst)
+
+        # We use the pretty_names_list for error messages but can't
+        # use it for the real name that goes into the symbol table
+        # because it can have dots in it.
+        pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
+        names_list = pretty_seq([x.type.name for x in base_classes], "and")
+        short_name = '<subclass of {}>'.format(names_list)
+        full_name = gen_unique_name(short_name, curr_module.names)
+
+        old_msg = self.msg
+        new_msg = self.msg.clean_copy()
+        self.msg = new_msg
+        try:
+            cdef, info = self.make_fake_typeinfo(
+                curr_module.fullname,
+                full_name,
+                short_name,
+                base_classes,
+            )
+            self.check_multiple_inheritance(info)
+            info.is_intersection = True
+        except MroError:
+            if self.should_report_unreachable_issues():
+                old_msg.impossible_intersection(
+                    pretty_names_list, "inconsistent method resolution order", ctx)
+            return None
+        finally:
+            self.msg = old_msg
+
+        if new_msg.is_errors():
+            if self.should_report_unreachable_issues():
+                self.msg.impossible_intersection(
+                    pretty_names_list, "incompatible method signatures", ctx)
+            return None
+
+        curr_module.names[full_name] = SymbolTableNode(GDEF, info)
+        return Instance(info, [])
+
     def intersect_instance_callable(self, typ: Instance, callable_type: CallableType) -> Instance:
         """Creates a fake type that represents the intersection of an Instance and a CallableType.
 
@@ -3647,20 +3762,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         gen_name = gen_unique_name("<callable subtype of {}>".format(typ.type.name),
                                    cur_module.names)
 
-        # Build the fake ClassDef and TypeInfo together.
-        # The ClassDef is full of lies and doesn't actually contain a body.
-        # Use format_bare to generate a nice name for error messages.
-        # We skip fully filling out a handful of TypeInfo fields because they
-        # should be irrelevant for a generated type like this:
-        # is_protocol, protocol_members, is_abstract
+        # Synthesize a fake TypeInfo
         short_name = format_type_bare(typ)
-        cdef = ClassDef(short_name, Block([]))
-        cdef.fullname = cur_module.fullname + '.' + gen_name
-        info = TypeInfo(SymbolTable(), cdef, cur_module.fullname)
-        cdef.info = info
-        info.bases = [typ]
-        calculate_mro(info)
-        info.calculate_metaclass_type()
+        cdef, info = self.make_fake_typeinfo(cur_module.fullname, gen_name, short_name, [typ])
 
         # Build up a fake FuncDef so we can populate the symbol table.
         func_def = FuncDef('__call__', [], Block([]), callable_type)
@@ -3825,9 +3929,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return {}, {}
                 expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
-                    vartype = type_map[expr]
-                    type = get_isinstance_type(node.args[1], type_map)
-                    return conditional_type_map(expr, vartype, type)
+                    return self.conditional_type_map_with_intersection(
+                        expr,
+                        type_map[expr],
+                        get_isinstance_type(node.args[1], type_map),
+                    )
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
@@ -3890,20 +3996,64 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             partial_type_maps = []
             for operator, expr_indices in simplified_operator_list:
-                if operator in {'is', 'is not'}:
-                    if_map, else_map = self.refine_identity_comparison_expression(
-                        operands,
-                        operand_types,
-                        expr_indices,
-                        narrowable_operand_index_to_hash.keys(),
-                    )
-                elif operator in {'==', '!='}:
-                    if_map, else_map = self.refine_equality_comparison_expression(
-                        operands,
-                        operand_types,
-                        expr_indices,
-                        narrowable_operand_index_to_hash.keys(),
-                    )
+                if operator in {'is', 'is not', '==', '!='}:
+                    # is_valid_target:
+                    #   Controls which types we're allowed to narrow exprs to. Note that
+                    #   we cannot use 'is_literal_type_like' in both cases since doing
+                    #   'x = 10000 + 1; x is 10001' is not always True in all Python
+                    #   implementations.
+                    #
+                    # coerce_only_in_literal_context:
+                    #   If true, coerce types into literal types only if one or more of
+                    #   the provided exprs contains an explicit Literal type. This could
+                    #   technically be set to any arbitrary value, but it seems being liberal
+                    #   with narrowing when using 'is' and conservative when using '==' seems
+                    #   to break the least amount of real-world code.
+                    #
+                    # should_narrow_by_identity:
+                    #   Set to 'false' only if the user defines custom __eq__ or __ne__ methods
+                    #   that could cause identity-based narrowing to produce invalid results.
+                    if operator in {'is', 'is not'}:
+                        is_valid_target = is_singleton_type    # type: Callable[[Type], bool]
+                        coerce_only_in_literal_context = False
+                        should_narrow_by_identity = True
+                    else:
+                        def is_exactly_literal_type(t: Type) -> bool:
+                            return isinstance(get_proper_type(t), LiteralType)
+
+                        def has_no_custom_eq_checks(t: Type) -> bool:
+                            return (not custom_special_method(t, '__eq__', check_all=False)
+                                    and not custom_special_method(t, '__ne__', check_all=False))
+
+                        is_valid_target = is_exactly_literal_type
+                        coerce_only_in_literal_context = True
+
+                        expr_types = [operand_types[i] for i in expr_indices]
+                        should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
+
+                    if_map = {}   # type: TypeMap
+                    else_map = {}  # type: TypeMap
+                    if should_narrow_by_identity:
+                        if_map, else_map = self.refine_identity_comparison_expression(
+                            operands,
+                            operand_types,
+                            expr_indices,
+                            narrowable_operand_index_to_hash.keys(),
+                            is_valid_target,
+                            coerce_only_in_literal_context,
+                        )
+
+                    # Strictly speaking, we should also skip this check if the objects in the expr
+                    # chain have custom __eq__ or __ne__ methods. But we (maybe optimistically)
+                    # assume nobody would actually create a custom objects that considers itself
+                    # equal to None.
+                    if if_map == {} and else_map == {}:
+                        if_map, else_map = self.refine_away_none_in_comparison(
+                            operands,
+                            operand_types,
+                            expr_indices,
+                            narrowable_operand_index_to_hash.keys(),
+                        )
                 elif operator in {'in', 'not in'}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
@@ -3936,7 +4086,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 partial_type_maps.append((if_map, else_map))
 
-            return reduce_partial_conditional_maps(partial_type_maps)
+            return reduce_conditional_maps(partial_type_maps)
+        elif isinstance(node, AssignmentExpr):
+            return self.find_isinstance_check_helper(node.target)
         elif isinstance(node, RefExpr):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
@@ -4146,8 +4298,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                               operand_types: List[Type],
                                               chain_indices: List[int],
                                               narrowable_operand_indices: AbstractSet[int],
+                                              is_valid_target: Callable[[ProperType], bool],
+                                              coerce_only_in_literal_context: bool,
                                               ) -> Tuple[TypeMap, TypeMap]:
-        """Produces conditional type maps refining expressions used in an identity comparison.
+        """Produce conditional type maps refining expressions by an identity/equality comparison.
 
         The 'operands' and 'operand_types' lists should be the full list of operands used
         in the overall comparison expression. The 'chain_indices' list is the list of indices
@@ -4163,30 +4317,45 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         The 'narrowable_operand_indices' parameter is the set of all indices we are allowed
         to refine the types of: that is, all operands that will potentially be a part of
         the output TypeMaps.
+
+        Although this function could theoretically try setting the types of the operands
+        in the chains to the meet, doing that causes too many issues in real-world code.
+        Instead, we use 'is_valid_target' to identify which of the given chain types
+        we could plausibly use as the refined type for the expressions in the chain.
+
+        Similarly, 'coerce_only_in_literal_context' controls whether we should try coercing
+        expressions in the chain to a Literal type. Performing this coercion is sometimes
+        too aggressive of a narrowing, depending on context.
         """
-        singleton = None  # type: Optional[ProperType]
-        possible_singleton_indices = []
+        should_coerce = True
+        if coerce_only_in_literal_context:
+            should_coerce = any(is_literal_type_like(operand_types[i]) for i in chain_indices)
+
+        target = None  # type: Optional[Type]
+        possible_target_indices = []
         for i in chain_indices:
-            coerced_type = coerce_to_literal(operand_types[i])
-            if not is_singleton_type(coerced_type):
+            expr_type = operand_types[i]
+            if should_coerce:
+                expr_type = coerce_to_literal(expr_type)
+            if not is_valid_target(get_proper_type(expr_type)):
                 continue
-            if singleton and not is_same_type(singleton, coerced_type):
-                # We have multiple disjoint singleton types. So the 'if' branch
+            if target and not is_same_type(target, expr_type):
+                # We have multiple disjoint target types. So the 'if' branch
                 # must be unreachable.
                 return None, {}
-            singleton = coerced_type
-            possible_singleton_indices.append(i)
+            target = expr_type
+            possible_target_indices.append(i)
 
-        # There's nothing we can currently infer if none of the operands are singleton types,
+        # There's nothing we can currently infer if none of the operands are valid targets,
         # so we end early and infer nothing.
-        if singleton is None:
+        if target is None:
             return {}, {}
 
-        # If possible, use an unassignable expression as the singleton.
-        # We skip refining the type of the singleton below, so ideally we'd
+        # If possible, use an unassignable expression as the target.
+        # We skip refining the type of the target below, so ideally we'd
         # want to pick an expression we were going to skip anyways.
         singleton_index = -1
-        for i in possible_singleton_indices:
+        for i in possible_target_indices:
             if i not in narrowable_operand_indices:
                 singleton_index = i
 
@@ -4215,20 +4384,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # currently will just mark the whole branch as unreachable if either operand is
         # narrowed to <uninhabited>.
         if singleton_index == -1:
-            singleton_index = possible_singleton_indices[-1]
+            singleton_index = possible_target_indices[-1]
 
         enum_name = None
-        if isinstance(singleton, LiteralType) and singleton.is_enum_literal():
-            enum_name = singleton.fallback.type.fullname
+        target = get_proper_type(target)
+        if isinstance(target, LiteralType) and target.is_enum_literal():
+            enum_name = target.fallback.type.fullname
 
-        target_type = [TypeRange(singleton, is_upper_bound=False)]
+        target_type = [TypeRange(target, is_upper_bound=False)]
 
         partial_type_maps = []
         for i in chain_indices:
-            # If we try refining a singleton against itself, conditional_type_map
+            # If we try refining a type against itself, conditional_type_map
             # will end up assuming that the 'else' branch is unreachable. This is
             # typically not what we want: generally the user will intend for the
-            # singleton type to be some fixed 'sentinel' value and will want to refine
+            # target type to be some fixed 'sentinel' value and will want to refine
             # the other exprs against this one instead.
             if i == singleton_index:
                 continue
@@ -4242,21 +4412,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if enum_name is not None:
                 expr_type = try_expanding_enum_to_union(expr_type, enum_name)
+
+            # We intentionally use 'conditional_type_map' directly here instead of
+            # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
+            # intersections when working with pure instances.
             partial_type_maps.append(conditional_type_map(expr, expr_type, target_type))
 
-        return reduce_partial_conditional_maps(partial_type_maps)
+        return reduce_conditional_maps(partial_type_maps)
 
-    def refine_equality_comparison_expression(self,
-                                              operands: List[Expression],
-                                              operand_types: List[Type],
-                                              chain_indices: List[int],
-                                              narrowable_operand_indices: AbstractSet[int],
-                                              ) -> Tuple[TypeMap, TypeMap]:
-        """Produces conditional type maps refining expressions used in an equality comparison.
+    def refine_away_none_in_comparison(self,
+                                       operands: List[Expression],
+                                       operand_types: List[Type],
+                                       chain_indices: List[int],
+                                       narrowable_operand_indices: AbstractSet[int],
+                                       ) -> Tuple[TypeMap, TypeMap]:
+        """Produces conditional type maps refining away None in an identity/equality chain.
 
-        For more details, see the docstring of 'refine_equality_comparison' up above.
-        The only difference is that this function is for refining equality operations
-        (e.g. 'a == b == c') instead of identity ('a is b is c').
+        For more details about what the different arguments mean, see the
+        docstring of 'refine_identity_comparison_expression' up above.
         """
         non_optional_types = []
         for i in chain_indices:
@@ -4435,9 +4608,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if last in n.names:
                 return n.names[last]
             elif len(parts) == 2 and parts[0] == 'builtins':
-                raise KeyError("Could not find builtin symbol '{}'. (Are you running a "
-                               "test case? If so, make sure to include a fixture that "
-                               "defines this symbol.)".format(last))
+                fullname = 'builtins.' + last
+                if fullname in SUGGESTED_TEST_FIXTURES:
+                    suggestion = ", e.g. add '[builtins fixtures/{}]' to your test".format(
+                        SUGGESTED_TEST_FIXTURES[fullname])
+                else:
+                    suggestion = ''
+                raise KeyError("Could not find builtin symbol '{}' (If you are running a "
+                               "test case, use a fixture that "
+                               "defines this symbol{})".format(last, suggestion))
             else:
                 msg = "Failed qualified lookup: '{}' (fullname = '{}')."
                 raise KeyError(msg.format(last, name))
@@ -4654,9 +4833,64 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Any other object whose type we don't know precisely
             # for example, Any or a custom metaclass.
             return {}, {}  # unknown type
-        yes_map, no_map = conditional_type_map(expr, vartype, type)
+        yes_map, no_map = self.conditional_type_map_with_intersection(expr, vartype, type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
+
+    def conditional_type_map_with_intersection(self,
+                                               expr: Expression,
+                                               expr_type: Type,
+                                               type_ranges: Optional[List[TypeRange]],
+                                               ) -> Tuple[TypeMap, TypeMap]:
+        # For some reason, doing "yes_map, no_map = conditional_type_maps(...)"
+        # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
+        initial_maps = conditional_type_map(expr, expr_type, type_ranges)
+        yes_map = initial_maps[0]  # type: TypeMap
+        no_map = initial_maps[1]  # type: TypeMap
+
+        if yes_map is not None or type_ranges is None:
+            return yes_map, no_map
+
+        # If conditions_type_map was unable to successfully narrow the expr_type
+        # using the type_ranges and concluded if-branch is unreachable, we try
+        # computing it again using a different algorithm that tries to generate
+        # an ad-hoc intersection between the expr_type and the type_ranges.
+        expr_type = get_proper_type(expr_type)
+        if isinstance(expr_type, UnionType):
+            possible_expr_types = get_proper_types(expr_type.relevant_items())
+        else:
+            possible_expr_types = [expr_type]
+
+        possible_target_types = []
+        for tr in type_ranges:
+            item = get_proper_type(tr.item)
+            if not isinstance(item, Instance) or tr.is_upper_bound:
+                return yes_map, no_map
+            possible_target_types.append(item)
+
+        out = []
+        for v in possible_expr_types:
+            if not isinstance(v, Instance):
+                return yes_map, no_map
+            for t in possible_target_types:
+                intersection = self.intersect_instances([v, t], expr)
+                if intersection is None:
+                    continue
+                out.append(intersection)
+        if len(out) == 0:
+            return None, {}
+        new_yes_type = make_simplified_union(out)
+        return {expr: new_yes_type}, {}
+
+    def is_writable_attribute(self, node: Node) -> bool:
+        """Check if an attribute is writable"""
+        if isinstance(node, Var):
+            return True
+        elif isinstance(node, OverloadedFuncDef) and node.is_property:
+            first_item = cast(Decorator, node.items[0])
+            return first_item.var.is_settable_property
+        else:
+            return False
 
 
 def conditional_type_map(expr: Expression,
@@ -4749,7 +4983,7 @@ def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
         return False
 
     parent_type = get_proper_type(parent_type)
-    member_type = coerce_to_literal(member_type)
+    member_type = get_proper_type(coerce_to_literal(member_type))
     if not isinstance(parent_type, FunctionLike) or not isinstance(member_type, LiteralType):
         return False
 
@@ -4851,46 +5085,12 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     return result
 
 
-def or_partial_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
-    """Calculate what information we can learn from the truth of (e1 or e2)
-    in terms of the information that we can learn from the truth of e1 and
-    the truth of e2.
+def reduce_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
+                            ) -> Tuple[TypeMap, TypeMap]:
+    """Reduces a list containing pairs of if/else TypeMaps into a single pair.
 
-    Unlike 'or_conditional_maps', we include an expression in the output even
-    if it exists in only one map: we're assuming both maps are "partial" and
-    contain information about only some expressions, and so we "or" together
-    expressions both maps have information on.
-    """
-
-    if m1 is None:
-        return m2
-    if m2 is None:
-        return m1
-    # The logic here is a blend between 'and_conditional_maps'
-    # and 'or_conditional_maps'. We use the high-level logic from the
-    # former to ensure all expressions make it in the output map,
-    # but resolve cases where both maps contain info on the same
-    # expr using the unioning strategy from the latter.
-    result = m2.copy()
-    m2_keys = {literal_hash(n2): n2 for n2 in m2}
-    for n1 in m1:
-        n2 = m2_keys.get(literal_hash(n1))
-        if n2 is None:
-            result[n1] = m1[n1]
-        else:
-            result[n2] = make_simplified_union([m1[n1], result[n2]])
-
-    return result
-
-
-def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
-                                    ) -> Tuple[TypeMap, TypeMap]:
-    """Reduces a list containing pairs of *partial* if/else TypeMaps into a single pair.
-
-    That is, if a expression exists in only one map, we always include it in the output.
-    We only "and"/"or" together expressions that appear in multiple if/else maps.
-
-    So for example, if we had the input:
+    We "and" together all of the if TypeMaps and "or" together the else TypeMaps. So
+    for example, if we had the input:
 
         [
             ({x: TypeIfX, shared: TypeIfShared1}, {x: TypeElseX, shared: TypeElseShared1}),
@@ -4901,11 +5101,14 @@ def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
 
         (
             {x: TypeIfX,   y: TypeIfY,   shared: PseudoIntersection[TypeIfShared1, TypeIfShared2]},
-            {x: TypeElseX, y: TypeElseY, shared: Union[TypeElseShared1, TypeElseShared2]},
+            {shared: Union[TypeElseShared1, TypeElseShared2]},
         )
 
     ...where "PseudoIntersection[X, Y] == Y" because mypy actually doesn't understand intersections
     yet, so we settle for just arbitrarily picking the right expr's type.
+
+    We only retain the shared expression in the 'else' case because we don't actually know
+    whether x was refined or y was refined -- only just that one of the two was refined.
     """
     if len(type_maps) == 0:
         return {}, {}
@@ -4914,10 +5117,9 @@ def reduce_partial_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
     else:
         final_if_map, final_else_map = type_maps[0]
         for if_map, else_map in type_maps[1:]:
-            # 'and_conditional_maps' does the same thing for both global and partial type maps,
-            # which is why we don't need to have an 'and_partial_conditional_maps' function.
             final_if_map = and_conditional_maps(final_if_map, if_map)
-            final_else_map = or_partial_conditional_maps(final_else_map, else_map)
+            final_else_map = or_conditional_maps(final_else_map, else_map)
+
         return final_if_map, final_else_map
 
 

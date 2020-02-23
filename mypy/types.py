@@ -1591,9 +1591,15 @@ class LiteralType(ProperType):
 
     def __init__(self, value: LiteralValue, fallback: Instance,
                  line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
         self.value = value
+        super().__init__(line, column)
         self.fallback = fallback
+
+    def can_be_false_default(self) -> bool:
+        return not self.value
+
+    def can_be_true_default(self) -> bool:
+        return bool(self.value)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_literal_type(self)

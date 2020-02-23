@@ -119,17 +119,20 @@ f(otter=x) # E: Unexpected keyword argument "otter" for "f"; did you mean "btter
 def f(other: 'A', *atter: 'A') -> None: pass # N: "f" defined here
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 class A: pass
+[builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingOnlyVarArgs]
 def f(*other: 'A') -> None: pass # N: "f" defined here
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"
 class A: pass
+[builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingVarArgsDifferentTypes]
 def f(other: 'B', *atter: 'A') -> None: pass # N: "f" defined here
 f(otter=A()) # E: Unexpected keyword argument "otter" for "f"; did you mean "other"?
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testKeywordMisspellingVarKwargs]
 def f(other: 'A', **atter: 'A') -> None: pass

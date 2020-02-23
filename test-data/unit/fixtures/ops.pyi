@@ -13,14 +13,14 @@ class type: pass
 
 class slice: pass
 
-class tuple(Sequence[Tco], Generic[Tco]):
+class tuple(Sequence[Tco]):
     def __getitem__(self, x: int) -> Tco: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
-    def __lt__(self, x: 'tuple') -> bool: pass
-    def __le__(self, x: 'tuple') -> bool: pass
-    def __gt__(self, x: 'tuple') -> bool: pass
-    def __ge__(self, x: 'tuple') -> bool: pass
+    def __lt__(self, x: Tuple[Tco, ...]) -> bool: pass
+    def __le__(self, x: Tuple[Tco, ...]) -> bool: pass
+    def __gt__(self, x: Tuple[Tco, ...]) -> bool: pass
+    def __ge__(self, x: Tuple[Tco, ...]) -> bool: pass
 
 class function: pass
 
@@ -70,6 +70,7 @@ class complex:
 
 class BaseException: pass
 
-def __print(a1=None, a2=None, a3=None, a4=None): pass
+def __print(a1: object = None, a2: object = None, a3: object = None,
+            a4: object = None) -> None: pass
 
 class ellipsis: pass

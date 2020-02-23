@@ -32,7 +32,6 @@ from mypy.nodes import (
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
-    SYMBOL_FUNCBASE_TYPES
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -51,7 +50,7 @@ from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkstrformat import StringFormatterChecker, custom_special_method
+from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
@@ -59,7 +58,8 @@ from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
-    function_type, callable_type, try_getting_str_literals
+    function_type, callable_type, try_getting_str_literals, custom_special_method,
+    is_literal_type_like,
 )
 import mypy.errorcodes as codes
 
@@ -487,9 +487,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def check_typeddict_call_with_dict(self, callee: TypedDictType,
-                                       kwargs: DictExpr,
-                                       context: Context) -> Type:
+    def validate_typeddict_kwargs(
+            self, kwargs: DictExpr) -> 'Optional[OrderedDict[str, Expression]]':
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]
@@ -504,12 +503,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 key_context = item_name_expr or item_arg
                 self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
                               key_context)
-                return AnyType(TypeOfAny.from_error)
+                return None
             else:
                 item_names.append(literal_value)
+        return OrderedDict(zip(item_names, item_args))
 
-        return self.check_typeddict_call_with_kwargs(
-            callee, OrderedDict(zip(item_names, item_args)), context)
+    def match_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> bool:
+        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
+        if validated_kwargs is not None:
+            return (callee.required_keys <= set(validated_kwargs.keys())
+                <= set(callee.items.keys()))
+        else:
+            return False
+
+    def check_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> Type:
+        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
+        if validated_kwargs is not None:
+            return self.check_typeddict_call_with_kwargs(
+                callee,
+                kwargs=validated_kwargs,
+                context=context)
+        else:
+            return AnyType(TypeOfAny.from_error)
 
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
@@ -2515,7 +2534,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 variants_raw.append((right_cmp_op, right_type, left_expr))
 
         # STEP 3:
-        # We now filter out all non-existant operators. The 'variants' list contains
+        # We now filter out all non-existent operators. The 'variants' list contains
         # all operator methods that are actually present, in the order that Python
         # attempts to invoke them.
 
@@ -2773,6 +2792,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
+        self.find_partial_type_ref_fast_path(e.target)
         return value
 
     def visit_unary_expr(self, e: UnaryExpr) -> Type:
@@ -3228,7 +3248,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # an error, but returns the TypedDict type that matches the literal it found
         # that would cause a second error when that TypedDict type is returned upstream
         # to avoid the second error, we always return TypedDict type that was requested
-        typeddict_context = self.find_typeddict_context(self.type_context[-1])
+        typeddict_context = self.find_typeddict_context(self.type_context[-1], e)
         if typeddict_context:
             self.check_typeddict_call_with_dict(
                 callee=typeddict_context,
@@ -3294,19 +3314,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert rv is not None
         return rv
 
-    def find_typeddict_context(self, context: Optional[Type]) -> Optional[TypedDictType]:
+    def find_typeddict_context(self, context: Optional[Type],
+                               dict_expr: DictExpr) -> Optional[TypedDictType]:
         context = get_proper_type(context)
         if isinstance(context, TypedDictType):
             return context
         elif isinstance(context, UnionType):
             items = []
             for item in context.items:
-                item_context = self.find_typeddict_context(item)
-                if item_context:
+                item_context = self.find_typeddict_context(item, dict_expr)
+                if (item_context is not None
+                        and self.match_typeddict_call_with_dict(
+                            item_context, dict_expr, dict_expr)):
                     items.append(item_context)
             if len(items) == 1:
-                # Only one union item is TypedDict, so use the context as it's unambiguous.
+                # Only one union item is valid TypedDict for the given dict_expr, so use the
+                # context as it's unambiguous.
                 return items[0]
+            if len(items) > 1:
+                self.msg.typeddict_context_ambiguous(items, dict_expr)
         # No TypedDict type in context.
         return None
 
@@ -4266,24 +4292,6 @@ def merge_typevars_in_callables_by_name(
     return output, variables
 
 
-def is_literal_type_like(t: Optional[Type]) -> bool:
-    """Returns 'true' if the given type context is potentially either a LiteralType,
-    a Union of LiteralType, or something similar.
-    """
-    t = get_proper_type(t)
-    if t is None:
-        return False
-    elif isinstance(t, LiteralType):
-        return True
-    elif isinstance(t, UnionType):
-        return any(is_literal_type_like(item) for item in t.items)
-    elif isinstance(t, TypeVarType):
-        return (is_literal_type_like(t.upper_bound)
-                or any(is_literal_type_like(item) for item in t.values))
-    else:
-        return False
-
-
 def try_getting_literal(typ: Type) -> ProperType:
     """If possible, get a more precise literal type for a given type."""
     typ = get_proper_type(typ)
@@ -4302,29 +4310,6 @@ def is_expr_literal_type(node: Expression) -> bool:
         underlying = node.node
         return isinstance(underlying, TypeAlias) and isinstance(get_proper_type(underlying.target),
                                                                 LiteralType)
-    return False
-
-
-def custom_equality_method(typ: Type) -> bool:
-    """Does this type have a custom __eq__() method?"""
-    typ = get_proper_type(typ)
-    if isinstance(typ, Instance):
-        method = typ.type.get('__eq__')
-        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
-            if method.node.info:
-                return not method.node.info.fullname.startswith('builtins.')
-        return False
-    if isinstance(typ, UnionType):
-        return any(custom_equality_method(t) for t in typ.items)
-    if isinstance(typ, TupleType):
-        return custom_equality_method(tuple_fallback(typ))
-    if isinstance(typ, CallableType) and typ.is_type_obj():
-        # Look up __eq__ on the metaclass for class objects.
-        return custom_equality_method(typ.fallback)
-    if isinstance(typ, AnyType):
-        # Avoid false positives in uncertain cases.
-        return True
-    # TODO: support other types (see ExpressionChecker.has_member())?
     return False
 
 

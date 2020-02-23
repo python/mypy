@@ -147,6 +147,7 @@ class A: pass
 class B: pass
 a, b = None, None # type: (A, B)
 x = a, b
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ClassDef:2(
@@ -358,6 +359,7 @@ MypyFile:1(
 [case testCastToTupleType]
 from typing import Tuple, cast
 cast(Tuple[int, str], None)
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple, cast])
@@ -464,6 +466,7 @@ from typing import TypeVar, Tuple, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Tuple[int, t]) -> None: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [TypeVar, Tuple, Generic])
@@ -701,6 +704,7 @@ MypyFile:1(
 [case testInvalidTupleType]
 from typing import Tuple
 t = None # type: Tuple[int, str, ...] # E: Unexpected '...'
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFunctionTypes]
