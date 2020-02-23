@@ -936,7 +936,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
         all_modules.append(module)
         if not find_submodules:
             module_path = find_module_cache.find_module(module)
-            if module_path is None:
+            if not isinstance(module_path, str):
                 # test_module will yield an error later when it can't find stubs
                 continue
             sources.append(mypy.modulefinder.BuildSource(module_path, module, None))
