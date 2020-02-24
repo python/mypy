@@ -153,7 +153,8 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
-        if options.follow_imports == 'normal':
+        if re.search('flags:.*--follow-imports', source) is None:
+            # Override the default for follow_imports
             options.follow_imports = 'error'
 
         for name, _ in testcase.files:
