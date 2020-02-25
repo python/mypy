@@ -1,0 +1,149 @@
+[case testBasicParamSpec]
+from mypy_extensions import ParamSpec
+P = ParamSpec('P')
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLocations]
+from typing import Callable, List
+from mypy_extensions import ParamSpec, Concatenate
+P = ParamSpec('P')
+
+def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
+def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P"
+# TODO(shantanu): uncomment
+# def foo3(x: Concatenate[int, P]) -> int: ...  $ E: Invalid location for Concatenate
+def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P"
+def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for ParamSpec "P"
+def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecClasses]
+from typing import Callable, Generic, TypeVar
+from mypy_extensions import ParamSpec, Concatenate
+P = ParamSpec('P')
+
+T = TypeVar("T")
+S = TypeVar("S")
+P_2 = ParamSpec("P_2")
+
+class X(Generic[T, P]):
+  f: Callable[P, int]
+  x: T
+
+def foo1(x: X[int, P_2]) -> str: ...                    # Accepted
+def foo2(x: X[int, Concatenate[int, P_2]]) -> str: ...  # Accepted
+def foo3(x: X[int, [int, bool]]) -> str: ...            # Accepted
+def foo4(x: X[int, ...]) -> str: ...                    # Accepted
+def foo5(x: X[int, int]) -> str: ...                    # Rejected
+
+class Z(Generic[P]):
+  f: Callable[P, int]
+
+def foo6(x: Z[[int, str, bool]]) -> str: ...  # Accepted
+def foo7(x: Z[int, str, bool]) -> str: ...    # Accepted
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecSemantics]
+from typing import Callable
+from mypy_extensions import ParamSpec
+P = ParamSpec('P')
+
+def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
+def returns_int(a: str, b: bool) -> int: ...
+
+f = changes_return_type_to_str(returns_int)
+reveal_type(f)  # f should have the type:(a: str, b: bool) -> str
+
+f("A", True)               # Accepted
+f(a="A", b=True)           # Accepted
+f("A", "A")                # Rejected
+
+def expects_str(x: str): ...
+def expects_int(x: int): ...
+
+expects_str(f("A", True))  # Accepted
+expects_int(f("A", True))  # Rejected
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecSemanticsMore]
+from typing import Callable
+from mypy_extensions import ParamSpec
+P = ParamSpec("P")
+
+def foo(x: Callable[P, int], y: Callable[P, int]) -> Callable[P, bool]: ...
+
+def x_int_y_str(x: int, y: str) -> int: ...
+def y_int_x_str(y: int, x: str) -> int: ...
+
+f1 = foo(x_int_y_str, x_int_y_str) # Should return (x: int, y: str) -> bool
+reveal_type(f1)
+
+f2 = foo(x_int_y_str, y_int_x_str) # Could return (__a: int, __b: str) -> int
+reveal_type(f2)
+
+def keyword_only_x(*, x: int) -> int: ...
+def keyword_only_y(*, y: int) -> int: ...
+foo(keyword_only_x, keyword_only_y)  # Rejected
+[builtins fixtures/tuple.pyi]
+
+
+[case testParamSpecConstructor]
+from typing import Callable, TypeVar
+from mypy_extensions import ParamSpec
+P = ParamSpec("P")
+U = TypeVar("U")
+
+class Y(Generic[U, P]):
+  f: Callable[P, str]
+  prop: U
+
+  def __init__(self, f: Callable[P, str], prop: U) -> None:
+    self.f = f
+    self.prop = prop
+
+def a(q: int) -> str: ...
+
+reveal_type(Y(a, 1))   # Should resolve to Y[(q: int), int]
+reveal_type(Y(a, 1).f) # Should resolve to (q: int) -> str
+
+[builtins fixtures/tuple.pyi]
+
+
+[case testConcatenate]
+from typing import Callable, TypeVar
+from mypy_extensions import ParamSpec, Concatenate
+P = ParamSpec("P")
+U = TypeVar("T")
+
+def bar(x: int, *args: bool) -> int: ...
+
+def add(x: Callable[P, int]) -> Callable[Concatenate[str, P], bool]: ...
+reveal_type(add(bar))       # Should return (__a: str, x: int, *args: bool) -> bool
+
+def remove(x: Callable[Concatenate[int, P], int]) -> Callable[P, bool]: ...
+reveal_type(remove(bar))    # Should return (*args: bool) -> bool
+
+def transform(
+  x: Callable[Concatenate[int, P], int]
+) -> Callable[Concatenate[str, P], bool]: ...
+
+reveal_type(transform(bar)) # Should return (__a: str, *args: bool) -> bool
+
+def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
+
+@expects_int_first # Rejected
+def one(x: str) -> int: ...
+
+@expects_int_first # Rejected
+def two(*, x: int) -> int: ...
+
+@expects_int_first # Rejected
+def three(**kwargs: int) -> int: ...
+
+@expects_int_first # Accepted
+def four(*args: int) -> int: ...
+
+[builtins fixtures/tuple.pyi]
+
+
+# TODO: tests from https://www.python.org/dev/peps/pep-0612/#id15 "The components of a ParamSpec" and on
