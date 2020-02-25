@@ -2823,7 +2823,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         Return True if this looks like a type variable declaration (but maybe
         with errors), otherwise return False.
         """
-        call = self.get_typevar_declaration(s)
+        call = self.get_typevarlike_declaration(s, "typing.TypeVar")
         if not call:
             return False
 
@@ -2834,7 +2834,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
 
         name = lvalue.name
-        if not self.check_typevar_name(call, name, s):
+        if not self.check_typevarlike_name(call, name, s):
             return False
 
         # Constraining types
@@ -2894,24 +2894,31 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.add_symbol(name, call.analyzed, s)
         return True
 
-    def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
+    def check_typevarlike_name(self, call: CallExpr, name: str, context: Context) -> bool:
+        """Checks that the name of a TypeVar or ParamSpec matches its variable."""
         name = unmangle(name)
+        assert isinstance(call.callee, RefExpr)
+        typevarlike_type = (
+            call.callee.name if isinstance(call.callee, NameExpr) else call.callee.fullname
+        )
         if len(call.args) < 1:
-            self.fail("Too few arguments for TypeVar()", context)
+            self.fail("Too few arguments for {}()".format(typevarlike_type), context)
             return False
         if (not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
                 or not call.arg_kinds[0] == ARG_POS):
-            self.fail("TypeVar() expects a string literal as first argument", context)
+            self.fail("{}() expects a string literal as first argument".format(typevarlike_type),
+                      context)
             return False
         elif call.args[0].value != name:
-            msg = "String argument 1 '{}' to TypeVar(...) does not match variable name '{}'"
-            self.fail(msg.format(call.args[0].value, name), context)
+            msg = "String argument 1 '{}' to {}(...) does not match variable name '{}'"
+            self.fail(msg.format(call.args[0].value, typevarlike_type, name), context)
             return False
         return True
 
-    def get_typevar_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
-        """Returns the TypeVar() call expression if `s` is a type var declaration
-        or None otherwise.
+    def get_typevarlike_declaration(self, s: AssignmentStmt,
+                                    typevarlike_type: str) -> Optional[CallExpr]:
+        """Returns the call expression if `s` is a declaration of `typevarlike_type`
+        (TypeVar or ParamSpec), or None otherwise.
         """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return None
@@ -2921,7 +2928,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         callee = call.callee
         if not isinstance(callee, RefExpr):
             return None
-        if callee.fullname != 'typing.TypeVar':
+        if callee.fullname != typevarlike_type:
             return None
         return call
 
