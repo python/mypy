@@ -22,7 +22,7 @@ from mypy.lookup import lookup_fully_qualified
 def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
                  allow_missing: bool) -> None:
     node_fixer = NodeFixer(modules, allow_missing)
-    node_fixer.visit_symbol_table(tree.names)
+    node_fixer.visit_symbol_table(tree.names, tree.fullname)
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
@@ -42,7 +42,7 @@ class NodeFixer(NodeVisitor[None]):
             if info.defn:
                 info.defn.accept(self)
             if info.names:
-                self.visit_symbol_table(info.names)
+                self.visit_symbol_table(info.names, info.fullname)
             if info.bases:
                 for base in info.bases:
                     base.accept(self.type_fixer)
@@ -64,7 +64,7 @@ class NodeFixer(NodeVisitor[None]):
             self.current_info = save_info
 
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
-    def visit_symbol_table(self, symtab: SymbolTable) -> None:
+    def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -> None:
         # Copy the items because we may mutate symtab.
         for key, value in list(symtab.items()):
             cross_ref = value.cross_ref
@@ -76,7 +76,7 @@ class NodeFixer(NodeVisitor[None]):
                     stnode = lookup_qualified_stnode(self.modules, cross_ref,
                                                      self.allow_missing)
                     if stnode is not None:
-                        assert stnode.node is not None
+                        assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
                         value.node = stnode.node
                     elif not self.allow_missing:
                         assert False, "Could not find cross-ref %s" % (cross_ref,)

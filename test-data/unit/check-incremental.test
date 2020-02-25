@@ -5361,3 +5361,26 @@ reveal_type(z)
 tmp/c.py:2: note: Revealed type is 'a.A'
 [out2]
 tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
+[case testStubFixupIssues]
+import a
+[file a.py]
+import p
+[file a.py.2]
+import p
+p.N
+
+[file p/__init__.pyi]
+from p.util import *
+
+[file p/util.pyi]
+from p.params import N
+class Test: ...
+x: N
+
+[file p/params.pyi]
+import p.util
+class N(p.util.Test):
+    ...
+[out2]
+tmp/a.py:2: error: "object" has no attribute "N"
