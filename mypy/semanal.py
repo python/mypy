@@ -76,6 +76,7 @@ from mypy.nodes import (
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
+    ParamSpecExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1921,6 +1922,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         # * type variable definition
         elif self.process_typevar_declaration(s):
             special_form = True
+        elif self.process_paramspec_declaration(s):
+            special_form = True
         # * type constructors
         elif self.analyze_namedtuple_assign(s):
             special_form = True
@@ -3014,6 +3017,41 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             variance = INVARIANT
         return variance, upper_bound
+
+    def process_paramspec_declaration(self, s: AssignmentStmt) -> bool:
+        """Checks if s declares a ParamSpec; if yes, store it in symbol table.
+
+        Return True if this looks like a parameter specification declaration (but maybe
+        with errors), otherwise return False.
+
+        In the future, ParamSpec may accept bounds and variance arguments, in which
+        case more aggressive sharing of code with process_typevar_declaration should be pursued.
+
+        """
+        call = self.get_typevarlike_declaration(s, "typing_extensions.ParamSpec")
+        if not call:
+            return False
+
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        if s.type:
+            self.fail("Cannot declare the type of a parameter specification", s)
+            return False
+
+        name = lvalue.name
+        if not self.check_typevarlike_name(call, name, s):
+            return False
+
+        # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
+        # ParamSpec in a later PEP. If and when that happens, we should do something
+        # on the lines of process_typevar_parameters
+        paramspec_var = ParamSpecExpr(
+            name, self.qualified_name(name), self.object_type(), INVARIANT
+        )
+        paramspec_var.line = call.line
+        call.analyzed = paramspec_var
+        self.add_symbol(name, call.analyzed, s)
+        return True
 
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
