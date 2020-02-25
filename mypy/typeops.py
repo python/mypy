@@ -719,5 +719,5 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
     if isinstance(typ, AnyType):
         # Avoid false positives in uncertain cases.
         return True
-    # TODO: support other types (see ExpressionChecker.has_member())?
+    # TODO: support other types (see analyze_member_access)?
     return False
