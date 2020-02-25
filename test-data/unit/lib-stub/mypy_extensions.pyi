@@ -48,3 +48,7 @@ def trait(cls: Any) -> Any: ...
 mypyc_attr: Any
 
 class FlexibleAlias(Generic[_T, _U]): ...
+
+# Special cased in the type checker, so can be initialised to anything
+ParamSpec = 0
+Concatenate = 0
