@@ -25,6 +25,15 @@ base_path = os.path.join(os.path.dirname(__file__), '..', '..')
 
 python3_path = sys.executable
 
+def finditer_replace(text, reg, rep):
+    cursor_pos = 0
+    output = ''
+    for match in reg.finditer(text):
+        output += "".join([text[cursor_pos:match.start(1)], rep])
+        cursor_pos = match.end(1)
+    output += "".join([text[cursor_pos:]])
+    return output
+
 
 class TestCommandLine(MypycDataSuite):
     files = files
@@ -66,8 +75,10 @@ class TestCommandLine(MypycDataSuite):
 
         # Strip out 'tmp/' from error message paths in the testcase output,
         # due to a mismatch between this test and mypy's test suite.
-        expected = [x.replace('tmp/', '') for x in testcase.output]
-
+        reg = re.compile(r'(tmp/)')
+        rep = ''
+        expected = [finditer_replace(x,reg,rep) for x in testcase.output]
+        
         # Verify output
         actual = normalize_error_messages(out.decode().splitlines())
         assert_test_output(testcase, actual, 'Invalid output', expected=expected)
