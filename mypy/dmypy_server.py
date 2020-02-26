@@ -462,6 +462,16 @@ class Server:
                                remove: Optional[List[str]] = None,
                                update: Optional[List[str]] = None,
                                ) -> Dict[str, Any]:
+        """Perform a fine-grained type checking increment.
+
+        If remove and update are None, determine changed paths by using
+        fswatcher. Otherwise, assume that only these files have changes.
+
+        Args:
+            sources: sources passed on the command line
+            remove: paths of files that have been removed
+            update: paths of files that have been changed or created
+        """
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
 
