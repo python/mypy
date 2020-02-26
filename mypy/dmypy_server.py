@@ -28,7 +28,7 @@ from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
-from mypy.modulefinder import BuildSource, compute_search_paths
+from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
@@ -539,7 +539,7 @@ class Server:
         while True:
             # ? merge seen and seen_suppressed
             new_suppressed, seen_suppressed = self.find_added_suppressed(
-                graph, seen_suppressed
+                graph, seen_suppressed, manager.search_paths
             )
             if not new_suppressed:
                 break
@@ -588,9 +588,26 @@ class Server:
 
     def find_added_suppressed(self,
                               graph: mypy.build.Graph,
-                              seen: Set[str]) -> Tuple[List[Tuple[str, str]], Set[str]]:
+                              seen: Set[str],
+                              search_paths: SearchPaths) -> Tuple[List[Tuple[str, str]], Set[str]]:
         """Find suppressed modules that have been added (and not included in seen)."""
-        assert False
+        all_suppressed = set()
+        for module, state in graph.items():
+            all_suppressed |= state.suppressed_set
+
+        # TODO: name space packages
+        # TODO: handle seen??
+
+        finder = FindModuleCache(search_paths, self.fscache, self.options)
+
+        found = []
+
+        for module in all_suppressed:
+            result = finder.find_module(module)
+            if isinstance(result, str):
+                found.append((module, result))
+
+        return found, seen
 
     def increment_output(self,
                          messages: List[str],
