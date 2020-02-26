@@ -30,6 +30,15 @@ class TestCommandLine(MypycDataSuite):
     files = files
     base_path = test_temp_dir
     optional_out = True
+    
+    def finditer_replace(self, text, reg, rep) -> str:
+        cursor_pos = 0
+        output = ''
+        for match in reg.finditer(text):
+            output += "".join([text[cursor_pos:match.start(1)], rep])
+            cursor_pos = match.end(1)
+        output += "".join([text[cursor_pos:]])
+        return output
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # Parse options from test case description (arguments must not have spaces)
@@ -66,8 +75,10 @@ class TestCommandLine(MypycDataSuite):
 
         # Strip out 'tmp/' from error message paths in the testcase output,
         # due to a mismatch between this test and mypy's test suite.
-        expected = [x.replace('tmp/', '') for x in testcase.output]
-
+        reg = re.compile(r'(tmp/)')
+        rep = ''
+        expected = [self.finditer_replace(x,reg,rep) for x in testcase.output]
+        
         # Verify output
         actual = normalize_error_messages(out.decode().splitlines())
         assert_test_output(testcase, actual, 'Invalid output', expected=expected)
