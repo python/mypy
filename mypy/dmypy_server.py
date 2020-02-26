@@ -512,6 +512,8 @@ class Server:
         #  - search path updates
         #  - logging
 
+        changed_paths = self.fswatcher.find_changed()
+
         assert self.fine_grained_manager is not None
         fine_grained_manager = self.fine_grained_manager
         graph = fine_grained_manager.graph
@@ -519,7 +521,7 @@ class Server:
 
         self.update_sources(sources)
 
-        seen, changed, removed = self.follow_imports(sources, graph, set())
+        seen, changed, removed = self.follow_imports(sources, graph, set(), changed_paths)
 
         messages = fine_grained_manager.update(changed, removed)
 
@@ -528,7 +530,7 @@ class Server:
             module = worklist.pop()
             sources.append(BuildSource(module[1], module[0]))
             sources2 = self.direct_imports(module, graph)
-            seen, changed, removed = self.follow_imports(sources2, graph, seen)
+            seen, changed, removed = self.follow_imports(sources2, graph, seen, changed_paths)
             messages += fine_grained_manager.update(changed, removed)
             # TODO: removed???
             worklist.extend(changed)
@@ -554,10 +556,27 @@ class Server:
     def follow_imports(self,
                        sources: List[BuildSource],
                        graph: mypy.build.Graph,
-                       seen: Set[str]) -> Tuple[Set[str],
-                                                List[Tuple[str, str]],
-                                                List[Tuple[str, str]]]:
-        assert False
+                       seen: Set[str],
+                       changed_paths: AbstractSet[str]) -> Tuple[Set[str],
+                                                                 List[Tuple[str, str]],
+                                                                 List[Tuple[str, str]]]:
+        # TODO: What to do with removed modules?
+        changed = []
+        worklist = sources[:]
+        seen.update(source.module for source in worklist)
+        while worklist:
+            nxt = worklist.pop()
+            if nxt.path in changed_paths:
+                assert nxt.path is not None  # TODO
+                changed.append((nxt.module, nxt.path))
+            else:
+                state = graph[nxt.module]
+                for dep in state.dependencies:
+                    if dep not in seen:
+                        seen.add(dep)
+                        worklist.append(BuildSource(graph[dep].path,
+                                                    graph[dep].id))
+        return seen, changed, []
 
     def direct_imports(self,
                        module: Tuple[str, str],
