@@ -2151,9 +2151,9 @@ x: str
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testFollowImportsNormally]
+[case testFollowImportsNormalBasic]
 # flags: --follow-imports=normal
-# cmd: mypy main.py
+# cmd: mypy main.py a.py
 
 [file main.py]
 import a
@@ -2162,20 +2162,34 @@ a.f()
 [file a.py]
 def f() -> None: pass
 
-[file main.py.2]
-import a
-import b
-a.f()
-b.g()
-
-[file b.py.2]
-def g(x: str) -> None: pass
-
-[file b.py.3]
-def g() -> None: pass
-
-[file a.py.4]
+[file a.py.2]
 def f(x: str) -> None: pass
 
+[file a.py.3]
+def f() -> None: pass
+
 [out]
-x
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalAddSuppressed]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[file a.py.3]
+def f() -> None: pass
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Too few arguments for "f"
+==

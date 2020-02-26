@@ -361,8 +361,12 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
-        res = self.fine_grained_increment(sources, is_tty, terminal_width,
-                                          remove, update)
+        if self.options.follow_imports != 'normal':
+            res = self.fine_grained_increment(sources, is_tty, terminal_width,
+                                              remove, update)
+        else:
+            assert remove is None and update is None
+            res = self.fine_grained_increment_follow_imports(sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -376,8 +380,10 @@ class Server:
         """
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
-        else:
+        elif self.options.follow_imports != 'normal':
             res = self.fine_grained_increment(sources, is_tty, terminal_width)
+        else:
+            res = self.fine_grained_increment_follow_imports(sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -531,7 +537,7 @@ class Server:
             sources.append(BuildSource(module[1], module[0]))
             sources2 = self.direct_imports(module, graph)
             seen, changed, removed = self.follow_imports(sources2, graph, seen, changed_paths)
-            messages += fine_grained_manager.update(changed, removed)
+            messages = fine_grained_manager.update(changed, removed)
             # TODO: removed???
             worklist.extend(changed)
 
@@ -544,7 +550,7 @@ class Server:
             if not new_suppressed:
                 break
             sources.extend(BuildSource(mod[1], mod[0]) for mod in new_suppressed)
-            fine_grained_manager.update(new_suppressed, [])
+            messages = fine_grained_manager.update(new_suppressed, [])
 
         ### changed, removed = self.find_changed(sources)
 
@@ -604,8 +610,9 @@ class Server:
 
         for module in all_suppressed:
             result = finder.find_module(module)
-            if isinstance(result, str):
+            if isinstance(result, str) and module not in seen:
                 found.append((module, result))
+                seen.add(module)
 
         return found, seen
 
