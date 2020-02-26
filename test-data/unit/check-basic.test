@@ -78,13 +78,9 @@ if int():
 [case testIncompatibleAssignmentAmbiguousShortnames]
 
 class Any: pass
-class float: pass
 
 x = Any()
 x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "__main__.Any")
-
-y = float()
-y = 1.0  # E: Incompatible types in assignment (expression has type "builtins.float", variable has type "__main__.float")
 
 
 -- Simple functions and calling
