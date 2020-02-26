@@ -109,8 +109,9 @@ class EnumCallAnalyzer:
         if len(args) > 2:
             if call.arg_kinds != [ARG_POS, ARG_POS, ARG_POS]:
                 return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+        if len(args) == 2:
+            if call.arg_kinds != [ARG_POS, ARG_POS]:
+                return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
         if not isinstance(args[0], (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
                 "%s() expects a string literal as the first argument" % class_name, call)
