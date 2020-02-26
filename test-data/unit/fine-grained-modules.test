@@ -2212,3 +2212,24 @@ def f() -> None: pass
 ==
 main.py:2: error: Too few arguments for "f"
 ==
+
+[case testFollowImportsNormalEditingFileBringNewModule-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+
+[file main.py.2]
+import a
+a.f()
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[file a.py.3]
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too few arguments for "f"
+==

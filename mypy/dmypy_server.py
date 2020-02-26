@@ -527,16 +527,25 @@ class Server:
 
         self.update_sources(sources)
 
-        seen, changed, removed = self.follow_imports(sources, graph, set(), changed_paths)
+        sources_set = {source.module for source in sources}
+
+        seen, changed, removed, new_files = self.follow_imports(
+            sources, graph, set(), changed_paths, sources_set
+        )
+        sources.extend(new_files)
 
         messages = fine_grained_manager.update(changed, removed)
 
         worklist = changed[:]
         while worklist:
             module = worklist.pop()
-            sources.append(BuildSource(module[1], module[0]))
+            #sources.append(BuildSource(module[1], module[0]))
             sources2 = self.direct_imports(module, graph)
-            seen, changed, removed = self.follow_imports(sources2, graph, seen, changed_paths)
+            seen, changed, removed, new_files = self.follow_imports(
+                sources2, graph, seen, changed_paths, sources_set
+            )
+            sources.extend(new_files)
+            self.update_sources(new_files)
             messages = fine_grained_manager.update(changed, removed)
             # TODO: removed???
             worklist.extend(changed)
@@ -563,15 +572,21 @@ class Server:
                        sources: List[BuildSource],
                        graph: mypy.build.Graph,
                        seen: Set[str],
-                       changed_paths: AbstractSet[str]) -> Tuple[Set[str],
-                                                                 List[Tuple[str, str]],
-                                                                 List[Tuple[str, str]]]:
+                       changed_paths: AbstractSet[str],
+                       sources_set: Set[str]) -> Tuple[Set[str],
+                                                       List[Tuple[str, str]],
+                                                       List[Tuple[str, str]],
+                                                       List[BuildSource]]:
         # TODO: What to do with removed modules?
         changed = []
+        new_files = []
         worklist = sources[:]
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
+            if nxt.module not in sources_set:
+                sources_set.add(nxt.module)
+                new_files.append(nxt)
             if nxt.path in changed_paths:
                 assert nxt.path is not None  # TODO
                 changed.append((nxt.module, nxt.path))
@@ -582,7 +597,7 @@ class Server:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path,
                                                     graph[dep].id))
-        return seen, changed, []
+        return seen, changed, [], new_files
 
     def direct_imports(self,
                        module: Tuple[str, str],
