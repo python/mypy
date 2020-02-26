@@ -7,7 +7,7 @@ from typing import List, Tuple, Optional, Union, cast
 
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
-    UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS,
+    UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS, ARG_NAMED_OPT,
     EnumCallExpr, MemberExpr
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
