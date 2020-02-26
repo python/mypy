@@ -16,7 +16,7 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
-from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple, Set
 from typing_extensions import Final
 
 import mypy.build
@@ -498,6 +498,87 @@ class Server:
 
         status = 1 if messages else 0
         self.previous_sources = sources
+        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+
+    def fine_grained_increment_follow_imports(
+            self,
+            sources: List[BuildSource],
+            is_tty: bool,
+            terminal_width: int) -> Dict[str, Any]:
+        """Like fine_grained_increment, but follow imports."""
+        # TODO:
+        #  - file events
+        #  - search path updates
+        #  - logging
+
+        assert self.fine_grained_manager is not None
+        fine_grained_manager = self.fine_grained_manager
+        graph = fine_grained_manager.graph
+        manager = fine_grained_manager.manager
+
+        self.update_sources(sources)
+
+        seen, changed, removed = self.follow_imports(sources, graph, set())
+
+        messages = fine_grained_manager.update(changed, removed)
+
+        worklist = changed[:]
+        while worklist:
+            module = worklist.pop()
+            sources.append(BuildSource(module[1], module[0]))
+            sources2 = self.direct_imports(module, graph)
+            seen, changed, removed = self.follow_imports(sources2, graph, seen)
+            messages += fine_grained_manager.update(changed, removed)
+            # TODO: removed???
+            worklist.extend(changed)
+
+        seen_suppressed = set()  # type: Set[str]
+        while True:
+            # ? merge seen and seen_suppressed
+            new_suppressed, seen_suppressed = self.find_added_suppressed(
+                graph, seen_suppressed
+            )
+            if not new_suppressed:
+                break
+            sources.extend(BuildSource(mod[1], mod[0]) for mod in new_suppressed)
+            fine_grained_manager.update(new_suppressed, [])
+
+        ### changed, removed = self.find_changed(sources)
+
+        ### manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
+
+        self.previous_sources = sources
+        return self.increment_output(messages, sources, is_tty, terminal_width)
+
+    def follow_imports(self,
+                       sources: List[BuildSource],
+                       graph: mypy.build.Graph,
+                       seen: Set[str]) -> Tuple[Set[str],
+                                                List[Tuple[str, str]],
+                                                List[Tuple[str, str]]]:
+        assert False
+
+    def direct_imports(self,
+                       module: Tuple[str, str],
+                       graph: mypy.build.Graph) -> List[BuildSource]:
+        """Return the direct imports of module not included in seen."""
+        state = graph[module[0]]
+        return [BuildSource(graph[dep].path, dep)
+                for dep in state.dependencies]
+
+    def find_added_suppressed(self,
+                              graph: mypy.build.Graph,
+                              seen: Set[str]) -> Tuple[List[Tuple[str, str]], Set[str]]:
+        """Find suppressed modules that have been added (and not included in seen)."""
+        assert False
+
+    def increment_output(self,
+                         messages: List[str],
+                         sources: List[BuildSource],
+                         is_tty: bool,
+                         terminal_width: int) -> Dict[str, Any]:
+        status = 1 if messages else 0
         messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
