@@ -75,6 +75,26 @@ if int():
     x = 1
 
 
+[case testIncompatibleAssignmentAmbiguousShortnames]
+
+class Any: pass
+class List: pass
+class Dict: pass
+class Iterator: pass
+
+x = Any()
+x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "__main__.Any")
+
+y = List()
+y = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "__main__.List")
+
+z = Dict()
+z = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "__main__.Dict")
+
+w = Iterator()
+w = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "__main__.Iterator")
+
+
 -- Simple functions and calling
 -- ----------------------------
 

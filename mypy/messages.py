@@ -42,6 +42,21 @@ from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 
+TYPES_FOR_UNIMPORTED_HINTS = {
+    'typing.Any',
+    'typing.Callable',
+    'typing.Dict',
+    'typing.Iterable',
+    'typing.Iterator',
+    'typing.List',
+    'typing.Optional',
+    'typing.Set',
+    'typing.Tuple',
+    'typing.TypeVar',
+    'typing.Union',
+    'typing.cast',
+}  # type: Final
+
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -1720,6 +1735,9 @@ def find_type_overlaps(*types: Type) -> Set[str]:
     for type in types:
         for inst in collect_all_instances(type):
             d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+    for shortname in d.keys():
+        if 'typing.{}'.format(shortname) in TYPES_FOR_UNIMPORTED_HINTS:
+            d[shortname].add('typing.{}'.format(shortname))
 
     overlaps = set()  # type: Set[str]
     for fullnames in d.values():
