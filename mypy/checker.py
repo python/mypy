@@ -3923,7 +3923,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return {}, None
         elif is_false_literal(node):
             return None, {}
-        elif isinstance(node, CallExpr) and len(node.args) > 0:
+        elif isinstance(node, CallExpr):
+            if len(node.args) == 0:
+                return {}, {}
             expr = collapse_walrus(node.args[0])
             if refers_to_fullname(node.callee, 'builtins.isinstance'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
