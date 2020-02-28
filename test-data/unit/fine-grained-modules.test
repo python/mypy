@@ -2213,6 +2213,30 @@ def f() -> None: pass
 main.py:2: error: Too few arguments for "f"
 ==
 
+[case testFollowImportsNormalAddSuppressed3]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.b.f()
+
+[file a.py.2]
+import b
+
+[file b.py.2]
+def f(x: str) -> None: pass
+
+[file b.py.3]
+def f() -> None: pass
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Too few arguments for "f"
+==
+
 [case testFollowImportsNormalEditingFileBringNewModule-only_when_nocache]
 # flags: --follow-imports=normal
 # cmd: mypy main.py

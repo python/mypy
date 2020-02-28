@@ -538,7 +538,6 @@ class Server:
             sources, graph, set(), changed_paths, sources_set
         )
         sources.extend(new_files)
-
         messages = fine_grained_manager.update(changed, removed)
 
         worklist = changed[:]
@@ -563,14 +562,22 @@ class Server:
             )
             if not new_suppressed:
                 break
-            sources.extend(BuildSource(mod[1], mod[0]) for mod in new_suppressed)
+            new_files = [BuildSource(mod[1], mod[0]) for mod in new_suppressed]
+            sources.extend(new_files)
+            self.update_sources(new_files)
             messages = fine_grained_manager.update(new_suppressed, [])
+
+        fix_module_deps(graph)
+
+        # Store current file state as side effect
+        self.fswatcher.find_changed()
 
         ### changed, removed = self.find_changed(sources)
 
         ### manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
 
-        self.previous_sources = sources
+        self.previous_sources = find_all_sources_in_build(graph)
+        self.update_sources(self.previous_sources)
         return self.increment_output(messages, sources, is_tty, terminal_width)
 
     def follow_imports(self,
@@ -783,3 +790,23 @@ def find_all_sources_in_build(graph: mypy.build.Graph) -> List[BuildSource]:
     for module, state in graph.items():
         result.append(BuildSource(state.path, module))
     return result
+
+
+def fix_module_deps(graph: mypy.build.Graph) -> None:
+    """After an incremental update, update module dependencies to reflect the new state.
+
+    This can make some suppressed dependencies non-suppressed, and vice versa (if modules
+    have been added to or removed from the build).
+    """
+    for module, state in graph.items():
+        new_suppressed = []
+        new_dependencies = []
+        for dep in state.dependencies + state.suppressed:
+            if dep in graph:
+                new_dependencies.append(dep)
+            else:
+                new_suppressed.append(dep)
+        state.dependencies = new_dependencies
+        state.dependencies_set = set(new_dependencies)
+        state.suppressed = new_suppressed
+        state.suppressed_set = set(new_suppressed)
