@@ -414,6 +414,11 @@ class Server:
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
+
+        if self.options.follow_imports == 'normal':
+            sources = find_all_sources_in_build(self.fine_grained_manager.graph)
+            self.update_sources(sources)
+
         self.previous_sources = sources
 
         # If we are using the fine-grained cache, build hasn't actually done
@@ -771,3 +776,10 @@ def get_meminfo() -> Dict[str, Any]:
                 factor = 1024  # Linux
             res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
     return res
+
+
+def find_all_sources_in_build(graph: mypy.build.Graph) -> List[BuildSource]:
+    result = []
+    for module, state in graph.items():
+        result.append(BuildSource(state.path, module))
+    return result
