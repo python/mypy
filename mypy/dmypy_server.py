@@ -543,6 +543,8 @@ class Server:
         worklist = changed[:]
         while worklist:
             module = worklist.pop()
+            if module not in graph:
+                continue
             #sources.append(BuildSource(module[1], module[0]))
             sources2 = self.direct_imports(module, graph)
             seen, changed, removed, new_files = self.follow_imports(
