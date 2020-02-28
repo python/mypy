@@ -189,7 +189,7 @@ def f(p1: bytes, p2: float, /) -> None:
 
 [case testWalrus]
 # flags: --strict-optional
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, List
 from typing_extensions import Final
 
 if a := 2:
@@ -288,10 +288,23 @@ def check_partial() -> None:
 
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, None]'
 
-def check_narrow(x: Optional[int]) -> None:
+def check_narrow(x: Optional[int], s: List[int]) -> None:
     if (y := x):
         reveal_type(y)  # N: Revealed type is 'builtins.int'
-[builtins fixtures/f_string.pyi]
+
+    if (y := x) is not None:
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+
+    if (y := x) == 10:
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+
+    if (y := x) in s:
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+
+    if isinstance((y := x), int):
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
 
 [case testWalrusPartialTypes]
 from typing import List
