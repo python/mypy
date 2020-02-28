@@ -92,7 +92,7 @@ class SourceFinder:
                 base, suffix = os.path.splitext(name)
                 if base == '__init__':
                     continue
-                if base not in seen and '.' not in base and suffix in PY_EXTENSIONS:
+                if base not in seen and suffix in PY_EXTENSIONS:
                     seen.add(base)
                     src = BuildSource(path, mod_prefix + base, None, base_dir)
                     sources.append(src)
