@@ -3030,6 +3030,7 @@ class SymbolTableNode:
                         and fullname != prefix + '.' + name
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
+                    assert not isinstance(self.node, PlaceholderNode)
                     data['cross_ref'] = fullname
                     return data
             data['node'] = self.node.serialize()
