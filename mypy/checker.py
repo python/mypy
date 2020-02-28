@@ -3924,10 +3924,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif is_false_literal(node):
             return None, {}
         elif isinstance(node, CallExpr):
+            if len(node.args) == 0:
+                return {}, {}
+            expr = collapse_walrus(node.args[0])
             if refers_to_fullname(node.callee, 'builtins.isinstance'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
-                expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
                     return self.conditional_type_map_with_intersection(
                         expr,
@@ -3937,13 +3939,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
-                expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
                     return self.infer_issubclass_maps(node, expr, type_map)
             elif refers_to_fullname(node.callee, 'builtins.callable'):
                 if len(node.args) != 1:  # the error will be reported elsewhere
                     return {}, {}
-                expr = node.args[0]
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
@@ -3952,7 +3952,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # narrow their types. (For example, we shouldn't try narrowing the
             # types of literal string or enum expressions).
 
-            operands = node.operands
+            operands = [collapse_walrus(x) for x in node.operands]
             operand_types = []
             narrowable_operand_index_to_hash = {}
             for i, expr in enumerate(operands):
@@ -5742,3 +5742,14 @@ def has_bool_item(typ: ProperType) -> bool:
         return any(is_named_instance(item, 'builtins.bool')
                    for item in typ.items)
     return False
+
+
+def collapse_walrus(e: Expression) -> Expression:
+    """If an expression is an AssignmentExpr, pull out the assignment target.
+
+    We don't make any attempt to pull out all the targets in code like `x := (y := z)`.
+    We could support narrowing those if that sort of code turns out to be common.
+    """
+    if isinstance(e, AssignmentExpr):
+        return e.target
+    return e
