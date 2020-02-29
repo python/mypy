@@ -173,7 +173,7 @@ def f():
 [case testWarnUnusedIgnores]
 # cmd: mypy main.py --config-file=pyproject.toml
 [file pyproject.toml]
-\[mypy]
+\[tool.mypy]
 warn_unused_ignores = true
 [file main.py]
 # type: ignore
@@ -186,17 +186,17 @@ main.py:1: error: unused 'type: ignore' comment
 [file main.py]
 # type: ignore
 [out]
-pyproject.toml: No [mypy] table in config file
+pyproject.toml: No 'tool.mypy' table in config file
 == Return code: 0
 
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
 [file pyproject.toml]
-\[mypy]
+\[tool.mypy]
 disallow_untyped_defs = true
-\[mypy.overrides.y]
+\[tool.mypy.overrides.y]
 disallow_untyped_defs = false
-\[mypy.overrides.z]
+\[tool.mypy.overrides.z]
 disallow_untyped_calls = true
 [file x.py]
 def f(a):

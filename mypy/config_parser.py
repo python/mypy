@@ -171,12 +171,12 @@ def parse_toml_config_file(options: Options, set_strict_flags: Callable[[], None
     else:
         options.config_file = filename
 
-    if 'mypy' not in table:
-        print("%s: No [mypy] table in config file" % filename, file=stderr)
+    if 'tool' not in table or 'mypy' not in table['tool']:
+        print("%s: No 'tool.mypy' table in config file" % filename, file=stderr)
         return False
 
     # Handle the mypy table.
-    for key, value in table['mypy'].items():
+    for key, value in table['tool']['mypy'].items():
 
         # Is an option.
         if key != 'overrides':
