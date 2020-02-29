@@ -935,7 +935,6 @@ static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
         if (CPyTagged_CheckShort(index)) {
             Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
             Py_ssize_t size = PyUnicode_GET_LENGTH(str);
-            char strstr[256];
             if ((n >= 0 && n >= size) || (n < 0 && n + size < 0)) {
                 PyErr_SetString(PyExc_IndexError, "string index out of range");
                 return NULL;
