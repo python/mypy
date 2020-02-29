@@ -20,7 +20,7 @@ from mypyc.ops_tuple import new_tuple_op
 from mypyc.genopsutil import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
 )
-from mypyc.genfunc import BuildFuncIR
+from mypyc.genfunc import transform_method
 from mypyc.common import SELF_NAME
 from mypyc.genops import IRBuilder
 
@@ -72,7 +72,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                            stmt.line)
             for item in stmt.items:
                 with builder.catch_errors(stmt.line):
-                    BuildFuncIR(builder).visit_method(cdef, non_ext, get_func_def(item))
+                    transform_method(builder, cdef, non_ext, get_func_def(item))
         elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
             # Ignore plugin generated methods (since they have no
             # bodies to compile and will need to have the bodies
@@ -80,7 +80,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             if cdef.info.names[stmt.name].plugin_generated:
                 continue
             with builder.catch_errors(stmt.line):
-                BuildFuncIR(builder).visit_method(cdef, non_ext, get_func_def(stmt))
+                transform_method(builder, cdef, non_ext, get_func_def(stmt))
         elif isinstance(stmt, PassStmt):
             continue
         elif isinstance(stmt, AssignmentStmt):

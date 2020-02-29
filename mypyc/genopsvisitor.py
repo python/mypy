@@ -22,7 +22,15 @@ from mypy.nodes import (
 from mypyc.ops import Value
 from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
 from mypyc.genclass import transform_class_def
-from mypyc.genfunc import BuildFuncIR
+from mypyc.genfunc import (
+    transform_func_def,
+    transform_overloaded_func_def,
+    transform_decorator,
+    transform_lambda_expr,
+    transform_yield_expr,
+    transform_yield_from_expr,
+    transform_await_expr,
+)
 from mypyc.genstatement import (
     transform_block,
     transform_expression_stmt,
@@ -101,13 +109,13 @@ class IRBuilderVisitor(IRVisitor):
         self.builder.visit_import_all(node)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
-        BuildFuncIR(self.builder).visit_func_def(fdef)
+        transform_func_def(self.builder, fdef)
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
-        BuildFuncIR(self.builder).visit_overloaded_func_def(o)
+        transform_overloaded_func_def(self.builder, o)
 
     def visit_decorator(self, dec: Decorator) -> None:
-        BuildFuncIR(self.builder).visit_decorator(dec)
+        transform_decorator(self.builder, dec)
 
     def visit_block(self, block: Block) -> None:
         transform_block(self.builder, block)
@@ -242,16 +250,16 @@ class IRBuilderVisitor(IRVisitor):
         return transform_generator_expr(self.builder, expr)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
-        return BuildFuncIR(self.builder).visit_lambda_expr(expr)
+        return transform_lambda_expr(self.builder, expr)
 
     def visit_yield_expr(self, expr: YieldExpr) -> Value:
-        return BuildFuncIR(self.builder).visit_yield_expr(expr)
+        return transform_yield_expr(self.builder, expr)
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
-        return BuildFuncIR(self.builder).visit_yield_from_expr(o)
+        return transform_yield_from_expr(self.builder, o)
 
     def visit_await_expr(self, o: AwaitExpr) -> Value:
-        return BuildFuncIR(self.builder).visit_await_expr(o)
+        return transform_await_expr(self.builder, o)
 
     # Unimplemented constructs
 
