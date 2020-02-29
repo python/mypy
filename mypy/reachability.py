@@ -1,5 +1,5 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
-
+import platform
 from typing import Tuple, TypeVar, Union, Optional
 from typing_extensions import Final
 
@@ -92,7 +92,7 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, options.platform)
+            result = consider_sys_platform(expr, options.sys_platform)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == 'PY2':
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
@@ -150,7 +150,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
     return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_platform(expr: Expression, platform: str) -> int:
+def consider_sys_platform(expr: Expression, sys_platform: str, platform: str) -> int:
     """Consider whether expr is a comparison involving sys.platform.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -166,7 +166,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         op = expr.operators[0]
         if op not in ('==', '!='):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.operands[0], 'platform'):
+        if not is_sys_attr(expr.operands[0], 'sys_platform', 'platform'):
             return TRUTH_VALUE_UNKNOWN
         right = expr.operands[1]
         if not isinstance(right, (StrExpr, UnicodeExpr)):
@@ -177,7 +177,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
             return TRUTH_VALUE_UNKNOWN
         if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.callee.expr, 'platform'):
+        if not is_sys_attr(expr.callee.expr, 'sys_platform', 'platform'):
             return TRUTH_VALUE_UNKNOWN
         if expr.callee.name != 'startswith':
             return TRUTH_VALUE_UNKNOWN
