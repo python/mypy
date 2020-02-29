@@ -942,7 +942,7 @@ static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             }
             if (n < 0)
                 n += size;
-            enum PyUnicode_Kind kind = PyUnicode_KIND(str);
+            enum PyUnicode_Kind kind = (enum PyUnicode_Kind)PyUnicode_KIND(str);
             void *data = PyUnicode_DATA(str);
             Py_UCS4 ch = PyUnicode_READ(kind, data, n);
             PyObject *unicode = PyUnicode_New(1, ch);
