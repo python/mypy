@@ -52,7 +52,7 @@ from mypyc.errors import Errors
 from mypyc.irbuild.for_helpers import (
     ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 )
-from mypyc.nonlocalcontrol import (
+from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
