@@ -21,7 +21,7 @@ from mypy.nodes import (
 
 from mypyc.ops import Value
 from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
-from mypyc.genclass import BuildClassIR
+from mypyc.genclass import transform_class_def
 from mypyc.genfunc import BuildFuncIR
 from mypyc.genstatement import (
     transform_block,
@@ -89,7 +89,7 @@ class IRBuilderVisitor(IRVisitor):
         self.builder.visit_mypy_file(mypyfile)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
-        BuildClassIR(self.builder).visit_class_def(cdef)
+        transform_class_def(self.builder, cdef)
 
     def visit_import(self, node: Import) -> None:
         self.builder.visit_import(node)
