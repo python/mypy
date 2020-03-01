@@ -13,7 +13,7 @@ from mypyc.ops import (
 )
 from mypyc.common import PROPSET_PREFIX
 from mypyc.irbuild.mapper import Mapper
-from mypyc.genopsutil import (
+from mypyc.irbuild.util import (
     get_func_def, is_dataclass, is_trait, is_extension_class, get_mypyc_attrs
 )
 from mypyc.errors import Errors
