@@ -40,7 +40,7 @@ from mypyc.errors import Errors
 from mypyc.common import shared_lib_name
 from mypyc.ir.module_ir import format_modules
 
-from mypyc import emitmodule
+from mypyc.codegen import emitmodule
 
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
