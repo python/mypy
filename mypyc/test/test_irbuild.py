@@ -15,19 +15,19 @@ from mypyc.test.testutil import (
 from mypyc.options import CompilerOptions
 
 files = [
-    'genops-basic.test',
-    'genops-lists.test',
-    'genops-dict.test',
-    'genops-statements.test',
-    'genops-nested.test',
-    'genops-classes.test',
-    'genops-optional.test',
-    'genops-tuple.test',
-    'genops-any.test',
-    'genops-generics.test',
-    'genops-try.test',
-    'genops-set.test',
-    'genops-strip-asserts.test',
+    'irbuild-basic.test',
+    'irbuild-lists.test',
+    'irbuild-dict.test',
+    'irbuild-statements.test',
+    'irbuild-nested.test',
+    'irbuild-classes.test',
+    'irbuild-optional.test',
+    'irbuild-tuple.test',
+    'irbuild-any.test',
+    'irbuild-generics.test',
+    'irbuild-try.test',
+    'irbuild-set.test',
+    'irbuild-strip-asserts.test',
 ]
 
 
