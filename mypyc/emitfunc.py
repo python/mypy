@@ -6,15 +6,15 @@ from mypyc.common import (
     REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
 )
 from mypyc.emit import Emitter
-from mypyc.ops import (
+from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError
 )
-from mypyc.rtypes import RType, RTuple
-from mypyc.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
-from mypyc.class_ir import ClassIR
+from mypyc.ir.rtypes import RType, RTuple
+from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
+from mypyc.ir.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 
 # Whether to insert debug asserts for all error handling, to quickly

@@ -14,11 +14,11 @@ from mypy.nodes import (
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
-from mypyc.rtypes import RTuple, object_rprimitive, is_none_rprimitive
-from mypyc.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
+from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.misc_ops import new_slice_op, iter_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op

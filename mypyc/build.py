@@ -38,7 +38,7 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.common import shared_lib_name
-from mypyc.module_ir import format_modules
+from mypyc.ir.module_ir import format_modules
 
 from mypyc import emitmodule
 

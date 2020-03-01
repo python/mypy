@@ -11,9 +11,9 @@ from mypyc.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
     generate_bool_wrapper, generate_get_wrapper,
 )
-from mypyc.rtypes import RType, RTuple, object_rprimitive
-from mypyc.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
-from mypyc.class_ir import ClassIR, VTableMethod, VTableEntries
+from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
+from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
+from mypyc.ir.class_ir import ClassIR, VTableMethod, VTableEntries
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
 

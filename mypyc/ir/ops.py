@@ -22,7 +22,7 @@ from mypy_extensions import trait
 
 from mypy.nodes import SymbolNode
 
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype
@@ -30,8 +30,8 @@ from mypyc.rtypes import (
 from mypyc.common import short_name
 
 if TYPE_CHECKING:
-    from mypyc.class_ir import ClassIR  # noqa
-    from mypyc.func_ir import FuncIR, FuncDecl  # noqa
+    from mypyc.ir.class_ir import ClassIR  # noqa
+    from mypyc.ir.func_ir import FuncIR, FuncDecl  # noqa
 
 T = TypeVar('T')
 

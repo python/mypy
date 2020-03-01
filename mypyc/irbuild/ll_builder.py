@@ -16,18 +16,18 @@ from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
     NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue,
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive
 )
-from mypyc.func_ir import FuncDecl, FuncSignature
-from mypyc.class_ir import ClassIR, all_concrete_classes
+from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )

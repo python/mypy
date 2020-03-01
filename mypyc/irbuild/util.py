@@ -6,9 +6,9 @@ from mypy.nodes import (
     ARG_OPT, GDEF
 )
 
-from mypyc.ops import Environment, AssignmentTargetRegister
-from mypyc.rtypes import RInstance
-from mypyc.class_ir import ClassIR
+from mypyc.ir.ops import Environment, AssignmentTargetRegister
+from mypyc.ir.rtypes import RInstance
+from mypyc.ir.class_ir import ClassIR
 from mypyc.common import SELF_NAME
 
 

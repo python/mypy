@@ -1,10 +1,10 @@
 import unittest
 
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, int_rprimitive, bool_rprimitive, list_rprimitive,
     RInstance, RUnion,
 )
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 
 
 class TestTupleNames(unittest.TestCase):

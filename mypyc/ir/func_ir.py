@@ -4,10 +4,10 @@ from typing_extensions import Final
 from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
-from mypyc.ops import (
+from mypyc.ir.ops import (
     DeserMaps, Goto, Branch, Return, Unreachable, BasicBlock, Environment
 )
-from mypyc.rtypes import RType, deserialize_type
+from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
 
 

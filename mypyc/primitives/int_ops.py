@@ -1,5 +1,5 @@
-from mypyc.ops import OpDescription, ERR_NEVER, ERR_MAGIC
-from mypyc.rtypes import (
+from mypyc.ir.ops import OpDescription, ERR_NEVER, ERR_MAGIC
+from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
     RType
 )

@@ -17,10 +17,10 @@ from typing import Callable, Optional, Dict, Tuple
 from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ARG_POS
 from mypy.types import AnyType, TypeOfAny
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable, OpDescription
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
     bool_rprimitive
 )

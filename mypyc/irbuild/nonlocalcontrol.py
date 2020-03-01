@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Optional, Union
 from typing_extensions import TYPE_CHECKING
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
     AssignmentTarget, NO_TRACEBACK_LINE_NO
 )

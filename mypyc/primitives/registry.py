@@ -8,10 +8,10 @@ count and argument types.
 
 from typing import Dict, List, Optional
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
-from mypyc.rtypes import RType,  bool_rprimitive
+from mypyc.ir.rtypes import RType,  bool_rprimitive
 
 
 # Primitive binary ops (key is operator such as '+')

@@ -5,7 +5,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitwrapper import generate_arg_check
-from mypyc.rtypes import list_rprimitive, int_rprimitive
+from mypyc.ir.rtypes import list_rprimitive, int_rprimitive
 from mypyc.namegen import NameGenerator
 
 

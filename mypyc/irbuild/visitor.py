@@ -19,7 +19,7 @@ from mypy.nodes import (
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr
 )
 
-from mypyc.ops import Value
+from mypyc.ir.ops import Value
 from mypyc.irbuild.builder import IRVisitor, IRBuilder, UnsupportedException
 from mypyc.irbuild.classdef import transform_class_def
 from mypyc.irbuild.function import (

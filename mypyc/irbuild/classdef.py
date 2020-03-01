@@ -4,16 +4,16 @@ from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
     ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, Var, is_class_var
 )
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
     is_object_rprimitive, is_none_rprimitive
 )
-from mypyc.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
-from mypyc.class_ir import ClassIR, NonExtClassInfo
+from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
+from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand, py_setattr_op, pytype_from_template_op, py_calc_meta_op,
     type_object_op, py_hasattr_op, not_implemented_op, true_op

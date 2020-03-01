@@ -5,17 +5,17 @@ from collections import OrderedDict
 from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
     SetAttr, Op, Value
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive
 )
-from mypyc.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
-from mypyc.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
+from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor

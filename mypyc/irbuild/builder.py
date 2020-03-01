@@ -31,18 +31,18 @@ from mypy.util import split_target
 
 from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
 from mypyc.prebuildvisitor import PreBuildVisitor
-from mypyc.ops import (
+from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
     InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, is_list_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive
 )
-from mypyc.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
-from mypyc.class_ir import ClassIR, NonExtClassInfo
+from mypyc.ir.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
+from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
 from mypyc.primitives.list_ops import (
     list_append_op, list_len_op, new_list_op, to_list, list_pop_last
