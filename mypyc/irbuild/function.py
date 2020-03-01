@@ -28,7 +28,7 @@ from mypyc.common import (
 )
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import concrete_arg_kind, is_constant, add_self_to_env
-from mypyc.genopscontext import FuncInfo, GeneratorClass, ImplicitClass
+from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.statement import transform_try_except
 from mypyc.genops import IRBuilder
 

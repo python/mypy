@@ -53,7 +53,7 @@ from mypyc.errors import Errors
 from mypyc.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
-from mypyc.genopscontext import FuncInfo, ImplicitClass
+from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.ir_builder import LowLevelIRBuilder
 
