@@ -6,7 +6,7 @@ from mypyc.ops import (
     Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
     AssignmentTarget, NO_TRACEBACK_LINE_NO
 )
-from mypyc.ops_exc import set_stop_iteration_value, restore_exc_info_op
+from mypyc.primitives.exc_ops import set_stop_iteration_value, restore_exc_info_op
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder

@@ -4,7 +4,7 @@ from mypyc.ops import (
     object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface,
     RType, int_rprimitive, list_rprimitive, EmitCallback
 )
-from mypyc.ops_primitive import func_op, binary_op, simple_emit, name_ref_op, method_op
+from mypyc.primitives.registry import func_op, binary_op, simple_emit, name_ref_op, method_op
 
 
 name_ref_op('builtins.str',

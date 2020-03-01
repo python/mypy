@@ -15,13 +15,15 @@ from mypyc.ops import (
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.ops_primitive import binary_ops
-from mypyc.ops_misc import none_object_op, true_op, false_op
-from mypyc.ops_list import (
+from mypyc.primitives.registry import binary_ops
+from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
+from mypyc.primitives.list_ops import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
-from mypyc.ops_dict import new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
-from mypyc.ops_int import int_neg_op
+from mypyc.primitives.dict_ops import (
+    new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
+)
+from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
 

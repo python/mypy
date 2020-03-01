@@ -5,7 +5,7 @@ from mypyc.ops import (
     bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple,
     ERR_NEVER, ERR_FALSE
 )
-from mypyc.ops_primitive import (
+from mypyc.primitives.registry import (
     simple_emit, custom_op,
 )
 

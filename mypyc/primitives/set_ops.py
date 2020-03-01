@@ -1,5 +1,5 @@
 """Primitive set ops."""
-from mypyc.ops_primitive import (
+from mypyc.primitives.registry import (
     func_op, method_op, binary_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
 )

@@ -10,7 +10,7 @@ from mypyc.ops import (
     EmitterInterface, tuple_rprimitive, int_rprimitive, list_rprimitive,
     object_rprimitive, ERR_NEVER, ERR_MAGIC
 )
-from mypyc.ops_primitive import (
+from mypyc.primitives.registry import (
     func_op, method_op, custom_op, call_emit, simple_emit,
 )
 

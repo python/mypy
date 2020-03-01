@@ -1022,7 +1022,7 @@ class PrimitiveOp(RegisterOp):
     operand types.
 
     The details of the operation are defined by the 'desc'
-    attribute. The mypyc.ops_* modules define the supported
+    attribute. The modules under mypyc.primitives define the supported
     operations. mypyc.irbuild uses the descriptions to look for suitable
     primitive ops.
     """
@@ -2276,5 +2276,5 @@ def short_name(name: str) -> str:
     return name
 
 
-# Import ops_primitive that will set up set up global primitives tables.
-import mypyc.ops_primitive  # noqa
+# Import mypyc.primitives.registry that will set up set up global primitives tables.
+import mypyc.primitives.registry  # noqa

@@ -40,10 +40,12 @@ from mypyc.ops import (
     is_none_rprimitive, object_rprimitive, PrimitiveOp, OpDescription,
     is_object_rprimitive, FuncSignature, NAMESPACE_MODULE, RaiseStandardError, FuncDecl
 )
-from mypyc.ops_primitive import func_ops
-from mypyc.ops_list import list_append_op, list_len_op, new_list_op, to_list, list_pop_last
-from mypyc.ops_dict import dict_get_item_op, dict_set_item_op
-from mypyc.ops_misc import (
+from mypyc.primitives.registry import func_ops
+from mypyc.primitives.list_ops import (
+    list_append_op, list_len_op, new_list_op, to_list, list_pop_last
+)
+from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
+from mypyc.primitives.misc_ops import (
     true_op, false_op, iter_op, next_op, py_setattr_op, import_op, get_module_dict_op
 )
 from mypyc.crash import catch_errors

@@ -17,12 +17,12 @@ from mypyc.ops import (
     int_rprimitive, RInstance, AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic,
     InitStatic, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
-from mypyc.ops_misc import (
+from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, next_raw_op, iter_op, coro_op, send_op, py_setattr_op,
     method_new_op
 )
-from mypyc.ops_exc import raise_exception_with_tb_op
-from mypyc.ops_dict import dict_set_item_op
+from mypyc.primitives.exc_ops import raise_exception_with_tb_op
+from mypyc.primitives.dict_ops import dict_set_item_op
 from mypyc.common import (
     SELF_NAME, ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, LAMBDA_NAME, decorator_helper_name
 )

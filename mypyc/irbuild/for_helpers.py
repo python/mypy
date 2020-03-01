@@ -13,10 +13,10 @@ from mypyc.ops import (
     Value, BasicBlock, is_short_int_rprimitive, LoadInt, RType,
     PrimitiveOp, Branch, Register, AssignmentTarget
 )
-from mypyc.ops_int import unsafe_short_add
-from mypyc.ops_list import list_len_op, list_get_item_unsafe_op
-from mypyc.ops_misc import iter_op, next_op
-from mypyc.ops_exc import no_err_occurred_op
+from mypyc.primitives.int_ops import unsafe_short_add
+from mypyc.primitives.list_ops import list_len_op, list_get_item_unsafe_op
+from mypyc.primitives.misc_ops import iter_op, next_op
+from mypyc.primitives.exc_ops import no_err_occurred_op
 
 if TYPE_CHECKING:
     import mypyc.irbuild.builder

@@ -11,12 +11,12 @@ from mypyc.ops import (
     object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type, is_object_rprimitive,
     is_none_rprimitive,
 )
-from mypyc.ops_misc import (
+from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand, py_setattr_op, pytype_from_template_op, py_calc_meta_op,
     type_object_op, py_hasattr_op, not_implemented_op, true_op
 )
-from mypyc.ops_dict import dict_set_item_op, new_dict_op
-from mypyc.ops_tuple import new_tuple_op
+from mypyc.primitives.dict_ops import dict_set_item_op, new_dict_op
+from mypyc.primitives.tuple_ops import new_tuple_op
 from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
