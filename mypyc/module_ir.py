@@ -6,7 +6,7 @@ from mypyc.common import JsonDict
 from mypyc.ir.ops import DeserMaps
 from mypyc.rtypes import RType, deserialize_type
 from mypyc.ir.func_ir import FuncIR, FuncDecl, format_func
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 
 
 class ModuleIR:

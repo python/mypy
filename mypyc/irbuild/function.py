@@ -20,7 +20,7 @@ from mypyc.rtypes import object_rprimitive, int_rprimitive, RInstance
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
-from mypyc.class_ir import ClassIR, NonExtClassInfo
+from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, next_raw_op, iter_op, coro_op, send_op, py_setattr_op,
     method_new_op

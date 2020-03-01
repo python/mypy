@@ -1,6 +1,6 @@
 import itertools
 
-from mypyc.class_ir import ClassIR, VTableEntries, VTableMethod, VTableAttr
+from mypyc.ir.class_ir import ClassIR, VTableEntries, VTableMethod, VTableAttr
 from mypyc.sametype import is_same_method_signature
 
 

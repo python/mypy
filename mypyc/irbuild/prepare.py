@@ -12,7 +12,7 @@ from mypyc.rtypes import RInstance, tuple_rprimitive, dict_rprimitive
 from mypyc.ir.func_ir import (
     FuncDecl, FuncSignature, RuntimeArg, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 from mypyc.common import PROPSET_PREFIX
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (

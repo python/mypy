@@ -27,7 +27,7 @@ from mypyc.rtypes import (
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
-from mypyc.class_ir import ClassIR, all_concrete_classes
+from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )

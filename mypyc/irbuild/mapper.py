@@ -15,7 +15,7 @@ from mypyc.rtypes import (
     list_rprimitive, set_rprimitive
 )
 from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 
 
 class Mapper:

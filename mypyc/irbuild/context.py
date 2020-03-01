@@ -4,7 +4,7 @@ from mypy.nodes import FuncItem
 
 from mypyc.ir.ops import Value, BasicBlock, AssignmentTarget
 from mypyc.ir.func_ir import INVALID_FUNC_DEF
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 from mypyc.common import decorator_helper_name
 
 

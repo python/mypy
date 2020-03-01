@@ -10,7 +10,7 @@ from mypyc.rtypes import (
     RType, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 
 

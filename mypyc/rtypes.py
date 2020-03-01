@@ -23,7 +23,7 @@ from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
     from mypyc.ir.ops import DeserMaps
-    from mypyc.class_ir import ClassIR
+    from mypyc.ir.class_ir import ClassIR
 
 T = TypeVar('T')
 

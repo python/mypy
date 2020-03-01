@@ -15,7 +15,7 @@ from mypyc.rtypes import (
     dict_rprimitive, object_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
-from mypyc.class_ir import ClassIR
+from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
