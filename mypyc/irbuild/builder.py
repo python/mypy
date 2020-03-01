@@ -3,12 +3,12 @@
 The IRBuilder class maintains transformation state and provides access
 to various helpers used to implement the transform.
 
-The top-level transform control logic is in mypyc.genopsmain.
+The top-level transform control logic is in mypyc.irbuild.main.
 
-mypyc.genopsvisitor.IRBuilderVisitor is used to dispatch based on mypy
+mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
 AST node type to code that actually does the bulk of the work. For
-example, expressions are transformed in mypyc.genexpr and functions are
-transformed in mypyc.genfunc.
+example, expressions are transformed in mypyc.irbuild.expression and
+functions are transformed in mypyc.irbuild.function.
 """
 
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any

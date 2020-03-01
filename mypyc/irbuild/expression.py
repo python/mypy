@@ -1,6 +1,7 @@
 """Transform mypy expression ASTs to mypyc IR (Intermediate Representation).
 
-The top-level AST transformation logic is implemented in mypyc.genops.
+The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
+and mypyc.irbuild.builder.
 """
 
 from typing import List, Optional, Union

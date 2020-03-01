@@ -1,6 +1,6 @@
 """Dispatcher used when transforming a mypy AST to the IR form.
 
-mypyc.genops and mypyc.genopsmain are closely related.
+mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
 from typing_extensions import NoReturn

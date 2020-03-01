@@ -16,7 +16,7 @@ It would be translated to something that conceptually looks like this:
 The IR is implemented in mypyc.ops.
 
 For the core of the implementation, look at build_ir() below,
-mypyc.genops, and mypyc.genopsvisitor.
+mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
 from collections import OrderedDict

@@ -63,7 +63,7 @@ int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 
 # this should work because assignment operators are parsed differently
-# and the code in genops that handles it does the assignment
+# and the code in irbuild that handles it does the assignment
 # regardless of whether or not the operator works in place anyway
 int_binary_op('+=', 'CPyTagged_Add')
 int_binary_op('-=', 'CPyTagged_Subtract')
