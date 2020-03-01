@@ -29,7 +29,7 @@ from mypy.build import Graph
 
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
-from mypyc.ops import ModuleIR, ModuleIRs
+from mypyc.module_ir import ModuleIR, ModuleIRs
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.irbuild.prepare import build_type_map

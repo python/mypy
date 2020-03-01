@@ -9,9 +9,10 @@ from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, Goto, Return, LoadInt, Assign,
     IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
     RegisterOp, FuncDecl,
-    ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
+    RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
     list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
 )
+from mypyc.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor

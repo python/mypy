@@ -12,10 +12,9 @@ from mypyc.emitwrapper import (
     generate_bool_wrapper, generate_get_wrapper,
 )
 from mypyc.ops import (
-    ClassIR, FuncIR, FuncDecl, RType, RTuple, object_rprimitive,
-    VTableMethod, VTableEntries,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
+    FuncIR, FuncDecl, RType, RTuple, object_rprimitive, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
+from mypyc.class_ir import ClassIR, VTableMethod, VTableEntries
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
 

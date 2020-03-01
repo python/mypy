@@ -8,8 +8,10 @@ from collections import OrderedDict
 from collections.abc import Iterable
 
 from mypyc.ops import (
-    deserialize_modules, DeserMaps, ModuleIR, FuncDecl, FuncIR, ClassIR, FuncSignature, RType
+    DeserMaps, FuncDecl, FuncIR, FuncSignature, RType
 )
+from mypyc.class_ir import ClassIR
+from mypyc.module_ir import ModuleIR, deserialize_modules
 from mypyc.sametype import is_same_type, is_same_signature
 
 

@@ -33,9 +33,10 @@ from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
 from mypyc.ops import (
-    FuncIR, ClassIR, ModuleIR, ModuleIRs, LiteralsMap, RType, RTuple,
-    DeserMaps, deserialize_modules,
+    FuncIR, LiteralsMap, RType, RTuple, DeserMaps
 )
+from mypyc.class_ir import ClassIR
+from mypyc.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.options import CompilerOptions
 from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes

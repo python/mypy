@@ -5,12 +5,13 @@ from mypy.nodes import (
     ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, Var, is_class_var
 )
 from mypyc.ops import (
-    Value, NonExtClassInfo, Call, FuncDecl, LoadErrorValue, LoadStatic,
-    InitStatic, FuncSignature, TupleSet, SetAttr, Return, FuncIR, ClassIR, RInstance,
+    Value, Call, FuncDecl, LoadErrorValue, LoadStatic,
+    InitStatic, FuncSignature, TupleSet, SetAttr, Return, FuncIR, RInstance,
     BasicBlock, Branch, MethodCall, RuntimeArg, NAMESPACE_TYPE,
     object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type, is_object_rprimitive,
     is_none_rprimitive,
 )
+from mypyc.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand, py_setattr_op, pytype_from_template_op, py_calc_meta_op,
     type_object_op, py_hasattr_op, not_implemented_op, true_op

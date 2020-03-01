@@ -8,9 +8,10 @@ from mypy.types import Type
 from mypy.build import Graph
 
 from mypyc.ops import (
-    FuncDecl, FuncSignature, ClassIR, RInstance, RuntimeArg, tuple_rprimitive, dict_rprimitive,
+    FuncDecl, FuncSignature, RInstance, RuntimeArg, tuple_rprimitive, dict_rprimitive,
     DeserMaps, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
+from mypyc.class_ir import ClassIR
 from mypyc.common import PROPSET_PREFIX
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
