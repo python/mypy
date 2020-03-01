@@ -2277,4 +2277,4 @@ def short_name(name: str) -> str:
 
 
 # Import ops_primitive that will set up set up global primitives tables.
-import mypyc.ops_primitive  # noqa
+import mypyc.primitives.registry  # noqa

@@ -6,7 +6,7 @@ from mypyc.ops import (
     int_rprimitive, dict_rprimitive,
     ERR_NEVER, ERR_MAGIC, ERR_FALSE
 )
-from mypyc.ops_primitive import (
+from mypyc.primitives.registry import (
     name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, custom_op,
     negative_int_emit,
     call_emit, name_emit, call_negative_bool_emit, call_negative_magic_emit,

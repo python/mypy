@@ -4,7 +4,7 @@ from mypyc.ops import (
     RType, OpDescription,
     ERR_NEVER, ERR_MAGIC,
 )
-from mypyc.ops_primitive import (
+from mypyc.primitives.registry import (
     name_ref_op, binary_op, unary_op, func_op, custom_op,
     simple_emit,
     call_emit,

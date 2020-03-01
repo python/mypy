@@ -7,7 +7,7 @@ from mypyc.ops import (
     ERR_MAGIC, ERR_NEVER,
     ERR_FALSE, EmitterInterface,
 )
-from mypyc.ops_primitive import (
+from mypyc.primitives.registry import (
     name_ref_op, binary_op, func_op, method_op, custom_op, simple_emit,
     call_emit, call_negative_bool_emit,
 )

@@ -18,7 +18,7 @@ from mypyc.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, RTuple, OpDescription, Assign,
     object_rprimitive, is_none_rprimitive, FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 )
-from mypyc.ops_primitive import name_ref_ops
+from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.misc_ops import new_slice_op, iter_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
 from mypyc.primitives.tuple_ops import list_tuple_op

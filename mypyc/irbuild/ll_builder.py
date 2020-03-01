@@ -28,7 +28,7 @@ from mypyc.ops import (
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )
-from mypyc.ops_primitive import binary_ops, unary_ops, method_ops
+from mypyc.primitives.registry import binary_ops, unary_ops, method_ops
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
 )
