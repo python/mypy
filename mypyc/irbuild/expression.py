@@ -22,7 +22,7 @@ from mypyc.ops_primitive import name_ref_ops
 from mypyc.ops_misc import new_slice_op, iter_op, ellipsis_op, type_op
 from mypyc.ops_list import new_list_op, list_append_op, list_extend_op
 from mypyc.ops_tuple import list_tuple_op
-from mypyc.ops_dict import new_dict_op, dict_set_item_op
+from mypyc.primitives.dict_ops import new_dict_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op, set_update_op
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder

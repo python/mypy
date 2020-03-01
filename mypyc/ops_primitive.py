@@ -220,6 +220,6 @@ def custom_op(arg_types: List[RType],
 import mypyc.ops_int  # noqa
 import mypyc.ops_str  # noqa
 import mypyc.ops_list  # noqa
-import mypyc.ops_dict  # noqa
+import mypyc.primitives.dict_ops  # noqa
 import mypyc.ops_tuple  # noqa
 import mypyc.ops_misc  # noqa

@@ -20,7 +20,9 @@ from mypyc.ops_misc import none_object_op, true_op, false_op
 from mypyc.ops_list import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
-from mypyc.ops_dict import new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
+from mypyc.primitives.dict_ops import (
+    new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
+)
 from mypyc.ops_int import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
