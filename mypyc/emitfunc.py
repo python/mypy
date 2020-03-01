@@ -13,7 +13,7 @@ from mypyc.ir.ops import (
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.rtypes import RType, RTuple
-from mypyc.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
+from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 

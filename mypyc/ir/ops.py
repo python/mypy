@@ -31,7 +31,7 @@ from mypyc.common import short_name
 
 if TYPE_CHECKING:
     from mypyc.class_ir import ClassIR  # noqa
-    from mypyc.func_ir import FuncIR, FuncDecl  # noqa
+    from mypyc.ir.func_ir import FuncIR, FuncDecl  # noqa
 
 T = TypeVar('T')
 

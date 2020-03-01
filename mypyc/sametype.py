@@ -3,7 +3,7 @@
 from mypyc.rtypes import (
     RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid, RUnion
 )
-from mypyc.func_ir import FuncSignature
+from mypyc.ir.func_ir import FuncSignature
 
 
 def is_same_type(a: RType, b: RType) -> bool:

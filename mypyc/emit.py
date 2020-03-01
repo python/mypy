@@ -15,7 +15,7 @@ from mypyc.rtypes import (
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
     int_rprimitive, is_optional_type, optional_value_type
 )
-from mypyc.func_ir import FuncDecl
+from mypyc.ir.func_ir import FuncDecl
 from mypyc.class_ir import ClassIR, all_concrete_classes
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type

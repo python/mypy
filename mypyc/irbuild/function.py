@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic, InitStatic
 )
 from mypyc.rtypes import object_rprimitive, int_rprimitive, RInstance
-from mypyc.func_ir import (
+from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
 from mypyc.class_ir import ClassIR, NonExtClassInfo

@@ -34,7 +34,7 @@ from mypyc.emitwrapper import (
 )
 from mypyc.ir.ops import LiteralsMap, DeserMaps
 from mypyc.rtypes import RType, RTuple
-from mypyc.func_ir import FuncIR
+from mypyc.ir.func_ir import FuncIR
 from mypyc.class_ir import ClassIR
 from mypyc.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.options import CompilerOptions

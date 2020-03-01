@@ -9,7 +9,7 @@ from mypy.build import Graph
 
 from mypyc.ir.ops import DeserMaps
 from mypyc.rtypes import RInstance, tuple_rprimitive, dict_rprimitive
-from mypyc.func_ir import (
+from mypyc.ir.func_ir import (
     FuncDecl, FuncSignature, RuntimeArg, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
 from mypyc.class_ir import ClassIR

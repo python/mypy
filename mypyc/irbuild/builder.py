@@ -41,7 +41,7 @@ from mypyc.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, is_list_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive
 )
-from mypyc.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
+from mypyc.ir.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
 from mypyc.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
 from mypyc.primitives.list_ops import (

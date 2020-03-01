@@ -14,7 +14,7 @@ from mypyc.rtypes import (
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
     list_rprimitive, set_rprimitive
 )
-from mypyc.func_ir import FuncSignature, FuncDecl, RuntimeArg
+from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.class_ir import ClassIR
 
 

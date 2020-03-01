@@ -14,7 +14,7 @@ from mypyc.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive
 )
-from mypyc.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
+from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
