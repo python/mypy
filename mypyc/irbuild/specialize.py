@@ -22,7 +22,7 @@ from mypyc.ops import (
     str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive, bool_rprimitive
 )
 from mypyc.ops_misc import true_op, false_op
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
 
 
 # Specializers are attempted before compiling the arguments to the

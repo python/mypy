@@ -19,14 +19,14 @@ from mypyc.ops_misc import iter_op, next_op
 from mypyc.ops_exc import no_err_occurred_op
 
 if TYPE_CHECKING:
-    import mypyc.genops
+    import mypyc.irbuild.builder
 
 
 class ForGenerator:
     """Abstract base class for generating for loops."""
 
     def __init__(self,
-                 builder: 'mypyc.genops.IRBuilder',
+                 builder: 'mypyc.irbuild.builder.IRBuilder',
                  index: Lvalue,
                  body_block: BasicBlock,
                  loop_exit: BasicBlock,

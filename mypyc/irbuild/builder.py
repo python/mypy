@@ -3,12 +3,12 @@
 The IRBuilder class maintains transformation state and provides access
 to various helpers used to implement the transform.
 
-The top-level transform control logic is in mypyc.genopsmain.
+The top-level transform control logic is in mypyc.irbuild.main.
 
-mypyc.genopsvisitor.IRBuilderVisitor is used to dispatch based on mypy
+mypyc.irbuild.visitor.IRBuilderVisitor is used to dispatch based on mypy
 AST node type to code that actually does the bulk of the work. For
-example, expressions are transformed in mypyc.genexpr and functions are
-transformed in mypyc.genfunc.
+example, expressions are transformed in mypyc.irbuild.expression and
+functions are transformed in mypyc.irbuild.function.
 """
 
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
@@ -46,16 +46,18 @@ from mypyc.ops_dict import dict_get_item_op, dict_set_item_op
 from mypyc.ops_misc import (
     true_op, false_op, iter_op, next_op, py_setattr_op, import_op, get_module_dict_op
 )
-from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.nonlocalcontrol import (
+from mypyc.irbuild.for_helpers import (
+    ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
+)
+from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
-from mypyc.genopscontext import FuncInfo, ImplicitClass
-from mypyc.genopsmapper import Mapper
-from mypyc.ir_builder import LowLevelIRBuilder
+from mypyc.irbuild.context import FuncInfo, ImplicitClass
+from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 GenFunc = Callable[[], None]
 

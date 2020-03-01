@@ -19,9 +19,9 @@ from mypy.plugin import Plugin, ReportConfigContext
 from mypy.fscache import FileSystemCache
 from mypy.util import hash_digest
 
-from mypyc import genopsmain
-from mypyc.genopsprepare import load_type_map
-from mypyc.genopsmapper import Mapper
+from mypyc.irbuild.main import build_ir
+from mypyc.irbuild.prepare import load_type_map
+from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
@@ -202,7 +202,7 @@ def compile_scc_to_ir(
         print("Compiling {}".format(", ".join(x.name for x in scc)))
 
     # Generate basic IR, with missing exception and refcount handling.
-    modules = genopsmain.build_ir(
+    modules = build_ir(
         scc, result.graph, result.types, mapper, compiler_options, errors
     )
     if errors.num_errors > 0:

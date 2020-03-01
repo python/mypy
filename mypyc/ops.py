@@ -1023,7 +1023,7 @@ class PrimitiveOp(RegisterOp):
 
     The details of the operation are defined by the 'desc'
     attribute. The mypyc.ops_* modules define the supported
-    operations. mypyc.genops uses the descriptions to look for suitable
+    operations. mypyc.irbuild uses the descriptions to look for suitable
     primitive ops.
     """
 

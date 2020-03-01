@@ -16,7 +16,7 @@ It would be translated to something that conceptually looks like this:
 The IR is implemented in mypyc.ops.
 
 For the core of the implementation, look at build_ir() below,
-mypyc.genops, and mypyc.genopsvisitor.
+mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
 from collections import OrderedDict
@@ -29,13 +29,13 @@ from mypy.build import Graph
 
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
-from mypyc.prebuildvisitor import PreBuildVisitor
-from mypyc.genopsvtable import compute_vtable
-from mypyc.genopsprepare import build_type_map
-from mypyc.genops import IRBuilder
-from mypyc.genopsvisitor import IRBuilderVisitor
 from mypyc.ops import ModuleIR, ModuleIRs
-from mypyc.genopsmapper import Mapper
+from mypyc.prebuildvisitor import PreBuildVisitor
+from mypyc.irbuild.vtable import compute_vtable
+from mypyc.irbuild.prepare import build_type_map
+from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.visitor import IRBuilderVisitor
+from mypyc.irbuild.mapper import Mapper
 
 
 # The stubs for callable contextmanagers are busted so cast it to the

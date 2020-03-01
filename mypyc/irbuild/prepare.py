@@ -12,8 +12,8 @@ from mypyc.ops import (
     DeserMaps, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
 from mypyc.common import PROPSET_PREFIX
-from mypyc.genopsmapper import Mapper
-from mypyc.genopsutil import (
+from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.util import (
     get_func_def, is_dataclass, is_trait, is_extension_class, get_mypyc_attrs
 )
 from mypyc.errors import Errors

@@ -17,12 +17,12 @@ from mypyc.ops_misc import (
 )
 from mypyc.ops_dict import dict_set_item_op, new_dict_op
 from mypyc.ops_tuple import new_tuple_op
-from mypyc.genopsutil import (
+from mypyc.common import SELF_NAME
+from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
 )
-from mypyc.genfunc import transform_method
-from mypyc.common import SELF_NAME
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.function import transform_method
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:

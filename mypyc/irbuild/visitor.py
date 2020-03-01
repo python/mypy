@@ -1,6 +1,6 @@
 """Dispatcher used when transforming a mypy AST to the IR form.
 
-mypyc.genops and mypyc.genopsmain are closely related.
+mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
 from typing_extensions import NoReturn
@@ -20,9 +20,9 @@ from mypy.nodes import (
 )
 
 from mypyc.ops import Value
-from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
-from mypyc.genclass import transform_class_def
-from mypyc.genfunc import (
+from mypyc.irbuild.builder import IRVisitor, IRBuilder, UnsupportedException
+from mypyc.irbuild.classdef import transform_class_def
+from mypyc.irbuild.function import (
     transform_func_def,
     transform_overloaded_func_def,
     transform_decorator,
@@ -31,7 +31,7 @@ from mypyc.genfunc import (
     transform_yield_from_expr,
     transform_await_expr,
 )
-from mypyc.genstatement import (
+from mypyc.irbuild.statement import (
     transform_block,
     transform_expression_stmt,
     transform_return_stmt,
@@ -48,7 +48,7 @@ from mypyc.genstatement import (
     transform_assert_stmt,
     transform_del_stmt,
 )
-from mypyc.genexpr import (
+from mypyc.irbuild.expression import (
     transform_name_expr,
     transform_member_expr,
     transform_super_expr,

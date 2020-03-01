@@ -9,7 +9,7 @@ from mypyc.ops import (
 from mypyc.ops_exc import set_stop_iteration_value, restore_exc_info_op
 
 if TYPE_CHECKING:
-    from mypyc.genops import IRBuilder
+    from mypyc.irbuild.builder import IRBuilder
 
 
 class NonlocalControl:

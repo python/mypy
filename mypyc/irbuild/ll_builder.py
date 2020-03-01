@@ -44,7 +44,7 @@ from mypyc.ops_misc import (
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
-from mypyc.genopsmapper import Mapper
+from mypyc.irbuild.mapper import Mapper
 
 
 DictEntry = Tuple[Optional[Value], Value]

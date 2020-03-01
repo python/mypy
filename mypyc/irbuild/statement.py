@@ -16,10 +16,10 @@ from mypyc.ops_exc import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
 )
-from mypyc.nonlocalcontrol import (
+from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
 
 GenFunc = Callable[[], None]
 
