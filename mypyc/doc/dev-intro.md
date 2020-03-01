@@ -111,7 +111,7 @@ driver is in `mypyc.test.test_run`.
 If the specifics of the generated IR of a change is important
 (because, for example, you want to make sure a particular optimization
 is triggering), you should add an irbuild test as well.  Test cases are
-located in `test-data/genops-*.test` and the test driver is in
+located in `test-data/irbuild-*.test` and the test driver is in
 `mypyc.test.test_irbuild`. IR build tests do a direct comparison of the
 IR output, so try to make the test as targeted as possible so as to
 capture only the important details.
