@@ -17,7 +17,7 @@ from mypyc.ops import (
     int_rprimitive, RInstance, AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic,
     InitStatic, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
-from mypyc.ops_misc import (
+from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, next_raw_op, iter_op, coro_op, send_op, py_setattr_op,
     method_new_op
 )

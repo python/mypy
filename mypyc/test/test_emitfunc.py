@@ -16,7 +16,7 @@ from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.ops_primitive import binary_ops
-from mypyc.ops_misc import none_object_op, true_op, false_op
+from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
 from mypyc.ops_list import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
