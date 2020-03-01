@@ -18,7 +18,7 @@ from mypyc.genopsmain import build_ir
 from mypyc.options import CompilerOptions
 from mypyc.ops import FuncIR
 from mypyc.errors import Errors
-from mypyc.genopsmapper import Mapper
+from mypyc.irbuild.mapper import Mapper
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.

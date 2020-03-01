@@ -54,7 +54,7 @@ from mypyc.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
 from mypyc.genopscontext import FuncInfo, ImplicitClass
-from mypyc.genopsmapper import Mapper
+from mypyc.irbuild.mapper import Mapper
 from mypyc.ir_builder import LowLevelIRBuilder
 
 GenFunc = Callable[[], None]

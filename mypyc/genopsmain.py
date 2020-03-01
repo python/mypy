@@ -35,7 +35,7 @@ from mypyc.genopsprepare import build_type_map
 from mypyc.genops import IRBuilder
 from mypyc.genopsvisitor import IRBuilderVisitor
 from mypyc.ops import ModuleIR, ModuleIRs
-from mypyc.genopsmapper import Mapper
+from mypyc.irbuild.mapper import Mapper
 
 
 # The stubs for callable contextmanagers are busted so cast it to the
