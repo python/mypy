@@ -17,8 +17,8 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
-from mypyc.emit import Emitter, EmitterContext
-from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
+from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.primitives.registry import binary_ops
 from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
 from mypyc.primitives.list_ops import (
