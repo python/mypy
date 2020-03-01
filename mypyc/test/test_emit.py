@@ -3,7 +3,8 @@ import unittest
 from mypy.nodes import Var
 
 from mypyc.emit import Emitter, EmitterContext
-from mypyc.ops import BasicBlock, Environment, int_rprimitive
+from mypyc.ops import BasicBlock, Environment
+from mypyc.rtypes import int_rprimitive
 from mypyc.namegen import NameGenerator
 
 

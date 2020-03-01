@@ -7,9 +7,12 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
-    Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
-    list_rprimitive, dict_rprimitive, object_rprimitive
+    Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
+    SetAttr, Op, Value
+)
+from mypyc.rtypes import (
+    RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
+    dict_rprimitive, object_rprimitive
 )
 from mypyc.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.class_ir import ClassIR

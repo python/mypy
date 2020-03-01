@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 from typing_extensions import Final
 
 PREFIX = 'CPyPy_'  # type: Final # Python wrappers
@@ -37,3 +39,12 @@ def shared_lib_name(group_name: str) -> str:
     (This just adds a suffix to the final component.)
     """
     return '{}__mypyc'.format(group_name)
+
+
+def short_name(name: str) -> str:
+    if name.startswith('builtins.'):
+        return name[9:]
+    return name
+
+
+JsonDict = Dict[str, Any]

@@ -1,6 +1,6 @@
 import unittest
 
-from mypyc.ops import (
+from mypyc.rtypes import (
     RTuple, object_rprimitive, int_rprimitive, bool_rprimitive, list_rprimitive,
     RInstance, RUnion,
 )

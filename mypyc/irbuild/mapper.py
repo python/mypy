@@ -8,10 +8,11 @@ from mypy.types import (
     get_proper_type
 )
 
-from mypyc.ops import (
+from mypyc.ops import LiteralsMap
+from mypyc.rtypes import (
     RType, RUnion, RTuple, RInstance, object_rprimitive, dict_rprimitive, tuple_rprimitive,
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
-    list_rprimitive, set_rprimitive, LiteralsMap
+    list_rprimitive, set_rprimitive
 )
 from mypyc.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.class_ir import ClassIR

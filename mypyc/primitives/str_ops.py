@@ -1,8 +1,8 @@
 from typing import List, Callable
 
-from mypyc.ops import (
-    object_rprimitive, str_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER, EmitterInterface,
-    RType, int_rprimitive, list_rprimitive, EmitCallback
+from mypyc.ops import ERR_MAGIC, ERR_NEVER, EmitterInterface, EmitCallback
+from mypyc.rtypes import (
+    RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )
 from mypyc.primitives.registry import func_op, binary_op, simple_emit, name_ref_op, method_op
 

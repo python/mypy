@@ -7,7 +7,8 @@ from typing import Any, Dict, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 
-from mypyc.ops import DeserMaps, RType
+from mypyc.ops import DeserMaps
+from mypyc.rtypes import RType
 from mypyc.func_ir import FuncDecl, FuncIR, FuncSignature
 from mypyc.class_ir import ClassIR
 from mypyc.module_ir import ModuleIR, deserialize_modules

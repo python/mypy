@@ -1,8 +1,7 @@
-
-from mypyc.ops import (
+from mypyc.ops import OpDescription, ERR_NEVER, ERR_MAGIC
+from mypyc.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
-    RType, OpDescription,
-    ERR_NEVER, ERR_MAGIC,
+    RType
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, unary_op, func_op, custom_op,

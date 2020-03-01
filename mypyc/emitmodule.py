@@ -32,7 +32,8 @@ from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
-from mypyc.ops import LiteralsMap, RType, RTuple, DeserMaps
+from mypyc.ops import LiteralsMap, DeserMaps
+from mypyc.rtypes import RType, RTuple
 from mypyc.func_ir import FuncIR
 from mypyc.class_ir import ClassIR
 from mypyc.module_ir import ModuleIR, ModuleIRs, deserialize_modules
