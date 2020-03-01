@@ -57,7 +57,7 @@ from mypyc.irbuild.nonlocalcontrol import (
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
-from mypyc.ir_builder import LowLevelIRBuilder
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 GenFunc = Callable[[], None]
 
