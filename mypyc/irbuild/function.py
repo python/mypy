@@ -10,13 +10,13 @@ from mypy.nodes import (
     FuncItem, SymbolNode, LambdaExpr, ARG_OPT
 )
 from mypy.types import CallableType, get_proper_type
+
 from mypyc.ops import (
-    BasicBlock, Value, object_rprimitive,
-    Return, Call, SetAttr, LoadInt, Unreachable, RaiseStandardError,
+    BasicBlock, Value,  Return, Call, SetAttr, LoadInt, Unreachable, RaiseStandardError,
     Environment, GetAttr, Branch, AssignmentTarget, TupleGet, Goto,
-    int_rprimitive, RInstance, AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic,
-    InitStatic
+    AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic, InitStatic
 )
+from mypyc.rtypes import object_rprimitive, int_rprimitive, RInstance
 from mypyc.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )

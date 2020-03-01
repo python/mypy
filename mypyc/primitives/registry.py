@@ -9,9 +9,9 @@ count and argument types.
 from typing import Dict, List, Optional
 
 from mypyc.ops import (
-    OpDescription, RType, EmitterInterface, EmitCallback, StealsDescription,
-    short_name, bool_rprimitive
+    OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
+from mypyc.rtypes import RType,  bool_rprimitive
 
 
 # Primitive binary ops (key is operator such as '+')

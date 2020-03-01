@@ -10,9 +10,9 @@ from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import Lvalue, Expression
 from mypyc.ops import (
-    Value, BasicBlock, is_short_int_rprimitive, LoadInt, RType,
-    PrimitiveOp, Branch, Register, AssignmentTarget
+    Value, BasicBlock, LoadInt, PrimitiveOp, Branch, Register, AssignmentTarget
 )
+from mypyc.rtypes import RType, is_short_int_rprimitive
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import list_len_op, list_get_item_unsafe_op
 from mypyc.primitives.misc_ops import iter_op, next_op

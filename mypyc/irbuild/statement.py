@@ -9,8 +9,9 @@ from mypy.nodes import (
 from mypyc.ops import (
     Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, PrimitiveOp, RaiseStandardError, LoadErrorValue,
-    BasicBlock, TupleGet, Value, Register, Branch, exc_rtuple, NO_TRACEBACK_LINE_NO
+    BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
 )
+from mypyc.rtypes import exc_rtuple
 from mypyc.primitives.misc_ops import true_op, false_op, type_op, py_delattr_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,

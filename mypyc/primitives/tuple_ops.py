@@ -7,12 +7,10 @@ These are for varying-length tuples represented as Python tuple objects
 from typing import List
 
 from mypyc.ops import (
-    EmitterInterface, tuple_rprimitive, int_rprimitive, list_rprimitive,
-    object_rprimitive, ERR_NEVER, ERR_MAGIC
+    EmitterInterface, ERR_NEVER, ERR_MAGIC
 )
-from mypyc.primitives.registry import (
-    func_op, method_op, custom_op, call_emit, simple_emit,
-)
+from mypyc.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
+from mypyc.primitives.registry import func_op, method_op, custom_op, call_emit, simple_emit
 
 
 tuple_get_item_op = method_op(

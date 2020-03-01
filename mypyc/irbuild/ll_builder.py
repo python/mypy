@@ -17,12 +17,14 @@ from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ops import (
-    BasicBlock, Environment, Op, LoadInt, RType, Value, Register,
-    Assign, Branch, Goto, Call, Box, Unbox, Cast, RInstance, GetAttr,
-    LoadStatic, MethodCall, int_rprimitive, float_rprimitive, bool_rprimitive, list_rprimitive,
-    str_rprimitive, is_none_rprimitive, object_rprimitive,
-    PrimitiveOp, OpDescription, RegisterOp,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue, RUnion, optional_value_type
+    BasicBlock, Environment, Op, LoadInt, Value, Register,
+    Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
+    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
+    NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue,
+)
+from mypyc.rtypes import (
+    RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
+    bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive
 )
 from mypyc.func_ir import FuncDecl, FuncSignature
 from mypyc.class_ir import ClassIR, all_concrete_classes

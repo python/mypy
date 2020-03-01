@@ -3,9 +3,9 @@
 from typing import List, Optional, Set, Tuple, Dict, Union, NamedTuple
 from collections import OrderedDict
 
-from mypyc.ops import (
-    Value, RType, RInstance, JsonDict, DeserMaps, deserialize_type
-)
+from mypyc.common import JsonDict
+from mypyc.ops import Value, DeserMaps
+from mypyc.rtypes import RType, RInstance, deserialize_type
 from mypyc.func_ir import FuncIR, FuncDecl, FuncSignature
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.common import PROPSET_PREFIX
@@ -108,7 +108,7 @@ def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
     return [serialize_vtable_entry(v) for v in vtable]
 
 
-def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableEntry:
+def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableEntry:
     if data['.class'] == 'VTableMethod':
         return VTableMethod(
             ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
@@ -118,7 +118,7 @@ def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableEntry:
     assert False, "Bogus vtable .class: %s" % data['.class']
 
 
-def deserialize_vtable(data: List[JsonDict], ctx: DeserMaps) -> VTableEntries:
+def deserialize_vtable(data: List[JsonDict], ctx: 'DeserMaps') -> VTableEntries:
     return [deserialize_vtable_entry(x, ctx) for x in data]
 
 
@@ -349,7 +349,7 @@ class ClassIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'ClassIR':
+    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'ClassIR':
         fullname = data['module_name'] + '.' + data['name']
         assert fullname in ctx.classes, "Class %s not in deser class map" % fullname
         ir = ctx.classes[fullname]

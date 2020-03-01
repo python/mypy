@@ -18,8 +18,11 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ops import (
-    Value, RType, RTuple, BasicBlock, LoadInt, RaiseStandardError, Unreachable, OpDescription,
-    str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive, bool_rprimitive
+    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable, OpDescription
+)
+from mypyc.rtypes import (
+    RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
+    bool_rprimitive
 )
 from mypyc.primitives.misc_ops import true_op, false_op
 from mypyc.irbuild.builder import IRBuilder

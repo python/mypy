@@ -15,9 +15,9 @@ from mypy.nodes import (
 )
 
 from mypyc.ops import (
-    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, RTuple, OpDescription, Assign,
-    object_rprimitive, is_none_rprimitive
+    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
+from mypyc.rtypes import RTuple, object_rprimitive, is_none_rprimitive
 from mypyc.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.misc_ops import new_slice_op, iter_op, ellipsis_op, type_op

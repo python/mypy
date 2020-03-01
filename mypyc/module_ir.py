@@ -2,7 +2,9 @@
 
 from typing import List, Tuple, Dict
 
-from mypyc.ops import DeserMaps, RType, JsonDict, deserialize_type
+from mypyc.common import JsonDict
+from mypyc.ops import DeserMaps
+from mypyc.rtypes import RType, deserialize_type
 from mypyc.func_ir import FuncIR, FuncDecl, format_func
 from mypyc.class_ir import ClassIR
 

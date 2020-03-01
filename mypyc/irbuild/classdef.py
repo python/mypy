@@ -6,9 +6,11 @@ from mypy.nodes import (
 )
 from mypyc.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
-    RInstance, BasicBlock, Branch, MethodCall, NAMESPACE_TYPE,
-    object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
-    is_object_rprimitive, is_none_rprimitive,
+    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE
+)
+from mypyc.rtypes import (
+    RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
+    is_object_rprimitive, is_none_rprimitive
 )
 from mypyc.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
 from mypyc.class_ir import ClassIR, NonExtClassInfo

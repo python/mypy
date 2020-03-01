@@ -33,12 +33,13 @@ from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value,
-    Register, Op, Assign, Branch, RTuple, Unreachable, TupleGet,
-    RInstance, GetAttr, SetAttr, LoadStatic, InitStatic,
-    int_rprimitive, is_list_rprimitive, dict_rprimitive, none_rprimitive,
-    is_none_rprimitive, object_rprimitive, PrimitiveOp, OpDescription,
-    is_object_rprimitive, NAMESPACE_MODULE, RaiseStandardError
+    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
+    Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
+    InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
+)
+from mypyc.rtypes import (
+    RType, RTuple, RInstance, int_rprimitive, is_list_rprimitive, dict_rprimitive,
+    none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive
 )
 from mypyc.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
 from mypyc.class_ir import ClassIR, NonExtClassInfo
