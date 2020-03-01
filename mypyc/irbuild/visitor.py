@@ -20,7 +20,7 @@ from mypy.nodes import (
 )
 
 from mypyc.ops import Value
-from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
+from mypyc.irbuild.builder import IRVisitor, IRBuilder, UnsupportedException
 from mypyc.irbuild.classdef import transform_class_def
 from mypyc.irbuild.function import (
     transform_func_def,

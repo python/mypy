@@ -19,7 +19,7 @@ from mypyc.ops_exc import (
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
 
 GenFunc = Callable[[], None]
 

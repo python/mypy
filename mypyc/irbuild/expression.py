@@ -24,7 +24,7 @@ from mypyc.ops_tuple import list_tuple_op
 from mypyc.ops_dict import new_dict_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op, set_update_op
 from mypyc.specialize import specializers
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
 
 
 # Name and attribute references

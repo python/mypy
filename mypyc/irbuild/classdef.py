@@ -21,7 +21,7 @@ from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
 )
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.function import transform_method
 
 

@@ -33,7 +33,7 @@ from mypyc.ops import ModuleIR, ModuleIRs
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.irbuild.prepare import build_type_map
-from mypyc.genops import IRBuilder
+from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.mapper import Mapper
 
