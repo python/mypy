@@ -20,9 +20,9 @@ from mypyc.ops_tuple import new_tuple_op
 from mypyc.genopsutil import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
 )
-from mypyc.genfunc import transform_method
 from mypyc.common import SELF_NAME
 from mypyc.genops import IRBuilder
+from mypyc.irbuild.function import transform_method
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:

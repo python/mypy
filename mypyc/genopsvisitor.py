@@ -22,7 +22,7 @@ from mypy.nodes import (
 from mypyc.ops import Value
 from mypyc.genops import IRVisitor, IRBuilder, UnsupportedException
 from mypyc.genclass import transform_class_def
-from mypyc.genfunc import (
+from mypyc.irbuild.function import (
     transform_func_def,
     transform_overloaded_func_def,
     transform_decorator,
