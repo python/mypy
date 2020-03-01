@@ -23,7 +23,7 @@ from mypyc.ops_list import (
 from mypyc.primitives.dict_ops import (
     new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
 )
-from mypyc.ops_int import int_neg_op
+from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
 

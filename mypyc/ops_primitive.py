@@ -217,7 +217,7 @@ def custom_op(arg_types: List[RType],
 
 
 # Import various modules that set up global state.
-import mypyc.ops_int  # noqa
+import mypyc.primitives.int_ops  # noqa
 import mypyc.ops_str  # noqa
 import mypyc.ops_list  # noqa
 import mypyc.primitives.dict_ops  # noqa
