@@ -31,7 +31,7 @@ from mypyc.genfunc import (
     transform_yield_from_expr,
     transform_await_expr,
 )
-from mypyc.genstatement import (
+from mypyc.irbuild.statement import (
     transform_block,
     transform_expression_stmt,
     transform_return_stmt,
