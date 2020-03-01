@@ -16,7 +16,7 @@ from mypyc.ir.ops import (
     Environment, GetAttr, Branch, AssignmentTarget, TupleGet, Goto,
     AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic, InitStatic
 )
-from mypyc.rtypes import object_rprimitive, int_rprimitive, RInstance
+from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, RInstance
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )

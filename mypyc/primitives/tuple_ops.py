@@ -9,7 +9,7 @@ from typing import List
 from mypyc.ir.ops import (
     EmitterInterface, ERR_NEVER, ERR_MAGIC
 )
-from mypyc.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
 from mypyc.primitives.registry import func_op, method_op, custom_op, call_emit, simple_emit
 
 

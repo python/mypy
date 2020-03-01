@@ -37,7 +37,7 @@ from mypyc.ir.ops import (
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
     InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, is_list_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive
 )

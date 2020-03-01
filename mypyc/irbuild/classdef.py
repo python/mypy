@@ -8,7 +8,7 @@ from mypyc.ir.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
     is_object_rprimitive, is_none_rprimitive
 )

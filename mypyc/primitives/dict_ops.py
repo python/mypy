@@ -3,7 +3,7 @@
 from typing import List
 
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
-from mypyc.rtypes import dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive
+from mypyc.ir.rtypes import dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive
 
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,

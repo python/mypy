@@ -8,7 +8,7 @@ from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES,
 )
 from mypyc.ir.ops import Environment, BasicBlock, Value
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, RUnion, RPrimitive,
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,

@@ -7,7 +7,7 @@ from mypyc.common import JsonDict
 from mypyc.ir.ops import (
     DeserMaps, Goto, Branch, Return, Unreachable, BasicBlock, Environment
 )
-from mypyc.rtypes import RType, deserialize_type
+from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
 
 

@@ -33,7 +33,7 @@ from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
 from mypyc.ir.ops import LiteralsMap, DeserMaps
-from mypyc.rtypes import RType, RTuple
+from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules

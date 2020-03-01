@@ -22,7 +22,7 @@ from mypy_extensions import trait
 
 from mypy.nodes import SymbolNode
 
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype

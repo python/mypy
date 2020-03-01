@@ -7,7 +7,7 @@ from mypy.nodes import (
 )
 
 from mypyc.ir.ops import Environment, AssignmentTargetRegister
-from mypyc.rtypes import RInstance
+from mypyc.ir.rtypes import RInstance
 from mypyc.ir.class_ir import ClassIR
 from mypyc.common import SELF_NAME
 

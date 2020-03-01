@@ -4,7 +4,7 @@ from mypy.nodes import Var
 
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.ir.ops import BasicBlock, Environment
-from mypyc.rtypes import int_rprimitive
+from mypyc.ir.rtypes import int_rprimitive
 from mypyc.namegen import NameGenerator
 
 

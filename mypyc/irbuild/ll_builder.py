@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
     NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue,
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive
 )

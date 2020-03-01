@@ -10,7 +10,7 @@ from mypyc.ir.ops import (
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
     SetAttr, Op, Value
 )
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive
 )

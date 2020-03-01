@@ -1,6 +1,6 @@
 """Same type check for RTypes."""
 
-from mypyc.rtypes import (
+from mypyc.ir.rtypes import (
     RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid, RUnion
 )
 from mypyc.ir.func_ir import FuncSignature
