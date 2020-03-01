@@ -26,7 +26,7 @@ from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
 )
 from mypyc.cstring import encode_as_c_string, encode_bytes_as_c_string
-from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
+from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (

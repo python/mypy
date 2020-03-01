@@ -5,7 +5,7 @@ from typing_extensions import Final
 from mypyc.common import (
     REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
 )
-from mypyc.emit import Emitter
+from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
