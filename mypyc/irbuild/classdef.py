@@ -16,7 +16,7 @@ from mypyc.primitives.misc_ops import (
     type_object_op, py_hasattr_op, not_implemented_op, true_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, new_dict_op
-from mypyc.ops_tuple import new_tuple_op
+from mypyc.primitives.tuple_ops import new_tuple_op
 from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env

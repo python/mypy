@@ -32,7 +32,7 @@ from mypyc.ops_primitive import binary_ops, unary_ops, method_ops
 from mypyc.ops_list import (
     list_extend_op, list_len_op, new_list_op
 )
-from mypyc.ops_tuple import list_tuple_op, new_tuple_op
+from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import new_dict_op, dict_update_in_display_op
 from mypyc.primitives.misc_ops import (
     none_op, none_object_op, false_op,

@@ -221,5 +221,5 @@ import mypyc.primitives.int_ops  # noqa
 import mypyc.ops_str  # noqa
 import mypyc.ops_list  # noqa
 import mypyc.primitives.dict_ops  # noqa
-import mypyc.ops_tuple  # noqa
+import mypyc.primitives.tuple_ops  # noqa
 import mypyc.primitives.misc_ops  # noqa
