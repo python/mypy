@@ -29,12 +29,12 @@ from mypy.build import Graph
 
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
+from mypyc.ops import ModuleIR, ModuleIRs
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.genopsvtable import compute_vtable
-from mypyc.genopsprepare import build_type_map
+from mypyc.irbuild.prepare import build_type_map
 from mypyc.genops import IRBuilder
 from mypyc.genopsvisitor import IRBuilderVisitor
-from mypyc.ops import ModuleIR, ModuleIRs
 from mypyc.irbuild.mapper import Mapper
 
 

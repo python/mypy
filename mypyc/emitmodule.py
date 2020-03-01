@@ -20,7 +20,7 @@ from mypy.fscache import FileSystemCache
 from mypy.util import hash_digest
 
 from mypyc import genopsmain
-from mypyc.genopsprepare import load_type_map
+from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
