@@ -5,7 +5,8 @@ from mypy.nodes import (
     IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr, ARG_NAMED, ARG_NAMED_OPT, ARG_POS,
     ARG_OPT, GDEF
 )
-from mypyc.ops import Environment, ClassIR, RInstance, AssignmentTargetRegister
+from mypyc.ops import Environment, RInstance, AssignmentTargetRegister
+from mypyc.class_ir import ClassIR
 from mypyc.common import SELF_NAME
 
 

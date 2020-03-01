@@ -3,8 +3,8 @@ import unittest
 from mypyc.ops import (
     RTuple, object_rprimitive, int_rprimitive, bool_rprimitive, list_rprimitive,
     RInstance, RUnion,
-    ClassIR,
 )
+from mypyc.class_ir import ClassIR
 
 
 class TestTupleNames(unittest.TestCase):

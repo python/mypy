@@ -34,12 +34,13 @@ from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, RType, Value,
-    Register, Op, FuncIR, Assign, Branch, RTuple, Unreachable, TupleGet, ClassIR,
-    NonExtClassInfo, RInstance, GetAttr, SetAttr, LoadStatic, InitStatic, INVALID_FUNC_DEF,
+    Register, Op, FuncIR, Assign, Branch, RTuple, Unreachable, TupleGet,
+    RInstance, GetAttr, SetAttr, LoadStatic, InitStatic, INVALID_FUNC_DEF,
     int_rprimitive, is_list_rprimitive, dict_rprimitive, none_rprimitive,
     is_none_rprimitive, object_rprimitive, PrimitiveOp, OpDescription,
     is_object_rprimitive, FuncSignature, NAMESPACE_MODULE, RaiseStandardError, FuncDecl
 )
+from mypyc.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
 from mypyc.primitives.list_ops import (
     list_append_op, list_len_op, new_list_op, to_list, list_pop_last

@@ -2,7 +2,8 @@ from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem
 
-from mypyc.ops import Value, BasicBlock, AssignmentTarget, ClassIR, INVALID_FUNC_DEF
+from mypyc.ops import Value, BasicBlock, AssignmentTarget, INVALID_FUNC_DEF
+from mypyc.class_ir import ClassIR
 from mypyc.common import decorator_helper_name
 
 

@@ -18,13 +18,14 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RType, Value, Register,
-    Assign, Branch, Goto, Call, Box, Unbox, Cast, ClassIR, RInstance, GetAttr,
+    Assign, Branch, Goto, Call, Box, Unbox, Cast, RInstance, GetAttr,
     LoadStatic, MethodCall, int_rprimitive, float_rprimitive, bool_rprimitive, list_rprimitive,
     str_rprimitive, is_none_rprimitive, object_rprimitive,
     PrimitiveOp, OpDescription, RegisterOp,
     FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
-    LoadErrorValue, FuncDecl, RUnion, optional_value_type, all_concrete_classes
+    LoadErrorValue, FuncDecl, RUnion, optional_value_type
 )
+from mypyc.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )

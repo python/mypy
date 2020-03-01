@@ -3,10 +3,11 @@
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
-    ClassIR, FuncIR, RType, RuntimeArg,
+    FuncIR, RType, RuntimeArg,
     is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive,
     FUNC_STATICMETHOD,
 )
+from mypyc.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2

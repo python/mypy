@@ -11,12 +11,13 @@ from mypy.nodes import (
 )
 from mypy.types import CallableType, get_proper_type
 from mypyc.ops import (
-    BasicBlock, FuncSignature, Value, FuncIR, ClassIR, RuntimeArg, object_rprimitive, FuncDecl,
-    Return, Call, SetAttr, LoadInt, NonExtClassInfo, Unreachable, RaiseStandardError,
+    BasicBlock, FuncSignature, Value, FuncIR, RuntimeArg, object_rprimitive, FuncDecl,
+    Return, Call, SetAttr, LoadInt, Unreachable, RaiseStandardError,
     Environment, GetAttr, Branch, AssignmentTarget, TupleGet, Goto,
     int_rprimitive, RInstance, AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic,
     InitStatic, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
+from mypyc.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, next_raw_op, iter_op, coro_op, send_op, py_setattr_op,
     method_new_op

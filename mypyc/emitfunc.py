@@ -11,9 +11,9 @@ from mypyc.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, RType, RTuple, MethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
-    RaiseStandardError, FuncDecl, ClassIR,
-    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
+    RaiseStandardError, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
+from mypyc.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 
 # Whether to insert debug asserts for all error handling, to quickly
