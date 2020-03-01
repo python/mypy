@@ -46,10 +46,12 @@ from mypyc.ops_dict import dict_get_item_op, dict_set_item_op
 from mypyc.ops_misc import (
     true_op, false_op, iter_op, next_op, py_setattr_op, import_op, get_module_dict_op
 )
-from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
+from mypyc.irbuild.for_helpers import (
+    ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
+)
 from mypyc.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
