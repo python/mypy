@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.codegen.emit import Emitter, HeaderDeclaration
-from mypyc.emitfunc import native_function_header, native_getter_name, native_setter_name
+from mypyc.codegen.emitfunc import native_function_header, native_getter_name, native_setter_name
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
     generate_bool_wrapper, generate_get_wrapper,

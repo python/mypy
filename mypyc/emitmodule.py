@@ -27,7 +27,7 @@ from mypyc.common import (
 )
 from mypyc.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
-from mypyc.emitfunc import generate_native_function, native_function_header
+from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
 from mypyc.codegen.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
