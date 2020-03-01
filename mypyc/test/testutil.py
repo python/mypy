@@ -15,7 +15,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.options import CompilerOptions
-from mypyc.ops import FuncIR
+from mypyc.func_ir import FuncIR
 from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper

@@ -9,9 +9,9 @@ from mypyc.analysis import (
     AnalysisDict
 )
 from mypyc.ops import (
-    FuncIR, BasicBlock, Branch,
-    Value, RaiseStandardError, Unreachable, Environment, Register,
+    BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register
 )
+from mypyc.func_ir import FuncIR
 
 
 def insert_uninit_checks(ir: FuncIR) -> None:
