@@ -12,7 +12,7 @@ from mypyc.ops import (
     BasicBlock, TupleGet, Value, Register, Branch, exc_rtuple, NO_TRACEBACK_LINE_NO
 )
 from mypyc.primitives.misc_ops import true_op, false_op, type_op, py_delattr_op
-from mypyc.ops_exc import (
+from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
 )
