@@ -1,6 +1,6 @@
 from typing import List, Callable
 
-from mypyc.ops import ERR_MAGIC, ERR_NEVER, EmitterInterface, EmitCallback
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, EmitterInterface, EmitCallback
 from mypyc.rtypes import (
     RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )

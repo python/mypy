@@ -1,6 +1,6 @@
 """Exception-related primitive ops."""
 
-from mypyc.ops import ERR_NEVER, ERR_FALSE
+from mypyc.ir.ops import ERR_NEVER, ERR_FALSE
 from mypyc.rtypes import bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple
 from mypyc.primitives.registry import (
     simple_emit, custom_op,

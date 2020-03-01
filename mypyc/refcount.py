@@ -26,7 +26,7 @@ from mypyc.analysis import (
     cleanup_cfg,
     AnalysisDict
 )
-from mypyc.ops import (
+from mypyc.ir.ops import (
     BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
     Op, ControlOp, Value, Register
 )

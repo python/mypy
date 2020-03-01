@@ -14,7 +14,7 @@ from mypy.nodes import (
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
 from mypyc.rtypes import RTuple, object_rprimitive, is_none_rprimitive

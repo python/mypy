@@ -6,7 +6,7 @@ These are for varying-length tuples represented as Python tuple objects
 
 from typing import List
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     EmitterInterface, ERR_NEVER, ERR_MAGIC
 )
 from mypyc.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive

@@ -4,7 +4,7 @@ from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
     ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, Var, is_class_var
 )
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE
 )

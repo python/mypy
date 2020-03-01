@@ -5,7 +5,7 @@ from collections import OrderedDict
 from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
     SetAttr, Op, Value

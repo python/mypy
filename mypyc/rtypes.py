@@ -22,7 +22,7 @@ from mypyc.common import JsonDict, short_name
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
-    from mypyc.ops import DeserMaps
+    from mypyc.ir.ops import DeserMaps
     from mypyc.class_ir import ClassIR
 
 T = TypeVar('T')

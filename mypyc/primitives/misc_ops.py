@@ -1,7 +1,7 @@
 """Miscellaneous primitive ops."""
 
 
-from mypyc.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.rtypes import (
     RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive

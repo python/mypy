@@ -11,7 +11,7 @@ only be placed at the end of a basic block.
 
 from typing import List, Optional
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, ERR_NEVER, ERR_MAGIC,
     ERR_FALSE, NO_TRACEBACK_LINE_NO,
 )

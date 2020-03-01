@@ -6,7 +6,7 @@ from mypy.nodes import (
     Expression, StrExpr, TempNode, Lvalue
 )
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, PrimitiveOp, RaiseStandardError, LoadErrorValue,
     BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO

@@ -9,7 +9,7 @@ from typing import Union, List
 from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import Lvalue, Expression
-from mypyc.ops import (
+from mypyc.ir.ops import (
     Value, BasicBlock, LoadInt, PrimitiveOp, Branch, Register, AssignmentTarget
 )
 from mypyc.rtypes import RType, is_short_int_rprimitive

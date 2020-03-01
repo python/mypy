@@ -7,7 +7,7 @@ from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
 )
-from mypyc.ops import Environment, BasicBlock, Value
+from mypyc.ir.ops import Environment, BasicBlock, Value
 from mypyc.rtypes import (
     RType, RTuple, RInstance, RUnion, RPrimitive,
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,

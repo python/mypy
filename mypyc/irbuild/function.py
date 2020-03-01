@@ -11,7 +11,7 @@ from mypy.nodes import (
 )
 from mypy.types import CallableType, get_proper_type
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     BasicBlock, Value,  Return, Call, SetAttr, LoadInt, Unreachable, RaiseStandardError,
     Environment, GetAttr, Branch, AssignmentTarget, TupleGet, Goto,
     AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic, InitStatic

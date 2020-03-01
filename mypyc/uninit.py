@@ -8,7 +8,7 @@ from mypyc.analysis import (
     analyze_must_defined_regs,
     AnalysisDict
 )
-from mypyc.ops import (
+from mypyc.ir.ops import (
     BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register
 )
 from mypyc.func_ir import FuncIR

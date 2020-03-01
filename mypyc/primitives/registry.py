@@ -8,7 +8,7 @@ count and argument types.
 
 from typing import Dict, List, Optional
 
-from mypyc.ops import (
+from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
 from mypyc.rtypes import RType,  bool_rprimitive
