@@ -40,7 +40,32 @@ from mypyc.genstatement import (
     transform_assert_stmt,
     transform_del_stmt,
 )
-from mypyc.genexpr import BuildExpressionIR
+from mypyc.genexpr import (
+    transform_name_expr,
+    transform_member_expr,
+    transform_super_expr,
+    transform_call_expr,
+    transform_unary_expr,
+    transform_op_expr,
+    transform_index_expr,
+    transform_conditional_expr,
+    transform_int_expr,
+    transform_float_expr,
+    transform_complex_expr,
+    transform_comparison_expr,
+    transform_str_expr,
+    transform_bytes_expr,
+    transform_ellipsis,
+    transform_list_expr,
+    transform_tuple_expr,
+    transform_dict_expr,
+    transform_set_expr,
+    transform_list_comprehension,
+    transform_set_comprehension,
+    transform_dictionary_comprehension,
+    transform_slice_expr,
+    transform_generator_expr,
+)
 
 
 class IRBuilderVisitor(IRVisitor):
@@ -145,76 +170,76 @@ class IRBuilderVisitor(IRVisitor):
     # Expressions
 
     def visit_name_expr(self, expr: NameExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_name_expr(expr)
+        return transform_name_expr(self.builder, expr)
 
     def visit_member_expr(self, expr: MemberExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_member_expr(expr)
+        return transform_member_expr(self.builder, expr)
 
     def visit_super_expr(self, expr: SuperExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_super_expr(expr)
+        return transform_super_expr(self.builder, expr)
 
     def visit_call_expr(self, expr: CallExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_call_expr(expr)
+        return transform_call_expr(self.builder, expr)
 
     def visit_unary_expr(self, expr: UnaryExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_unary_expr(expr)
+        return transform_unary_expr(self.builder, expr)
 
     def visit_op_expr(self, expr: OpExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_op_expr(expr)
+        return transform_op_expr(self.builder, expr)
 
     def visit_index_expr(self, expr: IndexExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_index_expr(expr)
+        return transform_index_expr(self.builder, expr)
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_conditional_expr(expr)
+        return transform_conditional_expr(self.builder, expr)
 
     def visit_comparison_expr(self, expr: ComparisonExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_comparison_expr(expr)
+        return transform_comparison_expr(self.builder, expr)
 
     def visit_int_expr(self, expr: IntExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_int_expr(expr)
+        return transform_int_expr(self.builder, expr)
 
     def visit_float_expr(self, expr: FloatExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_float_expr(expr)
+        return transform_float_expr(self.builder, expr)
 
     def visit_complex_expr(self, expr: ComplexExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_complex_expr(expr)
+        return transform_complex_expr(self.builder, expr)
 
     def visit_str_expr(self, expr: StrExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_str_expr(expr)
+        return transform_str_expr(self.builder, expr)
 
     def visit_bytes_expr(self, expr: BytesExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_bytes_expr(expr)
+        return transform_bytes_expr(self.builder, expr)
 
     def visit_ellipsis(self, expr: EllipsisExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_ellipsis(expr)
+        return transform_ellipsis(self.builder, expr)
 
     def visit_list_expr(self, expr: ListExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_list_expr(expr)
+        return transform_list_expr(self.builder, expr)
 
     def visit_tuple_expr(self, expr: TupleExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_tuple_expr(expr)
+        return transform_tuple_expr(self.builder, expr)
 
     def visit_dict_expr(self, expr: DictExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_dict_expr(expr)
+        return transform_dict_expr(self.builder, expr)
 
     def visit_set_expr(self, expr: SetExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_set_expr(expr)
+        return transform_set_expr(self.builder, expr)
 
     def visit_list_comprehension(self, expr: ListComprehension) -> Value:
-        return BuildExpressionIR(self.builder).visit_list_comprehension(expr)
+        return transform_list_comprehension(self.builder, expr)
 
     def visit_set_comprehension(self, expr: SetComprehension) -> Value:
-        return BuildExpressionIR(self.builder).visit_set_comprehension(expr)
+        return transform_set_comprehension(self.builder, expr)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> Value:
-        return BuildExpressionIR(self.builder).visit_dictionary_comprehension(expr)
+        return transform_dictionary_comprehension(self.builder, expr)
 
     def visit_slice_expr(self, expr: SliceExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_slice_expr(expr)
+        return transform_slice_expr(self.builder, expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> Value:
-        return BuildExpressionIR(self.builder).visit_generator_expr(expr)
+        return transform_generator_expr(self.builder, expr)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
         return BuildFuncIR(self.builder).visit_lambda_expr(expr)
