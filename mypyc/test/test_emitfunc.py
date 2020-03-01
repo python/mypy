@@ -6,12 +6,12 @@ from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ops import (
-    Environment, BasicBlock, FuncIR, RuntimeArg, Goto, Return, LoadInt, Assign,
-    IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
-    RegisterOp, FuncDecl,
+    Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
+    Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
     RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
-    list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
+    list_rprimitive, dict_rprimitive, object_rprimitive
 )
+from mypyc.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.emit import Emitter, EmitterContext

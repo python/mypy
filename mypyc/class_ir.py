@@ -4,9 +4,9 @@ from typing import List, Optional, Set, Tuple, Dict, Union, NamedTuple
 from collections import OrderedDict
 
 from mypyc.ops import (
-    Value, RType, RInstance, FuncIR, FuncDecl, FuncSignature, JsonDict, DeserMaps,
-    deserialize_type
+    Value, RType, RInstance, JsonDict, DeserMaps, deserialize_type
 )
+from mypyc.func_ir import FuncIR, FuncDecl, FuncSignature
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.common import PROPSET_PREFIX
 

@@ -7,9 +7,8 @@ from typing import Any, Dict, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 
-from mypyc.ops import (
-    DeserMaps, FuncDecl, FuncIR, FuncSignature, RType
-)
+from mypyc.ops import DeserMaps, RType
+from mypyc.func_ir import FuncDecl, FuncIR, FuncSignature
 from mypyc.class_ir import ClassIR
 from mypyc.module_ir import ModuleIR, deserialize_modules
 from mypyc.sametype import is_same_type, is_same_signature

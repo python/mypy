@@ -1,18 +1,17 @@
 """Generate CPython API wrapper function for a native function."""
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX
-from mypyc.emit import Emitter
-from mypyc.ops import (
-    FuncIR, RType, RuntimeArg,
-    is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive,
-    FUNC_STATICMETHOD,
-)
-from mypyc.class_ir import ClassIR
-from mypyc.namegen import NameGenerator
+from typing import List, Optional
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
-from typing import List, Optional
+from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX
+from mypyc.emit import Emitter
+from mypyc.ops import (
+    RType, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive
+)
+from mypyc.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
+from mypyc.class_ir import ClassIR
+from mypyc.namegen import NameGenerator
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:

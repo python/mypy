@@ -7,12 +7,13 @@ from mypyc.common import (
 )
 from mypyc.emit import Emitter
 from mypyc.ops import (
-    FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
+    OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, RType, RTuple, MethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
-    RaiseStandardError, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
+    RaiseStandardError
 )
+from mypyc.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 

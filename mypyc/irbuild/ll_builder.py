@@ -22,9 +22,9 @@ from mypyc.ops import (
     LoadStatic, MethodCall, int_rprimitive, float_rprimitive, bool_rprimitive, list_rprimitive,
     str_rprimitive, is_none_rprimitive, object_rprimitive,
     PrimitiveOp, OpDescription, RegisterOp,
-    FuncSignature, NAMESPACE_TYPE, NAMESPACE_MODULE,
-    LoadErrorValue, FuncDecl, RUnion, optional_value_type
+    NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue, RUnion, optional_value_type
 )
+from mypyc.func_ir import FuncDecl, FuncSignature
 from mypyc.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
