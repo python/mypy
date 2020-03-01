@@ -48,7 +48,7 @@ from mypyc.irbuild.statement import (
     transform_assert_stmt,
     transform_del_stmt,
 )
-from mypyc.genexpr import (
+from mypyc.irbuild.expression import (
     transform_name_expr,
     transform_member_expr,
     transform_super_expr,
