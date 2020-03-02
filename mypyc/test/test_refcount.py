@@ -11,7 +11,7 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
-from mypyc.ops import format_func
+from mypyc.ir.func_ir import format_func
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,

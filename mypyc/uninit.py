@@ -8,10 +8,10 @@ from mypyc.analysis import (
     analyze_must_defined_regs,
     AnalysisDict
 )
-from mypyc.ops import (
-    FuncIR, BasicBlock, Branch,
-    Value, RaiseStandardError, Unreachable, Environment, Register,
+from mypyc.ir.ops import (
+    BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register
 )
+from mypyc.ir.func_ir import FuncIR
 
 
 def insert_uninit_checks(ir: FuncIR) -> None:

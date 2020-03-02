@@ -81,7 +81,9 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES
+from mypy.messages import (
+    best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES, TYPES_FOR_UNIMPORTED_HINTS
+)
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
@@ -119,21 +121,6 @@ from mypy.reachability import (
 from mypy.mro import calculate_mro, MroError
 
 T = TypeVar('T')
-
-TYPES_FOR_UNIMPORTED_HINTS = {
-    'typing.Any',
-    'typing.Callable',
-    'typing.Dict',
-    'typing.Iterable',
-    'typing.Iterator',
-    'typing.List',
-    'typing.Optional',
-    'typing.Set',
-    'typing.Tuple',
-    'typing.TypeVar',
-    'typing.Union',
-    'typing.cast',
-}  # type: Final
 
 
 # Special cased built-in classes that are needed for basic functionality and need to be
@@ -1755,13 +1742,25 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 fullname: str,
                                 context: ImportBase) -> None:
         imported_id = as_id or id
+        # 'from m import x as x' exports x in a stub file or when implicit
+        # re-exports are disabled.
+        module_public = (
+            not self.is_stub_file
+            and self.options.implicit_reexport
+            or as_id is not None
+        )
+        module_hidden = not module_public and fullname not in self.modules
+
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
                 self.report_missing_module_attribute(module_id, id, imported_id, context)
                 return
             else:
                 # This might become a type.
-                self.mark_incomplete(imported_id, node.node, becomes_typeinfo=True)
+                self.mark_incomplete(imported_id, node.node,
+                                     module_public=module_public,
+                                     module_hidden=module_hidden,
+                                     becomes_typeinfo=True)
         existing_symbol = self.globals.get(imported_id)
         if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
                 not isinstance(node.node, PlaceholderNode)):
@@ -1773,14 +1772,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Imports are special, some redefinitions are allowed, so wait until
             # we know what is the new symbol node.
             return
-        # 'from m import x as x' exports x in a stub file or when implicit
-        # re-exports are disabled.
-        module_public = (
-            not self.is_stub_file
-            and self.options.implicit_reexport
-            or as_id is not None
-        )
-        module_hidden = not module_public and fullname not in self.modules
         # NOTE: we take the original node even for final `Var`s. This is to support
         # a common pattern when constants are re-exported (same applies to import *).
         self.add_imported_symbol(imported_id, node, context,
@@ -1879,6 +1870,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.add_imported_symbol(name, node, i,
                                              module_public=module_public,
                                              module_hidden=not module_public)
+
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -4351,6 +4343,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_public: bool = True,
                             module_hidden: bool = False) -> None:
         """Add an alias to an existing symbol through import."""
+        assert not module_hidden or not module_public
         symbol = SymbolTableNode(node.kind, node.node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
@@ -4434,7 +4427,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.num_incomplete_refs += 1
 
     def mark_incomplete(self, name: str, node: Node,
-                        becomes_typeinfo: bool = False) -> None:
+                        becomes_typeinfo: bool = False,
+                        module_public: bool = True,
+                        module_hidden: bool = False) -> None:
         """Mark a definition as incomplete (and defer current analysis target).
 
         Also potentially mark the current namespace as incomplete.
@@ -4453,7 +4448,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert self.statement
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
                                           becomes_typeinfo=becomes_typeinfo)
-            self.add_symbol(name, placeholder, context=dummy_context())
+            self.add_symbol(name, placeholder,
+                            module_public=module_public, module_hidden=module_hidden,
+                            context=dummy_context())
         self.missing_names.add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:

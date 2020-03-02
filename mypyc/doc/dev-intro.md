@@ -27,7 +27,7 @@ It has these passes:
 * Type check the code using mypy and infer types for variables and expressions.
 * Translate the mypy AST into a mypyc-specific intermediate representation (IR).
   * The IR is defined in `mypyc.ops`.
-  * The translation happens in `mypyc.genops`.
+  * The translation happens in `mypyc.irbuild`.
 * Insert checks for uses of potentially uninitialized variables (`mypyc.uninit`).
 * Insert exception handling (`mypyc.exceptions`).
 * Insert explicit reference count inc/dec opcodes (`mypyc.refcount`).
@@ -94,7 +94,7 @@ what to do to implement specific kinds of mypyc features.
 ### Syntactic Sugar
 
 Syntactic sugar that doesn't need additional IR operations typically
-only requires changes to `mypyc.genops`.
+only requires changes to `mypyc.irbuild`.
 
 
 ### Testing
@@ -110,16 +110,16 @@ driver is in `mypyc.test.test_run`.
 
 If the specifics of the generated IR of a change is important
 (because, for example, you want to make sure a particular optimization
-is triggering), you should add a genops test as well.  Test cases are
-located in `test-data/genops-*.test` and the test driver is in
-`mypyc.test.test_genops`. Genops tests do a direct comparison of the
+is triggering), you should add an irbuild test as well.  Test cases are
+located in `test-data/irbuild-*.test` and the test driver is in
+`mypyc.test.test_irbuild`. IR build tests do a direct comparison of the
 IR output, so try to make the test as targeted as possible so as to
 capture only the important details.
-(Many of our existing genops tests do not follow this advice, unfortunately!)
+(Many of our existing IR build tests do not follow this advice, unfortunately!)
 
 If you pass the `--update-data` flag to pytest, it will automatically
 update the expected output of any tests to match the actual
-output. This is very useful for changing or creating genops tests, but
+output. This is very useful for changing or creating IR build tests, but
 make sure to carefully inspect the diff!
 
 You may also need to add some definitions to the stubs used for
@@ -160,7 +160,7 @@ Here are some hints about how to add support for a new primitive type
   Make sure all the attributes are set correctly and also define
   `<foo>_rprimitive` and `is_<foo>_rprimitive`.
 
-* Update `mypyc.genops.Mapper.type_to_rtype()`.
+* Update `mypyc.irbuild.mapper.Mapper.type_to_rtype()`.
 
 * Update `emit_box` in `mypyc.emit`.
 

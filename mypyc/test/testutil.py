@@ -14,11 +14,11 @@ from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc.genopsmain import build_ir
 from mypyc.options import CompilerOptions
-from mypyc.ops import FuncIR
+from mypyc.ir.func_ir import FuncIR
 from mypyc.errors import Errors
-from mypyc.genopsmapper import Mapper
+from mypyc.irbuild.main import build_ir
+from mypyc.irbuild.mapper import Mapper
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.

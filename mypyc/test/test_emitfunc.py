@@ -5,23 +5,29 @@ from collections import OrderedDict
 from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc.ops import (
-    Environment, BasicBlock, FuncIR, RuntimeArg, Goto, Return, LoadInt, Assign,
-    IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
-    RegisterOp, FuncDecl,
-    ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
-    list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
+from mypyc.ir.ops import (
+    Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
+    Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
+    SetAttr, Op, Value
 )
-from mypyc.genopsvtable import compute_vtable
-from mypyc.emit import Emitter, EmitterContext
-from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.ops_primitive import binary_ops
-from mypyc.ops_misc import none_object_op, true_op, false_op
-from mypyc.ops_list import (
+from mypyc.ir.rtypes import (
+    RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
+    dict_rprimitive, object_rprimitive
+)
+from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
+from mypyc.ir.class_ir import ClassIR
+from mypyc.irbuild.vtable import compute_vtable
+from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
+from mypyc.primitives.registry import binary_ops
+from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
+from mypyc.primitives.list_ops import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
-from mypyc.ops_dict import new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
-from mypyc.ops_int import int_neg_op
+from mypyc.primitives.dict_ops import (
+    new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
+)
+from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
 

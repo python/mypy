@@ -26,10 +26,11 @@ from mypyc.analysis import (
     cleanup_cfg,
     AnalysisDict
 )
-from mypyc.ops import (
-    FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
+from mypyc.ir.ops import (
+    BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
     Op, ControlOp, Value, Register
 )
+from mypyc.ir.func_ir import FuncIR
 
 
 DecIncs = Tuple[Tuple[Tuple[Value, bool], ...], Tuple[Value, ...]]

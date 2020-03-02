@@ -9572,3 +9572,25 @@ c.py:2: note: Revealed type is 'a.A'
 ==
 c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
 
+[case testStubFixupIssues]
+[file a.py]
+import p
+[file a.py.2]
+import p
+# a change
+
+[file p/__init__.pyi]
+from p.util import *
+
+[file p/util.pyi]
+from p.params import N
+class Test: ...
+
+[file p/params.pyi]
+import p.util
+class N(p.util.Test):
+    ...
+
+[builtins fixtures/list.pyi]
+[out]
+==
