@@ -65,8 +65,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                   prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()
-        else:
-            return NoneType()
+        return NoneType()
     elif isinstance(narrowed, UnionType):
         return make_simplified_union([narrow_declared_type(declared, x)
                                       for x in narrowed.relevant_items()])
