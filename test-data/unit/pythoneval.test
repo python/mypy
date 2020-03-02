@@ -210,7 +210,7 @@ True
 [case testDictFromkeys]
 import typing
 d = dict.fromkeys('foo')
-d['x'] = 2
+d['x'] = None
 d2 = dict.fromkeys([1, 2], b'')
 d2[2] = b'foo'
 [out]
