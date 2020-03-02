@@ -4,7 +4,9 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, EmitterInterface, EmitCallback
 from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )
-from mypyc.primitives.registry import func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit
+from mypyc.primitives.registry import (
+    func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit
+)
 
 
 name_ref_op('builtins.str',
