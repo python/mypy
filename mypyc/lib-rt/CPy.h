@@ -948,8 +948,10 @@ static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             if (unicode == NULL)
                 return NULL;
 
-            assert(PyUnicode_KIND(unicode) != PyUnicode_1BYTE_KIND);
-            if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
+            if (PyUnicode_KIND(unicode) == PyUnicode_1BYTE_KIND) {
+                PyUnicode_1BYTE_DATA(unicode)[0] = (Py_UCS1)ch;
+            }
+            else if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
                 PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
             } else {
                 assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
