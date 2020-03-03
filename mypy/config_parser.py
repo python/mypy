@@ -75,7 +75,7 @@ config_types = {
     'mypy_path': lambda s: [expand_path(p.strip()) for p in re.split('[,:]', s)],
     'files': split_and_match_files,
     'quickstart_file': str,
-    'junit_xml': str,
+    'junit_xml': expand_path,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
