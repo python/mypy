@@ -1146,6 +1146,9 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
+            matches = best_matches(item_name, typ.items.keys())
+            if matches:
+                self.note("Did you mean {}?".format(pretty_seq(matches[:3], "or")), context)
 
     def typeddict_context_ambiguous(
             self,

@@ -666,7 +666,8 @@ reveal_type(c[u'value'])  # N: Revealed type is 'builtins.int'
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p: TaggedPoint
-p['z']  # E: TypedDict "TaggedPoint" has no key 'z'
+p['typ']  # E: TypedDict "TaggedPoint" has no key 'typ' \
+          # N: Did you mean "type"?
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictWithUnicodeName]
