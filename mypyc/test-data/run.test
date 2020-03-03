@@ -4689,3 +4689,23 @@ assert f(s, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
 assert f(s, " ", 0) == ["abc abcd abcde abcdef"]
 assert f(s, " ", 1) == ["abc", "abcd abcde abcdef"]
 assert f(s, " ", 2) == ["abc", "abcd", "abcde abcdef"]
+
+[case testStrGetItem]
+def f(s: str, index: int) -> str:
+    return s[index]
+
+[file driver.py]
+from testutil import assertRaises
+from native import f
+s = "abc"
+
+assert f(s, 0) == "a"
+assert f(s, 1) == "b"
+assert f(s, 2) == "c"
+assert f(s, -3) == "a"
+assert f(s, -2) == "b"
+assert f(s, -1) == "c"
+with assertRaises(IndexError, "string index out of range"):
+    f(s, 4)
+with assertRaises(IndexError, "string index out of range"):
+    f(s, -4)
