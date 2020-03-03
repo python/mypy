@@ -3424,6 +3424,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # We have an expression like super(T, var).member
 
+        print(SuperExpr)
+
         # First compute the types of T and var
         types = self._super_arg_types(e)
         if isinstance(types, tuple):
