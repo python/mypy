@@ -931,7 +931,7 @@ static PyObject *CPyDict_FromAny(PyObject *obj) {
 }
 
 static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
-    if (PyUnicode_Check(str) && PyUnicode_READY(str) != -1) {
+    if (PyUnicode_READY(str) != -1) {
         if (CPyTagged_CheckShort(index)) {
             Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
             Py_ssize_t size = PyUnicode_GET_LENGTH(str);
