@@ -150,8 +150,8 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
     return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_platform(expr: Expression, sys_platform: str, platform: str) -> int:
-    """Consider whether expr is a comparison involving sys.platform.
+def consider_sys_platform(expr: Expression, platform: str, platform_system: str) -> int:
+    """Consider whether expr is a comparison involving sys.platform
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
     """
@@ -166,9 +166,14 @@ def consider_sys_platform(expr: Expression, sys_platform: str, platform: str) ->
         op = expr.operators[0]
         if op not in ('==', '!='):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.operands[0], 'sys_platform', 'platform'):
-            return TRUTH_VALUE_UNKNOWN
-        right = expr.operands[1]
+        #check if either platform or platform_system is being used
+        if platform_system:
+            if not is_platform_attr(expr.operands[0], 'plaform_system'):
+                return TRUTH_VALUE_UNKNOWN
+        elif platform:
+            if not is_sys_attr(expr.operands[0], 'platform'):
+                return TRUTH_VALUE_UNKNOWN
+            right = expr.operands[1]
         if not isinstance(right, (StrExpr, UnicodeExpr)):
             return TRUTH_VALUE_UNKNOWN
         return fixed_comparison(platform, op, right.value)
@@ -177,7 +182,7 @@ def consider_sys_platform(expr: Expression, sys_platform: str, platform: str) ->
             return TRUTH_VALUE_UNKNOWN
         if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.callee.expr, 'sys_platform', 'platform'):
+        if not is_sys_attr(expr.callee.expr, 'platform'):
             return TRUTH_VALUE_UNKNOWN
         if expr.callee.name != 'startswith':
             return TRUTH_VALUE_UNKNOWN
@@ -257,6 +262,16 @@ def is_sys_attr(expr: Expression, name: str) -> bool:
         if isinstance(expr.expr, NameExpr) and expr.expr.name == 'sys':
             # TODO: Guard against a local named sys, etc.
             # (Though later passes will still do most checking.)
+            return True
+    return False
+
+
+def is_platform_attr(expr: Expression, name: str) -> bool:
+    # Platform lib calls methods, it differs from sys lib
+    # sys.platform is of str class and platform.system is of
+    # function class
+    if isinstance(expr, MemberExpr) and expr.name == name:
+        if isinstance(expr.expr, CallExpr) and expr.expr.name == 'system':
             return True
     return False
 
