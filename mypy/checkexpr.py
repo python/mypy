@@ -98,7 +98,6 @@ class TooManyUnions(Exception):
 
 def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     """Recursively extracts all module references from a reference expression.
-
     Note that currently, the only two subclasses of RefExpr are NameExpr and
     MemberExpr."""
     output = set()  # type: Set[str]
@@ -134,7 +133,6 @@ class Finished(Exception):
 
 class ExpressionChecker(ExpressionVisitor[Type]):
     """Expression type checker.
-
     This class works closely together with checker.TypeChecker.
     """
 
@@ -167,7 +165,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
-
         It can be of any kind: local, member or global.
         """
         self.chk.module_refs.update(extract_refexpr_names(e))
@@ -558,7 +555,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_partial_self_var(self, expr: MemberExpr) -> Optional[Var]:
         """Get variable node for a partial self attribute.
-
         If the expression is not a self attribute, or attribute is not variable,
         or variable is not partial, return None.
         """
@@ -686,14 +682,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               object_type: Optional[Type],
                               context: Context) -> Type:
         """Use special case logic to infer the return type of a specific named function/method.
-
         Caller must ensure that a plugin hook exists. There are two different cases:
-
         - If object_type is None, the caller must ensure that a function hook exists
           for fullname.
         - If object_type is not None, the caller must ensure that a method hook exists
           for fullname.
-
         Return the inferred return type.
         """
         num_formals = len(callee.arg_types)
@@ -762,14 +755,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_names: Optional[Sequence[Optional[str]]] = None,
             object_type: Optional[Type] = None) -> Type:
         """Attempt to determine a more accurate signature for a method call.
-
         This is done by looking up and applying a method signature hook (if one exists for the
         given method name).
-
         If no matching method signature hook is found, callee is returned unmodified. The same
         happens if the arguments refer to a non-method callable (this is allowed so that the code
         calling transform_callee_type needs to perform fewer boilerplate checks).
-
         Note: this method is *not* called automatically as part of check_call, because in some
         cases check_call is called multiple times while checking a single call (for example when
         dealing with overloads). Instead, this method needs to be called explicitly
@@ -793,11 +783,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          object_type: Optional[Type],
                                          member: Optional[str] = None) -> Type:
         """Type check call expression.
-
         The callee_type should be used as the type of callee expression. In particular,
         in case of a union type this can be a particular item of the union, so that we can
         apply plugin hooks to each item.
-
         The 'member', 'callable_name' and 'object_type' are only used to call plugin hooks.
         If 'callable_name' is None but 'member' is not None (member call), try constructing
         'callable_name' using 'object_type' (the base type on which the method is called),
@@ -850,11 +838,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                    callable_name: Optional[str] = None,
                    object_type: Optional[Type] = None) -> Tuple[Type, Type]:
         """Type check a call.
-
         Also infer type arguments if the callee is a generic function.
-
         Return (result type, inferred callee type).
-
         Arguments:
             callee: type of the called value
             args: actual argument expressions
@@ -892,8 +877,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply method signature hook, if one exists
             call_function = self.transform_callee_type(
                 callable_name, call_function, args, arg_kinds, context, arg_names, callee)
-            return self.check_call(call_function, args, arg_kinds, context, arg_names,
-                                   callable_node, arg_messages, callable_name, callee)
+            result = self.check_call(call_function, args, arg_kinds, context, arg_names,
+                                     callable_node, arg_messages, callable_name, callee)
+            if callable_node:
+                # check_call() stored "call_function" as the type, which is incorrect.
+                # Override the type.
+                self.chk.store_type(callable_node, callee)
+            return result
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
@@ -920,7 +910,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             callable_name: Optional[str],
                             object_type: Optional[Type]) -> Tuple[Type, Type]:
         """Type check a call that targets a callable value.
-
         See the docstring of check_call for more information.
         """
         if callable_name is None and callee.name:
@@ -989,7 +978,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
-
         Return a Y that we can pass to check_call(Y, ...).
         """
         if isinstance(item, AnyType):
@@ -1030,7 +1018,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def infer_arg_types_in_empty_context(self, args: List[Expression]) -> List[Type]:
         """Infer argument expression types in an empty context.
-
         In short, we basically recurse on each argument without considering
         in what context the argument was called.
         """
@@ -1048,10 +1035,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self, callee: CallableType, args: List[Expression], arg_kinds: List[int],
             formal_to_actual: List[List[int]]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
-
         For example, if callee argument 2 has type List[int], infer the
         argument expression with List[int] type context.
-
         Returns the inferred types of *actual arguments*.
         """
         res = [None] * len(args)  # type: List[Optional[Type]]
@@ -1071,7 +1056,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def infer_function_type_arguments_using_context(
             self, callable: CallableType, error_context: Context) -> CallableType:
         """Unify callable return type to type context to infer type vars.
-
         For example, if the return type is set[t] where 't' is a type variable
         of callable, and if the context is set[int], return callable modified
         by substituting 't' with 'int'.
@@ -1148,9 +1132,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       formal_to_actual: List[List[int]],
                                       context: Context) -> CallableType:
         """Infer the type arguments for a generic callee type.
-
         Infer based on the types of arguments.
-
         Return a derived callable type that has the arguments applied.
         """
         if self.chk.in_checked_function():
@@ -1215,14 +1197,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             old_inferred_args: Sequence[Optional[Type]],
             context: Context) -> Tuple[CallableType, List[Optional[Type]]]:
         """Perform second pass of generic function type argument inference.
-
         The second pass is needed for arguments with types such as Callable[[T], S],
         where both T and S are type variables, when the actual argument is a
         lambda with inferred types.  The idea is to infer the type variable T
         in the first pass (based on the types of other arguments).  This lets
         us infer the argument and return type of the lambda expression and
         thus also the type variable S in this second pass.
-
         Return (the callee with type vars applied, inferred actual arg types).
         """
         # None or erased types in inferred types mean that there was not enough
@@ -1246,10 +1226,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                              formal_to_actual: List[List[int]],
                              num_actuals: int) -> List[int]:
         """Return pass numbers for args for two-pass argument type inference.
-
         For each actual, the pass number is either 1 (first pass) or 2 (second
         pass).
-
         Two-pass argument type inference primarily lets us infer types of
         lambdas more effectively.
         """
@@ -1264,7 +1242,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                  inferred_args: Sequence[Optional[Type]],
                                  context: Context) -> CallableType:
         """Apply inferred values of type arguments to a generic function.
-
         Inferred_args contains the values of function type arguments.
         """
         # Report error if some of the variables could not be solved. In that
@@ -1290,10 +1267,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                              context: Optional[Context],
                              messages: Optional[MessageBuilder]) -> bool:
         """Check that there is a value for all required arguments to a function.
-
         Also check that there are no duplicate values for arguments. Report found errors
         using 'messages' if it's not None. If 'messages' is given, 'context' must also be given.
-
         Return False if there were any errors. Otherwise return True
         """
         if messages:
@@ -1353,7 +1328,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          context: Context,
                                          messages: Optional[MessageBuilder]) -> Tuple[bool, bool]:
         """Check for extra actual arguments.
-
         Return tuple (was everything ok,
                       was there an extra keyword argument error [used to avoid duplicate errors]).
         """
@@ -1410,7 +1384,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                              messages: Optional[MessageBuilder] = None,
                              check_arg: Optional[ArgChecker] = None) -> None:
         """Check argument types against a callable type.
-
         Report errors if the argument types are not compatible.
         """
         messages = messages or self.msg
@@ -1588,11 +1561,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         arg_names: Optional[Sequence[Optional[str]]],
                                         overload: Overloaded) -> List[CallableType]:
         """Returns all overload call targets that having matching argument counts.
-
         If the given args contains a star-arg (*arg or **kwarg argument), this method
         will ensure all star-arg overloads appear at the start of the list, instead
         of their usual location.
-
         The only exception is if the starred argument is something like a Tuple or a
         NamedTuple, which has a definitive "shape". If so, we don't move the corresponding
         alternative to the front since we can infer a more precise match using the original
@@ -1642,12 +1613,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    arg_messages: Optional[MessageBuilder] = None,
                                    ) -> Optional[Tuple[Type, Type]]:
         """Attempts to find the first matching callable from the given list.
-
         If a match is found, returns a tuple containing the result type and the inferred
         callee type. (This tuple is meant to be eventually returned by check_call.)
         If multiple targets match due to ambiguous Any parameters, returns (AnyType, AnyType).
         If no targets match, returns None.
-
         Assumes all of the given targets have argument counts compatible with the caller.
         """
 
@@ -1721,7 +1690,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                      args: List[Expression],
                                      context: Context) -> List[CallableType]:
         """Returns a list of all targets that match the caller after erasing types.
-
         Assumes all of the given targets have argument counts compatible with the caller.
         """
         matches = []  # type: List[CallableType]
@@ -1745,7 +1713,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               ) -> Optional[List[Tuple[Type, Type]]]:
         """Accepts a list of overload signatures and attempts to match calls by destructuring
         the first union.
-
         Return a list of (<return type>, <inferred variant type>) if call succeeds for every
         item of the desctructured union. Returns None if there is no match.
         """
@@ -1828,7 +1795,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def combine_function_signatures(self, types: Sequence[Type]) -> Union[AnyType, CallableType]:
         """Accepts a list of function signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
-
         If there is at least one non-callable type, return Any (this can happen if there is
         an ambiguity because of Any in arguments).
         """
@@ -2025,14 +1991,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Analyzes the given literal expression and determines if we should be
         inferring an Instance type, a Literal[...] type, or an Instance that
         remembers the original literal. We...
-
         1. ...Infer a normal Instance in most circumstances.
-
         2. ...Infer a Literal[...] if we're in a literal context. For example, if we
            were analyzing the "3" in "foo(3)" where "foo" has a signature of
            "def foo(Literal[3]) -> None", we'd want to infer that the "3" has a
            type of Literal[3] instead of Instance.
-
         3. ...Infer an Instance that remembers the original Literal if we're declaring
            a Final variable with an inferred type -- for example, "bar" in "bar: Final = 3"
            would be assigned an Instance that remembers it originated from a '3'. See
@@ -2130,7 +2093,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
-
         Comparison expressions are type checked consecutive-pair-wise
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
@@ -2231,9 +2193,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def find_partial_type_ref_fast_path(self, expr: Expression) -> Optional[Type]:
         """If expression has a partial generic type, return it without additional checks.
-
         In particular, this does not generate an error about a missing annotation.
-
         Otherwise, return None.
         """
         if not isinstance(expr, RefExpr):
@@ -2248,10 +2208,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def dangerous_comparison(self, left: Type, right: Type,
                              original_container: Optional[Type] = None) -> bool:
         """Check for dangerous non-overlapping comparisons like 42 == 'no'.
-
         The original_container is the original container type for 'in' checks
         (and None for equality checks).
-
         Rules:
             * X and None are overlapping even in strict-optional mode. This is to allow
             'assert x is not None' for x defined as 'x = None  # type: str' in class body
@@ -2320,7 +2278,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   original_type: Optional[Type] = None
                                   ) -> Tuple[Type, Type]:
         """Type check a call to a named method on an object.
-
         Return tuple (result type, inferred method type). The 'original_type'
         is used for error messages.
         """
@@ -2350,7 +2307,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         original_type: Optional[Type] = None
                                         ) -> Tuple[Type, Type]:
         """Type check a call to a named method on an object with union type.
-
         This essentially checks the call using check_method_call_by_name() for each
         union item and unions the result. We do this to allow plugins to act on
         individual union items.
@@ -2378,7 +2334,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                           context: Context,
                           local_errors: Optional[MessageBuilder] = None) -> Tuple[Type, Type]:
         """Type check a call to a method with the given name and type on an object.
-
         Return tuple (result type, inferred method type).
         """
         callable_name = self.method_fullname(base_type, method_name)
@@ -2410,15 +2365,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             """Looks up the given operator and returns the corresponding type,
             if it exists."""
             local_errors = make_local_errors()
-
-            # TODO: Remove this call and rely just on analyze_member_access
-            # Currently, it seems we still need this to correctly deal with
-            # things like metaclasses?
-            #
-            # E.g. see the pythoneval.testMetaclassOpAccessAny test case.
-            if not self.has_member(base_type, op_name):
-                return None
-
             member = analyze_member_access(
                 name=op_name,
                 typ=base_type,
@@ -2438,13 +2384,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         def lookup_definer(typ: Instance, attr_name: str) -> Optional[str]:
             """Returns the name of the class that contains the actual definition of attr_name.
-
             So if class A defines foo and class B subclasses A, running
             'get_class_defined_in(B, "foo")` would return the full name of A.
-
             However, if B were to override and redefine foo, that method call would
             return the full name of B instead.
-
             If the attr name is not present in the given class or its MRO, returns None.
             """
             for cls in typ.type.mro:
@@ -2600,7 +2543,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                  arg: Expression, context: Context,
                  allow_reverse: bool = False) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
-
         Return tuple (result type, inferred operator method type).
         """
 
@@ -2774,7 +2716,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def check_list_multiply(self, e: OpExpr) -> Type:
         """Type check an expression of form '[...] * e'.
-
         Type inference is special-cased for this common construct.
         """
         right_type = self.accept(e.right)
@@ -2809,7 +2750,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_index_expr(self, e: IndexExpr) -> Type:
         """Type check an index expression (base[index]).
-
         It may also represent type application.
         """
         result = self.visit_index_expr_helper(e)
@@ -2829,7 +2769,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_index_with_type(self, left_type: Type, e: IndexExpr,
                               original_type: Optional[ProperType] = None) -> Type:
         """Analyze type of an index expression for a given type of base expression.
-
         The 'original_type' is used for error messages (currently used for union types).
         """
         index = e.index
@@ -2907,10 +2846,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """If the given expression or type corresponds to an int literal
         or a union of int literals, returns a list of the underlying ints.
         Otherwise, returns None.
-
         Specifically, this function is guaranteed to return a list with
         one or more ints if one one the following is true:
-
         1. 'expr' is a IntExpr or a UnaryExpr backed by an IntExpr
         2. 'typ' is a LiteralType containing an int
         3. 'typ' is a UnionType containing only LiteralType of ints
@@ -3033,7 +2970,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...]).
-
         There are two different options here, depending on whether expr refers
         to a type alias or directly to a generic class. In the first case we need
         to use a dedicated function typeanal.expand_type_aliases. This
@@ -3065,13 +3001,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         """Right hand side of a type alias definition.
-
         It has the same type as if the alias itself was used in a runtime context.
         For example, here:
-
             A = reveal_type(List[T])
             reveal_type(A)
-
         both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
         Note that type variables are implicitly substituted with `Any`.
         """
@@ -3083,15 +3016,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       *,
                                       alias_definition: bool = False) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression.
-
         Note that this function can be called only if the alias appears _not_
         as a target of type application, which is treated separately in the
         visit_type_application method. Some examples where this method is called are
         casts and instantiation:
-
             class LongName(Generic[T]): ...
             A = LongName[int]
-
             x = A()
             y = cast(A, ...)
         """
@@ -3125,7 +3055,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
         """Apply type arguments to a generic callable type coming from a type object.
-
         This will first perform type arguments count checks, report the
         error as needed, and return the correct kind of Any. As a special
         case this returns Any for non-callable types, because if type object type
@@ -3241,7 +3170,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
-
         Translate it into a call to dict(), with provisions for **expr.
         """
         # if the dict literal doesn't match TypedDict, check_typeddict_call_with_dict reports
@@ -3374,7 +3302,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def infer_lambda_type_using_context(self, e: LambdaExpr) -> Tuple[Optional[CallableType],
                                                                     Optional[CallableType]]:
         """Try to infer lambda expression type using context.
-
         Return None if could not infer type.
         The second item in the return type is the type_override parameter for check_func_item.
         """
@@ -3423,11 +3350,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a super expression (non-lvalue)."""
 
         # We have an expression like super(T, var).member
-<<<<<<< HEAD
-=======
 
-
->>>>>>> d1d5021f3cd30efb1238122a98fdd5241b20db5e
         # First compute the types of T and var
         types = self._super_arg_types(e)
         if isinstance(types, tuple):
@@ -3641,7 +3564,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_for_comp(self, e: Union[GeneratorExpr, DictionaryComprehension]) -> None:
         """Check the for_comp part of comprehensions. That is the part from 'for':
         ... for x in y if z
-
         Note: This adds the type information derived from the condlists to the current binder.
         """
         for index, sequence, conditions, is_async in zip(e.indices, e.sequences,
@@ -3803,46 +3725,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     [self.named_type('builtins.unicode'),
                      AnyType(TypeOfAny.special_form)])))
 
-    def has_member(self, typ: Type, member: str) -> bool:
-        """Does type have member with the given name?"""
-        # TODO: refactor this to use checkmember.analyze_member_access, otherwise
-        # these two should be carefully kept in sync.
-        typ = get_proper_type(typ)
-
-        if isinstance(typ, TypeVarType):
-            typ = get_proper_type(typ.upper_bound)
-        if isinstance(typ, TupleType):
-            typ = tuple_fallback(typ)
-        if isinstance(typ, LiteralType):
-            typ = typ.fallback
-        if isinstance(typ, Instance):
-            return typ.type.has_readable_member(member)
-        if isinstance(typ, CallableType) and typ.is_type_obj():
-            return typ.fallback.type.has_readable_member(member)
-        elif isinstance(typ, AnyType):
-            return True
-        elif isinstance(typ, UnionType):
-            result = all(self.has_member(x, member) for x in typ.relevant_items())
-            return result
-        elif isinstance(typ, TypeType):
-            # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
-            # so we don't need to care about unions here.
-            item = typ.item
-            if isinstance(item, TypeVarType):
-                item = get_proper_type(item.upper_bound)
-            if isinstance(item, TupleType):
-                item = tuple_fallback(item)
-            if isinstance(item, Instance) and item.type.metaclass_type is not None:
-                return self.has_member(item.type.metaclass_type, member)
-            if isinstance(item, AnyType):
-                return True
-            return False
-        else:
-            return False
-
     def not_ready_callback(self, name: str, context: Context) -> None:
         """Called when we can't infer the type of a variable because it's not ready yet.
-
         Either defer type checking of the enclosing function to the next
         pass or report an error.
         """
@@ -3874,7 +3758,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
         """Check the argument to `await` and extract the type of value.
-
         Also used by `async for` and `async with`.
         """
         if not self.chk.check_subtype(t, self.named_type('typing.Awaitable'), ctx,
@@ -4007,7 +3890,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def narrow_type_from_binder(self, expr: Expression, known_type: Type,
                                 skip_non_overlapping: bool = False) -> Optional[Type]:
         """Narrow down a known type of expression using information in conditional type binder.
-
         If 'skip_non_overlapping' is True, return None if the type and restriction are
         non-overlapping.
         """
@@ -4091,7 +3973,6 @@ def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> Callabl
 
 class ArgInferSecondPassQuery(types.TypeQuery[bool]):
     """Query whether an argument type should be inferred in the second pass.
-
     The result is True if the type has a type variable in a callable return
     type anywhere. For example, the result for Callable[[], T] is True if t is
     a type variable.
@@ -4140,10 +4021,8 @@ class HasUninhabitedComponentsQuery(types.TypeQuery[bool]):
 
 def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
     """Return if caller argument (actual) is roughly compatible with signature arg (formal).
-
     This function is deliberately loose and will report two types are similar
     as long as their "shapes" are plausibly the same.
-
     This is useful when we're doing error reporting: for example, if we're trying
     to select an overload alternative and there's no exact match, we can use
     this function to help us identify which alternative the user might have
@@ -4205,11 +4084,9 @@ def any_causes_overload_ambiguity(items: List[CallableType],
                                   arg_kinds: List[int],
                                   arg_names: Optional[Sequence[Optional[str]]]) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
-
     Note that this sometimes returns True even if there is no ambiguity, since a correct
     implementation would be complex (and the call would be imprecisely typed due to Any
     types anyway).
-
     Args:
         items: Overload items matching the actual arguments
         arg_types: Actual argument types
@@ -4258,19 +4135,15 @@ def all_same_types(types: List[Type]) -> bool:
 def merge_typevars_in_callables_by_name(
         callables: Sequence[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
     """Takes all the typevars present in the callables and 'combines' the ones with the same name.
-
     For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
     "f(x: List[Tuple[T, S]]) -> Tuple[T, S]". Both callables use typevars named "T" and
     "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
     distinct ids.)
-
     If we pass in both callables into this function, it returns a a list containing two
     new callables that are identical in signature, but use the same underlying TypeVarDef
     and TypeVarType objects for T and S.
-
     This is useful if we want to take the output lists and "merge" them into one callable
     in some way -- for example, when unioning together overloads.
-
     Returns both the new list of callables and a list of all distinct TypeVarDef objects used.
     """
 
