@@ -805,7 +805,7 @@ class TypeFormatter(TypeStrVisitor):
 
         if (mod, obj) == ('builtins', 'tuple'):
             mod, obj = 'typing', 'Tuple[' + t.args[0].accept(self) + ', ...]'
-        elif t.args != []:
+        elif t.args:
             obj += '[{}]'.format(self.list_str(t.args))
 
         if mod_obj == ('builtins', 'unicode'):
