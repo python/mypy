@@ -302,6 +302,8 @@ else:
 import sys
 if sys.platform == 'fictional':
     def foo() -> int: return 0
+if platform.system():
+    def foo() -> int: return 0
 else:
     def foo() -> str: return ''
 foo() + ''
