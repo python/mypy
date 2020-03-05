@@ -7,7 +7,7 @@ from typing import List, Tuple, Optional, Union, cast
 
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
-    UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS,
+    UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS, ARG_NAMED_OPT,
     EnumCallExpr, MemberExpr
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
@@ -106,10 +106,26 @@ class EnumCallAnalyzer:
         args = call.args
         if len(args) < 2:
             return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
-        if len(args) > 2:
-            return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+        elif len(args) == 2:
+            if call.arg_kinds != [ARG_POS, ARG_POS]:
+                return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+        elif len(args) > 2:
+            if len(args) == 3:
+                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT]:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            elif len(args) == 4:
+                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT]:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            elif len(args) == 5:
+                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            elif len(args) == 6:
+                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            for arg in args:
+                if arg not in ['module', 'qualname', 'type', 'start']:
+                    return self.fail_enum_call_arg("Unexpected keyword %s arguments for %s()" % (arg, class_name), call)
+
         if not isinstance(args[0], (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
                 "%s() expects a string literal as the first argument" % class_name, call)
