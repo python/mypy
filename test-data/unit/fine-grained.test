@@ -9594,3 +9594,56 @@ class N(p.util.Test):
 [builtins fixtures/list.pyi]
 [out]
 ==
+
+[case testDunderCall1]
+from a import C
+
+c = C()
+c(1)
+
+[file a.py]
+class C:
+    def __call__(self, x: int) -> None: ...
+
+[file a.py.2]
+class C:
+    def __call__(self, x: str) -> None: ...
+
+[out]
+==
+main:4: error: Argument 1 to "__call__" of "C" has incompatible type "int"; expected "str"
+
+[case testDunderCall2]
+from a import C
+
+C()(1)
+
+[file a.py]
+class C:
+    def __call__(self, x: int) -> None: ...
+
+[file a.py.2]
+class C:
+    def __call__(self, x: str) -> None: ...
+
+[out]
+==
+main:3: error: Argument 1 to "__call__" of "C" has incompatible type "int"; expected "str"
+
+[case testDunderCallAddition]
+from a import C
+
+c = C()
+x = c()  # type: ignore
+x + 42
+
+[file a.py]
+class C: ...
+
+[file a.py.2]
+class C:
+    def __call__(self) -> str: ...
+
+[out]
+==
+main:5: error: Unsupported left operand type for + ("str")

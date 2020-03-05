@@ -892,8 +892,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply method signature hook, if one exists
             call_function = self.transform_callee_type(
                 callable_name, call_function, args, arg_kinds, context, arg_names, callee)
-            return self.check_call(call_function, args, arg_kinds, context, arg_names,
-                                   callable_node, arg_messages, callable_name, callee)
+            result = self.check_call(call_function, args, arg_kinds, context, arg_names,
+                                     callable_node, arg_messages, callable_name, callee)
+            if callable_node:
+                # check_call() stored "call_function" as the type, which is incorrect.
+                # Override the type.
+                self.chk.store_type(callable_node, callee)
+            return result
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)

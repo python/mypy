@@ -661,6 +661,11 @@ class DependencyVisitor(TraverserVisitor):
             self.process_isinstance_call(e)
         else:
             super().visit_call_expr(e)
+            typ = self.type_map.get(e.callee)
+            if typ is not None:
+                typ = get_proper_type(typ)
+                if not isinstance(typ, FunctionLike):
+                    self.add_attribute_dependency(typ, '__call__')
 
     def process_isinstance_call(self, e: CallExpr) -> None:
         """Process "isinstance(...)" in a way to avoid some extra dependencies."""
