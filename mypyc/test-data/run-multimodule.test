@@ -604,12 +604,14 @@ assert non_native.foo() == 0
 
 [file other_a.py]
 from other_b import z
+from typing import Iterable
 
 class A:
     def __init__(self) -> None:
         self.y = z
 [file other_a.py.2]
 from other_b import z
+from typing import Iterable
 
 class A:
     def __init__(self) -> None:

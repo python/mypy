@@ -2,7 +2,7 @@ from typing import List, Dict, Iterable, Optional, Union
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, ClassDef, Decorator, OverloadedFuncDef, MemberExpr, Var,
-    Expression, ARG_STAR, ARG_STAR2
+    Expression, SymbolNode, ARG_STAR, ARG_STAR2
 )
 from mypy.types import Type
 from mypy.build import Graph
@@ -63,13 +63,17 @@ def build_type_map(mapper: Mapper,
             # TODO: what else?
 
 
+def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
+    return node.fullname == module.fullname + '.' + node.name
+
+
 def load_type_map(mapper: 'Mapper',
                   modules: List[MypyFile],
                   deser_ctx: DeserMaps) -> None:
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for name, node in module.names.items():
-            if isinstance(node.node, TypeInfo):
+            if isinstance(node.node, TypeInfo) and is_from_module(node.node, module):
                 ir = deser_ctx.classes[node.node.fullname]
                 mapper.type_to_ir[node.node] = ir
                 mapper.func_to_decl[node.node] = ir.ctor
@@ -86,7 +90,7 @@ def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
         # aliases.  The best way to do this seems to be by
         # checking that the fullname matches.
         if (isinstance(node.node, (FuncDef, Decorator, OverloadedFuncDef))
-                and node.fullname == module.fullname + '.' + name):
+                and is_from_module(node.node, module)):
             yield get_func_def(node.node)
 
 
