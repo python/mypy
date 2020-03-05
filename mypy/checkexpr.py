@@ -3423,6 +3423,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a super expression (non-lvalue)."""
 
         # We have an expression like super(T, var).member
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> d1d5021f3cd30efb1238122a98fdd5241b20db5e
         # First compute the types of T and var
         types = self._super_arg_types(e)
         if isinstance(types, tuple):
