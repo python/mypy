@@ -44,6 +44,7 @@ func_op(
     emit=call_emit('CPyLong_FromStrWithBase'),
     priority=1)
 
+
 def int_binary_op(op: str, c_func_name: str,
                   result_type: RType = int_rprimitive,
                   error_kind: int = ERR_NEVER) -> None:
