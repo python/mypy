@@ -31,7 +31,7 @@ from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
 )
-from mypyc.primitives.registry import binary_ops, unary_ops, method_ops
+from mypyc.primitives.registry import binary_ops, unary_ops, method_ops, func_ops
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
 )
@@ -527,6 +527,15 @@ class LowLevelIRBuilder:
         ops = unary_ops.get(expr_op, [])
         target = self.matching_primitive_op(ops, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
+        return target
+
+    def builtin_call(self,
+                     args: List[Value],
+                     fn_op: str,
+                     line: int) -> Value:
+        ops = func_ops.get(fn_op, [])
+        target = self.matching_primitive_op(ops, args, line)
+        assert target, 'Unsupported builtin function: %s' % fn_op
         return target
 
     def shortcircuit_helper(self, op: str,

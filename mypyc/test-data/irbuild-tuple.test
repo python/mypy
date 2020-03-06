@@ -127,3 +127,38 @@ L0:
     r10 = tuple r5 :: list
     return r10
 
+[case testTupleFor]
+from typing import Tuple, List
+def f(xs: Tuple[str, ...]) -> None:
+    for x in xs:
+        pass
+[out]
+def f(xs):
+    xs :: tuple
+    r0, r1 :: short_int
+    r2 :: int
+    r3 :: bool
+    r4 :: object
+    x, r5 :: str
+    r6, r7 :: short_int
+    r8 :: None
+L0:
+    r0 = 0
+    r1 = r0
+L1:
+    r2 = len xs :: tuple
+    r3 = r1 < r2 :: int
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = xs[r1] :: tuple
+    r5 = cast(str, r4)
+    x = r5
+L3:
+    r6 = 1
+    r7 = r1 + r6 :: short_int
+    r1 = r7
+    goto L1
+L4:
+    r8 = None
+    return r8
+
