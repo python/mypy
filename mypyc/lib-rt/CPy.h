@@ -1043,13 +1043,8 @@ static PyObject *CPyLong_FromFloat(PyObject *o) {
 }
 
 static PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
-    if (PyLong_Check(o)) {
-        CPy_INCREF(o);
-        return o;
-    } else {
         Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
         return PyLong_FromUnicodeObject(o, base_size_t);
-    }
 }
 
 static PyObject *CPyLong_FromStr(PyObject *o) {
