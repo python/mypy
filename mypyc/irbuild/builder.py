@@ -38,8 +38,9 @@ from mypyc.ir.ops import (
     InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, RInstance, int_rprimitive, is_list_rprimitive, dict_rprimitive,
-    none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive
+    RType, RTuple, RInstance, int_rprimitive, is_sequence_rprimitive, dict_rprimitive,
+    none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
+    str_rprimitive,
 )
 from mypyc.ir.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -55,7 +56,7 @@ from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.irbuild.for_helpers import (
-    ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
+    ForGenerator, ForRange, ForSequence, ForIterable, ForEnumerate, ForZip
 )
 from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
@@ -721,6 +722,14 @@ class IRBuilder:
         else:
             return None
 
+    def get_sequence_type(self, expr: Expression) -> RType:
+        target_type = get_proper_type(self.types[expr])
+        assert isinstance(target_type, Instance)
+        if target_type.type.fullname == 'builtins.str':
+            return str_rprimitive
+        else:
+            return self.type_to_rtype(target_type.args[0])
+
     def make_for_loop_generator(self,
                                 index: Lvalue,
                                 expr: Expression,
@@ -733,14 +742,13 @@ class IRBuilder:
         If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
         """
 
-        if is_list_rprimitive(self.node_type(expr)):
+        rtyp = self.node_type(expr)
+        if is_sequence_rprimitive(rtyp):
             # Special case "for x in <list>".
             expr_reg = self.accept(expr)
-            target_list_type = get_proper_type(self.types[expr])
-            assert isinstance(target_list_type, Instance)
-            target_type = self.type_to_rtype(target_list_type.args[0])
+            target_type = self.get_sequence_type(expr)
 
-            for_list = ForList(self, index, body_block, loop_exit, line, nested)
+            for_list = ForSequence(self, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=False)
             return for_list
 
@@ -799,14 +807,12 @@ class IRBuilder:
             if (expr.callee.fullname == 'builtins.reversed'
                     and len(expr.args) == 1
                     and expr.arg_kinds == [ARG_POS]
-                    and is_list_rprimitive(self.node_type(expr.args[0]))):
+                    and is_sequence_rprimitive(rtyp)):
                 # Special case "for x in reversed(<list>)".
                 expr_reg = self.accept(expr.args[0])
-                target_list_type = get_proper_type(self.types[expr.args[0]])
-                assert isinstance(target_list_type, Instance)
-                target_type = self.type_to_rtype(target_list_type.args[0])
+                target_type = self.get_sequence_type(expr)
 
-                for_list = ForList(self, index, body_block, loop_exit, line, nested)
+                for_list = ForSequence(self, index, body_block, loop_exit, line, nested)
                 for_list.init(expr_reg, target_type, reverse=True)
                 return for_list
 

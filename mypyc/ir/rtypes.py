@@ -241,6 +241,12 @@ def is_tuple_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.tuple'
 
 
+def is_sequence_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and (
+        is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype)
+    )
+
+
 class TupleNameVisitor(RTypeVisitor[str]):
     """Produce a tuple name based on the concrete representations of types."""
 

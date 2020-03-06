@@ -10,11 +10,11 @@ from typing_extensions import TYPE_CHECKING
 
 from mypy.nodes import Lvalue, Expression
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, PrimitiveOp, Branch, Register, AssignmentTarget
+    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget
 )
-from mypyc.ir.rtypes import RType, is_short_int_rprimitive
+from mypyc.ir.rtypes import RType, is_short_int_rprimitive, is_list_rprimitive
 from mypyc.primitives.int_ops import unsafe_short_add
-from mypyc.primitives.list_ops import list_len_op, list_get_item_unsafe_op
+from mypyc.primitives.list_ops import list_get_item_unsafe_op
 from mypyc.primitives.misc_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 
@@ -121,10 +121,21 @@ class ForIterable(ForGenerator):
         self.builder.primitive_op(no_err_occurred_op, [], self.line)
 
 
-# TODO: Generalize to support other sequences (tuples at least) with
-# different length and indexing ops.
-class ForList(ForGenerator):
-    """Generate optimized IR for a for loop over a list.
+def unsafe_index(
+    builder: 'mypyc.irbuild.builder.IRBuilder', target: Value, index: Value, line: int
+) -> Value:
+    """Emit a potentially unsafe index into a target."""
+    # This doesn't really fit nicely into any of our data-driven frameworks
+    # since we want to use __getitem__ if we don't have an unsafe version,
+    # so we just check manually.
+    if is_list_rprimitive(target.type):
+        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+    else:
+        return builder.gen_method_call(target, '__getitem__', [index], None, line)
+
+
+class ForSequence(ForGenerator):
+    """Generate optimized IR for a for loop over a sequence.
 
     Supports iterating in both forward and reverse."""
 
@@ -143,12 +154,16 @@ class ForList(ForGenerator):
         self.target_type = target_type
 
     def load_len(self) -> Value:
-        return self.builder.add(PrimitiveOp([self.builder.read(self.expr_target, self.line)],
-                                            list_len_op, self.line))
+        return self.builder.builder.builtin_call(
+            [self.builder.read(self.expr_target, self.line)],
+            'builtins.len',
+            self.line,
+        )
 
     def gen_condition(self) -> None:
         builder = self.builder
         line = self.line
+        # TODO: Don't reload the length each time when iterating an immutable sequence?
         if self.reverse:
             # If we are iterating in reverse order, we obviously need
             # to check that the index is still positive. Somewhat less
@@ -169,10 +184,12 @@ class ForList(ForGenerator):
         builder = self.builder
         line = self.line
         # Read the next list item.
-        value_box = builder.primitive_op(
-            list_get_item_unsafe_op,
-            [builder.read(self.expr_target, line), builder.read(self.index_target, line)],
-            line)
+        value_box = unsafe_index(
+            builder,
+            builder.read(self.expr_target, line),
+            builder.read(self.index_target, line),
+            line
+        )
         assert value_box
         # We coerce to the type of list elements here so that
         # iterating with tuple unpacking generates a tuple based

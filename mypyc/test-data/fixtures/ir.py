@@ -55,6 +55,7 @@ class str:
     def __ge__(self, x: str) -> bool: ...
     def __getitem__(self, i: int) -> str: pass
     def __contains__(self, item: str) -> bool: pass
+    def __iter__(self) -> Iterator[str]: ...
     def split(self, sep: Optional[str] = None, max: Optional[int] = None) -> List[str]: pass
     def strip (self, item: str) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
