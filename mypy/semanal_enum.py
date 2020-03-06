@@ -122,7 +122,7 @@ class EnumCallAnalyzer:
             elif len(args) == 6:
                 if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
                     return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
-            for arg in call.args_names:
+            for arg in call.arg_names:
                 if arg not in ['module', 'qualname', 'type', 'start']:
                     return self.fail_enum_call_arg("Unexpected keyword %s arguments for %s()" % (arg, class_name), call)
 
