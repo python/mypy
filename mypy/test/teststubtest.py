@@ -615,20 +615,48 @@ class StubtestMiscUnit(unittest.TestCase):
 
     def test_whitelist(self) -> None:
         # Can't use this as a context because Windows
-        whitelist = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        whitelist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         try:
             with whitelist:
-                whitelist.write("{}.bad\n# a comment".format(TEST_MODULE_NAME))
+                whitelist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
-                runtime="def bad(num, text) -> None: pass",
+                runtime="def bad(asdf, text): pass",
                 options=["--whitelist", whitelist.name],
             )
             assert not output
 
+            # test unused entry detection
             output = run_stubtest(stub="", runtime="", options=["--whitelist", whitelist.name])
             assert output == "note: unused whitelist entry {}.bad\n".format(TEST_MODULE_NAME)
+
+            # test regex matching
+            with open(whitelist.name, mode="w+") as f:
+                f.write("{}.b.*\n".format(TEST_MODULE_NAME))
+                f.write("(unused_missing)?\n")
+                f.write("unused.*\n")
+
+            output = run_stubtest(
+                stub=textwrap.dedent(
+                    """
+                    def good() -> None: ...
+                    def bad(number: int) -> None: ...
+                    def also_bad(number: int) -> None: ...
+                    """.lstrip("\n")
+                ),
+                runtime=textwrap.dedent(
+                    """
+                    def good(): pass
+                    def bad(asdf): pass
+                    def also_bad(asdf): pass
+                    """.lstrip("\n")
+                ),
+                options=["--whitelist", whitelist.name, "--generate-whitelist"],
+            )
+            assert output == "note: unused whitelist entry unused.*\n{}.also_bad\n".format(
+                TEST_MODULE_NAME
+            )
         finally:
             os.unlink(whitelist.name)
 

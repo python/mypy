@@ -9,6 +9,7 @@ import copy
 import enum
 import importlib
 import inspect
+import re
 import sys
 import types
 import warnings
@@ -1019,6 +1020,7 @@ def test_stubs(args: argparse.Namespace) -> int:
         for whitelist_file in args.whitelist
         for entry in get_whitelist_entries(whitelist_file)
     }
+    whitelist_regexes = {entry: re.compile(entry) for entry in whitelist}
 
     # If we need to generate a whitelist, we store Error.object_desc for each error here.
     generated_whitelist = set()
@@ -1052,6 +1054,14 @@ def test_stubs(args: argparse.Namespace) -> int:
             if error.object_desc in whitelist:
                 whitelist[error.object_desc] = True
                 continue
+            is_whitelisted = False
+            for w in whitelist:
+                if whitelist_regexes[w].fullmatch(error.object_desc):
+                    whitelist[w] = True
+                    is_whitelisted = True
+                    break
+            if is_whitelisted:
+                continue
 
             # We have errors, so change exit code, and output whatever necessary
             exit_code = 1
@@ -1062,7 +1072,9 @@ def test_stubs(args: argparse.Namespace) -> int:
 
     # Print unused whitelist entries
     for w in whitelist:
-        if not whitelist[w]:
+        # Don't consider an entry unused if it regex-matches the empty string
+        # This allows us to whitelist errors that don't manifest at all on some systems
+        if not whitelist[w] and not whitelist_regexes[w].fullmatch(""):
             exit_code = 1
             print("note: unused whitelist entry {}".format(w))
 
@@ -1104,7 +1116,7 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         default=[],
         help=(
             "Use file as a whitelist. Can be passed multiple times to combine multiple "
-            "whitelists. Whitelist can be created with --generate-whitelist"
+            "whitelists. Whitelists can be created with --generate-whitelist"
         ),
     )
     parser.add_argument(
