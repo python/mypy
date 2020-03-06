@@ -1027,7 +1027,8 @@ def test_stubs(args: argparse.Namespace) -> int:
     if args.check_typeshed:
         assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        modules.remove("antigravity")  # it's super annoying
+        annoying_modules = {"antigravity", "this"}
+        modules = [m for m in modules if m not in annoying_modules]
 
     assert modules, "No modules to check"
 
