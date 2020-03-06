@@ -1042,6 +1042,16 @@ static PyObject *CPyLong_FromFloat(PyObject *o) {
     }
 }
 
+static PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
+        Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
+        return PyLong_FromUnicodeObject(o, base_size_t);
+}
+
+static PyObject *CPyLong_FromStr(PyObject *o) {
+    CPyTagged base = CPyTagged_FromSsize_t(10);
+    return CPyLong_FromStrWithBase(o, base);
+}
+
 // Construct a nicely formatted type name based on __module__ and __name__.
 static PyObject *CPy_GetTypeName(PyObject *type) {
     PyObject *module = NULL, *name = NULL;

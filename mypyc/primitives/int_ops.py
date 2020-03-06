@@ -1,7 +1,7 @@
 from mypyc.ir.ops import OpDescription, ERR_NEVER, ERR_MAGIC
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
-    RType
+    str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, unary_op, func_op, custom_op,
@@ -26,6 +26,22 @@ func_op(
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyLong_FromFloat'),
+    priority=1)
+
+func_op(
+    name='builtins.int',
+    arg_types=[str_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyLong_FromStr'),
+    priority=1)
+
+func_op(
+    name='builtins.int',
+    arg_types=[str_rprimitive, int_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyLong_FromStrWithBase'),
     priority=1)
 
 

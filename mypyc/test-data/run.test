@@ -4709,3 +4709,21 @@ with assertRaises(IndexError, "string index out of range"):
     f(s, 4)
 with assertRaises(IndexError, "string index out of range"):
     f(s, -4)
+
+[case testIntCastOnStr]
+from typing import Optional
+def f(s: str, base: Optional[int] = None) -> int:
+    if base:
+        return int(s, base)
+    else:
+        return int(s)
+
+[file driver.py]
+from testutil import assertRaises
+from native import f
+assert f("1") == 1
+assert f("10") == 10
+assert f("a", 16) == 10
+assert f("1a", 16) == 26
+with assertRaises(ValueError, "invalid literal for int() with base 10: 'xyz'"):
+    f("xyz")
