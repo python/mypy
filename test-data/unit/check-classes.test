@@ -6650,7 +6650,7 @@ reveal_type(0.5 + C)  # N: Revealed type is 'Any'
 
 reveal_type(0.5 + D())  # N: Revealed type is 'Any'
 reveal_type(D() + 0.5)  # N: Revealed type is 'Any'
-reveal_type("str" + D())  # N: Revealed type is 'Any'
+reveal_type("str" + D())  # N: Revealed type is 'builtins.str'
 reveal_type(D() + "str")  # N: Revealed type is 'Any'
 
 
