@@ -14,14 +14,12 @@ functions are transformed in mypyc.irbuild.function.
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
 from typing_extensions import overload
 from collections import OrderedDict
-import importlib.util
 
 from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
-    CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr, ClassDef,
-    TypeInfo, Import, ImportFrom, ImportAll, Decorator, GeneratorExpr, OverloadedFuncDef,
-    StarExpr, GDEF, ARG_POS, ARG_NAMED
+    CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
+    TypeInfo, Decorator, GeneratorExpr, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -29,7 +27,7 @@ from mypy.types import (
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
 
-from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
+from mypyc.common import TEMP_ATTR_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
@@ -42,7 +40,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive,
 )
-from mypyc.ir.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
+from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
 from mypyc.primitives.list_ops import (
@@ -50,7 +48,7 @@ from mypyc.primitives.list_ops import (
 )
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.misc_ops import (
-    true_op, false_op, iter_op, next_op, py_setattr_op, import_op, get_module_dict_op
+    true_op, false_op, iter_op, next_op, py_setattr_op, import_op
 )
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
@@ -207,38 +205,9 @@ class IRBuilder:
 
     ##
 
-    def visit_mypy_file(self, mypyfile: MypyFile) -> None:
-        if mypyfile.fullname in ('typing', 'abc'):
-            # These module are special; their contents are currently all
-            # built-in primitives.
-            return
-
-        self.module_path = mypyfile.path
-        self.module_name = mypyfile.fullname
-
-        classes = [node for node in mypyfile.defs if isinstance(node, ClassDef)]
-
-        # Collect all classes.
-        for cls in classes:
-            ir = self.mapper.type_to_ir[cls.info]
-            self.classes.append(ir)
-
-        self.enter('<top level>')
-
-        # Make sure we have a builtins import
-        self.gen_import('builtins', -1)
-
-        # Generate ops.
-        for node in mypyfile.defs:
-            self.accept(node)
-        self.maybe_add_implicit_return()
-
-        # Generate special function representing module top level.
-        blocks, env, ret_type, _ = self.leave()
-        sig = FuncSignature([], none_rprimitive)
-        func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env,
-                         traceback_name="<module>")
-        self.functions.append(func_ir)
+    def set_module(self, module_name: str, module_path: str) -> None:
+        self.module_name = module_name
+        self.module_path = module_path
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
@@ -258,74 +227,6 @@ class IRBuilder:
         value = self.primitive_op(import_op, [self.load_static_unicode(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
-
-    def visit_import(self, node: Import) -> None:
-        if node.is_mypy_only:
-            return
-        globals = self.load_globals_dict()
-        for node_id, as_name in node.ids:
-            self.gen_import(node_id, node.line)
-
-            # Update the globals dict with the appropriate module:
-            # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
-            # * For 'import foo.bar' we add 'foo' with the name 'foo'
-            # Typically we then ignore these entries and access things directly
-            # via the module static, but we will use the globals version for modules
-            # that mypy couldn't find, since it doesn't analyze module references
-            # from those properly.
-
-            # Miscompiling imports inside of functions, like below in import from.
-            if as_name:
-                name = as_name
-                base = node_id
-            else:
-                base = name = node_id.split('.')[0]
-
-            # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-            mod_dict = self.primitive_op(get_module_dict_op, [], node.line)
-            obj = self.primitive_op(dict_get_item_op,
-                                    [mod_dict, self.load_static_unicode(base)], node.line)
-            self.gen_method_call(
-                globals, '__setitem__', [self.load_static_unicode(name), obj],
-                result_type=None, line=node.line)
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        if node.is_mypy_only:
-            return
-
-        module_state = self.graph[self.module_name]
-        if module_state.ancestors is not None and module_state.ancestors:
-            module_package = module_state.ancestors[0]
-        else:
-            module_package = ''
-
-        id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
-
-        self.gen_import(id, node.line)
-        module = self.load_module(id)
-
-        # Copy everything into our module's dict.
-        # Note that we miscompile import from inside of functions here,
-        # since that case *shouldn't* load it into the globals dict.
-        # This probably doesn't matter much and the code runs basically right.
-        globals = self.load_globals_dict()
-        for name, maybe_as_name in node.names:
-            # If one of the things we are importing is a module,
-            # import it as a module also.
-            fullname = id + '.' + name
-            if fullname in self.graph or fullname in module_state.suppressed:
-                self.gen_import(fullname, node.line)
-
-            as_name = maybe_as_name or name
-            obj = self.py_get_attr(module, name, node.line)
-            self.gen_method_call(
-                globals, '__setitem__', [self.load_static_unicode(as_name), obj],
-                result_type=None, line=node.line)
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        if node.is_mypy_only:
-            return
-        self.gen_import(node.id, node.line)
 
     def assign_if_null(self, target: AssignmentTargetRegister,
                        get_val: Callable[[], Value], line: int) -> None:

@@ -22,14 +22,17 @@ mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 from collections import OrderedDict
 from typing import List, Dict, Callable, Any, TypeVar, cast
 
-from mypy.nodes import MypyFile, Expression
+from mypy.nodes import MypyFile, Expression, ClassDef
 from mypy.types import Type
 from mypy.state import strict_optional_set
 from mypy.build import Graph
 
+from mypyc.common import TOP_LEVEL_NAME
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
+from mypyc.ir.rtypes import none_rprimitive
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs
+from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.irbuild.prepare import build_type_map
@@ -72,7 +75,7 @@ def build_ir(modules: List[MypyFile],
         visitor.builder = builder
 
         # Second pass does the bulk of the work.
-        builder.visit_mypy_file(module)
+        transform_mypy_file(builder, module)
         module_ir = ModuleIR(
             module.fullname,
             list(builder.imports),
@@ -89,3 +92,36 @@ def build_ir(modules: List[MypyFile],
             compute_vtable(cir)
 
     return result
+
+
+def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
+    if mypyfile.fullname in ('typing', 'abc'):
+        # These module are special; their contents are currently all
+        # built-in primitives.
+        return
+
+    builder.set_module(mypyfile.fullname, mypyfile.path)
+
+    classes = [node for node in mypyfile.defs if isinstance(node, ClassDef)]
+
+    # Collect all classes.
+    for cls in classes:
+        ir = builder.mapper.type_to_ir[cls.info]
+        builder.classes.append(ir)
+
+    builder.enter('<top level>')
+
+    # Make sure we have a builtins import
+    builder.gen_import('builtins', -1)
+
+    # Generate ops.
+    for node in mypyfile.defs:
+        builder.accept(node)
+    builder.maybe_add_implicit_return()
+
+    # Generate special function representing module top level.
+    blocks, env, ret_type, _ = builder.leave()
+    sig = FuncSignature([], none_rprimitive)
+    func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, builder.module_name, sig), blocks, env,
+                     traceback_name="<module>")
+    builder.functions.append(func_ir)
