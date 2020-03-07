@@ -241,9 +241,12 @@ def verify_typeinfo(
     to_check.update(m for m in cast(Any, vars)(runtime) if not m.startswith("_"))
 
     for entry in sorted(to_check):
+        mangled_entry = entry
+        if entry.startswith("__") and not entry.endswith("__"):
+            mangled_entry = "_{}{}".format(stub.name, entry)
         yield from verify(
             next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING),
-            getattr(runtime, entry, MISSING),
+            getattr(runtime, mangled_entry, MISSING),
             object_path + [entry],
         )
 
@@ -267,7 +270,13 @@ def _verify_static_class_methods(
     # Look the object up statically, to avoid binding by the descriptor protocol
     static_runtime = importlib.import_module(object_path[0])
     for entry in object_path[1:]:
-        static_runtime = inspect.getattr_static(static_runtime, entry)
+        try:
+            static_runtime = inspect.getattr_static(static_runtime, entry)
+        except AttributeError:
+            # This can happen with mangled names, ignore for now.
+            # TODO: pass more information about ancestors of nodes/objects to verify, so we don't
+            # have to do this hacky lookup. Would be useful in a couple other places too.
+            return
 
     if isinstance(static_runtime, classmethod) and not stub.is_class:
         yield "runtime is a classmethod but stub is not"

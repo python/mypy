@@ -572,6 +572,22 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
 
+    @collect_cases
+    def test_name_mangling(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class X:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class X:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="X.__mangle_bad"
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
