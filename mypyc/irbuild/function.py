@@ -7,32 +7,27 @@ from typing import Optional, List, Tuple, Union
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, SymbolNode, LambdaExpr, ARG_OPT
+    FuncItem, LambdaExpr
 )
 from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
-    BasicBlock, Value,  Return, Call, SetAttr, LoadInt, Unreachable, RaiseStandardError,
-    Environment, GetAttr, Branch, AssignmentTarget, TupleGet, Goto,
-    AssignmentTargetRegister, AssignmentTargetAttr, LoadStatic, InitStatic
+    BasicBlock, Value,  Return, SetAttr, LoadInt, Environment, GetAttr, Branch, AssignmentTarget,
+    TupleGet, AssignmentTargetRegister, LoadStatic, InitStatic
 )
-from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, RInstance
+from mypyc.ir.rtypes import object_rprimitive, RInstance
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.misc_ops import (
-    check_stop_op, yield_from_except_op, next_raw_op, iter_op, coro_op, send_op, py_setattr_op,
-    method_new_op
+    check_stop_op, yield_from_except_op, next_raw_op, iter_op, coro_op, send_op, py_setattr_op
 )
-from mypyc.primitives.exc_ops import raise_exception_with_tb_op
 from mypyc.primitives.dict_ops import dict_set_item_op
-from mypyc.common import (
-    SELF_NAME, ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, LAMBDA_NAME, decorator_helper_name
-)
+from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import concrete_arg_kind, is_constant, add_self_to_env
-from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
+from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.statement import transform_try_except
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.callable_class import (
