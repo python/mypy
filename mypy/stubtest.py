@@ -9,6 +9,7 @@ import copy
 import enum
 import importlib
 import inspect
+import re
 import sys
 import types
 import warnings
@@ -240,9 +241,12 @@ def verify_typeinfo(
     to_check.update(m for m in cast(Any, vars)(runtime) if not m.startswith("_"))
 
     for entry in sorted(to_check):
+        mangled_entry = entry
+        if entry.startswith("__") and not entry.endswith("__"):
+            mangled_entry = "_{}{}".format(stub.name, entry)
         yield from verify(
             next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING),
-            getattr(runtime, entry, MISSING),
+            getattr(runtime, mangled_entry, MISSING),
             object_path + [entry],
         )
 
@@ -266,7 +270,13 @@ def _verify_static_class_methods(
     # Look the object up statically, to avoid binding by the descriptor protocol
     static_runtime = importlib.import_module(object_path[0])
     for entry in object_path[1:]:
-        static_runtime = inspect.getattr_static(static_runtime, entry)
+        try:
+            static_runtime = inspect.getattr_static(static_runtime, entry)
+        except AttributeError:
+            # This can happen with mangled names, ignore for now.
+            # TODO: pass more information about ancestors of nodes/objects to verify, so we don't
+            # have to do this hacky lookup. Would be useful in a couple other places too.
+            return
 
     if isinstance(static_runtime, classmethod) and not stub.is_class:
         yield "runtime is a classmethod but stub is not"
@@ -582,21 +592,24 @@ def _verify_signature(
 
     # Check unmatched keyword-only args
     if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
+        # There are cases where the stub exhaustively lists out the extra parameters the function
+        # would take through *kwargs. Hence, a) we only check if the runtime actually takes those
+        # parameters when the above condition holds and b) below, we don't enforce that the stub
+        # takes *kwargs, since runtime logic may prevent additional arguments from actually being
+        # accepted.
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
             yield 'runtime does not have argument "{}"'.format(arg)
-    if stub.varkw is None or not set(stub.kwonly).issubset(set(runtime.kwonly)):
-        for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
-            if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
-                # Don't report this if we've reported it before
-                if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
-                    yield 'stub argument "{}" is not keyword-only'.format(arg)
-            else:
-                yield 'stub does not have argument "{}"'.format(arg)
+    for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
+        if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
+            # Don't report this if we've reported it before
+            if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
+                yield 'stub argument "{}" is not keyword-only'.format(arg)
+        else:
+            yield 'stub does not have argument "{}"'.format(arg)
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
-        # There are cases where the stub exhaustively lists out the extra parameters the function
-        # would take through **kwargs, so we don't enforce that the stub takes **kwargs.
+        # As mentioned above, don't enforce that the stub takes **kwargs.
         # Also check against positional parameters, to avoid a nitpicky message when an argument
         # isn't marked as keyword-only
         stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
@@ -1016,6 +1029,7 @@ def test_stubs(args: argparse.Namespace) -> int:
         for whitelist_file in args.whitelist
         for entry in get_whitelist_entries(whitelist_file)
     }
+    whitelist_regexes = {entry: re.compile(entry) for entry in whitelist}
 
     # If we need to generate a whitelist, we store Error.object_desc for each error here.
     generated_whitelist = set()
@@ -1024,7 +1038,8 @@ def test_stubs(args: argparse.Namespace) -> int:
     if args.check_typeshed:
         assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        modules.remove("antigravity")  # it's super annoying
+        annoying_modules = {"antigravity", "this"}
+        modules = [m for m in modules if m not in annoying_modules]
 
     assert modules, "No modules to check"
 
@@ -1048,6 +1063,14 @@ def test_stubs(args: argparse.Namespace) -> int:
             if error.object_desc in whitelist:
                 whitelist[error.object_desc] = True
                 continue
+            is_whitelisted = False
+            for w in whitelist:
+                if whitelist_regexes[w].fullmatch(error.object_desc):
+                    whitelist[w] = True
+                    is_whitelisted = True
+                    break
+            if is_whitelisted:
+                continue
 
             # We have errors, so change exit code, and output whatever necessary
             exit_code = 1
@@ -1057,10 +1080,13 @@ def test_stubs(args: argparse.Namespace) -> int:
             print(error.get_description(concise=args.concise))
 
     # Print unused whitelist entries
-    for w in whitelist:
-        if not whitelist[w]:
-            exit_code = 1
-            print("note: unused whitelist entry {}".format(w))
+    if not args.ignore_unused_whitelist:
+        for w in whitelist:
+            # Don't consider an entry unused if it regex-matches the empty string
+            # This allows us to whitelist errors that don't manifest at all on some systems
+            if not whitelist[w] and not whitelist_regexes[w].fullmatch(""):
+                exit_code = 1
+                print("note: unused whitelist entry {}".format(w))
 
     # Print the generated whitelist
     if args.generate_whitelist:
@@ -1100,7 +1126,7 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         default=[],
         help=(
             "Use file as a whitelist. Can be passed multiple times to combine multiple "
-            "whitelists. Whitelist can be created with --generate-whitelist"
+            "whitelists. Whitelists can be created with --generate-whitelist"
         ),
     )
     parser.add_argument(
@@ -1108,6 +1134,12 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         action="store_true",
         help="Print a whitelist (to stdout) to be used with --whitelist",
     )
+    parser.add_argument(
+        "--ignore-unused-whitelist",
+        action="store_true",
+        help="Ignore unused whitelist entries",
+    )
+
     return parser.parse_args(args)
 
 

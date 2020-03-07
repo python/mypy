@@ -369,6 +369,11 @@ class StubtestUnit(unittest.TestCase):
             runtime="def k5(a, *, b, c, **kwargs): pass",
             error="k5",
         )
+        yield Case(
+            stub="def k6(a, *, b, **kwargs) -> None: ...",
+            runtime="def k6(a, *, b, c, **kwargs): pass",
+            error="k6",
+        )
 
     @collect_cases
     def test_overload(self) -> Iterator[Case]:
@@ -567,6 +572,22 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
 
+    @collect_cases
+    def test_name_mangling(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class X:
+                def __mangle_good(self, text: str) -> None: ...
+                def __mangle_bad(self, number: int) -> None: ...
+            """,
+            runtime="""
+            class X:
+                def __mangle_good(self, text): pass
+                def __mangle_bad(self, text): pass
+            """,
+            error="X.__mangle_bad"
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -610,20 +631,55 @@ class StubtestMiscUnit(unittest.TestCase):
 
     def test_whitelist(self) -> None:
         # Can't use this as a context because Windows
-        whitelist = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        whitelist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         try:
             with whitelist:
-                whitelist.write("{}.bad\n# a comment".format(TEST_MODULE_NAME))
+                whitelist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
-                runtime="def bad(num, text) -> None: pass",
+                runtime="def bad(asdf, text): pass",
                 options=["--whitelist", whitelist.name],
             )
             assert not output
 
+            # test unused entry detection
             output = run_stubtest(stub="", runtime="", options=["--whitelist", whitelist.name])
             assert output == "note: unused whitelist entry {}.bad\n".format(TEST_MODULE_NAME)
+
+            output = run_stubtest(
+                stub="",
+                runtime="",
+                options=["--whitelist", whitelist.name, "--ignore-unused-whitelist"],
+            )
+            assert not output
+
+            # test regex matching
+            with open(whitelist.name, mode="w+") as f:
+                f.write("{}.b.*\n".format(TEST_MODULE_NAME))
+                f.write("(unused_missing)?\n")
+                f.write("unused.*\n")
+
+            output = run_stubtest(
+                stub=textwrap.dedent(
+                    """
+                    def good() -> None: ...
+                    def bad(number: int) -> None: ...
+                    def also_bad(number: int) -> None: ...
+                    """.lstrip("\n")
+                ),
+                runtime=textwrap.dedent(
+                    """
+                    def good(): pass
+                    def bad(asdf): pass
+                    def also_bad(asdf): pass
+                    """.lstrip("\n")
+                ),
+                options=["--whitelist", whitelist.name, "--generate-whitelist"],
+            )
+            assert output == "note: unused whitelist entry unused.*\n{}.also_bad\n".format(
+                TEST_MODULE_NAME
+            )
         finally:
             os.unlink(whitelist.name)
 
