@@ -39,6 +39,17 @@ from mypyc.irbuild.callable_class import (
     setup_callable_class, add_call_to_callable_class, add_get_to_callable_class,
     instantiate_callable_class
 )
+from mypyc.irbuild.generator import (
+    setup_env_for_generator_class, setup_generator_class, create_switch_for_generator_class,
+    add_raise_exception_blocks_to_generator_class, populate_switch_for_generator_class,
+    instantiate_generator_class, add_helper_to_generator_class, add_send_to_generator_class,
+    add_iter_to_generator_class, add_throw_to_generator_class, add_close_to_generator_class,
+    add_await_to_generator_class, add_next_to_generator_class
+)
+from mypyc.irbuild.env_class import (
+    setup_env_class, load_outer_envs, load_env_registers, finalize_env_class,
+    setup_func_for_recursive_call
+)
 
 
 # Top-level transform functions
@@ -197,7 +208,7 @@ def gen_func_item(builder: IRBuilder,
         in_non_ext = not ir.is_ext_class
         class_name = cdef.name
 
-    builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder, ),
+    builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
                         is_nested, contains_nested, is_decorated, in_non_ext))
 
     # Functions that contain nested functions need an environment class to store variables that
@@ -205,31 +216,31 @@ def gen_func_item(builder: IRBuilder,
     # store a variable denoting the next instruction to be executed when the __next__ function
     # is called, along with all the variables inside the function itself.
     if builder.fn_info.contains_nested or builder.fn_info.is_generator:
-        setup_env_class(builder, )
+        setup_env_class(builder)
 
     if builder.fn_info.is_nested or builder.fn_info.in_non_ext:
-        setup_callable_class(builder, )
+        setup_callable_class(builder)
 
     if builder.fn_info.is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
-        gen_generator_func(builder, )
+        gen_generator_func(builder)
         blocks, env, ret_type, fn_info = builder.leave()
         func_ir, func_reg = gen_func_ir(builder, blocks, sig, env, fn_info, cdef)
 
         # Re-enter the FuncItem and visit the body of the function this time.
         builder.enter(fn_info)
-        setup_env_for_generator_class(builder, )
+        setup_env_for_generator_class(builder)
         load_outer_envs(builder, builder.fn_info.generator_class)
         if builder.fn_info.is_nested and isinstance(fitem, FuncDef):
             setup_func_for_recursive_call(builder, fitem, builder.fn_info.generator_class)
-        create_switch_for_generator_class(builder, )
+        create_switch_for_generator_class(builder)
         add_raise_exception_blocks_to_generator_class(builder, fitem.line)
     else:
-        load_env_registers(builder, )
-        gen_arg_defaults(builder, )
+        load_env_registers(builder)
+        gen_arg_defaults(builder)
 
     if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
-        finalize_env_class(builder, )
+        finalize_env_class(builder)
 
     builder.ret_types[-1] = sig.ret_type
 
@@ -269,7 +280,7 @@ def gen_func_item(builder: IRBuilder,
     builder.maybe_add_implicit_return()
 
     if builder.fn_info.is_generator:
-        populate_switch_for_generator_class(builder, )
+        populate_switch_for_generator_class(builder)
 
     blocks, env, ret_type, fn_info = builder.leave()
 
@@ -482,315 +493,11 @@ def calculate_arg_defaults(builder: IRBuilder,
 
 
 def gen_generator_func(builder: IRBuilder) -> None:
-    setup_generator_class(builder, )
-    load_env_registers(builder, )
-    gen_arg_defaults(builder, )
-    finalize_env_class(builder, )
-    builder.add(Return(instantiate_generator_class(builder, )))
-
-
-def instantiate_generator_class(builder: IRBuilder) -> Value:
-    fitem = builder.fn_info.fitem
-    generator_reg = builder.add(Call(builder.fn_info.generator_class.ir.ctor, [], fitem.line))
-
-    # Get the current environment register. If the current function is nested, then the
-    # generator class gets instantiated from the callable class' '__call__' method, and hence
-    # we use the callable class' environment register. Otherwise, we use the original
-    # function's environment register.
-    if builder.fn_info.is_nested:
-        curr_env_reg = builder.fn_info.callable_class.curr_env_reg
-    else:
-        curr_env_reg = builder.fn_info.curr_env_reg
-
-    # Set the generator class' environment attribute to point at the environment class
-    # defined in the current scope.
-    builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
-
-    # Set the generator class' environment class' NEXT_LABEL_ATTR_NAME attribute to 0.
-    zero_reg = builder.add(LoadInt(0))
-    builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero_reg, fitem.line))
-    return generator_reg
-
-
-def setup_generator_class(builder: IRBuilder) -> ClassIR:
-    name = '{}_gen'.format(builder.fn_info.namespaced_name())
-
-    generator_class_ir = ClassIR(name, builder.module_name, is_generated=True)
-    generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
-    generator_class_ir.mro = [generator_class_ir]
-
-    builder.classes.append(generator_class_ir)
-    builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
-    return generator_class_ir
-
-
-def create_switch_for_generator_class(builder: IRBuilder) -> None:
-    builder.add(Goto(builder.fn_info.generator_class.switch_block))
-    block = BasicBlock()
-    builder.fn_info.generator_class.continuation_blocks.append(block)
-    builder.activate_block(block)
-
-
-def populate_switch_for_generator_class(builder: IRBuilder) -> None:
-    cls = builder.fn_info.generator_class
-    line = builder.fn_info.fitem.line
-
-    builder.activate_block(cls.switch_block)
-    for label, true_block in enumerate(cls.continuation_blocks):
-        false_block = BasicBlock()
-        comparison = builder.binary_op(
-            cls.next_label_reg, builder.add(LoadInt(label)), '==', line
-        )
-        builder.add_bool_branch(comparison, true_block, false_block)
-        builder.activate_block(false_block)
-
-    builder.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, None, line))
-    builder.add(Unreachable())
-
-
-def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int) -> None:
-    """
-    Generates blocks to check if error flags are set while calling the helper method for
-    generator functions, and raises an exception if those flags are set.
-    """
-    cls = builder.fn_info.generator_class
-    assert cls.exc_regs is not None
-    exc_type, exc_val, exc_tb = cls.exc_regs
-
-    # Check to see if an exception was raised.
-    error_block = BasicBlock()
-    ok_block = BasicBlock()
-    comparison = builder.binary_op(exc_type, builder.none_object(), 'is not', line)
-    builder.add_bool_branch(comparison, error_block, ok_block)
-
-    builder.activate_block(error_block)
-    builder.primitive_op(raise_exception_with_tb_op, [exc_type, exc_val, exc_tb], line)
-    builder.add(Unreachable())
-    builder.goto_and_activate(ok_block)
-
-
-def add_helper_to_generator_class(builder: IRBuilder,
-                                  blocks: List[BasicBlock],
-                                  sig: FuncSignature,
-                                  env: Environment,
-                                  fn_info: FuncInfo) -> FuncDecl:
-    """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('type', object_rprimitive),
-                         RuntimeArg('value', object_rprimitive),
-                         RuntimeArg('traceback', object_rprimitive),
-                         RuntimeArg('arg', object_rprimitive)
-                         ), sig.ret_type)
-    helper_fn_decl = FuncDecl('__mypyc_generator_helper__', fn_info.generator_class.ir.name,
-                              builder.module_name, sig)
-    helper_fn_ir = FuncIR(helper_fn_decl, blocks, env,
-                          fn_info.fitem.line, traceback_name=fn_info.fitem.name)
-    fn_info.generator_class.ir.methods['__mypyc_generator_helper__'] = helper_fn_ir
-    builder.functions.append(helper_fn_ir)
-    return helper_fn_decl
-
-
-def add_iter_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
-    """Generates the '__iter__' method for a generator class."""
-    builder.enter(fn_info)
-    self_target = add_self_to_env(builder.environment, fn_info.generator_class.ir)
-    builder.add(Return(builder.read(self_target, fn_info.fitem.line)))
-    blocks, env, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    iter_fn_decl = FuncDecl('__iter__', fn_info.generator_class.ir.name, builder.module_name, sig)
-    iter_fn_ir = FuncIR(iter_fn_decl, blocks, env)
-    fn_info.generator_class.ir.methods['__iter__'] = iter_fn_ir
-    builder.functions.append(iter_fn_ir)
-
-
-def add_next_to_generator_class(builder: IRBuilder,
-                                fn_info: FuncInfo,
-                                fn_decl: FuncDecl,
-                                sig: FuncSignature) -> None:
-    """Generates the '__next__' method for a generator class."""
-    builder.enter(fn_info)
-    self_reg = builder.read(add_self_to_env(builder.environment, fn_info.generator_class.ir))
-    none_reg = builder.none_object()
-
-    # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, none_reg],
-                           fn_info.fitem.line))
-    builder.add(Return(result))
-    blocks, env, _, fn_info = builder.leave()
-
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), sig.ret_type)
-    next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, builder.module_name, sig)
-    next_fn_ir = FuncIR(next_fn_decl, blocks, env)
-    fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
-    builder.functions.append(next_fn_ir)
-
-
-def add_send_to_generator_class(builder: IRBuilder,
-                                fn_info: FuncInfo,
-                                fn_decl: FuncDecl,
-                                sig: FuncSignature) -> None:
-    """Generates the 'send' method for a generator class."""
-    # FIXME: this is basically the same as add_next...
-    builder.enter(fn_info)
-    self_reg = builder.read(add_self_to_env(builder.environment, fn_info.generator_class.ir))
-    arg = builder.environment.add_local_reg(Var('arg'), object_rprimitive, True)
-    none_reg = builder.none_object()
-
-    # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, builder.read(arg)],
-                           fn_info.fitem.line))
-    builder.add(Return(result))
-    blocks, env, _, fn_info = builder.leave()
-
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('arg', object_rprimitive),), sig.ret_type)
-    next_fn_decl = FuncDecl('send', fn_info.generator_class.ir.name, builder.module_name, sig)
-    next_fn_ir = FuncIR(next_fn_decl, blocks, env)
-    fn_info.generator_class.ir.methods['send'] = next_fn_ir
-    builder.functions.append(next_fn_ir)
-
-
-def add_throw_to_generator_class(builder: IRBuilder,
-                                 fn_info: FuncInfo,
-                                 fn_decl: FuncDecl,
-                                 sig: FuncSignature) -> None:
-    """Generates the 'throw' method for a generator class."""
-    builder.enter(fn_info)
-    self_reg = builder.read(add_self_to_env(builder.environment, fn_info.generator_class.ir))
-
-    # Add the type, value, and traceback variables to the environment.
-    typ = builder.environment.add_local_reg(Var('type'), object_rprimitive, True)
-    val = builder.environment.add_local_reg(Var('value'), object_rprimitive, True)
-    tb = builder.environment.add_local_reg(Var('traceback'), object_rprimitive, True)
-
-    # Because the value and traceback arguments are optional and hence can be NULL if not
-    # passed in, we have to assign them Py_None if they are not passed in.
-    none_reg = builder.none_object()
-    builder.assign_if_null(val, lambda: none_reg, builder.fn_info.fitem.line)
-    builder.assign_if_null(tb, lambda: none_reg, builder.fn_info.fitem.line)
-
-    # Call the helper function using the arguments passed in, and return that result.
-    result = builder.add(
-        Call(
-            fn_decl,
-            [self_reg, builder.read(typ), builder.read(val), builder.read(tb), none_reg],
-            fn_info.fitem.line
-        )
-    )
-    builder.add(Return(result))
-    blocks, env, _, fn_info = builder.leave()
-
-    # Create the FuncSignature for the throw function. NOte that the value and traceback fields
-    # are optional, and are assigned to if they are not passed in inside the body of the throw
-    # function.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('type', object_rprimitive),
-                         RuntimeArg('value', object_rprimitive, ARG_OPT),
-                         RuntimeArg('traceback', object_rprimitive, ARG_OPT)),
-                        sig.ret_type)
-
-    throw_fn_decl = FuncDecl('throw', fn_info.generator_class.ir.name, builder.module_name, sig)
-    throw_fn_ir = FuncIR(throw_fn_decl, blocks, env)
-    fn_info.generator_class.ir.methods['throw'] = throw_fn_ir
-    builder.functions.append(throw_fn_ir)
-
-
-def add_close_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
-    """Generates the '__close__' method for a generator class."""
-    # TODO: Currently this method just triggers a runtime error,
-    # we should fill this out eventually.
-    builder.enter(fn_info)
-    add_self_to_env(builder.environment, fn_info.generator_class.ir)
-    builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
-                                'close method on generator classes uimplemented',
-                                fn_info.fitem.line))
-    builder.add(Unreachable())
-    blocks, env, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    close_fn_decl = FuncDecl('close', fn_info.generator_class.ir.name, builder.module_name, sig)
-    close_fn_ir = FuncIR(close_fn_decl, blocks, env)
-    fn_info.generator_class.ir.methods['close'] = close_fn_ir
-    builder.functions.append(close_fn_ir)
-
-
-def add_await_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
-    """Generates the '__await__' method for a generator class."""
-    builder.enter(fn_info)
-    self_target = add_self_to_env(builder.environment, fn_info.generator_class.ir)
-    builder.add(Return(builder.read(self_target, fn_info.fitem.line)))
-    blocks, env, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    await_fn_decl = FuncDecl('__await__', fn_info.generator_class.ir.name,
-                             builder.module_name, sig)
-    await_fn_ir = FuncIR(await_fn_decl, blocks, env)
-    fn_info.generator_class.ir.methods['__await__'] = await_fn_ir
-    builder.functions.append(await_fn_ir)
-
-
-def setup_env_for_generator_class(builder: IRBuilder) -> None:
-    """Populates the environment for a generator class."""
-    fitem = builder.fn_info.fitem
-    cls = builder.fn_info.generator_class
-    self_target = add_self_to_env(builder.environment, cls.ir)
-
-    # Add the type, value, and traceback variables to the environment.
-    exc_type = builder.environment.add_local(Var('type'), object_rprimitive, is_arg=True)
-    exc_val = builder.environment.add_local(Var('value'), object_rprimitive, is_arg=True)
-    exc_tb = builder.environment.add_local(Var('traceback'), object_rprimitive, is_arg=True)
-    # TODO: Use the right type here instead of object?
-    exc_arg = builder.environment.add_local(Var('arg'), object_rprimitive, is_arg=True)
-
-    cls.exc_regs = (exc_type, exc_val, exc_tb)
-    cls.send_arg_reg = exc_arg
-
-    cls.self_reg = builder.read(self_target, fitem.line)
-    cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.environment)
-
-    # Define a variable representing the label to go to the next time the '__next__' function
-    # of the generator is called, and add it as an attribute to the environment class.
-    cls.next_label_target = builder.add_var_to_env_class(
-        Var(NEXT_LABEL_ATTR_NAME),
-        int_rprimitive,
-        cls,
-        reassign=False
-    )
-
-    # Add arguments from the original generator function to the generator class' environment.
-    add_args_to_env(builder, local=False, base=cls, reassign=False)
-
-    # Set the next label register for the generator class.
-    cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
-
-
-def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:
-    """
-    Adds the instance of the callable class representing the given FuncDef to a register in the
-    environment so that the function can be called recursively. Note that this needs to be done
-    only for nested functions.
-    """
-    # First, set the attribute of the environment class so that GetAttr can be called on it.
-    prev_env = builder.fn_infos[-2].env_class
-    prev_env.attributes[fdef.name] = builder.type_to_rtype(fdef.type)
-
-    if isinstance(base, GeneratorClass):
-        # If we are dealing with a generator class, then we need to first get the register
-        # holding the current environment class, and load the previous environment class from
-        # there.
-        prev_env_reg = builder.add(GetAttr(base.curr_env_reg, ENV_ATTR_NAME, -1))
-    else:
-        prev_env_reg = base.prev_env_reg
-
-    # Obtain the instance of the callable class representing the FuncDef, and add it to the
-    # current environment.
-    val = builder.add(GetAttr(prev_env_reg, fdef.name, -1))
-    target = builder.environment.add_local_reg(fdef, object_rprimitive)
-    builder.assign(target, val, -1)
+    setup_generator_class(builder)
+    load_env_registers(builder)
+    gen_arg_defaults(builder)
+    finalize_env_class(builder)
+    builder.add(Return(instantiate_generator_class(builder)))
 
 
 def gen_func_ns(builder: IRBuilder) -> str:
@@ -1045,151 +752,6 @@ def gen_glue_property(builder: IRBuilder,
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name, FuncSignature([rt_arg], return_type)),
         blocks, env)
-
-
-def setup_env_class(builder: IRBuilder) -> ClassIR:
-    """Generates a class representing a function environment.
-
-    Note that the variables in the function environment are not actually populated here. This
-    is because when the environment class is generated, the function environment has not yet
-    been visited. This behavior is allowed so that when the compiler visits nested functions,
-    it can use the returned ClassIR instance to figure out free variables it needs to access.
-    The remaining attributes of the environment class are populated when the environment
-    registers are loaded.
-
-    Returns a ClassIR representing an environment for a function containing a nested function.
-    """
-    env_class = ClassIR('{}_env'.format(builder.fn_info.namespaced_name()),
-                        builder.module_name, is_generated=True)
-    env_class.attributes[SELF_NAME] = RInstance(env_class)
-    if builder.fn_info.is_nested:
-        # If the function is nested, its environment class must contain an environment
-        # attribute pointing to its encapsulating functions' environment class.
-        env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
-    env_class.mro = [env_class]
-    builder.fn_info.env_class = env_class
-    builder.classes.append(env_class)
-    return env_class
-
-
-def finalize_env_class(builder: IRBuilder) -> None:
-    """Generates, instantiates, and sets up the environment of an environment class."""
-
-    instantiate_env_class(builder, )
-
-    # Iterate through the function arguments and replace local definitions (using registers)
-    # that were previously added to the environment with references to the function's
-    # environment class.
-    if builder.fn_info.is_nested:
-        add_args_to_env(builder, local=False, base=builder.fn_info.callable_class)
-    else:
-        add_args_to_env(builder, local=False, base=builder.fn_info)
-
-
-def instantiate_env_class(builder: IRBuilder) -> Value:
-    """Assigns an environment class to a register named after the given function definition."""
-    curr_env_reg = builder.add(
-        Call(builder.fn_info.env_class.ctor, [], builder.fn_info.fitem.line)
-    )
-
-    if builder.fn_info.is_nested:
-        builder.fn_info.callable_class._curr_env_reg = curr_env_reg
-        builder.add(SetAttr(curr_env_reg,
-                         ENV_ATTR_NAME,
-                         builder.fn_info.callable_class.prev_env_reg,
-                         builder.fn_info.fitem.line))
-    else:
-        builder.fn_info._curr_env_reg = curr_env_reg
-
-    return curr_env_reg
-
-
-def load_env_registers(builder: IRBuilder) -> None:
-    """Loads the registers for the current FuncItem being visited.
-
-    Adds the arguments of the FuncItem to the environment. If the FuncItem is nested inside of
-    another function, then this also loads all of the outer environments of the FuncItem into
-    registers so that they can be used when accessing free variables.
-    """
-    add_args_to_env(builder, local=True)
-
-    fn_info = builder.fn_info
-    fitem = fn_info.fitem
-    if fn_info.is_nested:
-        load_outer_envs(builder, fn_info.callable_class)
-        # If this is a FuncDef, then make sure to load the FuncDef into its own environment
-        # class so that the function can be called recursively.
-        if isinstance(fitem, FuncDef):
-            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
-
-
-def load_outer_env(builder: IRBuilder, base: Value, outer_env: Environment) -> Value:
-    """Loads the environment class for a given base into a register.
-
-    Additionally, iterates through all of the SymbolNode and AssignmentTarget instances of the
-    environment at the given index's symtable, and adds those instances to the environment of
-    the current environment. This is done so that the current environment can access outer
-    environment variables without having to reload all of the environment registers.
-
-    Returns the register where the environment class was loaded.
-    """
-    env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
-    assert isinstance(env.type, RInstance), '{} must be of type RInstance'.format(env)
-
-    for symbol, target in outer_env.symtable.items():
-        env.type.class_ir.attributes[symbol.name] = target.type
-        symbol_target = AssignmentTargetAttr(env, symbol.name)
-        builder.environment.add_target(symbol, symbol_target)
-
-    return env
-
-
-def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
-    index = len(builder.builders) - 2
-
-    # Load the first outer environment. This one is special because it gets saved in the
-    # FuncInfo instance's prev_env_reg field.
-    if index > 1:
-        # outer_env = builder.fn_infos[index].environment
-        outer_env = builder.builders[index].environment
-        if isinstance(base, GeneratorClass):
-            base.prev_env_reg = load_outer_env(builder, base.curr_env_reg, outer_env)
-        else:
-            base.prev_env_reg = load_outer_env(builder, base.self_reg, outer_env)
-        env_reg = base.prev_env_reg
-        index -= 1
-
-    # Load the remaining outer environments into registers.
-    while index > 1:
-        # outer_env = builder.fn_infos[index].environment
-        outer_env = builder.builders[index].environment
-        env_reg = load_outer_env(builder, env_reg, outer_env)
-        index -= 1
-
-
-def add_args_to_env(builder: IRBuilder,
-                    local: bool = True,
-                    base: Optional[Union[FuncInfo, ImplicitClass]] = None,
-                    reassign: bool = True) -> None:
-    fn_info = builder.fn_info
-    if local:
-        for arg in fn_info.fitem.arguments:
-            rtype = builder.type_to_rtype(arg.variable.type)
-            builder.environment.add_local_reg(arg.variable, rtype, is_arg=True)
-    else:
-        for arg in fn_info.fitem.arguments:
-            if is_free_variable(builder, arg.variable) or fn_info.is_generator:
-                rtype = builder.type_to_rtype(arg.variable.type)
-                assert base is not None, 'base cannot be None for adding nonlocal args'
-                builder.add_var_to_env_class(arg.variable, rtype, base, reassign=reassign)
-
-
-def is_free_variable(builder: IRBuilder, symbol: SymbolNode) -> bool:
-    fitem = builder.fn_info.fitem
-    return (
-        fitem in builder.free_variables
-        and symbol in builder.free_variables[fitem]
-    )
 
 
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
