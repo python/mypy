@@ -38,9 +38,9 @@ from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
 from mypyc.options import CompilerOptions
-from mypyc.uninit import insert_uninit_checks
-from mypyc.refcount import insert_ref_count_opcodes
-from mypyc.exceptions import insert_exception_handling
+from mypyc.transform.uninit import insert_uninit_checks
+from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.errors import Errors
 

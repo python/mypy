@@ -12,7 +12,7 @@ from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.func_ir import format_func
-from mypyc.refcount import insert_ref_count_opcodes
+from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
     assert_test_output, remove_comment_lines
