@@ -112,26 +112,19 @@ class EnumCallAnalyzer:
         elif len(args) > 2:
             if len(args) == 3:
                 if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
             elif len(args) == 4:
                 if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
             elif len(args) == 5:
-                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT,
-                        ARG_NAMED_OPT, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
+                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
             elif len(args) == 6:
-                if call.arg_kinds != [ARG_POS, ARG_POS,
-                        ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
+                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
             for arg in call.arg_names:
                 if arg not in ['module', 'qualname', 'type', 'start']:
-                    return self.fail_enum_call_arg("Unexpected keyword %s arguments for %s()" %
-                        (arg, class_name), call)
+                    return self.fail_enum_call_arg("Unexpected keyword %s arguments for %s()" % (arg, class_name), call)
 
         if not isinstance(args[0], (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
