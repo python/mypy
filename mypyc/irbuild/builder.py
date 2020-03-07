@@ -19,7 +19,7 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, GeneratorExpr, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -36,16 +36,14 @@ from mypyc.ir.ops import (
     InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, RInstance, int_rprimitive, is_sequence_rprimitive, dict_rprimitive,
+    RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive,
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
-from mypyc.primitives.list_ops import (
-    list_append_op, list_len_op, new_list_op, to_list, list_pop_last
-)
+from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.misc_ops import (
     true_op, false_op, iter_op, next_op, py_setattr_op, import_op
@@ -53,9 +51,6 @@ from mypyc.primitives.misc_ops import (
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.irbuild.for_helpers import (
-    ForGenerator, ForRange, ForSequence, ForIterable, ForEnumerate, ForZip
-)
 from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
@@ -63,8 +58,6 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.util import is_constant
-
-GenFunc = Callable[[], None]
 
 
 class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -240,7 +233,7 @@ class IRBuilder:
     def environment(self) -> Environment:
         return self.builder.environment
 
-    ## IR building helpers
+    # Helpers for IR building
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
@@ -596,59 +589,6 @@ class IRBuilder:
         self.assign(reg, value, -1)
         return reg
 
-    def for_loop_helper(self, index: Lvalue, expr: Expression,
-                        body_insts: GenFunc, else_insts: Optional[GenFunc],
-                        line: int) -> None:
-        """Generate IR for a loop.
-
-        Args:
-            index: the loop index Lvalue
-            expr: the expression to iterate over
-            body_insts: a function that generates the body of the loop
-            else_insts: a function that generates the else block instructions
-        """
-        # Body of the loop
-        body_block = BasicBlock()
-        # Block that steps to the next item
-        step_block = BasicBlock()
-        # Block for the else clause, if we need it
-        else_block = BasicBlock()
-        # Block executed after the loop
-        exit_block = BasicBlock()
-
-        # Determine where we want to exit, if our condition check fails.
-        normal_loop_exit = else_block if else_insts is not None else exit_block
-
-        for_gen = self.make_for_loop_generator(index, expr, body_block, normal_loop_exit, line)
-
-        self.push_loop_stack(step_block, exit_block)
-        condition_block = BasicBlock()
-        self.goto_and_activate(condition_block)
-
-        # Add loop condition check.
-        for_gen.gen_condition()
-
-        # Generate loop body.
-        self.activate_block(body_block)
-        for_gen.begin_body()
-        body_insts()
-
-        # We generate a separate step block (which might be empty).
-        self.goto_and_activate(step_block)
-        for_gen.gen_step()
-        # Go back to loop condition.
-        self.goto(condition_block)
-
-        for_gen.add_cleanup(normal_loop_exit)
-        self.pop_loop_stack()
-
-        if else_insts is not None:
-            self.activate_block(else_block)
-            else_insts()
-            self.goto(exit_block)
-
-        self.activate_block(exit_block)
-
     def extract_int(self, e: Expression) -> Optional[int]:
         if isinstance(e, IntExpr):
             return e.value
@@ -664,100 +604,6 @@ class IRBuilder:
             return str_rprimitive
         else:
             return self.type_to_rtype(target_type.args[0])
-
-    def make_for_loop_generator(self,
-                                index: Lvalue,
-                                expr: Expression,
-                                body_block: BasicBlock,
-                                loop_exit: BasicBlock,
-                                line: int,
-                                nested: bool = False) -> ForGenerator:
-        """Return helper object for generating a for loop over an iterable.
-
-        If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
-        """
-
-        rtyp = self.node_type(expr)
-        if is_sequence_rprimitive(rtyp):
-            # Special case "for x in <list>".
-            expr_reg = self.accept(expr)
-            target_type = self.get_sequence_type(expr)
-
-            for_list = ForSequence(self, index, body_block, loop_exit, line, nested)
-            for_list.init(expr_reg, target_type, reverse=False)
-            return for_list
-
-        if (isinstance(expr, CallExpr)
-                and isinstance(expr.callee, RefExpr)):
-            if (expr.callee.fullname == 'builtins.range'
-                    and (len(expr.args) <= 2
-                         or (len(expr.args) == 3
-                             and self.extract_int(expr.args[2]) is not None))
-                    and set(expr.arg_kinds) == {ARG_POS}):
-                # Special case "for x in range(...)".
-                # We support the 3 arg form but only for int literals, since it doesn't
-                # seem worth the hassle of supporting dynamically determining which
-                # direction of comparison to do.
-                if len(expr.args) == 1:
-                    start_reg = self.add(LoadInt(0))
-                    end_reg = self.accept(expr.args[0])
-                else:
-                    start_reg = self.accept(expr.args[0])
-                    end_reg = self.accept(expr.args[1])
-                if len(expr.args) == 3:
-                    step = self.extract_int(expr.args[2])
-                    assert step is not None
-                    if step == 0:
-                        self.error("range() step can't be zero", expr.args[2].line)
-                else:
-                    step = 1
-
-                for_range = ForRange(self, index, body_block, loop_exit, line, nested)
-                for_range.init(start_reg, end_reg, step)
-                return for_range
-
-            elif (expr.callee.fullname == 'builtins.enumerate'
-                    and len(expr.args) == 1
-                    and expr.arg_kinds == [ARG_POS]
-                    and isinstance(index, TupleExpr)
-                    and len(index.items) == 2):
-                # Special case "for i, x in enumerate(y)".
-                lvalue1 = index.items[0]
-                lvalue2 = index.items[1]
-                for_enumerate = ForEnumerate(self, index, body_block, loop_exit, line,
-                                             nested)
-                for_enumerate.init(lvalue1, lvalue2, expr.args[0])
-                return for_enumerate
-
-            elif (expr.callee.fullname == 'builtins.zip'
-                    and len(expr.args) >= 2
-                    and set(expr.arg_kinds) == {ARG_POS}
-                    and isinstance(index, TupleExpr)
-                    and len(index.items) == len(expr.args)):
-                # Special case "for x, y in zip(a, b)".
-                for_zip = ForZip(self, index, body_block, loop_exit, line, nested)
-                for_zip.init(index.items, expr.args)
-                return for_zip
-
-            if (expr.callee.fullname == 'builtins.reversed'
-                    and len(expr.args) == 1
-                    and expr.arg_kinds == [ARG_POS]
-                    and is_sequence_rprimitive(rtyp)):
-                # Special case "for x in reversed(<list>)".
-                expr_reg = self.accept(expr.args[0])
-                target_type = self.get_sequence_type(expr)
-
-                for_list = ForSequence(self, index, body_block, loop_exit, line, nested)
-                for_list.init(expr_reg, target_type, reverse=True)
-                return for_list
-
-        # Default to a generic for loop.
-        expr_reg = self.accept(expr)
-        for_obj = ForIterable(self, index, body_block, loop_exit, line, nested)
-        item_type = self._analyze_iterable_item_type(expr)
-        item_rtype = self.type_to_rtype(item_type)
-        for_obj.init(expr_reg, item_rtype)
-        return for_obj
 
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
@@ -907,72 +753,6 @@ class IRBuilder:
         else:
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
-
-    def translate_list_comprehension(self, gen: GeneratorExpr) -> Value:
-        list_ops = self.primitive_op(new_list_op, [], gen.line)
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-
-        def gen_inner_stmts() -> None:
-            e = self.accept(gen.left_expr)
-            self.primitive_op(list_append_op, [list_ops, e], gen.line)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
-        return list_ops
-
-    def comprehension_helper(self,
-                             loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
-                             gen_inner_stmts: Callable[[], None],
-                             line: int) -> None:
-        """Helper function for list comprehensions.
-
-        "loop_params" is a list of (index, expr, [conditions]) tuples defining nested loops:
-            - "index" is the Lvalue indexing that loop;
-            - "expr" is the expression for the object to be iterated over;
-            - "conditions" is a list of conditions, evaluated in order with short-circuiting,
-                that must all be true for the loop body to be executed
-        "gen_inner_stmts" is a function to generate the IR for the body of the innermost loop
-        """
-        def handle_loop(loop_params: List[Tuple[Lvalue, Expression, List[Expression]]]) -> None:
-            """Generate IR for a loop.
-
-            Given a list of (index, expression, [conditions]) tuples, generate IR
-            for the nested loops the list defines.
-            """
-            index, expr, conds = loop_params[0]
-            self.for_loop_helper(index, expr,
-                                 lambda: loop_contents(conds, loop_params[1:]),
-                                 None, line)
-
-        def loop_contents(
-                conds: List[Expression],
-                remaining_loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
-        ) -> None:
-            """Generate the body of the loop.
-
-            "conds" is a list of conditions to be evaluated (in order, with short circuiting)
-                to gate the body of the loop.
-            "remaining_loop_params" is the parameters for any further nested loops; if it's empty
-                we'll instead evaluate the "gen_inner_stmts" function.
-            """
-            # Check conditions, in order, short circuiting them.
-            for cond in conds:
-                cond_val = self.accept(cond)
-                cont_block, rest_block = BasicBlock(), BasicBlock()
-                # If the condition is true we'll skip the continue.
-                self.add_bool_branch(cond_val, rest_block, cont_block)
-                self.activate_block(cont_block)
-                self.nonlocal_control[-1].gen_continue(self, cond.line)
-                self.goto_and_activate(rest_block)
-
-            if remaining_loop_params:
-                # There's another nested level, so the body of this loop is another loop.
-                return handle_loop(remaining_loop_params)
-            else:
-                # We finally reached the actual body of the generator.
-                # Generate the IR for the inner loop body.
-                gen_inner_stmts()
-
-        handle_loop(loop_params)
 
     def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
         """Flatten classes in isinstance(obj, (A, (B, C))).

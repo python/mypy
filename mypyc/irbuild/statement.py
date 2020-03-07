@@ -22,6 +22,7 @@ from mypyc.primitives.exc_ops import (
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
+from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.builder import IRBuilder
 
 GenFunc = Callable[[], None]
@@ -214,8 +215,8 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         assert s.else_body is not None
         builder.accept(s.else_body)
 
-    builder.for_loop_helper(s.index, s.expr, body,
-                            else_block if s.else_body else None, s.line)
+    for_loop_helper(builder, s.index, s.expr, body,
+                    else_block if s.else_body else None, s.line)
 
 
 def transform_break_stmt(builder: IRBuilder, node: BreakStmt) -> None:
