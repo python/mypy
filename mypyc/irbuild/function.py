@@ -37,9 +37,7 @@ from mypyc.irbuild.callable_class import (
 from mypyc.irbuild.generator import (
     setup_env_for_generator_class, setup_generator_class, create_switch_for_generator_class,
     add_raise_exception_blocks_to_generator_class, populate_switch_for_generator_class,
-    instantiate_generator_class, add_helper_to_generator_class, add_send_to_generator_class,
-    add_iter_to_generator_class, add_throw_to_generator_class, add_close_to_generator_class,
-    add_await_to_generator_class, add_next_to_generator_class
+    instantiate_generator_class, add_methods_to_generator_class
 )
 from mypyc.irbuild.env_class import (
     setup_env_class, load_outer_envs, load_env_registers, finalize_env_class,
@@ -280,15 +278,7 @@ def gen_func_item(builder: IRBuilder,
     blocks, env, ret_type, fn_info = builder.leave()
 
     if fn_info.is_generator:
-        helper_fn_decl = add_helper_to_generator_class(builder, blocks, sig, env, fn_info)
-        add_next_to_generator_class(builder, fn_info, helper_fn_decl, sig)
-        add_send_to_generator_class(builder, fn_info, helper_fn_decl, sig)
-        add_iter_to_generator_class(builder, fn_info)
-        add_throw_to_generator_class(builder, fn_info, helper_fn_decl, sig)
-        add_close_to_generator_class(builder, fn_info)
-        if fitem.is_coroutine:
-            add_await_to_generator_class(builder, fn_info)
-
+        add_methods_to_generator_class(builder, fn_info, sig, env, blocks, fitem.is_coroutine)
     else:
         func_ir, func_reg = gen_func_ir(builder, blocks, sig, env, fn_info, cdef)
 

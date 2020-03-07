@@ -97,6 +97,22 @@ def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int)
     builder.goto_and_activate(ok_block)
 
 
+def add_methods_to_generator_class(builder: IRBuilder,
+                                   fn_info: FuncInfo,
+                                   sig: FuncSignature,
+                                   env: Environment,
+                                   blocks: List[BasicBlock],
+                                   is_coroutine: bool) -> None:
+    helper_fn_decl = add_helper_to_generator_class(builder, blocks, sig, env, fn_info)
+    add_next_to_generator_class(builder, fn_info, helper_fn_decl, sig)
+    add_send_to_generator_class(builder, fn_info, helper_fn_decl, sig)
+    add_iter_to_generator_class(builder, fn_info)
+    add_throw_to_generator_class(builder, fn_info, helper_fn_decl, sig)
+    add_close_to_generator_class(builder, fn_info)
+    if is_coroutine:
+        add_await_to_generator_class(builder, fn_info)
+
+
 def add_helper_to_generator_class(builder: IRBuilder,
                                   blocks: List[BasicBlock],
                                   sig: FuncSignature,
