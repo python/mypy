@@ -132,6 +132,43 @@ class IRBuilder:
         # can also do quick lookups.
         self.imports = OrderedDict()  # type: OrderedDict[str, None]
 
+    # High-level control
+
+    def set_module(self, module_name: str, module_path: str) -> None:
+        """Set the name and path of the current module.
+
+        This must be called before transforming any AST nodes.
+        """
+        self.module_name = module_name
+        self.module_path = module_path
+
+    @overload
+    def accept(self, node: Expression) -> Value: ...
+
+    @overload
+    def accept(self, node: Statement) -> None: ...
+
+    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
+        """Transform an expression or a statement."""
+        with self.catch_errors(node.line):
+            if isinstance(node, Expression):
+                try:
+                    res = node.accept(self.visitor)
+                    res = self.coerce(res, self.node_type(node), node.line)
+                # If we hit an error during compilation, we want to
+                # keep trying, so we can produce more error
+                # messages. Generate a temp of the right type to keep
+                # from causing more downstream trouble.
+                except UnsupportedException:
+                    res = self.alloc_temp(self.node_type(node))
+                return res
+            else:
+                try:
+                    node.accept(self.visitor)
+                except UnsupportedException:
+                    pass
+                return None
+
     # Pass through methods for the most common low-level builder ops, for convenience.
 
     def add(self, op: Op) -> Value:
@@ -203,11 +240,7 @@ class IRBuilder:
     def environment(self) -> Environment:
         return self.builder.environment
 
-    ##
-
-    def set_module(self, module_name: str, module_path: str) -> None:
-        self.module_name = module_name
-        self.module_path = module_path
+    ## IR building helpers
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
@@ -964,7 +997,7 @@ class IRBuilder:
                     return None
             return res
 
-    # Helpers
+    # Basic helpers
 
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
@@ -988,32 +1021,6 @@ class IRBuilder:
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.blocks, builder.environment, ret_type, fn_info
-
-    @overload
-    def accept(self, node: Expression) -> Value: ...
-
-    @overload
-    def accept(self, node: Statement) -> None: ...
-
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
-        with self.catch_errors(node.line):
-            if isinstance(node, Expression):
-                try:
-                    res = node.accept(self.visitor)
-                    res = self.coerce(res, self.node_type(node), node.line)
-                # If we hit an error during compilation, we want to
-                # keep trying, so we can produce more error
-                # messages. Generate a temp of the right type to keep
-                # from causing more downstream trouble.
-                except UnsupportedException:
-                    res = self.alloc_temp(self.node_type(node))
-                return res
-            else:
-                try:
-                    node.accept(self.visitor)
-                except UnsupportedException:
-                    pass
-                return None
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         return self.mapper.type_to_rtype(typ)
