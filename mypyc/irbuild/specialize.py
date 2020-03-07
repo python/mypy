@@ -26,6 +26,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.misc_ops import true_op, false_op
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
 
 
 # Specializers are attempted before compiling the arguments to the
@@ -98,13 +99,13 @@ def translate_safe_generator_call(
         if isinstance(callee, MemberExpr):
             return builder.gen_method_call(
                 builder.accept(callee.expr), callee.name,
-                ([builder.translate_list_comprehension(expr.args[0])]
+                ([translate_list_comprehension(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             return builder.call_refexpr_with_args(
                 expr, callee,
-                ([builder.translate_list_comprehension(expr.args[0])]
+                ([translate_list_comprehension(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]))
     return None
 
@@ -150,7 +151,7 @@ def any_all_helper(builder: IRBuilder,
         builder.goto(exit_block)
         builder.activate_block(false_block)
 
-    builder.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     builder.goto_and_activate(exit_block)
 
     return retval
@@ -197,7 +198,7 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         builder.goto(exit_block)
 
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-    builder.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
 
     # Now we need the case for when nothing got hit. If there was
     # a default value, we produce it, and otherwise we raise

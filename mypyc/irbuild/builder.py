@@ -14,14 +14,12 @@ functions are transformed in mypyc.irbuild.function.
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
 from typing_extensions import overload
 from collections import OrderedDict
-import importlib.util
 
 from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
-    CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr, ClassDef,
-    TypeInfo, Import, ImportFrom, ImportAll, Decorator, GeneratorExpr, OverloadedFuncDef,
-    StarExpr, GDEF, ARG_POS, ARG_NAMED
+    CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -29,7 +27,7 @@ from mypy.types import (
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
 
-from mypyc.common import TEMP_ATTR_NAME, TOP_LEVEL_NAME
+from mypyc.common import TEMP_ATTR_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
@@ -38,26 +36,21 @@ from mypyc.ir.ops import (
     InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, RInstance, int_rprimitive, is_sequence_rprimitive, dict_rprimitive,
+    RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive,
 )
-from mypyc.ir.func_ir import FuncIR, FuncSignature, FuncDecl, INVALID_FUNC_DEF
+from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
-from mypyc.primitives.list_ops import (
-    list_append_op, list_len_op, new_list_op, to_list, list_pop_last
-)
+from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.misc_ops import (
-    true_op, false_op, iter_op, next_op, py_setattr_op, import_op, get_module_dict_op
+    true_op, false_op, iter_op, next_op, py_setattr_op, import_op
 )
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.irbuild.for_helpers import (
-    ForGenerator, ForRange, ForSequence, ForIterable, ForEnumerate, ForZip
-)
 from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
@@ -65,8 +58,6 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.util import is_constant
-
-GenFunc = Callable[[], None]
 
 
 class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -133,6 +124,43 @@ class IRBuilder:
         # module being compiled, but stored as an OrderedDict so we
         # can also do quick lookups.
         self.imports = OrderedDict()  # type: OrderedDict[str, None]
+
+    # High-level control
+
+    def set_module(self, module_name: str, module_path: str) -> None:
+        """Set the name and path of the current module.
+
+        This must be called before transforming any AST nodes.
+        """
+        self.module_name = module_name
+        self.module_path = module_path
+
+    @overload
+    def accept(self, node: Expression) -> Value: ...
+
+    @overload
+    def accept(self, node: Statement) -> None: ...
+
+    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
+        """Transform an expression or a statement."""
+        with self.catch_errors(node.line):
+            if isinstance(node, Expression):
+                try:
+                    res = node.accept(self.visitor)
+                    res = self.coerce(res, self.node_type(node), node.line)
+                # If we hit an error during compilation, we want to
+                # keep trying, so we can produce more error
+                # messages. Generate a temp of the right type to keep
+                # from causing more downstream trouble.
+                except UnsupportedException:
+                    res = self.alloc_temp(self.node_type(node))
+                return res
+            else:
+                try:
+                    node.accept(self.visitor)
+                except UnsupportedException:
+                    pass
+                return None
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 
@@ -205,40 +233,7 @@ class IRBuilder:
     def environment(self) -> Environment:
         return self.builder.environment
 
-    ##
-
-    def visit_mypy_file(self, mypyfile: MypyFile) -> None:
-        if mypyfile.fullname in ('typing', 'abc'):
-            # These module are special; their contents are currently all
-            # built-in primitives.
-            return
-
-        self.module_path = mypyfile.path
-        self.module_name = mypyfile.fullname
-
-        classes = [node for node in mypyfile.defs if isinstance(node, ClassDef)]
-
-        # Collect all classes.
-        for cls in classes:
-            ir = self.mapper.type_to_ir[cls.info]
-            self.classes.append(ir)
-
-        self.enter('<top level>')
-
-        # Make sure we have a builtins import
-        self.gen_import('builtins', -1)
-
-        # Generate ops.
-        for node in mypyfile.defs:
-            self.accept(node)
-        self.maybe_add_implicit_return()
-
-        # Generate special function representing module top level.
-        blocks, env, ret_type, _ = self.leave()
-        sig = FuncSignature([], none_rprimitive)
-        func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env,
-                         traceback_name="<module>")
-        self.functions.append(func_ir)
+    # Helpers for IR building
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
@@ -258,74 +253,6 @@ class IRBuilder:
         value = self.primitive_op(import_op, [self.load_static_unicode(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
-
-    def visit_import(self, node: Import) -> None:
-        if node.is_mypy_only:
-            return
-        globals = self.load_globals_dict()
-        for node_id, as_name in node.ids:
-            self.gen_import(node_id, node.line)
-
-            # Update the globals dict with the appropriate module:
-            # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
-            # * For 'import foo.bar' we add 'foo' with the name 'foo'
-            # Typically we then ignore these entries and access things directly
-            # via the module static, but we will use the globals version for modules
-            # that mypy couldn't find, since it doesn't analyze module references
-            # from those properly.
-
-            # Miscompiling imports inside of functions, like below in import from.
-            if as_name:
-                name = as_name
-                base = node_id
-            else:
-                base = name = node_id.split('.')[0]
-
-            # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-            mod_dict = self.primitive_op(get_module_dict_op, [], node.line)
-            obj = self.primitive_op(dict_get_item_op,
-                                    [mod_dict, self.load_static_unicode(base)], node.line)
-            self.gen_method_call(
-                globals, '__setitem__', [self.load_static_unicode(name), obj],
-                result_type=None, line=node.line)
-
-    def visit_import_from(self, node: ImportFrom) -> None:
-        if node.is_mypy_only:
-            return
-
-        module_state = self.graph[self.module_name]
-        if module_state.ancestors is not None and module_state.ancestors:
-            module_package = module_state.ancestors[0]
-        else:
-            module_package = ''
-
-        id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
-
-        self.gen_import(id, node.line)
-        module = self.load_module(id)
-
-        # Copy everything into our module's dict.
-        # Note that we miscompile import from inside of functions here,
-        # since that case *shouldn't* load it into the globals dict.
-        # This probably doesn't matter much and the code runs basically right.
-        globals = self.load_globals_dict()
-        for name, maybe_as_name in node.names:
-            # If one of the things we are importing is a module,
-            # import it as a module also.
-            fullname = id + '.' + name
-            if fullname in self.graph or fullname in module_state.suppressed:
-                self.gen_import(fullname, node.line)
-
-            as_name = maybe_as_name or name
-            obj = self.py_get_attr(module, name, node.line)
-            self.gen_method_call(
-                globals, '__setitem__', [self.load_static_unicode(as_name), obj],
-                result_type=None, line=node.line)
-
-    def visit_import_all(self, node: ImportAll) -> None:
-        if node.is_mypy_only:
-            return
-        self.gen_import(node.id, node.line)
 
     def assign_if_null(self, target: AssignmentTargetRegister,
                        get_val: Callable[[], Value], line: int) -> None:
@@ -662,59 +589,6 @@ class IRBuilder:
         self.assign(reg, value, -1)
         return reg
 
-    def for_loop_helper(self, index: Lvalue, expr: Expression,
-                        body_insts: GenFunc, else_insts: Optional[GenFunc],
-                        line: int) -> None:
-        """Generate IR for a loop.
-
-        Args:
-            index: the loop index Lvalue
-            expr: the expression to iterate over
-            body_insts: a function that generates the body of the loop
-            else_insts: a function that generates the else block instructions
-        """
-        # Body of the loop
-        body_block = BasicBlock()
-        # Block that steps to the next item
-        step_block = BasicBlock()
-        # Block for the else clause, if we need it
-        else_block = BasicBlock()
-        # Block executed after the loop
-        exit_block = BasicBlock()
-
-        # Determine where we want to exit, if our condition check fails.
-        normal_loop_exit = else_block if else_insts is not None else exit_block
-
-        for_gen = self.make_for_loop_generator(index, expr, body_block, normal_loop_exit, line)
-
-        self.push_loop_stack(step_block, exit_block)
-        condition_block = BasicBlock()
-        self.goto_and_activate(condition_block)
-
-        # Add loop condition check.
-        for_gen.gen_condition()
-
-        # Generate loop body.
-        self.activate_block(body_block)
-        for_gen.begin_body()
-        body_insts()
-
-        # We generate a separate step block (which might be empty).
-        self.goto_and_activate(step_block)
-        for_gen.gen_step()
-        # Go back to loop condition.
-        self.goto(condition_block)
-
-        for_gen.add_cleanup(normal_loop_exit)
-        self.pop_loop_stack()
-
-        if else_insts is not None:
-            self.activate_block(else_block)
-            else_insts()
-            self.goto(exit_block)
-
-        self.activate_block(exit_block)
-
     def extract_int(self, e: Expression) -> Optional[int]:
         if isinstance(e, IntExpr):
             return e.value
@@ -730,100 +604,6 @@ class IRBuilder:
             return str_rprimitive
         else:
             return self.type_to_rtype(target_type.args[0])
-
-    def make_for_loop_generator(self,
-                                index: Lvalue,
-                                expr: Expression,
-                                body_block: BasicBlock,
-                                loop_exit: BasicBlock,
-                                line: int,
-                                nested: bool = False) -> ForGenerator:
-        """Return helper object for generating a for loop over an iterable.
-
-        If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
-        """
-
-        rtyp = self.node_type(expr)
-        if is_sequence_rprimitive(rtyp):
-            # Special case "for x in <list>".
-            expr_reg = self.accept(expr)
-            target_type = self.get_sequence_type(expr)
-
-            for_list = ForSequence(self, index, body_block, loop_exit, line, nested)
-            for_list.init(expr_reg, target_type, reverse=False)
-            return for_list
-
-        if (isinstance(expr, CallExpr)
-                and isinstance(expr.callee, RefExpr)):
-            if (expr.callee.fullname == 'builtins.range'
-                    and (len(expr.args) <= 2
-                         or (len(expr.args) == 3
-                             and self.extract_int(expr.args[2]) is not None))
-                    and set(expr.arg_kinds) == {ARG_POS}):
-                # Special case "for x in range(...)".
-                # We support the 3 arg form but only for int literals, since it doesn't
-                # seem worth the hassle of supporting dynamically determining which
-                # direction of comparison to do.
-                if len(expr.args) == 1:
-                    start_reg = self.add(LoadInt(0))
-                    end_reg = self.accept(expr.args[0])
-                else:
-                    start_reg = self.accept(expr.args[0])
-                    end_reg = self.accept(expr.args[1])
-                if len(expr.args) == 3:
-                    step = self.extract_int(expr.args[2])
-                    assert step is not None
-                    if step == 0:
-                        self.error("range() step can't be zero", expr.args[2].line)
-                else:
-                    step = 1
-
-                for_range = ForRange(self, index, body_block, loop_exit, line, nested)
-                for_range.init(start_reg, end_reg, step)
-                return for_range
-
-            elif (expr.callee.fullname == 'builtins.enumerate'
-                    and len(expr.args) == 1
-                    and expr.arg_kinds == [ARG_POS]
-                    and isinstance(index, TupleExpr)
-                    and len(index.items) == 2):
-                # Special case "for i, x in enumerate(y)".
-                lvalue1 = index.items[0]
-                lvalue2 = index.items[1]
-                for_enumerate = ForEnumerate(self, index, body_block, loop_exit, line,
-                                             nested)
-                for_enumerate.init(lvalue1, lvalue2, expr.args[0])
-                return for_enumerate
-
-            elif (expr.callee.fullname == 'builtins.zip'
-                    and len(expr.args) >= 2
-                    and set(expr.arg_kinds) == {ARG_POS}
-                    and isinstance(index, TupleExpr)
-                    and len(index.items) == len(expr.args)):
-                # Special case "for x, y in zip(a, b)".
-                for_zip = ForZip(self, index, body_block, loop_exit, line, nested)
-                for_zip.init(index.items, expr.args)
-                return for_zip
-
-            if (expr.callee.fullname == 'builtins.reversed'
-                    and len(expr.args) == 1
-                    and expr.arg_kinds == [ARG_POS]
-                    and is_sequence_rprimitive(rtyp)):
-                # Special case "for x in reversed(<list>)".
-                expr_reg = self.accept(expr.args[0])
-                target_type = self.get_sequence_type(expr)
-
-                for_list = ForSequence(self, index, body_block, loop_exit, line, nested)
-                for_list.init(expr_reg, target_type, reverse=True)
-                return for_list
-
-        # Default to a generic for loop.
-        expr_reg = self.accept(expr)
-        for_obj = ForIterable(self, index, body_block, loop_exit, line, nested)
-        item_type = self._analyze_iterable_item_type(expr)
-        item_rtype = self.type_to_rtype(item_type)
-        for_obj.init(expr_reg, item_rtype)
-        return for_obj
 
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
@@ -974,72 +754,6 @@ class IRBuilder:
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
 
-    def translate_list_comprehension(self, gen: GeneratorExpr) -> Value:
-        list_ops = self.primitive_op(new_list_op, [], gen.line)
-        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-
-        def gen_inner_stmts() -> None:
-            e = self.accept(gen.left_expr)
-            self.primitive_op(list_append_op, [list_ops, e], gen.line)
-
-        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
-        return list_ops
-
-    def comprehension_helper(self,
-                             loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
-                             gen_inner_stmts: Callable[[], None],
-                             line: int) -> None:
-        """Helper function for list comprehensions.
-
-        "loop_params" is a list of (index, expr, [conditions]) tuples defining nested loops:
-            - "index" is the Lvalue indexing that loop;
-            - "expr" is the expression for the object to be iterated over;
-            - "conditions" is a list of conditions, evaluated in order with short-circuiting,
-                that must all be true for the loop body to be executed
-        "gen_inner_stmts" is a function to generate the IR for the body of the innermost loop
-        """
-        def handle_loop(loop_params: List[Tuple[Lvalue, Expression, List[Expression]]]) -> None:
-            """Generate IR for a loop.
-
-            Given a list of (index, expression, [conditions]) tuples, generate IR
-            for the nested loops the list defines.
-            """
-            index, expr, conds = loop_params[0]
-            self.for_loop_helper(index, expr,
-                                 lambda: loop_contents(conds, loop_params[1:]),
-                                 None, line)
-
-        def loop_contents(
-                conds: List[Expression],
-                remaining_loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
-        ) -> None:
-            """Generate the body of the loop.
-
-            "conds" is a list of conditions to be evaluated (in order, with short circuiting)
-                to gate the body of the loop.
-            "remaining_loop_params" is the parameters for any further nested loops; if it's empty
-                we'll instead evaluate the "gen_inner_stmts" function.
-            """
-            # Check conditions, in order, short circuiting them.
-            for cond in conds:
-                cond_val = self.accept(cond)
-                cont_block, rest_block = BasicBlock(), BasicBlock()
-                # If the condition is true we'll skip the continue.
-                self.add_bool_branch(cond_val, rest_block, cont_block)
-                self.activate_block(cont_block)
-                self.nonlocal_control[-1].gen_continue(self, cond.line)
-                self.goto_and_activate(rest_block)
-
-            if remaining_loop_params:
-                # There's another nested level, so the body of this loop is another loop.
-                return handle_loop(remaining_loop_params)
-            else:
-                # We finally reached the actual body of the generator.
-                # Generate the IR for the inner loop body.
-                gen_inner_stmts()
-
-        handle_loop(loop_params)
-
     def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
         """Flatten classes in isinstance(obj, (A, (B, C))).
 
@@ -1063,7 +777,7 @@ class IRBuilder:
                     return None
             return res
 
-    # Helpers
+    # Basic helpers
 
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
@@ -1087,32 +801,6 @@ class IRBuilder:
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.blocks, builder.environment, ret_type, fn_info
-
-    @overload
-    def accept(self, node: Expression) -> Value: ...
-
-    @overload
-    def accept(self, node: Statement) -> None: ...
-
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
-        with self.catch_errors(node.line):
-            if isinstance(node, Expression):
-                try:
-                    res = node.accept(self.visitor)
-                    res = self.coerce(res, self.node_type(node), node.line)
-                # If we hit an error during compilation, we want to
-                # keep trying, so we can produce more error
-                # messages. Generate a temp of the right type to keep
-                # from causing more downstream trouble.
-                except UnsupportedException:
-                    res = self.alloc_temp(self.node_type(node))
-                return res
-            else:
-                try:
-                    node.accept(self.visitor)
-                except UnsupportedException:
-                    pass
-                return None
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         return self.mapper.type_to_rtype(typ)

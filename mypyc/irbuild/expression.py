@@ -27,6 +27,7 @@ from mypyc.primitives.dict_ops import new_dict_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
 
 
 # Name and attribute references
@@ -495,7 +496,7 @@ def _visit_display(builder: IRBuilder,
 
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
-    return builder.translate_list_comprehension(o.generator)
+    return translate_list_comprehension(builder, o.generator)
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
@@ -507,7 +508,7 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
         e = builder.accept(gen.left_expr)
         builder.primitive_op(set_add_op, [set_ops, e], o.line)
 
-    builder.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+    comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return set_ops
 
 
@@ -520,7 +521,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
         v = builder.accept(o.value)
         builder.primitive_op(dict_set_item_op, [d, k, v], o.line)
 
-    builder.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+    comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return d
 
 
@@ -543,5 +544,5 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     builder.warning('Treating generator comprehension as list', o.line)
     return builder.primitive_op(
-        iter_op, [builder.translate_list_comprehension(o)], o.line
+        iter_op, [translate_list_comprehension(builder, o)], o.line
     )

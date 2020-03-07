@@ -37,6 +37,9 @@ from mypyc.irbuild.statement import (
     transform_return_stmt,
     transform_assignment_stmt,
     transform_operator_assignment_stmt,
+    transform_import,
+    transform_import_from,
+    transform_import_all,
     transform_if_stmt,
     transform_while_stmt,
     transform_for_stmt,
@@ -94,19 +97,19 @@ class IRBuilderVisitor(IRVisitor):
     builder = None  # type: IRBuilder
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
-        self.builder.visit_mypy_file(mypyfile)
+        assert False, "use transform_mypy_file instead"
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         transform_class_def(self.builder, cdef)
 
     def visit_import(self, node: Import) -> None:
-        self.builder.visit_import(node)
+        transform_import(self.builder, node)
 
     def visit_import_from(self, node: ImportFrom) -> None:
-        self.builder.visit_import_from(node)
+        transform_import_from(self.builder, node)
 
     def visit_import_all(self, node: ImportAll) -> None:
-        self.builder.visit_import_all(node)
+        transform_import_all(self.builder, node)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         transform_func_def(self.builder, fdef)

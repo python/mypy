@@ -1,9 +1,10 @@
 from typing import Optional, List, Tuple, Sequence, Callable
+import importlib.util
 
 from mypy.nodes import (
     Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, RaiseStmt, TryStmt, WithStmt, AssertStmt, DelStmt,
-    Expression, StrExpr, TempNode, Lvalue
+    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll
 )
 
 from mypyc.ir.ops import (
@@ -12,7 +13,8 @@ from mypyc.ir.ops import (
     BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
-from mypyc.primitives.misc_ops import true_op, false_op, type_op, py_delattr_op
+from mypyc.primitives.misc_ops import true_op, false_op, type_op, py_delattr_op, get_module_dict_op
+from mypyc.primitives.dict_ops import dict_get_item_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
@@ -20,6 +22,7 @@ from mypyc.primitives.exc_ops import (
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
+from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.builder import IRBuilder
 
 GenFunc = Callable[[], None]
@@ -90,6 +93,77 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     builder.assign(target, res, res.line)
 
 
+def transform_import(builder: IRBuilder, node: Import) -> None:
+    if node.is_mypy_only:
+        return
+    globals = builder.load_globals_dict()
+    for node_id, as_name in node.ids:
+        builder.gen_import(node_id, node.line)
+
+        # Update the globals dict with the appropriate module:
+        # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
+        # * For 'import foo.bar' we add 'foo' with the name 'foo'
+        # Typically we then ignore these entries and access things directly
+        # via the module static, but we will use the globals version for modules
+        # that mypy couldn't find, since it doesn't analyze module references
+        # from those properly.
+
+        # Miscompiling imports inside of functions, like below in import from.
+        if as_name:
+            name = as_name
+            base = node_id
+        else:
+            base = name = node_id.split('.')[0]
+
+        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
+        mod_dict = builder.primitive_op(get_module_dict_op, [], node.line)
+        obj = builder.primitive_op(dict_get_item_op,
+                                [mod_dict, builder.load_static_unicode(base)], node.line)
+        builder.gen_method_call(
+            globals, '__setitem__', [builder.load_static_unicode(name), obj],
+            result_type=None, line=node.line)
+
+
+def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
+    if node.is_mypy_only:
+        return
+
+    module_state = builder.graph[builder.module_name]
+    if module_state.ancestors is not None and module_state.ancestors:
+        module_package = module_state.ancestors[0]
+    else:
+        module_package = ''
+
+    id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
+
+    builder.gen_import(id, node.line)
+    module = builder.load_module(id)
+
+    # Copy everything into our module's dict.
+    # Note that we miscompile import from inside of functions here,
+    # since that case *shouldn't* load it into the globals dict.
+    # This probably doesn't matter much and the code runs basically right.
+    globals = builder.load_globals_dict()
+    for name, maybe_as_name in node.names:
+        # If one of the things we are importing is a module,
+        # import it as a module also.
+        fullname = id + '.' + name
+        if fullname in builder.graph or fullname in module_state.suppressed:
+            builder.gen_import(fullname, node.line)
+
+        as_name = maybe_as_name or name
+        obj = builder.py_get_attr(module, name, node.line)
+        builder.gen_method_call(
+            globals, '__setitem__', [builder.load_static_unicode(as_name), obj],
+            result_type=None, line=node.line)
+
+
+def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
+    if node.is_mypy_only:
+        return
+    builder.gen_import(node.id, node.line)
+
+
 def transform_if_stmt(builder: IRBuilder, stmt: IfStmt) -> None:
     if_body, next = BasicBlock(), BasicBlock()
     else_body = BasicBlock() if stmt.else_body else next
@@ -141,8 +215,8 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         assert s.else_body is not None
         builder.accept(s.else_body)
 
-    builder.for_loop_helper(s.index, s.expr, body,
-                            else_block if s.else_body else None, s.line)
+    for_loop_helper(builder, s.index, s.expr, body,
+                    else_block if s.else_body else None, s.line)
 
 
 def transform_break_stmt(builder: IRBuilder, node: BreakStmt) -> None:
