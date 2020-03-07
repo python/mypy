@@ -32,10 +32,16 @@ class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
     name = None  # type: str
+    # If True, the type has a special unboxed representation. If False, the type is
+    # represented as PyObject *. Even if True, the representation may contain pointers.
     is_unboxed = False
+    # This is the C undefined value for this type. It's used for initialization if there's
+    # no value yet.
     c_undefined = None  # type: str
-    is_refcounted = True  # If unboxed: does the unboxed version use reference counting?
-    _ctype = None  # type: str  # C type; use Emitter.ctype() to access
+    # If unboxed: does the unboxed version use reference counting?
+    is_refcounted = True
+    # C type; use Emitter.ctype() to access
+    _ctype = None  # type: str
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -87,6 +93,8 @@ def deserialize_type(data: Union[JsonDict, str], ctx: 'DeserMaps') -> 'RType':
 
 
 class RTypeVisitor(Generic[T]):
+    """Generic visitor over RTypes (uses the visitor design pattern)."""
+
     @abstractmethod
     def visit_rprimitive(self, typ: 'RPrimitive') -> T:
         raise NotImplementedError
@@ -109,7 +117,11 @@ class RTypeVisitor(Generic[T]):
 
 
 class RVoid(RType):
-    """void"""
+    """The void type (no value).
+
+    This is a singleton -- use void_rtype (below) to refer to this instead of
+    constructing a new instace.
+    """
 
     is_unboxed = False
     name = 'void'
@@ -122,13 +134,21 @@ class RVoid(RType):
         return 'void'
 
 
+# Singleton instance of RVoid
 void_rtype = RVoid()  # type: Final
 
 
 class RPrimitive(RType):
     """Primitive type such as 'object' or 'int'.
 
-    These often have custom ops associated with them.
+    These often have custom ops associated with them. The 'object' primitive
+    type can be used to hold arbitrary Python objects.
+
+    Different primitive types have different C representations, and primitives may
+    be unboxed or boxed. Primitive types don't need to directly correspond to
+    Python types, but many do.
+
+    NOTE: All supported primitive types are defined below (e.g. object_rprimitive).
     """
 
     # Map from primitive names to primitive types and is used by deserialization
@@ -164,35 +184,53 @@ class RPrimitive(RType):
         return '<RPrimitive %s>' % self.name
 
 
+# NOTE: All the possible instances of RPrimitive are defined below. Use these instead of
+# creating new instances.
+
 # Used to represent arbitrary objects and dynamically typed values
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
                                is_refcounted=True)  # type: Final
 
+# Arbitrary-precision integer (corresponds to Python 'int'). Small enough values
+# are stored unboxed, while large integers are represented as a tagged pointer to
+# a Python 'int' PyObject. The lowest bit is used as the tag to decide whether it
+# is a signed unboxed value (shifted left by one) or a pointer.
+#
+# This cannot represent a subclass of int.
 int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
                             ctype='CPyTagged')  # type: Final
 
+# An unboxed integer. The representation is the same as for unboxed int_rprimitive
+# (shifted left by one).
 short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
                                   ctype='CPyTagged')  # type: Final
 
+# Floats are represent as 'float' PyObject * values. (In the future we'll likely
+# switch to an unboxed representation.)
 float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
+# An unboxed boolean value.
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
                              ctype='char')  # type: Final
 
+# The 'None' value. It needs to have a representation for the undefined/error value.
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
                              ctype='char')  # type: Final
 
+# Python list object (or an instance of a subclass of list).
 list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)  # type: Final
 
+# Python dict object (or an instance of a subclass of dict).
 dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)  # type: Final
 
+# Python set object (or an instance of a subclass of set).
 set_rprimitive = RPrimitive('builtins.set', is_unboxed=False, is_refcounted=True)  # type: Final
 
-# At the C layer, str is refered to as unicode (PyUnicode)
+# Python str object. At the C layer, str is referred to as unicode (PyUnicode).
 str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)  # type: Final
 
-# Tuple of an arbitrary length (corresponds to Tuple[t, ...], with explicit '...')
+# Tuple of an arbitrary length (corresponds to Tuple[t, ...], with explicit '...').
 tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
@@ -318,7 +356,11 @@ exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 
 
 class RInstance(RType):
-    """Instance of user-defined class (compiled to C extension class)."""
+    """Instance of user-defined class (compiled to C extension class).
+
+    The runtime representation is 'PyObject *', and these are always reference
+    counted.
+    """
 
     is_unboxed = False
 
@@ -392,6 +434,10 @@ class RUnion(RType):
 
 
 def optional_value_type(rtype: RType) -> Optional[RType]:
+    """If rtype is the union of none_rprimitive and another type X, return X.
+
+    Otherwise return None.
+    """
     if isinstance(rtype, RUnion) and len(rtype.items) == 2:
         if rtype.items[0] == none_rprimitive:
             return rtype.items[1]
@@ -401,4 +447,5 @@ def optional_value_type(rtype: RType) -> Optional[RType]:
 
 
 def is_optional_type(rtype: RType) -> bool:
+    """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None
