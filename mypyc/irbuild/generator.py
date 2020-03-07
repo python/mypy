@@ -1,3 +1,9 @@
+"""Generate IR for generator functions.
+
+A generator function is represented by a class that implements the generator protocol
+and keeps track of the generator state, including local variables.
+"""
+
 from typing import List
 
 from mypy.nodes import Var, ARG_OPT

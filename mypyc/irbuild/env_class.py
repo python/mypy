@@ -1,3 +1,5 @@
+"""Generate classes representing function environments (+ related operations)."""
+
 from typing import Optional, Union
 
 from mypy.nodes import FuncDef, SymbolNode

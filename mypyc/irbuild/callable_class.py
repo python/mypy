@@ -1,3 +1,9 @@
+"""Generate a class that represents a nested function.
+
+The class defines __call__ for calling the function and allows access to variables
+defined in outer scopes.
+"""
+
 from typing import List
 
 from mypy.nodes import Var
