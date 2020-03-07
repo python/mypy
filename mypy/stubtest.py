@@ -1071,12 +1071,13 @@ def test_stubs(args: argparse.Namespace) -> int:
             print(error.get_description(concise=args.concise))
 
     # Print unused whitelist entries
-    for w in whitelist:
-        # Don't consider an entry unused if it regex-matches the empty string
-        # This allows us to whitelist errors that don't manifest at all on some systems
-        if not whitelist[w] and not whitelist_regexes[w].fullmatch(""):
-            exit_code = 1
-            print("note: unused whitelist entry {}".format(w))
+    if not args.ignore_unused_whitelist:
+        for w in whitelist:
+            # Don't consider an entry unused if it regex-matches the empty string
+            # This allows us to whitelist errors that don't manifest at all on some systems
+            if not whitelist[w] and not whitelist_regexes[w].fullmatch(""):
+                exit_code = 1
+                print("note: unused whitelist entry {}".format(w))
 
     # Print the generated whitelist
     if args.generate_whitelist:
@@ -1124,6 +1125,12 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         action="store_true",
         help="Print a whitelist (to stdout) to be used with --whitelist",
     )
+    parser.add_argument(
+        "--ignore-unused-whitelist",
+        action="store_true",
+        help="Ignore unused whitelist entries",
+    )
+
     return parser.parse_args(args)
 
 

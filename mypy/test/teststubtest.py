@@ -631,6 +631,13 @@ class StubtestMiscUnit(unittest.TestCase):
             output = run_stubtest(stub="", runtime="", options=["--whitelist", whitelist.name])
             assert output == "note: unused whitelist entry {}.bad\n".format(TEST_MODULE_NAME)
 
+            output = run_stubtest(
+                stub="",
+                runtime="",
+                options=["--whitelist", whitelist.name, "--ignore-unused-whitelist"],
+            )
+            assert not output
+
             # test regex matching
             with open(whitelist.name, mode="w+") as f:
                 f.write("{}.b.*\n".format(TEST_MODULE_NAME))
