@@ -13,7 +13,7 @@ from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Return, SetAttr, LoadInt, Environment, GetAttr, Branch, AssignmentTarget,
-    TupleGet, AssignmentTargetRegister, LoadStatic, InitStatic
+    TupleGet, InitStatic
 )
 from mypyc.ir.rtypes import object_rprimitive, RInstance
 from mypyc.ir.func_ir import (
@@ -29,15 +29,15 @@ from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import concrete_arg_kind, is_constant, add_self_to_env
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.statement import transform_try_except
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
     setup_callable_class, add_call_to_callable_class, add_get_to_callable_class,
     instantiate_callable_class
 )
 from mypyc.irbuild.generator import (
-    setup_env_for_generator_class, setup_generator_class, create_switch_for_generator_class,
+    gen_generator_func, setup_env_for_generator_class, create_switch_for_generator_class,
     add_raise_exception_blocks_to_generator_class, populate_switch_for_generator_class,
-    instantiate_generator_class, add_methods_to_generator_class
+    add_methods_to_generator_class
 )
 from mypyc.irbuild.env_class import (
     setup_env_class, load_outer_envs, load_env_registers, finalize_env_class,
@@ -417,39 +417,6 @@ def handle_non_ext_method(
     builder.add_to_non_ext_dict(non_ext, name, func_reg, fdef.line)
 
 
-def gen_arg_defaults(builder: IRBuilder) -> None:
-    """Generate blocks for arguments that have default values.
-
-    If the passed value is an error value, then assign the default
-    value to the argument.
-    """
-    fitem = builder.fn_info.fitem
-    for arg in fitem.arguments:
-        if arg.initializer:
-            target = builder.environment.lookup(arg.variable)
-
-            def get_default() -> Value:
-                assert arg.initializer is not None
-
-                # If it is constant, don't bother storing it
-                if is_constant(arg.initializer):
-                    return builder.accept(arg.initializer)
-
-                # Because gen_arg_defaults runs before calculate_arg_defaults, we
-                # add the static/attribute to final_names/the class here.
-                elif not builder.fn_info.is_nested:
-                    name = fitem.fullname + '.' + arg.variable.name
-                    builder.final_names.append((name, target.type))
-                    return builder.add(LoadStatic(target.type, name, builder.module_name))
-                else:
-                    name = arg.variable.name
-                    builder.fn_info.callable_class.ir.attributes[name] = target.type
-                    return builder.add(
-                        GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line))
-            assert isinstance(target, AssignmentTargetRegister)
-            builder.assign_if_null(target, get_default, arg.initializer.line)
-
-
 def calculate_arg_defaults(builder: IRBuilder,
                            fn_info: FuncInfo,
                            env: Environment,
@@ -475,14 +442,6 @@ def calculate_arg_defaults(builder: IRBuilder,
             else:
                 assert func_reg is not None
                 builder.add(SetAttr(func_reg, arg.variable.name, value, arg.line))
-
-
-def gen_generator_func(builder: IRBuilder) -> None:
-    setup_generator_class(builder)
-    load_env_registers(builder)
-    gen_arg_defaults(builder)
-    finalize_env_class(builder)
-    builder.add(Return(instantiate_generator_class(builder)))
 
 
 def gen_func_ns(builder: IRBuilder) -> str:

@@ -12,9 +12,19 @@ from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
 from mypyc.primitives.exc_ops import raise_exception_with_tb_op
 from mypyc.irbuild.util import add_self_to_env
-from mypyc.irbuild.env_class import add_args_to_env, load_outer_env
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.env_class import (
+    add_args_to_env, load_outer_env, load_env_registers, finalize_env_class
+)
+from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo, GeneratorClass
+
+
+def gen_generator_func(builder: IRBuilder) -> None:
+    setup_generator_class(builder)
+    load_env_registers(builder)
+    gen_arg_defaults(builder)
+    finalize_env_class(builder)
+    builder.add(Return(instantiate_generator_class(builder)))
 
 
 def instantiate_generator_class(builder: IRBuilder) -> Value:
