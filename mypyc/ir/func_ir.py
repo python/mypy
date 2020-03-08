@@ -74,8 +74,8 @@ FUNC_CLASSMETHOD = 2  # type: Final
 class FuncDecl:
     """Declaration of a function in IR (without body or implementation).
 
-    A function can a regular module-level function, a method, a static method,
-    a class method, or a property getter/setter.
+    A function can be a regular module-level function, a method, a
+    static method, a class method, or a property getter/setter.
     """
 
     def __init__(self,

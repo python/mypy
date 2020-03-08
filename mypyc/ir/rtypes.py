@@ -39,11 +39,12 @@ class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
     name = None  # type: str
-    # If True, the type has a special unboxed representation. If False, the type is
-    # represented as PyObject *. Even if True, the representation may contain pointers.
+    # If True, the type has a special unboxed representation. If False, the
+    # type is represented as PyObject *. Even if True, the representation
+    # may contain pointers.
     is_unboxed = False
-    # This is the C undefined value for this type. It's used for initialization if there's
-    # no value yet.
+    # This is the C undefined value for this type. It's used for initialization
+    # if there's no value yet, and for function return value on error/exception.
     c_undefined = None  # type: str
     # If unboxed: does the unboxed version use reference counting?
     is_refcounted = True
@@ -201,6 +202,9 @@ class RPrimitive(RType):
 # checked operations on these (that match Python semantics). See the
 # ops in mypyc.primitives.misc_ops, including py_getattr_op,
 # py_call_op, and many others.
+#
+# If there is no more specific RType available for some value, we fall
+# back to using this type.
 #
 # NOTE: Even though this is very flexible, this type should be used as
 # little as possible, as generic ops are typically slow. Other types,
@@ -400,6 +404,15 @@ class RInstance(RType):
 
     The runtime representation is 'PyObject *', and these are always
     boxed and thus reference-counted.
+
+    These support fast method calls and fast attribute access using
+    vtables, and they usually use a dict-free, struct-based
+    representation of attributes. Method calls and attribute access
+    can skip the vtable if we know that there is no overriding.
+
+    These are also sometimes called 'native' types, since these have
+    the most efficient representation and ops (along with certain
+    RPrimitive types and RTuple).
     """
 
     is_unboxed = False

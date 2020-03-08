@@ -325,7 +325,7 @@ class Value:
 class Register(Value):
     """A register holds a value of a specific type, and it can be read and mutated.
 
-    Each local variable maps to a registers, and they are also used for some
+    Each local variable maps to a register, and they are also used for some
     (but not all) temporary values.
     """
 
@@ -432,7 +432,7 @@ class Branch(ControlOp):
         self.left = left
         self.true = true_label
         self.false = false_label
-        # BOOL_EXPR (boolean check) or IS_ERROR (error value check
+        # BOOL_EXPR (boolean check) or IS_ERROR (error value check)
         self.op = op
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
