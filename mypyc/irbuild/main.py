@@ -13,7 +13,7 @@ It would be translated to something that conceptually looks like this:
    r3 = r2 + r1 :: int
    return r3
 
-The IR is implemented in mypyc.ops.
+The IR is implemented in mypyc.ir.
 
 For the core of the implementation, look at build_ir() below,
 mypyc.irbuild.builder, and mypyc.irbuild.visitor.
@@ -54,6 +54,7 @@ def build_ir(modules: List[MypyFile],
              mapper: 'Mapper',
              options: CompilerOptions,
              errors: Errors) -> ModuleIRs:
+    """Build IR for a set of modules type-checked by mypy."""
 
     build_type_map(mapper, modules, graph, types, options, errors)
 
@@ -95,6 +96,8 @@ def build_ir(modules: List[MypyFile],
 
 
 def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
+    """Generate IR for a single module."""
+
     if mypyfile.fullname in ('typing', 'abc'):
         # These module are special; their contents are currently all
         # built-in primitives.

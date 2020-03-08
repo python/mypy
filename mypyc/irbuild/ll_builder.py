@@ -64,7 +64,10 @@ class LowLevelIRBuilder:
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
+    # Basic operations
+
     def add(self, op: Op) -> Value:
+        """Add an op."""
         assert not self.blocks[-1].terminated, "Can't add to finished block"
 
         self.blocks[-1].ops.append(op)
@@ -73,10 +76,12 @@ class LowLevelIRBuilder:
         return op
 
     def goto(self, target: BasicBlock) -> None:
+        """Add goto to a basic block."""
         if not self.blocks[-1].terminated:
             self.add(Goto(target))
 
     def activate_block(self, block: BasicBlock) -> None:
+        """Add a basic block and make it the active one (target of adds)."""
         if self.blocks:
             assert self.blocks[-1].terminated
 
@@ -84,6 +89,7 @@ class LowLevelIRBuilder:
         self.blocks.append(block)
 
     def goto_and_activate(self, block: BasicBlock) -> None:
+        """Add goto a block and make it the active block."""
         self.goto(block)
         self.activate_block(block)
 
@@ -93,30 +99,10 @@ class LowLevelIRBuilder:
     def pop_error_handler(self) -> Optional[BasicBlock]:
         return self.error_handlers.pop()
 
-    ##
-
-    def get_native_type(self, cls: ClassIR) -> Value:
-        fullname = '%s.%s' % (cls.module_name, cls.name)
-        return self.load_native_type_object(fullname)
-
-    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
-        assert desc.result_type is not None
-        coerced = []
-        for i, arg in enumerate(args):
-            formal_type = self.op_arg_type(desc, i)
-            arg = self.coerce(arg, formal_type, line)
-            coerced.append(arg)
-        target = self.add(PrimitiveOp(coerced, desc, line))
-        return target
-
     def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)
 
-    def op_arg_type(self, desc: OpDescription, n: int) -> RType:
-        if n >= len(desc.arg_types):
-            assert desc.is_var_arg
-            return desc.arg_types[-1]
-        return desc.arg_types[n]
+    # Type conversions
 
     def box(self, src: Value) -> Value:
         if src.type.is_unboxed:
@@ -158,13 +144,10 @@ class LowLevelIRBuilder:
             return tmp
         return src
 
-    def none(self) -> Value:
-        return self.add(PrimitiveOp([], none_op, line=-1))
-
-    def none_object(self) -> Value:
-        return self.add(PrimitiveOp([], none_object_op, line=-1))
+    # Attribute access
 
     def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
+        """Get a native or Python attribute of an object."""
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
                 and obj.type.class_ir.has_attr(attr)):
             return self.add(GetAttr(obj, attr, line))
@@ -179,71 +162,22 @@ class LowLevelIRBuilder:
                        attr: str,
                        result_type: RType,
                        line: int) -> Value:
+        """Get an attribute of an object with a union type."""
+
         def get_item_attr(value: Value) -> Value:
             return self.get_attr(value, attr, result_type, line)
 
         return self.decompose_union_helper(obj, rtype, result_type, get_item_attr, line)
 
-    def decompose_union_helper(self,
-                               obj: Value,
-                               rtype: RUnion,
-                               result_type: RType,
-                               process_item: Callable[[Value], Value],
-                               line: int) -> Value:
-        """Generate isinstance() + specialized operations for union items.
+    def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
+        """Get a Python attribute (slow).
 
-        Say, for Union[A, B] generate ops resembling this (pseudocode):
-
-            if isinstance(obj, A):
-                result = <result of process_item(cast(A, obj)>
-            else:
-                result = <result of process_item(cast(B, obj)>
-
-        Args:
-            obj: value with a union type
-            rtype: the union type
-            result_type: result of the operation
-            process_item: callback to generate op for a single union item (arg is coerced
-                to union item type)
-            line: line number
+        Prefer get_attr() which generates optimized code for native classes.
         """
-        # TODO: Optimize cases where a single operation can handle multiple union items
-        #     (say a method is implemented in a common base class)
-        fast_items = []
-        rest_items = []
-        for item in rtype.items:
-            if isinstance(item, RInstance):
-                fast_items.append(item)
-            else:
-                # For everything but RInstance we fall back to C API
-                rest_items.append(item)
-        exit_block = BasicBlock()
-        result = self.alloc_temp(result_type)
-        for i, item in enumerate(fast_items):
-            more_types = i < len(fast_items) - 1 or rest_items
-            if more_types:
-                # We are not at the final item so we need one more branch
-                op = self.isinstance_native(obj, item.class_ir, line)
-                true_block, false_block = BasicBlock(), BasicBlock()
-                self.add_bool_branch(op, true_block, false_block)
-                self.activate_block(true_block)
-            coerced = self.coerce(obj, item, line)
-            temp = process_item(coerced)
-            temp2 = self.coerce(temp, result_type, line)
-            self.add(Assign(result, temp2))
-            self.goto(exit_block)
-            if more_types:
-                self.activate_block(false_block)
-        if rest_items:
-            # For everything else we use generic operation. Use force=True to drop the
-            # union type.
-            coerced = self.coerce(obj, object_rprimitive, line, force=True)
-            temp = process_item(coerced)
-            temp2 = self.coerce(temp, result_type, line)
-            self.add(Assign(result, temp2))
-            self.goto(exit_block)
-        self.activate_block(exit_block)
-        return result
+        key = self.load_static_unicode(attr)
+        return self.add(PrimitiveOp([obj, key], py_getattr_op, line))
+
+    # isinstance() checks
 
     def isinstance_helper(self, obj: Value, class_irs: List[ClassIR], line: int) -> Value:
         """Fast path for isinstance() that checks against a list of native classes."""
@@ -259,8 +193,9 @@ class LowLevelIRBuilder:
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
         """Fast isinstance() check for a native class.
 
-        If there three or less concrete (non-trait) classes among the class and all
-        its children, use even faster type comparison checks `type(obj) is typ`.
+        If there are three or fewer concrete (non-trait) classes among the class
+        and all its children, use even faster type comparison checks `type(obj)
+        is typ`.
         """
         concrete = all_concrete_classes(class_ir)
         if concrete is None or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
@@ -278,9 +213,7 @@ class LowLevelIRBuilder:
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
-    def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
-        key = self.load_static_unicode(attr)
-        return self.add(PrimitiveOp([obj, key], py_getattr_op, line))
+    # Calls
 
     def py_call(self,
                 function: Value,
@@ -288,7 +221,10 @@ class LowLevelIRBuilder:
                 line: int,
                 arg_kinds: Optional[List[int]] = None,
                 arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
-        """Use py_call_op or py_call_with_kwargs_op for function call."""
+        """Call a Python function (non-native and slow).
+
+        Use py_call_op or py_call_with_kwargs_op for Python function call.
+        """
         # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             return self.primitive_op(py_call_op, [function] + arg_values, line)
@@ -338,6 +274,7 @@ class LowLevelIRBuilder:
                        line: int,
                        arg_kinds: Optional[List[int]],
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
+        """Call a Python method (non-native and slow)."""
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             method_name_reg = self.load_static_unicode(method_name)
             return self.primitive_op(py_method_call_op, [obj, method_name_reg] + arg_values, line)
@@ -345,10 +282,13 @@ class LowLevelIRBuilder:
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
 
-    def call(self, decl: FuncDecl, args: Sequence[Value],
+    def call(self,
+             decl: FuncDecl,
+             args: Sequence[Value],
              arg_kinds: List[int],
              arg_names: Sequence[Optional[str]],
              line: int) -> Value:
+        """Call a native function."""
         # Normalize args to positionals.
         args = self.native_args_to_positional(
             args, arg_kinds, arg_names, decl.sig, line)
@@ -397,39 +337,86 @@ class LowLevelIRBuilder:
 
         return output_args
 
-    def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        result = None  # type: Union[Value, None]
-        initial_items = []  # type: List[Value]
-        for key, value in key_value_pairs:
-            if key is not None:
-                # key:value
-                if result is None:
-                    initial_items.extend((key, value))
-                    continue
+    def gen_method_call(self,
+                        base: Value,
+                        name: str,
+                        arg_values: List[Value],
+                        result_type: Optional[RType],
+                        line: int,
+                        arg_kinds: Optional[List[int]] = None,
+                        arg_names: Optional[List[Optional[str]]] = None) -> Value:
+        """Generate either a native or Python method call."""
+        # If arg_kinds contains values other than arg_pos and arg_named, then fallback to
+        # Python method call.
+        if (arg_kinds is not None
+                and not all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds)):
+            return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
-                self.translate_special_method_call(
-                    result,
-                    '__setitem__',
-                    [key, value],
-                    result_type=None,
-                    line=line)
-            else:
-                # **value
-                if result is None:
-                    result = self.primitive_op(new_dict_op, initial_items, line)
+        # If the base type is one of ours, do a MethodCall
+        if (isinstance(base.type, RInstance) and base.type.class_ir.is_ext_class
+                and not base.type.class_ir.builtin_base):
+            if base.type.class_ir.has_method(name):
+                decl = base.type.class_ir.method_decl(name)
+                if arg_kinds is None:
+                    assert arg_names is None, "arg_kinds not present but arg_names is"
+                    arg_kinds = [ARG_POS for _ in arg_values]
+                    arg_names = [None for _ in arg_values]
+                else:
+                    assert arg_names is not None, "arg_kinds present but arg_names is not"
 
-                self.primitive_op(
-                    dict_update_in_display_op,
-                    [result, value],
-                    line=line
-                )
+                # Normalize args to positionals.
+                assert decl.bound_sig
+                arg_values = self.native_args_to_positional(
+                    arg_values, arg_kinds, arg_names, decl.bound_sig, line)
+                return self.add(MethodCall(base, name, arg_values, line))
+            elif base.type.class_ir.has_attr(name):
+                function = self.add(GetAttr(base, name, line))
+                return self.py_call(function, arg_values, line,
+                                    arg_kinds=arg_kinds, arg_names=arg_names)
 
-        if result is None:
-            result = self.primitive_op(new_dict_op, initial_items, line)
+        elif isinstance(base.type, RUnion):
+            return self.union_method_call(base, base.type, name, arg_values, result_type, line,
+                                          arg_kinds, arg_names)
 
-        return result
+        # Try to do a special-cased method call
+        if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
+            target = self.translate_special_method_call(base, name, arg_values, result_type, line)
+            if target:
+                return target
 
-    # Loading stuff
+        # Fall back to Python method call
+        return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
+
+    def union_method_call(self,
+                          base: Value,
+                          obj_type: RUnion,
+                          name: str,
+                          arg_values: List[Value],
+                          return_rtype: Optional[RType],
+                          line: int,
+                          arg_kinds: Optional[List[int]],
+                          arg_names: Optional[List[Optional[str]]]) -> Value:
+        """Generate a method call with a union type for the object."""
+        # Union method call needs a return_rtype for the type of the output register.
+        # If we don't have one, use object_rprimitive.
+        return_rtype = return_rtype or object_rprimitive
+
+        def call_union_item(value: Value) -> Value:
+            return self.gen_method_call(value, name, arg_values, return_rtype, line,
+                                        arg_kinds, arg_names)
+
+        return self.decompose_union_helper(base, obj_type, return_rtype, call_union_item, line)
+
+    # Loading various values
+
+    def none(self) -> Value:
+        """Load unboxed None value (type: none_rprimitive)."""
+        return self.add(PrimitiveOp([], none_op, line=-1))
+
+    def none_object(self) -> Value:
+        """Load Python None value (type: object_rprimitive)."""
+        return self.add(PrimitiveOp([], none_object_op, line=-1))
+
     def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
         return self.mapper.literal_static_name(self.current_module, value)
 
@@ -468,9 +455,26 @@ class LowLevelIRBuilder:
     def load_module(self, name: str) -> Value:
         return self.add(LoadStatic(object_rprimitive, name, namespace=NAMESPACE_MODULE))
 
+    def get_native_type(self, cls: ClassIR) -> Value:
+        """Load native type object."""
+        fullname = '%s.%s' % (cls.module_name, cls.name)
+        return self.load_native_type_object(fullname)
+
     def load_native_type_object(self, fullname: str) -> Value:
         module, name = fullname.rsplit('.', 1)
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
+
+    # Other primitive operations
+
+    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
+        assert desc.result_type is not None
+        coerced = []
+        for i, arg in enumerate(args):
+            formal_type = self.op_arg_type(desc, i)
+            arg = self.coerce(arg, formal_type, line)
+            coerced.append(arg)
+        target = self.add(PrimitiveOp(coerced, desc, line))
+        return target
 
     def matching_primitive_op(self,
                               candidates: List[OpDescription],
@@ -528,6 +532,38 @@ class LowLevelIRBuilder:
         target = self.matching_primitive_op(ops, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
         return target
+
+    def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
+        result = None  # type: Union[Value, None]
+        initial_items = []  # type: List[Value]
+        for key, value in key_value_pairs:
+            if key is not None:
+                # key:value
+                if result is None:
+                    initial_items.extend((key, value))
+                    continue
+
+                self.translate_special_method_call(
+                    result,
+                    '__setitem__',
+                    [key, value],
+                    result_type=None,
+                    line=line)
+            else:
+                # **value
+                if result is None:
+                    result = self.primitive_op(new_dict_op, initial_items, line)
+
+                self.primitive_op(
+                    dict_update_in_display_op,
+                    [result, value],
+                    line=line
+                )
+
+        if result is None:
+            result = self.primitive_op(new_dict_op, initial_items, line)
+
+        return result
 
     def builtin_call(self,
                      args: List[Value],
@@ -607,6 +643,75 @@ class LowLevelIRBuilder:
                 value = self.primitive_op(bool_op, [value], value.line)
         self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
+    # Internal helpers
+
+    def decompose_union_helper(self,
+                               obj: Value,
+                               rtype: RUnion,
+                               result_type: RType,
+                               process_item: Callable[[Value], Value],
+                               line: int) -> Value:
+        """Generate isinstance() + specialized operations for union items.
+
+        Say, for Union[A, B] generate ops resembling this (pseudocode):
+
+            if isinstance(obj, A):
+                result = <result of process_item(cast(A, obj)>
+            else:
+                result = <result of process_item(cast(B, obj)>
+
+        Args:
+            obj: value with a union type
+            rtype: the union type
+            result_type: result of the operation
+            process_item: callback to generate op for a single union item (arg is coerced
+                to union item type)
+            line: line number
+        """
+        # TODO: Optimize cases where a single operation can handle multiple union items
+        #     (say a method is implemented in a common base class)
+        fast_items = []
+        rest_items = []
+        for item in rtype.items:
+            if isinstance(item, RInstance):
+                fast_items.append(item)
+            else:
+                # For everything but RInstance we fall back to C API
+                rest_items.append(item)
+        exit_block = BasicBlock()
+        result = self.alloc_temp(result_type)
+        for i, item in enumerate(fast_items):
+            more_types = i < len(fast_items) - 1 or rest_items
+            if more_types:
+                # We are not at the final item so we need one more branch
+                op = self.isinstance_native(obj, item.class_ir, line)
+                true_block, false_block = BasicBlock(), BasicBlock()
+                self.add_bool_branch(op, true_block, false_block)
+                self.activate_block(true_block)
+            coerced = self.coerce(obj, item, line)
+            temp = process_item(coerced)
+            temp2 = self.coerce(temp, result_type, line)
+            self.add(Assign(result, temp2))
+            self.goto(exit_block)
+            if more_types:
+                self.activate_block(false_block)
+        if rest_items:
+            # For everything else we use generic operation. Use force=True to drop the
+            # union type.
+            coerced = self.coerce(obj, object_rprimitive, line, force=True)
+            temp = process_item(coerced)
+            temp2 = self.coerce(temp, result_type, line)
+            self.add(Assign(result, temp2))
+            self.goto(exit_block)
+        self.activate_block(exit_block)
+        return result
+
+    def op_arg_type(self, desc: OpDescription, n: int) -> RType:
+        if n >= len(desc.arg_types):
+            assert desc.is_var_arg
+            return desc.arg_types[-1]
+        return desc.arg_types[n]
+
     def translate_special_method_call(self,
                                       base_reg: Value,
                                       name: str,
@@ -629,6 +734,11 @@ class LowLevelIRBuilder:
                          rreg: Value,
                          expr_op: str,
                          line: int) -> Optional[Value]:
+        """Add a equality comparison operation.
+
+        Args:
+            expr_op: either '==' or '!='
+        """
         ltype = lreg.type
         rtype = rreg.type
         if not (isinstance(ltype, RInstance) and ltype == rtype):
@@ -662,71 +772,3 @@ class LowLevelIRBuilder:
             ltype,
             line
         )
-
-    def gen_method_call(self,
-                        base: Value,
-                        name: str,
-                        arg_values: List[Value],
-                        result_type: Optional[RType],
-                        line: int,
-                        arg_kinds: Optional[List[int]] = None,
-                        arg_names: Optional[List[Optional[str]]] = None) -> Value:
-        # If arg_kinds contains values other than arg_pos and arg_named, then fallback to
-        # Python method call.
-        if (arg_kinds is not None
-                and not all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds)):
-            return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
-
-        # If the base type is one of ours, do a MethodCall
-        if (isinstance(base.type, RInstance) and base.type.class_ir.is_ext_class
-                and not base.type.class_ir.builtin_base):
-            if base.type.class_ir.has_method(name):
-                decl = base.type.class_ir.method_decl(name)
-                if arg_kinds is None:
-                    assert arg_names is None, "arg_kinds not present but arg_names is"
-                    arg_kinds = [ARG_POS for _ in arg_values]
-                    arg_names = [None for _ in arg_values]
-                else:
-                    assert arg_names is not None, "arg_kinds present but arg_names is not"
-
-                # Normalize args to positionals.
-                assert decl.bound_sig
-                arg_values = self.native_args_to_positional(
-                    arg_values, arg_kinds, arg_names, decl.bound_sig, line)
-                return self.add(MethodCall(base, name, arg_values, line))
-            elif base.type.class_ir.has_attr(name):
-                function = self.add(GetAttr(base, name, line))
-                return self.py_call(function, arg_values, line,
-                                    arg_kinds=arg_kinds, arg_names=arg_names)
-
-        elif isinstance(base.type, RUnion):
-            return self.union_method_call(base, base.type, name, arg_values, result_type, line,
-                                          arg_kinds, arg_names)
-
-        # Try to do a special-cased method call
-        if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
-            target = self.translate_special_method_call(base, name, arg_values, result_type, line)
-            if target:
-                return target
-
-        # Fall back to Python method call
-        return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
-
-    def union_method_call(self,
-                          base: Value,
-                          obj_type: RUnion,
-                          name: str,
-                          arg_values: List[Value],
-                          return_rtype: Optional[RType],
-                          line: int,
-                          arg_kinds: Optional[List[int]],
-                          arg_names: Optional[List[Optional[str]]]) -> Value:
-        # Union method call needs a return_rtype for the type of the output register.
-        # If we don't have one, use object_rprimitive.
-        return_rtype = return_rtype or object_rprimitive
-
-        def call_union_item(value: Value) -> Value:
-            return self.gen_method_call(value, name, arg_values, return_rtype, line,
-                                        arg_kinds, arg_names)
-
-        return self.decompose_union_helper(base, obj_type, return_rtype, call_union_item, line)

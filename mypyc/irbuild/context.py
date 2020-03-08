@@ -1,3 +1,5 @@
+"""Helpers that store information about functions and the related classes."""
+
 from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem
@@ -10,6 +12,7 @@ from mypyc.common import decorator_helper_name
 
 class FuncInfo:
     """Contains information about functions as they are generated."""
+
     def __init__(self,
                  fitem: FuncItem = INVALID_FUNC_DEF,
                  name: str = '',
@@ -87,9 +90,14 @@ class FuncInfo:
 
 
 class ImplicitClass:
-    """Contains information regarding classes that are generated as a result of nested functions or
-    generated functions, but not explicitly defined in the source code.
+    """Contains information regarding implicitly generated classes.
+
+    Implicit classes are generated for nested functions and generator
+    functions. They are not explicitly defined in the source code.
+
+    NOTE: This is both a concrete class and used as a base class.
     """
+
     def __init__(self, ir: ClassIR) -> None:
         # The ClassIR instance associated with this class.
         self.ir = ir
@@ -131,6 +139,8 @@ class ImplicitClass:
 
 
 class GeneratorClass(ImplicitClass):
+    """Contains information about implicit generator function classes."""
+
     def __init__(self, ir: ClassIR) -> None:
         super().__init__(ir)
         # This register holds the label number that the '__next__' function should go to the next
