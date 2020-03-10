@@ -63,6 +63,8 @@ DeserMaps = NamedTuple('DeserMaps',
 
 
 class AssignmentTarget(object):
+    """Abstract base class for assignment targets in IR"""
+
     type = None  # type: RType
 
     @abstractmethod
@@ -102,9 +104,11 @@ class AssignmentTargetAttr(AssignmentTarget):
         self.obj = obj
         self.attr = attr
         if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
+            # Native attribute reference
             self.obj_type = obj.type  # type: RType
             self.type = obj.type.attr_type(attr)
         else:
+            # Python attribute reference
             self.obj_type = object_rprimitive
             self.type = object_rprimitive
 
@@ -134,6 +138,7 @@ class Environment:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
+        # All names genereted; value is the number of duplicates seen.
         self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]
 
@@ -155,6 +160,11 @@ class Environment:
         self.indexes[reg] = len(self.indexes)
 
     def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
+        """Add register that represents a symbol to the symbol table.
+
+        Args:
+            is_arg: is this a function argument
+        """
         assert isinstance(symbol, SymbolNode)
         reg = Register(typ, symbol.line, is_arg=is_arg)
         self.symtable[symbol] = AssignmentTargetRegister(reg)
@@ -163,6 +173,7 @@ class Environment:
 
     def add_local_reg(self, symbol: SymbolNode,
                       typ: RType, is_arg: bool = False) -> AssignmentTargetRegister:
+        """Like add_local, but return an assignment target instead of value."""
         self.add_local(symbol, typ, is_arg)
         target = self.symtable[symbol]
         assert isinstance(target, AssignmentTargetRegister)
@@ -175,14 +186,16 @@ class Environment:
     def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
         return self.symtable[symbol]
 
-    def add_temp(self, typ: RType, is_arg: bool = False) -> 'Register':
+    def add_temp(self, typ: RType) -> 'Register':
+        """Add register that contains a temporary value with the given type."""
         assert isinstance(typ, RType)
-        reg = Register(typ, is_arg=is_arg)
+        reg = Register(typ)
         self.add(reg, 'r%d' % self.temp_index)
         self.temp_index += 1
         return reg
 
     def add_op(self, reg: 'RegisterOp') -> None:
+        """Record the value of an operation."""
         if reg.is_void:
             return
         self.add(reg, 'r%d' % self.temp_index)
@@ -266,6 +279,11 @@ class BasicBlock:
 
     @property
     def terminated(self) -> bool:
+        """Does the block end with a jump, branch or return?
+
+        This should always be true after the basic block has been fully built, but
+        this is false during construction.
+        """
         return bool(self.ops) and isinstance(self.ops[-1], ControlOp)
 
 
@@ -276,11 +294,16 @@ ERR_MAGIC = 1  # type: Final
 # Generates false (bool) on exception
 ERR_FALSE = 2  # type: Final
 
-# Hack: using this line number for an op will supress it in tracebacks
+# Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
 
 
 class Value:
+    """Abstract base class for all values.
+
+    These include references to registers, literals, and various operations.
+    """
+
     # Source line number
     line = -1
     name = '?'
@@ -300,6 +323,12 @@ class Value:
 
 
 class Register(Value):
+    """A register holds a value of a specific type, and it can be read and mutated.
+
+    Each local variable maps to a register, and they are also used for some
+    (but not all) temporary values.
+    """
+
     def __init__(self, type: RType, line: int = -1, is_arg: bool = False, name: str = '') -> None:
         super().__init__(line)
         self.name = name
@@ -316,6 +345,8 @@ class Register(Value):
 
 
 class Op(Value):
+    """Abstract base class for all operations (as opposed to values)."""
+
     def __init__(self, line: int) -> None:
         super().__init__(line)
 
@@ -326,6 +357,7 @@ class Op(Value):
 
     @abstractmethod
     def sources(self) -> List[Value]:
+        """All the values the op may read."""
         pass
 
     def stolen(self) -> List[Value]:
@@ -387,16 +419,25 @@ class Branch(ControlOp):
         IS_ERROR: ('is_error(%r)', ''),
     }  # type: Final
 
-    def __init__(self, left: Value, true_label: BasicBlock,
-                 false_label: BasicBlock, op: int, line: int = -1, *, rare: bool = False) -> None:
+    def __init__(self,
+                 left: Value,
+                 true_label: BasicBlock,
+                 false_label: BasicBlock,
+                 op: int,
+                 line: int = -1,
+                 *,
+                 rare: bool = False) -> None:
         super().__init__(line)
+        # Target value being checked
         self.left = left
         self.true = true_label
         self.false = false_label
+        # BOOL_EXPR (boolean check) or IS_ERROR (error value check)
         self.op = op
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
         self.traceback_entry = None  # type: Optional[Tuple[str, int]]
+        # If True, the condition is expected to be usually False (for optimization purposes)
         self.rare = rare
 
     def sources(self) -> List[Value]:
@@ -424,6 +465,8 @@ class Branch(ControlOp):
 
 
 class Return(ControlOp):
+    """Return a value from a function."""
+
     error_kind = ERR_NEVER
 
     def __init__(self, reg: Value, line: int = -1) -> None:
@@ -469,7 +512,7 @@ class Unreachable(ControlOp):
 
 
 class RegisterOp(Op):
-    """An operation that can be written as r1 = f(r2, ..., rn).
+    """Abstract base class for operations that can be written as r1 = f(r2, ..., rn).
 
     Takes some registers, performs an operation and generates an output.
     Doesn't do any control flow, but can raise an error.
@@ -488,7 +531,7 @@ class RegisterOp(Op):
 
 
 class IncRef(RegisterOp):
-    """inc_ref r"""
+    """Increase reference count (inc_ref r)."""
 
     error_kind = ERR_NEVER
 
@@ -511,7 +554,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """dec_ref r
+    """Decrease referece count and free object if zero (dec_ref r).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -542,7 +585,7 @@ class DecRef(RegisterOp):
 
 
 class Call(RegisterOp):
-    """Native call f(arg, ...)
+    """Native call f(arg, ...).
 
     The call target can be a module-level function or a class.
     """
@@ -607,7 +650,7 @@ class MethodCall(RegisterOp):
 
 
 @trait
-class EmitterInterface():
+class EmitterInterface:
     @abstractmethod
     def reg(self, name: Value) -> str:
         raise NotImplementedError
@@ -638,6 +681,7 @@ EmitCallback = Callable[[EmitterInterface, List[str], str], None]
 # True steals all arguments, False steals none, a list steals those in matching positions
 StealsDescription = Union[bool, List[bool]]
 
+# Description of a primitive operation
 OpDescription = NamedTuple(
     'OpDescription', [('name', str),
                       ('arg_types', List[RType]),
@@ -712,7 +756,7 @@ class PrimitiveOp(RegisterOp):
 
 
 class Assign(Op):
-    """dest = int"""
+    """Assign a value to a register (dest = int)."""
 
     error_kind = ERR_NEVER
 
@@ -735,7 +779,7 @@ class Assign(Op):
 
 
 class LoadInt(RegisterOp):
-    """dest = int"""
+    """Load an integer literal."""
 
     error_kind = ERR_NEVER
 
@@ -755,7 +799,11 @@ class LoadInt(RegisterOp):
 
 
 class LoadErrorValue(RegisterOp):
-    """dest = <error value for type>"""
+    """Load an error value.
+
+    Each type has one reserved value that signals an error (exception). This
+    loads the error value for a specific type.
+    """
 
     error_kind = ERR_NEVER
 
@@ -781,7 +829,7 @@ class LoadErrorValue(RegisterOp):
 
 
 class GetAttr(RegisterOp):
-    """dest = obj.attr (for a native object)"""
+    """obj.attr (for a native object)"""
 
     error_kind = ERR_MAGIC
 
@@ -833,13 +881,18 @@ class SetAttr(RegisterOp):
         return visitor.visit_set_attr(self)
 
 
-NAMESPACE_STATIC = 'static'  # type: Final # Default name space for statics, variables
-NAMESPACE_TYPE = 'type'  # type: Final # Static namespace for pointers to native type objects
-NAMESPACE_MODULE = 'module'  # type: Final # Namespace for modules
+# Default name space for statics, variables
+NAMESPACE_STATIC = 'static'  # type: Final
+
+# Static namespace for pointers to native type objects
+NAMESPACE_TYPE = 'type'  # type: Final
+
+# Namespace for modules
+NAMESPACE_MODULE = 'module'  # type: Final
 
 
 class LoadStatic(RegisterOp):
-    """dest = name :: static
+    """Load a static name (name :: static).
 
     Load a C static variable/pointer. The namespace for statics is shared
     for the entire compilation group. You can optionally provide a module
@@ -941,7 +994,7 @@ class TupleSet(RegisterOp):
 
 
 class TupleGet(RegisterOp):
-    """dest = src[n] (for fixed-length tuple)"""
+    """Get item of a fixed-length tuple (src[n])."""
 
     error_kind = ERR_NEVER
 
@@ -963,7 +1016,7 @@ class TupleGet(RegisterOp):
 
 
 class Cast(RegisterOp):
-    """dest = cast(type, src)
+    """cast(type, src)
 
     Perform a runtime type check (no representation or value conversion).
 
@@ -991,7 +1044,7 @@ class Cast(RegisterOp):
 
 
 class Box(RegisterOp):
-    """dest = box(type, src)
+    """box(type, src)
 
     This converts from a potentially unboxed representation to a straight Python object.
     Only supported for types with an unboxed representation.
@@ -1021,7 +1074,7 @@ class Box(RegisterOp):
 
 
 class Unbox(RegisterOp):
-    """dest = unbox(type, src)
+    """unbox(type, src)
 
     This is similar to a cast, but it also changes to a (potentially) unboxed runtime
     representation. Only supported for types with an unboxed representation.
@@ -1087,6 +1140,8 @@ class RaiseStandardError(RegisterOp):
 
 @trait
 class OpVisitor(Generic[T]):
+    """Generic visitor over ops (uses the visitor design pattern)."""
+
     @abstractmethod
     def visit_goto(self, op: Goto) -> T:
         raise NotImplementedError

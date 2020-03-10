@@ -86,47 +86,12 @@ VTableEntry = Union[VTableMethod, VTableAttr]
 VTableEntries = List[VTableEntry]
 
 
-def serialize_vtable_entry(entry: VTableEntry) -> JsonDict:
-    if isinstance(entry, VTableMethod):
-        return {
-            '.class': 'VTableMethod',
-            'cls': entry.cls.fullname,
-            'name': entry.name,
-            'method': entry.method.decl.fullname,
-            'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
-        }
-    else:
-        return {
-            '.class': 'VTableAttr',
-            'cls': entry.cls.fullname,
-            'name': entry.name,
-            'is_setter': entry.is_setter,
-        }
-
-
-def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
-    return [serialize_vtable_entry(v) for v in vtable]
-
-
-def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableEntry:
-    if data['.class'] == 'VTableMethod':
-        return VTableMethod(
-            ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
-            ctx.functions[data['shadow_method']] if data['shadow_method'] else None)
-    elif data['.class'] == 'VTableAttr':
-        return VTableAttr(ctx.classes[data['cls']], data['name'], data['is_setter'])
-    assert False, "Bogus vtable .class: %s" % data['.class']
-
-
-def deserialize_vtable(data: List[JsonDict], ctx: 'DeserMaps') -> VTableEntries:
-    return [deserialize_vtable_entry(x, ctx) for x in data]
-
-
 class ClassIR:
     """Intermediate representation of a class.
 
     This also describes the runtime structure of native instances.
     """
+
     def __init__(self, name: str, module_name: str, is_trait: bool = False,
                  is_generated: bool = False, is_abstract: bool = False,
                  is_ext_class: bool = True) -> None:
@@ -139,7 +104,9 @@ class ClassIR:
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
+        # Does this inherit from a Python class?
         self.inherits_python = False
+        # Do instances of this class have __dict__?
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_subclasses = False
@@ -147,7 +114,7 @@ class ClassIR:
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
         self.builtin_base = None  # type: Optional[str]
-        # Default empty ctor
+        # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
 
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
@@ -398,8 +365,7 @@ class ClassIR:
 
 
 class NonExtClassInfo:
-    """Information needed to construct a non-extension class.
-
+    """Information needed to construct a non-extension class (Python class).
 
     Includes the class dictionary, a tuple of base classes,
     the class annotations dictionary, and the metaclass.
@@ -410,6 +376,42 @@ class NonExtClassInfo:
         self.bases = bases
         self.anns = anns
         self.metaclass = metaclass
+
+
+def serialize_vtable_entry(entry: VTableEntry) -> JsonDict:
+    if isinstance(entry, VTableMethod):
+        return {
+            '.class': 'VTableMethod',
+            'cls': entry.cls.fullname,
+            'name': entry.name,
+            'method': entry.method.decl.fullname,
+            'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
+        }
+    else:
+        return {
+            '.class': 'VTableAttr',
+            'cls': entry.cls.fullname,
+            'name': entry.name,
+            'is_setter': entry.is_setter,
+        }
+
+
+def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
+    return [serialize_vtable_entry(v) for v in vtable]
+
+
+def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableEntry:
+    if data['.class'] == 'VTableMethod':
+        return VTableMethod(
+            ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
+            ctx.functions[data['shadow_method']] if data['shadow_method'] else None)
+    elif data['.class'] == 'VTableAttr':
+        return VTableAttr(ctx.classes[data['cls']], data['name'], data['is_setter'])
+    assert False, "Bogus vtable .class: %s" % data['.class']
+
+
+def deserialize_vtable(data: List[JsonDict], ctx: 'DeserMaps') -> VTableEntries:
+    return [deserialize_vtable_entry(x, ctx) for x in data]
 
 
 def all_concrete_classes(class_ir: ClassIR) -> Optional[List[ClassIR]]:

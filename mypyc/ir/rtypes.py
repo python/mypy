@@ -1,9 +1,16 @@
 """Types used in the intermediate representation.
 
-These are runtime types (RTypes) as opposed to mypy Type objects.  The
-latter are only used during type checking and ignored at runtime.  The
-generated IR ensures some runtime type safety properties based on
-RTypes.
+These are runtime types (RTypes), as opposed to mypy Type objects.
+The latter are only used during type checking and not directly used at
+runtime.  Runtime types are derived from mypy types, but there's no
+simple one-to-one correspondence. (Here 'runtime' means 'runtime
+checked'.)
+
+The generated IR ensures some runtime type safety properties based on
+RTypes. Compiled code can assume that the runtime value matches the
+static RType of a value. If the RType of a register is 'builtins.str'
+(str_rprimitive), for example, the generated IR will ensure that the
+register will have a 'str' object.
 
 RTypes are simpler and less expressive than mypy (or PEP 484)
 types. For example, all mypy types of form 'list[T]' (for arbitrary T)
@@ -32,10 +39,17 @@ class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
     name = None  # type: str
+    # If True, the type has a special unboxed representation. If False, the
+    # type is represented as PyObject *. Even if True, the representation
+    # may contain pointers.
     is_unboxed = False
+    # This is the C undefined value for this type. It's used for initialization
+    # if there's no value yet, and for function return value on error/exception.
     c_undefined = None  # type: str
-    is_refcounted = True  # If unboxed: does the unboxed version use reference counting?
-    _ctype = None  # type: str  # C type; use Emitter.ctype() to access
+    # If unboxed: does the unboxed version use reference counting?
+    is_refcounted = True
+    # C type; use Emitter.ctype() to access
+    _ctype = None  # type: str
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -87,6 +101,8 @@ def deserialize_type(data: Union[JsonDict, str], ctx: 'DeserMaps') -> 'RType':
 
 
 class RTypeVisitor(Generic[T]):
+    """Generic visitor over RTypes (uses the visitor design pattern)."""
+
     @abstractmethod
     def visit_rprimitive(self, typ: 'RPrimitive') -> T:
         raise NotImplementedError
@@ -109,7 +125,11 @@ class RTypeVisitor(Generic[T]):
 
 
 class RVoid(RType):
-    """void"""
+    """The void type (no value).
+
+    This is a singleton -- use void_rtype (below) to refer to this instead of
+    constructing a new instace.
+    """
 
     is_unboxed = False
     name = 'void'
@@ -122,13 +142,22 @@ class RVoid(RType):
         return 'void'
 
 
+# Singleton instance of RVoid
 void_rtype = RVoid()  # type: Final
 
 
 class RPrimitive(RType):
     """Primitive type such as 'object' or 'int'.
 
-    These often have custom ops associated with them.
+    These often have custom ops associated with them. The 'object'
+    primitive type can be used to hold arbitrary Python objects.
+
+    Different primitive types have different representations, and
+    primitives may be unboxed or boxed. Primitive types don't need to
+    directly correspond to Python types, but most do.
+
+    NOTE: All supported primitive types are defined below
+    (e.g. object_rprimitive).
     """
 
     # Map from primitive names to primitive types and is used by deserialization
@@ -148,6 +177,7 @@ class RPrimitive(RType):
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
         elif ctype == 'PyObject *':
+            # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
         elif ctype == 'char':
             self.c_undefined = '2'
@@ -164,35 +194,75 @@ class RPrimitive(RType):
         return '<RPrimitive %s>' % self.name
 
 
-# Used to represent arbitrary objects and dynamically typed values
+# NOTE: All the supported instances of RPrimitive are defined
+# below. Use these instead of creating new instances.
+
+# Used to represent arbitrary objects and dynamically typed (Any)
+# values. There are various ops that let you perform generic, runtime
+# checked operations on these (that match Python semantics). See the
+# ops in mypyc.primitives.misc_ops, including py_getattr_op,
+# py_call_op, and many others.
+#
+# If there is no more specific RType available for some value, we fall
+# back to using this type.
+#
+# NOTE: Even though this is very flexible, this type should be used as
+# little as possible, as generic ops are typically slow. Other types,
+# including other primitive types and RInstance, are usually much
+# faster.
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
                                is_refcounted=True)  # type: Final
 
+# Arbitrary-precision integer (corresponds to Python 'int'). Small
+# enough values are stored unboxed, while large integers are
+# represented as a tagged pointer to a Python 'int' PyObject. The
+# lowest bit is used as the tag to decide whether it is a signed
+# unboxed value (shifted left by one) or a PyObject * pointing to an
+# 'int' object. Pointers have the least significant bit set.
+#
+# The undefined/error value is the null pointer (1 -- only the least
+# significant bit is set)).
+#
+# This cannot represent a subclass of int. An instance of a subclass
+# of int is coerced to the corresponding 'int' value.
 int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
                             ctype='CPyTagged')  # type: Final
 
+# An unboxed integer. The representation is the same as for unboxed
+# int_rprimitive (shifted left by one). These can be used when an
+# integer is known to be small enough to fit size_t (CPyTagged).
 short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
                                   ctype='CPyTagged')  # type: Final
 
+# Floats are represent as 'float' PyObject * values. (In the future
+# we'll likely switch to a more efficient, unboxed representation.)
 float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
+# An unboxed boolean value. This actually has three possible values
+# (0 -> False, 1 -> True, 2 -> error).
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
                              ctype='char')  # type: Final
 
+# The 'None' value. The possible values are 0 -> None and 2 -> error.
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
                              ctype='char')  # type: Final
 
+# Python list object (or an instance of a subclass of list).
 list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)  # type: Final
 
+# Python dict object (or an instance of a subclass of dict).
 dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)  # type: Final
 
+# Python set object (or an instance of a subclass of set).
 set_rprimitive = RPrimitive('builtins.set', is_unboxed=False, is_refcounted=True)  # type: Final
 
-# At the C layer, str is refered to as unicode (PyUnicode)
+# Python str object. At the C layer, str is referred to as unicode
+# (PyUnicode).
 str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)  # type: Final
 
-# Tuple of an arbitrary length (corresponds to Tuple[t, ...], with explicit '...')
+# Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
+# explicit '...').
 tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
@@ -273,7 +343,19 @@ class TupleNameVisitor(RTypeVisitor[str]):
 
 
 class RTuple(RType):
-    """Fixed-length unboxed tuple (represented as a C struct)."""
+    """Fixed-length unboxed tuple (represented as a C struct).
+
+    These are used to represent mypy TupleType values (fixed-length
+    Python tuples). Since this is unboxed, the identity of a tuple
+    object is not preserved within compiled code. If the identity of a
+    tuple is important, or there is a need to have multiple references
+    to a single tuple object, a variable-length tuple should be used
+    (tuple_rprimitive or Tuple[T, ...]  with explicit '...'), as they
+    are boxed.
+
+    These aren't immutable. However, user code won't be able to mutate
+    individual tuple items.
+    """
 
     is_unboxed = True
 
@@ -318,7 +400,20 @@ exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 
 
 class RInstance(RType):
-    """Instance of user-defined class (compiled to C extension class)."""
+    """Instance of user-defined class (compiled to C extension class).
+
+    The runtime representation is 'PyObject *', and these are always
+    boxed and thus reference-counted.
+
+    These support fast method calls and fast attribute access using
+    vtables, and they usually use a dict-free, struct-based
+    representation of attributes. Method calls and attribute access
+    can skip the vtable if we know that there is no overriding.
+
+    These are also sometimes called 'native' types, since these have
+    the most efficient representation and ops (along with certain
+    RPrimitive types and RTuple).
+    """
 
     is_unboxed = False
 
@@ -392,6 +487,10 @@ class RUnion(RType):
 
 
 def optional_value_type(rtype: RType) -> Optional[RType]:
+    """If rtype is the union of none_rprimitive and another type X, return X.
+
+    Otherwise return None.
+    """
     if isinstance(rtype, RUnion) and len(rtype.items) == 2:
         if rtype.items[0] == none_rprimitive:
             return rtype.items[1]
@@ -401,4 +500,5 @@ def optional_value_type(rtype: RType) -> Optional[RType]:
 
 
 def is_optional_type(rtype: RType) -> bool:
+    """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None

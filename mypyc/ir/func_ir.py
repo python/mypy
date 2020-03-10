@@ -1,3 +1,5 @@
+"""Intermediate representation of functions."""
+
 from typing import List, Optional, Sequence, Dict
 from typing_extensions import Final
 
@@ -12,6 +14,11 @@ from mypyc.namegen import NameGenerator
 
 
 class RuntimeArg:
+    """Representation of a function argument in IR.
+
+    Argument kind is one of ARG_* constants defined in mypy.nodes.
+    """
+
     def __init__(self, name: str, typ: RType, kind: int = ARG_POS) -> None:
         self.name = name
         self.type = typ
@@ -37,7 +44,10 @@ class RuntimeArg:
 
 
 class FuncSignature:
-    # TODO: track if method?
+    """Signature of a function in IR."""
+
+    # TODO: Track if method?
+
     def __init__(self, args: Sequence[RuntimeArg], ret_type: RType) -> None:
         self.args = tuple(args)
         self.ret_type = ret_type
@@ -62,6 +72,12 @@ FUNC_CLASSMETHOD = 2  # type: Final
 
 
 class FuncDecl:
+    """Declaration of a function in IR (without body or implementation).
+
+    A function can be a regular module-level function, a method, a
+    static method, a class method, or a property getter/setter.
+    """
+
     def __init__(self,
                  name: str,
                  class_name: Optional[str],
@@ -129,7 +145,11 @@ class FuncDecl:
 
 
 class FuncIR:
-    """Intermediate representation of a function with contextual information."""
+    """Intermediate representation of a function with contextual information.
+
+    Unlike FuncDecl, this includes the IR of the body (basic blocks) and an
+    environment.
+    """
 
     def __init__(self,
                  decl: FuncDecl,
@@ -199,6 +219,7 @@ INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
 
 
 def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
+    """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
         block.label = i
