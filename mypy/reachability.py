@@ -1,5 +1,4 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
-import platform
 from typing import Tuple, TypeVar, Union, Optional
 from typing_extensions import Final
 
@@ -92,7 +91,7 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, options.sys_platform)
+            result = consider_sys_platform(expr, options.sys_platform,options.platform_system)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == 'PY2':
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
@@ -151,7 +150,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
 
 
 def consider_sys_platform(expr: Expression, platform: str, platform_system: str) -> int:
-    """Consider whether expr is a comparison involving sys.platform
+    """Consider whether expr is a comparison involving sys.platform and platform.system()
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
     """
@@ -166,9 +165,9 @@ def consider_sys_platform(expr: Expression, platform: str, platform_system: str)
         op = expr.operators[0]
         if op not in ('==', '!='):
             return TRUTH_VALUE_UNKNOWN
-        #check if either platform or platform_system is being used
+        # check if either platform or platform_system is being used
         if platform_system:
-            if not is_platform_attr(expr.operands[0], 'plaform_system'):
+            if not is_platform_attr(expr.operands[0], 'platform_system'):
                 return TRUTH_VALUE_UNKNOWN
         elif platform:
             if not is_sys_attr(expr.operands[0], 'platform'):
@@ -271,7 +270,7 @@ def is_platform_attr(expr: Expression, name: str) -> bool:
     # sys.platform is of str class and platform.system is of
     # function class
     if isinstance(expr, MemberExpr) and expr.name == name:
-        if isinstance(expr.expr, CallExpr) and expr.expr.name == 'system':
+        if isinstance(expr.expr, CallExpr) and expr.expr.name == 'platform':
             return True
     return False
 
