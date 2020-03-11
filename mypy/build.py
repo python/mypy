@@ -226,6 +226,9 @@ def _build(sources: List[BuildSource],
                     options.show_absolute_path)
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
+    # Add catch-all .gitignore to cache dir if we created it
+    cache_dir_existed = os.path.isdir(options.cache_dir)
+
     # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
@@ -262,6 +265,8 @@ def _build(sources: List[BuildSource],
         if reports is not None:
             # Finish the HTML or XML reports even if CompileError was raised.
             reports.finish()
+        if not cache_dir_existed and os.path.isdir(options.cache_dir):
+            add_catch_all_gitignore(options.cache_dir)
 
 
 def default_data_dir() -> str:
@@ -1111,14 +1116,10 @@ def add_catch_all_gitignore(target_dir: str) -> None:
 
 def create_metastore(options: Options) -> MetadataStore:
     """Create the appropriate metadata store."""
-    # Add catch-all .gitignore to cache dir if we created it
-    cache_dir_existed = os.path.isdir(options.cache_dir)
     if options.sqlite_cache:
         mds = SqliteMetadataStore(_cache_dir_prefix(options))  # type: MetadataStore
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
-    if not cache_dir_existed and os.path.isdir(options.cache_dir):
-        add_catch_all_gitignore(options.cache_dir)
     return mds
 
 
