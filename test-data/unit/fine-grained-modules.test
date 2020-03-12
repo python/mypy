@@ -2547,3 +2547,58 @@ import b
 b.py:1: error: "int" not callable
 ==
 b.py:1: error: "int" not callable
+
+[case testFollowImportsNormalPackage-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p.m  # type: ignore
+
+p.m.f()
+
+[file p/__init__.py.2]
+
+[file p/m.py.2]
+def f(x: str) -> None: pass
+
+1()
+
+[file p/m.py.3]
+def f(x: str) -> None: pass
+
+[delete p/m.py.4]
+[delete p/__init__.py.4]
+
+[out]
+==
+p/m.py:3: error: "int" not callable
+main.py:3: error: Too few arguments for "f"
+==
+main.py:3: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalPackage-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p.m  # type: ignore
+
+p.m.f()
+
+[file p/__init__.py.2]
+
+[file p/m.py.2]
+def f(x: str) -> None: pass
+
+1()
+
+[delete p/m.py.3]
+[delete p/__init__.py.3]
+
+[out]
+==
+main.py:3: error: Too few arguments for "f"
+p/m.py:3: error: "int" not callable
+==
