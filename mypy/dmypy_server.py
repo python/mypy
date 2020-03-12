@@ -635,7 +635,7 @@ class Server:
             if nxt.path in changed_paths:
                 assert nxt.path is not None  # TODO
                 changed.append((nxt.module, nxt.path))
-            else:
+            elif nxt.module in graph:
                 state = graph[nxt.module]
                 for dep in state.dependencies:
                     if dep not in seen:

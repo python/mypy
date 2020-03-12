@@ -2345,7 +2345,7 @@ main.py:2: error: Too few arguments
 ==
 main.py:2: error: "int" not callable
 
-[case testFollowImportsNormalDeleteFile1-only_when_nocache]
+[case testFollowImportsNormalDeleteFile1]
 # flags: --follow-imports=normal
 # cmd: mypy main.py a.py
 # cmd2: mypy main.py
