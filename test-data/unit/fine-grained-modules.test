@@ -2486,3 +2486,37 @@ main.py:1: error: Cannot find implementation or library stub for module named 'a
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 b.py:1: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile7-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+from c import f
+
+[file b.py]
+from d import *
+
+[file c.py]
+import a
+def f(): pass
+1()
+
+[file d.py]
+1()
+
+[file main.py.2]
+
+[file main.py.3]
+import d
+
+[out]
+d.py:1: error: "int" not callable
+c.py:3: error: "int" not callable
+==
+==
+d.py:1: error: "int" not callable
