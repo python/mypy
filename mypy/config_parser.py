@@ -78,8 +78,8 @@ config_types = {
     'junit_xml': expand_path,
     # These two are for backwards compatibility
     'silent_imports': bool,
-    'no_site_packages': bool,
     'almost_silent': bool,
+    'no_site_packages': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
