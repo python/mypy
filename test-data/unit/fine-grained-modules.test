@@ -2520,3 +2520,30 @@ c.py:3: error: "int" not callable
 ==
 ==
 d.py:1: error: "int" not callable
+
+[case testFollowImportsNormalKeepAliveViaNewFile-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+
+[file b.py]
+1()
+
+[file a.py.2]
+import c
+
+[file c.py.2]
+import d
+
+[file d.py.2]
+import b
+
+[out]
+b.py:1: error: "int" not callable
+==
+b.py:1: error: "int" not callable
