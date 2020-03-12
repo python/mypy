@@ -362,11 +362,11 @@ class Server:
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
         if self.options.follow_imports != 'normal':
-            res = self.fine_grained_increment(sources, is_tty, terminal_width,
-                                              remove, update)
+            messages = self.fine_grained_increment(sources, remove, update)
         else:
             assert remove is None and update is None
-            res = self.fine_grained_increment_follow_imports(sources, is_tty, terminal_width)
+            messages = self.fine_grained_increment_follow_imports(sources)
+        res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -380,10 +380,12 @@ class Server:
         """
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
-        elif self.options.follow_imports != 'normal':
-            res = self.fine_grained_increment(sources, is_tty, terminal_width)
         else:
-            res = self.fine_grained_increment_follow_imports(sources, is_tty, terminal_width)
+            if self.options.follow_imports != 'normal':
+                messages = self.fine_grained_increment(sources)
+            else:
+                messages = self.fine_grained_increment_follow_imports(sources)
+            res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -447,6 +449,11 @@ class Server:
             t3 = time.time()
             # Run an update
             messages = self.fine_grained_manager.update(changed, removed)
+
+            if self.options.follow_imports == 'normal':
+                # We need to do another update to any new files found by following imports.
+                messages = self.fine_grained_increment_follow_imports(sources)
+
             t4 = time.time()
             self.fine_grained_manager.manager.add_stats(
                 update_sources_time=t1 - t0,
@@ -454,6 +461,7 @@ class Server:
                 find_changes_time=t3 - t2,
                 fg_update_time=t4 - t3,
                 files_changed=len(removed) + len(changed))
+
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
@@ -468,11 +476,9 @@ class Server:
 
     def fine_grained_increment(self,
                                sources: List[BuildSource],
-                               is_tty: bool,
-                               terminal_width: int,
                                remove: Optional[List[str]] = None,
                                update: Optional[List[str]] = None,
-                               ) -> Dict[str, Any]:
+                               ) -> List[str]:
         """Perform a fine-grained type checking increment.
 
         If remove and update are None, determine changed paths by using
@@ -507,16 +513,10 @@ class Server:
             fg_update_time=t2 - t1,
             files_changed=len(removed) + len(changed))
 
-        status = 1 if messages else 0
         self.previous_sources = sources
-        messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
-        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+        return messages
 
-    def fine_grained_increment_follow_imports(
-            self,
-            sources: List[BuildSource],
-            is_tty: bool,
-            terminal_width: int) -> Dict[str, Any]:
+    def fine_grained_increment_follow_imports(self, sources: List[BuildSource]) -> List[str]:
         """Like fine_grained_increment, but follow imports."""
         # TODO:
         #  - file events
@@ -583,7 +583,9 @@ class Server:
             if module_id not in graph:
                 continue
             if module_id not in seen and module_id not in seen_suppressed:
-                to_delete.append((module_id, graph[module_id].path))
+                path = graph[module_id].path
+                assert path is not None
+                to_delete.append((module_id, path))
         if to_delete:
             messages = fine_grained_manager.update([], to_delete)
 
@@ -598,7 +600,7 @@ class Server:
 
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
-        return self.increment_output(messages, sources, is_tty, terminal_width)
+        return messages
 
     def follow_imports(self,
                        sources: List[BuildSource],

@@ -2194,7 +2194,7 @@ main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 main.py:2: error: Too few arguments for "f"
 ==
 
-[case testFollowImportsNormalAddSuppressed2-only_when_nocache]
+[case testFollowImportsNormalAddSuppressed2]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2237,7 +2237,7 @@ main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 main.py:2: error: Too few arguments for "f"
 ==
 
-[case testFollowImportsNormalEditingFileBringNewModule-only_when_nocache]
+[case testFollowImportsNormalEditingFileBringNewModule]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2258,7 +2258,7 @@ def f() -> None: pass
 main.py:2: error: Too few arguments for "f"
 ==
 
-[case testFollowImportsNormalEditingFileBringNewModules-only_when_nocache]
+[case testFollowImportsNormalEditingFileBringNewModules]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2282,7 +2282,7 @@ def f() -> None: pass
 main.py:2: error: Too few arguments for "f"
 ==
 
-[case testFollowImportsNormalDuringStartup-only_when_nocache]
+[case testFollowImportsNormalDuringStartup]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2300,7 +2300,7 @@ def f(x: str) -> None: pass
 ==
 main.py:2: error: Too few arguments for "f"
 
-[case testFollowImportsNormalDuringStartup2-only_when_nocache]
+[case testFollowImportsNormalDuringStartup2]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2318,7 +2318,7 @@ def f() -> None: pass
 main.py:2: error: Too few arguments for "f"
 ==
 
-[case testFollowImportsNormalDuringStartup3-only_when_nocache]
+[case testFollowImportsNormalDuringStartup3]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2370,7 +2370,7 @@ main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 ==
 main.py:2: error: Too few arguments for "f"
 
-[case testFollowImportsNormalDeleteFile2-only_when_nocache]
+[case testFollowImportsNormalDeleteFile2]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2393,7 +2393,7 @@ main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 ==
 main.py:2: error: Too few arguments for "f"
 
-[case testFollowImportsNormalDeleteFile3-only_when_nocache]
+[case testFollowImportsNormalDeleteFile3]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2414,7 +2414,7 @@ def f(x: str) -> None: pass
 ==
 main.py:2: error: Too few arguments for "f"
 
-[case testFollowImportsNormalDeleteFile4-only_when_nocache]
+[case testFollowImportsNormalDeleteFile4]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2436,7 +2436,7 @@ a.py:1: error: "int" not callable
 ==
 a.py:1: error: "int" not callable
 
-[case testFollowImportsNormalDeleteFile5-only_when_nocache]
+[case testFollowImportsNormalDeleteFile5]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2461,7 +2461,7 @@ b.py:1: error: "int" not callable
 ==
 b.py:1: error: "int" not callable
 
-[case testFollowImportsNormalDeleteFile6-only_when_nocache]
+[case testFollowImportsNormalDeleteFile6]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2487,7 +2487,7 @@ main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 ==
 b.py:1: error: "int" not callable
 
-[case testFollowImportsNormalDeleteFile7-only_when_nocache]
+[case testFollowImportsNormalDeleteFile7]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -2521,7 +2521,7 @@ c.py:3: error: "int" not callable
 ==
 d.py:1: error: "int" not callable
 
-[case testFollowImportsNormalKeepAliveViaNewFile-only_when_nocache]
+[case testFollowImportsNormalKeepAliveViaNewFile]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
