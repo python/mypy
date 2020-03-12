@@ -104,7 +104,7 @@ class EnumCallAnalyzer:
         Return a tuple of fields, values, was there an error.
         """
         args = call.args
-        if len(args) < 2:
+        if len(args) < 3:
             return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
         if len(args) > 2:
             return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
