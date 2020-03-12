@@ -530,20 +530,26 @@ class Server:
         graph = fine_grained_manager.graph
         manager = fine_grained_manager.manager
 
+        orig_modules = list(graph.keys())
+
         self.update_sources(sources)
 
         sources_set = {source.module for source in sources}
 
+        # Find changed modules reachable from roots (or in roots) already in graph.
         seen, changed, removed, new_files = self.follow_imports(
             sources, graph, set(), changed_paths, sources_set
         )
         sources.extend(new_files)
+
+        # Process changes directly reachable from roots.
         messages = fine_grained_manager.update(changed, removed)
 
+        # Follow deps from changed modules (still within graph).
         worklist = changed[:]
         while worklist:
             module = worklist.pop()
-            if module not in graph:
+            if module[0] not in graph:
                 continue
             #sources.append(BuildSource(module[1], module[0]))
             sources2 = self.direct_imports(module, graph)
@@ -556,6 +562,8 @@ class Server:
             # TODO: removed???
             worklist.extend(changed)
 
+        # There may be new files that became available, currently treated as
+        # suppressed imports. Process them.
         seen_suppressed = set()  # type: Set[str]
         while True:
             # ? merge seen and seen_suppressed
@@ -568,6 +576,16 @@ class Server:
             sources.extend(new_files)
             self.update_sources(new_files)
             messages = fine_grained_manager.update(new_suppressed, [])
+
+        # Find all original modules in graph that were not reached -- they are deleted.
+        to_delete = []
+        for module_id in orig_modules:
+            if module_id not in graph:
+                continue
+            if module_id not in seen and module_id not in seen_suppressed:
+                to_delete.append((module_id, graph[module_id].path))
+        if to_delete:
+            messages = fine_grained_manager.update([], to_delete)
 
         fix_module_deps(graph)
 
@@ -591,6 +609,17 @@ class Server:
                                                        List[Tuple[str, str]],
                                                        List[Tuple[str, str]],
                                                        List[BuildSource]]:
+        """Follow imports within graph from given sources.
+
+        Args:
+            sources: roots of modules to search
+            graph: module graph to use for the search
+            seen: modules we've seen before (that won't be visited)
+            changed_paths: which paths have changed (stop search here and return any found)
+            sources_set: set of sources (TODO: relationship with seen)
+
+        Return (updated seen modules, reachable changed modules, removed modules, updated file list).
+        """
         # TODO: What to do with removed modules?
         changed = []
         new_files = []

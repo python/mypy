@@ -2345,7 +2345,7 @@ main.py:2: error: Too few arguments
 ==
 main.py:2: error: "int" not callable
 
-[case testFollowImportsNormalDeleteFile-only_when_nocache]
+[case testFollowImportsNormalDeleteFile1-only_when_nocache]
 # flags: --follow-imports=normal
 # cmd: mypy main.py a.py
 # cmd2: mypy main.py
@@ -2413,3 +2413,76 @@ def f(x: str) -> None: pass
 ==
 ==
 main.py:2: error: Too few arguments for "f"
+
+[case testFollowImportsNormalDeleteFile4-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+1()
+
+[file main.py.2]
+# don't import a
+
+[file main.py.3]
+import a
+
+[out]
+a.py:1: error: "int" not callable
+==
+==
+a.py:1: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile5-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+
+[file b.py]
+1()
+
+[file a.py.2]
+# don't import b
+
+[file a.py.3]
+import b
+
+[out]
+b.py:1: error: "int" not callable
+==
+==
+b.py:1: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile6-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+
+[file b.py]
+1()
+
+[delete a.py.2]
+
+[file a.py.3]
+import b
+
+[out]
+b.py:1: error: "int" not callable
+==
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+b.py:1: error: "int" not callable
