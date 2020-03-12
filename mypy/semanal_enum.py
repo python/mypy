@@ -110,27 +110,14 @@ class EnumCallAnalyzer:
             if call.arg_kinds != [ARG_POS, ARG_POS]:
                 return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
         elif len(args) > 2:
-            if len(args) == 3:
-                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
-            elif len(args) == 4:
-                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
-            elif len(args) == 5:
-                if call.arg_kinds != [ARG_POS, ARG_POS, ARG_NAMED_OPT,
-                        ARG_NAMED_OPT, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
-            elif len(args) == 6:
-                if call.arg_kinds != [ARG_POS, ARG_POS,
-                        ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT, ARG_NAMED_OPT]:
-                    return self.fail_enum_call_arg("Too many arguments for %s()" % class_name,
-                        call)
+            if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
+                return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+            if all([True if arg == ARG_NAMED_OPT else False for arg in call.arg_kinds[2:]]):
+                return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+
             for arg in call.arg_names:
                 if arg not in ['module', 'qualname', 'type', 'start']:
-                    return self.fail_enum_call_arg("Unexpected keyword %s arguments for %s()" %
+                    return self.fail_enum_call_arg("Unexpected keyword %s argument for %s()" %
                         (arg, class_name), call)
 
         if not isinstance(args[0], (StrExpr, UnicodeExpr)):
