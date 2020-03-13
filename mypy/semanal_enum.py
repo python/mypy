@@ -116,6 +116,9 @@ class EnumCallAnalyzer:
                 return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
 
             for arg in call.arg_names:
+                if arg is None:
+                    return self.fail_enum_call_arg("Too many arguments for %s()" %
+                        class_name, call)
                 if arg not in ['module', 'qualname', 'type', 'start']:
                     return self.fail_enum_call_arg("Unexpected keyword %s argument for %s()" %
                         (arg, class_name), call)
