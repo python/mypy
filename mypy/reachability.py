@@ -91,7 +91,7 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, options.sys_platform,options.platform_system)
+            result = consider_sys_platform(expr, options.platform,options.platform_system)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == 'PY2':
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
