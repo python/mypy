@@ -213,9 +213,9 @@ that are common in idiomatic Python are standardized.
 
    # Mapping describes a dict-like object (with "__getitem__") that we won't
    # mutate, and MutableMapping one (with "__setitem__") that we might
-   def f(my_dict: Mapping[int, str]) -> List[int]:
+   def f(my_mapping: Mapping[int, str]) -> List[int]:
        my_mapping[5] = 'maybe'  # if we try this, mypy will throw an error...
-       return list(my_dict.keys())
+       return list(my_mapping.keys())
 
    f({3: 'yes', 4: 'no'})
 
