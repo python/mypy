@@ -2554,19 +2554,32 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           "(Using --follow-imports=error, submodule passed on command line)",
                           severity='note', only_once=True)
 
-
 def log_configuration(manager: BuildManager) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
     manager.log()
-    configuration_vars = (
+    configuration_vars = [
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
+    ]
+
+    src_pth_str = "Source Path File"
+    src_pths = manager.source_set.source_paths
+
+    if len(src_pths) > 1:
+        src_pth_str += "s"
+        configuration_vars.append((src_pth_str, ""))
+        for source_path in manager.source_set.source_paths:
+            configuration_vars.append(("." * len(src_pth_str), source_path))
+    else:
+        configuration_vars.append((src_pth_str, src_pths.pop()))    
+
+    configuration_vars.extend([
         ("Configured Executable", manager.options.python_executable),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
-    )
+    ])
 
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
