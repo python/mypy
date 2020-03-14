@@ -1,3 +1,11 @@
+"""Transform mypy statement ASTs to mypyc IR (Intermediate Representation).
+
+The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
+and mypyc.irbuild.builder.
+
+A few statements are transformed in mypyc.irbuild.function (yield, for example).
+"""
+
 from typing import Optional, List, Tuple, Sequence, Callable
 import importlib.util
 
