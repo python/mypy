@@ -1,3 +1,5 @@
+"""Compute vtables of native (extension) classes."""
+
 import itertools
 
 from mypyc.ir.class_ir import ClassIR, VTableEntries, VTableMethod, VTableAttr
