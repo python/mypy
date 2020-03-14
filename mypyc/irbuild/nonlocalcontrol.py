@@ -1,3 +1,8 @@
+"""Helpers for dealing with nonlocal control such as 'break' and 'return'.
+
+Model how these behave differently in different contexts.
+"""
+
 from abc import abstractmethod
 from typing import Optional, Union
 from typing_extensions import TYPE_CHECKING
@@ -13,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class NonlocalControl:
-    """Represents a stack frame of constructs that modify nonlocal control flow.
+    """ABC representing a stack frame of constructs that modify nonlocal control flow.
 
     The nonlocal control flow constructs are break, continue, and
     return, and their behavior is modified by a number of other
@@ -35,6 +40,8 @@ class NonlocalControl:
 
 
 class BaseNonlocalControl(NonlocalControl):
+    """Default nonlocal control outside any statements that affect it."""
+
     def gen_break(self, builder: 'IRBuilder', line: int) -> None:
         assert False, "break outside of loop"
 
@@ -46,8 +53,12 @@ class BaseNonlocalControl(NonlocalControl):
 
 
 class LoopNonlocalControl(NonlocalControl):
-    def __init__(self, outer: NonlocalControl,
-                 continue_block: BasicBlock, break_block: BasicBlock) -> None:
+    """Nonlocal control within a loop."""
+
+    def __init__(self,
+                 outer: NonlocalControl,
+                 continue_block: BasicBlock,
+                 break_block: BasicBlock) -> None:
         self.outer = outer
         self.continue_block = continue_block
         self.break_block = break_block
@@ -63,23 +74,31 @@ class LoopNonlocalControl(NonlocalControl):
 
 
 class GeneratorNonlocalControl(BaseNonlocalControl):
+    """Default nonlocal control in a generator function outside statements."""
+
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
-        # Assign an invalid next label number so that the next time __next__ is called, we jump to
-        # the case in which StopIteration is raised.
+        # Assign an invalid next label number so that the next time
+        # __next__ is called, we jump to the case in which
+        # StopIteration is raised.
         builder.assign(builder.fn_info.generator_class.next_label_target,
                        builder.add(LoadInt(-1)),
                        line)
-        # Raise a StopIteration containing a field for the value that should be returned. Before
-        # doing so, create a new block without an error handler set so that the implicitly thrown
-        # StopIteration isn't caught by except blocks inside of the generator function.
+
+        # Raise a StopIteration containing a field for the value that
+        # should be returned. Before doing so, create a new block
+        # without an error handler set so that the implicitly thrown
+        # StopIteration isn't caught by except blocks inside of the
+        # generator function.
         builder.builder.push_error_handler(None)
         builder.goto_and_activate(BasicBlock())
+
         # Skip creating a traceback frame when we raise here, because
         # we don't care about the traceback frame and it is kind of
-        # expensive since raising StopIteration is an extremely common case.
-        # Also we call a special internal function to set StopIteration instead of
-        # using RaiseStandardError because the obvious thing doesn't work if the
-        # value is a tuple (???).
+        # expensive since raising StopIteration is an extremely common
+        # case.  Also we call a special internal function to set
+        # StopIteration instead of using RaiseStandardError because
+        # the obvious thing doesn't work if the value is a tuple
+        # (???).
         builder.primitive_op(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
@@ -108,6 +127,8 @@ class CleanupNonlocalControl(NonlocalControl):
 
 
 class TryFinallyNonlocalControl(NonlocalControl):
+    """Nonlocal control within try/finally."""
+
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
         self.ret_reg = None  # type: Optional[Register]
