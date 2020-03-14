@@ -1,3 +1,5 @@
+"""Various utilities that don't depend on other modules in mypyc.irbuild."""
+
 from typing import Dict, Any, Union, Optional
 
 from mypy.nodes import (
