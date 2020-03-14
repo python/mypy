@@ -1,6 +1,13 @@
 """Transform mypy AST functions to IR (and related things).
 
-This also deals with generators, async functions and nested functions.
+Normal functions are translated into a list of basic blocks
+containing various IR ops (defined in mypyc.ir.ops).
+
+This also deals with generators, async functions and nested
+functions. All of these are transformed into callable classes. These
+have a custom __call__ method that implements the call, and state, such
+as an environment containing non-local variables, is stored in the
+instance of the callable class.
 """
 
 from typing import Optional, List, Tuple, Union
@@ -152,22 +159,22 @@ def gen_func_item(builder: IRBuilder,
                   sig: FuncSignature,
                   cdef: Optional[ClassDef] = None,
                   ) -> Tuple[FuncIR, Optional[Value]]:
-    # TODO: do something about abstract methods.
+    """Generate and return the FuncIR for a given FuncDef.
 
-    """Generates and returns the FuncIR for a given FuncDef.
+    If the given FuncItem is a nested function, then we generate a
+    callable class representing the function and use that instead of
+    the actual function. if the given FuncItem contains a nested
+    function, then we generate an environment class so that inner
+    nested functions can access the environment of the given FuncDef.
 
-    If the given FuncItem is a nested function, then we generate a callable class representing
-    the function and use that instead of the actual function. if the given FuncItem contains a
-    nested function, then we generate an environment class so that inner nested functions can
-    access the environment of the given FuncDef.
+    Consider the following nested function:
 
-    Consider the following nested function.
-    def a() -> None:
-        def b() -> None:
-            def c() -> None:
+        def a() -> None:
+            def b() -> None:
+                def c() -> None:
+                    return None
                 return None
             return None
-        return None
 
     The classes generated would look something like the following.
 
@@ -185,6 +192,8 @@ def gen_func_item(builder: IRBuilder,
     | c_obj |   --------------------------+
     +-------+
     """
+
+    # TODO: do something about abstract methods.
 
     func_reg = None  # type: Optional[Value]
 
@@ -293,9 +302,12 @@ def gen_func_ir(builder: IRBuilder,
                 env: Environment,
                 fn_info: FuncInfo,
                 cdef: Optional[ClassDef]) -> Tuple[FuncIR, Optional[Value]]:
-    """Generates the FuncIR for a function given the blocks, environment, and function info of
-    a particular function and returns it. If the function is nested, also returns the register
-    containing the instance of the corresponding callable class.
+    """Generate the FuncIR for a function.
+
+    This takes the basic blocks, environment, and function info of a
+    particular function and returns the IR. If the function is nested,
+    also returns the register containing the instance of the
+    corresponding callable class.
     """
     func_reg = None  # type: Optional[Value]
     if fn_info.is_nested or fn_info.in_non_ext:
@@ -445,7 +457,7 @@ def calculate_arg_defaults(builder: IRBuilder,
 
 
 def gen_func_ns(builder: IRBuilder) -> str:
-    """Generates a namespace for a nested function using its outer function names."""
+    """Generate a namespace for a nested function using its outer function names."""
     return '_'.join(info.name + ('' if not info.class_name else '_' + info.class_name)
                     for info in builder.fn_infos
                     if info.name and info.name != '<top level>')
@@ -560,11 +572,12 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
 
 
 def load_decorated_func(builder: IRBuilder, fdef: FuncDef, orig_func_reg: Value) -> Value:
-    """
-    Given a decorated FuncDef and the register containing an instance of the callable class
-    representing that FuncDef, applies the corresponding decorator functions on that decorated
-    FuncDef and returns a register containing an instance of the callable class representing
-    the decorated function.
+    """Apply decorators to a function.
+
+    Given a decorated FuncDef and an instance of the callable class
+    representing that FuncDef, apply the corresponding decorator
+    functions on that decorated FuncDef and return the decorated
+    function.
     """
     if not is_decorated(builder, fdef):
         # If there are no decorators associated with the function, then just return the
@@ -591,7 +604,8 @@ def gen_glue(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
              ) -> FuncIR:
     """Generate glue methods that mediate between different method types in subclasses.
 
-    Works on both properties and methods. See gen_glue_methods below for more details.
+    Works on both properties and methods. See gen_glue_methods below
+    for more details.
 
     If do_py_ops is True, then the glue methods should use generic
     C API operations instead of direct calls, to enable generating
@@ -676,7 +690,7 @@ def gen_glue_property(builder: IRBuilder,
     properties also require glue. However, this only requires the return type to change.
     Further, instead of a method call, an attribute get is performed.
 
-    If do_pygetattr is True, then get the attribute using the C
+    If do_pygetattr is True, then get the attribute using the Python C
     API instead of a native call.
     """
     builder.enter()
@@ -699,10 +713,10 @@ def gen_glue_property(builder: IRBuilder,
 
 
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
-    """
-    Given a FuncDef, return the target associated the instance of its callable class. If the
-    function was not already defined somewhere, then define it and add it to the current
-    environment.
+    """Given a FuncDef, return the target for the instance of its callable class.
+
+    If the function was not already defined somewhere, then define it
+    and add it to the current environment.
     """
     if fdef.original_def:
         # Get the target associated with the previously defined FuncDef.
