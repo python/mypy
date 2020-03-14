@@ -1,7 +1,7 @@
 """Generate a class that represents a nested function.
 
-The class defines __call__ for calling the function and allows access to variables
-defined in outer scopes.
+The class defines __call__ for calling the function and allows access to
+non-local variables defined in outer scopes.
 """
 
 from typing import List
@@ -20,21 +20,28 @@ from mypyc.primitives.misc_ops import method_new_op
 
 
 def setup_callable_class(builder: IRBuilder) -> None:
-    """Generates a callable class representing a nested function or a function within a
-    non-extension class and sets up the 'self' variable for that class.
+    """Generate an (incomplete) callable class representing function.
 
-    This takes the most recently visited function and returns a ClassIR to represent that
-    function. Each callable class contains an environment attribute with points to another
-    ClassIR representing the environment class where some of its variables can be accessed.
-    Note that its '__call__' method is not yet implemented, and is implemented in the
-    add_call_to_callable_class function.
+    This can be a nested function or a function within a non-extension
+    class.  Also set up the 'self' variable for that class.
 
-    Returns a newly constructed ClassIR representing the callable class for the nested
-    function.
+    This takes the most recently visited function and returns a
+    ClassIR to represent that function. Each callable class contains
+    an environment attribute which points to another ClassIR
+    representing the environment class where some of its variables can
+    be accessed.
+
+    Note that some methods, such as '__call__', are not yet
+    created here. Use additional functions, such as
+    add_call_to_callable_class(), to add them.
+
+    Return a newly constructed ClassIR representing the callable
+    class for the nested function.
     """
-
-    # Check to see that the name has not already been taken. If so, rename the class. We allow
-    # multiple uses of the same function name because this is valid in if-else blocks. Example:
+    # Check to see that the name has not already been taken. If so,
+    # rename the class. We allow multiple uses of the same function
+    # name because this is valid in if-else blocks. Example:
+    #
     #     if True:
     #         def foo():          ---->    foo_obj()
     #             return True
@@ -48,12 +55,14 @@ def setup_callable_class(builder: IRBuilder) -> None:
         count += 1
     builder.callable_class_names.add(name)
 
-    # Define the actual callable class ClassIR, and set its environment to point at the
-    # previously defined environment class.
+    # Define the actual callable class ClassIR, and set its
+    # environment to point at the previously defined environment
+    # class.
     callable_class_ir = ClassIR(name, builder.module_name, is_generated=True)
 
-    # The functools @wraps decorator attempts to call setattr on nested functions, so
-    # we create a dict for these nested functions.
+    # The functools @wraps decorator attempts to call setattr on
+    # nested functions, so we create a dict for these nested
+    # functions.
     # https://github.com/python/cpython/blob/3.7/Lib/functools.py#L58
     if builder.fn_info.is_nested:
         callable_class_ir.has_dict = True
@@ -68,8 +77,8 @@ def setup_callable_class(builder: IRBuilder) -> None:
     builder.fn_info.callable_class = ImplicitClass(callable_class_ir)
     builder.classes.append(callable_class_ir)
 
-    # Add a 'self' variable to the callable class' environment, and store that variable in a
-    # register to be accessed later.
+    # Add a 'self' variable to the environment of the callable class,
+    # and store that variable in a register to be accessed later.
     self_target = add_self_to_env(builder.environment, callable_class_ir)
     builder.fn_info.callable_class.self_reg = builder.read(self_target, builder.fn_info.fitem.line)
 
@@ -79,13 +88,14 @@ def add_call_to_callable_class(builder: IRBuilder,
                                sig: FuncSignature,
                                env: Environment,
                                fn_info: FuncInfo) -> FuncIR:
-    """Generates a '__call__' method for a callable class representing a nested function.
+    """Generate a '__call__' method for a callable class representing a nested function.
 
-    This takes the blocks, signature, and environment associated with a function definition and
-    uses those to build the '__call__' method of a given callable class, used to represent that
-    function. Note that a 'self' parameter is added to its list of arguments, as the nested
-    function becomes a class method.
+    This takes the blocks, signature, and environment associated with
+    a function definition and uses those to build the '__call__'
+    method of a given callable class, used to represent that
+    function.
     """
+    # Since we create a method, we also add a 'self' parameter.
     sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
     call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, builder.module_name, sig)
     call_fn_ir = FuncIR(call_fn_decl, blocks, env,
@@ -95,7 +105,7 @@ def add_call_to_callable_class(builder: IRBuilder,
 
 
 def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
-    """Generates the '__get__' method for a callable class."""
+    """Generate the '__get__' method for a callable class."""
     line = fn_info.fitem.line
     builder.enter(fn_info)
 
@@ -133,22 +143,30 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
 
 
 def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
-    """
-    Assigns a callable class to a register named after the given function definition. Note
-    that fn_info refers to the function being assigned, whereas builder.fn_info refers to the
-    function encapsulating the function being turned into a callable class.
+    """Create an instance of a callable class for a function.
+
+    Calls to the function will actually call this instance.
+
+    Note that fn_info refers to the function being assigned, whereas
+    builder.fn_info refers to the function encapsulating the function
+    being turned into a callable class.
     """
     fitem = fn_info.fitem
     func_reg = builder.add(Call(fn_info.callable_class.ir.ctor, [], fitem.line))
 
-    # Set the callable class' environment attribute to point at the environment class
-    # defined in the callable class' immediate outer scope. Note that there are three possible
-    # environment class registers we may use. If the encapsulating function is:
-    # - a generator function, then the callable class is instantiated from the generator class'
-    #   __next__' function, and hence the generator class' environment register is used.
-    # - a nested function, then the callable class is instantiated from the current callable
-    #   class' '__call__' function, and hence the callable class' environment register is used.
-    # - neither, then we use the environment register of the original function.
+    # Set the environment attribute of the callable class to point at
+    # the environment class defined in the callable class' immediate
+    # outer scope. Note that there are three possible environment
+    # class registers we may use. This depends on what the encapsulating
+    # (parent) function is:
+    #
+    # - A nested function: the callable class is instantiated
+    #   from the current callable class' '__call__' function, and hence
+    #   the callable class' environment register is used.
+    # - A generator function: the callable class is instantiated
+    #   from the '__next__' method of the generator class, and hence the
+    #   environment of the generator class is used.
+    # - Regular function: we use the environment of the original function.
     curr_env_reg = None
     if builder.fn_info.is_generator:
         curr_env_reg = builder.fn_info.generator_class.curr_env_reg
