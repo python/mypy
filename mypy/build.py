@@ -2569,10 +2569,12 @@ def log_configuration(manager: BuildManager) -> None:
     if len(src_pths) > 1:
         src_pth_str += "s"
         configuration_vars.append((src_pth_str, ""))
-        for source_path in manager.source_set.source_paths:
+        for source_path in src_pths:
             configuration_vars.append(("." * len(src_pth_str), source_path))
+    elif len(src_pths) == 1:
+        configuration_vars.append((src_pth_str, src_pths.copy().pop()))
     else:
-        configuration_vars.append((src_pth_str, src_pths.pop()))    
+        configuration_vars.append((src_pth_str, "None"))
 
     configuration_vars.extend([
         ("Configured Executable", manager.options.python_executable),
