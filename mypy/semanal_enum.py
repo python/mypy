@@ -110,12 +110,11 @@ class EnumCallAnalyzer:
             if call.arg_kinds != [ARG_POS, ARG_POS]:
                 return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
         elif len(args) > 2:
-            if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-                return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
-            if all(arg == ARG_NAMED_OPT for arg in call.arg_kinds[2:]):
+            if all(arg == ARG_POS for arg in call.arg_kinds[:2]) and all(arg == ARG_NAMED_OPT
+                                                                    for arg in call.arg_kinds[2:]):
                 return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
 
-            for arg in call.arg_names:
+            for arg in call.arg_names[2:]:
                 if arg is None:
                     return self.fail_enum_call_arg("Too many arguments for %s()" %
                         class_name, call)
