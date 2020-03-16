@@ -8477,8 +8477,8 @@ m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#varia
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
 m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
-m.py:5: note: Revealed type is 'A?'
-m.py:7: note: Revealed type is 'A?'
+m.py:5: note: Revealed type is 'Any'
+m.py:7: note: Revealed type is 'Any'
 
 [case testAliasForwardFunctionDirect]
 # flags: --ignore-missing-imports

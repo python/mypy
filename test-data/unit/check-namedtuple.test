@@ -948,3 +948,17 @@ class A:
 
 reveal_type(A().b)  # N: Revealed type is 'Any'
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWrongfile]
+from typing import NamedTuple
+from b import Type1
+Type2 = NamedTuple('Type2', [('x', Type1)])
+[file b.py]
+from typing import NamedTuple
+
+def foo():
+    pass
+
+Type1 = NamedTuple('Type1', [('foo', foo)])  # type: ignore
+
+[builtins fixtures/tuple.pyi]
