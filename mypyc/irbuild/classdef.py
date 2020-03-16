@@ -1,3 +1,5 @@
+"""Transform class definitions from the mypy AST form to IR."""
+
 from typing import List, Optional
 
 from mypy.nodes import (
@@ -29,6 +31,17 @@ from mypyc.irbuild.function import transform_method
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
+    """Create IR for a class definition.
+
+    This can generate both extension (native) and non-extension
+    classes.  These are generated in very different ways. In the
+    latter case we construct a Python type object at runtime by doing
+    the equivalent of "type(name, bases, dict)" in IR. Extension
+    classes are defined via C structs that are generated later in
+    mypyc.codegen.emitclass.
+
+    This is the main entry point to this module.
+    """
     ir = builder.mapper.type_to_ir[cdef.info]
 
     # We do this check here because the base field of parent
@@ -188,9 +201,9 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 
 def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
-    """
-    Populate the base-class tuple passed to the metaclass constructor
-    for non-extension classes.
+    """Create base class tuple of a non-extension class.
+
+    The tuple is passed to the metaclass constructor.
     """
     ir = builder.mapper.type_to_ir[cdef.info]
     bases = []
@@ -222,11 +235,10 @@ def setup_non_ext_dict(builder: IRBuilder,
                        cdef: ClassDef,
                        metaclass: Value,
                        bases: Value) -> Value:
-    """
-    Initialize the class dictionary for a non-extension class. This class dictionary
-    is passed to the metaclass constructor.
-    """
+    """Initialize the class dictionary for a non-extension class.
 
+    This class dictionary is passed to the metaclass constructor.
+    """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.primitive_op(py_hasattr_op,
                                     [metaclass,
@@ -252,14 +264,16 @@ def setup_non_ext_dict(builder: IRBuilder,
     return non_ext_dict
 
 
-def add_non_ext_class_attr(builder: IRBuilder, non_ext: NonExtClassInfo, lvalue: NameExpr,
-                           stmt: AssignmentStmt, cdef: ClassDef,
+def add_non_ext_class_attr(builder: IRBuilder,
+                           non_ext: NonExtClassInfo,
+                           lvalue: NameExpr,
+                           stmt: AssignmentStmt,
+                           cdef: ClassDef,
                            attr_to_cache: List[Lvalue]) -> None:
-    """
-    Add a class attribute to __annotations__ of a non-extension class. If the
-    attribute is assigned to a value, it is also added to __dict__.
-    """
+    """Add a class attribute to __annotations__ of a non-extension class.
 
+    If the attribute is initialized with a value, also add it to __dict__.
+    """
     # We populate __annotations__ because dataclasses uses it to determine
     # which attributes to compute on.
     # TODO: Maybe generate more precise types for annotations
@@ -284,7 +298,7 @@ def add_non_ext_class_attr(builder: IRBuilder, non_ext: NonExtClassInfo, lvalue:
 
 
 def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
-    """Generate an initialization method for default attr values (from class vars)"""
+    """Generate an initialization method for default attr values (from class vars)."""
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
         return
@@ -347,6 +361,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
+    """Create a "__ne__" method from a "__eq__" method (if only latter exists)."""
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.has_method('__eq__') and not cls.has_method('__ne__'):
         f = gen_glue_ne_method(builder, cls, cdef.line)
@@ -356,7 +371,7 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
-    """Generate a __ne__ method from a __eq__ method. """
+    """Generate a "__ne__" method from a "__eq__" method. """
     builder.enter()
 
     rt_args = (RuntimeArg("self", RInstance(cls)), RuntimeArg("rhs", object_rprimitive))
@@ -417,10 +432,13 @@ def load_non_ext_class(builder: IRBuilder,
 
 
 def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) -> Value:
-    """
-    Given a decorated ClassDef and a register containing a non-extension representation of the
-    ClassDef created via the type constructor, applies the corresponding decorator functions
-    on that decorated ClassDef and returns a register containing the decorated ClassDef.
+    """Apply class decorators to create a decorated (non-extension) class object.
+
+    Given a decorated ClassDef and a register containing a
+    non-extension representation of the ClassDef created via the type
+    constructor, applies the corresponding decorator functions on that
+    decorated ClassDef and returns a register containing the decorated
+    ClassDef.
     """
     decorators = cdef.decorators
     dec_class = type_obj
@@ -432,7 +450,7 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
 
 
 def cache_class_attrs(builder: IRBuilder, attrs_to_cache: List[Lvalue], cdef: ClassDef) -> None:
-    """Add class attributes to be cached to the global cache"""
+    """Add class attributes to be cached to the global cache."""
     typ = builder.load_native_type_object(cdef.fullname)
     for lval in attrs_to_cache:
         assert isinstance(lval, NameExpr)

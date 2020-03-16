@@ -1,4 +1,19 @@
-"""Generate classes representing function environments (+ related operations)."""
+"""Generate classes representing function environments (+ related operations).
+
+If we have a nested function that has non-local (free) variables, access to the
+non-locals is via an instance of an environment class. Example:
+
+    def f() -> int:
+        x = 0  # Make 'x' an attribute of an environment class instance
+
+        def g() -> int:
+            # We have access to the environment class instance to
+            # allow accessing 'x'
+            return x + 2
+
+        x + 1  # Modify the attribute
+        return g()
+"""
 
 from typing import Optional, Union
 
@@ -13,16 +28,19 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass, GeneratorClass
 
 
 def setup_env_class(builder: IRBuilder) -> ClassIR:
-    """Generates a class representing a function environment.
+    """Generate a class representing a function environment.
 
-    Note that the variables in the function environment are not actually populated here. This
-    is because when the environment class is generated, the function environment has not yet
-    been visited. This behavior is allowed so that when the compiler visits nested functions,
-    it can use the returned ClassIR instance to figure out free variables it needs to access.
-    The remaining attributes of the environment class are populated when the environment
-    registers are loaded.
+    Note that the variables in the function environment are not
+    actually populated here. This is because when the environment
+    class is generated, the function environment has not yet been
+    visited. This behavior is allowed so that when the compiler visits
+    nested functions, it can use the returned ClassIR instance to
+    figure out free variables it needs to access.  The remaining
+    attributes of the environment class are populated when the
+    environment registers are loaded.
 
-    Returns a ClassIR representing an environment for a function containing a nested function.
+    Return a ClassIR representing an environment for a function
+    containing a nested function.
     """
     env_class = ClassIR('{}_env'.format(builder.fn_info.namespaced_name()),
                         builder.module_name, is_generated=True)
@@ -38,8 +56,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
 
 
 def finalize_env_class(builder: IRBuilder) -> None:
-    """Generates, instantiates, and sets up the environment of an environment class."""
-
+    """Generate, instantiate, and set up the environment of an environment class."""
     instantiate_env_class(builder)
 
     # Iterate through the function arguments and replace local definitions (using registers)
@@ -52,7 +69,7 @@ def finalize_env_class(builder: IRBuilder) -> None:
 
 
 def instantiate_env_class(builder: IRBuilder) -> Value:
-    """Assigns an environment class to a register named after the given function definition."""
+    """Assign an environment class to a register named after the given function definition."""
     curr_env_reg = builder.add(
         Call(builder.fn_info.env_class.ctor, [], builder.fn_info.fitem.line)
     )
@@ -70,11 +87,12 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
 
 
 def load_env_registers(builder: IRBuilder) -> None:
-    """Loads the registers for the current FuncItem being visited.
+    """Load the registers for the current FuncItem being visited.
 
-    Adds the arguments of the FuncItem to the environment. If the FuncItem is nested inside of
-    another function, then this also loads all of the outer environments of the FuncItem into
-    registers so that they can be used when accessing free variables.
+    Adds the arguments of the FuncItem to the environment. If the
+    FuncItem is nested inside of another function, then this also
+    loads all of the outer environments of the FuncItem into registers
+    so that they can be used when accessing free variables.
     """
     add_args_to_env(builder, local=True)
 
@@ -89,12 +107,14 @@ def load_env_registers(builder: IRBuilder) -> None:
 
 
 def load_outer_env(builder: IRBuilder, base: Value, outer_env: Environment) -> Value:
-    """Loads the environment class for a given base into a register.
+    """Load the environment class for a given base into a register.
 
-    Additionally, iterates through all of the SymbolNode and AssignmentTarget instances of the
-    environment at the given index's symtable, and adds those instances to the environment of
-    the current environment. This is done so that the current environment can access outer
-    environment variables without having to reload all of the environment registers.
+    Additionally, iterates through all of the SymbolNode and
+    AssignmentTarget instances of the environment at the given index's
+    symtable, and adds those instances to the environment of the
+    current environment. This is done so that the current environment
+    can access outer environment variables without having to reload
+    all of the environment registers.
 
     Returns the register where the environment class was loaded.
     """
@@ -150,10 +170,12 @@ def add_args_to_env(builder: IRBuilder,
 
 
 def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:
-    """
-    Adds the instance of the callable class representing the given FuncDef to a register in the
-    environment so that the function can be called recursively. Note that this needs to be done
-    only for nested functions.
+    """Enable calling a nested function (with a callable class) recursively.
+
+    Adds the instance of the callable class representing the given
+    FuncDef to a register in the environment so that the function can
+    be called recursively. Note that this needs to be done only for
+    nested functions.
     """
     # First, set the attribute of the environment class so that GetAttr can be called on it.
     prev_env = builder.fn_infos[-2].env_class
