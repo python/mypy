@@ -959,6 +959,6 @@ from typing import NamedTuple
 def foo():
     pass
 
-Type1 = NamedTuple('Type1', [('foo', foo)])  # type: ignore
+Type1 = NamedTuple('Type1', [('foo', foo)])  # E: Function "b.foo" is not valid as a type  # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 [builtins fixtures/tuple.pyi]
