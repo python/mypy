@@ -3004,7 +3004,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   allow_none_return=True, always_allow_any=True)
         target_type = expr.type
         options = self.chk.options
-        if options.warn_redundant_casts and is_same_type(source_type, target_type):
+        if (options.warn_redundant_casts and not isinstance(get_proper_type(target_type), AnyType)
+                and is_same_type(source_type, target_type)):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
