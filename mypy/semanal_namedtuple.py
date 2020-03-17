@@ -8,7 +8,8 @@ from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
+    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType,
+    UnboundType,
 )
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -334,6 +335,9 @@ class NamedTupleAnalyzer:
                 except TypeTranslationError:
                     return self.fail_namedtuple_arg('Invalid field type', type_node)
                 analyzed = self.api.anal_type(type)
+                # Workaround #4987 and avoid introducing a bogus UnboundType
+                if isinstance(analyzed, UnboundType):
+                    analyzed = AnyType(TypeOfAny.from_error)
                 # These should be all known, otherwise we would defer in visit_assignment_stmt().
                 if analyzed is None:
                     return None
