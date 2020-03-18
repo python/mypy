@@ -843,3 +843,7 @@ def fix_module_deps(graph: mypy.build.Graph) -> None:
         state.dependencies_set = set(new_dependencies)
         state.suppressed = new_suppressed
         state.suppressed_set = set(new_suppressed)
+
+
+def log(*x: object) -> None:
+    print(*x, file=sys.stderr)
