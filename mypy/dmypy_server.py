@@ -24,6 +24,7 @@ import mypy.errors
 import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
+from mypy.server.trigger import make_trigger
 from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
@@ -34,6 +35,7 @@ from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
+from mypy.nodes import ImportFrom
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
@@ -576,6 +578,7 @@ class Server:
             sources.extend(new_files)
             self.update_sources(new_files)
             messages = fine_grained_manager.update(new_suppressed, [])
+            self.refresh_suppressed_submodules(new_suppressed, fine_grained_manager.deps, graph)
 
         # Find all original modules in graph that were not reached -- they are deleted.
         to_delete = []
@@ -620,7 +623,8 @@ class Server:
             changed_paths: which paths have changed (stop search here and return any found)
             sources_set: set of sources (TODO: relationship with seen)
 
-        Return (updated seen modules, reachable changed modules, removed modules, updated file list).
+        Return (updated seen modules, reachable changed modules, removed modules,
+                updated file list).
         """
         # TODO: What to do with removed modules?
         changed = []
@@ -675,6 +679,37 @@ class Server:
                 seen.add(module)
 
         return found, seen
+
+    def refresh_suppressed_submodules(self,
+                                      changed: List[Tuple[str, str]],
+                                      deps: Dict[str, Set[str]],
+                                      graph: Dict[str, mypy.build.State]) -> None:
+        for module, path in changed:
+            if not path.endswith('/__init__.py'):
+                # Only packages have submodules.
+                continue
+            # Find and submodules present in the directory.
+            pkgdir = os.path.dirname(path)
+            for fnam in os.listdir(pkgdir):
+                if not fnam.endswith(('.py', '.pyi')) or fnam.startswith("__init__.") or fnam.count('.') != 1:
+                    continue
+                shortname = fnam.split('.')[0]
+                submodule = module + '.' + shortname
+                trigger = make_trigger(submodule)
+                if trigger in deps:
+                    for dep in deps[trigger]:
+                        # TODO: <...> deps, etc.
+                        state = graph.get(dep)
+                        if state:
+                            tree = state.tree
+                            assert tree  # TODO: What if doesn't exist?
+                            for imp in tree.imports:
+                                if isinstance(imp, ImportFrom):
+                                    log('%', imp, imp.id, module, imp.names, submodule)
+                                    if imp.id == module and any(name == shortname for name, _ in imp.names):
+                                        # TODO: Only if does not exist already
+                                        state.suppressed.append(submodule)
+                                        state.suppressed_set.add(submodule)
 
     def increment_output(self,
                          messages: List[str],
