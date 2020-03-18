@@ -47,6 +47,7 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-cycles.test',
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
+        'fine-grained-follow-imports.test',
         'fine-grained-suggest.test',
     ]
 
