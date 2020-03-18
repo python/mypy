@@ -139,7 +139,6 @@ class FineGrainedSuite(DataSuite):
                 'Invalid active triggers ({}, line {})'.format(testcase.file,
                                                                testcase.line))
 
-
     def get_options(self,
                     source: str,
                     testcase: DataDrivenTestCase,
