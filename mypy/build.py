@@ -2577,7 +2577,7 @@ def log_configuration(manager: BuildManager) -> None:
         configuration_vars.append((src_pth_str, "None"))
 
     configuration_vars.extend([
-        ("Configured Executable", manager.options.python_executable),
+        ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
