@@ -518,6 +518,7 @@ class Server:
 
     def fine_grained_increment_follow_imports(self, sources: List[BuildSource]) -> List[str]:
         """Like fine_grained_increment, but follow imports."""
+
         # TODO:
         #  - file events
         #  - search path updates
@@ -551,7 +552,6 @@ class Server:
             module = worklist.pop()
             if module[0] not in graph:
                 continue
-            #sources.append(BuildSource(module[1], module[0]))
             sources2 = self.direct_imports(module, graph)
             seen, changed, removed, new_files = self.follow_imports(
                 sources2, graph, seen, changed_paths, sources_set
@@ -559,7 +559,7 @@ class Server:
             sources.extend(new_files)
             self.update_sources(new_files)
             messages = fine_grained_manager.update(changed, removed)
-            # TODO: removed???
+            # TODO: Removed?
             worklist.extend(changed)
 
         for module_id, state in graph.items():
@@ -570,7 +570,7 @@ class Server:
         # suppressed imports. Process them.
         seen_suppressed = set()  # type: Set[str]
         while True:
-            # ? merge seen and seen_suppressed
+            # TODO: Merge seen and seen_suppressed?
             new_suppressed, seen_suppressed = self.find_added_suppressed(
                 graph, seen_suppressed, manager.search_paths
             )
@@ -602,10 +602,6 @@ class Server:
         # Store current file state as side effect
         self.fswatcher.find_changed()
 
-        ### changed, removed = self.find_changed(sources)
-
-        ### manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
-
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
         return messages
@@ -631,7 +627,6 @@ class Server:
         Return (updated seen modules, reachable changed modules, removed modules,
                 updated file list).
         """
-        # TODO: What to do with removed modules?
         changed = []
         new_files = []
         worklist = sources[:]
@@ -670,8 +665,8 @@ class Server:
         for module, state in graph.items():
             all_suppressed |= state.suppressed_set
 
-        # TODO: name space packages
-        # TODO: handle seen??
+        # TODO: Namespace packages
+        # TODO: Handle seen?
 
         finder = FindModuleCache(search_paths, self.fscache, self.options)
 
@@ -852,7 +847,3 @@ def fix_module_deps(graph: mypy.build.Graph) -> None:
         state.dependencies_set = set(new_dependencies)
         state.suppressed = new_suppressed
         state.suppressed_set = set(new_suppressed)
-
-
-def log(*x: object) -> None:
-    print(*x, file=sys.stderr)
