@@ -2653,3 +2653,42 @@ main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 main.py:1: error: Module 'p' has no attribute 'm'
 ==
 p/m.py:1: error: "str" not callable
+
+
+[case testFollowImportsNormalPackageInitFile3]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p1.s1.m
+from p2.s2 import m
+p1.s1.m.f()
+m.f(1)
+
+[file p1/__init__.py.2]
+
+[file p1/s1/__init__.py.2]
+
+[file p1/s1/m.py.2]
+def f(x: str) -> None: pass
+
+[file p2/__init__.py.3]
+
+[file p2/s2/__init__.py.3]
+
+[file p2/s2/m.py.3]
+def f() -> None: pass
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p1.s1.m'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: error: Cannot find implementation or library stub for module named 'p1'
+main.py:1: error: Cannot find implementation or library stub for module named 'p1.s1'
+main.py:2: error: Cannot find implementation or library stub for module named 'p2.s2'
+==
+main.py:2: error: Cannot find implementation or library stub for module named 'p2.s2'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:3: error: Too few arguments for "f"
+==
+main.py:3: error: Too few arguments for "f"
+main.py:4: error: Too many arguments for "f"
