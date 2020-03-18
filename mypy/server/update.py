@@ -1117,6 +1117,19 @@ def refresh_suppressed_submodules(
         deps: Dict[str, Set[str]],
         graph: Graph,
         fscache: FileSystemCache) -> None:
+    """Look for submodules that are now suppressed in target package.
+
+    If a submodule a.b gets added, we need to mark it as suppressed
+    in modules that contain "from a import b". Previously we assumed
+    that 'a.b' is not a module but a regular name.
+
+    This is only relevant when following imports normally.
+
+    Args:
+        module: target package in which to look for submodules
+        path: path of the module
+    """
+    # TODO: Windows paths
     if path is None or not path.endswith('/__init__.py'):
         # Only packages have submodules.
         return
@@ -1132,7 +1145,7 @@ def refresh_suppressed_submodules(
         trigger = make_trigger(submodule)
         if trigger in deps:
             for dep in deps[trigger]:
-                # TODO: <...> deps, etc.
+                # TODO: <...> deps, imports in functions, etc.
                 state = graph.get(dep)
                 if state:
                     tree = state.tree
