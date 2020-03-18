@@ -2554,6 +2554,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           "(Using --follow-imports=error, submodule passed on command line)",
                           severity='note', only_once=True)
 
+
 def log_configuration(manager: BuildManager) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
