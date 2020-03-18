@@ -2633,3 +2633,23 @@ p1/__init__.py:1: error: "int" not callable
 ==
 p1/__init__.py:1: error: "int" not callable
 p2/__init__.py:1: error: "str" not callable
+
+[case testFollowImportsNormalPackageInitFile2]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+from p import m
+
+[file p/__init__.py.2]
+
+[file p/m.py.3]
+''()
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:1: error: Module 'p' has no attribute 'm'
+==
+p/m.py:1: error: "str" not callable

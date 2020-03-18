@@ -1111,34 +1111,32 @@ def target_from_node(module: str,
             return '%s.%s' % (module, node.name)
 
 
-def refresh_suppressed_submodules(changed: List[Tuple[str, str]],
-                                  deps: Dict[str, Set[str]],
-                                  graph: Graph) -> None:
-    for module, path in changed:
-        if not path.endswith('/__init__.py'):
-            # Only packages have submodules.
+def refresh_suppressed_submodules(
+        module: str, path: str, deps: Dict[str, Set[str]], graph: Graph) -> None:
+    if not path.endswith('/__init__.py'):
+        # Only packages have submodules.
+        return
+    # Find and submodules present in the directory.
+    pkgdir = os.path.dirname(path)
+    for fnam in os.listdir(pkgdir):
+        if (not fnam.endswith(('.py', '.pyi'))
+                or fnam.startswith("__init__.")
+                or fnam.count('.') != 1):
             continue
-        # Find and submodules present in the directory.
-        pkgdir = os.path.dirname(path)
-        for fnam in os.listdir(pkgdir):
-            if (not fnam.endswith(('.py', '.pyi'))
-                    or fnam.startswith("__init__.")
-                    or fnam.count('.') != 1):
-                continue
-            shortname = fnam.split('.')[0]
-            submodule = module + '.' + shortname
-            trigger = make_trigger(submodule)
-            if trigger in deps:
-                for dep in deps[trigger]:
-                    # TODO: <...> deps, etc.
-                    state = graph.get(dep)
-                    if state:
-                        tree = state.tree
-                        assert tree  # TODO: What if doesn't exist?
-                        for imp in tree.imports:
-                            if isinstance(imp, ImportFrom):
-                                if (imp.id == module
-                                        and any(name == shortname for name, _ in imp.names)):
-                                    # TODO: Only if does not exist already
-                                    state.suppressed.append(submodule)
-                                    state.suppressed_set.add(submodule)
+        shortname = fnam.split('.')[0]
+        submodule = module + '.' + shortname
+        trigger = make_trigger(submodule)
+        if trigger in deps:
+            for dep in deps[trigger]:
+                # TODO: <...> deps, etc.
+                state = graph.get(dep)
+                if state:
+                    tree = state.tree
+                    assert tree  # TODO: What if doesn't exist?
+                    for imp in tree.imports:
+                        if isinstance(imp, ImportFrom):
+                            if (imp.id == module
+                                    and any(name == shortname for name, _ in imp.names)):
+                                # TODO: Only if does not exist already
+                                state.suppressed.append(submodule)
+                                state.suppressed_set.add(submodule)

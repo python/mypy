@@ -562,6 +562,9 @@ class Server:
             # TODO: removed???
             worklist.extend(changed)
 
+        for module, state in graph.items():
+            refresh_suppressed_submodules(module, state.path, fine_grained_manager.deps, graph)
+
         # There may be new files that became available, currently treated as
         # suppressed imports. Process them.
         seen_suppressed = set()  # type: Set[str]
@@ -576,7 +579,9 @@ class Server:
             sources.extend(new_files)
             self.update_sources(new_files)
             messages = fine_grained_manager.update(new_suppressed, [])
-            refresh_suppressed_submodules(new_suppressed, fine_grained_manager.deps, graph)
+
+            for module, path in new_suppressed:
+                refresh_suppressed_submodules(module, path, fine_grained_manager.deps, graph)
 
         # Find all original modules in graph that were not reached -- they are deleted.
         to_delete = []
