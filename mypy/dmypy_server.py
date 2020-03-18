@@ -562,8 +562,9 @@ class Server:
             # TODO: removed???
             worklist.extend(changed)
 
-        for module, state in graph.items():
-            refresh_suppressed_submodules(module, state.path, fine_grained_manager.deps, graph)
+        for module_id, state in graph.items():
+            refresh_suppressed_submodules(module_id, state.path, fine_grained_manager.deps, graph,
+                                          self.fscache)
 
         # There may be new files that became available, currently treated as
         # suppressed imports. Process them.
@@ -580,8 +581,9 @@ class Server:
             self.update_sources(new_files)
             messages = fine_grained_manager.update(new_suppressed, [])
 
-            for module, path in new_suppressed:
-                refresh_suppressed_submodules(module, path, fine_grained_manager.deps, graph)
+            for module_id, path in new_suppressed:
+                refresh_suppressed_submodules(module_id, path, fine_grained_manager.deps, graph,
+                                              self.fscache)
 
         # Find all original modules in graph that were not reached -- they are deleted.
         to_delete = []
@@ -589,9 +591,9 @@ class Server:
             if module_id not in graph:
                 continue
             if module_id not in seen and module_id not in seen_suppressed:
-                path = graph[module_id].path
-                assert path is not None
-                to_delete.append((module_id, path))
+                module_path = graph[module_id].path
+                assert module_path is not None
+                to_delete.append((module_id, module_path))
         if to_delete:
             messages = fine_grained_manager.update([], to_delete)
 

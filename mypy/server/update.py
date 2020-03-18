@@ -1112,13 +1112,17 @@ def target_from_node(module: str,
 
 
 def refresh_suppressed_submodules(
-        module: str, path: str, deps: Dict[str, Set[str]], graph: Graph) -> None:
-    if not path.endswith('/__init__.py'):
+        module: str,
+        path: Optional[str],
+        deps: Dict[str, Set[str]],
+        graph: Graph,
+        fscache: FileSystemCache) -> None:
+    if path is None or not path.endswith('/__init__.py'):
         # Only packages have submodules.
         return
     # Find and submodules present in the directory.
     pkgdir = os.path.dirname(path)
-    for fnam in os.listdir(pkgdir):
+    for fnam in fscache.listdir(pkgdir):
         if (not fnam.endswith(('.py', '.pyi'))
                 or fnam.startswith("__init__.")
                 or fnam.count('.') != 1):
