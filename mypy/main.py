@@ -129,7 +129,7 @@ def main(script_path: Optional[str],
         sys.exit(code)
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    res2 = res  # noqa
+    list([res])
 
 
 # Make the help output a little less jarring.
