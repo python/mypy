@@ -1130,7 +1130,7 @@ def refresh_suppressed_submodules(
         path: path of the module
     """
     # TODO: Windows paths
-    if path is None or not path.endswith('/__init__.py'):
+    if path is None or not path.endswith(os.sep + '__init__.py'):
         # Only packages have submodules.
         return
     # Find and submodules present in the directory.
