@@ -106,7 +106,6 @@ def main(script_path: Optional[str],
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
-    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -128,6 +127,9 @@ def main(script_path: Optional[str],
         util.hard_exit(code)
     elif code:
         sys.exit(code)
+
+    # HACK: keep res alive so that mypyc won't free it before the hard_exit
+    list([res])
 
 
 # Make the help output a little less jarring.
