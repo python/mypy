@@ -777,6 +777,7 @@ This example demonstrates both safe and unsafe overrides:
 
     class A:
         def test(self, t: Sequence[int]) -> Sequence[str]:
+<<<<<<< HEAD
             ...
 
     class GeneralizedArgument(A):
@@ -808,3 +809,49 @@ not necessary:
     class NarrowerArgument(A):
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
+
+TypeVars are not the same
+------------------------------------------------
+
+As discussed in the issue
+`TypeVars should be allowed to be the same <https://github.com/python/mypy/issues/7864>`_,
+TypeVars are *not* equivalent even if they are identically defined.
+
+Here is an example using two TypeVars that are unconstrained and unbound:
+
+.. code-block:: python
+
+    from typing import Callable, Iterable, TypeVar
+
+    A = TypeVar("A")
+    B = TypeVar("B")
+
+    def identity(x: A) -> A:
+        return x
+
+    # ok
+    def _map(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]:
+        return map(function, queue)
+
+    # fails
+    def _map2(queue: Iterable[B], function: Callable[[B], A] = identity) -> Iterable[A]:
+        return map(function, queue)
+
+
+The signature of ``_map2()`` triggers
+``error: Incompatible default for argument "function" (default has type "Callable[[A], A]",``
+``argument has type "Callable[[B], A]")``
+
+Likewise, this error will occur for constrained and bound TypeVars as well.
+
+.. code-block:: python
+
+    A = TypeVar("A", bound=int)
+    B = TypeVar("B", bound=int)
+
+or
+
+.. code-block:: python
+
+    A = TypeVar("A", int, float, complex)
+    B = TypeVar("B", int, float, complex)
