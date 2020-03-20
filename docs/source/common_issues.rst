@@ -72,12 +72,12 @@ flagged as an error.
   e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
-- **:py:meth:`__init__ <object.__init__>` method has no annotated 
+- **:py:meth:`__init__ <object.__init__>` method has no annotated
   arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
-  is considered fully-annotated **if at least one argument is annotated**, 
+  is considered fully-annotated **if at least one argument is annotated**,
   while mypy will infer the return type as ``None``.
   The implication is that, for a :py:meth:`__init__ <object.__init__>` method
-  that has no argument, you'll have to explicitly annotate the return type 
+  that has no argument, you'll have to explicitly annotate the return type
   as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
 
   .. code-block:: python
@@ -93,7 +93,7 @@ flagged as an error.
       class B():
           def __init__(self):  # No argument is annotated, considered as untyped method
               foo(1)  # No error!
-      
+
       class C():
           def __init__(self) -> None:  # Must specify return type to type-check
               foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
@@ -751,14 +751,25 @@ Mypy has both type aliases and variables with types like ``Type[...]`` and it is
 
     def fun1(x: Alias) -> None: ...  # This is OK
     def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
-   
+
 Incompatible overrides
 ------------------------------
 
-It's unsafe to override a method with a more specific argument type, as it violates
-the `Liskov substitution principle <https://stackoverflow.com/questions/56860/what-is-an-example-of-the-liskov-substitution-principle>`_. For return types, it's unsafe to override a method with a more general return type.
+It's unsafe to override a method with a more specific argument type,
+as it violates the `Liskov substitution principle
+<https://stackoverflow.com/questions/56860/what-is-an-example-of-the-liskov-substitution-principle>`_.
+For return types, it's unsafe to override a method with a more general
+return type.
 
-Here is an example to demonstrate this
+Other incompatible signature changes in method overrides, such as
+adding an extra required parameter, or removing an optional parameter,
+will also generate errors. The signature of a method in a subclass
+should accept all valid calls to the base class method. Mypy
+treats a subclass as a subtype of the base class. An instance of a
+subclass is valid everywhere where an instance of the base class is
+valid.
+
+This example demonstrates both safe and unsafe overrides:
 
 .. code-block:: python
 
@@ -766,23 +777,34 @@ Here is an example to demonstrate this
 
     class A:
         def test(self, t: Sequence[int]) -> Sequence[str]:
-            pass
-      
-    # Specific argument type doesn't work
-    class OverwriteArgumentSpecific(A):
-        def test(self, t: List[int]) -> Sequence[str]:
-            pass
-    
-    # Specific return type works
-    class OverwriteReturnSpecific(A):
-        def test(self, t: Sequence[int]) -> List[str]:
-            pass
-    
-    # Generic return type doesn't work
-    class OverwriteReturnGeneric(A):
-        def test(self, t: Sequence[int]) -> Iterable[str]:
-            pass
-            
-mypy won't report an error for ``OverwriteReturnSpecific`` but it does for ``OverwriteReturnGeneric`` and ``OverwriteArgumentSpecific``.
+            ...
 
-We can use ``# type: ignore[override]`` to silence the error (add it to the line that genreates the error) if type safety is not needed.
+    class GeneralizedArgument(A):
+        # A more general argument type is okay
+        def test(self, t: Iterable[int]) -> Sequence[str]:  # OK
+            ...
+
+    class NarrowerArgument(A):
+        # A more specific argument type isn't accepted
+        def test(self, t: List[int]) -> Sequence[str]:  # Error
+            ...
+
+    class NarrowerReturn(A):
+        # A more specific return type is fine
+        def test(self, t: Sequence[int]) -> List[str]:  # OK
+            ...
+
+    class GeneralizedReturn(A):
+        # A more general return type is an error
+        def test(self, t: Sequence[int]) -> Iterable[str]:  # Error
+            ...
+
+You can use ``# type: ignore[override]`` to silence the error. Add it
+to the line that generates the error, if you decide that type safety is
+not necessary:
+
+.. code-block:: python
+
+    class NarrowerArgument(A):
+        def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
+            ...
