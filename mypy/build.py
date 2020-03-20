@@ -2564,16 +2564,14 @@ def log_configuration(manager: BuildManager) -> None:
         ("Config File", (manager.options.config_file or "Default")),
     ]
 
-    src_pth_str = "Source Path File"
-    src_pths = manager.source_set.source_paths
+    src_pth_str = "Source Path"
+    src_pths = list(manager.source_set.source_paths.copy())
 
     if len(src_pths) > 1:
         src_pth_str += "s"
-        configuration_vars.append((src_pth_str, ""))
-        for source_path in src_pths:
-            configuration_vars.append(("." * len(src_pth_str), source_path))
+        configuration_vars.append((src_pth_str, " ".join(src_pths)))
     elif len(src_pths) == 1:
-        configuration_vars.append((src_pth_str, src_pths.copy().pop()))
+        configuration_vars.append((src_pth_str, src_pths.pop()))
     else:
         configuration_vars.append((src_pth_str, "None"))
 
