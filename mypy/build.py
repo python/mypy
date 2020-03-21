@@ -2566,6 +2566,7 @@ def log_configuration(manager: BuildManager) -> None:
 
     src_pth_str = "Source Path"
     src_pths = list(manager.source_set.source_paths.copy())
+    src_pths.sort()
 
     if len(src_pths) > 1:
         src_pth_str += "s"
