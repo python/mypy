@@ -846,12 +846,8 @@ Likewise, this error will occur for constrained and bound TypeVars as well.
 
 .. code-block:: python
 
-    A = TypeVar("A", bound=int)
-    B = TypeVar("B", bound=int)
-
-or
-
-.. code-block:: python
-
-    A = TypeVar("A", int, float, complex)
-    B = TypeVar("B", int, float, complex)
+    A = TypeVar("A", int, str)
+    B = TypeVar("B", int, str)
+    # or
+    A = TypeVar("A", bound=complex)
+    B = TypeVar("B", bound=complex)
