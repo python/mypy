@@ -16,9 +16,10 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
+from mypyc.primitives.generic_ops import py_setattr_op, py_hasattr_op
 from mypyc.primitives.misc_ops import (
-    dataclass_sleight_of_hand, py_setattr_op, pytype_from_template_op, py_calc_meta_op,
-    type_object_op, py_hasattr_op, not_implemented_op, true_op
+    dataclass_sleight_of_hand, pytype_from_template_op, py_calc_meta_op, type_object_op,
+    not_implemented_op, true_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, new_dict_op
 from mypyc.primitives.tuple_ops import new_tuple_op
