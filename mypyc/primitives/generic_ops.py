@@ -3,6 +3,10 @@
 These just call the relevant Python C API function or a thin wrapper
 around an API function. Most of these also have faster, specialized
 ops that operate on some more specific types.
+
+Many of these ops are given a low priority (0) so that specialized ops
+will take precedence. If your specialized op doesn't seem be used,
+check that the priorities are configured properly.
 """
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
