@@ -17,6 +17,8 @@ from mypyc.primitives.registry import (
 )
 
 
+# Binary operations
+
 for op, opid in [('==', 'Py_EQ'),
                  ('!=', 'Py_NE'),
                  ('<', 'Py_LT'),
@@ -96,6 +98,9 @@ binary_op('is not',
           emit=simple_emit('{dest} = {args[0]} != {args[1]};'),
           priority=0)
 
+
+# Unary operations
+
 for op, funcname in [('-', 'PyNumber_Negative'),
                      ('+', 'PyNumber_Positive'),
                      ('~', 'PyNumber_Invert')]:
@@ -114,6 +119,8 @@ unary_op(op='not',
          emit=call_negative_magic_emit('PyObject_Not'),
          priority=0)
 
+
+# obj1[obj2]
 method_op('__getitem__',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=object_rprimitive,
@@ -121,6 +128,7 @@ method_op('__getitem__',
           emit=call_emit('PyObject_GetItem'),
           priority=0)
 
+# obj1[obj2] = obj3
 method_op('__setitem__',
           arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
           result_type=bool_rprimitive,
@@ -128,6 +136,7 @@ method_op('__setitem__',
           emit=call_negative_bool_emit('PyObject_SetItem'),
           priority=0)
 
+# del obj1[obj2]
 method_op('__delitem__',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=bool_rprimitive,
@@ -135,6 +144,7 @@ method_op('__delitem__',
           emit=call_negative_bool_emit('PyObject_DelItem'),
           priority=0)
 
+# hash(obj)
 func_op(
     name='builtins.hash',
     arg_types=[object_rprimitive],
@@ -187,7 +197,7 @@ py_delattr_op = func_op(
     emit=call_negative_bool_emit('PyObject_DelAttr')
 )
 
-# Call function with positional arguments: func(arg1, ...)
+# Call callable object with N positional arguments: func(arg1, ..., argN)
 py_call_op = custom_op(
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
@@ -196,15 +206,17 @@ py_call_op = custom_op(
     format_str='{dest} = py_call({comma_args})',
     emit=simple_emit('{dest} = PyObject_CallFunctionObjArgs({comma_args}, NULL);'))
 
+# Call callable object with positional and keyword arguments.
+# Arguments are (callable, *args tuple, **kwargs dict).
 py_call_with_kwargs_op = custom_op(
-    arg_types=[object_rprimitive],
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
-    is_var_arg=True,
     error_kind=ERR_MAGIC,
     format_str='{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
     emit=call_emit('PyObject_Call'))
 
 # Call method with positional arguments: obj.method(arg1, ...)
+# Arguments are (object, attribute name, arg1, ...).
 py_method_call_op = custom_op(
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
