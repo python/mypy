@@ -138,6 +138,7 @@ func_op(
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyObject_Hash'))
 
+# getattr(obj, attr)
 py_getattr_op = func_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive],
@@ -146,6 +147,7 @@ py_getattr_op = func_op(
     emit=call_emit('PyObject_GetAttr')
 )
 
+# getattr(obj, attr, default)
 func_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
@@ -154,6 +156,7 @@ func_op(
     emit=call_emit('CPyObject_GetAttr3')
 )
 
+# setattr(obj, attr, value)
 py_setattr_op = func_op(
     name='builtins.setattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
@@ -162,6 +165,7 @@ py_setattr_op = func_op(
     emit=call_negative_bool_emit('PyObject_SetAttr')
 )
 
+# hasattr(obj, attr)
 py_hasattr_op = func_op(
     name='builtins.hasattr',
     arg_types=[object_rprimitive, object_rprimitive],
@@ -170,6 +174,7 @@ py_hasattr_op = func_op(
     emit=call_emit('PyObject_HasAttr')
 )
 
+# del obj.attr
 py_delattr_op = func_op(
     name='builtins.delattr',
     arg_types=[object_rprimitive, object_rprimitive],
@@ -178,6 +183,7 @@ py_delattr_op = func_op(
     emit=call_negative_bool_emit('PyObject_DelAttr')
 )
 
+# Call function with positional arguments: func(arg1, ...)
 py_call_op = custom_op(
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
@@ -194,6 +200,7 @@ py_call_with_kwargs_op = custom_op(
     format_str='{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
     emit=call_emit('PyObject_Call'))
 
+# Call method with positional arguments: obj.method(arg1, ...)
 py_method_call_op = custom_op(
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
@@ -202,6 +209,7 @@ py_method_call_op = custom_op(
     format_str='{dest} = py_method_call({comma_args})',
     emit=simple_emit('{dest} = PyObject_CallMethodObjArgs({comma_args}, NULL);'))
 
+# len(obj)
 func_op(name='builtins.len',
         arg_types=[object_rprimitive],
         result_type=int_rprimitive,
@@ -209,12 +217,15 @@ func_op(name='builtins.len',
         emit=call_emit('CPyObject_Size'),
         priority=0)
 
+# iter(obj)
 iter_op = func_op(name='builtins.iter',
                   arg_types=[object_rprimitive],
                   result_type=object_rprimitive,
                   error_kind=ERR_MAGIC,
                   emit=call_emit('PyObject_GetIter'))
 
+# next(iterator)
+#
 # Although the error_kind is set to be ERR_NEVER, this can actually
 # return NULL, and thus it must be checked using Branch.IS_ERROR.
 next_op = custom_op(name='next',
@@ -223,6 +234,8 @@ next_op = custom_op(name='next',
                     error_kind=ERR_NEVER,
                     emit=call_emit('PyIter_Next'))
 
+# next(iterator)
+#
 # Do a next, don't swallow StopIteration, but also don't propagate an
 # error. (N.B: This can still return NULL without an error to
 # represent an implicit StopIteration, but if StopIteration is
