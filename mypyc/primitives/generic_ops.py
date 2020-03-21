@@ -5,7 +5,7 @@ around an API function. Most of these also have faster, specialized
 ops that operate on some more specific types.
 
 Many of these ops are given a low priority (0) so that specialized ops
-will take precedence. If your specialized op doesn't seem be used,
+will take precedence. If your specialized op doesn't seem to be used,
 check that the priorities are configured properly.
 """
 
@@ -198,6 +198,7 @@ py_delattr_op = func_op(
 )
 
 # Call callable object with N positional arguments: func(arg1, ..., argN)
+# Arguments are (func, arg1, ..., argN).
 py_call_op = custom_op(
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
@@ -206,8 +207,8 @@ py_call_op = custom_op(
     format_str='{dest} = py_call({comma_args})',
     emit=simple_emit('{dest} = PyObject_CallFunctionObjArgs({comma_args}, NULL);'))
 
-# Call callable object with positional and keyword arguments.
-# Arguments are (callable, *args tuple, **kwargs dict).
+# Call callable object with positional + keyword args: func(*args, **kwargs)
+# Arguments are (func, *args tuple, **kwargs dict).
 py_call_with_kwargs_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     result_type=object_rprimitive,

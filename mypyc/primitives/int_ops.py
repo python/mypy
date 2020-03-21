@@ -37,7 +37,7 @@ func_op(
     emit=call_emit('CPyLong_FromFloat'),
     priority=1)
 
-# Convert from a string to int.
+# int(string)
 func_op(
     name='builtins.int',
     arg_types=[str_rprimitive],
@@ -46,7 +46,7 @@ func_op(
     emit=call_emit('CPyLong_FromStr'),
     priority=1)
 
-# Convert from a string and base to int.
+# int(string, base)
 func_op(
     name='builtins.int',
     arg_types=[str_rprimitive, int_rprimitive],
@@ -107,7 +107,7 @@ int_compare_op('>', 'CPyTagged_IsGt')
 int_compare_op('>=', 'CPyTagged_IsGe')
 
 # Add short integers and assume that it doesn't overflow or underflow.
-# We don't check that the operands are not big integers.
+# Assume that the operands are not big integers.
 unsafe_short_add = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     result_type=short_int_rprimitive,

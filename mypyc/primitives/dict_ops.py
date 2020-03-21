@@ -94,7 +94,7 @@ def emit_new_dict(emitter: EmitterInterface, args: List[str], dest: str) -> None
 
 
 # Construct a dictionary from keys and values.
-# Arguments are ([key1, value1, key2, value2, ...]).
+# Arguments are (key1, value1, ..., keyN, valueN).
 new_dict_op = custom_op(
     name='builtins.dict',
     arg_types=[object_rprimitive],

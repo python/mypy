@@ -25,7 +25,8 @@ set_stop_iteration_value = custom_op(
     format_str='set_stop_iteration_value({args[0]}); {dest} = 0',
     emit=simple_emit('CPyGen_SetStopIterationValue({args[0]}); {dest} = 0;'))
 
-# Raise exception with specific (type, value, traceback).
+# Raise exception with traceback.
+# Arguments are (exception type, exception value, traceback).
 raise_exception_with_tb_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
@@ -41,7 +42,7 @@ reraise_exception_op = custom_op(
     format_str='reraise_exc; {dest} = 0',
     emit=simple_emit('CPy_Reraise(); {dest} = 0;'))
 
-# Check if the CPython error indicator has been set (an exception has been raised).
+# Propagate exception if the CPython error indicator is set (an exception was raised).
 no_err_occurred_op = custom_op(
     arg_types=[],
     result_type=bool_rprimitive,
