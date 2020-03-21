@@ -10,7 +10,7 @@ from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError
+    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, LLPrimitiveOp, CFunctionCall
 )
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -165,6 +165,19 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             # everywhere.
             dest = '<undefined dest>'
         op.desc.emit(self, args, dest)
+
+    def visit_llprimitive_op(self, op: LLPrimitiveOp) -> None:
+        for ll_op in op.ops:
+            ll_op.accept(self)
+
+    def visit_C_function_call(self, op: CFunctionCall) -> None:
+        args = [self.reg(arg) for arg in op.args]
+        comma_args = ', '.join(args)
+        if not op.is_void:
+            dest = self.reg(op)
+        else:
+            dest = '<undefined dest>'
+        self.emit_line('{} = {}({});'.format(dest, op.function_name, comma_args))
 
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op)

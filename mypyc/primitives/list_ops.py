@@ -44,12 +44,12 @@ new_list_op = custom_op(arg_types=[object_rprimitive],
                         emit=emit_new)
 
 
-list_get_item_op = method_op(
-    name='__getitem__',
-    arg_types=[list_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_GetItem'))
+# list_get_item_op = method_op(
+#     name='__getitem__',
+#     arg_types=[list_rprimitive, int_rprimitive],
+#     result_type=object_rprimitive,
+#     error_kind=ERR_MAGIC,
+#     emit=call_emit('CPyList_GetItem'))
 
 
 # Version with no int bounds check for when it is known to be short

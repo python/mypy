@@ -156,6 +156,10 @@ class Environment:
             self.names[name] += 1
         self.names[unique_name] = 0
         reg.name = unique_name
+        if isinstance(reg, LLPrimitiveOp):
+            # TODO: fix this hack
+            for op in reg.ops:
+                op.name = unique_name
 
         self.indexes[reg] = len(self.indexes)
 
@@ -755,6 +759,80 @@ class PrimitiveOp(RegisterOp):
         return visitor.visit_primitive_op(self)
 
 
+IREmitCallback = Callable[['LowLevelIRBuilder', List[Value], Value], List[Op]]
+
+# Description of a low-levl primitive operation
+LLOpDescription = NamedTuple(
+    'OpDescription', [('name', str),
+                      ('arg_types', List[RType]),
+                      ('result_type', Optional[RType]),
+                      ('is_var_arg', bool),
+                      ('error_kind', int),
+                      ('format_str', str),
+                      ('ir_emit', IREmitCallback),
+                      ('steals', StealsDescription),
+                      ('is_borrowed', bool),
+                      ('priority', int)])  # To resolve ambiguities, highest priority wins
+
+
+class LLPrimitiveOp(RegisterOp):
+    """reg = op(reg, ...)
+
+    These are register-based primitive operations that work on specific
+    operand types.
+
+    LLPrimitive is an attempt to describe primitive ops using low-level IR
+    instead of plain C code generation callbacks.
+    """
+    def __init__(self,
+                 args: List[Value],
+                 desc: LLOpDescription,
+                 ops: List[Op],
+                 line: int) -> None:
+        if not desc.is_var_arg:
+            assert len(args) == len(desc.arg_types)
+        self.error_kind = desc.error_kind
+        super().__init__(line)
+        self.args = args
+        self.desc = desc
+        if desc.result_type is None:
+            assert desc.error_kind == ERR_FALSE  # TODO: No-value ops not supported yet
+            self.type = bool_rprimitive
+        else:
+            self.type = desc.result_type
+        self.ops = ops
+        self.is_borrowed = desc.is_borrowed
+
+    def sources(self) -> List[Value]:
+        return list(self.args)
+
+    def stolen(self) -> List[Value]:
+        if isinstance(self.desc.steals, list):
+            assert len(self.desc.steals) == len(self.args)
+            return [arg for arg, steal in zip(self.args, self.desc.steals) if steal]
+        else:
+            return [] if not self.desc.steals else self.sources()
+
+    def __repr__(self) -> str:
+        return '<LLPrimitiveOp name=%r args=%s>' % (self.desc.name,
+                                                  self.args)
+
+    def to_str(self, env: Environment) -> str:
+        params = {}  # type: Dict[str, Any]
+        if not self.is_void:
+            params['dest'] = env.format('%r', self)
+        args = [env.format('%r', arg) for arg in self.args]
+        params['args'] = args
+        params['comma_args'] = ', '.join(args)
+        params['colon_args'] = ', '.join(
+            '{}: {}'.format(k, v) for k, v in zip(args[::2], args[1::2])
+        )
+        return self.desc.format_str.format(**params).strip()
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_llprimitive_op(self)
+
+
 class Assign(Op):
     """Assign a value to a register (dest = int)."""
 
@@ -1138,6 +1216,35 @@ class RaiseStandardError(RegisterOp):
         return visitor.visit_raise_standard_error(self)
 
 
+class CFunctionCall(RegisterOp):
+    """Call to external C functions
+
+    """
+    error_kind = ERR_MAGIC
+
+    def __init__(self, function_name: str,
+                 args: Sequence[Value], typ: RType, line: int = -1) -> None:
+        super().__init__(line)
+        self.function_name = function_name
+        self.args = list(args)
+        self.type = typ
+
+    def to_str(self, env: Environment) -> str:
+        args = ', '.join(env.format('%r', arg) for arg in self.args)
+        if self.is_void:
+            return_s = ""
+        else:
+            return_s = env.format('%r = ', self)
+        s = 'C function call %s%s(%s)' % (return_s, self.function_name, args)
+        return s
+
+    def sources(self) -> List[Value]:
+        return list(self.args[:])
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_C_function_call(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1160,6 +1267,14 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_primitive_op(self, op: PrimitiveOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_llprimitive_op(self, op: LLPrimitiveOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_C_function_call(self, op: CFunctionCall) -> T:
         raise NotImplementedError
 
     @abstractmethod

@@ -21,6 +21,7 @@ from mypyc.ir.ops import (
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
     NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue,
+    LLPrimitiveOp, LLOpDescription,
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -42,6 +43,7 @@ from mypyc.primitives.misc_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, type_is_op,
 )
+from mypyc.llprimitives.registry import ll_method_ops
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
@@ -507,6 +509,50 @@ class LowLevelIRBuilder:
             return target
         return None
 
+    # LLPrimitive operations
+
+    def llprimitive_op(self, desc: LLOpDescription, args: List[Value], line: int) -> Value:
+        assert desc.result_type is not None
+        coerced = []
+        for i, arg in enumerate(args):
+            formal_type = self.op_arg_type(desc, i)
+            arg = self.coerce(arg, formal_type, line)
+            coerced.append(arg)
+        ops = desc.ir_emit(self, args, desc.result_type)
+        target = self.add(LLPrimitiveOp(coerced, desc, ops, line))
+        return target
+
+    def matching_llprimitive_op(self,
+                                candidates: List[LLOpDescription],
+                                args: List[Value],
+                                line: int,
+                                result_type: Optional[RType] = None) -> Optional[Value]:
+        # Find the highest-priority primitive op that matches.
+        matching = None  # type: Optional[OpDescription]
+        for desc in candidates:
+            if len(desc.arg_types) != len(args):
+                continue
+            if all(is_subtype(actual.type, formal)
+                   for actual, formal in zip(args, desc.arg_types)):
+                if matching:
+                    assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
+                        matching, desc)
+                    if desc.priority > matching.priority:
+                        matching = desc
+                else:
+                    matching = desc
+        if matching:
+            target = self.llprimitive_op(matching, args, line)
+            if result_type and not is_runtime_subtype(target.type, result_type):
+                if is_none_rprimitive(result_type):
+                    # Special case None return. The actual result may actually be a bool
+                    # and so we can't just coerce it.
+                    target = self.none()
+                else:
+                    target = self.coerce(target, result_type, line)
+            return target
+        return None
+
     def binary_op(self,
                   lreg: Value,
                   rreg: Value,
@@ -726,6 +772,11 @@ class LowLevelIRBuilder:
 
         Return None if no translation found; otherwise return the target register.
         """
+        ll_ops = ll_method_ops.get(name, [])
+        ll_primitive_op = self.matching_llprimitive_op(
+                            ll_ops, [base_reg] + args, line, result_type=result_type)
+        if ll_primitive_op is not None:
+            return ll_primitive_op
         ops = method_ops.get(name, [])
         return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)
 

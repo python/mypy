@@ -8,7 +8,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value
+    SetAttr, Op, Value, LLPrimitiveOp, CFunctionCall,
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -22,12 +22,13 @@ from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisi
 from mypyc.primitives.registry import binary_ops
 from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
 from mypyc.primitives.list_ops import (
-    list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
+    list_len_op, list_set_item_op, new_list_op, list_append_op
 )
 from mypyc.primitives.dict_ops import (
     new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
 )
 from mypyc.primitives.int_ops import int_neg_op
+from mypyc.llprimitives.list_ops import list_get_item_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
 
@@ -163,7 +164,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(DecRef(self.tt), 'CPyTagged_DecRef(cpy_r_tt.f0.f0);')
 
     def test_list_get_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.m, self.k], list_get_item_op, 55),
+        self.assert_emit(LLPrimitiveOp([self.m, self.k], list_get_item_op,
+            CFunctionCall('CPyList_GetItem', [self.m, self.k], list_get_item_op.result_type), 55),
                          """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:

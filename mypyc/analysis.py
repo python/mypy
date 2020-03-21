@@ -8,7 +8,8 @@ from mypyc.ir.ops import (
     Value, ControlOp,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
-    LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError,
+    LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError, LLPrimitiveOp,
+    CFunctionCall,
 )
 
 
@@ -157,6 +158,12 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_llprimitive_op(self, op: LLPrimitiveOp) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_C_function_call(self, op: CFunctionCall) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_load_int(self, op: LoadInt) -> GenAndKill:
