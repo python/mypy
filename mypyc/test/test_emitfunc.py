@@ -165,8 +165,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_list_get_item(self) -> None:
         self.assert_emit(LLPrimitiveOp([self.m, self.k], list_get_item_op,
-            CFunctionCall('CPyList_GetItem', [self.m, self.k], list_get_item_op.result_type), 55),
-                         """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
+            [CFunctionCall('CPyList_GetItem', [self.m, self.k], list_get_item_op.result_type)],
+            55), """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.l, self.n, self.o], list_set_item_op, 55),
