@@ -20,7 +20,8 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops
-from mypyc.primitives.misc_ops import new_slice_op, iter_op, ellipsis_op, type_op
+from mypyc.primitives.generic_ops import iter_op
+from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
 from mypyc.primitives.tuple_ops import list_tuple_op
 from mypyc.primitives.dict_ops import new_dict_op, dict_set_item_op

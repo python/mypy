@@ -37,10 +37,11 @@ from mypyc.primitives.list_ops import (
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import new_dict_op, dict_update_in_display_op
+from mypyc.primitives.generic_ops import (
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op
+)
 from mypyc.primitives.misc_ops import (
-    none_op, none_object_op, false_op,
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
-    fast_isinstance_op, bool_op, type_is_op,
+    none_op, none_object_op, false_op, fast_isinstance_op, bool_op, type_is_op
 )
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype

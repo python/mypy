@@ -45,9 +45,8 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops
 from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
-from mypyc.primitives.misc_ops import (
-    true_op, false_op, iter_op, next_op, py_setattr_op, import_op
-)
+from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
+from mypyc.primitives.misc_ops import true_op, false_op, import_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
