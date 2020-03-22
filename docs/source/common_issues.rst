@@ -600,6 +600,7 @@ while using it as a type. And if we implement it in above way it will give error
 shown in below example.
 
 .. code-block:: python
+
    from queue import Queue
    from typing import TYPE_CHECKING, TypeVar
 
@@ -616,6 +617,7 @@ use of :py:data:`~typing.Generic` when :py:data:`~typing.TYPE_CHECKING` is disab
 and behaves normally when :py:data:`~typing.TYPE_CHECKING` is enabled.
 
 .. code-block:: python
+
    from queue import Queue
    from typing import TYPE_CHECKING, TypeVar, Generic
 
