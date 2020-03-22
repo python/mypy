@@ -39,7 +39,12 @@ def expand_path(path: str) -> str:
     the provided path.
     """
 
-    return os.path.expandvars(os.path.expanduser(path))
+    expanded_path = os.path.expandvars(os.path.expanduser(path))
+    if os.environ.get('MYPY_CONFIG_FILE_DIR')=='False':
+        os.environ['MYPY_CONFIG_FILE_DIR'] = expanded_path
+    else:
+        os.environ['MYPY_CONFIG_FILE_DIR'] += (os.pathsep + expanded_path)
+    return expanded_path
 
 
 def split_and_match_files(paths: str) -> List[str]:
