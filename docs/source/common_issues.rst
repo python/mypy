@@ -595,6 +595,38 @@ string literal types or :py:data:`~typing.TYPE_CHECKING`:
 
    results: 'Queue[int]' = Queue()  # OK
 
+But while using :py:data:`~typing.TypeVar`, observe here that it requires parameters
+while using it as a type. And if we implement it in above way it will give error as
+shown in below example.
+
+.. code-block:: python
+   from queue import Queue
+   from typing import TYPE_CHECKING, TypeVar
+
+   _T = TypeVar("_T")
+   if TYPE_CHECKING:
+       MyQueueBase = Queue[_T]
+   else:
+       MyQueueBase = Queue
+
+   class MyQueue(MyQueueBase): pass  # error: Missing type parameters for generic type
+
+To avoid this problem, we need to create another class in the hierarchy which makes
+use of :py:data:`~typing.Generic` when :py:data:`~typing.TYPE_CHECKING` is disabled
+and behaves normally when :py:data:`~typing.TYPE_CHECKING` is enabled.
+
+.. code-block:: python
+   from queue import Queue
+   from typing import TYPE_CHECKING, TypeVar, Generic
+
+   _T = TypeVar("_T")
+   if TYPE_CHECKING:
+       class MyQueueBase(Queue[_T]): pass
+   else:
+       class MyQueueBase(Generic[_T], Queue): pass
+
+   class MyQueue(MyQueueBase[_T]): pass  # OK
+
 If you are running Python 3.7+ you can use ``from __future__ import annotations``
 as a (nicer) alternative to string quotes, read more in :pep:`563`.  For example:
 
