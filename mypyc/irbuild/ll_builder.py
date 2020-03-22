@@ -21,7 +21,7 @@ from mypyc.ir.ops import (
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
     NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue,
-    LLPrimitiveOp, LLOpDescription,
+    LLPrimitiveOp, LLOpDescription, IRBuilderInterface
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -53,7 +53,7 @@ from mypyc.irbuild.mapper import Mapper
 DictEntry = Tuple[Optional[Value], Value]
 
 
-class LowLevelIRBuilder:
+class LowLevelIRBuilder(IRBuilderInterface):
     def __init__(
         self,
         current_module: str,
@@ -515,7 +515,7 @@ class LowLevelIRBuilder:
         assert desc.result_type is not None
         coerced = []
         for i, arg in enumerate(args):
-            formal_type = self.op_arg_type(desc, i)
+            formal_type = self.ll_op_arg_type(desc, i)
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
         ops = desc.ir_emit(self, args, desc.result_type)
@@ -528,7 +528,7 @@ class LowLevelIRBuilder:
                                 line: int,
                                 result_type: Optional[RType] = None) -> Optional[Value]:
         # Find the highest-priority primitive op that matches.
-        matching = None  # type: Optional[OpDescription]
+        matching = None  # type: Optional[LLOpDescription]
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
@@ -753,6 +753,12 @@ class LowLevelIRBuilder:
         return result
 
     def op_arg_type(self, desc: OpDescription, n: int) -> RType:
+        if n >= len(desc.arg_types):
+            assert desc.is_var_arg
+            return desc.arg_types[-1]
+        return desc.arg_types[n]
+
+    def ll_op_arg_type(self, desc: LLOpDescription, n: int) -> RType:
         if n >= len(desc.arg_types):
             assert desc.is_var_arg
             return desc.arg_types[-1]

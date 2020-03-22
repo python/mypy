@@ -3,19 +3,19 @@
 from typing import List
 
 from mypyc.ir.ops import (
-  Op, Value, CFunctionCall, IREmitCallback,
+  Op, Value, CFunctionCall, IREmitCallback, IRBuilderInterface,
   ERR_MAGIC,
 )
 from mypyc.ir.rtypes import (
-    int_rprimitive, list_rprimitive, object_rprimitive,
+    int_rprimitive, list_rprimitive, object_rprimitive, RType,
 )
 from mypyc.llprimitives.registry import method_op
 
 
 def list_getitem_helper(function_name: str) -> IREmitCallback:
-    def list_getitem_callback(builder: 'LowLevelIRBuilder',
+    def list_getitem_callback(builder: IRBuilderInterface,
                               args: List[Value],
-                              ret_typ: Value) -> List[Op]:
+                              ret_typ: RType) -> List[Op]:
         return [CFunctionCall(function_name, args, ret_typ)]
     return list_getitem_callback
 

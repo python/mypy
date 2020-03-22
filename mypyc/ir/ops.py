@@ -759,11 +759,16 @@ class PrimitiveOp(RegisterOp):
         return visitor.visit_primitive_op(self)
 
 
-IREmitCallback = Callable[['LowLevelIRBuilder', List[Value], Value], List[Op]]
+@trait
+class IRBuilderInterface:
+    pass
+
+
+IREmitCallback = Callable[[IRBuilderInterface, List[Value], RType], List[Op]]
 
 # Description of a low-levl primitive operation
 LLOpDescription = NamedTuple(
-    'OpDescription', [('name', str),
+    'LLOpDescription', [('name', str),
                       ('arg_types', List[RType]),
                       ('result_type', Optional[RType]),
                       ('is_var_arg', bool),

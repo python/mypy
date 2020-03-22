@@ -4,6 +4,8 @@ from mypyc.ir.ops import (
   LLOpDescription, IREmitCallback, StealsDescription, short_name
 )
 from mypyc.ir.rtypes import RType
+
+
 # LLPrimitive ops for built-in methods (key is method name such as 'builtins.list.append')
 ll_method_ops = {}  # type: Dict[str, List[LLOpDescription]]
 

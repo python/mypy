@@ -164,6 +164,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(DecRef(self.tt), 'CPyTagged_DecRef(cpy_r_tt.f0.f0);')
 
     def test_list_get_item(self) -> None:
+        assert list_get_item_op.result_type
         self.assert_emit(LLPrimitiveOp([self.m, self.k], list_get_item_op,
             [CFunctionCall('CPyList_GetItem', [self.m, self.k], list_get_item_op.result_type)],
             55), """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
