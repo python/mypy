@@ -40,7 +40,7 @@ def expand_path(path: str) -> str:
     """
 
     expanded_path = os.path.expandvars(os.path.expanduser(path))
-    if os.environ.get('MYPY_CONFIG_FILE_DIR')=='False':
+    if 'MYPY_CONFIG_FILE_DIR' not in os.environ:
         os.environ['MYPY_CONFIG_FILE_DIR'] = expanded_path
     else:
         os.environ['MYPY_CONFIG_FILE_DIR'] += (os.pathsep + expanded_path)
