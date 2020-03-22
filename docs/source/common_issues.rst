@@ -777,7 +777,6 @@ This example demonstrates both safe and unsafe overrides:
 
     class A:
         def test(self, t: Sequence[int]) -> Sequence[str]:
-<<<<<<< HEAD
             ...
 
     class GeneralizedArgument(A):
@@ -851,3 +850,36 @@ Likewise, this error will occur for constrained and bound TypeVars as well.
     # or
     A = TypeVar("A", bound=complex)
     B = TypeVar("B", bound=complex)
+
+
+In some cases, the ``@overload`` decorator can be used to provide the desired type checking. Here's an example.
+
+.. code-block:: python
+
+    from typing import Callable, Iterable, TypeVar, overload, Tuple
+
+    A = TypeVar("A")
+    B = TypeVar("B")
+
+    def identity(x: A) -> A:
+        return x
+
+    def second(tup: Tuple[int, str]) -> str:
+        return tup[1]
+
+    @overload
+    def _map2(queue: Iterable[A]) -> Iterable[A]: ...
+    @overload
+    def _map2(queue: Iterable[A], function: Callable[[A], A]) -> Iterable[A]: ...
+    @overload
+    def _map2(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]: ...
+    def _map2(queue, function=identity):
+        return map(function, queue)
+
+    list_1 = [2, 4, 6, 8]
+    list_2 = ["hello", "world"]
+    list_3 = list(enumerate(["fazzle", "baz", "rompl" ]))
+
+    mapped_1 = [n for n in _map2(list_1)]
+    mapped_2 = [s for s in _map2(list_2, identity)]
+    mapped_3 = [t for t in _map2(list_3, second)]
