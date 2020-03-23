@@ -278,6 +278,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.defer()
             return
 
+    _add_attrs_magic_attribute(ctx)
+
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
         'attributes': [attr.serialize() for attr in attributes],
@@ -654,6 +656,20 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
             a.variable.type = AnyType(TypeOfAny.implementation_artifact)
             a.type_annotation = AnyType(TypeOfAny.implementation_artifact)
     adder.add_method('__init__', args, NoneType())
+
+
+def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext') -> None:
+    attr_name = '__attrs_attrs__'
+    attr_type = ctx.api.named_type('__builtins__.tuple', [
+        ctx.api.named_type('attr.Attribute'),
+    ])
+    var = Var(name=attr_name, type=attr_type)
+    var.info = ctx.cls.info
+    ctx.cls.info.names[attr_name] = SymbolTableNode(
+        kind=MDEF,
+        node=var,
+        plugin_generated=True,
+    )
 
 
 class MethodAdder:
