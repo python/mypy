@@ -39,12 +39,7 @@ def expand_path(path: str) -> str:
     the provided path.
     """
 
-    expanded_path = os.path.expandvars(os.path.expanduser(path))
-    if 'MYPY_CONFIG_FILE_DIR' not in os.environ:
-        os.environ['MYPY_CONFIG_FILE_DIR'] = expanded_path
-    else:
-        os.environ['MYPY_CONFIG_FILE_DIR'] += (os.pathsep + expanded_path)
-    return expanded_path
+    return os.path.expandvars(os.path.expanduser(path))
 
 
 def split_and_match_files(paths: str) -> List[str]:
@@ -117,6 +112,10 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         if not os.path.exists(config_file):
             continue
         try:
+        	if 'MYPY_CONFIG_FILE_DIR' not in os.environ:
+                os.environ['MYPY_CONFIG_FILE_DIR'] = config_file
+            else:
+                os.environ['MYPY_CONFIG_FILE_DIR'] += os.pathsep + config_file
             parser.read(config_file)
         except configparser.Error as err:
             print("%s: %s" % (config_file, err), file=stderr)
