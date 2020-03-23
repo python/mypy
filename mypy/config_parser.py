@@ -112,7 +112,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         if not os.path.exists(config_file):
             continue
         try:
-        	if 'MYPY_CONFIG_FILE_DIR' not in os.environ:
+            if 'MYPY_CONFIG_FILE_DIR' not in os.environ:
                 os.environ['MYPY_CONFIG_FILE_DIR'] = config_file
             else:
                 os.environ['MYPY_CONFIG_FILE_DIR'] += os.pathsep + config_file
