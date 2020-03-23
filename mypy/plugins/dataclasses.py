@@ -183,6 +183,8 @@ class DataclassTransformer:
 
         self.reset_init_only_vars(info, attributes)
 
+        self._add_dataclass_fields_magic_attribute()
+
         info.metadata['dataclass'] = {
             'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
@@ -360,6 +362,21 @@ class DataclassTransformer:
                 var.is_property = True
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
+
+    def _add_dataclass_fields_magic_attribute(self) -> None:
+        attr_name = '__dataclass_fields__'
+        dataclass_field_type = self._ctx.api.named_type('dataclasses.Field')
+        attr_type = self._ctx.api.named_type('__builtins__.dict', [
+            self._ctx.api.named_type('__builtins__.str'),
+            dataclass_field_type,
+        ])
+        var = Var(name=attr_name, type=attr_type)
+        var.info = self._ctx.cls.info
+        self._ctx.cls.info.names[attr_name] = SymbolTableNode(
+            kind=MDEF,
+            node=var,
+            plugin_generated=True,
+        )
 
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:
