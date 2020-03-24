@@ -671,6 +671,10 @@ class Server:
         for module, state in graph.items():
             all_suppressed |= state.suppressed_set
 
+        # Filter out things that shouldn't actually be considered suppressed.
+        # TODO: Figure out why these are treated as suppressed
+        all_suppressed = {module for module in all_suppressed if module not in graph}
+
         # TODO: Namespace packages
         # TODO: Handle seen?
 
