@@ -1133,7 +1133,7 @@ def refresh_suppressed_submodules(
     if path is None or not path.endswith(os.sep + '__init__.py'):
         # Only packages have submodules.
         return
-    # Find and submodules present in the directory.
+    # Find any submodules present in the directory.
     pkgdir = os.path.dirname(path)
     for fnam in fscache.listdir(pkgdir):
         if (not fnam.endswith(('.py', '.pyi'))

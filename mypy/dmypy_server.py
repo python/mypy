@@ -361,7 +361,7 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
-        if self.options.follow_imports != 'normal':
+        if not self.following_imports():
             messages = self.fine_grained_increment(sources, remove, update)
         else:
             assert remove is None and update is None
@@ -381,7 +381,7 @@ class Server:
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
-            if self.options.follow_imports != 'normal':
+            if not self.following_imports():
                 messages = self.fine_grained_increment(sources)
             else:
                 messages = self.fine_grained_increment_follow_imports(sources)
@@ -396,6 +396,11 @@ class Server:
             manager.dump_stats()
             res['stats'] = manager.stats
             manager.stats = {}
+
+    def following_imports(self) -> bool:
+        """Are we following imports?"""
+        # TODO: What about silent?
+        return self.options.follow_imports == 'normal'
 
     def initialize_fine_grained(self, sources: List[BuildSource],
                                 is_tty: bool, terminal_width: int) -> Dict[str, Any]:
@@ -417,7 +422,7 @@ class Server:
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
 
-        if self.options.follow_imports == 'normal':
+        if self.following_imports():
             sources = find_all_sources_in_build(self.fine_grained_manager.graph)
             self.update_sources(sources)
 
@@ -450,7 +455,7 @@ class Server:
             # Run an update
             messages = self.fine_grained_manager.update(changed, removed)
 
-            if self.options.follow_imports == 'normal':
+            if self.following_imports():
                 # We need to do another update to any new files found by following imports.
                 messages = self.fine_grained_increment_follow_imports(sources)
 
@@ -533,13 +538,16 @@ class Server:
 
         orig_modules = list(graph.keys())
 
+        # TODO: Are the differences from fine_grained_increment(), such as
+        #       updating sources after finding changed, necessary?
         self.update_sources(sources)
 
         sources_set = {source.module for source in sources}
 
         # Find changed modules reachable from roots (or in roots) already in graph.
-        seen, changed, removed, new_files = self.follow_imports(
-            sources, graph, set(), changed_paths, sources_set
+        seen = set()  # type: Set[str]
+        changed, removed, new_files = self.follow_imports(
+            sources, graph, seen, changed_paths, sources_set
         )
         sources.extend(new_files)
 
@@ -553,7 +561,7 @@ class Server:
             if module[0] not in graph:
                 continue
             sources2 = self.direct_imports(module, graph)
-            seen, changed, removed, new_files = self.follow_imports(
+            changed, removed, new_files = self.follow_imports(
                 sources2, graph, seen, changed_paths, sources_set
             )
             sources.extend(new_files)
@@ -571,17 +579,17 @@ class Server:
         seen_suppressed = set()  # type: Set[str]
         while True:
             # TODO: Merge seen and seen_suppressed?
-            new_suppressed, seen_suppressed = self.find_added_suppressed(
+            new_unsuppressed, seen_suppressed = self.find_added_suppressed(
                 graph, seen_suppressed, manager.search_paths
             )
-            if not new_suppressed:
+            if not new_unsuppressed:
                 break
-            new_files = [BuildSource(mod[1], mod[0]) for mod in new_suppressed]
+            new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
             sources.extend(new_files)
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(new_suppressed, [])
+            messages = fine_grained_manager.update(new_unsuppressed, [])
 
-            for module_id, path in new_suppressed:
+            for module_id, path in new_unsuppressed:
                 refresh_suppressed_submodules(module_id, path, fine_grained_manager.deps, graph,
                                               self.fscache)
 
@@ -611,8 +619,7 @@ class Server:
                        graph: mypy.build.Graph,
                        seen: Set[str],
                        changed_paths: AbstractSet[str],
-                       sources_set: Set[str]) -> Tuple[Set[str],
-                                                       List[Tuple[str, str]],
+                       sources_set: Set[str]) -> Tuple[List[Tuple[str, str]],
                                                        List[Tuple[str, str]],
                                                        List[BuildSource]]:
         """Follow imports within graph from given sources.
@@ -620,12 +627,11 @@ class Server:
         Args:
             sources: roots of modules to search
             graph: module graph to use for the search
-            seen: modules we've seen before (that won't be visited)
+            seen: modules we've seen before that won't be visited (mutated here!)
             changed_paths: which paths have changed (stop search here and return any found)
             sources_set: set of sources (TODO: relationship with seen)
 
-        Return (updated seen modules, reachable changed modules, removed modules,
-                updated file list).
+        Return (reachable changed modules, removed modules, updated file list).
         """
         changed = []
         new_files = []
@@ -646,7 +652,7 @@ class Server:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path,
                                                     graph[dep].id))
-        return seen, changed, [], new_files
+        return changed, [], new_files
 
     def direct_imports(self,
                        module: Tuple[str, str],
