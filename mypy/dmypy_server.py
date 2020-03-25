@@ -524,10 +524,11 @@ class Server:
     def fine_grained_increment_follow_imports(self, sources: List[BuildSource]) -> List[str]:
         """Like fine_grained_increment, but follow imports."""
 
+        t0 = time.time()
+
         # TODO:
         #  - file events
         #  - search path updates
-        #  - logging
 
         changed_paths = self.fswatcher.find_changed()
 
@@ -541,6 +542,9 @@ class Server:
         # TODO: Are the differences from fine_grained_increment(), such as
         #       updating sources after finding changed, necessary?
         self.update_sources(sources)
+
+        t1 = time.time()
+        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
 
         sources_set = {source.module for source in sources}
 
@@ -570,9 +574,13 @@ class Server:
             # TODO: Removed?
             worklist.extend(changed)
 
+        t2 = time.time()
+
         for module_id, state in graph.items():
             refresh_suppressed_submodules(module_id, state.path, fine_grained_manager.deps, graph,
                                           self.fscache)
+
+        t3 = time.time()
 
         # There may be new files that became available, currently treated as
         # suppressed imports. Process them.
@@ -593,6 +601,8 @@ class Server:
                 refresh_suppressed_submodules(module_id, path, fine_grained_manager.deps, graph,
                                               self.fscache)
 
+        t4 = time.time()
+
         # Find all original modules in graph that were not reached -- they are deleted.
         to_delete = []
         for module_id in orig_modules:
@@ -612,6 +622,17 @@ class Server:
 
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
+
+        t5 = time.time()
+
+        manager.log("fine-grained increment: update: {:.3f}s".format(t5 - t1))
+        manager.add_stats(
+            find_changes_time=t1 - t0,
+            fg_update_time=t2 - t1,
+            refresh_suppressed_time=t3 - t2,
+            find_added_supressed_time=t4 - t3,
+            cleanup_time=t5 - t4)
+
         return messages
 
     def follow_imports(self,
