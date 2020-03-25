@@ -423,7 +423,7 @@ class Server:
         self.fine_grained_manager = FineGrainedBuildManager(result)
 
         if self.following_imports():
-            sources = find_all_sources_in_build(self.fine_grained_manager.graph)
+            sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
 
         self.previous_sources = sources
@@ -523,14 +523,9 @@ class Server:
 
     def fine_grained_increment_follow_imports(self, sources: List[BuildSource]) -> List[str]:
         """Like fine_grained_increment, but follow imports."""
-
         t0 = time.time()
 
-        # TODO:
-        #  - file events
-        #  - search path updates
-
-        changed_paths = self.fswatcher.find_changed()
+        # TODO: Support file events
 
         assert self.fine_grained_manager is not None
         fine_grained_manager = self.fine_grained_manager
@@ -539,9 +534,10 @@ class Server:
 
         orig_modules = list(graph.keys())
 
-        # TODO: Are the differences from fine_grained_increment(), such as
-        #       updating sources after finding changed, necessary?
+        # TODO: Are the differences from fine_grained_increment(), necessary?
         self.update_sources(sources)
+        changed_paths = self.fswatcher.find_changed()
+        manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
 
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
@@ -856,10 +852,13 @@ def get_meminfo() -> Dict[str, Any]:
     return res
 
 
-def find_all_sources_in_build(graph: mypy.build.Graph) -> List[BuildSource]:
-    result = []
+def find_all_sources_in_build(graph: mypy.build.Graph,
+                              extra: Sequence[BuildSource] = ()) -> List[BuildSource]:
+    result = list(extra)
+    seen = set(source.module for source in result)
     for module, state in graph.items():
-        result.append(BuildSource(state.path, module))
+        if module not in seen:
+            result.append(BuildSource(state.path, module))
     return result
 
 
