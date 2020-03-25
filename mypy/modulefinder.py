@@ -77,9 +77,11 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
-                                                                self.module,
-                                                                self.text is not None)
+        return '<BuildSource path=%r module=%r has_text=%s base_dir=%s>' % (
+            self.path,
+            self.module,
+            self.text is not None,
+            self.base_dir)
 
 
 class FindModuleCache:
