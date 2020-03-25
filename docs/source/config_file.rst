@@ -3,9 +3,12 @@
 The mypy configuration file
 ===========================
 
-Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
-the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+Mypy supports reading configuration settings from a file. 
+The configuration file may be generated or customized by users.
+File format and examples are explained in the following sections.
+If :option:`--config-file <mypy --config-file>` command-line flag is not explicitly set,
+mypy uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
+the current working directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
 ``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
 if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
 to read a different file instead (see :ref:`config-file-flag`).
