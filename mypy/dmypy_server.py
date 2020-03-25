@@ -724,6 +724,9 @@ class Server:
 
     def update_sources(self, sources: List[BuildSource]) -> None:
         paths = [source.path for source in sources if source.path is not None]
+        if self.following_imports():
+            # Filter out directories (used for namespace packages).
+            paths = [path for path in paths if self.fscache.isfile(path)]
         self.fswatcher.add_watched_paths(paths)
 
     def update_changed(self,
