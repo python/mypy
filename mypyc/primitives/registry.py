@@ -91,6 +91,9 @@ def call_emit(func: str) -> EmitCallback:
     """Construct a PrimitiveOp emit callback function that calls a C function."""
     return simple_emit('{dest} = %s({comma_args});' % func)
 
+def call_void_emit(func: str) -> EmitCallback:
+    return simple_emit('%s({comma_args});' % func)
+
 
 def call_and_fail_emit(func: str) -> EmitCallback:
     # This is a hack for our always failing operations like CPy_Raise,

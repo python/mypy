@@ -1290,9 +1290,8 @@ static tuple_T3OOO CPy_CatchError(void) {
     return ret;
 }
 
-static int CPy_RestoreExcInfo(tuple_T3OOO info) {
+static void CPy_RestoreExcInfo(tuple_T3OOO info) {
     PyErr_SetExcInfo(_CPy_FromDummy(info.f0), _CPy_FromDummy(info.f1), _CPy_FromDummy(info.f2));
-    return 0;
 }
 
 static void CPy_Raise(PyObject *exc) {

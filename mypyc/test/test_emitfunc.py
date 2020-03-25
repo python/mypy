@@ -97,16 +97,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             '-', self.n, self.m, self.k,
             "cpy_r_r0 = CPyTagged_Subtract(cpy_r_m, cpy_r_k);")
 
-    def test_list_repeat(self) -> None:
-        self.assert_emit_binary_op(
-            '*', self.ll, self.l, self.n,
-            """Py_ssize_t __tmp1;
-               __tmp1 = CPyTagged_AsSsize_t(cpy_r_n);
-               if (__tmp1 == -1 && PyErr_Occurred())
-                   CPyError_OutOfMemory();
-               cpy_r_r0 = PySequence_Repeat(cpy_r_l, __tmp1);
-            """)
-
     def test_int_neg(self) -> None:
         self.assert_emit(PrimitiveOp([self.m], int_neg_op, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")

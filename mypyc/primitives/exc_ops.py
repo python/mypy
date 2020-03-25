@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_FALSE
 from mypyc.ir.rtypes import bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple
 from mypyc.primitives.registry import (
-    simple_emit, call_emit, call_and_fail_emit, custom_op,
+    simple_emit, call_emit, call_void_emit, call_and_fail_emit, custom_op,
 )
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
@@ -82,10 +82,10 @@ error_catch_op = custom_op(
 # error_catch (by sticking it into sys.exc_info())
 restore_exc_info_op = custom_op(
     arg_types=[exc_rtuple],
-    result_type=bool_rprimitive,
+    result_type=void_rtype,
     error_kind=ERR_NEVER,
     format_str='restore_exc_info {args[0]}',
-    emit=call_emit('CPy_RestoreExcInfo'))
+    emit=call_void_emit('CPy_RestoreExcInfo'))
 
 # Checks whether the exception currently being handled matches a particular type.
 exc_matches_op = custom_op(
