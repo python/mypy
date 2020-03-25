@@ -563,3 +563,29 @@ main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#mis
 ==
 p/m.py:1: error: "str" not callable
 p/__init__.py:1: error: "int" not callable
+
+[case testFollowImportsNormalPackageInitFileStub]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+from p import m
+
+[file p/__init__.pyi.2]
+1()
+
+[file p/m.pyi.2]
+''()
+
+[file p/mm.pyi.3]
+x x x
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+p/m.pyi:1: error: "str" not callable
+p/__init__.pyi:1: error: "int" not callable
+==
+p/m.pyi:1: error: "str" not callable
+p/__init__.pyi:1: error: "int" not callable
