@@ -67,7 +67,7 @@ for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
               arg_types=[object_rprimitive, object_rprimitive],
               result_type=object_rprimitive,
               error_kind=ERR_MAGIC,
-              emit=simple_emit('{dest} = %s({args[0]}, {args[1]});' % funcname),
+              emit=call_emit(funcname),
               priority=0)
 
 binary_op(op='**',
