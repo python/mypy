@@ -543,6 +543,34 @@ main.py:3: error: Too few arguments for "f"
 main.py:3: error: Too few arguments for "f"
 main.py:4: error: Too many arguments for "f"
 
+[case testFollowImportsNormalPackageInitFile4-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p1.m  # type: ignore
+from p2 import m  # type: ignore
+
+[file p1/__init__.py.2]
+1()
+
+[file p1/m.py.2]
+''()
+
+[file p2/__init__.py.3]
+''()
+
+[file p2/m.py.3]
+
+[out]
+==
+p1/__init__.py:1: error: "int" not callable
+p1/m.py:1: error: "str" not callable
+==
+p1/__init__.py:1: error: "int" not callable
+p1/m.py:1: error: "str" not callable
+p2/__init__.py:1: error: "str" not callable
+
 [case testFollowImportsNormalSubmoduleCreatedWithImportInFunction]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
