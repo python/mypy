@@ -542,3 +542,24 @@ main.py:3: error: Too few arguments for "f"
 ==
 main.py:3: error: Too few arguments for "f"
 main.py:4: error: Too many arguments for "f"
+
+[case testFollowImportsNormalSubmoduleCreatedWithImportInFunction]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+def f() -> None:
+    from p import m
+
+[file p/__init__.py.2]
+1()
+
+[file p/m.py.2]
+''()
+
+[out]
+main.py:2: error: Cannot find implementation or library stub for module named 'p'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+p/m.py:1: error: "str" not callable
+p/__init__.py:1: error: "int" not callable

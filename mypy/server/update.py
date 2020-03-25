@@ -1145,8 +1145,13 @@ def refresh_suppressed_submodules(
         trigger = make_trigger(submodule)
         if trigger in deps:
             for dep in deps[trigger]:
-                # TODO: <...> deps, imports in functions, etc.
+                # TODO: <...> deps, etc.
                 state = graph.get(dep)
+                if not state:
+                    # Maybe it's a non-top-level target. We only care about the module.
+                    dep_module = module_prefix(graph, dep)
+                    if dep_module is not None:
+                        state = graph.get(dep_module)
                 if state:
                     tree = state.tree
                     assert tree  # TODO: What if doesn't exist?
