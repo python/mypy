@@ -112,6 +112,7 @@ This is module is tested using end-to-end fine-grained incremental mode
 test cases (test-data/unit/fine-grained*.test).
 """
 
+import os
 import time
 from typing import (
     Dict, List, Set, Tuple, Union, Optional, NamedTuple, Sequence
@@ -128,7 +129,7 @@ from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
-    OverloadedFuncDef, SymbolTable
+    OverloadedFuncDef, SymbolTable, ImportFrom
 )
 from mypy.options import Options
 from mypy.fscache import FileSystemCache
@@ -1108,3 +1109,51 @@ def target_from_node(module: str,
             return '%s.%s' % (node.info.fullname, node.name)
         else:
             return '%s.%s' % (module, node.name)
+
+
+def refresh_suppressed_submodules(
+        module: str,
+        path: Optional[str],
+        deps: Dict[str, Set[str]],
+        graph: Graph,
+        fscache: FileSystemCache) -> None:
+    """Look for submodules that are now suppressed in target package.
+
+    If a submodule a.b gets added, we need to mark it as suppressed
+    in modules that contain "from a import b". Previously we assumed
+    that 'a.b' is not a module but a regular name.
+
+    This is only relevant when following imports normally.
+
+    Args:
+        module: target package in which to look for submodules
+        path: path of the module
+    """
+    # TODO: Windows paths
+    if path is None or not path.endswith(os.sep + '__init__.py'):
+        # Only packages have submodules.
+        return
+    # Find any submodules present in the directory.
+    pkgdir = os.path.dirname(path)
+    for fnam in fscache.listdir(pkgdir):
+        if (not fnam.endswith(('.py', '.pyi'))
+                or fnam.startswith("__init__.")
+                or fnam.count('.') != 1):
+            continue
+        shortname = fnam.split('.')[0]
+        submodule = module + '.' + shortname
+        trigger = make_trigger(submodule)
+        if trigger in deps:
+            for dep in deps[trigger]:
+                # TODO: <...> deps, imports in functions, etc.
+                state = graph.get(dep)
+                if state:
+                    tree = state.tree
+                    assert tree  # TODO: What if doesn't exist?
+                    for imp in tree.imports:
+                        if isinstance(imp, ImportFrom):
+                            if (imp.id == module
+                                    and any(name == shortname for name, _ in imp.names)):
+                                # TODO: Only if does not exist already
+                                state.suppressed.append(submodule)
+                                state.suppressed_set.add(submodule)

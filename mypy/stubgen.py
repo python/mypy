@@ -65,7 +65,9 @@ import mypy.traverser
 import mypy.mixedtraverser
 import mypy.util
 from mypy import defaults
-from mypy.modulefinder import FindModuleCache, SearchPaths, BuildSource, default_lib_path
+from mypy.modulefinder import (
+    ModuleNotFoundReason, FindModuleCache, SearchPaths, BuildSource, default_lib_path
+)
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
@@ -1290,14 +1292,17 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
     search_paths = SearchPaths(('.',) + tuple(search_path), (), (), tuple(typeshed_path))
     cache = FindModuleCache(search_paths)
     for module in modules:
-        module_path = cache.find_module(module)
-        if not module_path:
-            fail_missing(module)
+        m_result = cache.find_module(module)
+        if isinstance(m_result, ModuleNotFoundReason):
+            fail_missing(module, m_result)
+            module_path = None
+        else:
+            module_path = m_result
         result.append(StubSource(module, module_path))
     for package in packages:
         p_result = cache.find_modules_recursive(package)
-        if not p_result:
-            fail_missing(package)
+        if p_result:
+            fail_missing(package, ModuleNotFoundReason.NOT_FOUND)
         sources = [StubSource(m.module, m.path) for m in p_result]
         result.extend(sources)
 

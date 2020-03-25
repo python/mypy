@@ -930,6 +930,54 @@ static PyObject *CPyDict_FromAny(PyObject *obj) {
     }
 }
 
+static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
+    if (PyUnicode_READY(str) != -1) {
+        if (CPyTagged_CheckShort(index)) {
+            Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+            Py_ssize_t size = PyUnicode_GET_LENGTH(str);
+            if ((n >= 0 && n >= size) || (n < 0 && n + size < 0)) {
+                PyErr_SetString(PyExc_IndexError, "string index out of range");
+                return NULL;
+            }
+            if (n < 0)
+                n += size;
+            enum PyUnicode_Kind kind = (enum PyUnicode_Kind)PyUnicode_KIND(str);
+            void *data = PyUnicode_DATA(str);
+            Py_UCS4 ch = PyUnicode_READ(kind, data, n);
+            PyObject *unicode = PyUnicode_New(1, ch);
+            if (unicode == NULL)
+                return NULL;
+
+            if (PyUnicode_KIND(unicode) == PyUnicode_1BYTE_KIND) {
+                PyUnicode_1BYTE_DATA(unicode)[0] = (Py_UCS1)ch;
+            }
+            else if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
+                PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
+            } else {
+                assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
+                PyUnicode_4BYTE_DATA(unicode)[0] = ch;
+            }
+            return unicode;
+        } else {
+            PyErr_SetString(PyExc_IndexError, "string index out of range");
+            return NULL;
+        }
+    } else {
+        PyObject *index_obj = CPyTagged_AsObject(index);
+        return PyObject_GetItem(str, index_obj);
+    }
+}
+
+static PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
+{
+    Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
+    if (temp_max_split == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+            return NULL;
+    }
+    return PyUnicode_Split(str, sep, temp_max_split);
+}
+
 static PyObject *CPyIter_Next(PyObject *iter)
 {
     return (*iter->ob_type->tp_iternext)(iter);
@@ -992,6 +1040,16 @@ static PyObject *CPyLong_FromFloat(PyObject *o) {
     } else {
         return PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
     }
+}
+
+static PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
+        Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
+        return PyLong_FromUnicodeObject(o, base_size_t);
+}
+
+static PyObject *CPyLong_FromStr(PyObject *o) {
+    CPyTagged base = CPyTagged_FromSsize_t(10);
+    return CPyLong_FromStrWithBase(o, base);
 }
 
 // Construct a nicely formatted type name based on __module__ and __name__.

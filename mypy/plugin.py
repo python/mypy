@@ -119,7 +119,7 @@ You can use `api.options.new_semantic_analyzer` to check whether the new
 semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 from mypy_extensions import trait, mypyc_attr
 
@@ -214,7 +214,8 @@ class CheckerPluginInterface:
     path = None  # type: str
 
     # Type context for type inference
-    @abstractproperty
+    @property
+    @abstractmethod
     def type_context(self) -> List[Optional[Type]]:
         """Return the type context of the plugin"""
         raise NotImplementedError
@@ -348,7 +349,8 @@ class SemanticAnalyzerPluginInterface:
         """
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def final_iteration(self) -> bool:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError

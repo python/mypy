@@ -42,6 +42,21 @@ from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 
+TYPES_FOR_UNIMPORTED_HINTS = {
+    'typing.Any',
+    'typing.Callable',
+    'typing.Dict',
+    'typing.Iterable',
+    'typing.Iterator',
+    'typing.List',
+    'typing.Optional',
+    'typing.Set',
+    'typing.Tuple',
+    'typing.TypeVar',
+    'typing.Union',
+    'typing.cast',
+}  # type: Final
+
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -290,7 +305,11 @@ class MessageBuilder:
                     if matches:
                         self.fail(
                             '{} has no attribute "{}"; maybe {}?{}'.format(
-                                format_type(original_type), member, pretty_or(matches), extra),
+                                format_type(original_type),
+                                member,
+                                pretty_seq(matches, "or"),
+                                extra,
+                            ),
                             context,
                             code=codes.ATTR_DEFINED)
                         failed = True
@@ -623,7 +642,7 @@ class MessageBuilder:
         if not matches:
             matches = best_matches(name, not_matching_type_args)
         if matches:
-            msg += "; did you mean {}?".format(pretty_or(matches[:3]))
+            msg += "; did you mean {}?".format(pretty_seq(matches[:3], "or"))
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
@@ -1127,6 +1146,17 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
+            matches = best_matches(item_name, typ.items.keys())
+            if matches:
+                self.note("Did you mean {}?".format(pretty_seq(matches[:3], "or")), context)
+
+    def typeddict_context_ambiguous(
+            self,
+            types: List[TypedDictType],
+            context: Context) -> None:
+        formatted_types = ', '.join(list(format_type_distinctly(*types)))
+        self.fail('Type of TypedDict is ambiguous, could be any of ({})'.format(
+                  formatted_types), context)
 
     def typeddict_key_cannot_be_deleted(
             self,
@@ -1227,7 +1257,7 @@ class MessageBuilder:
                   context, code=code)
 
     def unreachable_statement(self, context: Context) -> None:
-        self.fail("Statement is unreachable", context)
+        self.fail("Statement is unreachable", context, code=codes.UNREACHABLE)
 
     def redundant_left_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the left operand of a boolean expression is redundant:
@@ -1241,7 +1271,8 @@ class MessageBuilder:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.fail("Right operand of '{}' is never evaluated".format(op_name), context)
+        self.fail("Right operand of '{}' is never evaluated".format(op_name),
+                  context, code=codes.UNREACHABLE)
 
     def redundant_condition_in_comprehension(self, truthiness: bool, context: Context) -> None:
         self.redundant_expr("If condition in comprehension", truthiness, context)
@@ -1253,7 +1284,17 @@ class MessageBuilder:
         self.redundant_expr("Condition in assert", truthiness, context)
 
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
-        self.fail("{} is always {}".format(description, str(truthiness).lower()), context)
+        self.fail("{} is always {}".format(description, str(truthiness).lower()),
+                  context, code=codes.UNREACHABLE)
+
+    def impossible_intersection(self,
+                                formatted_base_class_list: str,
+                                reason: str,
+                                context: Context,
+                                ) -> None:
+        template = "Subclass of {} cannot exist: would have {}"
+        self.fail(template.format(formatted_base_class_list, reason), context,
+                  code=codes.UNREACHABLE)
 
     def report_protocol_problems(self,
                                  subtype: Union[Instance, TupleType, TypedDictType],
@@ -1697,6 +1738,9 @@ def find_type_overlaps(*types: Type) -> Set[str]:
     for type in types:
         for inst in collect_all_instances(type):
             d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+    for shortname in d.keys():
+        if 'typing.{}'.format(shortname) in TYPES_FOR_UNIMPORTED_HINTS:
+            d[shortname].add('typing.{}'.format(shortname))
 
     overlaps = set()  # type: Set[str]
     for fullnames in d.values():
@@ -1987,13 +2031,14 @@ def best_matches(current: str, options: Iterable[str]) -> List[str]:
                   reverse=True, key=lambda v: (ratios[v], v))
 
 
-def pretty_or(args: List[str]) -> str:
+def pretty_seq(args: Sequence[str], conjunction: str) -> str:
     quoted = ['"' + a + '"' for a in args]
     if len(quoted) == 1:
         return quoted[0]
     if len(quoted) == 2:
-        return "{} or {}".format(quoted[0], quoted[1])
-    return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
+        return "{} {} {}".format(quoted[0], conjunction, quoted[1])
+    last_sep = ", " + conjunction + " "
+    return ", ".join(quoted[:-1]) + last_sep + quoted[-1]
 
 
 def append_invariance_notes(notes: List[str], arg_type: Instance,

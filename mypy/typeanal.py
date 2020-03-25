@@ -43,6 +43,7 @@ type_constructors = {
     'typing.Union',
     'typing.Literal',
     'typing_extensions.Literal',
+    'typing.Annotated',
     'typing_extensions.Annotated',
 }  # type: Final
 
@@ -311,7 +312,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return UninhabitedType(is_noreturn=True)
         elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
             return self.analyze_literal_type(t)
-        elif fullname == 'typing_extensions.Annotated':
+        elif fullname in ('typing_extensions.Annotated', 'typing.Annotated'):
             if len(t.args) < 2:
                 self.fail("Annotated[...] must have exactly one type argument"
                           " and at least one annotation", t)
@@ -423,7 +424,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # TODO: Move this message building logic to messages.py.
         notes = []  # type: List[str]
         if isinstance(sym.node, Var):
-            # TODO: add a link to alias docs, see #3494.
+            notes.append('See https://mypy.readthedocs.io/en/'
+                         'latest/common_issues.html#variables-vs-type-aliases')
             message = 'Variable "{}" is not valid as a type'
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'

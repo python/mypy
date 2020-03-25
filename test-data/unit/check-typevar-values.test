@@ -178,20 +178,37 @@ def f(x: T) -> T:
 [out]
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues]
+# flags: --warn-unreachable
 from typing import TypeVar
 class A: pass
 class B: pass
-T = TypeVar('T', A, B)
-def f(x: T) -> None:
+T1 = TypeVar('T1', A, B)
+def f1(x: T1) -> None:
     y = x
     if isinstance(x, A):
-        # This is only checked when x is A, since A and B are not considered overlapping.
         x = y
-        x = A()
+        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     else:
         x = B()
         x = y
         x.foo() # E: "B" has no attribute "foo"
+
+class C:
+    field: int
+class D:
+    field: str
+T2 = TypeVar('T2', C, D)
+def f2(x: T2) -> None:
+    y = x
+    if isinstance(x, C):
+        # C and D are non-overlapping, so this branch is never checked
+        x = y
+        x = C()
+    else:
+        x = D()
+        x = y
+        x.foo() # E: "D" has no attribute "foo"
+
 S = TypeVar('S', int, str)
 def g(x: S) -> None:
     y = x

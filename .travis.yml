@@ -1,5 +1,5 @@
-# we only CI the master, release branches, tags and PRs
-if: tag IS present OR type = pull_request OR ((branch = master OR branch =~ release-*) AND type = push)
+# in the python/mypy repo, we only CI the master, release branches, tags and PRs
+if: tag IS present OR type = pull_request OR ((branch = master OR branch =~ release-*) AND type = push) OR repo != python/mypy
 
 language: python
 # cache package wheels (1 cache per python version)
@@ -41,6 +41,8 @@ jobs:
     - TEST_MYPYC=1
   - name: "run test suite with python 3.8"
     python: 3.8
+  - name: "run test suite with python 3.9"
+    python: 3.9-dev
   - name: "run mypyc runtime tests with python 3.6 debug build"
     language: generic
     env:
@@ -78,9 +80,13 @@ jobs:
   #   env:
   #   - TOXENV=dev
   #   - EXTRA_ARGS=
+  allow_failures:
+  - name: "run test suite with python 3.9"
+    python: 3.9-dev
 
 install:
 - pip install -U pip setuptools
+- pip install -U 'virtualenv<20'
 - pip install -U tox==3.9.0
 - tox --notest
 

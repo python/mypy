@@ -11,6 +11,7 @@ from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
 
 from mypy.moduleinspect import ModuleInspect, InspectError
+from mypy.modulefinder import ModuleNotFoundReason
 
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
@@ -195,8 +196,14 @@ def report_missing(mod: str, message: Optional[str] = '', traceback: str = '') -
             print('note: Try --py2 for Python 2 mode')
 
 
-def fail_missing(mod: str) -> None:
-    raise SystemExit("Can't find module '{}' (consider using --search-path)".format(mod))
+def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
+    if reason is ModuleNotFoundReason.NOT_FOUND:
+        clarification = "(consider using --search-path)"
+    elif reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+        clarification = "(module likely exists, but is not PEP 561 compatible)"
+    else:
+        clarification = "(unknown reason '{}')".format(reason)
+    raise SystemExit("Can't find module '{}' {}".format(mod, clarification))
 
 
 @overload

@@ -239,7 +239,7 @@ class M(type):
     pass
 [out]
 <m.C> -> m.C
-<mod.M> -> <m.C>
+<mod.M> -> <m.C>, m
 <mod> -> m
 
 [case testMetaclassDepsDeclared_python2]
@@ -268,8 +268,8 @@ class M(type):
     pass
 [out]
 <m.func> -> m.func
-<mod.M> -> <m.func>
-<mod> -> m
+<mod.M> -> <m.func>, m.func
+<mod> -> m, m.func
 
 [case testMetaclassAttributes_python2]
 # flags: --py2

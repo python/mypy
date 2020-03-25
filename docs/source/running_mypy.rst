@@ -126,72 +126,102 @@ sections will discuss what to do in the other two cases.
 .. _ignore-missing-imports:
 
 Missing imports
----------------
+***************
 
 When you import a module, mypy may report that it is unable to
 follow the import.
 
-This can cause a lot of errors that look like the following::
+This can cause errors that look like the following::
 
     main.py:1: error: No library stub file for standard library module 'antigravity'
-    main.py:2: error: No library stub file for module 'flask'
+    main.py:2: error: Skipping analyzing 'django': found module but no type hints or library stubs
     main.py:3: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
 
-There are several different things you can try doing, depending on the exact
-nature of the module.
+If you get any of these errors on an import, mypy will assume the type of that
+module is ``Any``, the dynamic type. This means attempting to access any
+attribute of the module will automatically succeed:
 
-If the module is a part of your own codebase, try:
+.. code-block:: python
 
-1.  Making sure your import does not contain a typo.
-2.  Reading the :ref:`finding-imports` section below to make sure you
-    understand how exactly mypy searches for and finds modules and modify
-    how you're invoking mypy accordingly.
-3.  Adding the directory containing that module to either the ``MYPYPATH``
-    environment variable or the ``mypy_path``
-    :ref:`config file option <config-file-import-discovery>`.
+    # Error: Cannot find implementation or library stub for module named 'does_not_exist'
+    import does_not_exist
 
-    Note: if the module you are trying to import is actually a *submodule* of
-    some package, you should add the directory containing the *entire* package
-    to ``MYPYPATH``. For example, suppose you are trying to add the module
-    ``foo.bar.baz``, which is located at ``~/foo-project/src/foo/bar/baz.py``.
-    In this case, you should add ``~/foo-project/src`` to ``MYPYPATH``.
+    # But this type checks, and x will have type 'Any'
+    x = does_not_exist.foobar()
 
-If the module is a third party library, you must make sure that there are
-type hints available for that library. Mypy by default will not attempt to
-infer the types of any 3rd party libraries you may have installed
+The next three sections describe what each error means and recommended next steps.
+
+Missing type hints for standard library module
+----------------------------------------------
+
+If you are getting a "No library stub file for standard library module" error,
+this means that you are attempting to import something from the standard library
+which has not yet been annotated with type hints. In this case, try:
+
+1.  Updating mypy and re-running it. It's possible type hints for that corner
+    of the standard library were added in a newer version of mypy.
+
+2.  Filing a bug report or submitting a pull request to
+    `typeshed <https://github.com/python/typeshed>`_, the repository of type hints
+    for the standard library that comes bundled with mypy.
+
+    Changes to typeshed will come bundled with mypy the next time it's released.
+    In the meantime, you can add a ``# type: ignore`` to the import to suppress
+    the errors generated on that line. After upgrading, run mypy with the
+    :option:`--warn-unused-ignores <mypy --warn-unused-ignores>` flag to help you
+    find any ``# type: ignore`` annotations you no longer need.
+
+.. _missing-type-hints-for-third-party-library:
+
+Missing type hints for third party library
+------------------------------------------
+
+If you are getting a "Skipping analyzing X: found module but no type hints or library stubs",
+error, this means mypy was able to find the module you were importing, but no
+corresponding type hints.
+
+Mypy will not try inferring the types of any 3rd party libraries you have installed
 unless they either have declared themselves to be
 :ref:`PEP 561 compliant stub package <installed-packages>` or have registered
-themselves on `typeshed <https://github.com/python/typeshed>`_,
-the repository of types for the standard library and some 3rd party libraries.
+themselves on `typeshed <https://github.com/python/typeshed>`_, the repository
+of types for the standard library and some 3rd party libraries.
 
-If you are getting an import-related error, this means the library you
-are trying to use has done neither of these things. In that case, you can try:
+If you are getting this error, try:
 
-1.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`.
+1.  Upgrading the version of the library you're using, in case a newer version
+    has started to include type hints.
+
+2.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`.
     corresponding to your third party library. Stub packages let you install
     type hints independently from the library itself.
 
-2.  :ref:`Writing your own stub files <stub-files>` containing type hints for
-    the library. You can point mypy at your type hints either by passing
-    them in via the command line, by adding the location to the
-    ``MYPYPATH`` environment variable, or by using the  ``mypy_path``
-    :ref:`config file option <config-file-import-discovery>`.
+    For example, if you want type hints for the ``django`` library, you can
+    install the `django-stubs <https://pypi.org/project/django-stubs/>`_ package.
 
-    Note that if you decide to write your own stub files, they don't need
-    to be complete! A good strategy is to add stubs for just the parts
-    of the library you need and iterate on them over time.
+3.  :ref:`Writing your own stub files <stub-files>` containing type hints for
+    the library. You can point mypy at your type hints either by passing
+    them in via the command line, by using the  ``files`` or ``mypy_path``
+    :ref:`config file options <config-file-import-discovery>`, or by
+    adding the location to the ``MYPYPATH`` environment variable.
+
+    These stub files do not need to be complete! A good strategy is to use
+    stubgen, a program that comes bundled with mypy, to generate a first
+    rough draft of the stubs. You can then iterate on just the parts of the
+    library you need.
 
     If you want to share your work, you can try contributing your stubs back
     to the library -- see our documentation on creating
     :ref:`PEP 561 compliant packages <installed-packages>`.
 
-If the module is a third party library, but you cannot find any existing
-type hints nor have time to write your own, you can *silence* the errors:
+If you are unable to find any existing type hints nor have time to write your
+own, you can instead *suppress* the errors. All this will do is make mypy stop
+reporting an error on the line containing the import: the imported module
+will continue to be of type ``Any``.
 
-1.  To silence a *single* missing import error, add a ``# type: ignore`` at the end of the
+1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
-2.  To silence *all* missing import imports errors from a single library, add
+2.  To suppress *all* missing import imports errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
     ``ignore_missing_imports`` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
@@ -206,7 +236,7 @@ type hints nor have time to write your own, you can *silence* the errors:
     documentation about configuring
     :ref:`import discovery <config-file-import-discovery>` in config files.
 
-3.  To silence *all* missing import errors for *all* libraries in your codebase,
+3.  To suppress *all* missing import errors for *all* libraries in your codebase,
     invoke mypy with the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>` command line flag or set
     the ``ignore_missing_imports``
     :ref:`config file option <config-file-import-discovery>` to True
@@ -218,26 +248,59 @@ type hints nor have time to write your own, you can *silence* the errors:
     We recommend using this approach only as a last resort: it's equivalent
     to adding a ``# type: ignore`` to all unresolved imports in your codebase.
 
-If the module is a part of the standard library, try:
+Unable to find module
+---------------------
 
-1.  Updating mypy and re-running it. It's possible type hints for that corner
-    of the standard library were added in a later version of mypy.
+If you are getting a "Cannot find implementation or library stub for module"
+error, this means mypy was not able to find the module you are trying to
+import, whether it comes bundled with type hints or not. If you are getting
+this error, try:
 
-2.  Filing a bug report on `typeshed <https://github.com/python/typeshed>`_,
-    the repository of type hints for the standard library that comes bundled
-    with mypy. You can expedite this process by also submitting a pull request
-    fixing the bug.
+1.  Making sure your import does not contain a typo.
 
-    Changes to typeshed will come bundled with mypy the next time it's released.
-    In the meantime, you can add a ``# type: ignore`` to silence any relevant
-    errors. After upgrading, we recommend running mypy using the
-    :option:`--warn-unused-ignores <mypy --warn-unused-ignores>` flag to help you find any ``# type: ignore``
-    annotations you no longer need.
+2.  If the module is a third party library, making sure that mypy is able
+    to find the interpreter containing the installed library.
+
+    For example, if you are running your code in a virtualenv, make sure
+    to install and use mypy within the virtualenv. Alternatively, if you
+    want to use a globally installed mypy, set the
+    :option:`--python-executable <mypy --python-executable>` command
+    line flag to point the Python interpreter containing your installed
+    third party packages.
+
+2.  Reading the :ref:`finding-imports` section below to make sure you
+    understand how exactly mypy searches for and finds modules and modify
+    how you're invoking mypy accordingly.
+
+3.  Directly specifying the directory containing the module you want to
+    type check from the command line, by using the ``files`` or
+    ``mypy_path`` :ref:`config file options <config-file-import-discovery>`,
+    or by using the ``MYPYPATH`` environment variable.
+
+    Note: if the module you are trying to import is actually a *submodule* of
+    some package, you should specific the directory containing the *entire* package.
+    For example, suppose you are trying to add the module ``foo.bar.baz``
+    which is located at ``~/foo-project/src/foo/bar/baz.py``. In this case,
+    you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to
+    ``~/foo-project/src``.
+
+4.  If you are using namespace packages -- packages which do not contain
+    ``__init__.py`` files within each subfolder -- using the
+    :option:`--namespace-packages <mypy --namespace-packages>` command
+    line flag.
+
+In some rare cases, you may get the "Cannot find implementation or library
+stub for module" error even when the module is installed in your system.
+This can happen when the module is both missing type hints and is installed
+on your system in a unconventional way.
+
+In this case, follow the steps above on how to handle
+:ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
 
 .. _follow-imports:
 
 Following imports
------------------
+*****************
 
 Mypy is designed to :ref:`doggedly follow all imports <finding-imports>`,
 even if the imported module is not a file you explicitly wanted mypy to check.
@@ -401,3 +464,23 @@ same directory on the search path, only the stub file is used.
 (However, if the files are in different directories, the one found
 in the earlier directory is used.)
 
+Other advice and best practices
+*******************************
+
+There are multiple ways of telling mypy what files to type check, ranging
+from passing in command line arguments to using the ``files`` or ``mypy_path``
+:ref:`config file options <config-file-import-discovery>` to setting the
+``MYPYPATH`` environment variable.
+
+However, in practice, it is usually sufficient to just use either
+command line arguments or the ``files`` config file option (the two
+are largely interchangeable).
+
+Setting ``mypy_path``/``MYPYPATH`` is mostly useful in the case
+where you want to try running mypy against multiple distinct
+sets of files that happen to share some common dependencies.
+
+For example, if you have multiple projects that happen to be
+using the same set of work-in-progress stubs, it could be
+convenient to just have your ``MYPYPATH`` point to a single
+directory containing the stubs.

@@ -246,4 +246,4 @@ def f() -> None:
 <m.C.x> -> m.f
 <m.C> -> m.C, m.f
 <m.M.x> -> m.f
-<m.M> -> <m.C>, m.M
+<m.M> -> <m.C>, m, m.M

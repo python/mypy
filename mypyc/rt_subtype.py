@@ -13,7 +13,7 @@ particular place and runtime subtyping is used to determine whether a
 coercion is necessary first.
 """
 
-from mypyc.ops import (
+from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor,
     is_int_rprimitive, is_short_int_rprimitive,
 )

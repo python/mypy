@@ -1,6 +1,6 @@
 """Shared definitions used by different parts of semantic analysis."""
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 
 from typing import Optional, List, Callable
 from typing_extensions import Final
@@ -67,7 +67,8 @@ class SemanticAnalyzerCoreInterface:
         """Is a module or class namespace potentially missing some definitions?"""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def final_iteration(self) -> bool:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
@@ -156,7 +157,8 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def qualified_name(self, n: str) -> str:
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError
 

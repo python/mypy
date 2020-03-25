@@ -487,9 +487,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def check_typeddict_call_with_dict(self, callee: TypedDictType,
-                                       kwargs: DictExpr,
-                                       context: Context) -> Type:
+    def validate_typeddict_kwargs(
+            self, kwargs: DictExpr) -> 'Optional[OrderedDict[str, Expression]]':
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]
@@ -504,12 +503,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 key_context = item_name_expr or item_arg
                 self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
                               key_context)
-                return AnyType(TypeOfAny.from_error)
+                return None
             else:
                 item_names.append(literal_value)
+        return OrderedDict(zip(item_names, item_args))
 
-        return self.check_typeddict_call_with_kwargs(
-            callee, OrderedDict(zip(item_names, item_args)), context)
+    def match_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> bool:
+        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
+        if validated_kwargs is not None:
+            return (callee.required_keys <= set(validated_kwargs.keys())
+                <= set(callee.items.keys()))
+        else:
+            return False
+
+    def check_typeddict_call_with_dict(self, callee: TypedDictType,
+                                       kwargs: DictExpr,
+                                       context: Context) -> Type:
+        validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
+        if validated_kwargs is not None:
+            return self.check_typeddict_call_with_kwargs(
+                callee,
+                kwargs=validated_kwargs,
+                context=context)
+        else:
+            return AnyType(TypeOfAny.from_error)
 
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
@@ -873,8 +892,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply method signature hook, if one exists
             call_function = self.transform_callee_type(
                 callable_name, call_function, args, arg_kinds, context, arg_names, callee)
-            return self.check_call(call_function, args, arg_kinds, context, arg_names,
-                                   callable_node, arg_messages, callable_name, callee)
+            result = self.check_call(call_function, args, arg_kinds, context, arg_names,
+                                     callable_node, arg_messages, callable_name, callee)
+            if callable_node:
+                # check_call() stored "call_function" as the type, which is incorrect.
+                # Override the type.
+                self.chk.store_type(callable_node, callee)
+            return result
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
@@ -2390,15 +2414,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         def lookup_operator(op_name: str, base_type: Type) -> Optional[Type]:
             """Looks up the given operator and returns the corresponding type,
             if it exists."""
-            local_errors = make_local_errors()
 
-            # TODO: Remove this call and rely just on analyze_member_access
-            # Currently, it seems we still need this to correctly deal with
-            # things like metaclasses?
-            #
-            # E.g. see the pythoneval.testMetaclassOpAccessAny test case.
+            # This check is an important performance optimization,
+            # even though it is mostly a subset of
+            # analyze_member_access.
+            # TODO: Find a way to remove this call without performance implications.
             if not self.has_member(base_type, op_name):
                 return None
+
+            local_errors = make_local_errors()
 
             member = analyze_member_access(
                 name=op_name,
@@ -2980,7 +3004,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   allow_none_return=True, always_allow_any=True)
         target_type = expr.type
         options = self.chk.options
-        if options.warn_redundant_casts and is_same_type(source_type, target_type):
+        if (options.warn_redundant_casts and not isinstance(get_proper_type(target_type), AnyType)
+                and is_same_type(source_type, target_type)):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
@@ -3229,7 +3254,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # an error, but returns the TypedDict type that matches the literal it found
         # that would cause a second error when that TypedDict type is returned upstream
         # to avoid the second error, we always return TypedDict type that was requested
-        typeddict_context = self.find_typeddict_context(self.type_context[-1])
+        typeddict_context = self.find_typeddict_context(self.type_context[-1], e)
         if typeddict_context:
             self.check_typeddict_call_with_dict(
                 callee=typeddict_context,
@@ -3295,19 +3320,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert rv is not None
         return rv
 
-    def find_typeddict_context(self, context: Optional[Type]) -> Optional[TypedDictType]:
+    def find_typeddict_context(self, context: Optional[Type],
+                               dict_expr: DictExpr) -> Optional[TypedDictType]:
         context = get_proper_type(context)
         if isinstance(context, TypedDictType):
             return context
         elif isinstance(context, UnionType):
             items = []
             for item in context.items:
-                item_context = self.find_typeddict_context(item)
-                if item_context:
+                item_context = self.find_typeddict_context(item, dict_expr)
+                if (item_context is not None
+                        and self.match_typeddict_call_with_dict(
+                            item_context, dict_expr, dict_expr)):
                     items.append(item_context)
             if len(items) == 1:
-                # Only one union item is TypedDict, so use the context as it's unambiguous.
+                # Only one union item is valid TypedDict for the given dict_expr, so use the
+                # context as it's unambiguous.
                 return items[0]
+            if len(items) > 1:
+                self.msg.typeddict_context_ambiguous(items, dict_expr)
         # No TypedDict type in context.
         return None
 
@@ -3337,12 +3368,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
-            if isinstance(get_proper_type(ret_type), NoneType):
-                # For "lambda ...: None", just use type from the context.
-                # Important when the context is Callable[..., None] which
-                # really means Void. See #1425.
-                self.chk.return_types.pop()
-                return inferred_type
             self.chk.return_types.pop()
             return replace_callable_return_type(inferred_type, ret_type)
 
@@ -3778,6 +3803,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Does type have member with the given name?"""
         # TODO: refactor this to use checkmember.analyze_member_access, otherwise
         # these two should be carefully kept in sync.
+        # This is much faster than analyze_member_access, though, and so using
+        # it first as a filter is important for performance.
         typ = get_proper_type(typ)
 
         if isinstance(typ, TypeVarType):

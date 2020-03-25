@@ -57,6 +57,7 @@ A().foo(1)
 A().x = '' # E
 [out]
 main:3: error: Variable "__main__.X" is not valid as a type
+main:3: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 main:3: error: Invalid base class "X"
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
