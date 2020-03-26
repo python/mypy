@@ -380,17 +380,18 @@ def asdict_callback(ctx: FunctionContext) -> Type:
     positional_arg_types = ctx.arg_types[0]
 
     if positional_arg_types:
-        if len(ctx.arg_types) == 2:
-            # We can't infer a more precise for calls where dict_factory is set.
-            # At least for now, typeshed stubs for asdict don't allow you to pass in `dict` as
-            # dict_factory, so we can't special-case that.
-            return ctx.default_return_type
         dataclass_instance = positional_arg_types[0]
         dataclass_instance = get_proper_type(dataclass_instance)
         if isinstance(dataclass_instance, Instance):
             info = dataclass_instance.type
             if is_type_dataclass(info):
-                return _asdictify(ctx.api, ctx.context, dataclass_instance)
+                if len(ctx.arg_types) == 1:
+                    return _asdictify(ctx.api, ctx.context, dataclass_instance)
+                else:
+                    # We can't infer a more precise for calls where dict_factory is set.
+                    # At least for now, typeshed stubs for asdict don't allow you to pass in
+                    # `dict` as dict_factory, so we can't special-case that.
+                    return ctx.default_return_type
 
     ctx.api.fail("'dataclasses.asdict' should be called on dataclass instances",
                  ctx.context)

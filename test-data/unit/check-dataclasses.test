@@ -993,6 +993,7 @@ reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
 
 [case testDataclassesAsdict]
 from dataclasses import dataclass, asdict
+from typing import List, Tuple, Dict, Any
 
 @dataclass
 class Person:
@@ -1006,8 +1007,16 @@ reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name
 asdict(Person) # E: 'dataclasses.asdict' should be called on dataclass instances
 asdict(NonDataclass()) # E: 'dataclasses.asdict' should be called on dataclass instances
 
+def my_dict_factory(seq: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    pass
+
+asdict(NonDataclass(), dict_factory=my_dict_factory) # E: 'dataclasses.asdict' should be called on dataclass instances
+
+# Passing in a dict_factory should not return a TypedDict
+reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictRecursion]
 from dataclasses import dataclass, asdict
@@ -1048,24 +1057,6 @@ class Customer:
 reveal_type(asdict(Customer("foo")))  # N: Revealed type is 'TypedDict({'card': Union[builtins.str, TypedDict({'last4': builtins.int})]})'
 
 [typing fixtures/typing-full.pyi]
-
-[case testDataclassesAsdictDictFactory]
-from dataclasses import dataclass, asdict
-from typing import List, Tuple, Dict, Any
-
-@dataclass
-class Person:
-    name: str
-    age: int
-
-def my_dict_factory(seq: List[Tuple[str, Any]]) -> Dict[str, Any]:
-    pass
-
-# Passing in a dict_factory should not return a TypedDict
-reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
-
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictList]
 from dataclasses import dataclass, asdict
