@@ -443,7 +443,7 @@ def _asdictify(api: CheckerPluginInterface, context: Context, typ: Type) -> Type
                     assert attr_type is not None
                     fields[attr.name] = _asdictify_inner(attr_type, seen_dataclasses)
                 return make_anonymous_typeddict(api, fields=fields,
-                                                required_keys=set(fields.keys()))
+                                                required_keys=set())
             elif info.has_base('builtins.list'):
                 supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
                     'builtins.list', []).type)
