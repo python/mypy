@@ -999,29 +999,6 @@ class Person:
     name: str
     age: int
 
-@dataclass
-class NotQuiteAPerson:
-    name: str
-    other_field: str
-
-
-reveal_type(Person)  # N: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
-reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
-Person(**asdict(Person('John', 32)))  # Round-trip works
-NotQuiteAPerson(**asdict(Person('John', 32)))  # E: Extra argument "age" from **args for "NotQuiteAPerson"
-
-reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
-
-[typing fixtures/typing-full.pyi]
-
-[case testDataclassesAsdict]
-from dataclasses import dataclass, asdict
-
-@dataclass
-class Person:
-    name: str
-    age: int
-
 reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
 
 [typing fixtures/typing-full.pyi]
@@ -1078,7 +1055,7 @@ class Person:
 def my_dict_factory(seq: List[Tuple[str, Any]]) -> Dict[str, Any]:
     pass
 
-# Passing in any a dict_factory falls back to default return value
+# Passing in a dict_factory should not return a TypedDict
 reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
 
 [typing fixtures/typing-full.pyi]
