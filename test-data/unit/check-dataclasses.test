@@ -999,7 +999,13 @@ class Person:
     name: str
     age: int
 
+class NonDataclass:
+    pass
+
 reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
+asdict(Person) # E: 'dataclasses.asdict' should be called on dataclass instances
+asdict(NonDataclass()) # E: 'dataclasses.asdict' should be called on dataclass instances
+
 
 [typing fixtures/typing-full.pyi]
 

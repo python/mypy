@@ -389,10 +389,11 @@ def asdict_callback(ctx: FunctionContext) -> Type:
         dataclass_instance = get_proper_type(dataclass_instance)
         if isinstance(dataclass_instance, Instance):
             info = dataclass_instance.type
-            if not is_type_dataclass(info):
-                ctx.api.fail('asdict() should be called on dataclass instances',
-                             dataclass_instance)
-            return _asdictify(ctx.api, ctx.context, dataclass_instance)
+            if is_type_dataclass(info):
+                return _asdictify(ctx.api, ctx.context, dataclass_instance)
+
+    ctx.api.fail("'dataclasses.asdict' should be called on dataclass instances",
+                 ctx.context)
     return ctx.default_return_type
 
 
