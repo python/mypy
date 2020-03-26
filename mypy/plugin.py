@@ -209,6 +209,7 @@ class CheckerPluginInterface:
     docstrings in checker.py for more details.
     """
 
+    modules = None  # type: Dict[str, MypyFile]
     msg = None  # type: MessageBuilder
     options = None  # type: Options
     path = None  # type: str
