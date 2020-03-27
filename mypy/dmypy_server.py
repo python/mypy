@@ -576,12 +576,8 @@ class Server:
 
         # There may be new files that became available, currently treated as
         # suppressed imports. Process them.
-        seen_suppressed = set()  # type: Set[str]
         while True:
-            # TODO: Merge seen and seen_suppressed?
-            new_unsuppressed = self.find_added_suppressed(
-                graph, seen_suppressed, manager.search_paths
-            )
+            new_unsuppressed = self.find_added_suppressed(graph, seen, manager.search_paths)
             if not new_unsuppressed:
                 break
             new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
@@ -600,7 +596,7 @@ class Server:
         for module_id in orig_modules:
             if module_id not in graph:
                 continue
-            if module_id not in seen and module_id not in seen_suppressed:
+            if module_id not in seen:
                 module_path = graph[module_id].path
                 assert module_path is not None
                 to_delete.append((module_id, module_path))
