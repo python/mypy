@@ -693,7 +693,6 @@ class Server:
         all_suppressed = {module for module in all_suppressed if module not in graph}
 
         # TODO: Namespace packages
-        # TODO: Handle seen?
 
         finder = FindModuleCache(search_paths, self.fscache, self.options)
 
