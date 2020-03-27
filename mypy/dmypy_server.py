@@ -534,7 +534,6 @@ class Server:
 
         orig_modules = list(graph.keys())
 
-        # TODO: Are the differences from fine_grained_increment(), necessary?
         self.update_sources(sources)
         changed_paths = self.fswatcher.find_changed()
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
@@ -546,13 +545,13 @@ class Server:
 
         # Find changed modules reachable from roots (or in roots) already in graph.
         seen = set()  # type: Set[str]
-        changed, removed, new_files = self.follow_imports(
+        changed, new_files = self.find_reachable_changed_modules(
             sources, graph, seen, changed_paths, sources_set
         )
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
-        messages = fine_grained_manager.update(changed, removed)
+        messages = fine_grained_manager.update(changed, [])
 
         # Follow deps from changed modules (still within graph).
         worklist = changed[:]
@@ -561,13 +560,12 @@ class Server:
             if module[0] not in graph:
                 continue
             sources2 = self.direct_imports(module, graph)
-            changed, removed, new_files = self.follow_imports(
+            changed, new_files = self.find_reachable_changed_modules(
                 sources2, graph, seen, changed_paths, sources_set
             )
             sources.extend(new_files)
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(changed, removed)
-            # TODO: Removed?
+            messages = fine_grained_manager.update(changed, [])
             worklist.extend(changed)
 
         t2 = time.time()
@@ -631,28 +629,32 @@ class Server:
 
         return messages
 
-    def follow_imports(self,
-                       sources: List[BuildSource],
-                       graph: mypy.build.Graph,
-                       seen: Set[str],
-                       changed_paths: AbstractSet[str],
-                       sources_set: Set[str]) -> Tuple[List[Tuple[str, str]],
-                                                       List[Tuple[str, str]],
-                                                       List[BuildSource]]:
-        """Follow imports within graph from given sources.
+    def find_reachable_changed_modules(
+            self,
+            roots: List[BuildSource],
+            graph: mypy.build.Graph,
+            seen: Set[str],
+            changed_paths: AbstractSet[str],
+            sources_set: Set[str]) -> Tuple[List[Tuple[str, str]],
+                                            List[BuildSource]]:
+        """Follow imports within graph from given sources until hitting changed modules.
+
+        If we find a changed module, we can't continue following imports as the imports
+        may have changed.
 
         Args:
-            sources: roots of modules to search
+            roots: modules where to start search from
             graph: module graph to use for the search
             seen: modules we've seen before that won't be visited (mutated here!)
             changed_paths: which paths have changed (stop search here and return any found)
             sources_set: set of sources (TODO: relationship with seen)
 
-        Return (reachable changed modules, removed modules, updated file list).
+        Return (encountered reachable changed modules,
+                unchanged files not in sources_set traversed).
         """
         changed = []
         new_files = []
-        worklist = sources[:]
+        worklist = roots[:]
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
@@ -669,7 +671,7 @@ class Server:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path,
                                                     graph[dep].id))
-        return changed, [], new_files
+        return changed, new_files
 
     def direct_imports(self,
                        module: Tuple[str, str],
