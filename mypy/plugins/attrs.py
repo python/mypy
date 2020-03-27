@@ -661,7 +661,7 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
 def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext') -> None:
     attr_name = '__attrs_attrs__'
     attr_type = ctx.api.named_type('__builtins__.tuple', [
-        ctx.api.named_type('attr.Attribute'),
+        ctx.api.named_type('attr.Attribute', [AnyType(TypeOfAny.explicit)]),
     ])
     var = Var(name=attr_name, type=attr_type)
     var.info = ctx.cls.info
