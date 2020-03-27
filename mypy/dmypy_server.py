@@ -579,7 +579,7 @@ class Server:
         seen_suppressed = set()  # type: Set[str]
         while True:
             # TODO: Merge seen and seen_suppressed?
-            new_unsuppressed, seen_suppressed = self.find_added_suppressed(
+            new_unsuppressed = self.find_added_suppressed(
                 graph, seen_suppressed, manager.search_paths
             )
             if not new_unsuppressed:
@@ -642,7 +642,7 @@ class Server:
         Args:
             roots: modules where to start search from
             graph: module graph to use for the search
-            seen: modules we've seen before that won't be visited (mutated here!)
+            seen: modules we've seen before that won't be visited (mutated here!!)
             changed_paths: which paths have changed (stop search here and return any found)
 
         Return (encountered reachable changed modules,
@@ -680,8 +680,14 @@ class Server:
     def find_added_suppressed(self,
                               graph: mypy.build.Graph,
                               seen: Set[str],
-                              search_paths: SearchPaths) -> Tuple[List[Tuple[str, str]], Set[str]]:
-        """Find suppressed modules that have been added (and not included in seen)."""
+                              search_paths: SearchPaths) -> List[Tuple[str, str]]:
+        """Find suppressed modules that have been added (and not included in seen).
+
+        Args:
+            seen: reachable modules we've seen before (mutated here!!)
+
+        Return suppressed, added modules.
+        """
         all_suppressed = set()
         for module, state in graph.items():
             all_suppressed |= state.suppressed_set
@@ -703,7 +709,7 @@ class Server:
                 found.append((module, result))
                 seen.add(module)
 
-        return found, seen
+        return found
 
     def increment_output(self,
                          messages: List[str],
