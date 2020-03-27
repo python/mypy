@@ -568,9 +568,15 @@ class Server:
 
         t2 = time.time()
 
-        for module_id, state in graph.items():
-            refresh_suppressed_submodules(module_id, state.path, fine_grained_manager.deps, graph,
-                                          self.fscache)
+        def refresh_file(module: str, path: str) -> List[str]:
+            return fine_grained_manager.update([(module, path)], [])
+
+        for module_id, state in list(graph.items()):
+            new_messages = refresh_suppressed_submodules(
+                module_id, state.path, fine_grained_manager.deps, graph, self.fscache, refresh_file
+            )
+            if new_messages is not None:
+                messages = new_messages
 
         t3 = time.time()
 
@@ -586,8 +592,15 @@ class Server:
             messages = fine_grained_manager.update(new_unsuppressed, [])
 
             for module_id, path in new_unsuppressed:
-                refresh_suppressed_submodules(module_id, path, fine_grained_manager.deps, graph,
-                                              self.fscache)
+                new_messages = refresh_suppressed_submodules(
+                    module_id, path,
+                    fine_grained_manager.deps,
+                    graph,
+                    self.fscache,
+                    refresh_file
+                )
+                if new_messages is not None:
+                    messages = new_messages
 
         t4 = time.time()
 

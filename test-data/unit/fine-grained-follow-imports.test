@@ -700,3 +700,22 @@ import bar
 ==
 src/foo.py:2: error: "str" not callable
 src/bar.py:1: error: "int" not callable
+
+[case testFollowImportsNormalSuppressedAffectsCachedFile-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+from p import m  # type: ignore
+m.f(1)
+
+[file p/__init__.py]
+
+[file p/m.py.2]
+# This change will trigger a cached file (main.py) through a supressed
+# submodule, resulting in additional errors in main.py.
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too many arguments for "f"
