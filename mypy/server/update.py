@@ -1184,8 +1184,8 @@ def refresh_suppressed_submodules(
                     for imp in tree.imports:
                         if isinstance(imp, ImportFrom):
                             if (imp.id == module
-                                    and any(name == shortname for name, _ in imp.names)):
-                                # TODO: Only if does not exist already
+                                    and any(name == shortname for name, _ in imp.names)
+                                    and submodule not in state.suppressed_set):
                                 state.suppressed.append(submodule)
                                 state.suppressed_set.add(submodule)
     return messages
