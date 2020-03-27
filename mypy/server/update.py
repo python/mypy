@@ -1165,7 +1165,7 @@ def refresh_suppressed_submodules(
 
         if trigger in deps:
             for dep in deps[trigger]:
-                # TODO: <...> deps, etc.
+                # We can ignore <...> deps since a submodule can't trigger any.
                 state = graph.get(dep)
                 if not state:
                     # Maybe it's a non-top-level target. We only care about the module.
