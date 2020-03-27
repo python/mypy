@@ -375,6 +375,7 @@ class DataclassTransformer:
         ])
         var = Var(name=attr_name, type=attr_type)
         var.info = self._ctx.cls.info
+        var._fullname = self._ctx.cls.info.fullname + '.' + attr_name
         self._ctx.cls.info.names[attr_name] = SymbolTableNode(
             kind=MDEF,
             node=var,

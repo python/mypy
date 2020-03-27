@@ -665,6 +665,7 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext') -> None:
     ])
     var = Var(name=attr_name, type=attr_type)
     var.info = ctx.cls.info
+    var._fullname = ctx.cls.info.fullname + '.' + attr_name
     ctx.cls.info.names[attr_name] = SymbolTableNode(
         kind=MDEF,
         node=var,
