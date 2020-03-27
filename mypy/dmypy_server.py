@@ -541,12 +541,11 @@ class Server:
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
 
-        sources_set = {source.module for source in sources}
+        seen = {source.module for source in sources}
 
         # Find changed modules reachable from roots (or in roots) already in graph.
-        seen = set()  # type: Set[str]
         changed, new_files = self.find_reachable_changed_modules(
-            sources, graph, seen, changed_paths, sources_set
+            sources, graph, seen, changed_paths
         )
         sources.extend(new_files)
 
@@ -561,9 +560,8 @@ class Server:
                 continue
             sources2 = self.direct_imports(module, graph)
             changed, new_files = self.find_reachable_changed_modules(
-                sources2, graph, seen, changed_paths, sources_set
+                sources2, graph, seen, changed_paths
             )
-            sources.extend(new_files)
             self.update_sources(new_files)
             messages = fine_grained_manager.update(changed, [])
             worklist.extend(changed)
@@ -634,9 +632,8 @@ class Server:
             roots: List[BuildSource],
             graph: mypy.build.Graph,
             seen: Set[str],
-            changed_paths: AbstractSet[str],
-            sources_set: Set[str]) -> Tuple[List[Tuple[str, str]],
-                                            List[BuildSource]]:
+            changed_paths: AbstractSet[str]) -> Tuple[List[Tuple[str, str]],
+                                                      List[BuildSource]]:
         """Follow imports within graph from given sources until hitting changed modules.
 
         If we find a changed module, we can't continue following imports as the imports
@@ -647,7 +644,6 @@ class Server:
             graph: module graph to use for the search
             seen: modules we've seen before that won't be visited (mutated here!)
             changed_paths: which paths have changed (stop search here and return any found)
-            sources_set: set of sources (TODO: relationship with seen)
 
         Return (encountered reachable changed modules,
                 unchanged files not in sources_set traversed).
@@ -658,8 +654,8 @@ class Server:
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
-            if nxt.module not in sources_set:
-                sources_set.add(nxt.module)
+            if nxt.module not in seen:
+                seen.add(nxt.module)
                 new_files.append(nxt)
             if nxt.path in changed_paths:
                 assert nxt.path is not None  # TODO
