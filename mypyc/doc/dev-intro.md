@@ -38,6 +38,9 @@ does these things differently:
   and smaller code, since many runtime type checks performed by the
   CPython interpreter can be omitted.
 
+* Compiled code can often use unboxed (not heap allocated)
+  representations for integers, booleans and tuples.
+
 ## Supported Python Features
 
 Mypyc supports a large subset of Python. Note that if you try to
