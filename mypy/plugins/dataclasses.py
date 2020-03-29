@@ -368,10 +368,12 @@ class DataclassTransformer:
 
     def _add_dataclass_fields_magic_attribute(self) -> None:
         attr_name = '__dataclass_fields__'
-        dataclass_field_type = self._ctx.api.named_type('dataclasses.Field', [AnyType(TypeOfAny.explicit)])
+        any_type = AnyType(TypeOfAny.explicit)
+        field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type])
+        field_type = field_type or any_type
         attr_type = self._ctx.api.named_type('__builtins__.dict', [
             self._ctx.api.named_type('__builtins__.str'),
-            dataclass_field_type,
+            field_type,
         ])
         var = Var(name=attr_name, type=attr_type)
         var.info = self._ctx.cls.info

@@ -660,10 +660,12 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
 
 def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext') -> None:
     attr_name = '__attrs_attrs__'
-    attr_type = ctx.api.named_type('__builtins__.tuple', [
-        ctx.api.named_type('attr.Attribute', [AnyType(TypeOfAny.explicit)]),
-    ])
-    var = Var(name=attr_name, type=attr_type)
+    any_type = AnyType(TypeOfAny.explicit)
+    attribute_type = ctx.api.named_type_or_none('attr.Attribute', [any_type])
+    attribute_type = attribute_type or any_type
+    var = Var(name=attr_name, type=ctx.api.named_type('__builtins__.tuple', [
+        attribute_type,
+    ]))
     var.info = ctx.cls.info
     var._fullname = ctx.cls.info.fullname + '.' + attr_name
     ctx.cls.info.names[attr_name] = SymbolTableNode(
