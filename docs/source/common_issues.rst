@@ -870,18 +870,18 @@ In some cases, the ``@overload`` decorator can be used to provide the desired ty
         return tup[1]
 
     @overload
-    def _map2(queue: Iterable[A]) -> Iterable[A]: ...
+    def map_2(queue: Iterable[A]) -> Iterable[A]: ...
     @overload
-    def _map2(queue: Iterable[A], function: Callable[[A], A]) -> Iterable[A]: ...
+    def map_2(queue: Iterable[A], function: Callable[[A], A]) -> Iterable[A]: ...
     @overload
-    def _map2(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]: ...
-    def _map2(queue, function=identity):
+    def map_2(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]: ...
+    def map_2(queue, function=identity):
         return map(function, queue)
 
     list_1 = [2, 4, 6, 8]
     list_2 = ["hello", "world"]
     list_3 = list(enumerate(["fazzle", "baz", "rompl" ]))
 
-    mapped_1 = [n for n in _map2(list_1)]
-    mapped_2 = [s for s in _map2(list_2, identity)]
-    mapped_3 = [t for t in _map2(list_3, second)]
+    mapped_1 = [n for n in map_2(list_1)]
+    mapped_2 = [s for s in map_2(list_2, identity)]
+    mapped_3 = [t for t in map_2(list_3, second)]
