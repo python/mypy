@@ -809,14 +809,13 @@ not necessary:
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
 
-TypeVars are not the same
+Each type variable is distinct
 ------------------------------------------------
 
-As discussed in the issue
-`TypeVars should be allowed to be the same <https://github.com/python/mypy/issues/7864>`_,
-TypeVars are *not* equivalent even if they are identically defined.
+TypeVars are *not* equivalent even if they are identically defined since they are independent of each other
+and are bound to specific types separately.
 
-Here is an example using two TypeVars that are unconstrained and unbound:
+Example using two TypeVars:
 
 .. code-block:: python
 
@@ -829,17 +828,20 @@ Here is an example using two TypeVars that are unconstrained and unbound:
         return x
 
     # ok
-    def _map(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]:
+    def map_1(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]:
         return map(function, queue)
 
     # fails
-    def _map2(queue: Iterable[B], function: Callable[[B], A] = identity) -> Iterable[A]:
+    def map_2(queue: Iterable[B], function: Callable[[B], A] = identity) -> Iterable[A]:
         return map(function, queue)
 
 
-The signature of ``_map2()`` triggers
-``error: Incompatible default for argument "function" (default has type "Callable[[A], A]",``
-``argument has type "Callable[[B], A]")``
+The signature of ``map_2()`` triggers:
+
+.. code-block:: python
+
+    error: Incompatible default for argument "function" (default has type "Callable[[A], A]",
+    argument has type "Callable[[B], A]")
 
 Likewise, this error will occur for constrained and bound TypeVars as well.
 
@@ -852,7 +854,7 @@ Likewise, this error will occur for constrained and bound TypeVars as well.
     B = TypeVar("B", bound=complex)
 
 
-In some cases, the ``@overload`` decorator can be used to provide the desired type checking. Here's an example.
+In some cases, the ``@overload`` decorator can be used to provide the desired type checking. Here's an example:
 
 .. code-block:: python
 
