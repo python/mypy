@@ -1,6 +1,5 @@
 from typing import Generic, Sequence, TypeVar
 
-
 _T = TypeVar('_T')
 _U = TypeVar('_U')
 
@@ -9,11 +8,9 @@ class object:
     def __eq__(self, o: object) -> bool: pass
     def __ne__(self, o: object) -> bool: pass
 
-
 class type: pass
 class ellipsis: pass
 class tuple(Generic[_T]): pass
-# class function: pass
 class int: pass
 class float: pass
 class str: pass
