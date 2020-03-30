@@ -2247,11 +2247,9 @@ class State:
             all_deps = self.suppressed
         else:
             # Strip out indirect dependencies. See comment in build.load_graph().
+            dependencies = [dep for dep in self.dependencies
+                            if self.priorities.get(dep) != PRI_INDIRECT]
             all_deps = dependencies + self.suppressed + self.ancestors
-            all_deps = [dep for dep in all_deps
-                        if self.priorities.get(dep) != PRI_INDIRECT]
-            #all_deps = dependencies + self.suppressed + self.ancestors
-        self.manager.log("ALL_DEPS {}: {} (... {})".format(self.id, all_deps, self.suppressed))
         for dep in all_deps:
             if dep in manager.modules:
                 continue
