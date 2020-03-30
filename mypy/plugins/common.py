@@ -9,7 +9,8 @@ from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface, Checke
 from mypy.semanal import set_callable_name
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
-    TypedDictType, Instance, TPDICT_FB_NAMES)
+    TypedDictType, Instance, TPDICT_FB_NAMES
+)
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
 from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API

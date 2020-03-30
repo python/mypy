@@ -1035,7 +1035,7 @@ class A:
     b: Optional[B] = None
 
 # Recursion is not supported, so fall back
-result = asdict(A(B(C(A()))))  # E: Recursive types are not supported in call to asdict, so falling back to Dict[str, Any]
+result = asdict(A(B(C(A()))))
 reveal_type(result)  # N: Revealed type is 'TypedDict({'b'?: Union[TypedDict({'c'?: TypedDict({'a'?: builtins.dict[builtins.str, Any]})}), None]})'
 
 [typing fixtures/typing-full.pyi]

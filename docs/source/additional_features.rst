@@ -76,17 +76,8 @@ Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclass
 have imprecise (too permissive) types. This will be fixed in future releases.
 
 Calls to :py:func:`~dataclasses.asdict` will return a ``TypedDict`` based on the original dataclass
-definition, transforming it recursively. There are, however, some limitations:
-
-* Subclasses of ``List``, ``Dict``, and ``Tuple`` appearing within dataclasses are transformed into reparameterized
-  versions of the respective base class, rather than a transformed version of the original subclass.
-
-* Recursion (e.g. dataclasses which reference each other) is not supported and results in an error.
-
-* ``NamedTuples`` appearing within dataclasses are transformed to ``Any``
-
-* A more precise return type cannot be inferred for calls where ``dict_factory`` is set.
-
+definition, transforming it recursively. There are, however, some limitations. In particular, a precise return type
+cannot be inferred for recursive dataclasses, and for calls where ``dict_factory`` is set.
 
 Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
 probably never recognize dynamically computed decorators. The following examples

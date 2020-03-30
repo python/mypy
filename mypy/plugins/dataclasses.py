@@ -13,11 +13,15 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, FunctionContext, CheckerPluginInterface
 from mypy.plugin import SemanticAnalyzerPluginInterface
-from mypy.plugins.common import (add_method, _get_decorator_bool_argument,
-                                 make_anonymous_typeddict, deserialize_and_fixup_type)
+from mypy.plugins.common import (
+    add_method, _get_decorator_bool_argument, make_anonymous_typeddict,
+    deserialize_and_fixup_type
+)
 from mypy.server.trigger import make_wildcard_trigger
-from mypy.types import (Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type,
-                        TupleType, UnionType, AnyType, TypeOfAny)
+from mypy.types import (
+    Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, UnionType,
+    AnyType, TypeOfAny
+)
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -380,11 +384,9 @@ def asdict_callback(ctx: FunctionContext) -> Type:
     positional_arg_types = ctx.arg_types[0]
 
     if positional_arg_types:
-        dataclass_instance = positional_arg_types[0]
-        dataclass_instance = get_proper_type(dataclass_instance)
+        dataclass_instance = get_proper_type(positional_arg_types[0])
         if isinstance(dataclass_instance, Instance):
-            info = dataclass_instance.type
-            if is_type_dataclass(info):
+            if is_type_dataclass(dataclass_instance.type):
                 if len(ctx.arg_types) == 1:
                     return _asdictify(ctx.api, ctx.context, dataclass_instance)
                 else:
@@ -424,10 +426,7 @@ def _asdictify(api: CheckerPluginInterface, context: Context, typ: Type) -> Type
             info = typ.type
             if is_type_dataclass(info):
                 if info.fullname in seen_dataclasses:
-                    api.fail(
-                        "Recursive types are not supported in call to asdict, so falling back to "
-                        "Dict[str, Any]",
-                        context)
+                    # Recursive types not supported, so fall back to Dict[str, Any]
                     # Note: Would be nicer to fallback to default_return_type, but that is Any
                     # (due to overloads?)
                     return api.named_generic_type('builtins.dict',
@@ -446,14 +445,14 @@ def _asdictify(api: CheckerPluginInterface, context: Context, typ: Type) -> Type
                                                 required_keys=set())
             elif info.has_base('builtins.list'):
                 supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
-                    'builtins.list', []).type)
+                    'builtins.list', [AnyType(TypeOfAny.implementation_artifact)]).type)
                 new_args = _transform_type_args(
                     typ=supertype_instance,
                     transform=lambda arg: _asdictify_inner(arg, seen_dataclasses))
                 return api.named_generic_type('builtins.list', new_args)
             elif info.has_base('builtins.dict'):
                 supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
-                    'builtins.dict', []).type)
+                    'builtins.dict', [AnyType(TypeOfAny.implementation_artifact), AnyType(TypeOfAny.implementation_artifact)]).type)
                 new_args = _transform_type_args(
                     typ=supertype_instance,
                     transform=lambda arg: _asdictify_inner(arg, seen_dataclasses))
