@@ -1,3 +1,5 @@
+"""Primitive str ops."""
+
 from typing import List, Callable
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, EmitterInterface, EmitCallback
@@ -9,24 +11,28 @@ from mypyc.primitives.registry import (
 )
 
 
+# Get the 'str' type object.
 name_ref_op('builtins.str',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
             emit=simple_emit('{dest} = (PyObject *)&PyUnicode_Type;'),
             is_borrowed=True)
 
+# str(obj)
 func_op(name='builtins.str',
         arg_types=[object_rprimitive],
         result_type=str_rprimitive,
         error_kind=ERR_MAGIC,
         emit=simple_emit('{dest} = PyObject_Str({args[0]});'))
 
+# str1 + str2
 binary_op(op='+',
           arg_types=[str_rprimitive, str_rprimitive],
           result_type=str_rprimitive,
           error_kind=ERR_MAGIC,
           emit=simple_emit('{dest} = PyUnicode_Concat({args[0]}, {args[1]});'))
 
+# str.join(obj)
 method_op(
     name='join',
     arg_types=[str_rprimitive, object_rprimitive],
@@ -34,6 +40,7 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
 
+# str[index] (for an int index)
 method_op(
     name='__getitem__',
     arg_types=[str_rprimitive, int_rprimitive],
@@ -41,6 +48,7 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyStr_GetItem'))
 
+# str.split(...)
 str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
 str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
                    simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
@@ -54,6 +62,8 @@ for i in range(len(str_split_types)):
         error_kind=ERR_MAGIC,
         emit=str_split_emits[i])
 
+# str1 += str2
+#
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
 binary_op(op='+=',
@@ -78,12 +88,14 @@ def emit_str_compare(comparison: str) -> Callable[[EmitterInterface, List[str], 
     return emit
 
 
+# str1 == str2
 binary_op(op='==',
           arg_types=[str_rprimitive, str_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_MAGIC,
           emit=emit_str_compare('== 0'))
 
+# str1 != str2
 binary_op(op='!=',
           arg_types=[str_rprimitive, str_rprimitive],
           result_type=bool_rprimitive,

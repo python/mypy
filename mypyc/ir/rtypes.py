@@ -396,6 +396,7 @@ class RTuple(RType):
         return RTuple(types)
 
 
+# Exception tuple: (exception class, exception instance, traceback object)
 exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 
 
