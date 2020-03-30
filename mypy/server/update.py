@@ -576,7 +576,6 @@ def update_module_isolated(module: str,
     state.parse_file()
     assert state.tree is not None, "file must be at least parsed"
     t0 = time.time()
-    # TODO: state.fix_suppressed_dependencies()?
     try:
         semantic_analysis_for_scc(graph, [state.id], manager.errors)
     except CompileError as err:

@@ -5386,3 +5386,37 @@ class N(p.util.Test):
     ...
 [out2]
 tmp/a.py:2: error: "object" has no attribute "N"
+
+[case testIncrementalIndirectSkipWarnUnused]
+# flags: --follow-imports=skip --warn-unused-ignores
+# cmd: mypy -m main a b c1
+# cmd2: mypy -m main a b c2
+
+[file main.py]
+import a
+a.foo.bar()
+
+[file a.py]
+import b
+foo = b.Foo()
+
+[file b.py]
+from c1 import C
+class Foo:
+    def bar(self) -> C:
+        return C()
+
+[file c1.py]
+class C: pass
+
+[file b.py.2]
+from c2 import C
+class Foo:
+    def bar(self) -> C:
+        return C()
+
+[file c2.py]
+
+[delete c1.py.2]
+[file c2.py.2]
+class C: pass

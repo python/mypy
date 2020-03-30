@@ -1955,45 +1955,6 @@ class State:
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
-    def fix_suppressed_dependencies(self, graph: Graph) -> None:
-        """Corrects whether dependencies are considered stale in silent mode.
-
-        This method is a hack to correct imports in silent mode + incremental mode.
-        In particular, the problem is that when running mypy with a cold cache, the
-        `parse_file(...)` function is called *at the start* of the `load_graph(...)` function.
-        Note that load_graph will mark some dependencies as suppressed if they weren't specified
-        on the command line in silent mode.
-
-        However, if the interface for a module is changed, parse_file will be called within
-        `process_stale_scc` -- *after* load_graph is finished, wiping out the changes load_graph
-        previously made.
-
-        This method is meant to be run after parse_file finishes in process_stale_scc and will
-        recompute what modules should be considered suppressed in silent mode.
-        """
-        # TODO: See if it's possible to move this check directly into parse_file in some way.
-        # TODO: Find a way to write a test case for this fix.
-        # TODO: I suspect that splitting compute_dependencies() out from parse_file
-        # obviates the need for this but lacking a test case for the problem this fixed...
-        silent_mode = (self.options.ignore_missing_imports or
-                       self.options.follow_imports == 'skip')
-        if not silent_mode:
-            return
-
-        new_suppressed = []
-        new_dependencies = []
-        entry_points = self.manager.source_set.source_modules
-        for dep in self.dependencies + self.suppressed:
-            ignored = dep in self.suppressed_set and dep not in entry_points
-            if ignored or dep not in graph:
-                new_suppressed.append(dep)
-            else:
-                new_dependencies.append(dep)
-        self.dependencies = new_dependencies
-        self.dependencies_set = set(new_dependencies)
-        self.suppressed = new_suppressed
-        self.suppressed_set = set(new_suppressed)
-
     # Methods for processing modules from source code.
 
     def parse_file(self) -> None:
@@ -3040,7 +3001,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
-        graph[id].fix_suppressed_dependencies(graph)
     if 'typing' in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of
