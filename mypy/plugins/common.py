@@ -168,9 +168,7 @@ def deserialize_and_fixup_type(
 def get_anonymous_typeddict_type(api: CheckerPluginInterface) -> Instance:
     for type_fullname in TPDICT_FB_NAMES:
         try:
-            anonymous_typeddict_type = api.named_generic_type(type_fullname, [])
-            if anonymous_typeddict_type is not None:
-                return anonymous_typeddict_type
+            return api.named_generic_type(type_fullname, [])
         except KeyError:
             continue
     raise RuntimeError("No TypedDict fallback type found")

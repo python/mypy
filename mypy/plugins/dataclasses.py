@@ -400,18 +400,6 @@ def asdict_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
-def _transform_type_args(*, typ: Instance, transform: Callable[[Instance], Type]) -> List[Type]:
-    """For each type arg used in the Instance, call transform on it if the arg is an Instance."""
-    new_args = []
-    for arg in typ.args:
-        proper_arg = get_proper_type(arg)
-        if isinstance(proper_arg, Instance):
-            new_args.append(transform(proper_arg))
-        else:
-            new_args.append(arg)
-    return new_args
-
-
 def _asdictify(api: CheckerPluginInterface, context: Context, typ: Type) -> Type:
     """Convert dataclasses into TypedDicts, recursively looking into built-in containers.
 
@@ -446,17 +434,17 @@ def _asdictify(api: CheckerPluginInterface, context: Context, typ: Type) -> Type
             elif info.has_base('builtins.list'):
                 supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
                     'builtins.list', [AnyType(TypeOfAny.implementation_artifact)]).type)
-                new_args = _transform_type_args(
-                    typ=supertype_instance,
-                    transform=lambda arg: _asdictify_inner(arg, seen_dataclasses))
-                return api.named_generic_type('builtins.list', new_args)
+                return api.named_generic_type('builtins.list', [
+                    _asdictify_inner(supertype_instance.args[0], seen_dataclasses)
+                ])
             elif info.has_base('builtins.dict'):
                 supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
-                    'builtins.dict', [AnyType(TypeOfAny.implementation_artifact), AnyType(TypeOfAny.implementation_artifact)]).type)
-                new_args = _transform_type_args(
-                    typ=supertype_instance,
-                    transform=lambda arg: _asdictify_inner(arg, seen_dataclasses))
-                return api.named_generic_type('builtins.dict', new_args)
+                    'builtins.dict', [AnyType(TypeOfAny.implementation_artifact),
+                                      AnyType(TypeOfAny.implementation_artifact)]).type)
+                return api.named_generic_type('builtins.dict', [
+                    _asdictify_inner(supertype_instance.args[0], seen_dataclasses),
+                    _asdictify_inner(supertype_instance.args[1], seen_dataclasses)
+                ])
         elif isinstance(typ, TupleType):
             if typ.partial_fallback.type.is_named_tuple:
                 # For namedtuples, return Any. To properly support transforming namedtuples,
