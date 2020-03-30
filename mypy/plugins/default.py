@@ -1,8 +1,8 @@
 from functools import partial
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, Tuple
 
 from mypy import message_registry
-from mypy.nodes import Expression, StrExpr, IntExpr, DictExpr, UnaryExpr
+from mypy.nodes import Expression, StrExpr, IntExpr, DictExpr, UnaryExpr, MypyFile
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
     CheckerPluginInterface,
@@ -19,6 +19,12 @@ from mypy.checkexpr import is_literal_type_like
 
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
+
+    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
+        # Add modules for TypedDict fallback types as a plugin dependency
+        # (used by dataclasses plugin).
+        return [(10, ".".join(typeddict_fallback_name.split('.')[:-1]), -1)
+                for typeddict_fallback_name in TPDICT_FB_NAMES]
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:

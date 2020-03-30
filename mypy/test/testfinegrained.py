@@ -49,6 +49,7 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-modules.test',
         'fine-grained-follow-imports.test',
         'fine-grained-suggest.test',
+        'fine-grained-dataclasses.test',
     ]
 
     # Whether to use the fine-grained cache in the testing. This is overridden
