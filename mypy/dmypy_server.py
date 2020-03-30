@@ -423,7 +423,7 @@ class Server:
         self.fine_grained_manager = FineGrainedBuildManager(result)
 
         if self.following_imports():
-            sources = find_all_sources_in_build(self.fine_grained_manager.graph)
+            sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
             self.update_sources(sources)
 
         self.previous_sources = sources
@@ -523,13 +523,9 @@ class Server:
 
     def fine_grained_increment_follow_imports(self, sources: List[BuildSource]) -> List[str]:
         """Like fine_grained_increment, but follow imports."""
+        t0 = time.time()
 
-        # TODO:
-        #  - file events
-        #  - search path updates
-        #  - logging
-
-        changed_paths = self.fswatcher.find_changed()
+        # TODO: Support file events
 
         assert self.fine_grained_manager is not None
         fine_grained_manager = self.fine_grained_manager
@@ -538,9 +534,13 @@ class Server:
 
         orig_modules = list(graph.keys())
 
-        # TODO: Are the differences from fine_grained_increment(), such as
-        #       updating sources after finding changed, necessary?
+        # TODO: Are the differences from fine_grained_increment(), necessary?
         self.update_sources(sources)
+        changed_paths = self.fswatcher.find_changed()
+        manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
+
+        t1 = time.time()
+        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
 
         sources_set = {source.module for source in sources}
 
@@ -570,9 +570,13 @@ class Server:
             # TODO: Removed?
             worklist.extend(changed)
 
+        t2 = time.time()
+
         for module_id, state in graph.items():
             refresh_suppressed_submodules(module_id, state.path, fine_grained_manager.deps, graph,
                                           self.fscache)
+
+        t3 = time.time()
 
         # There may be new files that became available, currently treated as
         # suppressed imports. Process them.
@@ -593,6 +597,8 @@ class Server:
                 refresh_suppressed_submodules(module_id, path, fine_grained_manager.deps, graph,
                                               self.fscache)
 
+        t4 = time.time()
+
         # Find all original modules in graph that were not reached -- they are deleted.
         to_delete = []
         for module_id in orig_modules:
@@ -612,6 +618,17 @@ class Server:
 
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
+
+        t5 = time.time()
+
+        manager.log("fine-grained increment: update: {:.3f}s".format(t5 - t1))
+        manager.add_stats(
+            find_changes_time=t1 - t0,
+            fg_update_time=t2 - t1,
+            refresh_suppressed_time=t3 - t2,
+            find_added_supressed_time=t4 - t3,
+            cleanup_time=t5 - t4)
+
         return messages
 
     def follow_imports(self,
@@ -671,6 +688,10 @@ class Server:
         for module, state in graph.items():
             all_suppressed |= state.suppressed_set
 
+        # Filter out things that shouldn't actually be considered suppressed.
+        # TODO: Figure out why these are treated as suppressed
+        all_suppressed = {module for module in all_suppressed if module not in graph}
+
         # TODO: Namespace packages
         # TODO: Handle seen?
 
@@ -720,6 +741,9 @@ class Server:
 
     def update_sources(self, sources: List[BuildSource]) -> None:
         paths = [source.path for source in sources if source.path is not None]
+        if self.following_imports():
+            # Filter out directories (used for namespace packages).
+            paths = [path for path in paths if self.fscache.isfile(path)]
         self.fswatcher.add_watched_paths(paths)
 
     def update_changed(self,
@@ -828,10 +852,13 @@ def get_meminfo() -> Dict[str, Any]:
     return res
 
 
-def find_all_sources_in_build(graph: mypy.build.Graph) -> List[BuildSource]:
-    result = []
+def find_all_sources_in_build(graph: mypy.build.Graph,
+                              extra: Sequence[BuildSource] = ()) -> List[BuildSource]:
+    result = list(extra)
+    seen = set(source.module for source in result)
     for module, state in graph.items():
-        result.append(BuildSource(state.path, module))
+        if module not in seen:
+            result.append(BuildSource(state.path, module))
     return result
 
 

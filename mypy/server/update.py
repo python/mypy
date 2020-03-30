@@ -113,6 +113,7 @@ test cases (test-data/unit/fine-grained*.test).
 """
 
 import os
+import sys
 import time
 from typing import (
     Dict, List, Set, Tuple, Union, Optional, NamedTuple, Sequence
@@ -1111,6 +1112,17 @@ def target_from_node(module: str,
             return '%s.%s' % (module, node.name)
 
 
+if sys.platform != 'win32':
+    INIT_SUFFIXES = ('/__init__.py', '/__init__.pyi')  # type: Final
+else:
+    INIT_SUFFIXES = (
+        os.sep + '__init__.py',
+        os.sep + '__init__.pyi',
+        os.altsep + '__init__.py',
+        os.altsep + '__init__.pyi',
+    )  # type: Final
+
+
 def refresh_suppressed_submodules(
         module: str,
         path: Optional[str],
@@ -1129,8 +1141,7 @@ def refresh_suppressed_submodules(
         module: target package in which to look for submodules
         path: path of the module
     """
-    # TODO: Windows paths
-    if path is None or not path.endswith(os.sep + '__init__.py'):
+    if path is None or not path.endswith(INIT_SUFFIXES):
         # Only packages have submodules.
         return
     # Find any submodules present in the directory.
@@ -1145,8 +1156,13 @@ def refresh_suppressed_submodules(
         trigger = make_trigger(submodule)
         if trigger in deps:
             for dep in deps[trigger]:
-                # TODO: <...> deps, imports in functions, etc.
+                # TODO: <...> deps, etc.
                 state = graph.get(dep)
+                if not state:
+                    # Maybe it's a non-top-level target. We only care about the module.
+                    dep_module = module_prefix(graph, dep)
+                    if dep_module is not None:
+                        state = graph.get(dep_module)
                 if state:
                     tree = state.tree
                     assert tree  # TODO: What if doesn't exist?
