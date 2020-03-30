@@ -1263,34 +1263,3 @@ reveal_type(result['staff']) # N: Revealed type is 'Any'
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
 
-
-
-[case testDataclassesAsdictNamedTuple]
-from dataclasses import dataclass, asdict
-from typing import NamedTuple
-
-@dataclass
-class Person:
-    name: str
-    age: int
-
-
-class Staff(NamedTuple):
-    teacher: Person
-    assistant: Person
-
-    def staff_method(self):
-        pass
-
-@dataclass
-class Course:
-    staff: Staff
-
-instance = Course(staff=Staff(teacher=Person("Joe", 32), assistant=Person("John", 23)))
-result = asdict(instance)
-# Due to implementation limitations, namedtuples are transformed to Any
-reveal_type(result['staff']) # N: Revealed type is 'Any'
-
-[typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
-
