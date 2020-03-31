@@ -202,7 +202,7 @@ type_object_op = name_ref_op(
     'builtins.type',
     result_type=object_rprimitive,
     error_kind=ERR_NEVER,
-    emit=name_emit('(PyObject*) &PyType_Type'),
+    emit=name_emit('&PyType_Type', target_type='PyObject *'),
     is_borrowed=True)
 
 # Create a heap type based on a template non-heap type.

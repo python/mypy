@@ -82,9 +82,10 @@ def simple_emit(template: str) -> EmitCallback:
     return emit
 
 
-def name_emit(name: str) -> EmitCallback:
+def name_emit(name: str, target_type: Optional[str]=None) -> EmitCallback:
     """Construct a PrimitiveOp emit callback function that assigns a C name."""
-    return simple_emit('{dest} = %s;' % name)
+    cast = "({})".format(target_type) if target_type else ""
+    return simple_emit('{dest} = %s%s;' % (cast, name))
 
 
 def call_emit(func: str) -> EmitCallback:
@@ -100,6 +101,7 @@ def call_and_fail_emit(func: str) -> EmitCallback:
     # This is a hack for our always failing operations like CPy_Raise,
     # since we want the optimizer to see that it always fails but we
     # don't have an ERR_ALWAYS yet.
+    # TODO: Have an ERR_ALWAYS.
     return simple_emit('%s({comma_args}); {dest} = 0;' % func)
 
 

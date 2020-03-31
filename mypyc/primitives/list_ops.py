@@ -16,7 +16,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.list',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=name_emit('(PyObject *)&PyList_Type'),
+            emit=name_emit('&PyList_Type', target_type='PyObject *'),
             is_borrowed=True)
 
 # list(obj)

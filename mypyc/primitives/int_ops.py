@@ -24,7 +24,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.int',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=name_emit('(PyObject *)&PyLong_Type'),
+            emit=name_emit('&PyLong_Type', target_type='PyObject *'),
             is_borrowed=True)
 
 # Convert from a float to int. We could do a bit better directly.

@@ -15,7 +15,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.str',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=name_emit('(PyObject *)&PyUnicode_Type'),
+            emit=name_emit('&PyUnicode_Type', target_type='PyObject *'),
             is_borrowed=True)
 
 # str(obj)

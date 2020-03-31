@@ -16,7 +16,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.dict',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=name_emit('(PyObject *)&PyDict_Type'),
+            emit=name_emit('&PyDict_Type', target_type="PyObject *"),
             is_borrowed=True)
 
 # dict[key]
