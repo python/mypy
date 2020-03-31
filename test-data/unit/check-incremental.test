@@ -1896,6 +1896,28 @@ main:1: error: Module 'tdcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'tdcrash' has no attribute 'nope'
 
+[case testIncrementalNewTypeInMethod]
+from ntcrash import nope
+[file ntcrash.py]
+from mypy_extensions import TypedDict
+from typing import NewType, NamedTuple
+class C:
+    def f(self) -> None:
+        X = NewType('X', int)
+        A = TypedDict('A', {'x': X, 'y': int})
+        B = NamedTuple('B', [('x', X)])
+
+def f() -> None:
+    X = NewType('X', int)
+    A = TypedDict('A', {'x': X, 'y': int})
+    B = NamedTuple('B', [('x', X)])
+
+[builtins fixtures/dict.pyi]
+[out1]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+
 [case testIncrementalInnerClassAttrInMethod]
 import crash
 nonexisting
@@ -2274,6 +2296,7 @@ tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+-- '
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -2484,7 +2507,7 @@ A = Dict[str, int]
 [out]
 
 -- Some crazy self-referential named tuples, types dicts, and aliases
--- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
+-- to be sure that everything can be _serialized_ (i.e. ForwardRefs are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
 
 [case testForwardTypeAliasInBase1]
