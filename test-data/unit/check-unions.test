@@ -695,7 +695,7 @@ from typing import Union
 bad: Union[int, str]
 
 x, y = bad # E: 'builtins.int' object is not iterable \
-           # E: 'builtins.str' object is not iterable
+           # E: unpacking a string is disallowed
 reveal_type(x) # N: Revealed type is 'Any'
 reveal_type(y) # N: Revealed type is 'Any'
 [out]
