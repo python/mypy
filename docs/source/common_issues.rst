@@ -595,9 +595,12 @@ string literal types or :py:data:`~typing.TYPE_CHECKING`:
 
    results: 'Queue[int]' = Queue()  # OK
 
-But while using :py:data:`~typing.TypeVar`, observe here that it requires parameters
-while using it as a type. And if we implement it in above way it will give error as
-shown in below example.
+If you use a type variable in the type alias that is used as a base class and
+implement it in above way, it will give error. Note that type arguments are only
+required when using `--disallow-any-generics` (or `--strict`). However, this will
+still be a problem even if these options aren't enabled, since we want to make the
+subclass generic (otherwise it would be pretty pointless to use a type variable),
+and this would result in a runtime error without the suggested trick.
 
 .. code-block:: python
 
@@ -612,6 +615,7 @@ shown in below example.
 
    class MyQueue(MyQueueBase): pass  # error: Missing type parameters for generic type
 
+Note here that this error only comes when some configuration options are enabled.
 To avoid this problem, we need to create another class in the hierarchy which makes
 use of :py:data:`~typing.Generic` when :py:data:`~typing.TYPE_CHECKING` is disabled
 and behaves normally when :py:data:`~typing.TYPE_CHECKING` is enabled.
