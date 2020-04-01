@@ -2,7 +2,9 @@ from functools import partial
 from typing import Callable, Optional, List, Tuple
 
 from mypy import message_registry
-from mypy.nodes import Expression, StrExpr, IntExpr, DictExpr, UnaryExpr, MypyFile
+from mypy.nodes import (
+    Expression, StrExpr, IntExpr, DictExpr, UnaryExpr, MypyFile, ImportFrom, Import, ImportAll
+)
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
     CheckerPluginInterface,
@@ -21,10 +23,28 @@ class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
-        # Add modules for TypedDict fallback types as a plugin dependency
-        # (used by dataclasses plugin).
-        return [(10, ".".join(typeddict_fallback_name.split('.')[:-1]), -1)
-                for typeddict_fallback_name in TPDICT_FB_NAMES]
+        def is_dataclasses_imported(file: MypyFile):
+            for i in file.imports:
+                if isinstance(i, Import):
+                    for id, as_id in i.ids:
+                        if 'dataclasses' in id:
+                            return True
+                elif isinstance(i, ImportFrom) or isinstance(i, ImportAll):
+                    if 'dataclasses' in i.id:
+                        return True
+            return False
+
+        # Add modules for TypedDict fallback types as a plugin dependency only if dataclasses
+        # module is imported (it is used to support dataclasses.asdict).
+        if is_dataclasses_imported(file):
+            if self.python_version == (3, 6):
+                return [(10, "mypy_extensions", -1)]
+            elif self.python_version == (3, 7):
+                return [(10, "typing_extensions", -1)]
+            elif self.python_version == (3, 8):
+                return [(10, "typing", -1)]
+        else:
+            return []
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:

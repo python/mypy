@@ -1018,6 +1018,46 @@ reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Reve
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
 
+
+[case testDataclassesAsdictPython36]
+# flags: --python-version 3.6
+from dataclasses import dataclass, asdict
+
+@dataclass
+class Foo:
+    bar: str
+
+reveal_type(asdict(Foo('bar')))  # N: Revealed type is 'TypedDict({'bar'?: builtins.str})'
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+
+[case testDataclassesAsdictPython37]
+# flags: --python-version 3.7
+from dataclasses import dataclass, asdict
+
+@dataclass
+class Foo:
+    bar: str
+
+reveal_type(asdict(Foo('bar')))  # N: Revealed type is 'TypedDict({'bar'?: builtins.str})'
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testDataclassesAsdictPython38]
+# flags: --python-version 3.8
+from dataclasses import dataclass, asdict
+
+@dataclass
+class Foo:
+    bar: str
+
+reveal_type(asdict(Foo('bar')))  # N: Revealed type is 'TypedDict({'bar'?: builtins.str})'
+
+[typing fixtures/typing-full.pyi]
+
 [case testDataclassesAsdictRecursion]
 from dataclasses import dataclass, asdict
 from typing import Optional
