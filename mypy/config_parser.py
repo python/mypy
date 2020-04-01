@@ -113,9 +113,9 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if 'MYPY_CONFIG_FILE_DIR' not in os.environ:
-                os.environ['MYPY_CONFIG_FILE_DIR'] = config_file
+                os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(config_file)
             else:
-                os.environ['MYPY_CONFIG_FILE_DIR'] += os.pathsep + config_file
+                os.environ['MYPY_CONFIG_FILE_DIR'] += os.pathsep + os.path.dirname(config_file)
             parser.read(config_file)
         except configparser.Error as err:
             print("%s: %s" % (config_file, err), file=stderr)
