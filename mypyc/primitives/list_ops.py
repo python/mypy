@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, binary_op, func_op, method_op, custom_op, simple_emit,
+    name_ref_op, binary_op, func_op, method_op, custom_op, name_emit,
     call_emit, call_negative_bool_emit,
 )
 
@@ -16,7 +16,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.list',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=simple_emit('{dest} = (PyObject *)&PyList_Type;'),
+            emit=name_emit('&PyList_Type', target_type='PyObject *'),
             is_borrowed=True)
 
 # list(obj)
@@ -72,7 +72,7 @@ list_get_item_unsafe_op = custom_op(
     result_type=object_rprimitive,
     error_kind=ERR_NEVER,
     format_str='{dest} = {args[0]}[{args[1]}] :: unsafe list',
-    emit=simple_emit('{dest} = CPyList_GetItemUnsafe({args[0]}, {args[1]});'))
+    emit=call_emit('CPyList_GetItemUnsafe'))
 
 # list[index] = obj
 list_set_item_op = method_op(
@@ -98,7 +98,7 @@ list_extend_op = method_op(
     arg_types=[list_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = _PyList_Extend((PyListObject *) {args[0]}, {args[1]});'))
+    emit=call_emit('CPyList_Extend'))
 
 # list.pop()
 list_pop_last = method_op(
@@ -124,32 +124,13 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyList_Count'))
 
-
-def emit_multiply_helper(emitter: EmitterInterface, dest: str, lst: str, num: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_lines(
-        "%s = CPyTagged_AsSsize_t(%s);" % (temp, num),
-        "if (%s == -1 && PyErr_Occurred())" % temp,
-        "    CPyError_OutOfMemory();",
-        "%s = PySequence_Repeat(%s, %s);" % (dest, lst, temp))
-
-
-def emit_multiply(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    emit_multiply_helper(emitter, dest, args[0], args[1])
-
-
-def emit_multiply_reversed(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    emit_multiply_helper(emitter, dest, args[1], args[0])
-
-
 # list * int
 binary_op(op='*',
           arg_types=[list_rprimitive, int_rprimitive],
           result_type=list_rprimitive,
           error_kind=ERR_MAGIC,
           format_str='{dest} = {args[0]} * {args[1]} :: list',
-          emit=emit_multiply)
+          emit=call_emit("CPySequence_Multiply"))
 
 # int * list
 binary_op(op='*',
@@ -157,7 +138,7 @@ binary_op(op='*',
           result_type=list_rprimitive,
           error_kind=ERR_MAGIC,
           format_str='{dest} = {args[0]} * {args[1]} :: list',
-          emit=emit_multiply_reversed)
+          emit=call_emit("CPySequence_RMultiply"))
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:

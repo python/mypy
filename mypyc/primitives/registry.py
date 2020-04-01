@@ -63,33 +63,46 @@ def simple_emit(template: str) -> EmitCallback:
     """Construct a simple PrimitiveOp emit callback function.
 
     It just applies a str.format template to
-    'args', 'dest', 'comma_args', 'num_args', 'pre_comma_args'.
+    'args', 'dest', 'comma_args', 'num_args', 'comma_if_args'.
 
     For more complex cases you need to define a custom function.
     """
 
     def emit(emitter: EmitterInterface, args: List[str], dest: str) -> None:
         comma_args = ', '.join(args)
-        pre_comma_args = ', ' + comma_args if comma_args else ''
+        comma_if_args = ', ' if comma_args else ''
 
         emitter.emit_line(template.format(
             args=args,
             dest=dest,
             comma_args=comma_args,
-            pre_comma_args=pre_comma_args,
+            comma_if_args=comma_if_args,
             num_args=len(args)))
 
     return emit
 
 
-def name_emit(name: str) -> EmitCallback:
+def name_emit(name: str, target_type: Optional[str] = None) -> EmitCallback:
     """Construct a PrimitiveOp emit callback function that assigns a C name."""
-    return simple_emit('{dest} = %s;' % name)
+    cast = "({})".format(target_type) if target_type else ""
+    return simple_emit('{dest} = %s%s;' % (cast, name))
 
 
 def call_emit(func: str) -> EmitCallback:
     """Construct a PrimitiveOp emit callback function that calls a C function."""
     return simple_emit('{dest} = %s({comma_args});' % func)
+
+
+def call_void_emit(func: str) -> EmitCallback:
+    return simple_emit('%s({comma_args});' % func)
+
+
+def call_and_fail_emit(func: str) -> EmitCallback:
+    # This is a hack for our always failing operations like CPy_Raise,
+    # since we want the optimizer to see that it always fails but we
+    # don't have an ERR_ALWAYS yet.
+    # TODO: Have an ERR_ALWAYS.
+    return simple_emit('%s({comma_args}); {dest} = 0;' % func)
 
 
 def call_negative_bool_emit(func: str) -> EmitCallback:

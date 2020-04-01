@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )
 from mypyc.primitives.registry import (
-    func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit
+    func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
 )
 
 
@@ -15,7 +15,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.str',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=simple_emit('{dest} = (PyObject *)&PyUnicode_Type;'),
+            emit=name_emit('&PyUnicode_Type', target_type='PyObject *'),
             is_borrowed=True)
 
 # str(obj)
@@ -23,14 +23,14 @@ func_op(name='builtins.str',
         arg_types=[object_rprimitive],
         result_type=str_rprimitive,
         error_kind=ERR_MAGIC,
-        emit=simple_emit('{dest} = PyObject_Str({args[0]});'))
+        emit=call_emit('PyObject_Str'))
 
 # str1 + str2
 binary_op(op='+',
           arg_types=[str_rprimitive, str_rprimitive],
           result_type=str_rprimitive,
           error_kind=ERR_MAGIC,
-          emit=simple_emit('{dest} = PyUnicode_Concat({args[0]}, {args[1]});'))
+          emit=call_emit('PyUnicode_Concat'))
 
 # str.join(obj)
 method_op(
@@ -38,7 +38,7 @@ method_op(
     arg_types=[str_rprimitive, object_rprimitive],
     result_type=str_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PyUnicode_Join({args[0]}, {args[1]});'))
+    emit=call_emit('PyUnicode_Join'))
 
 # str[index] (for an int index)
 method_op(
@@ -52,7 +52,7 @@ method_op(
 str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
 str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
                    simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
-                   simple_emit('{dest} = CPyStr_Split({args[0]}, {args[1]}, {args[2]});')] \
+                   call_emit('CPyStr_Split')] \
                    # type: List[EmitCallback]
 for i in range(len(str_split_types)):
     method_op(
@@ -71,7 +71,7 @@ binary_op(op='+=',
           steals=[True, False],
           result_type=str_rprimitive,
           error_kind=ERR_MAGIC,
-          emit=simple_emit('{dest} = {args[0]}; PyUnicode_Append(&{dest}, {args[1]});'))
+          emit=call_emit('CPyStr_Append'))
 
 
 def emit_str_compare(comparison: str) -> Callable[[EmitterInterface, List[str], str], None]:

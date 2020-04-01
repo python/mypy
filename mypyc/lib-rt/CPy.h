@@ -738,6 +738,10 @@ static bool CPySet_Remove(PyObject *set, PyObject *key) {
     return false;
 }
 
+static PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
+    return _PyList_Extend((PyListObject *)o1, o2);
+}
+
 static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
@@ -761,6 +765,18 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
         PyErr_SetString(PyExc_IndexError, "tuple index out of range");
         return NULL;
     }
+}
+
+static PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
+    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PySequence_Repeat(seq, size);
+}
+
+static PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
+    return CPySequence_Multiply(seq, t_size);
 }
 
 static CPyTagged CPyObject_Hash(PyObject *o) {
@@ -976,6 +992,12 @@ static PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
             return NULL;
     }
     return PyUnicode_Split(str, sep, temp_max_split);
+}
+
+/* This does a dodgy attempt to append in place  */
+static PyObject *CPyStr_Append(PyObject *o1, PyObject *o2) {
+    PyUnicode_Append(&o1, o2);
+    return o1;
 }
 
 static PyObject *CPyIter_Next(PyObject *iter)
@@ -1221,16 +1243,28 @@ static inline PyObject *_CPy_FromDummy(PyObject *p) {
     return p;
 }
 
-static void CPy_CatchError(PyObject **p_type, PyObject **p_value, PyObject **p_traceback) {
+#ifndef MYPYC_DECLARED_tuple_T3OOO
+#define MYPYC_DECLARED_tuple_T3OOO
+typedef struct tuple_T3OOO {
+    PyObject *f0;
+    PyObject *f1;
+    PyObject *f2;
+} tuple_T3OOO;
+static tuple_T3OOO tuple_undefined_T3OOO = { NULL, NULL, NULL };
+#endif
+
+
+static tuple_T3OOO CPy_CatchError(void) {
     // We need to return the existing sys.exc_info() information, so
     // that it can be restored when we finish handling the error we
     // are catching now. Grab that triple and convert NULL values to
     // the ExcDummy object in order to simplify refcount handling in
     // generated code.
-    PyErr_GetExcInfo(p_type, p_value, p_traceback);
-    _CPy_ToDummy(p_type);
-    _CPy_ToDummy(p_value);
-    _CPy_ToDummy(p_traceback);
+    tuple_T3OOO ret;
+    PyErr_GetExcInfo(&ret.f0, &ret.f1, &ret.f2);
+    _CPy_ToDummy(&ret.f0);
+    _CPy_ToDummy(&ret.f1);
+    _CPy_ToDummy(&ret.f2);
 
     if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_RuntimeError, "CPy_CatchError called with no error!");
@@ -1252,11 +1286,12 @@ static void CPy_CatchError(PyObject **p_type, PyObject **p_value, PyObject **p_t
     // Clear the error indicator, since the exception isn't
     // propagating anymore.
     PyErr_Clear();
+
+    return ret;
 }
 
-static void CPy_RestoreExcInfo(PyObject *type, PyObject *value, PyObject *traceback) {
-    // PyErr_SetExcInfo steals the references to the values passed to it.
-    PyErr_SetExcInfo(_CPy_FromDummy(type), _CPy_FromDummy(value), _CPy_FromDummy(traceback));
+static void CPy_RestoreExcInfo(tuple_T3OOO info) {
+    PyErr_SetExcInfo(_CPy_FromDummy(info.f0), _CPy_FromDummy(info.f1), _CPy_FromDummy(info.f2));
 }
 
 static void CPy_Raise(PyObject *exc) {
@@ -1275,6 +1310,10 @@ static void CPy_Reraise(void) {
     PyObject *p_type, *p_value, *p_traceback;
     PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
     PyErr_Restore(p_type, p_value, p_traceback);
+}
+
+static int CPy_NoErrOccured(void) {
+    return PyErr_Occurred() == NULL;
 }
 
 static void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback) {
@@ -1315,11 +1354,17 @@ static inline void _CPy_ToNone(PyObject **p) {
     }
 }
 
-static void CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback) {
+static void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback) {
     PyErr_GetExcInfo(p_type, p_value, p_traceback);
     _CPy_ToNone(p_type);
     _CPy_ToNone(p_value);
     _CPy_ToNone(p_traceback);
+}
+
+static tuple_T3OOO CPy_GetExcInfo(void) {
+    tuple_T3OOO ret;
+    _CPy_GetExcInfo(&ret.f0, &ret.f1, &ret.f2);
+    return ret;
 }
 
 void CPy_Init(void);
@@ -1361,7 +1406,7 @@ static int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     } else {
         _m = _PyObject_GetAttrId(iter, &PyId_throw);
         if (_m) {
-            CPy_GetExcInfo(&type, &value, &traceback);
+            _CPy_GetExcInfo(&type, &value, &traceback);
             res = PyObject_CallFunctionObjArgs(_m, type, value, traceback, NULL);
             Py_DECREF(type);
             Py_DECREF(value);

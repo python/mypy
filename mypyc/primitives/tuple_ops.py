@@ -30,7 +30,7 @@ new_tuple_op = custom_op(
     error_kind=ERR_MAGIC,
     steals=False,
     format_str='{dest} = ({comma_args}) :: tuple',
-    emit=simple_emit('{dest} = PyTuple_Pack({num_args}{pre_comma_args});'))
+    emit=simple_emit('{dest} = PyTuple_Pack({num_args}{comma_if_args}{comma_args});'))
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:

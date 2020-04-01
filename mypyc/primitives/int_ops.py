@@ -13,8 +13,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, unary_op, func_op, custom_op,
-    simple_emit,
-    call_emit,
+    simple_emit, call_emit, name_emit,
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -25,7 +24,7 @@ from mypyc.primitives.registry import (
 name_ref_op('builtins.int',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=simple_emit('{dest} = (PyObject *)&PyLong_Type;'),
+            emit=name_emit('&PyLong_Type', target_type='PyObject *'),
             is_borrowed=True)
 
 # Convert from a float to int. We could do a bit better directly.
