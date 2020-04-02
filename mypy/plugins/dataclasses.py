@@ -1,7 +1,7 @@
 """Plugin that provides support for dataclasses."""
 
 from collections import OrderedDict
-from typing import Dict, List, Set, Tuple, Optional, FrozenSet, Union
+from typing import Dict, List, Set, Tuple, Optional, Union
 
 from typing_extensions import Final
 
@@ -18,9 +18,10 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, UnionType,
-    AnyType, TypeOfAny
+    AnyType, TypeOfAny, TypeAliasType
 )
 
 # The set of decorators that generate dataclasses.
@@ -401,61 +402,72 @@ def asdict_callback(ctx: FunctionContext, return_typeddicts: bool = False) -> Ty
     return ctx.default_return_type
 
 
+class AsDictVisitor(TypeTranslator):
+    def __init__(self, api: CheckerPluginInterface) -> None:
+        self.api = api
+        self.seen_dataclasses = set()  # type: Set[str]
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
+    def visit_instance(self, t: Instance) -> Type:
+        info = t.type
+        if is_type_dataclass(info):
+            if info.fullname in self.seen_dataclasses:
+                # Recursive types not supported, so fall back to Dict[str, Any]
+                # Note: Would be nicer to fallback to default_return_type, but that is Any
+                # (due to overloads?)
+                return self.api.named_generic_type(
+                    'builtins.dict', [self.api.named_generic_type('builtins.str', []),
+                                      AnyType(TypeOfAny.implementation_artifact)])
+            attrs = info.metadata['dataclass']['attributes']
+            fields = OrderedDict()  # type: OrderedDict[str, Type]
+            self.seen_dataclasses.add(info.fullname)
+            for data in attrs:
+                attr = DataclassAttribute.deserialize(info, data, self.api)
+                sym_node = info.names[attr.name]
+                attr_type = sym_node.type
+                assert attr_type is not None
+                fields[attr.name] = attr_type.accept(self)
+            self.seen_dataclasses.remove(info.fullname)
+            return make_anonymous_typeddict(self.api, fields=fields,
+                                            required_keys=set())
+        elif info.has_base('builtins.list'):
+            supertype_instance = map_instance_to_supertype(t, self.api.named_generic_type(
+                'builtins.list', [AnyType(TypeOfAny.implementation_artifact)]).type)
+            return self.api.named_generic_type('builtins.list', [
+                supertype_instance.args[0].accept(self)
+            ])
+        elif info.has_base('builtins.dict'):
+            supertype_instance = map_instance_to_supertype(t, self.api.named_generic_type(
+                'builtins.dict', [AnyType(TypeOfAny.implementation_artifact),
+                                  AnyType(TypeOfAny.implementation_artifact)]).type)
+            return self.api.named_generic_type('builtins.dict', [
+                supertype_instance.args[0].accept(self),
+                supertype_instance.args[1].accept(self)
+            ])
+        return t
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        return UnionType([item.accept(self) for item in t.items])
+
+    def visit_tuple_type(self, t: TupleType) -> Type:
+        if t.partial_fallback.type.is_named_tuple:
+            # For namedtuples, return Any. To properly support transforming namedtuples,
+            # we would have to generate a partial_fallback type for the TupleType and add it
+            # to the symbol table. It's not currently possibl to do this via the
+            # CheckerPluginInterface. Ideally it would use the same code as
+            # NamedTupleAnalyzer.build_namedtuple_typeinfo.
+            return AnyType(TypeOfAny.implementation_artifact)
+        # Note: Tuple subclasses not supported, hence overriding the fallback
+        return t.copy_modified(items=[item.accept(self) for item in t.items],
+                               fallback=self.api.named_generic_type('builtins.tuple', []))
+
+
 def _asdictify(api: CheckerPluginInterface, typ: Type) -> Type:
     """Convert dataclasses into TypedDicts, recursively looking into built-in containers.
 
-    It will look for dataclasses inside of tuples, lists, and dicts and convert them to TypedDicts.
+    It will look for dataclasses inside of tuples, lists, and dicts and convert them to
+    TypedDicts.
     """
-
-    def _asdictify_inner(typ: Type, seen_dataclasses: FrozenSet[str]) -> Type:
-        typ = get_proper_type(typ)
-        if isinstance(typ, UnionType):
-            return UnionType([_asdictify_inner(item, seen_dataclasses) for item in typ.items])
-        if isinstance(typ, Instance):
-            info = typ.type
-            if is_type_dataclass(info):
-                if info.fullname in seen_dataclasses:
-                    # Recursive types not supported, so fall back to Dict[str, Any]
-                    # Note: Would be nicer to fallback to default_return_type, but that is Any
-                    # (due to overloads?)
-                    return api.named_generic_type('builtins.dict',
-                                                  [api.named_generic_type('builtins.str', []),
-                                                   AnyType(TypeOfAny.implementation_artifact)])
-                seen_dataclasses |= {info.fullname}
-                attrs = info.metadata['dataclass']['attributes']
-                fields = OrderedDict()  # type: OrderedDict[str, Type]
-                for data in attrs:
-                    attr = DataclassAttribute.deserialize(info, data, api)
-                    sym_node = info.names[attr.name]
-                    attr_type = sym_node.type
-                    assert attr_type is not None
-                    fields[attr.name] = _asdictify_inner(attr_type, seen_dataclasses)
-                return make_anonymous_typeddict(api, fields=fields,
-                                                required_keys=set())
-            elif info.has_base('builtins.list'):
-                supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
-                    'builtins.list', [AnyType(TypeOfAny.implementation_artifact)]).type)
-                return api.named_generic_type('builtins.list', [
-                    _asdictify_inner(supertype_instance.args[0], seen_dataclasses)
-                ])
-            elif info.has_base('builtins.dict'):
-                supertype_instance = map_instance_to_supertype(typ, api.named_generic_type(
-                    'builtins.dict', [AnyType(TypeOfAny.implementation_artifact),
-                                      AnyType(TypeOfAny.implementation_artifact)]).type)
-                return api.named_generic_type('builtins.dict', [
-                    _asdictify_inner(supertype_instance.args[0], seen_dataclasses),
-                    _asdictify_inner(supertype_instance.args[1], seen_dataclasses)
-                ])
-        elif isinstance(typ, TupleType):
-            if typ.partial_fallback.type.is_named_tuple:
-                # For namedtuples, return Any. To properly support transforming namedtuples,
-                # we would have to generate a partial_fallback type for the TupleType and add it
-                # to the symbol table. It's not currently possibl to do this via the
-                # CheckerPluginInterface. Ideally it would use the same code as
-                # NamedTupleAnalyzer.build_namedtuple_typeinfo.
-                return AnyType(TypeOfAny.implementation_artifact)
-            return TupleType([_asdictify_inner(item, seen_dataclasses) for item in typ.items],
-                             api.named_generic_type('builtins.tuple', []), implicit=typ.implicit)
-        return typ
-
-    return _asdictify_inner(typ, seen_dataclasses=frozenset())
+    return typ.accept(AsDictVisitor(api))
