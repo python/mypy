@@ -32,8 +32,8 @@ from b import MyList
 reveal_type(asdict(MyDataclass(MyList())))
 
 [out]
-c.py:3: note: Revealed type is 'TypedDict({'attr'?: builtins.str})'
+c.py:3: note: Revealed type is 'TypedDict({'attr': builtins.str})'
 ==
-c.py:4: note: Revealed type is 'TypedDict({'attr'?: builtins.list[builtins.int]})'
+c.py:4: note: Revealed type is 'TypedDict({'attr': builtins.list[builtins.int]})'
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
