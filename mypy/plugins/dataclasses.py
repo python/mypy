@@ -20,8 +20,8 @@ from mypy.plugins.common import (
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.type_visitor import TypeTranslator
 from mypy.types import (
-    Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, UnionType,
-    AnyType, TypeOfAny, TypeAliasType
+    Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, AnyType,
+    TypeOfAny, TypeAliasType
 )
 
 # The set of decorators that generate dataclasses.
@@ -382,7 +382,7 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
 
 
 def asdict_callback(ctx: FunctionContext, return_typeddicts: bool = False) -> Type:
-    """Check calls to asdict pass in a dataclass. Optionally, return TypedDicts."""
+    """Check that calls to asdict pass in a dataclass. Optionally, return TypedDicts."""
     positional_arg_types = ctx.arg_types[0]
 
     if positional_arg_types:
@@ -412,14 +412,14 @@ class AsDictVisitor(TypeTranslator):
 
     def visit_instance(self, t: Instance) -> Type:
         info = t.type
+        any_type = AnyType(TypeOfAny.implementation_artifact)
         if is_type_dataclass(info):
             if info.fullname in self.seen_dataclasses:
                 # Recursive types not supported, so fall back to Dict[str, Any]
                 # Note: Would be nicer to fallback to default_return_type, but that is Any
                 # (due to overloads?)
                 return self.api.named_generic_type(
-                    'builtins.dict', [self.api.named_generic_type('builtins.str', []),
-                                      AnyType(TypeOfAny.implementation_artifact)])
+                    'builtins.dict', [self.api.named_generic_type('builtins.str', []), any_type])
             attrs = info.metadata['dataclass']['attributes']
             fields = OrderedDict()  # type: OrderedDict[str, Type]
             self.seen_dataclasses.add(info.fullname)
@@ -433,23 +433,16 @@ class AsDictVisitor(TypeTranslator):
             return make_anonymous_typeddict(self.api, fields=fields,
                                             required_keys=set(fields.keys()))
         elif info.has_base('builtins.list'):
-            supertype_instance = map_instance_to_supertype(t, self.api.named_generic_type(
-                'builtins.list', [AnyType(TypeOfAny.implementation_artifact)]).type)
-            return self.api.named_generic_type('builtins.list', [
-                supertype_instance.args[0].accept(self)
-            ])
+            supertype = map_instance_to_supertype(t, self.api.named_generic_type(
+                'builtins.list', [any_type]).type)
+            return self.api.named_generic_type('builtins.list',
+                                               self.translate_types(supertype.args))
         elif info.has_base('builtins.dict'):
-            supertype_instance = map_instance_to_supertype(t, self.api.named_generic_type(
-                'builtins.dict', [AnyType(TypeOfAny.implementation_artifact),
-                                  AnyType(TypeOfAny.implementation_artifact)]).type)
-            return self.api.named_generic_type('builtins.dict', [
-                supertype_instance.args[0].accept(self),
-                supertype_instance.args[1].accept(self)
-            ])
+            supertype = map_instance_to_supertype(t, self.api.named_generic_type(
+                'builtins.dict', [any_type, any_type]).type)
+            return self.api.named_generic_type('builtins.dict',
+                                               self.translate_types(supertype.args))
         return t
-
-    def visit_union_type(self, t: UnionType) -> Type:
-        return UnionType([item.accept(self) for item in t.items])
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if t.partial_fallback.type.is_named_tuple:
@@ -460,7 +453,7 @@ class AsDictVisitor(TypeTranslator):
             # NamedTupleAnalyzer.build_namedtuple_typeinfo.
             return AnyType(TypeOfAny.implementation_artifact)
         # Note: Tuple subclasses not supported, hence overriding the fallback
-        return t.copy_modified(items=[item.accept(self) for item in t.items],
+        return t.copy_modified(items=self.translate_types(t.items),
                                fallback=self.api.named_generic_type('builtins.tuple', []))
 
 
