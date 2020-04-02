@@ -1085,6 +1085,46 @@ reveal_type(asdict(Customer("foo")))  # N: Revealed type is 'TypedDict({'card': 
 
 [typing fixtures/typing-full.pyi]
 
+[case testDataclassesAsdictType]
+# flags: --python-version 3.8
+from dataclasses import dataclass, asdict
+from typing import Type
+
+@dataclass
+class Card:
+    last4: int
+
+@dataclass
+class Customer:
+    card: Type[Card]
+
+# Type[...] hould be left alone
+reveal_type(asdict(Customer(Card)))  # N: Revealed type is 'TypedDict({'card': Type[__main__.Card]})'
+
+[typing fixtures/typing-full.pyi]
+
+
+[case testDataclassesAsdictCallable]
+# flags: --python-version 3.8
+from dataclasses import dataclass, asdict
+from typing import Callable
+
+@dataclass
+class Card:
+    last4: int
+
+@dataclass
+class Customer:
+    card: Callable[[Card], Card]
+
+def func(_: Card) -> Card: pass
+
+# Type[...] hould be left alone
+reveal_type(asdict(Customer(func)))  # N: Revealed type is 'TypedDict({'card': def (__main__.Card) -> __main__.Card})'
+
+[typing fixtures/typing-full.pyi]
+
+
 [case testDataclassesAsdictList]
 # flags: --python-version 3.8
 from dataclasses import dataclass, asdict

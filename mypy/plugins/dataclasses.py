@@ -21,8 +21,8 @@ from mypy.server.trigger import make_wildcard_trigger
 from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, AnyType,
-    TypeOfAny, TypeAliasType
-)
+    TypeOfAny, TypeAliasType,
+    CallableType, TypeType)
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
@@ -455,6 +455,14 @@ class AsDictVisitor(TypeTranslator):
         # Note: Tuple subclasses not supported, hence overriding the fallback
         return t.copy_modified(items=self.translate_types(t.items),
                                fallback=self.api.named_generic_type('builtins.tuple', []))
+
+    def visit_callable_type(self, t: CallableType) -> Type:
+        # Leave e.g. Callable[[SomeDataclass], SomeDataclass] alone
+        return t
+
+    def visit_type_type(self, t: TypeType) -> Type:
+        # Leave e.g. Type[SomeDataclass] alone
+        return t
 
 
 def _asdictify(api: CheckerPluginInterface, typ: Type) -> Type:
