@@ -431,7 +431,7 @@ class AsDictVisitor(TypeTranslator):
                 fields[attr.name] = attr_type.accept(self)
             self.seen_dataclasses.remove(info.fullname)
             return make_anonymous_typeddict(self.api, fields=fields,
-                                            required_keys=set())
+                                            required_keys=set(fields.keys()))
         elif info.has_base('builtins.list'):
             supertype_instance = map_instance_to_supertype(t, self.api.named_generic_type(
                 'builtins.list', [AnyType(TypeOfAny.implementation_artifact)]).type)

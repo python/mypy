@@ -1004,7 +1004,7 @@ class Person:
 class NonDataclass:
     pass
 
-reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name'?: builtins.str, 'age'?: builtins.int})'
+reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
 asdict(Person) # E: 'dataclasses.asdict' should be called on dataclass instances
 asdict(NonDataclass()) # E: 'dataclasses.asdict' should be called on dataclass instances
 
@@ -1063,7 +1063,7 @@ class A:
 
 # Recursion is not supported, so fall back
 result = asdict(A(B(C(A()))))
-reveal_type(result)  # N: Revealed type is 'TypedDict({'b'?: Union[TypedDict({'c'?: TypedDict({'a'?: builtins.dict[builtins.str, Any]})}), None]})'
+reveal_type(result)  # N: Revealed type is 'TypedDict({'b': Union[TypedDict({'c': TypedDict({'a': builtins.dict[builtins.str, Any]})}), None]})'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
@@ -1081,7 +1081,7 @@ class Card:
 class Customer:
     card: Union[str, Card]
 
-reveal_type(asdict(Customer("foo")))  # N: Revealed type is 'TypedDict({'card'?: Union[builtins.str, TypedDict({'last4'?: builtins.int})]})'
+reveal_type(asdict(Customer("foo")))  # N: Revealed type is 'TypedDict({'card': Union[builtins.str, TypedDict({'last4': builtins.int})]})'
 
 [typing fixtures/typing-full.pyi]
 
@@ -1108,7 +1108,7 @@ instance = Course(
     list_no_generic=[],
 )
 result = asdict(instance)
-reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
+reveal_type(result['participants']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
 reveal_type(result['any_list']) # N: Revealed type is 'builtins.list[Any]'
 reveal_type(result['list_no_generic']) # N: Revealed type is 'builtins.list[Any]'
 
@@ -1157,9 +1157,9 @@ result = asdict(instance)
 # Supertypes (list) are returned, since there could be a constraint on the TypeVar
 # used on the subclass such that when the type argument to the subclass is substituted with a TypedDict,
 # it may not type-check.
-reveal_type(result['list_subclass']) # N: Revealed type is 'builtins.list[TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
-reveal_type(result['list_subclass_2_typevars']) # N: Revealed type is 'builtins.list[TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
-reveal_type(result['list_subclass_with_constraint']) # N: Revealed type is 'builtins.list[TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
+reveal_type(result['list_subclass']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+reveal_type(result['list_subclass_2_typevars']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
+reveal_type(result['list_subclass_with_constraint']) # N: Revealed type is 'builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
@@ -1181,7 +1181,7 @@ class Course:
 
 instance = Course(participants_by_name={"Joe": Person("Joe", 32)})
 result = asdict(instance)
-reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str, TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
+reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str, TypedDict({'name': builtins.str, 'age': builtins.int})]'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
@@ -1208,7 +1208,7 @@ class Course:
 
 instance = Course(participants_by_name=MyDict[int, str, Person]([("Joe", Person("Joe", 32))]))
 result = asdict(instance)
-reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str*, TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
+reveal_type(result['participants_by_name']) # N: Revealed type is 'builtins.dict[builtins.str*, TypedDict({'name': builtins.str, 'age': builtins.int})]'
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/dict.pyi]
@@ -1230,7 +1230,7 @@ class Course:
 
 instance = Course(partners=(Person("Joe", 32), Person("John", 23)))
 result = asdict(instance)
-reveal_type(result['partners']) # N: Revealed type is 'Tuple[TypedDict({'name'?: builtins.str, 'age'?: builtins.int}), TypedDict({'name'?: builtins.str, 'age'?: builtins.int})]'
+reveal_type(result['partners']) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), TypedDict({'name': builtins.str, 'age': builtins.int})]'
 
 
 [typing fixtures/typing-full.pyi]
@@ -1261,7 +1261,7 @@ result = asdict(instance)
 # For now, subclasses of Tuple are transformed to the Tuple base class
 # This is because the subclass, if it itself contains dataclass fields, may be transformed in such a way that it
 # is no longer compatible with the original Tuple class it is extending.
-reveal_type(result['tuple_subclass']) # N: Revealed type is 'Tuple[TypedDict({'name'?: builtins.str, 'age'?: builtins.int}), builtins.str]'
+reveal_type(result['tuple_subclass']) # N: Revealed type is 'Tuple[TypedDict({'name': builtins.str, 'age': builtins.int}), builtins.str]'
 
 
 [typing fixtures/typing-full.pyi]
