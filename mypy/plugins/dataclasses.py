@@ -448,7 +448,7 @@ class AsDictVisitor(TypeTranslator):
         if t.partial_fallback.type.is_named_tuple:
             # For namedtuples, return Any. To properly support transforming namedtuples,
             # we would have to generate a partial_fallback type for the TupleType and add it
-            # to the symbol table. It's not currently possibl to do this via the
+            # to the symbol table. It's not currently possible to do this via the
             # CheckerPluginInterface. Ideally it would use the same code as
             # NamedTupleAnalyzer.build_namedtuple_typeinfo.
             return AnyType(TypeOfAny.implementation_artifact)
