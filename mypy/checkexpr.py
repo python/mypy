@@ -3663,7 +3663,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     elif false_map is None:
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
-    def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
+    def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
         self.accept(e.cond)
         ctx = self.type_context[-1]
 
@@ -3676,10 +3676,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif else_map is None:
                 self.msg.redundant_condition_in_if(True, e.cond)
 
-        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
+        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx,
+                                           allow_none_return=allow_none_return)
 
         # Analyze the right branch using full type context and store the type
-        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx,
+                                                          allow_none_return=allow_none_return)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
@@ -3690,12 +3692,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: If it's possible that the previous analysis of
                 # the left branch produced errors that are avoided
                 # using this context, suppress those errors.
-                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type)
+                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type,
+                                                   allow_none_return=allow_none_return)
 
         else:
             # Analyze the right branch in the context of the left
             # branch's type.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
+            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type,
+                                                 allow_none_return=allow_none_return)
 
         # Only create a union type if the type context is a union, to be mostly
         # compatible with older mypy versions where we always did a join.
@@ -3709,15 +3713,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return res
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
-                            node: Expression, context: Optional[Type]) -> Type:
+                            node: Expression, context: Optional[Type],
+                            allow_none_return: bool = False) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
-                self.accept(node, type_context=context)
+                self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, type_context=context)
+            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
@@ -3745,6 +3750,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typ = self.visit_call_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, YieldFromExpr):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, ConditionalExpr):
+                typ = self.visit_conditional_expr(node, allow_none_return=True)
             else:
                 typ = node.accept(self)
         except Exception as err:
