@@ -3058,6 +3058,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ret_type=NoneType(),
                 fallback=self.named_type('builtins.function')
             )  # type: Type
+        elif isinstance(basetype, TypeVarType) and isinstance(basetype.upper_bound, TypedDictType):
+            item_type = self.expr_checker.visit_typeddict_index_expr(basetype.upper_bound, lvalue.index)
+            method_type = CallableType(
+                arg_types=[self.named_type('builtins.str'), item_type],
+                arg_kinds=[ARG_POS, ARG_POS],
+                arg_names=[None, None],
+                ret_type=NoneType(),
+                fallback=self.named_type('builtins.function')
+            )  # type: Type
         else:
             method_type = self.expr_checker.analyze_external_member_access(
                 '__setitem__', basetype, context)
