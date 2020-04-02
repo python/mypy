@@ -380,17 +380,18 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
     return False, {}
 
 
-def asdict_callback(ctx: FunctionContext) -> Type:
+def asdict_callback(ctx: FunctionContext, return_typeddicts: bool = False) -> Type:
+    """Check calls to asdict pass in a dataclass. Optionally, return TypedDicts."""
     positional_arg_types = ctx.arg_types[0]
 
     if positional_arg_types:
         dataclass_instance = get_proper_type(positional_arg_types[0])
         if isinstance(dataclass_instance, Instance):
             if is_type_dataclass(dataclass_instance.type):
-                if len(ctx.arg_types) == 1:
-                    return _asdictify(ctx.api, ctx.context, dataclass_instance)
+                if len(ctx.arg_types) == 1 and return_typeddicts:
+                    return _asdictify(ctx.api, dataclass_instance)
                 else:
-                    # We can't infer a more precise for calls where dict_factory is set.
+                    # We can't infer a more precise type for calls where dict_factory is set.
                     # At least for now, typeshed stubs for asdict don't allow you to pass in
                     # `dict` as dict_factory, so we can't special-case that.
                     return ctx.default_return_type
@@ -400,7 +401,7 @@ def asdict_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
-def _asdictify(api: CheckerPluginInterface, context: Context, typ: Type) -> Type:
+def _asdictify(api: CheckerPluginInterface, typ: Type) -> Type:
     """Convert dataclasses into TypedDicts, recursively looking into built-in containers.
 
     It will look for dataclasses inside of tuples, lists, and dicts and convert them to TypedDicts.

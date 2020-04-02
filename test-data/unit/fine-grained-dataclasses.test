@@ -4,6 +4,7 @@
 -- work.
 
 [case testDataclassesAsdictFineGrained]
+# flags: --python-version 3.8
 [file a.py]
 from dataclasses import dataclass
 from b import AttributeInOtherModule
@@ -34,4 +35,5 @@ reveal_type(asdict(MyDataclass(MyList())))
 c.py:3: note: Revealed type is 'TypedDict({'attr'?: builtins.str})'
 ==
 c.py:4: note: Revealed type is 'TypedDict({'attr'?: builtins.list[builtins.int]})'
-[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
