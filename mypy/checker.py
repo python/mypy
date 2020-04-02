@@ -3049,17 +3049,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = get_proper_type(self.expr_checker.accept(lvalue.base))
-        if isinstance(basetype, TypedDictType):
-            item_type = self.expr_checker.visit_typeddict_index_expr(basetype, lvalue.index)
-            method_type = CallableType(
-                arg_types=[self.named_type('builtins.str'), item_type],
-                arg_kinds=[ARG_POS, ARG_POS],
-                arg_names=[None, None],
-                ret_type=NoneType(),
-                fallback=self.named_type('builtins.function')
-            )  # type: Type
-        elif isinstance(basetype, TypeVarType) and isinstance(basetype.upper_bound, TypedDictType):
-            item_type = self.expr_checker.visit_typeddict_index_expr(basetype.upper_bound, lvalue.index)
+        if (isinstance(basetype, TypedDictType) or (isinstance(basetype, TypeVarType)
+                and isinstance(get_proper_type(basetype.upper_bound), TypedDictType))):
+            if isinstance(basetype, TypedDictType):
+                typed_dict_type = basetype
+            else:
+                upper_bound_type = get_proper_type(basetype.upper_bound)
+                assert isinstance(upper_bound_type, TypedDictType)
+                typed_dict_type = upper_bound_type
+            item_type = self.expr_checker.visit_typeddict_index_expr(typed_dict_type, lvalue.index)
             method_type = CallableType(
                 arg_types=[self.named_type('builtins.str'), item_type],
                 arg_kinds=[ARG_POS, ARG_POS],
