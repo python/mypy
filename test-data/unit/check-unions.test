@@ -700,6 +700,20 @@ reveal_type(x) # N: Revealed type is 'Any'
 reveal_type(y) # N: Revealed type is 'Any'
 [out]
 
+[case testStringDisallowedUnpacking]
+from typing import Dict
+
+d: Dict[str, str]
+
+for a, b in d: # E: unpacking a string is disallowed
+    pass
+
+s = "foo"
+a, b = s # E: unpacking a string is disallowed
+
+[builtins fixtures/dict.pyi]
+[out]
+
 [case testUnionAlwaysTooMany]
 from typing import Union, Tuple
 bad: Union[Tuple[int, int, int], Tuple[str, str, str]]
