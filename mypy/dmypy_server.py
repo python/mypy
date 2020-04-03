@@ -534,7 +534,6 @@ class Server:
 
         orig_modules = list(graph.keys())
 
-        # TODO: Are the differences from fine_grained_increment(), necessary?
         self.update_sources(sources)
         changed_paths = self.fswatcher.find_changed()
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
@@ -542,17 +541,16 @@ class Server:
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
 
-        sources_set = {source.module for source in sources}
+        seen = {source.module for source in sources}
 
         # Find changed modules reachable from roots (or in roots) already in graph.
-        seen = set()  # type: Set[str]
-        changed, removed, new_files = self.follow_imports(
-            sources, graph, seen, changed_paths, sources_set
+        changed, new_files = self.find_reachable_changed_modules(
+            sources, graph, seen, changed_paths
         )
         sources.extend(new_files)
 
         # Process changes directly reachable from roots.
-        messages = fine_grained_manager.update(changed, removed)
+        messages = fine_grained_manager.update(changed, [])
 
         # Follow deps from changed modules (still within graph).
         worklist = changed[:]
@@ -561,31 +559,31 @@ class Server:
             if module[0] not in graph:
                 continue
             sources2 = self.direct_imports(module, graph)
-            changed, removed, new_files = self.follow_imports(
-                sources2, graph, seen, changed_paths, sources_set
+            changed, new_files = self.find_reachable_changed_modules(
+                sources2, graph, seen, changed_paths
             )
-            sources.extend(new_files)
             self.update_sources(new_files)
-            messages = fine_grained_manager.update(changed, removed)
-            # TODO: Removed?
+            messages = fine_grained_manager.update(changed, [])
             worklist.extend(changed)
 
         t2 = time.time()
 
-        for module_id, state in graph.items():
-            refresh_suppressed_submodules(module_id, state.path, fine_grained_manager.deps, graph,
-                                          self.fscache)
+        def refresh_file(module: str, path: str) -> List[str]:
+            return fine_grained_manager.update([(module, path)], [])
+
+        for module_id, state in list(graph.items()):
+            new_messages = refresh_suppressed_submodules(
+                module_id, state.path, fine_grained_manager.deps, graph, self.fscache, refresh_file
+            )
+            if new_messages is not None:
+                messages = new_messages
 
         t3 = time.time()
 
         # There may be new files that became available, currently treated as
         # suppressed imports. Process them.
-        seen_suppressed = set()  # type: Set[str]
         while True:
-            # TODO: Merge seen and seen_suppressed?
-            new_unsuppressed, seen_suppressed = self.find_added_suppressed(
-                graph, seen_suppressed, manager.search_paths
-            )
+            new_unsuppressed = self.find_added_suppressed(graph, seen, manager.search_paths)
             if not new_unsuppressed:
                 break
             new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
@@ -594,8 +592,15 @@ class Server:
             messages = fine_grained_manager.update(new_unsuppressed, [])
 
             for module_id, path in new_unsuppressed:
-                refresh_suppressed_submodules(module_id, path, fine_grained_manager.deps, graph,
-                                              self.fscache)
+                new_messages = refresh_suppressed_submodules(
+                    module_id, path,
+                    fine_grained_manager.deps,
+                    graph,
+                    self.fscache,
+                    refresh_file
+                )
+                if new_messages is not None:
+                    messages = new_messages
 
         t4 = time.time()
 
@@ -604,7 +609,7 @@ class Server:
         for module_id in orig_modules:
             if module_id not in graph:
                 continue
-            if module_id not in seen and module_id not in seen_suppressed:
+            if module_id not in seen:
                 module_path = graph[module_id].path
                 assert module_path is not None
                 to_delete.append((module_id, module_path))
@@ -631,33 +636,35 @@ class Server:
 
         return messages
 
-    def follow_imports(self,
-                       sources: List[BuildSource],
-                       graph: mypy.build.Graph,
-                       seen: Set[str],
-                       changed_paths: AbstractSet[str],
-                       sources_set: Set[str]) -> Tuple[List[Tuple[str, str]],
-                                                       List[Tuple[str, str]],
-                                                       List[BuildSource]]:
-        """Follow imports within graph from given sources.
+    def find_reachable_changed_modules(
+            self,
+            roots: List[BuildSource],
+            graph: mypy.build.Graph,
+            seen: Set[str],
+            changed_paths: AbstractSet[str]) -> Tuple[List[Tuple[str, str]],
+                                                      List[BuildSource]]:
+        """Follow imports within graph from given sources until hitting changed modules.
+
+        If we find a changed module, we can't continue following imports as the imports
+        may have changed.
 
         Args:
-            sources: roots of modules to search
+            roots: modules where to start search from
             graph: module graph to use for the search
-            seen: modules we've seen before that won't be visited (mutated here!)
+            seen: modules we've seen before that won't be visited (mutated here!!)
             changed_paths: which paths have changed (stop search here and return any found)
-            sources_set: set of sources (TODO: relationship with seen)
 
-        Return (reachable changed modules, removed modules, updated file list).
+        Return (encountered reachable changed modules,
+                unchanged files not in sources_set traversed).
         """
         changed = []
         new_files = []
-        worklist = sources[:]
+        worklist = roots[:]
         seen.update(source.module for source in worklist)
         while worklist:
             nxt = worklist.pop()
-            if nxt.module not in sources_set:
-                sources_set.add(nxt.module)
+            if nxt.module not in seen:
+                seen.add(nxt.module)
                 new_files.append(nxt)
             if nxt.path in changed_paths:
                 assert nxt.path is not None  # TODO
@@ -669,7 +676,7 @@ class Server:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path,
                                                     graph[dep].id))
-        return changed, [], new_files
+        return changed, new_files
 
     def direct_imports(self,
                        module: Tuple[str, str],
@@ -682,8 +689,14 @@ class Server:
     def find_added_suppressed(self,
                               graph: mypy.build.Graph,
                               seen: Set[str],
-                              search_paths: SearchPaths) -> Tuple[List[Tuple[str, str]], Set[str]]:
-        """Find suppressed modules that have been added (and not included in seen)."""
+                              search_paths: SearchPaths) -> List[Tuple[str, str]]:
+        """Find suppressed modules that have been added (and not included in seen).
+
+        Args:
+            seen: reachable modules we've seen before (mutated here!!)
+
+        Return suppressed, added modules.
+        """
         all_suppressed = set()
         for module, state in graph.items():
             all_suppressed |= state.suppressed_set
@@ -693,7 +706,6 @@ class Server:
         all_suppressed = {module for module in all_suppressed if module not in graph}
 
         # TODO: Namespace packages
-        # TODO: Handle seen?
 
         finder = FindModuleCache(search_paths, self.fscache, self.options)
 
@@ -705,7 +717,7 @@ class Server:
                 found.append((module, result))
                 seen.add(module)
 
-        return found, seen
+        return found
 
     def increment_output(self,
                          messages: List[str],
