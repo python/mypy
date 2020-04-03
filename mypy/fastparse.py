@@ -838,7 +838,9 @@ class ASTConverter:
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     def visit_Try(self, n: ast3.Try) -> TryStmt:
-        vs = [NameExpr(h.name) if h.name is not None else None for h in n.handlers]
+        vs = [
+            self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
+        ]
         types = [self.visit(h.type) for h in n.handlers]
         handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
 
