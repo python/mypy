@@ -187,7 +187,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt, ast27.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         return node
