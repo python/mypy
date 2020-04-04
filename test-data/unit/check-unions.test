@@ -695,7 +695,7 @@ from typing import Union
 bad: Union[int, str]
 
 x, y = bad # E: 'builtins.int' object is not iterable \
-           # E: unpacking a string is disallowed
+           # E: Unpacking a string is disallowed
 reveal_type(x) # N: Revealed type is 'Any'
 reveal_type(y) # N: Revealed type is 'Any'
 [out]
@@ -705,11 +705,11 @@ from typing import Dict
 
 d: Dict[str, str]
 
-for a, b in d: # E: unpacking a string is disallowed
+for a, b in d: # E: Unpacking a string is disallowed
     pass
 
 s = "foo"
-a, b = s # E: unpacking a string is disallowed
+a, b = s # E: Unpacking a string is disallowed
 
 [builtins fixtures/dict.pyi]
 [out]
