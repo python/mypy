@@ -64,6 +64,36 @@ First you should set up the mypy development environment as described in
 the [mypy docs](https://github.com/python/mypy/blob/master/README.md).
 macOS, Linux and Windows are supported.
 
+## Compiling and Running Programs
+
+Run `scripts/mypyc` to compile a module to a C extension using your
+development version of mypyc:
+
+```
+$ scripts/mypyc program.py
+```
+
+This will generate a C extension for `program` in the current working
+directory.  For example, on a Linux system the generated file may be
+called `program.cpython-37m-x86_64-linux-gnu.so`.
+
+Since C extensions can't be run as programs, use `python3 -c` to run
+the compiled module as a program:
+
+```
+$ python3 -c "import program"
+```
+
+Note that `__name__` in `program.py` will the `program`, not
+`__main__`!
+
+You can manually delete the C extension to get back to an interpreted
+version (example works on Linux):
+
+```
+$ rm program.*.so
+```
+
 ## High-level Overview of Mypyc
 
 Mypyc compiles a Python module (or a set of modules) to C, and
@@ -417,8 +447,6 @@ about how to do this.
 
 These workflows would be useful for mypyc contributors. We should add
 them to mypyc developer documentation:
-
-* How to manually compile and run a module.
 
 * How to inspect the generated C code.
 
