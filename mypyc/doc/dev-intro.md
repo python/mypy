@@ -226,15 +226,6 @@ All of these limitations will likely be fixed in the future:
 This section gives an overview of where to look for and
 what to do to implement specific kinds of mypyc features.
 
-### New Python Syntax
-
-Support for syntactic sugar that doesn't need additional IR operations
-typically only requires changes to `mypyc.irbuild`.
-
-Some new syntax also needs new IR primitives to be added to
-`mypyc.primitives`. See `mypyc.primitives.registry` for documentation
-about how to do this.
-
 ### Testing
 
 Our bread-and-butter testing strategy is compiling code with mypyc and
@@ -263,6 +254,45 @@ You may also need to add some definitions to the stubs used for
 builtins during tests (`mypyc/test-data/fixtures/ir.py`). We don't use
 full typeshed stubs to run tests since they would seriously slow down
 tests.
+
+### Benchmarking
+
+Many mypyc improvements attempt to make some operations faster. For
+any such change, you should run some measurerements to verify that
+there actually is a measurable performance impact.
+
+A typical benchmark would initialize some data to be operated on, and
+then measure time spent in some function. In particular, you should
+not measure time needed to run the entire benchmark program, as this
+would include Python startup overhead and other things that aren't
+relevant. In general, for microbenchmarks, you want to do as little as
+possible in the timed portion. So ideally you'll just have some loops
+and the code under test. Be ready to provide your benchmark in code
+review so that mypyc developers can check that the benchmark is fine
+(writing a good benchmark is non-trivial).
+
+You should run a benchmark at least five times, in both original and
+changed versions, ignore outliers, and report the average
+runtime. Actual performance of a typical desktop or laptop computer is
+quite variable, due to dynamic CPU clock frequency changes, background
+processes, etc. If you observe a high variance in timings, you'll need
+to run the benchmark more times. Also try closing most applications,
+including web browsers.
+
+Interleave original and changed runs. Don't run 10 runs with variant A
+followed by 10 runs with variant B, but run an A run, a B run, an A
+run, etc. Otherwise you risk that the CPU frequency will be different
+between variants. You can also try adding a delay of 5 to 20s between
+runs to avoid CPU frequency changes.
+
+Instead of averaging over many measurements, you can try to adjust
+your environment to provide more stable measurements. However, this
+can be hard to do with some hardware, including many laptops.  Victor
+Stinner has written a series of blog posts about making measurements
+stable:
+
+* https://vstinner.github.io/journey-to-stable-benchmark-system.html
+* https://vstinner.github.io/journey-to-stable-benchmark-average.html
 
 ### Adding C Helpers
 
@@ -299,33 +329,41 @@ suitable primitive operation automatically.
 Look at the existing primitive definitions and the docstrings in
 `mypyc.primitives.registry` for examples and more information.
 
-### A New Primitive Type
+### Adding a New Primitive Type
 
-Some types such as `int` and `list` are special cased in mypyc to
-generate operations specific to these types.
+Some types (typically Python Python built-in types), such as `int` and
+`list`, are special cased in mypyc to generate optimized operations
+specific to these types. We'll occasionally want to add additional
+primitive types.
 
 Here are some hints about how to add support for a new primitive type
 (this may be incomplete):
 
-* Decide whether the primitive type has an "unboxed" representation
-  (a representation that is not just `PyObject *`).
+* Decide whether the primitive type has an "unboxed" representation (a
+  representation that is not just `PyObject *`). For most types we'll
+  use a boxed representation, as it's easier to implement and more
+  closely matches Python semantics.
 
-* Create a new instance of `RPrimitive` to support the primitive type.
-  Make sure all the attributes are set correctly and also define
-  `<foo>_rprimitive` and `is_<foo>_rprimitive`.
+* Create a new instance of `RPrimitive` to support the primitive type
+  and add it to `mypyc.ir.rtypes`. Make sure all the attributes are
+  set correctly and also define `<foo>_rprimitive` and
+  `is_<foo>_rprimitive`.
 
 * Update `mypyc.irbuild.mapper.Mapper.type_to_rtype()`.
 
+* If the type is not unboxed, update `emit_cast` in `mypyc.codegen.emit`.
+
+If the type is unboxed, there are some additional steps:
+
 * Update `emit_box` in `mypyc.codegen.emit`.
 
-* Update `emit_unbox` or `emit_cast` in `mypyc.codegen.emit`.
+* Update `emit_unbox` in `mypyc.codegen.emit`.
 
-* Update `emit_inc_ref` and `emit_dec_ref` in `mypypc.codegen.emit` if
-  needed. If the unboxed representation does not need reference
-  counting, these can be no-ops. If the representation is not unboxed
-  these will already work.
+* Update `emit_inc_ref` and `emit_dec_ref` in `mypypc.codegen.emit`.
+  If the unboxed representation does not need reference counting,
+  these can be no-ops.
 
-* Update `emit_error_check` in `mypyc.codegen.emit` for unboxed types.
+* Update `emit_error_check` in `mypyc.codegen.emit`.
 
 * Update `emit_gc_visit` and `emit_gc_clear` in `mypyc.codegen.emit`
   if the type has an unboxed representation with pointers.
@@ -351,6 +389,17 @@ running compiled code. Ideas for things to test:
 * Test using the type as list item type. Test both getting a list item
   and setting a list item.
 
+### Supporting More Python Syntax
+
+Mypyc supports most Python syntax, but there are still some gaps.
+
+Support for syntactic sugar that doesn't need additional IR operations
+typically only requires changes to `mypyc.irbuild`.
+
+Some new syntax also needs new IR primitives to be added to
+`mypyc.primitives`. See `mypyc.primitives.registry` for documentation
+about how to do this.
+
 ### Other Hints
 
 * This developer documentation is not aimed to be very complete. Much
@@ -374,5 +423,3 @@ them to mypyc developer documentation:
 * How to inspect the generated C code.
 
 * How to inspect the generated IR (before/after various transform passes).
-
-* How to measure the performance of code reliably.
