@@ -131,6 +131,14 @@ Mypyc has these passes:
 
 * Compile the generated C code using a C compiler (`mypyc.build`).
 
+## Inspecting Generated C
+
+It's often useful to inspect the C code genenerate by mypyc to debug
+issues.  Mypyc stores the generated C code as `build/__native.c`.
+Compiled native functions have the prefix `CPyDef_`, while wrapper
+functions used for calling functions from interpreted Python code have
+the `CPyPy_` prefix.
+
 ## Useful Background Information
 
 Beyond the mypy documentation, here are some things that are helpful to
@@ -183,6 +191,14 @@ Look at the docstrings and comments in `mypyc.ir` for additional
 information. See the test cases in
 `mypyc/test-data/irbuild-basic.test` for examples of what the IR looks
 like in a pretty-printed form.
+
+## Inspecting Generated IR
+
+It's often useful to look at the generated IR when debugging issues or
+when trying to understand how mypyc compiles some code.  When you
+compile some module with mypyc, mypyc will write the pretty-printed IR
+into `build/ops.txt`. This is the final IR that includes the output from
+exception and reference count handling insertion passes.
 
 ## Tests
 
@@ -448,6 +464,4 @@ about how to do this.
 These workflows would be useful for mypyc contributors. We should add
 them to mypyc developer documentation:
 
-* How to inspect the generated C code.
-
-* How to inspect the generated IR (before/after various transform passes).
+* How to inspect the generated IR before some transform passes.
