@@ -66,6 +66,10 @@ macOS, Linux and Windows are supported.
 
 ## Compiling and Running Programs
 
+When working on a mypyc feature or a fix, you'll often need to run
+compiled code. For example, you may want to do interactive testing or
+to run benchmarks.
+
 Run `scripts/mypyc` to compile a module to a C extension using your
 development version of mypyc:
 
@@ -93,6 +97,8 @@ version (example works on Linux):
 ```
 $ rm program.*.so
 ```
+
+Another option is to invoke mypyc through tests (see Testing below).
 
 ## High-level Overview of Mypyc
 
