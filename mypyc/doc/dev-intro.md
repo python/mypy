@@ -68,7 +68,8 @@ macOS, Linux and Windows are supported.
 
 When working on a mypyc feature or a fix, you'll often need to run
 compiled code. For example, you may want to do interactive testing or
-to run benchmarks.
+to run benchmarks. This is also handy if you want to inspect the
+generated C code (see Inspecting Generated C).
 
 Run `scripts/mypyc` to compile a module to a C extension using your
 development version of mypyc:
@@ -88,11 +89,11 @@ the compiled module as a program:
 $ python3 -c "import program"
 ```
 
-Note that `__name__` in `program.py` will the `program`, not
+Note that `__name__` in `program.py` will now be `program`, not
 `__main__`!
 
 You can manually delete the C extension to get back to an interpreted
-version (example works on Linux):
+version (this example works on Linux):
 
 ```
 $ rm program.*.so
@@ -136,14 +137,6 @@ Mypyc has these passes:
 * Translate the IR into C (`mypyc.codegen`).
 
 * Compile the generated C code using a C compiler (`mypyc.build`).
-
-## Inspecting Generated C
-
-It's often useful to inspect the C code genenerate by mypyc to debug
-issues.  Mypyc stores the generated C code as `build/__native.c`.
-Compiled native functions have the prefix `CPyDef_`, while wrapper
-functions used for calling functions from interpreted Python code have
-the `CPyPy_` prefix.
 
 ## Useful Background Information
 
@@ -198,14 +191,6 @@ information. See the test cases in
 `mypyc/test-data/irbuild-basic.test` for examples of what the IR looks
 like in a pretty-printed form.
 
-## Inspecting Generated IR
-
-It's often useful to look at the generated IR when debugging issues or
-when trying to understand how mypyc compiles some code.  When you
-compile some module with mypyc, mypyc will write the pretty-printed IR
-into `build/ops.txt`. This is the final IR that includes the output from
-exception and reference count handling insertion passes.
-
 ## Tests
 
 Mypyc test cases are defined in the same format (`.test`) as used for
@@ -220,6 +205,18 @@ compile mypy using mypyc and run the mypy test suite using the
 compiled mypy. This will sometimes catch additional issues not caught
 by the mypyc test suite. It's okay to not do this in your local
 development environment.
+
+## Inspecting Generated IR
+
+It's often useful to look at the generated IR when debugging issues or
+when trying to understand how mypyc compiles some code.  When you
+compile some module by running `mypyc`, mypyc will write the
+pretty-printed IR into `build/ops.txt`. This is the final IR that
+includes the output from exception and reference count handling
+insertion passes.
+
+We also have tests that verify the generate IR
+(`mypyc/test-data/irbuild-*.text`).
 
 ## Type-checking Mypyc
 
@@ -264,6 +261,14 @@ The generated code uses various helpers defined in
 since it is included in many files. `mypyc/lib-rt/CPy.c` contains
 definitions that must only occur once, but really most of `CPy.h`
 should be moved into it.
+
+## Inspecting Generated C
+
+It's often useful to inspect the C code genenerate by mypyc to debug
+issues.  Mypyc stores the generated C code as `build/__native.c`.
+Compiled native functions have the prefix `CPyDef_`, while wrapper
+functions used for calling functions from interpreted Python code have
+the `CPyPy_` prefix.
 
 ## Other Important Limitations
 
