@@ -35,6 +35,12 @@ b = B()
 c = add([cast(A, b)], [a])
 [builtins fixtures/list.pyi]
 
+[case testCastToAnyTypeNotRedundant]
+# flags: --warn-redundant-casts
+from typing import cast, Any
+a: Any
+b = cast(Any, a)
+[builtins fixtures/list.pyi]
 
 -- Unused 'type: ignore' comments
 -- ------------------------------

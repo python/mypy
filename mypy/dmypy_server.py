@@ -16,19 +16,19 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
-from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple, Set
 from typing_extensions import Final
 
 import mypy.build
 import mypy.errors
 import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
-from mypy.server.update import FineGrainedBuildManager
+from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
-from mypy.modulefinder import BuildSource, compute_search_paths
+from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
@@ -361,8 +361,12 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
-        res = self.fine_grained_increment(sources, is_tty, terminal_width,
-                                          remove, update)
+        if not self.following_imports():
+            messages = self.fine_grained_increment(sources, remove, update)
+        else:
+            assert remove is None and update is None
+            messages = self.fine_grained_increment_follow_imports(sources)
+        res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -377,7 +381,11 @@ class Server:
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
-            res = self.fine_grained_increment(sources, is_tty, terminal_width)
+            if not self.following_imports():
+                messages = self.fine_grained_increment(sources)
+            else:
+                messages = self.fine_grained_increment_follow_imports(sources)
+            res = self.increment_output(messages, sources, is_tty, terminal_width)
         self.fscache.flush()
         self.update_stats(res)
         return res
@@ -388,6 +396,11 @@ class Server:
             manager.dump_stats()
             res['stats'] = manager.stats
             manager.stats = {}
+
+    def following_imports(self) -> bool:
+        """Are we following imports?"""
+        # TODO: What about silent?
+        return self.options.follow_imports == 'normal'
 
     def initialize_fine_grained(self, sources: List[BuildSource],
                                 is_tty: bool, terminal_width: int) -> Dict[str, Any]:
@@ -408,6 +421,11 @@ class Server:
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
+
+        if self.following_imports():
+            sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
+            self.update_sources(sources)
+
         self.previous_sources = sources
 
         # If we are using the fine-grained cache, build hasn't actually done
@@ -436,6 +454,11 @@ class Server:
             t3 = time.time()
             # Run an update
             messages = self.fine_grained_manager.update(changed, removed)
+
+            if self.following_imports():
+                # We need to do another update to any new files found by following imports.
+                messages = self.fine_grained_increment_follow_imports(sources)
+
             t4 = time.time()
             self.fine_grained_manager.manager.add_stats(
                 update_sources_time=t1 - t0,
@@ -443,6 +466,7 @@ class Server:
                 find_changes_time=t3 - t2,
                 fg_update_time=t4 - t3,
                 files_changed=len(removed) + len(changed))
+
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
@@ -457,11 +481,19 @@ class Server:
 
     def fine_grained_increment(self,
                                sources: List[BuildSource],
-                               is_tty: bool,
-                               terminal_width: int,
                                remove: Optional[List[str]] = None,
                                update: Optional[List[str]] = None,
-                               ) -> Dict[str, Any]:
+                               ) -> List[str]:
+        """Perform a fine-grained type checking increment.
+
+        If remove and update are None, determine changed paths by using
+        fswatcher. Otherwise, assume that only these files have changes.
+
+        Args:
+            sources: sources passed on the command line
+            remove: paths of files that have been removed
+            update: paths of files that have been changed or created
+        """
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
 
@@ -486,8 +518,213 @@ class Server:
             fg_update_time=t2 - t1,
             files_changed=len(removed) + len(changed))
 
-        status = 1 if messages else 0
         self.previous_sources = sources
+        return messages
+
+    def fine_grained_increment_follow_imports(self, sources: List[BuildSource]) -> List[str]:
+        """Like fine_grained_increment, but follow imports."""
+        t0 = time.time()
+
+        # TODO: Support file events
+
+        assert self.fine_grained_manager is not None
+        fine_grained_manager = self.fine_grained_manager
+        graph = fine_grained_manager.graph
+        manager = fine_grained_manager.manager
+
+        orig_modules = list(graph.keys())
+
+        self.update_sources(sources)
+        changed_paths = self.fswatcher.find_changed()
+        manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
+
+        t1 = time.time()
+        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
+
+        seen = {source.module for source in sources}
+
+        # Find changed modules reachable from roots (or in roots) already in graph.
+        changed, new_files = self.find_reachable_changed_modules(
+            sources, graph, seen, changed_paths
+        )
+        sources.extend(new_files)
+
+        # Process changes directly reachable from roots.
+        messages = fine_grained_manager.update(changed, [])
+
+        # Follow deps from changed modules (still within graph).
+        worklist = changed[:]
+        while worklist:
+            module = worklist.pop()
+            if module[0] not in graph:
+                continue
+            sources2 = self.direct_imports(module, graph)
+            changed, new_files = self.find_reachable_changed_modules(
+                sources2, graph, seen, changed_paths
+            )
+            self.update_sources(new_files)
+            messages = fine_grained_manager.update(changed, [])
+            worklist.extend(changed)
+
+        t2 = time.time()
+
+        def refresh_file(module: str, path: str) -> List[str]:
+            return fine_grained_manager.update([(module, path)], [])
+
+        for module_id, state in list(graph.items()):
+            new_messages = refresh_suppressed_submodules(
+                module_id, state.path, fine_grained_manager.deps, graph, self.fscache, refresh_file
+            )
+            if new_messages is not None:
+                messages = new_messages
+
+        t3 = time.time()
+
+        # There may be new files that became available, currently treated as
+        # suppressed imports. Process them.
+        while True:
+            new_unsuppressed = self.find_added_suppressed(graph, seen, manager.search_paths)
+            if not new_unsuppressed:
+                break
+            new_files = [BuildSource(mod[1], mod[0]) for mod in new_unsuppressed]
+            sources.extend(new_files)
+            self.update_sources(new_files)
+            messages = fine_grained_manager.update(new_unsuppressed, [])
+
+            for module_id, path in new_unsuppressed:
+                new_messages = refresh_suppressed_submodules(
+                    module_id, path,
+                    fine_grained_manager.deps,
+                    graph,
+                    self.fscache,
+                    refresh_file
+                )
+                if new_messages is not None:
+                    messages = new_messages
+
+        t4 = time.time()
+
+        # Find all original modules in graph that were not reached -- they are deleted.
+        to_delete = []
+        for module_id in orig_modules:
+            if module_id not in graph:
+                continue
+            if module_id not in seen:
+                module_path = graph[module_id].path
+                assert module_path is not None
+                to_delete.append((module_id, module_path))
+        if to_delete:
+            messages = fine_grained_manager.update([], to_delete)
+
+        fix_module_deps(graph)
+
+        # Store current file state as side effect
+        self.fswatcher.find_changed()
+
+        self.previous_sources = find_all_sources_in_build(graph)
+        self.update_sources(self.previous_sources)
+
+        t5 = time.time()
+
+        manager.log("fine-grained increment: update: {:.3f}s".format(t5 - t1))
+        manager.add_stats(
+            find_changes_time=t1 - t0,
+            fg_update_time=t2 - t1,
+            refresh_suppressed_time=t3 - t2,
+            find_added_supressed_time=t4 - t3,
+            cleanup_time=t5 - t4)
+
+        return messages
+
+    def find_reachable_changed_modules(
+            self,
+            roots: List[BuildSource],
+            graph: mypy.build.Graph,
+            seen: Set[str],
+            changed_paths: AbstractSet[str]) -> Tuple[List[Tuple[str, str]],
+                                                      List[BuildSource]]:
+        """Follow imports within graph from given sources until hitting changed modules.
+
+        If we find a changed module, we can't continue following imports as the imports
+        may have changed.
+
+        Args:
+            roots: modules where to start search from
+            graph: module graph to use for the search
+            seen: modules we've seen before that won't be visited (mutated here!!)
+            changed_paths: which paths have changed (stop search here and return any found)
+
+        Return (encountered reachable changed modules,
+                unchanged files not in sources_set traversed).
+        """
+        changed = []
+        new_files = []
+        worklist = roots[:]
+        seen.update(source.module for source in worklist)
+        while worklist:
+            nxt = worklist.pop()
+            if nxt.module not in seen:
+                seen.add(nxt.module)
+                new_files.append(nxt)
+            if nxt.path in changed_paths:
+                assert nxt.path is not None  # TODO
+                changed.append((nxt.module, nxt.path))
+            elif nxt.module in graph:
+                state = graph[nxt.module]
+                for dep in state.dependencies:
+                    if dep not in seen:
+                        seen.add(dep)
+                        worklist.append(BuildSource(graph[dep].path,
+                                                    graph[dep].id))
+        return changed, new_files
+
+    def direct_imports(self,
+                       module: Tuple[str, str],
+                       graph: mypy.build.Graph) -> List[BuildSource]:
+        """Return the direct imports of module not included in seen."""
+        state = graph[module[0]]
+        return [BuildSource(graph[dep].path, dep)
+                for dep in state.dependencies]
+
+    def find_added_suppressed(self,
+                              graph: mypy.build.Graph,
+                              seen: Set[str],
+                              search_paths: SearchPaths) -> List[Tuple[str, str]]:
+        """Find suppressed modules that have been added (and not included in seen).
+
+        Args:
+            seen: reachable modules we've seen before (mutated here!!)
+
+        Return suppressed, added modules.
+        """
+        all_suppressed = set()
+        for module, state in graph.items():
+            all_suppressed |= state.suppressed_set
+
+        # Filter out things that shouldn't actually be considered suppressed.
+        # TODO: Figure out why these are treated as suppressed
+        all_suppressed = {module for module in all_suppressed if module not in graph}
+
+        # TODO: Namespace packages
+
+        finder = FindModuleCache(search_paths, self.fscache, self.options)
+
+        found = []
+
+        for module in all_suppressed:
+            result = finder.find_module(module)
+            if isinstance(result, str) and module not in seen:
+                found.append((module, result))
+                seen.add(module)
+
+        return found
+
+    def increment_output(self,
+                         messages: List[str],
+                         sources: List[BuildSource],
+                         is_tty: bool,
+                         terminal_width: int) -> Dict[str, Any]:
+        status = 1 if messages else 0
         messages = self.pretty_messages(messages, len(sources), is_tty, terminal_width)
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
@@ -516,6 +753,9 @@ class Server:
 
     def update_sources(self, sources: List[BuildSource]) -> None:
         paths = [source.path for source in sources if source.path is not None]
+        if self.following_imports():
+            # Filter out directories (used for namespace packages).
+            paths = [path for path in paths if self.fscache.isfile(path)]
         self.fswatcher.add_watched_paths(paths)
 
     def update_changed(self,
@@ -622,3 +862,33 @@ def get_meminfo() -> Dict[str, Any]:
                 factor = 1024  # Linux
             res['memory_maxrss_mib'] = rusage.ru_maxrss * factor / MiB
     return res
+
+
+def find_all_sources_in_build(graph: mypy.build.Graph,
+                              extra: Sequence[BuildSource] = ()) -> List[BuildSource]:
+    result = list(extra)
+    seen = set(source.module for source in result)
+    for module, state in graph.items():
+        if module not in seen:
+            result.append(BuildSource(state.path, module))
+    return result
+
+
+def fix_module_deps(graph: mypy.build.Graph) -> None:
+    """After an incremental update, update module dependencies to reflect the new state.
+
+    This can make some suppressed dependencies non-suppressed, and vice versa (if modules
+    have been added to or removed from the build).
+    """
+    for module, state in graph.items():
+        new_suppressed = []
+        new_dependencies = []
+        for dep in state.dependencies + state.suppressed:
+            if dep in graph:
+                new_dependencies.append(dep)
+            else:
+                new_suppressed.append(dep)
+        state.dependencies = new_dependencies
+        state.dependencies_set = set(new_dependencies)
+        state.suppressed = new_suppressed
+        state.suppressed_set = set(new_suppressed)

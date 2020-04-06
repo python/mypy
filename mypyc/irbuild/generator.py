@@ -1,7 +1,11 @@
 """Generate IR for generator functions.
 
-A generator function is represented by a class that implements the generator protocol
-and keeps track of the generator state, including local variables.
+A generator function is represented by a class that implements the
+generator protocol and keeps track of the generator state, including
+local variables.
+
+The top-level logic for dealing with generator functions is in
+mypyc.irbuild.function.
 """
 
 from typing import List
@@ -93,9 +97,11 @@ def populate_switch_for_generator_class(builder: IRBuilder) -> None:
 
 
 def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int) -> None:
-    """
-    Generates blocks to check if error flags are set while calling the helper method for
-    generator functions, and raises an exception if those flags are set.
+    """Add error handling blocks to a generator class.
+
+    Generates blocks to check if error flags are set while calling the
+    helper method for generator functions, and raises an exception if
+    those flags are set.
     """
     cls = builder.fn_info.generator_class
     assert cls.exc_regs is not None
@@ -225,8 +231,9 @@ def add_throw_to_generator_class(builder: IRBuilder,
     val = builder.environment.add_local_reg(Var('value'), object_rprimitive, True)
     tb = builder.environment.add_local_reg(Var('traceback'), object_rprimitive, True)
 
-    # Because the value and traceback arguments are optional and hence can be NULL if not
-    # passed in, we have to assign them Py_None if they are not passed in.
+    # Because the value and traceback arguments are optional and hence
+    # can be NULL if not passed in, we have to assign them Py_None if
+    # they are not passed in.
     none_reg = builder.none_object()
     builder.assign_if_null(val, lambda: none_reg, builder.fn_info.fitem.line)
     builder.assign_if_null(tb, lambda: none_reg, builder.fn_info.fitem.line)
@@ -242,9 +249,9 @@ def add_throw_to_generator_class(builder: IRBuilder,
     builder.add(Return(result))
     blocks, env, _, fn_info = builder.leave()
 
-    # Create the FuncSignature for the throw function. NOte that the value and traceback fields
-    # are optional, and are assigned to if they are not passed in inside the body of the throw
-    # function.
+    # Create the FuncSignature for the throw function. Note that the
+    # value and traceback fields are optional, and are assigned to if
+    # they are not passed in inside the body of the throw function.
     sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
                          RuntimeArg('type', object_rprimitive),
                          RuntimeArg('value', object_rprimitive, ARG_OPT),
@@ -312,8 +319,9 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.self_reg = builder.read(self_target, fitem.line)
     cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.environment)
 
-    # Define a variable representing the label to go to the next time the '__next__' function
-    # of the generator is called, and add it as an attribute to the environment class.
+    # Define a variable representing the label to go to the next time
+    # the '__next__' function of the generator is called, and add it
+    # as an attribute to the environment class.
     cls.next_label_target = builder.add_var_to_env_class(
         Var(NEXT_LABEL_ATTR_NAME),
         int_rprimitive,
@@ -321,7 +329,8 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
         reassign=False
     )
 
-    # Add arguments from the original generator function to the generator class' environment.
+    # Add arguments from the original generator function to the
+    # environment of the generator class.
     add_args_to_env(builder, local=False, base=cls, reassign=False)
 
     # Set the next label register for the generator class.

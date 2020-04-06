@@ -1,3 +1,11 @@
+"""Integer primitive ops.
+
+These mostly operate on (usually) unboxed integers that use a tagged pointer
+representation (CPyTagged).
+
+See also the documentation for mypyc.rtypes.int_rprimitive.
+"""
+
 from mypyc.ir.ops import OpDescription, ERR_NEVER, ERR_MAGIC
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
@@ -5,21 +13,21 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, unary_op, func_op, custom_op,
-    simple_emit,
-    call_emit,
+    simple_emit, call_emit, name_emit,
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
 # I guess unboxing ourselves would save a check and branch though?
 
+# Get the type object for 'builtins.int'.
 # For ordinary calls to int() we use a name_ref to the type
 name_ref_op('builtins.int',
             result_type=object_rprimitive,
             error_kind=ERR_NEVER,
-            emit=simple_emit('{dest} = (PyObject *)&PyLong_Type;'),
+            emit=name_emit('&PyLong_Type', target_type='PyObject *'),
             is_borrowed=True)
 
-# Convert from a float. We could do a bit better directly.
+# Convert from a float to int. We could do a bit better directly.
 func_op(
     name='builtins.int',
     arg_types=[float_rprimitive],
@@ -28,6 +36,7 @@ func_op(
     emit=call_emit('CPyLong_FromFloat'),
     priority=1)
 
+# int(string)
 func_op(
     name='builtins.int',
     arg_types=[str_rprimitive],
@@ -36,6 +45,7 @@ func_op(
     emit=call_emit('CPyLong_FromStr'),
     priority=1)
 
+# int(string, base)
 func_op(
     name='builtins.int',
     arg_types=[str_rprimitive, int_rprimitive],
@@ -69,6 +79,8 @@ def int_compare_op(op: str, c_func_name: str) -> None:
               priority=2)
 
 
+# Binary, unary and augmented assignment operations that operate on CPyTagged ints.
+
 int_binary_op('+', 'CPyTagged_Add')
 int_binary_op('-', 'CPyTagged_Subtract')
 int_binary_op('*', 'CPyTagged_Multiply')
@@ -77,9 +89,9 @@ int_binary_op('*', 'CPyTagged_Multiply')
 int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 
-# this should work because assignment operators are parsed differently
+# This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment
-# regardless of whether or not the operator works in place anyway
+# regardless of whether or not the operator works in place anyway.
 int_binary_op('+=', 'CPyTagged_Add')
 int_binary_op('-=', 'CPyTagged_Subtract')
 int_binary_op('*=', 'CPyTagged_Multiply')
@@ -93,6 +105,8 @@ int_compare_op('<=', 'CPyTagged_IsLe')
 int_compare_op('>', 'CPyTagged_IsGt')
 int_compare_op('>=', 'CPyTagged_IsGe')
 
+# Add short integers and assume that it doesn't overflow or underflow.
+# Assume that the operands are not big integers.
 unsafe_short_add = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     result_type=short_int_rprimitive,

@@ -16,7 +16,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
-from mypyc.primitives.misc_ops import iter_op, next_op
+from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
 
@@ -96,12 +96,13 @@ def comprehension_helper(builder: IRBuilder,
                          line: int) -> None:
     """Helper function for list comprehensions.
 
-    "loop_params" is a list of (index, expr, [conditions]) tuples defining nested loops:
-        - "index" is the Lvalue indexing that loop;
-        - "expr" is the expression for the object to be iterated over;
-        - "conditions" is a list of conditions, evaluated in order with short-circuiting,
-            that must all be true for the loop body to be executed
-    "gen_inner_stmts" is a function to generate the IR for the body of the innermost loop
+    Args:
+        loop_params: a list of (index, expr, [conditions]) tuples defining nested loops:
+            - "index" is the Lvalue indexing that loop;
+            - "expr" is the expression for the object to be iterated over;
+            - "conditions" is a list of conditions, evaluated in order with short-circuiting,
+                that must all be true for the loop body to be executed
+        gen_inner_stmts: function to generate the IR for the body of the innermost loop
     """
     def handle_loop(loop_params: List[Tuple[Lvalue, Expression, List[Expression]]]) -> None:
         """Generate IR for a loop.
@@ -120,10 +121,11 @@ def comprehension_helper(builder: IRBuilder,
     ) -> None:
         """Generate the body of the loop.
 
-        "conds" is a list of conditions to be evaluated (in order, with short circuiting)
-            to gate the body of the loop.
-        "remaining_loop_params" is the parameters for any further nested loops; if it's empty
-            we'll instead evaluate the "gen_inner_stmts" function.
+        Args:
+            conds: a list of conditions to be evaluated (in order, with short circuiting)
+                to gate the body of the loop
+            remaining_loop_params: the parameters for any further nested loops; if it's empty
+                we'll instead evaluate the "gen_inner_stmts" function
         """
         # Check conditions, in order, short circuiting them.
         for cond in conds:
@@ -356,7 +358,8 @@ def unsafe_index(
 class ForSequence(ForGenerator):
     """Generate optimized IR for a for loop over a sequence.
 
-    Supports iterating in both forward and reverse."""
+    Supports iterating in both forward and reverse.
+    """
 
     def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
         builder = self.builder

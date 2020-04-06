@@ -1,3 +1,16 @@
+"""Prepare for IR transform.
+
+This needs to run after type checking and before generating IR.
+
+For example, construct partially initialized FuncIR and ClassIR
+objects for all functions and classes. This allows us to bind
+references to functions and classes before we've generated full IR for
+functions or classes.  The actual IR transform will then populate all
+the missing bits, such as function bodies (basic blocks).
+
+Also build a mapping from mypy TypeInfos to ClassIR objects.
+"""
+
 from typing import List, Dict, Iterable, Optional, Union
 
 from mypy.nodes import (

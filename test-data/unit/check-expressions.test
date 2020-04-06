@@ -1990,6 +1990,13 @@ a: Any
 x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, Literal[1]?]'
 reveal_type(a if int() else 1)  # N: Revealed type is 'Any'
 
+[case testConditionalExpressionStatementNoReturn]
+from typing import List, Union
+x = []
+y = ""
+x.append(y) if bool() else x.append(y)
+z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value
+[builtins fixtures/list.pyi]
 
 -- Special cases
 -- -------------

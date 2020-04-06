@@ -1,3 +1,11 @@
+"""Transform mypy statement ASTs to mypyc IR (Intermediate Representation).
+
+The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
+and mypyc.irbuild.builder.
+
+A few statements are transformed in mypyc.irbuild.function (yield, for example).
+"""
+
 from typing import Optional, List, Tuple, Sequence, Callable
 import importlib.util
 
@@ -13,7 +21,8 @@ from mypyc.ir.ops import (
     BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
-from mypyc.primitives.misc_ops import true_op, false_op, type_op, py_delattr_op, get_module_dict_op
+from mypyc.primitives.generic_ops import py_delattr_op
+from mypyc.primitives.misc_ops import true_op, false_op, type_op, get_module_dict_op
 from mypyc.primitives.dict_ops import dict_get_item_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,

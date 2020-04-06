@@ -162,6 +162,10 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_func_scope(self) -> bool:
+        raise NotImplementedError
+
 
 def create_indirect_imported_name(file_node: MypyFile,
                                   module: str,

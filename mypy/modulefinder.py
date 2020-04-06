@@ -70,16 +70,18 @@ class BuildSource:
     """A single source file."""
 
     def __init__(self, path: Optional[str], module: Optional[str],
-                 text: Optional[str], base_dir: Optional[str] = None) -> None:
+                 text: Optional[str] = None, base_dir: Optional[str] = None) -> None:
         self.path = path  # File where it's found (e.g. 'xxx/yyy/foo/bar.py')
         self.module = module or '__main__'  # Module name (e.g. 'foo.bar')
         self.text = text  # Source code, if initially supplied, else None
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
-                                                                self.module,
-                                                                self.text is not None)
+        return '<BuildSource path=%r module=%r has_text=%s base_dir=%s>' % (
+            self.path,
+            self.module,
+            self.text is not None,
+            self.base_dir)
 
 
 class FindModuleCache:

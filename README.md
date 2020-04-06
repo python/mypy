@@ -212,6 +212,8 @@ the above as root. For example, in Ubuntu:
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
 
+> NOTE: Installing with sudo can be a security risk, please try with flag `--user` first.
+    $ python3 -m pip install --user -U . 
 
 Working with the git version of mypy
 ------------------------------------

@@ -272,6 +272,7 @@ class TypeCheckSuite(DataSuite):
         if not missing_paths == busted_paths:
             raise AssertionError("cache data discrepancy %s != %s" %
                                  (missing_paths, busted_paths))
+        assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
 
     def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()
@@ -335,7 +336,7 @@ class TypeCheckSuite(DataSuite):
             cache = FindModuleCache(search_paths)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert isinstance(path, str), "Can't find ad hoc case file"
+                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

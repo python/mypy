@@ -226,6 +226,9 @@ def _build(sources: List[BuildSource],
                     options.show_absolute_path)
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
+    # Add catch-all .gitignore to cache dir if we created it
+    cache_dir_existed = os.path.isdir(options.cache_dir)
+
     # Construct a build manager object to hold state during the build.
     #
     # Ignore current directory prefix in error messages.
@@ -262,6 +265,8 @@ def _build(sources: List[BuildSource],
         if reports is not None:
             # Finish the HTML or XML reports even if CompileError was raised.
             reports.finish()
+        if not cache_dir_existed and os.path.isdir(options.cache_dir):
+            add_catch_all_gitignore(options.cache_dir)
 
 
 def default_data_dir() -> str:
@@ -1111,14 +1116,10 @@ def add_catch_all_gitignore(target_dir: str) -> None:
 
 def create_metastore(options: Options) -> MetadataStore:
     """Create the appropriate metadata store."""
-    # Add catch-all .gitignore to cache dir if we created it
-    cache_dir_existed = os.path.isdir(options.cache_dir)
     if options.sqlite_cache:
         mds = SqliteMetadataStore(_cache_dir_prefix(options))  # type: MetadataStore
     else:
         mds = FilesystemMetadataStore(_cache_dir_prefix(options))
-    if not cache_dir_existed and os.path.isdir(options.cache_dir):
-        add_catch_all_gitignore(options.cache_dir)
     return mds
 
 
@@ -1953,45 +1954,6 @@ class State:
         # load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
-
-    def fix_suppressed_dependencies(self, graph: Graph) -> None:
-        """Corrects whether dependencies are considered stale in silent mode.
-
-        This method is a hack to correct imports in silent mode + incremental mode.
-        In particular, the problem is that when running mypy with a cold cache, the
-        `parse_file(...)` function is called *at the start* of the `load_graph(...)` function.
-        Note that load_graph will mark some dependencies as suppressed if they weren't specified
-        on the command line in silent mode.
-
-        However, if the interface for a module is changed, parse_file will be called within
-        `process_stale_scc` -- *after* load_graph is finished, wiping out the changes load_graph
-        previously made.
-
-        This method is meant to be run after parse_file finishes in process_stale_scc and will
-        recompute what modules should be considered suppressed in silent mode.
-        """
-        # TODO: See if it's possible to move this check directly into parse_file in some way.
-        # TODO: Find a way to write a test case for this fix.
-        # TODO: I suspect that splitting compute_dependencies() out from parse_file
-        # obviates the need for this but lacking a test case for the problem this fixed...
-        silent_mode = (self.options.ignore_missing_imports or
-                       self.options.follow_imports == 'skip')
-        if not silent_mode:
-            return
-
-        new_suppressed = []
-        new_dependencies = []
-        entry_points = self.manager.source_set.source_modules
-        for dep in self.dependencies + self.suppressed:
-            ignored = dep in self.suppressed_set and dep not in entry_points
-            if ignored or dep not in graph:
-                new_suppressed.append(dep)
-            else:
-                new_dependencies.append(dep)
-        self.dependencies = new_dependencies
-        self.dependencies_set = set(new_dependencies)
-        self.suppressed = new_suppressed
-        self.suppressed_set = set(new_suppressed)
 
     # Methods for processing modules from source code.
 
@@ -3054,7 +3016,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
-        graph[id].fix_suppressed_dependencies(graph)
     if 'typing' in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of

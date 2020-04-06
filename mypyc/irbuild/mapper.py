@@ -1,3 +1,5 @@
+"""Maintain a mapping from mypy concepts to IR/compiled concepts."""
+
 from typing import Dict, Optional, Union
 from collections import OrderedDict
 
@@ -20,6 +22,9 @@ from mypyc.ir.class_ir import ClassIR
 
 class Mapper:
     """Keep track of mappings from mypy concepts to IR concepts.
+
+    For example, we keep track of how the mypy TypeInfos of compiled
+    classes map to class IR objects.
 
     This state is shared across all modules being compiled in all
     compilation groups.
