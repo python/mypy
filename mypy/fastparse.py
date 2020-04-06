@@ -1504,17 +1504,21 @@ class TypeConverter:
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if not isinstance(n.slice, Index):
-            self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+        if PY_MINOR_VERSION >= 9:
+            slice_value = n.slice
+        else:
+            if not isinstance(n.slice, Index):
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                return AnyType(TypeOfAny.from_error)
+            slice_value = n.slice.value
 
         empty_tuple_index = False
-        if isinstance(n.slice.value, ast3.Tuple):
-            params = self.translate_expr_list(n.slice.value.elts)
-            if len(n.slice.value.elts) == 0:
+        if isinstance(slice_value, ast3.Tuple):
+            params = self.translate_expr_list(slice_value.elts)
+            if len(slice_value.elts) == 0:
                 empty_tuple_index = True
         else:
-            params = [self.visit(n.slice.value)]
+            params = [self.visit(slice_value)]
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:
