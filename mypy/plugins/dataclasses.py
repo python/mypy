@@ -123,27 +123,6 @@ class DataclassTransformer:
                                          [], obj_type)
             info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
-        # Add an eq method, but only if the class doesn't already have one.
-        if decorator_arguments['eq'] and info.get('__eq__') is None:
-            for method_name in ['__eq__', '__ne__']:
-                # The TVar is used to enforce that "other" must have
-                # the same type as self (covariant).  Note the
-                # "self_type" parameter to add_method.
-                obj_type = ctx.api.named_type('__builtins__.object')
-                cmp_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
-                                          -1, [], obj_type)
-                cmp_other_type = TypeVarType(cmp_tvar_def)
-                cmp_return_type = ctx.api.named_type('__builtins__.bool')
-
-                add_method(
-                    ctx,
-                    method_name,
-                    args=[Argument(Var('other', cmp_other_type), cmp_other_type, None, ARG_POS)],
-                    return_type=cmp_return_type,
-                    self_type=cmp_other_type,
-                    tvar_def=cmp_tvar_def,
-                )
-
         # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments['order']:
             if not decorator_arguments['eq']:
