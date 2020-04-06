@@ -7,6 +7,16 @@ reveal_type(a)
 [out]
 testTypedPkgSimple.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
 
+[case testTypedPkg_nositepackages]
+# pkgs: typedpkg
+# mypy: no-site-packages
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkg_nositepackages.py:6: note: Revealed type is 'builtins.tuple[builtins.str]'
+
 [case testTypedPkgStubs]
 # pkgs: typedpkg-stubs
 from typedpkg.sample import ex
