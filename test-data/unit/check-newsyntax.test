@@ -96,7 +96,7 @@ class X:
 
 [out]
 main:4: error: Unexpected type declaration
-main:4: error: Unsupported target for indexed assignment
+main:4: error: Unsupported target for indexed assignment ("str")
 main:5: error: Type cannot be declared in assignment to non-self attribute
 main:5: error: "str" has no attribute "x"
 
