@@ -265,7 +265,8 @@ class MessageBuilder:
                     format_type(original_type)), context, code=codes.INDEX)
         elif member == '__setitem__':
             # Indexed set.
-            self.fail('Unsupported target for indexed assignment', context, code=codes.INDEX)
+            self.fail('Unsupported target for indexed assignment ({})'.format(
+                format_type(original_type)), context, code=codes.INDEX)
         elif member == '__call__':
             if isinstance(original_type, Instance) and \
                     (original_type.type.fullname == 'builtins.function'):
