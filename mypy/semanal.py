@@ -78,7 +78,7 @@ from mypy.nodes import (
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
@@ -161,7 +161,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = None  # type: List[Optional[TypeInfo]]
     # Type variables bound by the current scope, be it class or function
-    tvar_scope = None  # type: TypeVarScope
+    tvar_scope = None  # type: TypeVarLikeScope
     # Per-module options
     options = None  # type: Options
 
@@ -235,7 +235,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.imports = set()
         self.type = None
         self.type_stack = []
-        self.tvar_scope = TypeVarScope()
+        self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
@@ -478,7 +478,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.is_stub_file = file_node.path.lower().endswith('.pyi')
         self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
         self.globals = file_node.names
-        self.tvar_scope = TypeVarScope()
+        self.tvar_scope = TypeVarLikeScope()
 
         self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
         self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
@@ -4442,7 +4442,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
 
     @contextmanager
-    def tvar_scope_frame(self, frame: TypeVarScope) -> Iterator[None]:
+    def tvar_scope_frame(self, frame: TypeVarLikeScope) -> Iterator[None]:
         old_scope = self.tvar_scope
         self.tvar_scope = frame
         yield
@@ -4766,11 +4766,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         # them semantically analyzed, however, if they need to treat it as an expression
         # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
         # in a fresh tvar scope in order to suppress any errors about using type variables.
-        with self.tvar_scope_frame(TypeVarScope()):
+        with self.tvar_scope_frame(TypeVarLikeScope()):
             expr.accept(self)
 
     def type_analyzer(self, *,
-                      tvar_scope: Optional[TypeVarScope] = None,
+                      tvar_scope: Optional[TypeVarLikeScope] = None,
                       allow_tuple_literal: bool = False,
                       allow_unbound_tvars: bool = False,
                       allow_placeholder: bool = False,
@@ -4793,7 +4793,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def anal_type(self,
                   typ: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   allow_placeholder: bool = False,

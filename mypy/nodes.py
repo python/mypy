@@ -2079,7 +2079,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 
     This is also used to represent type variables in symbol tables.
 
-    A type variable is not valid as a type unless bound in a TypeVarScope.
+    A type variable is not valid as a type unless bound in a TypeVarLikeScope.
     That happens within:
 
      1. a generic class that uses the type variable as a type argument or
