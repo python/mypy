@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
-    PlaceholderType, Overloaded, get_proper_type, TypeAliasType
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef
 )
 
 from mypy.nodes import (
@@ -205,6 +205,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                           ' to define generic alias'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
+                assert isinstance(tvar_def, TypeVarDef)
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(t.name), t)
                 return TypeVarType(tvar_def, t.line)
@@ -813,8 +814,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 tvars.append(tvar_expr)
         return list(zip(names, tvars))
 
-    def bind_function_type_variables(self,
-                                     fun_type: CallableType, defn: Context) -> List[TypeVarDef]:
+    def bind_function_type_variables(
+        self, fun_type: CallableType, defn: Context
+    ) -> Sequence[TypeVarLikeDef]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
         if fun_type.variables:
             for var in fun_type.variables:
@@ -828,7 +830,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Do not define a new type variable if already defined in scope.
         typevars = [(name, tvar) for name, tvar in typevars
                     if not self.is_defined_type_var(name, defn)]
-        defs = []  # type: List[TypeVarDef]
+        defs = []  # type: List[TypeVarLikeDef]
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
@@ -860,17 +862,22 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if nested:
                 self.nesting_level -= 1
 
-    def anal_var_defs(self, var_defs: List[TypeVarDef]) -> List[TypeVarDef]:
-        a = []  # type: List[TypeVarDef]
-        for vd in var_defs:
-            a.append(TypeVarDef(vd.name,
-                                vd.fullname,
-                                vd.id.raw_id,
-                                self.anal_array(vd.values),
-                                vd.upper_bound.accept(self),
-                                vd.variance,
-                                vd.line))
-        return a
+    def anal_var_def(self, var_def: TypeVarLikeDef) -> TypeVarLikeDef:
+        if isinstance(var_def, TypeVarDef):
+            return TypeVarDef(
+                var_def.name,
+                var_def.fullname,
+                var_def.id.raw_id,
+                self.anal_array(var_def.values),
+                var_def.upper_bound.accept(self),
+                var_def.variance,
+                var_def.line
+            )
+        else:
+            return var_def
+
+    def anal_var_defs(self, var_defs: Sequence[TypeVarLikeDef]) -> List[TypeVarLikeDef]:
+        return [self.anal_var_def(vd) for vd in var_defs]
 
     def named_type_with_normalized_str(self, fully_qualified_name: str) -> Instance:
         """Does almost the same thing as `named_type`, except that we immediately

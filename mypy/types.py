@@ -1015,7 +1015,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
-                 variables: Optional[List[TypeVarDef]] = None,
+                 variables: Optional[Sequence[TypeVarLikeDef]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
@@ -1067,7 +1067,7 @@ class CallableType(FunctionLike):
                       fallback: Bogus[Instance] = _dummy,
                       name: Bogus[Optional[str]] = _dummy,
                       definition: Bogus[SymbolNode] = _dummy,
-                      variables: Bogus[List[TypeVarDef]] = _dummy,
+                      variables: Bogus[Sequence[TypeVarLikeDef]] = _dummy,
                       line: Bogus[int] = _dummy,
                       column: Bogus[int] = _dummy,
                       is_ellipsis_args: Bogus[bool] = _dummy,
@@ -2096,15 +2096,19 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         if t.variables:
             vs = []
-            # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
             for var in t.variables:
-                if var.values:
-                    vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
-                    vs.append('{} in {}'.format(var.name, vals))
-                elif not is_named_instance(var.upper_bound, 'builtins.object'):
-                    vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                if isinstance(var, TypeVarDef):
+                    # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+                    if var.values:
+                        vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
+                        vs.append('{} in {}'.format(var.name, vals))
+                    elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                        vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                    else:
+                        vs.append(var.name)
                 else:
-                    vs.append(var.name)
+                    # For other TypeVarLikeDefs, just use the repr
+                    vs.append(repr(var))
             s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
         return 'def {}'.format(s)
