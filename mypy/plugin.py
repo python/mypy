@@ -126,7 +126,7 @@ from mypy_extensions import trait, mypyc_attr
 from mypy.nodes import (
     Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType, ProperType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -265,7 +265,7 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True,
