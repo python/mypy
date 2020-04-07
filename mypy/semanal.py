@@ -1260,6 +1260,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            assert isinstance(tvar_def, TypeVarDef), (
+                "mypy does not currently support ParamSpec use in generic classes"
+            )
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
