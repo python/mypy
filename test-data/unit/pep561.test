@@ -20,7 +20,22 @@ reveal_type(a)
 [out]
 testTypedPkgSimple.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
 
-[case testTypedPkg_nositepackages]
+[case testTypedPkg_config_nositepackages]
+# pkgs: typedpkg
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[file mypy.ini]
+\[mypy]
+no_site_packages=True
+[out]
+testTypedPkg_config_nositepackages.py:2: error: Cannot find implementation or library stub for module named 'typedpkg.sample'
+testTypedPkg_config_nositepackages.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+testTypedPkg_config_nositepackages.py:3: error: Cannot find implementation or library stub for module named 'typedpkg'
+testTypedPkg_config_nositepackages.py:5: note: Revealed type is 'Any'
+
+[case testTypedPkg_args_nositepackages]
 # pkgs: typedpkg
 # flags: --no-site-packages
 from typedpkg.sample import ex
@@ -28,10 +43,10 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkg_nositepackages.py:3: error: Cannot find implementation or library stub for module named 'typedpkg.sample'
-testTypedPkg_nositepackages.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-testTypedPkg_nositepackages.py:4: error: Cannot find implementation or library stub for module named 'typedpkg'
-testTypedPkg_nositepackages.py:6: note: Revealed type is 'Any'
+testTypedPkg_args_nositepackages.py:3: error: Cannot find implementation or library stub for module named 'typedpkg.sample'
+testTypedPkg_args_nositepackages.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+testTypedPkg_args_nositepackages.py:4: error: Cannot find implementation or library stub for module named 'typedpkg'
+testTypedPkg_args_nositepackages.py:6: note: Revealed type is 'Any'
 
 [case testTypedPkgStubs]
 # pkgs: typedpkg-stubs
