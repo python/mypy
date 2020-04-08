@@ -218,7 +218,7 @@ def infer_python_executable(options: Options,
     python_executable = special_opts.python_executable or options.python_executable
 
     if python_executable is None:
-        if not special_opts.no_executable:
+        if not special_opts.no_executable and not options.no_site_packages:
             python_executable = _python_executable_from_version(options.python_version)
     options.python_executable = python_executable
 
@@ -839,7 +839,7 @@ def process_options(args: List[str],
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
-    if special_opts.no_executable:
+    if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
     # Paths listed in the config file will be ignored if any paths are passed on
