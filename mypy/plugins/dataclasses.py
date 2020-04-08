@@ -381,15 +381,15 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
     return False, {}
 
 
-def asdict_callback(ctx: FunctionContext, return_typeddicts: bool = False) -> Type:
-    """Check that calls to asdict pass in a dataclass. Optionally, return TypedDicts."""
+def asdict_callback(ctx: FunctionContext) -> Type:
+    """Check that calls to asdict pass in a dataclass. If possible, return TypedDicts."""
     positional_arg_types = ctx.arg_types[0]
 
     if positional_arg_types:
         dataclass_instance = get_proper_type(positional_arg_types[0])
         if isinstance(dataclass_instance, Instance):
             if is_type_dataclass(dataclass_instance.type):
-                if len(ctx.arg_types) == 1 and return_typeddicts:
+                if len(ctx.arg_types) == 1:
                     return _asdictify(ctx.api, dataclass_instance)
                 else:
                     # We can't infer a more precise type for calls where dict_factory is set.

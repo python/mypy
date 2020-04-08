@@ -7,6 +7,7 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface, CheckerPluginInterface
 from mypy.semanal import set_callable_name
+from mypy.semanal_typeddict import get_anonymous_typeddict_type
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
     TypedDictType, Instance, TPDICT_FB_NAMES
@@ -163,15 +164,6 @@ def deserialize_and_fixup_type(
     typ = deserialize_type(data)
     typ.accept(TypeFixer(api.modules, allow_missing=False))
     return typ
-
-
-def get_anonymous_typeddict_type(api: CheckerPluginInterface) -> Instance:
-    for type_fullname in TPDICT_FB_NAMES:
-        try:
-            return api.named_generic_type(type_fullname, [])
-        except KeyError:
-            continue
-    raise RuntimeError("No TypedDict fallback type found")
 
 
 def make_anonymous_typeddict(api: CheckerPluginInterface, fields: 'OrderedDict[str, Type]',

@@ -75,9 +75,9 @@ Caveats/Known Issues
 Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
-In Python version 3.8 and above, calls to :py:func:`~dataclasses.asdict` will return a ``TypedDict`` based on the
-original dataclass definition, transforming it recursively. There are, however, some limitations. In particular, a
-precise return type cannot be inferred for recursive dataclasses, and for calls where ``dict_factory`` is set.
+Calls to :py:func:`~dataclasses.asdict` will return a ``TypedDict`` based on the original dataclass
+definition, transforming it recursively. There are, however, some limitations. In particular, a precise return type
+cannot be inferred for recursive dataclasses, and for calls where ``dict_factory`` is set.
 
 Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
 probably never recognize dynamically computed decorators. The following examples
