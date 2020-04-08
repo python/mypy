@@ -381,7 +381,7 @@ from typing import Dict
 x: Dict[int, int]
 x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
 1['']  # E: Value of type "int" is not indexable  [index]
-1[''] = 1  # E: Unsupported target for indexed assignment  [index]
+1[''] = 1  # E: Unsupported target for indexed assignment ("int")  [index]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeInvalidTypeArg]

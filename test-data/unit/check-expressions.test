@@ -911,7 +911,7 @@ class C:
 [out]
 main:3: error: Invalid index type "C" for "A"; expected type "B"
 main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
-main:5: error: Unsupported target for indexed assignment
+main:5: error: Unsupported target for indexed assignment ("B")
 
 [case testOverloadedIndexing]
 from foo import *

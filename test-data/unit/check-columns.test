@@ -243,7 +243,7 @@ from typing import List
 ([1]['']) # E:6: Invalid index type "str" for "List[int]"; expected type "int"
 (1[1]) # E:2: Value of type "int" is not indexable
 def f() -> None:
-    1[1] = 1 # E:5: Unsupported target for indexed assignment
+    1[1] = 1 # E:5: Unsupported target for indexed assignment ("int")
 [builtins fixtures/list.pyi]
 
 [case testColumnTypedDict]
