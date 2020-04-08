@@ -733,6 +733,9 @@ class MessageBuilder:
             self.fail('Too many values to unpack ({} expected, {} provided)'.format(
                 expected, provided), context)
 
+    def unpacking_strings_disallowed(self, context: Context) -> None:
+        self.fail("Unpacking a string is disallowed", context)
+
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail('\'{}\' object is not iterable'.format(type), context)
 
