@@ -228,13 +228,15 @@ will continue to be of type ``Any``.
     all import errors associated with that library and that library alone by
     adding the following section to your config file::
 
-        [mypy-foobar]
+        [mypy-foobar.*]
         ignore_missing_imports = True
 
     Note: this option is equivalent to adding a ``# type: ignore`` to every
     import of ``foobar`` in your codebase. For more information, see the
     documentation about configuring
     :ref:`import discovery <config-file-import-discovery>` in config files.
+    The ``.*`` after ``foobar`` will ignore imports of ``foobar`` modules
+    and subpackages in addition to the ``foobar`` top-level package namespace.
 
 3.  To suppress *all* missing import errors for *all* libraries in your codebase,
     invoke mypy with the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>` command line flag or set
