@@ -168,5 +168,7 @@ def deserialize_and_fixup_type(
 
 def make_anonymous_typeddict(api: CheckerPluginInterface, fields: 'OrderedDict[str, Type]',
                              required_keys: Set[str]) -> TypedDictType:
+    fallback = get_anonymous_typeddict_type(api)
+    assert fallback is not None
     return TypedDictType(fields, required_keys=required_keys,
-                         fallback=get_anonymous_typeddict_type(api))
+                         fallback=fallback)
