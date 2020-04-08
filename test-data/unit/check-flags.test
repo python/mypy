@@ -1165,6 +1165,22 @@ def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
 strict = True
 [out]
 
+[case testStrictFalseInConfigAnyGeneric]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:
+    pass
+[file mypy.ini]
+\[mypy]
+strict = False
+[out]
+
 [case testStrictAndStrictEquality]
 # flags: --strict
 x = 0
