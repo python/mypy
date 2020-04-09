@@ -186,7 +186,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
     # Note that a star import adds a special name '*' to the set, this blocks
     # adding _any_ names in the current file.
-    missing_names = None  # type: Set[str]
+    missing_names = None  # type: List[Set[str]]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
     loop_depth = 0         # Depth of breakable loops
@@ -236,6 +236,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
+        self.missing_names = [set()]
         # These namespaces are still in process of being populated. If we encounter a
         # missing name in these namespaces, we need to defer the current analysis target,
         # since it's possible that the name will be there once the namespace is complete.
@@ -343,7 +344,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.deferred = False
         self.incomplete = False
         self._final_iteration = final_iteration
-        self.missing_names = set()
+        self.missing_names[-1] = set()
 
         with self.file_context(file_node, options, active_type):
             if isinstance(node, MypyFile):
@@ -1157,6 +1158,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
         self.type = info
+        self.missing_names.append(set())
 
     def leave_class(self) -> None:
         """ Restore analyzer state. """
@@ -1164,6 +1166,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.locals.pop()
         self.is_comprehension_stack.pop()
         self.type = self.type_stack.pop()
+        self.missing_names.pop()
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
@@ -4274,7 +4277,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif name not in self.missing_names and '*' not in self.missing_names:
+        elif (name not in self.missing_names[-1] and '*' not in self.missing_names[-1]):
             names[name] = symbol
             self.progress = True
             return True
@@ -4451,7 +4454,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.add_symbol(name, placeholder,
                             module_public=module_public, module_hidden=module_hidden,
                             context=dummy_context())
-        self.missing_names.add(name)
+        self.missing_names[-1].add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
         """Is a module or class namespace potentially missing some definitions?
@@ -4496,6 +4499,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
+        self.missing_names.append(set())
 
     def leave(self) -> None:
         self.locals.pop()
@@ -4503,6 +4507,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.global_decls.pop()
         self.nonlocal_decls.pop()
         self.block_depth.pop()
+        self.missing_names.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None

@@ -3200,3 +3200,25 @@ class User:
     def __init__(self, name: str) -> None:
         self.name = name  # E: Cannot assign to a method \
                           # E: Incompatible types in assignment (expression has type "str", variable has type "Callable[..., Any]")
+
+[case testNewAnalyzerMemberNameMatchesTypedDict]
+from typing import Union, Any
+from typing_extensions import TypedDict
+
+class T(TypedDict):
+    b: b.T
+
+class b:
+    T: Union[Any]
+[builtins fixtures/tuple.pyi]
+
+[case testNewAnalyzerMemberNameMatchesNamedTuple]
+from typing import Union, Any, NamedTuple
+
+class T(NamedTuple):
+    b: b.T
+
+class b:
+    T = Union[Any]
+
+[builtins fixtures/tuple.pyi]
