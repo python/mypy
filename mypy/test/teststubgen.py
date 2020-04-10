@@ -31,6 +31,7 @@ from mypy.moduleinspect import ModuleInspect, InspectError
 class StubgenCmdLineSuite(unittest.TestCase):
     """Test cases for processing command-line options and finding files."""
 
+    @unittest.skipIf(sys.platform == 'win32', "clean up fails on Windows")
     def test_files_found(self) -> None:
         current = os.getcwd()
         with tempfile.TemporaryDirectory() as tmp:
@@ -51,6 +52,7 @@ class StubgenCmdLineSuite(unittest.TestCase):
             finally:
                 os.chdir(current)
 
+    @unittest.skipIf(sys.platform == 'win32', "clean up fails on Windows")
     def test_packages_found(self) -> None:
         current = os.getcwd()
         with tempfile.TemporaryDirectory() as tmp:
@@ -859,7 +861,6 @@ class ModuleInspectSuite(unittest.TestCase):
             p = m.get_package_properties('_socket')
             assert p is not None
             assert p.name == '_socket'
-            assert p.file
             assert p.path is None
             assert p.is_c_module is True
             assert p.subpackages == []

@@ -38,9 +38,9 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.common import shared_lib_name
-from mypyc.ops import format_modules
+from mypyc.ir.module_ir import format_modules
 
-from mypyc import emitmodule
+from mypyc.codegen import emitmodule
 
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
@@ -507,7 +507,7 @@ def mypycify(
     if compiler.compiler_type == 'unix':
         cflags += [
             '-O{}'.format(opt_level), '-Werror', '-Wno-unused-function', '-Wno-unused-label',
-            '-Wno-unreachable-code', '-Wno-unused-variable', '-Wno-trigraphs',
+            '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
         if 'gcc' in compiler.compiler[0]:

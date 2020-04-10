@@ -122,7 +122,7 @@ def f(): pass
 async def g() -> None:
     x = await f()
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 [out]
 <m.f> -> m.g
 
@@ -282,7 +282,7 @@ def f() -> int:
 <m.B.__new__> -> m.f
 <m.B> -> <m.A.__lt__>, m.A.__lt__, m.B, m.f
 
-[case testIsOp-skip]
+[case testIsOp]
 class A: pass
 class B: pass
 
@@ -290,7 +290,6 @@ def f() -> bool:
     return A() is B()
 [builtins fixtures/bool.pyi]
 [out]
--- fails because of https://github.com/python/mypy/issues/4055
 <m.A.__init__> -> m.f
 <m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
@@ -460,6 +459,7 @@ b = a
 def f(x: Alias) -> None: pass
 def g() -> Literal[1]:
     return b
+[builtins fixtures/tuple.pyi]
 [out]
 <m.Alias> -> <m.f>, m, m.f
 <m.a> -> m

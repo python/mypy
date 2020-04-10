@@ -316,7 +316,7 @@ x.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 1+'hi'
 [file p/__init__.py.2]
 [file p/a.py.3]
-'1'+'hi'
+1+3
 [out]
 p/a.py:1: error: Unsupported operand types for + ("int" and "str")
 ==
@@ -744,6 +744,7 @@ a.x = 0
 [file a.py.2]
 import sys
 x = sys.platform
+[builtins fixtures/tuple.pyi]
 [out]
 main:1: error: Cannot find implementation or library stub for module named 'a'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -808,6 +809,7 @@ class Bar:
 class Baz:
     pass
 [delete c.py.2]
+[builtins fixtures/tuple.pyi]
 [out]
 ==
 

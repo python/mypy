@@ -137,6 +137,7 @@ class A(Generic[T]):
 class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingMethodInheritedFromGenericTypeInNonGenericType]
 from typing import TypeVar, Generic
@@ -152,6 +153,7 @@ class A(Generic[T]):
     def f(self, a: T) -> None:
         pass
 class B(A[D]): pass
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingMemberVarInheritedFromGenericType]
 from typing import TypeVar, Generic
@@ -170,6 +172,7 @@ b.a = d
 class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Overriding with generic types
@@ -483,6 +486,7 @@ if int():
 class C: pass
 class D: pass
 class E: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
@@ -516,6 +520,7 @@ class J(Generic[t]): pass
 class X(metaclass=ABCMeta): pass
 class I(X, J[t], Generic[t]): pass
 class A(I[t], Generic[t]): pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Subclassing a generic ABC
@@ -569,6 +574,7 @@ class A(B):
     def f(self, a: 'C', b: 'C') -> None: pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 [case testSubclassingGenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
@@ -675,6 +681,7 @@ ia = None # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"; expected "A"
 ia.f(a)
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingInheritedGenericABCMembers]
 from typing import TypeVar, Generic
@@ -691,6 +698,7 @@ ia = None # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"; expected "A"
 ia.f(a)
+[builtins fixtures/tuple.pyi]
 
 
 -- Misc

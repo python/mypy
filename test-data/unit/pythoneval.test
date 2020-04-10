@@ -625,8 +625,7 @@ f(tuple())
 [out]
 ()
 
-[case testMapWithLambdaSpecialCase-skip]
-# TODO: Fix this; this was broken at some point but not sure why.
+[case testMapWithLambdaSpecialCase]
 from typing import List, Iterator
 a = [[1], [3]]
 b = map(lambda y: y[0], a)
@@ -926,8 +925,8 @@ collections.Deque()
 typing.deque()
 
 [out]
-_testDequeWrongCase.py:4: error: Module has no attribute "Deque"
-_testDequeWrongCase.py:5: error: Module has no attribute "deque"
+_testDequeWrongCase.py:4: error: Module has no attribute "Deque"; maybe "deque"?
+_testDequeWrongCase.py:5: error: Module has no attribute "deque"; maybe "Deque"?
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
@@ -1118,9 +1117,9 @@ _testTypedDictMappingMethods.py:5: note: Revealed type is 'builtins.str*'
 _testTypedDictMappingMethods.py:6: note: Revealed type is 'typing.Iterator[builtins.str*]'
 _testTypedDictMappingMethods.py:7: note: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:8: note: Revealed type is 'builtins.bool'
-_testTypedDictMappingMethods.py:9: note: Revealed type is 'typing.AbstractSet[builtins.str*]'
-_testTypedDictMappingMethods.py:10: note: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.object*]]'
-_testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[builtins.object*]'
+_testTypedDictMappingMethods.py:9: note: Revealed type is 'typing.KeysView[builtins.str]'
+_testTypedDictMappingMethods.py:10: note: Revealed type is 'typing.ItemsView[builtins.str, builtins.object]'
+_testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[builtins.object]'
 _testTypedDictMappingMethods.py:12: note: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
 _testTypedDictMappingMethods.py:13: note: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key 'invalid'
@@ -1480,14 +1479,34 @@ def f_suppresses() -> int:
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
 _testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
 
-[case testNamedTupleAtRunTime]
-from typing import NamedTuple
-
-class A:
-    def __init__(self) -> None:
-        self.b = NamedTuple('x', [('s', str), ('n', int)])
-
-reveal_type(A().b)
+[case testIsInstanceAdHocIntersectionWithStrAndBytes]
+# mypy: warn-unreachable
+x: str
+if isinstance(x, bytes):
+    reveal_type(x)
+y: str
+if isinstance(x, int):
+    reveal_type(x)
 [out]
-_testNamedTupleAtRunTime.py:5: error: NamedTuple type as an attribute is not supported
-_testNamedTupleAtRunTime.py:7: note: Revealed type is 'Any'
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
+
+[case testAsyncioFutureWait]
+# mypy: strict-optional
+from asyncio import Future, wait
+from typing import List
+
+async def foo() -> None:
+    f = []  # type: List[Future[None]]
+    await wait(f)
+
+[case testShadowTypingModule]
+1 + ''
+[file typing.py]
+x = 0
+1 + ''
+[out]
+mypy: "tmp/typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported

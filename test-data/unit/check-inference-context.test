@@ -649,6 +649,7 @@ reveal_type(lambda x: 1)  # N: Revealed type is 'def (x: Any) -> Literal[1]?'
 from typing import Callable
 def f(t: Callable[[str], str]) -> str: ''
 f(lambda *_: '')
+[builtins fixtures/tuple.pyi]
 
 [case testInvalidContextForLambda]
 from typing import Callable

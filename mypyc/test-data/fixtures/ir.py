@@ -26,6 +26,9 @@ class ellipsis: pass
 # Primitive types are special in generated code.
 
 class int:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object, base: int = 10) -> None: pass
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass
@@ -50,7 +53,10 @@ class str:
     def __le__(self, x: str) -> bool: ...
     def __gt__(self, x: str) -> bool: ...
     def __ge__(self, x: str) -> bool: ...
+    def __getitem__(self, i: int) -> str: pass
     def __contains__(self, item: str) -> bool: pass
+    def __iter__(self) -> Iterator[str]: ...
+    def split(self, sep: Optional[str] = None, max: Optional[int] = None) -> List[str]: pass
     def strip (self, item: str) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...

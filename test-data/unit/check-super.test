@@ -17,6 +17,7 @@ class A(B):
         a = super().g() # E: "g" undefined in superclass
         b = super().f()
     return a
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testAccessingSuperTypeMethodWithArgs]
@@ -30,6 +31,7 @@ class A(B):
     super().f(a)
     self.f(b)
     self.f(a)
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testAccessingSuperInit]

@@ -11,7 +11,7 @@ from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
-from mypy.util import DEFAULT_SOURCE_OFFSET
+from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
 T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
@@ -372,17 +372,13 @@ class Errors:
 
     def generate_unused_ignore_errors(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
-        if not self.is_typeshed_file(file) and file not in self.ignored_files:
+        if not is_typeshed_file(file) and file not in self.ignored_files:
             for line in set(ignored_lines) - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'error', "unused 'type: ignore' comment",
                                  None, False, False)
                 self._add_error_info(file, info)
-
-    def is_typeshed_file(self, file: str) -> bool:
-        # gross, but no other clear way to tell
-        return 'typeshed' in os.path.normpath(file).split(os.sep)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
@@ -451,12 +447,17 @@ class Errors:
                 # Add source code fragment and a location marker.
                 if severity == 'error' and source_lines and line > 0:
                     source_line = source_lines[line - 1]
+                    source_line_expanded = source_line.expandtabs()
                     if column < 0:
                         # Something went wrong, take first non-empty column.
                         column = len(source_line) - len(source_line.lstrip())
+
+                    # Shifts column after tab expansion
+                    column = len(source_line[:column].expandtabs())
+
                     # Note, currently coloring uses the offset to detect source snippets,
                     # so these offsets should not be arbitrary.
-                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line)
+                    a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line_expanded)
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
@@ -598,14 +599,22 @@ class Errors:
         i = 0
         while i < len(errors):
             dup = False
+            # Use slightly special formatting for member conflicts reporting.
+            conflicts_notes = False
+            j = i - 1
+            while j >= 0 and errors[j][0] == errors[i][0]:
+                if errors[j][4].strip() == 'Got:':
+                    conflicts_notes = True
+                j -= 1
             j = i - 1
             while (j >= 0 and errors[j][0] == errors[i][0] and
                     errors[j][1] == errors[i][1]):
                 if (errors[j][3] == errors[i][3] and
                         # Allow duplicate notes in overload conflicts reporting.
-                        not (errors[i][3] == 'note' and
-                             errors[i][4].strip() in allowed_duplicates
-                             or errors[i][4].strip().startswith('def ')) and
+                        not ((errors[i][3] == 'note' and
+                              errors[i][4].strip() in allowed_duplicates)
+                             or (errors[i][4].strip().startswith('def ') and
+                                 conflicts_notes)) and
                         errors[j][4] == errors[i][4]):  # ignore column
                     dup = True
                     break

@@ -38,6 +38,7 @@ s, t = d
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Expressions
@@ -65,6 +66,7 @@ def f(x: Any) -> 'A':
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testCallingWithDynamicReturnType]
 from typing import Any
@@ -80,6 +82,7 @@ def f(x: 'A') -> Any:
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testBinaryOperationsWithDynamicLeftOperand]
 from typing import Any
@@ -445,6 +448,7 @@ def f13(x, y = b, z = b): pass
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testSkipTypeCheckingWithImplicitSignature]
 a = None # type: A
@@ -672,6 +676,7 @@ class A(B):
         pass
     def g(self, x: Any) -> None:
         pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverridingMethodWithImplicitDynamicTypes]
 
@@ -690,6 +695,7 @@ class A(B):
         pass
     def g(self, x):
         pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverridingMethodAcrossHierarchy]
 import typing

@@ -65,7 +65,9 @@ import mypy.traverser
 import mypy.mixedtraverser
 import mypy.util
 from mypy import defaults
-from mypy.modulefinder import FindModuleCache, SearchPaths, BuildSource, default_lib_path
+from mypy.modulefinder import (
+    ModuleNotFoundReason, FindModuleCache, SearchPaths, BuildSource, default_lib_path
+)
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
@@ -602,14 +604,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 arg = name + annotation
             args.append(arg)
         retname = None
-        if isinstance(o.unanalyzed_type, CallableType):
+        if o.name != '__init__' and isinstance(o.unanalyzed_type, CallableType):
             retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = self.typing_name('Any')
             self.add_typing_import("Any")
-        elif o.name == '__init__' or not has_return_statement(o) and not is_abstract:
+        elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -647,10 +649,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                                           'asyncio.coroutines',
                                                           'types'):
             self.add_coroutine_decorator(context.func, name, name)
-        elif any(self.refers_to_fullname(name, target)
-                 for target in ('abc.abstractmethod', 'abc.abstractproperty')):
+        elif self.refers_to_fullname(name, 'abc.abstractmethod'):
             self.add_decorator(name)
             self.import_tracker.require_name(name)
+            is_abstract = True
+        elif self.refers_to_fullname(name, 'abc.abstractproperty'):
+            self.add_decorator('property')
+            self.add_decorator('abc.abstractmethod')
             is_abstract = True
         return is_abstract
 
@@ -674,8 +679,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
               (expr.expr.name == 'abc' or
                self.import_tracker.reverse_alias.get('abc')) and
               expr.name in ('abstractmethod', 'abstractproperty')):
-            self.import_tracker.require_name(expr.expr.name)
-            self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
+            if expr.name == 'abstractproperty':
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s' % ('property'))
+                self.add_decorator('%s.%s' % (expr.expr.name, 'abstractmethod'))
+            else:
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
             is_abstract = True
         elif expr.name == 'coroutine':
             if (isinstance(expr.expr, MemberExpr) and
@@ -1282,14 +1292,17 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
     search_paths = SearchPaths(('.',) + tuple(search_path), (), (), tuple(typeshed_path))
     cache = FindModuleCache(search_paths)
     for module in modules:
-        module_path = cache.find_module(module)
-        if not module_path:
-            fail_missing(module)
+        m_result = cache.find_module(module)
+        if isinstance(m_result, ModuleNotFoundReason):
+            fail_missing(module, m_result)
+            module_path = None
+        else:
+            module_path = m_result
         result.append(StubSource(module, module_path))
     for package in packages:
         p_result = cache.find_modules_recursive(package)
-        if not p_result:
-            fail_missing(package)
+        if p_result:
+            fail_missing(package, ModuleNotFoundReason.NOT_FOUND)
         sources = [StubSource(m.module, m.path) for m in p_result]
         result.extend(sources)
 

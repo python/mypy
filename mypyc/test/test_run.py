@@ -18,7 +18,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.test.helpers import copy_and_fudge_mtime, assert_module_equivalence
 
-from mypyc import emitmodule
+from mypyc.codegen import emitmodule
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.build import construct_groups
@@ -224,8 +224,10 @@ class TestRun(MypycDataSuite):
                 print(line)
             assert False, 'Compile error'
 
-        # Check that serialization works on this IR
-        check_serialization_roundtrip(ir)
+        # Check that serialization works on this IR. (Only on the first
+        # step because the the returned ir only includes updated code.)
+        if incremental_step == 1:
+            check_serialization_roundtrip(ir)
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -310,7 +312,7 @@ class TestRun(MypycDataSuite):
             return True
 
 
-# Run the main multi-module tests in multi-file compliation mode
+# Run the main multi-module tests in multi-file compilation mode
 class TestRunMultiFile(TestRun):
     multi_file = True
     test_name_suffix = '_multi'
@@ -320,7 +322,7 @@ class TestRunMultiFile(TestRun):
     ]
 
 
-# Run the main multi-module tests in separate compliation mode
+# Run the main multi-module tests in separate compilation mode
 class TestRunSeparate(TestRun):
     separate = True
     test_name_suffix = '_separate'

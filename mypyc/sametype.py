@@ -1,9 +1,9 @@
 """Same type check for RTypes."""
 
-from mypyc.ops import (
-    RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid,
-    FuncSignature, RUnion
+from mypyc.ir.rtypes import (
+    RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid, RUnion
 )
+from mypyc.ir.func_ir import FuncSignature
 
 
 def is_same_type(a: RType, b: RType) -> bool:

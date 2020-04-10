@@ -947,11 +947,15 @@ from parent import a
 
 [file parent/a.py.2]
 from parent import b
+reveal_type(b.x)
 
 [file parent/b.py.2]
+x = 10
 
-[stale parent.a, parent.b]
-[rechecked parent, parent.a, parent.b]
+[stale parent.b]
+[rechecked parent.a, parent.b]
+[out2]
+tmp/parent/a.py:2: note: Revealed type is 'builtins.int'
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
@@ -1633,6 +1637,7 @@ MyTuple = NamedTuple('MyTuple', [
 
 [rechecked bar, mid, foo]
 [stale bar]
+[builtins fixtures/tuple.pyi]
 [out2]
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -1667,6 +1672,7 @@ class Outer:
 
 [rechecked bar, mid, foo]
 [stale bar]
+[builtins fixtures/tuple.pyi]
 [out2]
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -1813,6 +1819,7 @@ from typing import NamedTuple
 class C:
     def f(self) -> None:
         A = NamedTuple('A', [('x', int), ('y', int)])
+[builtins fixtures/tuple.pyi]
 [out1]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
@@ -1826,6 +1833,7 @@ class C:
     class D:
         def f(self) -> None:
             A = NamedTuple('A', [('x', int), ('y', int)])
+[builtins fixtures/tuple.pyi]
 [out1]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
@@ -1840,6 +1848,7 @@ class C:
         class D:
             def f(self) -> None:
                 A = NamedTuple('A', [('x', int), ('y', int)])
+[builtins fixtures/tuple.pyi]
 [out1]
 main:1: error: Module 'ntcrash' has no attribute 'nope'
 [out2]
@@ -1886,6 +1895,28 @@ class C:
 main:1: error: Module 'tdcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'tdcrash' has no attribute 'nope'
+
+[case testIncrementalNewTypeInMethod]
+from ntcrash import nope
+[file ntcrash.py]
+from mypy_extensions import TypedDict
+from typing import NewType, NamedTuple
+class C:
+    def f(self) -> None:
+        X = NewType('X', int)
+        A = TypedDict('A', {'x': X, 'y': int})
+        B = NamedTuple('B', [('x', X)])
+
+def f() -> None:
+    X = NewType('X', int)
+    A = TypedDict('A', {'x': X, 'y': int})
+    B = NamedTuple('B', [('x', X)])
+
+[builtins fixtures/dict.pyi]
+[out1]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
 
 [case testIncrementalInnerClassAttrInMethod]
 import crash
@@ -2265,6 +2296,7 @@ tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+-- '
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -2405,6 +2437,7 @@ class Pair(NamedTuple):
     last: str
 
 Person(name=Pair(first="John", last="Doe"))
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNoCrashForwardRefToBrokenDoubleNewTypeIncremental]
@@ -2459,6 +2492,7 @@ class N(NamedTuple):
 
 x: NT = N(1) # type: ignore
 x = NT(N(1))
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testNewTypeFromForwardTypedDictIncremental]
@@ -2473,7 +2507,7 @@ A = Dict[str, int]
 [out]
 
 -- Some crazy self-referential named tuples, types dicts, and aliases
--- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
+-- to be sure that everything can be _serialized_ (i.e. ForwardRefs are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
 
 [case testForwardTypeAliasInBase1]
@@ -2529,6 +2563,7 @@ A = Union[B, int]  # type: ignore
 B = Callable[[C], int] # type: ignore
 class C(NamedTuple): # type: ignore
     x: A
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testGenericTypeAliasesForwardAnyIncremental1]
@@ -2589,6 +2624,7 @@ yg: G[M]
 z: int = G[M]().x.x
 z = G[M]().x[0]
 M = NamedTuple('M', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSelfRefNTIncremental1]
@@ -2980,8 +3016,6 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 [case testAttrsIncrementalDunder]
 from a import A
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> a.A'
-reveal_type(A.__eq__)  # N: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__ne__)  # N: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__lt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__le__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__gt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
@@ -3019,20 +3053,18 @@ class A:
 [stale]
 [out2]
 main:2: note: Revealed type is 'def (a: builtins.int) -> a.A'
-main:3: note: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-main:4: note: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:3: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:4: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:5: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:6: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:7: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:8: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:17: error: Unsupported operand types for < ("A" and "int")
-main:18: error: Unsupported operand types for <= ("A" and "int")
-main:19: error: Unsupported operand types for > ("A" and "int")
-main:20: error: Unsupported operand types for >= ("A" and "int")
-main:24: error: Unsupported operand types for > ("A" and "int")
-main:25: error: Unsupported operand types for >= ("A" and "int")
-main:26: error: Unsupported operand types for < ("A" and "int")
-main:27: error: Unsupported operand types for <= ("A" and "int")
+main:15: error: Unsupported operand types for < ("A" and "int")
+main:16: error: Unsupported operand types for <= ("A" and "int")
+main:17: error: Unsupported operand types for > ("A" and "int")
+main:18: error: Unsupported operand types for >= ("A" and "int")
+main:22: error: Unsupported operand types for > ("A" and "int")
+main:23: error: Unsupported operand types for >= ("A" and "int")
+main:24: error: Unsupported operand types for < ("A" and "int")
+main:25: error: Unsupported operand types for <= ("A" and "int")
 
 [case testAttrsIncrementalSubclassModified]
 from b import B
@@ -3600,8 +3632,7 @@ x = 1
 [file b.py.2]
 x = '2'
 
--- TODO: Fails due to #4856
-[case testImportUnusedIgnore2-skip]
+[case testImportUnusedIgnore2]
 # flags: --warn-unused-ignores
 import a
 [file a.py]
@@ -3616,7 +3647,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:1: note: unused 'type: ignore' comment
+tmp/a.py:2: error: unused 'type: ignore' comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]
@@ -3647,6 +3678,7 @@ cache_fine_grained = False
 cache_fine_grained = True
 [rechecked a, builtins, typing]
 [stale a, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalPackageNameOverload]
 # cmd: mypy -m main a
@@ -3688,11 +3720,14 @@ import b
 -- the proto deps file with something with mtime mismatches.
 [file ../.mypy_cache/3.6/@deps.meta.json.2]
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
+[file ../.mypy_cache/.gitignore]
+# Another hack to not trigger a .gitignore creation failure "false positive"
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
 [stale a, b, builtins, typing]
 [rechecked a, b, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache2]
 # flags2: --cache-fine-grained
@@ -3705,6 +3740,7 @@ import b
 -- Every file should get reloaded, since the settings changed
 [stale a, b, builtins, typing]
 [rechecked a, b, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalBustedFineGrainedCache3]
 # flags: --cache-fine-grained --no-sqlite-cache
@@ -3720,6 +3756,7 @@ import b
 -- Every file should get reloaded, since the cache was invalidated
 [stale a, b, builtins, typing]
 [rechecked a, b, builtins, typing]
+[builtins fixtures/tuple.pyi]
 
 [case testIncrementalWorkingFineGrainedCache]
 # flags: --cache-fine-grained
@@ -4083,7 +4120,7 @@ from typing import Iterable
 from a import Point
 p: Point
 it: Iterable[int] = p  # change
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dict.pyi]
 [out]
 tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
@@ -4118,7 +4155,9 @@ class C:
 [out2]
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testBazelFlagIgnoresFileChanges]
+[case testBazelFlagIgnoresFileChanges-skip]
+-- This test fails on windows, when the mypy source in on a different drive than
+--   the run-directory. In this case os.path.relpath(...) fails with an exception
 -- Since the initial run wrote a cache file, the second run ignores the source
 # flags: --bazel
 from a import f
@@ -4982,6 +5021,7 @@ a = 1
 [file mod.py.2]
 from typing_extensions import Literal
 a: Literal[2] = 2
+[builtins fixtures/tuple.pyi]
 [out]
 main:2: note: Revealed type is 'builtins.int'
 [out2]
@@ -5014,6 +5054,7 @@ reveal_type(x)
 [file b.py]
 from typing import NamedTuple
 NT = NamedTuple('BadName', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
@@ -5053,6 +5094,7 @@ class C:
     def __init__(self) -> None:
         self.h: Hidden
         Hidden = NamedTuple('Hidden', [('x', int)])
+[builtins fixtures/tuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.C.Hidden@5]'
@@ -5144,3 +5186,256 @@ class Foo:  # type: ignore
 import a
 [file b.py.2]
 import a # a change
+
+[case testIsInstanceAdHocIntersectionIncrementalNoChange]
+import b
+[file a.py]
+class A: pass
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
+[case testIsInstanceAdHocIntersectionIncrementalNoChangeSameName]
+import b
+[file c.py]
+class B: pass
+[file a.py]
+import c
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: c.B
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is 'a.<subclass of "B" and "B">'
+
+
+[case testIsInstanceAdHocIntersectionIncrementalNoChangeTuple]
+import b
+[file a.py]
+from typing import Tuple
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: Tuple[int, ...]
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+[out2]
+tmp/b.py:2: note: Revealed type is 'a.<subclass of "tuple" and "B">'
+
+[case testIsInstanceAdHocIntersectionIncrementalIsInstanceChange]
+import c
+[file a.py]
+class A: pass
+class B: pass
+class C: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, B)
+        self.x = x
+[file a.py.2]
+class A: pass
+class B: pass
+class C: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, C)
+        self.x = x
+
+[file b.py]
+from a import Foo
+y = Foo().x
+
+[file c.py]
+from b import y
+reveal_type(y)
+[builtins fixtures/isinstance.pyi]
+[out]
+tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+[out2]
+tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "C">'
+
+[case testIsInstanceAdHocIntersectionIncrementalUnderlyingObjChang]
+import c
+[file a.py]
+class A: pass
+class B: pass
+class C: pass
+Extra = B
+[file a.py.2]
+class A: pass
+class B: pass
+class C: pass
+Extra = C
+
+[file b.py]
+from a import A, Extra
+x: A
+if isinstance(x, Extra):
+    y = x
+
+[file c.py]
+from b import y
+reveal_type(y)
+[builtins fixtures/isinstance.pyi]
+[out]
+tmp/c.py:2: note: Revealed type is 'b.<subclass of "A" and "B">'
+[out2]
+tmp/c.py:2: note: Revealed type is 'b.<subclass of "A" and "C">'
+
+[case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable]
+import c
+[file a.py]
+class A:
+    x: int
+class B:
+    x: int
+x: A
+assert isinstance(x, B)
+y = x
+
+[file a.py.2]
+class A:
+    x: int
+class B:
+    x: str
+x: A
+assert isinstance(x, B)
+y = x
+
+[file b.py]
+from a import y
+z = y
+
+[file c.py]
+from b import z
+reveal_type(z)
+[builtins fixtures/isinstance.pyi]
+[out]
+tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+[out2]
+tmp/c.py:2: note: Revealed type is 'a.A'
+
+[case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
+import c
+[file a.py]
+class A:
+    x: int
+class B:
+    x: str
+x: A
+assert isinstance(x, B)
+y = x
+
+[file a.py.2]
+class A:
+    x: int
+class B:
+    x: int
+x: A
+assert isinstance(x, B)
+y = x
+
+[file b.py]
+from a import y
+z = y
+
+[file c.py]
+from b import z
+reveal_type(z)
+[builtins fixtures/isinstance.pyi]
+[out]
+tmp/c.py:2: note: Revealed type is 'a.A'
+[out2]
+tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
+[case testStubFixupIssues]
+import a
+[file a.py]
+import p
+[file a.py.2]
+import p
+p.N
+
+[file p/__init__.pyi]
+from p.util import *
+
+[file p/util.pyi]
+from p.params import N
+class Test: ...
+x: N
+
+[file p/params.pyi]
+import p.util
+class N(p.util.Test):
+    ...
+[out2]
+tmp/a.py:2: error: "object" has no attribute "N"
+
+[case testIncrementalIndirectSkipWarnUnused]
+# flags: --follow-imports=skip --warn-unused-ignores
+# cmd: mypy -m main a b c1
+# cmd2: mypy -m main a b c2
+
+[file main.py]
+import a
+a.foo.bar()
+
+[file a.py]
+import b
+foo = b.Foo()
+
+[file b.py]
+from c1 import C
+class Foo:
+    def bar(self) -> C:
+        return C()
+
+[file c1.py]
+class C: pass
+
+[file b.py.2]
+from c2 import C
+class Foo:
+    def bar(self) -> C:
+        return C()
+
+[file c2.py]
+
+[delete c1.py.2]
+[file c2.py.2]
+class C: pass

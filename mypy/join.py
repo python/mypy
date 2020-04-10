@@ -177,6 +177,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return join_types(t, self.s)
         elif isinstance(self.s, TypedDictType):
             return join_types(t, self.s)
+        elif isinstance(self.s, TupleType):
+            return join_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return join_types(t, self.s)
         else:
@@ -187,6 +189,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if is_equivalent(t, self.s):
                 return combine_similar_callables(t, self.s)
             result = join_similar_callables(t, self.s)
+            # We set the from_type_type flag to suppress error when a collection of
+            # concrete class objects gets inferred as their common abstract superclass.
+            if not ((t.is_type_obj() and t.type_object().is_abstract) or
+                    (self.s.is_type_obj() and self.s.type_object().is_abstract)):
+                result.from_type_type = True
             if any(isinstance(tp, (NoneType, UninhabitedType))
                    for tp in get_proper_types(result.arg_types)):
                 # We don't want to return unusable Callable, attempt fallback instead.
@@ -255,16 +262,30 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
+        # When given two fixed-length tuples:
+        # * If they have the same length, join their subtypes item-wise:
+        #   Tuple[int, bool] + Tuple[bool, bool] becomes Tuple[int, bool]
+        # * If lengths do not match, return a variadic tuple:
+        #   Tuple[bool, int] + Tuple[bool] becomes Tuple[int, ...]
+        #
+        # Otherwise, `t` is a fixed-length tuple but `self.s` is NOT:
+        # * Joining with a variadic tuple returns variadic tuple:
+        #   Tuple[int, bool] + Tuple[bool, ...] becomes Tuple[int, ...]
+        # * Joining with any Sequence also returns a Sequence:
+        #   Tuple[int, bool] + List[bool] becomes Sequence[int]
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items = []  # type: List[Type]
-            for i in range(t.length()):
-                items.append(self.join(t.items[i], self.s.items[i]))
             fallback = join_instances(mypy.typeops.tuple_fallback(self.s),
                                       mypy.typeops.tuple_fallback(t))
             assert isinstance(fallback, Instance)
-            return TupleType(items, fallback)
+            if self.s.length() == t.length():
+                items = []  # type: List[Type]
+                for i in range(t.length()):
+                    items.append(self.join(t.items[i], self.s.items[i]))
+                return TupleType(items, fallback)
+            else:
+                return fallback
         else:
-            return self.default(self.s)
+            return join_types(self.s, mypy.typeops.tuple_fallback(t))
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
@@ -332,16 +353,17 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
 
 def join_instances(t: Instance, s: Instance) -> ProperType:
-    """Calculate the join of two instance types.
-    """
+    """Calculate the join of two instance types."""
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
         if is_subtype(t, s) or is_subtype(s, t):
             # Compatible; combine type arguments.
             args = []  # type: List[Type]
-            for i in range(len(t.args)):
-                args.append(join_types(t.args[i], s.args[i]))
+            # N.B: We use zip instead of indexing because the lengths might have
+            # mismatches during daemon reprocessing.
+            for ta, sa in zip(t.args, s.args):
+                args.append(join_types(ta, sa))
             return Instance(t.type, args)
         else:
             # Incompatible; return trivial result object.
@@ -372,6 +394,11 @@ def join_instances_via_supertype(t: Instance, s: Instance) -> ProperType:
         if best is None or is_better(res, best):
             best = res
     assert best is not None
+    promote = get_proper_type(t.type._promote)
+    if isinstance(promote, Instance):
+        res = join_instances(promote, s)
+        if is_better(res, best):
+            best = res
     return best
 
 

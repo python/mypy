@@ -299,7 +299,7 @@ class DependencyVisitor(TraverserVisitor):
                     if name not in info.names:
                         continue
                     # __init__ and __new__ can be overridden with different signatures, so no
-                    # logical depedency.
+                    # logical dependency.
                     if name in ('__init__', '__new__'):
                         continue
                 self.add_dependency(make_trigger(base_info.fullname + '.' + name),
@@ -661,6 +661,11 @@ class DependencyVisitor(TraverserVisitor):
             self.process_isinstance_call(e)
         else:
             super().visit_call_expr(e)
+            typ = self.type_map.get(e.callee)
+            if typ is not None:
+                typ = get_proper_type(typ)
+                if not isinstance(typ, FunctionLike):
+                    self.add_attribute_dependency(typ, '__call__')
 
     def process_isinstance_call(self, e: CallExpr) -> None:
         """Process "isinstance(...)" in a way to avoid some extra dependencies."""

@@ -114,7 +114,7 @@ Mypy can be integrated into popular IDEs:
   * Using [Syntastic](https://github.com/vim-syntastic/syntastic): in `~/.vimrc` add
     `let g:syntastic_python_checkers=['mypy']`
   * Using [ALE](https://github.com/dense-analysis/ale): should be enabled by default when `mypy` is installed,
-    or can be explicitly enabled by adding `let b:ale_linters = ['mypy']` in `~/vim/ftplugin/python.vim` 
+    or can be explicitly enabled by adding `let b:ale_linters = ['mypy']` in `~/vim/ftplugin/python.vim`
 * Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy)
 * Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
 * Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
@@ -212,6 +212,8 @@ the above as root. For example, in Ubuntu:
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
 
+> NOTE: Installing with sudo can be a security risk, please try with flag `--user` first.
+    $ python3 -m pip install --user -U . 
 
 Working with the git version of mypy
 ------------------------------------
@@ -221,7 +223,7 @@ This submodule contains types for the Python standard library.
 
 Due to the way git submodules work, you'll have to do
 ```
-  git submodule update typeshed
+  git submodule update mypy/typeshed
 ```
 whenever you change branches, merge, rebase, or pull.
 
@@ -237,7 +239,8 @@ The basic way to run tests:
     $ python2 -m pip install -U typing
     $ ./runtests.py
 
-For more on the tests, see [Test README.md](test-data/unit/README.md)
+For more on the tests, such as how to write tests and how to control
+which tests to run, see [Test README.md](test-data/unit/README.md).
 
 
 Development status

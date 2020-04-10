@@ -523,6 +523,7 @@ ci: C[int]
 cs: C[str]
 reveal_type(ci.from_item)  # N: Revealed type is 'def (item: Tuple[builtins.int])'
 reveal_type(cs.from_item)  # N: Revealed type is 'def (item: builtins.str)'
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeRestrictedMethodOverloadFallback]
 from typing import TypeVar, Generic, overload, Callable
@@ -675,6 +676,7 @@ b.atomic_close()  # E: Invalid self argument "Bad" to attribute function "atomic
 
 reveal_type(f.copy())  # N: Revealed type is '__main__.File*'
 b.copy()  # E: Invalid self argument "Bad" to attribute function "copy" with type "Callable[[T], T]"
+[builtins fixtures/tuple.pyi]
 
 [case testBadClassLevelDecoratorHack]
 from typing_extensions import Protocol
@@ -692,6 +694,7 @@ class Test:
 
 reveal_type(Test().meth)  # N: Revealed type is 'def (x: builtins.str) -> builtins.int'
 Test()._deco  # E: Invalid self argument "Test" to attribute function "_deco" with type "Callable[[F], F]"
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeTrickyExample]
 from typing import *
@@ -742,6 +745,7 @@ c: Lnk[int, float] = Lnk()
 d: Lnk[str, float] = b >> c  # OK
 e: Lnk[str, Tuple[int, float]] = a >> (b, c)  # OK
 f: Lnk[str, Tuple[float, int]] = a >> (c, b) # E: Unsupported operand types for >> ("Lnk[str, Tuple[str, int]]" and "Tuple[Lnk[int, float], Lnk[str, int]]")
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeMutuallyExclusiveRestrictions]
 from typing import Generic, TypeVar
@@ -863,6 +867,7 @@ class C(Generic[T]):
     def magic(self: C[Tuple[S, U]]) -> Tuple[T, S, U]: ...
 
 reveal_type(C[Tuple[int, str]]().magic())  # N: Revealed type is 'Tuple[Tuple[builtins.int, builtins.str], builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
 
 [case testSelfTypeOnUnion]
 from typing import TypeVar, Union
@@ -959,7 +964,7 @@ class A(Generic[T]):
 
 t: Type[Union[A[int], A[str]]]
 x = t.meth()
-reveal_type(x)  # N: Revealed type is 'Union[__main__.A*[builtins.int], __main__.A*[builtins.str]]'
+reveal_type(x)  # N: Revealed type is 'Union[__main__.A[builtins.int], __main__.A[builtins.str]]'
 [builtins fixtures/classmethod.pyi]
 
 [case testSelfTypeClassMethodOnUnionList]
@@ -1055,3 +1060,79 @@ class Concrete(Blah):
     def something(self) -> None: ...
 
 Concrete()  # OK
+
+[case testSelfTypeGenericClassNoClashInstanceMethod]
+from typing import TypeVar, Generic
+
+M = TypeVar("M")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Descriptor(Generic[M]): ...
+
+class BaseWrapper(Generic[M]):
+    def create_wrapper(self: T, metric_descriptor: Descriptor[M]) -> T: ...
+class SubWrapper(BaseWrapper[M]): ...
+
+def build_wrapper(descriptor: Descriptor[M]) -> BaseWrapper[M]:
+    wrapper: BaseWrapper[M]
+    return wrapper.create_wrapper(descriptor)
+
+def build_sub_wrapper(descriptor: Descriptor[S]) -> SubWrapper[S]:
+    wrapper: SubWrapper[S]
+    x = wrapper.create_wrapper(descriptor)
+    reveal_type(x)  # N: Revealed type is '__main__.SubWrapper[S`-1]'
+    return x
+
+[case testSelfTypeGenericClassNoClashClassMethod]
+from typing import TypeVar, Generic, Type
+
+M = TypeVar("M")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Descriptor(Generic[M]): ...
+
+class BaseWrapper(Generic[M]):
+    @classmethod
+    def create_wrapper(cls: Type[T], metric_descriptor: Descriptor[M]) -> T: ...
+class SubWrapper(BaseWrapper[M]): ...
+
+def build_wrapper(descriptor: Descriptor[M]) -> BaseWrapper[M]:
+    wrapper_cls: Type[BaseWrapper[M]]
+    return wrapper_cls.create_wrapper(descriptor)
+
+def build_sub_wrapper(descriptor: Descriptor[S]) -> SubWrapper[S]:
+    wrapper_cls: Type[SubWrapper[S]]
+    x = wrapper_cls.create_wrapper(descriptor)
+    reveal_type(x)  # N: Revealed type is '__main__.SubWrapper[S`-1]'
+    return x
+[builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeGenericClassNoClashClassMethodClassObject]
+from typing import TypeVar, Generic, Type
+
+M = TypeVar("M")
+T = TypeVar("T")
+
+class Descriptor(Generic[M]): ...
+
+class BaseWrapper(Generic[M]):
+    @classmethod
+    def create_wrapper(cls: Type[T], metric_descriptor: Descriptor[M]) -> T: ...
+class SubWrapper(BaseWrapper[M]): ...
+
+def build_wrapper(descriptor: Descriptor[M]) -> BaseWrapper[M]:
+    return BaseWrapper.create_wrapper(descriptor)
+
+def build_sub_wrapper(descriptor: Descriptor[M]) -> SubWrapper[M]:
+    x = SubWrapper.create_wrapper(descriptor)
+    reveal_type(x)  # N: Revealed type is '__main__.SubWrapper[M`-1]'
+    return x
+
+def build_wrapper_non_gen(descriptor: Descriptor[int]) -> BaseWrapper[str]:
+    return BaseWrapper.create_wrapper(descriptor)  # E: Argument 1 to "create_wrapper" of "BaseWrapper" has incompatible type "Descriptor[int]"; expected "Descriptor[str]"
+
+def build_sub_wrapper_non_gen(descriptor: Descriptor[int]) -> SubWrapper[str]:
+    return SubWrapper.create_wrapper(descriptor)  # E: Argument 1 to "create_wrapper" of "BaseWrapper" has incompatible type "Descriptor[int]"; expected "Descriptor[str]"
+[builtins fixtures/classmethod.pyi]

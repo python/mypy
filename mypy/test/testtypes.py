@@ -501,10 +501,27 @@ class JoinSuite(Suite):
 
         self.assert_join(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
-                         self.fx.o)
+                         self.var_tuple(self.fx.anyt))
         self.assert_join(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
-                         self.fx.o)
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.tuple(self.fx.b),
+                         self.tuple(self.fx.a, self.fx.c),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.tuple(),
+                         self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+
+    def test_var_tuples(self) -> None:
+        self.assert_join(self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.var_tuple(self.fx.a),
+                         self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.var_tuple(self.fx.a),
+                         self.tuple(),
+                         self.var_tuple(self.fx.a))
 
     def test_function_types(self) -> None:
         self.assert_join(self.callable(self.fx.a, self.fx.b),
@@ -719,10 +736,10 @@ class JoinSuite(Suite):
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
         self.assert_join(UnionType([lit1, lit2]), a, a)
         self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
-        self.assert_join(UnionType([d, lit3]), lit3, UnionType([d, lit3]))
+        self.assert_join(UnionType([d, lit3]), lit3, d)
         self.assert_join(UnionType([d, lit3]), d, UnionType([d, lit3]))
-        self.assert_join(UnionType([a, lit1]), lit1, UnionType([a, lit1]))
-        self.assert_join(UnionType([a, lit1]), lit2, UnionType([a, lit1]))
+        self.assert_join(UnionType([a, lit1]), lit1, a)
+        self.assert_join(UnionType([a, lit1]), lit2, a)
         self.assert_join(UnionType([lit1, lit2]),
                          UnionType([lit1, lit2]),
                          UnionType([lit1, lit2]))
@@ -759,6 +776,10 @@ class JoinSuite(Suite):
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
+
+    def var_tuple(self, t: Type) -> Instance:
+        """Construct a variable-length tuple type"""
+        return Instance(self.fx.std_tuplei, [t])
 
     def callable(self, *a: Type) -> CallableType:
         """callable(a1, ..., an, r) constructs a callable with argument types

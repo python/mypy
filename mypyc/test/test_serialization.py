@@ -7,9 +7,11 @@ from typing import Any, Dict, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 
-from mypyc.ops import (
-    deserialize_modules, DeserMaps, ModuleIR, FuncDecl, FuncIR, ClassIR, FuncSignature, RType
-)
+from mypyc.ir.ops import DeserMaps
+from mypyc.ir.rtypes import RType
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.module_ir import ModuleIR, deserialize_modules
 from mypyc.sametype import is_same_type, is_same_signature
 
 
@@ -33,7 +35,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
 
     FuncDecls, FuncIRs, and ClassIRs are compared by fullname to avoid
     infinite recursion.
-    (More detailed comparisions should be done manually.)
+    (More detailed comparisons should be done manually.)
 
     Types and signatures are compared using mypyc.sametype.
 

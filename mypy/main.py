@@ -106,7 +106,6 @@ def main(script_path: Optional[str],
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
-    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -128,6 +127,9 @@ def main(script_path: Optional[str],
         util.hard_exit(code)
     elif code:
         sys.exit(code)
+
+    # HACK: keep res alive so that mypyc won't free it before the hard_exit
+    list([res])
 
 
 # Make the help output a little less jarring.
@@ -216,7 +218,7 @@ def infer_python_executable(options: Options,
     python_executable = special_opts.python_executable or options.python_executable
 
     if python_executable is None:
-        if not special_opts.no_executable:
+        if not special_opts.no_executable and not options.no_site_packages:
             python_executable = _python_executable_from_version(options.python_version)
     options.python_executable = python_executable
 
@@ -602,7 +604,7 @@ def process_options(args: List[str],
                         help="Treat imports as private unless aliased",
                         group=strictness_group)
 
-    add_invertible_flag('--strict-equality', default=False, strict_flag=False,
+    add_invertible_flag('--strict-equality', default=False, strict_flag=True,
                         help="Prohibit equality, identity, and container checks for"
                              " non-overlapping types",
                         group=strictness_group)
@@ -806,15 +808,19 @@ def process_options(args: List[str],
     if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
-    # Parse config file first, so command line can override.
     options = Options()
-    parse_config_file(options, config_file, stdout, stderr)
+
+    def set_strict_flags() -> None:
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
+
+    # Parse config file first, so command line can override.
+    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
     if getattr(dummy, 'special-opts:strict'):  # noqa
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
+        set_strict_flags()
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
@@ -833,7 +839,7 @@ def process_options(args: List[str],
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
-    if special_opts.no_executable:
+    if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
     # Paths listed in the config file will be ignored if any paths are passed on

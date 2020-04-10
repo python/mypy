@@ -522,14 +522,19 @@ Declaring decorators
 
 One common application of type variable upper bounds is in declaring a
 decorator that preserves the signature of the function it decorates,
-regardless of that signature. Here's a complete example:
+regardless of that signature.
+
+Note that class decorators are handled differently than function decorators in
+mypy: decorating a class does not erase its type, even if the decorator has
+incomplete type annotations.
+
+Here's a complete example of a function decorator:
 
 .. code-block:: python
 
    from typing import Any, Callable, TypeVar, Tuple, cast
 
-   FuncType = Callable[..., Any]
-   F = TypeVar('F', bound=FuncType)
+   F = TypeVar('F', bound=Callable[..., Any])
 
    # A decorator that preserves the signature.
    def my_decorator(func: F) -> F:
@@ -543,15 +548,8 @@ regardless of that signature. Here's a complete example:
    def foo(a: int) -> str:
        return str(a)
 
-   # Another.
-   @my_decorator
-   def bar(x: float, y: float) -> Tuple[float, float, bool]:
-       return (x, y, x > y)
-
    a = foo(12)
    reveal_type(a)  # str
-   b = bar(3.14, 0)
-   reveal_type(b)  # Tuple[float, float, bool]
    foo('x')    # Type check error: incompatible type "str"; expected "int"
 
 From the final block we see that the signatures of the decorated
@@ -565,6 +563,59 @@ Also note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
 problem. This is also the reason for the :py:func:`~typing.cast` call in the
 ``return`` statement in ``my_decorator()``. See :ref:`casts`.
+
+.. _decorator-factories:
+
+Decorator factories
+-------------------
+
+Functions that take arguments and return a decorator (also called second-order decorators), are
+similarly supported via generics:
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def route(url: str) -> Callable[[F], F]:
+        ...
+
+    @route(url='/')
+    def index(request: Any) -> str:
+        return 'Hello world'
+
+Sometimes the same decorator supports both bare calls and calls with arguments. This can be
+achieved by combining with :py:func:`@overload <typing.overload>`:
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar, overload
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    # Bare decorator usage
+    @overload
+    def atomic(__func: F) -> F: ...
+    # Decorator with arguments
+    @overload
+    def atomic(*, savepoint: bool = True) -> Callable[[F], F]: ...
+
+    # Implementation
+    def atomic(__func: Callable[..., Any] = None, *, savepoint: bool = True):
+        def decorator(func: Callable[..., Any]):
+            ...  # Code goes here
+        if __func is not None:
+            return decorator(__func)
+        else:
+            return decorator
+
+    # Usage
+    @atomic
+    def func1() -> None: ...
+
+    @atomic(savepoint=False)
+    def func2() -> None: ...
 
 Generic protocols
 *****************

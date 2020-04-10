@@ -38,6 +38,7 @@ class J(metaclass=ABCMeta):
 class A(I, J): pass
 class B(A): pass
 class C(I): pass
+[builtins fixtures/tuple.pyi]
 
 [case testAbstractClassSubtypingViaExtension]
 
@@ -67,6 +68,7 @@ class I(metaclass=ABCMeta):
   def f(self): pass
 class J(I): pass
 class A(J): pass
+[builtins fixtures/tuple.pyi]
 
 [case testInheritingAbstractClassInSubclass]
 from abc import abstractmethod, ABCMeta
@@ -134,6 +136,7 @@ if int():
     i = cast(I, o)
 if int():
     i = cast(I, a)
+[builtins fixtures/tuple.pyi]
 
 [case testInstantiatingClassThatImplementsAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -396,6 +399,7 @@ i.g()      # E: "I" has no attribute "g"
 
 if int():
     b = i.f(a)
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingInheritedAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -415,6 +419,7 @@ if int():
 
 -- Any (dynamic) types
 -- -------------------
+[builtins fixtures/tuple.pyi]
 
 
 [case testAbstractClassWithAllDynamicTypes]
@@ -948,6 +953,54 @@ Config = NewType('Config', Mapping[str, str])
 bad = Mapping[str, str]()  # E: Cannot instantiate abstract class 'Mapping' with abstract attribute '__iter__'
 default = Config({'cannot': 'modify'})  # OK
 
-default[1] = 2  # E: Unsupported target for indexed assignment
+default[1] = 2  # E: Unsupported target for indexed assignment ("Config")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testSubclassOfABCFromDictionary]
+from abc import abstractmethod, ABCMeta
+
+class MyAbstractType(metaclass=ABCMeta):
+  @abstractmethod
+  def do(self): pass
+
+class MyConcreteA(MyAbstractType):
+  def do(self):
+    print('A')
+
+class MyConcreteB(MyAbstractType):
+  def do(self):
+    print('B')
+
+class MyAbstractA(MyAbstractType):
+  @abstractmethod
+  def do(self): pass
+
+class MyAbstractB(MyAbstractType):
+  @abstractmethod
+  def do(self): pass
+
+my_concrete_types = {
+  'A': MyConcreteA,
+  'B': MyConcreteB,
+}
+
+my_abstract_types = {
+  'A': MyAbstractA,
+  'B': MyAbstractB,
+}
+
+reveal_type(my_concrete_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
+reveal_type(my_abstract_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
+
+a = my_concrete_types['A']()
+a.do()
+b = my_concrete_types['B']()
+b.do()
+
+c = my_abstract_types['A']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+c.do()
+d = my_abstract_types['B']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+d.do()
+
+[builtins fixtures/dict.pyi]

@@ -140,6 +140,9 @@ class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
 
+class SupportsFloat(Protocol):
+    def __float__(self) -> float: pass
+
 class SupportsAbs(Protocol[T_co]):
     def __abs__(self) -> T_co: pass
 

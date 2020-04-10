@@ -250,7 +250,9 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
 
 import sys
 y: sys  # E: Module "sys" is not valid as a type  [valid-type]
-z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type]
+z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
+      # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNeedTypeAnnotation]
 from typing import TypeVar
@@ -362,7 +364,8 @@ async def asyncf():  # E: Function is missing a return type annotation  [no-unty
 
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeCallUntypedFunction]
 # flags: --disallow-untyped-calls
@@ -378,7 +381,7 @@ from typing import Dict
 x: Dict[int, int]
 x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
 1['']  # E: Value of type "int" is not indexable  [index]
-1[''] = 1  # E: Unsupported target for indexed assignment  [index]
+1[''] = 1  # E: Unsupported target for indexed assignment ("int")  [index]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeInvalidTypeArg]
@@ -432,6 +435,7 @@ B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
 '' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]
 
 1()  # E: "int" not callable  [operator]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeListOrDictItem]
 from typing import List, Dict
@@ -493,10 +497,9 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: No library stub file for module 'defusedxml'  [import] \
-                            # N: (Stub files are from https://github.com/python/typeshed)
-from nonexistent import foobar  # E: Cannot find implementation or library stub for module named 'nonexistent'  [import] \
-    # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named 'defusedxml'  [import] \
+                            # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named 'nonexistent'  [import]
 import nonexistent2  # E: Cannot find implementation or library stub for module named 'nonexistent2'  [import]
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named 'nonexistent3'  [import]
 from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
@@ -615,6 +618,7 @@ def g() -> int:
 '{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
 '%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
@@ -635,6 +639,7 @@ def g(p: P) -> None: pass
 
 p: A
 g(p)  # type: ignore[arg-type]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNoneReturnNoteIgnore]
 # flags: --disallow-untyped-defs
@@ -703,3 +708,29 @@ class InvalidReturn:
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 [builtins fixtures/bool.pyi]
+
+[case testErrorCodeOverloadedOperatorMethod]
+# flags: --strict-optional
+from typing import Optional, overload
+
+class A:
+    @overload
+    def __add__(self, x: int) -> A: ...
+    @overload
+    def __add__(self, x: str) -> str: ...
+    def __add__(self, x): pass
+
+class B:
+    pass
+
+x: Optional[B]
+A() + x  # type: ignore[operator]
+
+class C:
+    @overload
+    def __rsub__(self, x: int) -> A: ...
+    @overload
+    def __rsub__(self, x: str) -> str: ...
+    def __rsub__(self, x): pass
+
+x - C()  # type: ignore[operator]

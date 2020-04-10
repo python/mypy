@@ -437,6 +437,7 @@ for x in foo:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
+[builtins fixtures/tuple.pyi]
 
 [case testMethodSignatureHookNamesFullyQualified]
 # flags: --config-file tmp/mypy.ini
@@ -497,10 +498,13 @@ Bad1 = non_declarative_base()
 Bad2 = Bad3 = declarative_base()
 
 class C1(Bad1): ...  # E: Variable "__main__.Bad1" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases \
                      # E: Invalid base class "Bad1"
 class C2(Bad2): ...  # E: Variable "__main__.Bad2" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases \
                      # E: Invalid base class "Bad2"
 class C3(Bad3): ...  # E: Variable "__main__.Bad3" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases \
                      # E: Invalid base class "Bad3"
 [file mod.py]
 from typing import Generic, TypeVar
@@ -515,6 +519,35 @@ class Instr(Generic[T]): ...
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassHookFromClassMethod]
+# flags: --config-file tmp/mypy.ini
+
+from mod import QuerySet, Manager
+
+MyManager = Manager.from_queryset(QuerySet)
+
+reveal_type(MyManager())  # N: Revealed type is '__main__.MyManager'
+reveal_type(MyManager().attr)  # N: Revealed type is 'builtins.str'
+
+def func(manager: MyManager) -> None:
+    reveal_type(manager)   # N: Revealed type is '__main__.MyManager'
+    reveal_type(manager.attr)   # N: Revealed type is 'builtins.str'
+
+func(MyManager())
+
+[file mod.py]
+from typing import Generic, TypeVar, Type
+class QuerySet:
+    attr: str
+class Manager:
+    @classmethod
+    def from_queryset(cls, queryset_cls: Type[QuerySet]): ...
+
+[builtins fixtures/classmethod.pyi]
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class_from_method.py
 
 [case testBaseClassPluginHookWorksIncremental]
 # flags: --config-file tmp/mypy.ini
@@ -665,3 +698,26 @@ class A: pass
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customize_mro.py
+
+[case testDescriptorMethods]
+# flags: --config-file tmp/mypy.ini
+
+class Desc:
+    def __get__(self, obj, cls):
+        pass
+
+    def __set__(self, obj, val):
+        pass
+
+class Cls:
+    attr = Desc()
+
+reveal_type(Cls().attr)  # N: Revealed type is 'builtins.int'
+reveal_type(Cls.attr)  # N: Revealed type is 'builtins.str'
+
+Cls().attr = 3
+Cls().attr = "foo"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/descriptor.py

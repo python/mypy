@@ -163,6 +163,14 @@ class C:
 class C:
     x: int = ...
 
+[case testInitTypeAnnotationPreserved]
+class C:
+    def __init__(self, x: str):
+        pass
+[out]
+class C:
+    def __init__(self, x: str) -> None: ...
+
 [case testSelfAssignment]
 class C:
     def __init__(self):
@@ -1625,7 +1633,8 @@ import abc
 from typing import Any
 
 class A(metaclass=abc.ABCMeta):
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def x(self) -> Any: ...
 
 [case testAbstractProperty2_semanal]
@@ -1638,11 +1647,28 @@ class A:
 
 [out]
 import abc
-from abc import abstractproperty
 from typing import Any
 
 class A(metaclass=abc.ABCMeta):
-    @abstractproperty
+    @property
+    @abc.abstractmethod
+    def x(self) -> Any: ...
+
+[case testAbstractProperty3_semanal]
+import other
+from abc import abstractproperty as alias_name
+
+class A:
+    @alias_name
+    def x(self): pass
+
+[out]
+import abc
+from typing import Any
+
+class A(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
     def x(self) -> Any: ...
 
 [case testClassWithNameAnyOrOptional]
@@ -2136,8 +2162,6 @@ from typing import Any
 class C:
     x: Any = ...
     def __init__(self, x: Any) -> None: ...
-    def __ne__(self, other: Any) -> Any: ...
-    def __eq__(self, other: Any) -> Any: ...
     def __lt__(self, other: Any) -> Any: ...
     def __le__(self, other: Any) -> Any: ...
     def __gt__(self, other: Any) -> Any: ...

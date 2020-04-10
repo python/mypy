@@ -227,7 +227,7 @@ class StatisticsVisitor(TraverserVisitor):
     def record_call_target_precision(self, o: CallExpr) -> None:
         """Record precision of formal argument types used in a call."""
         if not self.typemap or o.callee not in self.typemap:
-            # Type not availabe.
+            # Type not available.
             return
         callee_type = get_proper_type(self.typemap[o.callee])
         if isinstance(callee_type, CallableType):

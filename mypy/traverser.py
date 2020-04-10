@@ -64,6 +64,10 @@ class TraverserVisitor(NodeVisitor[None]):
             d.accept(self)
         for base in o.base_type_exprs:
             base.accept(self)
+        if o.metaclass:
+            o.metaclass.accept(self)
+        for v in o.keywords.values():
+            v.accept(self)
         o.defs.accept(self)
         if o.analyzed:
             o.analyzed.accept(self)

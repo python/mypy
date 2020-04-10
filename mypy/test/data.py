@@ -181,6 +181,12 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     # forward vs backward slashes in file paths for Windows vs Linux.
     normalize_output = True
 
+    # Extra attributes used by some tests.
+    lastline = None  # type: int
+    output_files = None  # type: List[Tuple[str, str]] # Path and contents for output files
+    deleted_paths = None  # type: Dict[int, Set[str]]  # Mapping run number -> paths
+    triggered = None  # type: List[str]  # Active triggers (one line per incremental step)
+
     def __init__(self,
                  parent: 'DataSuiteCollector',
                  suite: 'DataSuite',
@@ -252,7 +258,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     def reportinfo(self) -> Tuple[str, int, str]:
         return self.file, self.line, self.name
 
-    def repr_failure(self, excinfo: Any) -> str:
+    def repr_failure(self, excinfo: Any, style: Optional[Any] = None) -> str:
         if excinfo.errisinstance(SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.

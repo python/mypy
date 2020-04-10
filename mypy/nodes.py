@@ -856,7 +856,7 @@ class Var(SymbolNode):
         #         def __init__(self) -> None:
         #             self.x: int
         # This case is important because this defines a new Var, even if there is one
-        # present in a superclass (without explict type this doesn't create a new Var).
+        # present in a superclass (without explicit type this doesn't create a new Var).
         # See SemanticAnalyzer.analyze_member_lvalue() for details.
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.
@@ -1750,6 +1750,13 @@ class ComparisonExpr(Expression):
         self.operands = operands
         self.method_types = []
 
+    def pairwise(self) -> Iterator[Tuple[str, Expression, Expression]]:
+        """If this comparison expr is "a < b is c == d", yields the sequence
+        ("<", a, b), ("is", b, c), ("==", c, d)
+        """
+        for i, operator in enumerate(self.operators):
+            yield operator, self.operands[i], self.operands[i + 1]
+
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_comparison_expr(self)
 
@@ -2372,6 +2379,9 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype = False
 
+    # Is this a synthesized intersection type?
+    is_intersection = False
+
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.
     metadata = None  # type: Dict[str, JsonDict]
@@ -2379,6 +2389,7 @@ class TypeInfo(SymbolNode):
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
+        'is_intersection',
     ]  # type: Final[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2741,7 +2752,7 @@ class TypeAlias(SymbolNode):
     line and column: Line an column on the original alias definition.
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', 'assuming', 'assuming_proper', 'inferring')
+                 'line', 'column', '_is_recursive')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
@@ -2755,6 +2766,9 @@ class TypeAlias(SymbolNode):
         self.alias_tvars = alias_tvars
         self.no_args = no_args
         self.normalized = normalized
+        # This attribute is manipulated by TypeAliasType. If non-None,
+        # it is the cached value.
+        self._is_recursive = None  # type: Optional[bool]
         super().__init__(line, column)
 
     @property
@@ -3016,6 +3030,7 @@ class SymbolTableNode:
                         and fullname != prefix + '.' + name
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
+                    assert not isinstance(self.node, PlaceholderNode)
                     data['cross_ref'] = fullname
                     return data
             data['node'] = self.node.serialize()
