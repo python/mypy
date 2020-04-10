@@ -15,7 +15,12 @@ Welcome to mypyc's documentation!
    using_type_annotations
    differences_from_python
 
-
+   int_operations
+   str_operations
+   list_operations
+   dict_operations
+   set_operations
+   tuple_operations
 
 Indices and tables
 ==================
