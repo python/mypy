@@ -89,6 +89,10 @@ such as PyPY, slow down program startup, sometimes significantly.
 Mypyc uses ahead-of-time compilation, so program startup won't be
 slowed.
 
+**Ecosystem compatibility.** Since mypyc uses unmodified CPython as
+the runtime, all existing third-party libraries, including C
+extensions, continue to work.
+
 Use cases for mypyc
 -------------------
 
