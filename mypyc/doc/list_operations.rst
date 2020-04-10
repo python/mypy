@@ -6,35 +6,48 @@ Various ``list`` operations have fast, optimized implementations.
 Construction
 ------------
 
+Construct list with specific items:
+
 * ``[item0, ..., itemN]``
+
+Construct list from iterable:
+
 * ``list(x: Iterable)``
-* ``[expr for item in lst]`` (list comprehension)
-* ``[expr1 for item in lst if expr2]`` (list comprehension with filter)
+
+List comprehensions:
+
+* ``[... for ... in ...]``
+* ``[... for ... in ... if ...]``
 
 Operators
 ---------
 
-Indexing:
+Get item by integer index:
 
-* ``lst[n]`` (integer index)
-* ``lst[n] = x`` (integer index)
+* ``lst[n]``
 
-Multiplication:
+Repeat list ``n`` times:
 
-* ``lst * n``, ``n * lst`` (multiply by integer)
+* ``lst * n``, ``n * lst``
 
 Statements
 ----------
 
-* ``for item in lst:`` (for loop over a list)
+Set item by integer index:
+
+* ``lst[n] = x``
+
+For loop over a list:
+
+* ``for item in lst:``
 
 Methods
 -------
 
-* ``lst.append(item: object)``
+* ``lst.append(item)``
 * ``lst.extend(x: Iterable)``
 * ``lst.pop()``
-* ``lst.count(item: object)``
+* ``lst.count(item)``
 
 Functions
 ---------
