@@ -42,13 +42,13 @@ this (you need Python 3.5 or later):
 
 .. code-block::
 
-    $ python3 -m pip install mypy
+    $ python3 -m pip install -U mypy
 
 On some systems you need to use this instead:
 
 .. code-block::
 
-    $ python -m pip install mypy
+    $ python -m pip install -U mypy
 
 Compile and run a program
 -------------------------
