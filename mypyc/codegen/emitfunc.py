@@ -16,7 +16,6 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
-from mypyc.namegen import NameGenerator
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -234,10 +233,13 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         else:
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '==', unlikely=True)
+                self.emitter.emit_undefined_attr_check(
+                    attr_rtype, attr_expr, '==', unlikely=True
+                )
+                exc_class = 'PyExc_AttributeError'
                 self.emitter.emit_lines(
-                    'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
-                        repr(op.attr), repr(cl.name)),
+                    'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
+                        exc_class, repr(op.attr), repr(cl.name)),
                     '} else {')
                 self.emitter.emit_inc_ref(attr_expr, attr_rtype)
                 self.emitter.emit_line('}')

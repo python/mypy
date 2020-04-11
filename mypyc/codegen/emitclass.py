@@ -13,7 +13,7 @@ from mypyc.codegen.emitwrapper import (
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
-from mypyc.ir.class_ir import ClassIR, VTableMethod, VTableEntries
+from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
 
@@ -300,7 +300,9 @@ def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
                 cl.struct_name(emitter.names), emitter.attr(attr)
             ))
         emitter.emit_line('};')
-        emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(name=trait_offset_table_name))
+        emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
+            name=trait_offset_table_name)
+        )
 
     # Actual table.
     emitter.emit_line('CPyOffsetTable {}_scratch[] = {{'.format(offset_table_name))
@@ -311,7 +313,9 @@ def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
         emitter.emit_line('(CPyOffsetTable){},'.format(emitter.type_struct_name(base)))
         emitter.emit_line('(CPyOffsetTable){},'.format(trait_offset_table_name))
     emitter.emit_line('};')
-    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(name=offset_table_name))
+    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
+        name=offset_table_name)
+    )
 
     emitter.emit_line('return 1;')
     emitter.emit_line('}')

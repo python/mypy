@@ -1,6 +1,6 @@
 """Intermediate representation of classes."""
 
-from typing import List, Optional, Set, Tuple, Dict, Union, NamedTuple
+from typing import List, Optional, Set, Tuple, Dict, NamedTuple
 from collections import OrderedDict
 
 from mypyc.common import JsonDict
