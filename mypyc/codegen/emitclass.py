@@ -680,7 +680,7 @@ def generate_getter(cl: ClassIR,
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl, attr, emitter.names),
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    emitter.emit_undefined_attr_check(rtype, attr_field, '==', 'self')
+    emitter.emit_undefined_attr_check(rtype, attr_field, '==', 'self', unlikely=True)
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                     repr(cl.name)))

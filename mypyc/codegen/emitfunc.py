@@ -213,7 +213,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             attr_rtype, _ = cl.attr_details(op.attr)
             attr_field = self.emitter.attr(op.attr)
             if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(attr_rtype, attr_field, '==', obj)
+                self.emitter.emit_undefined_attr_check(attr_rtype, attr_field, '==', obj, unlikely=True)
                 self.emitter.emit_lines(
                     'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
                         repr(op.attr), repr(cl.name)),
