@@ -219,7 +219,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         else:
             # Cast to something non-trait. Note: for this to work, all struct
             # members for non-trait classes must obey monotonic linear growth.
-            if op.class_type.class_ir.is_trait.is_trait:
+            if op.class_type.class_ir.is_trait:
                 assert not decl_cl.is_trait
                 cast = '({} *)'.format(decl_cl.struct_name(self.emitter.names))
             return '({}{})->{}'.format(
