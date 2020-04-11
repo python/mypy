@@ -10,9 +10,9 @@ Python features for more performance.
 
 Mypyc uses mypy to perform type checking and type inference. Most type
 checking features in the stdlib ``typing`` module are supported,
-including generic types, tuple types, and type variables. Using type
-hints is not necessary, but type annotations are often the key to
-getting impressive performance gains.
+including generic types, optional and union types, tuple types, and
+type variables. Using type hints is not necessary, but type
+annotations are often the key to getting impressive performance gains.
 
 Compiled modules can import arbitrary Python modules, including
 third-party libraries, and compiled modules can be freely used from
@@ -23,6 +23,60 @@ You can run compiled modules also as normal, interpreted Python
 modules, since mypyc compiles only valid Python code. This means that
 all Python developer tools and debuggers can be used (though some only
 fully work in interpreted mode).
+
+How fast is mypyc
+-----------------
+
+The speed improvement from compilation depends on many factors and is
+hard to predict. Mypyc speeds up certain operations by a big factor,
+while other operations see a minor benefit at most. Writing code in a
+way to avoid slow operations is key to big performance gains.
+
+We can give some rough guidelines, however (a 2x improvement
+means that your code takes half as much time to run):
+
+* Compiling existing code with *good type annotations* may result in
+  1.5x to 5x performance improvement.
+
+* Compiling existing code with *no type annotations* may result in
+  1.0x to 1.3x performance improvement (TODO: realistic figures).
+
+* Writing new code specifically with high performance as a goal may
+  result in **5x to 15x** performance improvement.
+
+Note that only compiled code sees improved performance. Time spent in
+libraries or I/O will not be affected (unless you also compile
+the libraries).
+
+Why does speed matter
+---------------------
+
+Runtime performance plays a slightly different role for every
+developer.  In many cases better efficiency is useful, even if it may
+not always be obviously so. Here are some reasons why speed is
+important:
+
+* It can lower hardware costs. If a server application is 2x faster,
+  it may only need half as much hardware to run.
+
+* It can improve user experience. If a request can be served 2x
+  faster, it can make your users happier, and help you attract more
+  users.
+
+* It can make your library or tool more popular. If there is a choice
+  between two libraries, and one of them is 2x faster, many users will
+  prefer the faster one.
+
+* It can lower energy consumption. If you need less hardware or less
+  time to run your application, you'll likely use less energy. This
+  can indirectly reduce carbon dioxide and other harmful emissions.
+
+* It can improve developer productivity. Compiled code may make your
+  tests run faster, or allow batch jobs to complete quicker, reducing
+  wasted time. (This needs to offset time spent on compilation.)
+
+* Python is one of the most popular languages. Even a minor efficiency
+  gain across the Python community can result in an overall huge impact.
 
 How does mypyc work
 -------------------
@@ -81,8 +135,10 @@ productive with mypyc in a matter of days (or even hours), since the
 libraries, the tools and the ecosystem we all know and love are still
 there for you.
 
-**Runtime type safety.** Mypyc aims to protect you from segfaults and
-memory corruption. We consider any runtime type safety violation as a bug.
+**Static and runtime type safety.** Mypyc aims to protect you from
+segfaults and memory corruption. We consider any runtime type safety
+violation as a bug. Mypyc uses mypy for powerful type checking that
+will find prevent many bugs, saving you from a lot of debugging.
 
 **Fast program startup.** Python implementations using a JIT compiler,
 such as PyPY, slow down program startup, sometimes significantly.
@@ -118,9 +174,9 @@ There are some use cases where mypyc could be a useful tool:
 
 * You are writing a new module that requires high performance. You
   write the module in Python, but only use primitives that mypyc can
-  compile efficiently, getting close to maximum performance while
-  still providing a much better developer experience compared to
-  writing a C extension.
+  compile efficiently. Performance is much higher than pure Python,
+  while you have greatly higher developer productivity compared to
+  writing an extension in C.
 
 Development status
 ------------------
