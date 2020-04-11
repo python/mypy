@@ -193,26 +193,24 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                                          self.c_error_value(op.type)))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
+        cast = '({} *)'.format(op.class_type.struct_name(self.emitter.names))
         if decl_cl.is_trait:
             trait_attr_index = list(decl_cl.attributes).index(op.attr)
-            offset = '{}_offset'.format(obj)
+            # TODO: reuse this somehow?
+            offset = self.emitter.temp_name()
             self.emitter.emit_line('size_t {};'.format(offset))
             self.emitter.emit_line('{} = {};'.format(
                 offset,
                 'CPy_FindAttrOffset({}, {}, {})'.format(
                     self.emitter.type_struct_name(decl_cl),
-                    '{}->offset_table'.format(obj),
+                    '({}{})->offset_table'.format(cast, obj),
                     trait_attr_index,
                 )
             ))
-            return '{}[{}]'.format(obj, offset)
+            attr_cast = '({} *)'.format(self.ctype(op.class_type.attr_type(op.attr)))
+            return '*{}((char *){} + {})'.format(attr_cast, obj, offset)
         else:
-            cl = op.class_type.class_ir
-            if decl_cl is not cl and cl.is_trait:
-                cast = '({} *)'.format(decl_cl.struct_name(self.emitter.names))
-            else:
-                cast = ''
-            return '{}{}->{}'.format(
+            return '({}{})->{}'.format(
                 cast, obj, self.emitter.attr(op.attr)
             )
 

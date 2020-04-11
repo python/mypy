@@ -251,19 +251,17 @@ class Emitter:
     def emit_undefined_attr_check(self, rtype: RType, attr_expr: str,
                                   compare: str,
                                   unlikely: bool = False) -> None:
-        # attr_expr is a->b or a[b].
-        prefix = 'unlikely' if unlikely else ''
         if isinstance(rtype, RTuple):
-            self.emit_line(
-                'if ({}({})) {{'.format(
-                    prefix,
-                    self.tuple_undefined_check_cond(
-                        rtype, attr_expr, self.c_undefined_value, compare)))
+            check = '({})'.format(self.tuple_undefined_check_cond(
+                rtype, attr_expr, self.c_undefined_value, compare)
+            )
         else:
-            self.emit_line(
-                'if ({}({} {} {})) {{'.format(
-                    prefix, attr_expr, compare, self.c_undefined_value(rtype)
-                ))
+            check = '({} {} {})'.format(
+                attr_expr, compare, self.c_undefined_value(rtype)
+            )
+        if unlikely:
+            check = '(unlikely{})'.format(check)
+        self.emit_line('if {} {{'.format(check))
 
     def tuple_undefined_check_cond(
             self, rtuple: RTuple, tuple_expr_in_c: str,
