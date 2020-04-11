@@ -75,9 +75,7 @@ VTableMethod = NamedTuple(
                      ('method', FuncIR),
                      ('shadow_method', Optional[FuncIR])])
 
-
-VTableEntry = VTableMethod
-VTableEntries = List[VTableEntry]
+VTableEntries = List[VTableMethod]
 
 
 class ClassIR:
@@ -372,7 +370,7 @@ class NonExtClassInfo:
         self.metaclass = metaclass
 
 
-def serialize_vtable_entry(entry: VTableEntry) -> JsonDict:
+def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:
     return {
         '.class': 'VTableMethod',
         'cls': entry.cls.fullname,
@@ -386,7 +384,7 @@ def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
     return [serialize_vtable_entry(v) for v in vtable]
 
 
-def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableEntry:
+def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableMethod:
     if data['.class'] == 'VTableMethod':
         return VTableMethod(
             ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
