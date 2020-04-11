@@ -22,14 +22,6 @@ from mypyc.namegen import NameGenerator
 DEBUG_ERRORS = False
 
 
-def native_getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, 'native_{}_get{}'.format(cl.name, attribute))
-
-
-def native_setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, 'native_{}_set{}'.format(cl.name, attribute))
-
-
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
     args = ', '.join(emitter.ctype(arg.type) for arg in fn.args) or 'void'
     ret = emitter.ctype(fn.ret_type)
@@ -205,7 +197,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         rtype = op.class_type
         cl = rtype.class_ir
         version = '_TRAIT' if cl.is_trait else ''
-        if cl.is_trait or cl.get_method(op.attr):
+        if cl.get_method(op.attr):
             self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
                 dest,
                 version,
@@ -215,18 +207,20 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 rtype.struct_name(self.names),
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
+        elif cl.is_trait:
+            pass  # OFFSET stuff here.
         else:
-            typ, decl_cl = cl.attr_details(op.attr)
-            # FIXME: We use the lib_prefixed version which is an
-            # indirect call we can't inline. We should investigate
-            # duplicating getter/setter code.
-            self.emit_line('%s = %s%s((%s *)%s); /* %s */' % (
-                dest,
-                self.emitter.get_group_prefix(decl_cl),
-                native_getter_name(decl_cl, op.attr, self.emitter.names),
-                decl_cl.struct_name(self.names),
-                obj,
-                op.attr))
+            attr_rtype, _ = cl.attr_details(op.attr)
+            attr_field = self.emitter.attr(op.attr)
+            if attr_rtype.is_refcounted:
+                self.emitter.emit_undefined_attr_check(attr_rtype, attr_field, '==', obj)
+                self.emitter.emit_lines(
+                    'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
+                        repr(op.attr), repr(cl.name)),
+                    '} else {')
+                self.emitter.emit_inc_ref('{}->{}'.format(obj, attr_field), attr_rtype)
+                self.emitter.emit_line('}')
+            self.emitter.emit_line('{} = {}->{};'.format(dest, obj, attr_field))
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -234,8 +228,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         src = self.reg(op.src)
         rtype = op.class_type
         cl = rtype.class_ir
-        version = '_TRAIT' if cl.is_trait else ''
-        if cl.is_trait or cl.get_method(op.attr):
+        if cl.get_method(op.attr):
+            # Property access.
+            version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,
                 version,
@@ -246,16 +241,20 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 rtype.struct_name(self.names),
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
+        elif cl.is_trait:
+            pass  # OFFSET stuff here.
         else:
-            typ, decl_cl = cl.attr_details(op.attr)
-            self.emit_line('%s = %s%s((%s *)%s, %s); /* %s */' % (
-                dest,
-                self.emitter.get_group_prefix(decl_cl),
-                native_setter_name(decl_cl, op.attr, self.emitter.names),
-                decl_cl.struct_name(self.names),
-                obj,
-                src,
-                op.attr))
+            attr_rtype, _ = cl.attr_details(op.attr)
+            attr_field = self.emitter.attr(op.attr)
+            if attr_rtype.is_refcounted:
+                self.emitter.emit_undefined_attr_check(attr_rtype, attr_field, '!=', obj)
+                self.emitter.emit_dec_ref('{}->{}'.format(obj, attr_field), attr_rtype)
+                self.emitter.emit_line('}')
+            # This steal the reference to src, so we don't need to increment the arg
+            self.emitter.emit_lines(
+                '{}->{} = {};'.format(obj, attr_field, src),
+                '{} = 1;'.format(dest),
+            )
 
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,

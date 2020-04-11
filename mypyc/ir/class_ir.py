@@ -76,13 +76,7 @@ VTableMethod = NamedTuple(
                      ('shadow_method', Optional[FuncIR])])
 
 
-VTableAttr = NamedTuple(
-    'VTableAttr', [('cls', 'ClassIR'),
-                   ('name', str),
-                   ('is_setter', bool)])
-
-
-VTableEntry = Union[VTableMethod, VTableAttr]
+VTableEntry = VTableMethod
 VTableEntries = List[VTableEntry]
 
 
@@ -379,21 +373,13 @@ class NonExtClassInfo:
 
 
 def serialize_vtable_entry(entry: VTableEntry) -> JsonDict:
-    if isinstance(entry, VTableMethod):
-        return {
-            '.class': 'VTableMethod',
-            'cls': entry.cls.fullname,
-            'name': entry.name,
-            'method': entry.method.decl.fullname,
-            'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
-        }
-    else:
-        return {
-            '.class': 'VTableAttr',
-            'cls': entry.cls.fullname,
-            'name': entry.name,
-            'is_setter': entry.is_setter,
-        }
+    return {
+        '.class': 'VTableMethod',
+        'cls': entry.cls.fullname,
+        'name': entry.name,
+        'method': entry.method.decl.fullname,
+        'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
+    }
 
 
 def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
@@ -405,8 +391,6 @@ def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableEntry:
         return VTableMethod(
             ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
             ctx.functions[data['shadow_method']] if data['shadow_method'] else None)
-    elif data['.class'] == 'VTableAttr':
-        return VTableAttr(ctx.classes[data['cls']], data['name'], data['is_setter'])
     assert False, "Bogus vtable .class: %s" % data['.class']
 
 

@@ -248,6 +248,18 @@ class Emitter:
 
         return result
 
+    def emit_undefined_attr_check(self, rtype: RType, attr: str,
+                                  compare: str, obj: str) -> None:
+        if isinstance(rtype, RTuple):
+            attr_expr = '{}->{}'.format(obj, attr)
+            self.emit_line(
+                'if ({}) {{'.format(
+                    self.tuple_undefined_check_cond(
+                        rtype, attr_expr, self.c_undefined_value, compare)))
+        else:
+            self.emit_line(
+                'if ({}->{} {} {}) {{'.format(obj, attr, compare, self.c_undefined_value(rtype)))
+
     def tuple_undefined_check_cond(
             self, rtuple: RTuple, tuple_expr_in_c: str,
             c_type_compare_val: Callable[[RType], str], compare: str) -> str:

@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.codegen.emit import Emitter, HeaderDeclaration
-from mypyc.codegen.emitfunc import native_function_header, native_getter_name, native_setter_name
+from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
     generate_bool_wrapper, generate_get_wrapper,
@@ -98,8 +98,6 @@ def generate_class_type_decl(cl: ClassIR, c_emitter: Emitter,
     generate_object_struct(cl, external_emitter)
     generate_full = not cl.is_trait and not cl.builtin_base
     if generate_full:
-        declare_native_getters_and_setters(cl, emitter)
-
         context.declarations[emitter.native_function_name(cl.ctor)] = HeaderDeclaration(
             '{};'.format(native_function_header(cl.ctor, emitter)),
             needs_export=True,
@@ -216,7 +214,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
         emit_line()
-        generate_native_getters_and_setters(cl, emitter)
 
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name = generate_vtables(
@@ -293,64 +290,6 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     )
 
 
-def declare_native_getters_and_setters(cl: ClassIR,
-                                       emitter: Emitter) -> None:
-    decls = emitter.context.declarations
-    for attr, rtype in cl.attributes.items():
-        getter_name = native_getter_name(cl, attr, emitter.names)
-        setter_name = native_setter_name(cl, attr, emitter.names)
-        decls[getter_name] = HeaderDeclaration(
-            '{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
-                                     getter_name,
-                                     cl.struct_name(emitter.names)),
-            needs_export=True,
-        )
-        decls[setter_name] = HeaderDeclaration(
-            'bool {}({} *self, {}value);'.format(native_setter_name(cl, attr, emitter.names),
-                                                 cl.struct_name(emitter.names),
-                                                 emitter.ctype_spaced(rtype)),
-            needs_export=True,
-        )
-
-
-def generate_native_getters_and_setters(cl: ClassIR,
-                                        emitter: Emitter) -> None:
-    for attr, rtype in cl.attributes.items():
-        attr_field = emitter.attr(attr)
-
-        # Native getter
-        emitter.emit_line('{}{}({} *self)'.format(emitter.ctype_spaced(rtype),
-                                                  native_getter_name(cl, attr, emitter.names),
-                                                  cl.struct_name(emitter.names)))
-        emitter.emit_line('{')
-        if rtype.is_refcounted:
-            emit_undefined_check(rtype, emitter, attr_field, '==')
-            emitter.emit_lines(
-                'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
-                    repr(attr), repr(cl.name)),
-                '} else {')
-            emitter.emit_inc_ref('self->{}'.format(attr_field), rtype)
-            emitter.emit_line('}')
-        emitter.emit_line('return self->{};'.format(attr_field))
-        emitter.emit_line('}')
-        emitter.emit_line()
-        # Native setter
-        emitter.emit_line(
-            'bool {}({} *self, {}value)'.format(native_setter_name(cl, attr, emitter.names),
-                                                cl.struct_name(emitter.names),
-                                                emitter.ctype_spaced(rtype)))
-        emitter.emit_line('{')
-        if rtype.is_refcounted:
-            emit_undefined_check(rtype, emitter, attr_field, '!=')
-            emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
-            emitter.emit_line('}')
-        # This steal the reference to src, so we don't need to increment the arg
-        emitter.emit_lines('self->{} = value;'.format(attr_field),
-                           'return 1;',
-                           '}')
-        emitter.emit_line()
-
-
 def generate_vtables(base: ClassIR,
                      vtable_setup_name: str,
                      vtable_name: str,
@@ -423,18 +362,12 @@ def generate_vtable(entries: VTableEntries,
         emitter.emit_line('/* Start of real vtable */')
 
     for entry in entries:
-        if isinstance(entry, VTableMethod):
-            method = entry.shadow_method if shadow and entry.shadow_method else entry.method
-            emitter.emit_line('(CPyVTableItem){}{}{},'.format(
-                emitter.get_group_prefix(entry.method.decl),
-                NATIVE_PREFIX,
-                method.cname(emitter.names)))
-        else:
-            cl, attr, is_setter = entry
-            namer = native_setter_name if is_setter else native_getter_name
-            emitter.emit_line('(CPyVTableItem){}{},'.format(
-                emitter.get_group_prefix(cl),
-                namer(cl, attr, emitter.names)))
+        method = entry.shadow_method if shadow and entry.shadow_method else entry.method
+        emitter.emit_line('(CPyVTableItem){}{}{},'.format(
+            emitter.get_group_prefix(entry.method.decl),
+            NATIVE_PREFIX,
+            method.cname(emitter.names)))
+
     # msvc doesn't allow empty arrays; maybe allowing them at all is an extension?
     if not entries:
         emitter.emit_line('NULL')
@@ -747,7 +680,7 @@ def generate_getter(cl: ClassIR,
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl, attr, emitter.names),
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    emit_undefined_check(rtype, emitter, attr_field, '==')
+    emitter.emit_undefined_attr_check(rtype, attr_field, '==', 'self')
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                     repr(cl.name)))
@@ -770,7 +703,7 @@ def generate_setter(cl: ClassIR,
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     if rtype.is_refcounted:
-        emit_undefined_check(rtype, emitter, attr_field, '!=')
+        emitter.emit_undefined_attr_check(rtype, attr_field, '!=', 'self')
         emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
         emitter.emit_line('}')
     emitter.emit_line('if (value != NULL) {')
@@ -833,15 +766,3 @@ def generate_property_setter(cl: ClassIR,
                           func_ir.cname(emitter.names)))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
-
-
-def emit_undefined_check(rtype: RType, emitter: Emitter, attr: str, compare: str) -> None:
-    if isinstance(rtype, RTuple):
-        attr_expr = 'self->{}'.format(attr)
-        emitter.emit_line(
-            'if ({}) {{'.format(
-                emitter.tuple_undefined_check_cond(
-                    rtype, attr_expr, emitter.c_undefined_value, compare)))
-    else:
-        emitter.emit_line(
-            'if (self->{} {} {}) {{'.format(attr, compare, emitter.c_undefined_value(rtype)))
