@@ -45,6 +45,9 @@ typedef PyObject CPyModule;
 
 typedef void (*CPyVTableItem)(void);
 
+// Attribute number in trait -> offset in the actual struct.
+typedef size_t*  CPyOffsetTable;
+
 static inline CPyTagged CPyTagged_ShortFromInt(int x) {
     return x << 1;
 }

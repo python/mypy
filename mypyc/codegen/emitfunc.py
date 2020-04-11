@@ -1,5 +1,6 @@
 """Code generation for native function bodies."""
 
+from typing import Union
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -191,13 +192,38 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = %s;' % (self.reg(op),
                                          self.c_error_value(op.type)))
 
+    def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
+        if decl_cl.is_trait:
+            trait_attr_index = list(decl_cl.attributes).index(op.attr)
+            offset = '{}_offset'.format(obj)
+            self.emitter.emit_line('size_t {};'.format(offset))
+            self.emitter.emit_line('{} = {};'.format(
+                offset,
+                'CPy_FindAttrOffset({}, {}, {})'.format(
+                    self.emitter.type_struct_name(decl_cl),
+                    '{}->offset_table'.format(obj),
+                    trait_attr_index,
+                )
+            ))
+            return '{}[{}]'.format(obj, offset)
+        else:
+            cl = op.class_type.class_ir
+            if decl_cl is not cl and cl.is_trait:
+                cast = '({} *)'.format(decl_cl.struct_name(self.emitter.names))
+            else:
+                cast = ''
+            return '{}{}->{}'.format(
+                cast, obj, self.emitter.attr(op.attr)
+            )
+
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
         cl = rtype.class_ir
-        version = '_TRAIT' if cl.is_trait else ''
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
+            version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
                 dest,
                 version,
@@ -207,20 +233,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 rtype.struct_name(self.names),
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
-        elif cl.is_trait:
-            pass  # OFFSET stuff here.
         else:
-            attr_rtype, _ = cl.attr_details(op.attr)
-            attr_field = self.emitter.attr(op.attr)
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(attr_rtype, attr_field, '==', obj, unlikely=True)
+                self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '==', unlikely=True)
                 self.emitter.emit_lines(
                     'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
                         repr(op.attr), repr(cl.name)),
                     '} else {')
-                self.emitter.emit_inc_ref('{}->{}'.format(obj, attr_field), attr_rtype)
+                self.emitter.emit_inc_ref(attr_expr, attr_rtype)
                 self.emitter.emit_line('}')
-            self.emitter.emit_line('{} = {}->{};'.format(dest, obj, attr_field))
+            self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -228,8 +251,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         src = self.reg(op.src)
         rtype = op.class_type
         cl = rtype.class_ir
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
-            # Property access.
             version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,
@@ -241,18 +264,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 rtype.struct_name(self.names),
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
-        elif cl.is_trait:
-            pass  # OFFSET stuff here.
         else:
-            attr_rtype, _ = cl.attr_details(op.attr)
-            attr_field = self.emitter.attr(op.attr)
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(attr_rtype, attr_field, '!=', obj)
-                self.emitter.emit_dec_ref('{}->{}'.format(obj, attr_field), attr_rtype)
+                self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '!=')
+                self.emitter.emit_dec_ref(attr_expr, attr_rtype)
                 self.emitter.emit_line('}')
             # This steal the reference to src, so we don't need to increment the arg
             self.emitter.emit_lines(
-                '{}->{} = {};'.format(obj, attr_field, src),
+                '{} = {};'.format(attr_expr, src),
                 '{} = 1;'.format(dest),
             )
 

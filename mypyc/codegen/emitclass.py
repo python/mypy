@@ -117,6 +117,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     members_name = '{}_members'.format(name_prefix)
     getseters_name = '{}_getseters'.format(name_prefix)
     vtable_name = '{}_vtable'.format(name_prefix)
+    offset_table_name = '{}_offset_table'.format(name_prefix)
     traverse_name = '{}_traverse'.format(name_prefix)
     clear_name = '{}_clear'.format(name_prefix)
     dealloc_name = '{}_dealloc'.format(name_prefix)
@@ -246,15 +247,74 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         t=emitter.type_struct_name(cl)))
 
     emitter.emit_line()
+
+    if not cl.is_trait:
+        generate_offset_table(cl, emitter, offset_table_name)
+        generate_offset_table_setup(cl, emitter, offset_table_name)
+        emitter.emit_line()
+
     if generate_full:
         generate_setup_for_class(
-            cl, setup_name, defaults_fn, vtable_name, shadow_vtable_name, emitter)
+            cl, setup_name, defaults_fn, vtable_name,
+            shadow_vtable_name, offset_table_name, emitter
+        )
         emitter.emit_line()
         generate_constructor_for_class(
             cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
     if needs_getseters:
         generate_getseters(cl, emitter)
+
+
+def generate_offset_table(cl: ClassIR, emitter: Emitter,
+                          offset_table_name: str) -> None:
+    trait_bases = [base for base in cl.mro if base.is_trait]
+    emitter.emit_line('static CPyOffsetTable {}[{}];'.format(
+        offset_table_name, max(1, len(trait_bases) * 2))
+    )
+    for base in trait_bases:
+        trait_offset_table_name = '{}_{}_offset_table'.format(
+            cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
+        )
+        emitter.emit_line('static size_t {}[{}];'.format(
+            trait_offset_table_name, max(1, len(base.attributes)))
+        )
+
+
+def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
+                                offset_table_name: str) -> None:
+    trait_bases = [base for base in cl.mro if base.is_trait]
+    offset_table_setup_name = offset_table_name + '_setup'
+    emitter.emit_line('static bool')
+    emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, offset_table_setup_name))
+    emitter.emit_line('{')
+
+    # Generate table items.
+    for base in trait_bases:
+        trait_offset_table_name = '{}_{}_offset_table'.format(
+            cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
+        )
+        emitter.emit_line('size_t {}_scratch[] = {{'.format(trait_offset_table_name))
+        for attr in base.attributes:
+            emitter.emit_line('offsetof({}, {}),'.format(
+                cl.struct_name(emitter.names), emitter.attr(attr)
+            ))
+        emitter.emit_line('};')
+        emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(name=trait_offset_table_name))
+
+    # Actual table.
+    emitter.emit_line('CPyOffsetTable {}_scratch[] = {{'.format(offset_table_name))
+    for base in trait_bases:
+        trait_offset_table_name = '{}_{}_offset_table'.format(
+            cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
+        )
+        emitter.emit_line('(CPyOffsetTable){},'.format(emitter.type_struct_name(base)))
+        emitter.emit_line('(CPyOffsetTable){},'.format(trait_offset_table_name))
+    emitter.emit_line('};')
+    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(name=offset_table_name))
+
+    emitter.emit_line('return 1;')
+    emitter.emit_line('}')
 
 
 def getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
@@ -270,7 +330,8 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines = []  # type: List[str]
     lines += ['typedef struct {',
               'PyObject_HEAD',
-              'CPyVTableItem *vtable;']
+              'CPyVTableItem *vtable;',
+              'CPyOffsetTable *offset_table;']
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
@@ -380,6 +441,7 @@ def generate_setup_for_class(cl: ClassIR,
                              defaults_fn: Optional[FuncIR],
                              vtable_name: str,
                              shadow_vtable_name: Optional[str],
+                             offset_table_name: str,
                              emitter: Emitter) -> None:
     """Generate a native function that allocates an instance of a class."""
     emitter.emit_line('static PyObject *')
@@ -399,6 +461,8 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
+
+    emitter.emit_line('self->offset_table = {};'.format(offset_table_name))
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
@@ -680,7 +744,8 @@ def generate_getter(cl: ClassIR,
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl, attr, emitter.names),
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    emitter.emit_undefined_attr_check(rtype, attr_field, '==', 'self', unlikely=True)
+    attr_expr = 'self->{}'.format(attr_field)
+    emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                     repr(cl.name)))
@@ -703,7 +768,8 @@ def generate_setter(cl: ClassIR,
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     if rtype.is_refcounted:
-        emitter.emit_undefined_attr_check(rtype, attr_field, '!=', 'self')
+        attr_expr = 'self->{}'.format(attr_field)
+        emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
         emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
         emitter.emit_line('}')
     emitter.emit_line('if (value != NULL) {')

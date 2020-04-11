@@ -57,6 +57,15 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
     }
 }
 
+static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyOffsetTable *offset_table, size_t index) {
+    int i;
+    for (i = 0; ; i += 2) {
+        if ((PyTypeObject *)offset_table[i] == trait) {
+            return offset_table[i + 1][index];
+        }
+    }
+}
+
 static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // mypyc classes can't work with metaclasses in
     // general. Through some various nasty hacks we *do*
@@ -245,6 +254,9 @@ error:
     Py_XDECREF(name);
     return NULL;
 }
+
+#define CPY_GET_ATTR_OFFSET()    \
+
 
 // THe _ATTR versions are used by properties, other two by normal methods.
 

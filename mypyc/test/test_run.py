@@ -216,6 +216,12 @@ class TestRun(MypycDataSuite):
                 errors=errors,
                 groups=groups,
             )
+            for group in cfiles:
+                for fname, content in group:
+                    print(fname)
+                    print('-------------------------')
+                    print(content)
+                    print()
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"

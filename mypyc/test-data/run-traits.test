@@ -7,13 +7,17 @@ class A:
         print("foo")
 
 @trait
-class T:
+class T(A):
+    x: int
     def bar(self) -> None:
         print("bar")
     def baz(self) -> object:
         return None
 
-class C(A, T):
+class B(A):
+    y: int
+
+class C(B, T):
     def baz(self) -> int:
         return 10
 
@@ -30,10 +34,10 @@ def use_c(c: C) -> int:
 use_t(C())
 
 # This trait is dead code but there's no reason it shouldn't compile
-@trait
-class ChildlessTrait:
-    def __init__(self) -> None:
-        pass
+# @trait
+# class ChildlessTrait:
+#     def __init__(self) -> None:
+#         pass
 
 [file driver.py]
 from native import A, T, C, use_c, use_t
@@ -50,7 +54,7 @@ bar
 bar
 foo
 bar
-bar
+bar.
 
 [case testTraitBasic2]
 from mypy_extensions import trait
