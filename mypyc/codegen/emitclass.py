@@ -248,7 +248,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
 
-    if not cl.is_trait:
+    if not cl.is_trait and any(base.is_trait for base in cl.mro):
         generate_offset_table(cl, emitter, offset_table_name)
         emitter.emit_line()
         generate_offset_table_setup(cl, emitter, offset_table_name)
@@ -318,6 +318,9 @@ def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
             emitter.emit_line('offsetof({}, {}),'.format(
                 cl.struct_name(emitter.names), emitter.attr(attr)
             ))
+        if not base.attributes:
+            # This is for MSVC.
+            emitter.emit_line('NULL')
         emitter.emit_line('};')
         emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
             name=trait_offset_table_name)
@@ -484,7 +487,10 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
-    emitter.emit_line('self->offset_table = {};'.format(offset_table_name))
+    if any(base.is_trait for base in cl.mro):
+        emitter.emit_line('self->offset_table = {};'.format(offset_table_name))
+    else:
+        emitter.emit_line('self->offset_table = NULL;')
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
