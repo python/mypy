@@ -8,7 +8,6 @@ class A:
 
 @trait
 class T:
-    x: int
     def bar(self) -> None:
         print("bar")
     def baz(self) -> object:
@@ -57,8 +56,6 @@ bar
 from mypy_extensions import trait
 
 class A:
-    aa: int
-    bb: int
     line: int
     def foo(self) -> None:
         print("foo")
@@ -128,8 +125,7 @@ use_t(d)
 assert use_d(d) == 13
 print(d.line)
 assert d.line == 1337
-res = use_t2(d)
-assert res == 1337, res
+assert use_t2(d) == 1337
 [out]
 foo
 bar 12

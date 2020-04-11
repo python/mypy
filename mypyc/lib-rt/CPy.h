@@ -57,6 +57,7 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
     }
 }
 
+// Use the same logic (but search forward) for offset table.
 static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyOffsetTable *offset_table, size_t index) {
     int i;
     for (i = 0; ; i += 2) {
@@ -254,11 +255,6 @@ error:
     Py_XDECREF(name);
     return NULL;
 }
-
-#define CPY_GET_ATTR_OFFSET()    \
-
-
-// THe _ATTR versions are used by properties, other two by normal methods.
 
 // Get attribute value using vtable (may return an undefined value)
 #define CPY_GET_ATTR(obj, type, vtable_index, object_type, attr_type)    \

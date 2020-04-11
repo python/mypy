@@ -250,6 +250,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     if not cl.is_trait:
         generate_offset_table(cl, emitter, offset_table_name)
+        emitter.emit_line()
         generate_offset_table_setup(cl, emitter, offset_table_name)
         emitter.emit_line()
 
@@ -268,10 +269,24 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
 def generate_offset_table(cl: ClassIR, emitter: Emitter,
                           offset_table_name: str) -> None:
+    """Declare arrays for trait attribute offset maps.
+
+    These will look similar to trait vtables, but contain memory
+    offsets for trait attributes in class structs:
+        {
+            CPyType_T1,
+            {offsetof(native__C, _x1), offsetof(native__C, _y1), ...},
+            CPyType_T2,
+            {offsetof(native__C, _x2), offsetof(native__C, _y2), ...},
+            ...
+        }
+    """
+    # Allocate main offset table depending on number of trait bases.
     trait_bases = [base for base in cl.mro if base.is_trait]
     emitter.emit_line('static CPyOffsetTable {}[{}];'.format(
         offset_table_name, max(1, len(trait_bases) * 2))
     )
+    # Allocate each row depending on number of attributes defined in each base.
     for base in trait_bases:
         trait_offset_table_name = '{}_{}_offset_table'.format(
             cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
@@ -283,13 +298,17 @@ def generate_offset_table(cl: ClassIR, emitter: Emitter,
 
 def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
                                 offset_table_name: str) -> None:
+    """Generate a C function that populates the class offset table.
+
+    This will be called on module import time after populating vtables.
+    """
     trait_bases = [base for base in cl.mro if base.is_trait]
     offset_table_setup_name = offset_table_name + '_setup'
     emitter.emit_line('static bool')
     emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, offset_table_setup_name))
     emitter.emit_line('{')
 
-    # Generate table items.
+    # Generate table items first.
     for base in trait_bases:
         trait_offset_table_name = '{}_{}_offset_table'.format(
             cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
@@ -304,7 +323,7 @@ def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
             name=trait_offset_table_name)
         )
 
-    # Actual table.
+    # Copy items into actual table.
     emitter.emit_line('CPyOffsetTable {}_scratch[] = {{'.format(offset_table_name))
     for base in trait_bases:
         trait_offset_table_name = '{}_{}_offset_table'.format(
@@ -465,7 +484,6 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
-
     emitter.emit_line('self->offset_table = {};'.format(offset_table_name))
 
     for base in reversed(cl.base_mro):

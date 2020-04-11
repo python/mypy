@@ -192,12 +192,20 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                                          self.c_error_value(op.type)))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
+        """Generate attribute accessor for normal (non-property) access.
+
+        This either has a form like obj->attr_name for attributes defined in non-trait
+        classes, and *(obj + attr_offset) for attributes defined by traits. We also
+        insert all necessary C casts here.
+        """
         cast = '({} *)'.format(op.class_type.struct_name(self.emitter.names))
-        if decl_cl.is_trait:
+        if decl_cl.is_trait and op.class_type.class_ir.is_trait:
+            # For pure trait access find the offset first, offsets
+            # are ordered by attribute position in the cl.attributes dict.
             trait_attr_index = list(decl_cl.attributes).index(op.attr)
-            # TODO: reuse this somehow?
+            # TODO: reuse these names somehow?
             offset = self.emitter.temp_name()
-            self.emitter.emit_line('size_t {};'.format(offset))
+            self.declarations.emit_line('size_t {};'.format(offset))
             self.emitter.emit_line('{} = {};'.format(
                 offset,
                 'CPy_FindAttrOffset({}, {}, {})'.format(
@@ -209,6 +217,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             attr_cast = '({} *)'.format(self.ctype(op.class_type.attr_type(op.attr)))
             return '*{}((char *){} + {})'.format(attr_cast, obj, offset)
         else:
+            # Cast to something non-trait. Note: for this to work, all struct
+            # members for non-trait classes must obey monotonic linear growth.
+            if op.class_type.class_ir.is_trait.is_trait:
+                assert not decl_cl.is_trait
+                cast = '({} *)'.format(decl_cl.struct_name(self.emitter.names))
             return '({}{})->{}'.format(
                 cast, obj, self.emitter.attr(op.attr)
             )
@@ -220,6 +233,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
+            # Properties are essentially methods, so use vtable access for them.
             version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
                 dest,
@@ -231,6 +245,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
         else:
+            # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if attr_rtype.is_refcounted:
                 self.emitter.emit_undefined_attr_check(
@@ -253,6 +268,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
+            # Again, use vtable access for properties...
             version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,
@@ -265,6 +281,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
         else:
+            # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if attr_rtype.is_refcounted:
                 self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '!=')
