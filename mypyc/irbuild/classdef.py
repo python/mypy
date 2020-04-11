@@ -177,7 +177,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
-        for special_call in ('_trait_vtable_setup', '_offset_table_setup'):
+        special_calls = ['_trait_vtable_setup']
+        if any(base.is_trait for base in ir.mro):
+            special_calls.append('_offset_table_setup')
+        for special_call in special_calls:
             builder.add(Call(
                 FuncDecl(cdef.name + special_call,
                          None, builder.module_name,

@@ -320,7 +320,7 @@ def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
             ))
         if not base.attributes:
             # This is for MSVC.
-            emitter.emit_line('NULL')
+            emitter.emit_line('0')
         emitter.emit_line('};')
         emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
             name=trait_offset_table_name)
