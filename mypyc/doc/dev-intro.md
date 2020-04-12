@@ -14,16 +14,18 @@ does these things differently:
   byte code always has some interpreter overhead, which slows things
   down.
 
-* Mypyc compiles classes to C extension classes, which are generally
-  more efficient than normal Python classes. They use an efficient,
-  fixed memory representation (essentially a C struct).
-
 * Mypyc doesn't let you arbitrarily monkey patch classes and functions
   in compiled modules.  This allows *early binding* -- mypyc
   statically binds calls to compiled functions, instead of going
   through a namespace dictionary.  Mypyc can also call methods of
   compiled classes using vtables, which are more efficient than
   dictionary lookups used by CPython.
+
+* Mypyc compiles classes to C extension classes, which are generally
+  more efficient than normal Python classes. They use an efficient,
+  fixed memory representation (essentially a C struct).  This lets us
+  use direct memory access instead of (typically) two hash table
+  lookups to access an attribute.
 
 * As a result of early binding, compiled code can use C calls to call
   compiled functions. Keyword arguments can be translated to
@@ -124,8 +126,8 @@ Mypyc has these passes:
 * Translate the mypy AST into a mypyc-specific intermediate representation (IR).
   * The IR is defined in `mypyc.ir` (see below for an explanation of the IR).
   * Various primitive operations used in the IR are defined in `mypyc.primitives`.
-  * The translation to IR happens in `mypyc.irbuild`. This has two passes.
-    The top-level logic is in `mypyc.irbuild.main`.
+  * The translation to IR happens in `mypyc.irbuild`. The top-level logic is in
+    `mypyc.irbuild.main`.
 
 * Insert checks for uses of potentially uninitialized variables
   (`mypyc.transform.uninit`).
@@ -315,7 +317,7 @@ tests.
 ### Benchmarking
 
 Many mypyc improvements attempt to make some operations faster. For
-any such change, you should run some measurerements to verify that
+any such change, you should run some measurements to verify that
 there actually is a measurable performance impact.
 
 A typical benchmark would initialize some data to be operated on, and
