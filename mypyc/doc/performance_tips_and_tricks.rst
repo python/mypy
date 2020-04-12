@@ -1,25 +1,27 @@
 Performance tips and tricks
 ===========================
 
-Improving efficient is both an art and a science. Just using mypyc in
-a naive manner will likely give you some benefits, but getting the
-most out of mypyc requires the use of some performance engineering
+Performance optimization is part art, part science. Just using mypyc
+in a simple manner will likely make your code faster, but squeezing
+the most performance out of your code requires the use of some
 techniques we'll summarize below.
 
 Profiling
 ---------
 
-If you speeding up existing code, understanding where time is spent is
-important. Mypyc speeds up code that you compile. If most of the time
-is spent elsewhere, you may come back disappointed. If you spend 20%
-of time outside compiled code, even if the performance improvement
-would be infinite, overall performance will up to 5x faster.
+If you are speeding up existing code, understanding where time is
+spent is important. Mypyc speeds up code that you compile. If most of
+the time is spent elsewhere, you may come back disappointed. For
+example, if you spend 40% of time outside compiled code, even if
+compiled code would go 100x faster, overall performance will only be
+2.5x faster.
 
 A simple (but often effective) approach is to record the time in
-various points of program execution using ``time.time()``.
+various points of program execution using ``time.time()``, and to
+print out elapsed time (or to write it to a log file).
 
-The stdlib modules ``profile`` or ``cProfile`` can provide much more
-detailed data. (But these only properly work with non-compiled code.)
+The stdlib modules ``profile`` and ``cProfile`` can provide much more
+detailed data. (But these only work well with non-compiled code.)
 
 Avoiding slow libraries
 -----------------------
@@ -29,8 +31,8 @@ third-party libraries, you still have several options.
 
 First, if most time is spent in a few library features, you can
 perhaps easily reimplement them in type-annotated Python, or extract
-the relevant code and annotate it. Now it may be easy to compile the
-code for speedups.
+the relevant code and annotate it. Now it may be easy to compile this
+code to speed it up.
 
 Second, you may be able to avoid the library altogether, or use an
 alternative, more efficient library to achieve the same purpose.
@@ -40,53 +42,72 @@ Type annotations
 
 As discussed earlier, type annotations are key to major performance
 gains. This includes adding annotations to any performance-critical
-code.  It may also be helpful annotate code called by this code, even
-if it's not compiled, since this may help mypy infer better types in
-the compile code. If you use some libraries, ensure they have stub
-files with good type coverage. Writing a stub files is often easy, and
-you only need to annotate features you use a lot.
+code.  It may also be helpful to annotate code called by this code,
+even if it's not compiled, since this may help mypy infer better types
+in the compile code. If you use libraries, ensure they have stub files
+with decent type annotation coverage. Writing a stub file is often
+easy, and you only need to annotate features you use a lot.
 
-If annotating external code or writing stubs feel like too much work,
-a simple workaround is to annotate the return values explicitly. For
-example, assume we that call the ``acme.get_stuff()`` function a lot,
-but there is no type annotation for it. We can use an explicit type
-annotation::
+If annotating external code or writing stubs feel too burdensome, a
+simple workaround is to annotate variables explicitly. For example,
+here we call ``acme.get_items()``, it has no type annotation. We can
+use an explicit type annotation for the variable to which we assign
+the result::
 
     from typing import List, Tuple
     import acme
 
     def work() -> None:
-        items: List[Tuple[int, str]] = acme.get_stuff()
+        # Annotate "items" to help mypyc
+        items: List[Tuple[int, str]] = acme.get_items()
         for item in items:
-            ...  # Process item
+            ...  # Do some work here
 
 Without the annotation on ``items``, the type would be ``Any`` (since
-``acme`` has no type annotations), resulting in slow, generic
+``acme`` has no type annotation), resulting in slow, generic
 operations being used.
 
 Avoiding slow Python features
 -----------------------------
 
 Mypyc can optimize some features more effectively than others. Here
-the difference is sometimes big -- some times only get marginally faster,
-while other can get 10x faster, or more. Avoiding these slow features in
-performance-critical parts of your code can help a lot.
+the difference is sometimes big -- some things only get marginally
+faster at best, while others can get 10x faster, or more. Avoiding
+these slow features in performance-critical parts of your code can
+help a lot.
 
 Here's a summary of things that tend to be relatively slow:
+
+* Using Python classes and instances of Python classes (native classes
+  are much faster)
+
+* Heavy reliance on interpreted Python libraries (C extensions are
+  usually fine)
 
 * Calling decorated functions
 
 * Calling nested functions
 
-* Using Python classes and instances of Python classes
-
-* Using interpreted libraries written in Python
+* Using ``*args`` or ``**kwargs``
 
 * Using erased types, including callable values (i.e. not leveraging
   early binding to call functions or methods)
 
 * Using class decorators or metaclasses (that aren't properly
   supported by mypyc)
+
+Nested functions can often be replaced with module-level functions or
+methods of native classes.
+
+Callable values and nested functions can sometimes be replaced with an
+instance of a native class with a single method only, such as
+``call(...)``.
+
+.. note::
+
+   Some slow features will likely get efficient implementations in the
+   future. You should check this section every once in a while to see
+   if some additional operations are fast.
 
 Using fast native features
 --------------------------
@@ -95,8 +116,80 @@ Some native operations are particularly quick relative to the
 corresponding interpreted operations. Using them as much as possible
 may allow you to see 10x or more in performance gains.
 
-The key thing to understand is that some things that are pretty fast
-in interpreted code, such as getting a dictionary item, are
-not much faster in compiled code. Some things that are pretty slow
-in interpreted code, such creating a class instance, are much faster
-in compiled code.
+The key thing to understand is that different things are fast in
+compiled code. Some things are not that much (or any) faster in
+compiled code, such as set math operations. Some things, such as
+calling a method of a native class, are much faster in compiled code.
+
+If you are used to optimizing for CPython, you might have replaced
+some class instances with dictionaries, as they can be
+faster. However, in compiled code, this "optimization" would likely
+slow down your code.
+
+Similarly, caching a frequently called method in a local variable can
+help in CPython, but it can slow things down in compiled code::
+
+    def squares(n: int) -> List[int]:
+        a = []
+        append = a.append  # Not a good idea in compiled code!
+        for i in range(n):
+            append(i * i)
+        return a
+
+Here are examples of features that are fast, in no particular order
+(this list is *not* exhaustive):
+
+* Calling compiled functions directly (defined in the same compilation
+  unit)
+
+* Calling methods of native classes (defined in the same compilation
+  unit)
+
+* Many integer operations
+
+* Many list operations, such as indexing and ``append``
+
+* While loops
+
+* For loops over ranges and lists, and with ``enumerate`` or ``zip``
+
+* Reading dictionary items
+
+* ``isinstance()`` checks against native classes and instances of
+  primitive types (and unions of them)
+
+* Accessing local variables
+
+* Accessing attributes of native classes
+
+* Accessing final module-level attributes
+
+* Comparing strings for equality
+
+These features are also fast, but somewhat less so (relative to other
+related operations):
+
+* Constructing instances of native classes
+
+* Constructing dictionaries
+
+* Setting dictionary items
+
+* Accessing module-level variables
+
+Generally anything documented as a native operation is fast, even if
+it's not explicitly mentioned here
+
+Work smarter
+------------
+
+Usually there are many things you can do to improve performance, even
+if most tweaks will yield only minor gains. The key to being effective
+is to focus on things that give a large gain with a small effort, and
+to stop once performance is fast enough.
+
+For example, low-level optimizations, such as avoiding a nested
+function, can be pointless, if you could instead avoid a metaclass --
+to allow a key class to be compiled as a native class. The latter
+optimization could speed up numerous method calls and attribute
+accesses, just like that.
