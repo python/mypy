@@ -31,6 +31,7 @@ from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
 
+
 # Name and attribute references
 
 
