@@ -119,9 +119,73 @@ version (this example works on Linux):
 Compile using setup.py
 ----------------------
 
-TODO
+You can also use ``setup.py`` to compile modules using mypyc. Here is an
+example::
+
+    from setuptools import setup
+
+    from mypyc.build import mypycify
+
+    setup(
+        name='mylib',
+        packages=['mylib'],
+        ext_modules=mypycify([
+            'mylib/__init__.py',
+            'mylib/mod.py',
+        ]),
+    )
+
+Now you can build a wheel (.whl) file for the package::
+
+    python3 setup.py bdist_wheel
+
+The wheel is created under ``dist/``.
 
 Recommended workflow
 --------------------
 
-TODO
+The following workflow has worked very well for the development of
+mypy and mypyc, and we recommend you to try it out:
+
+1. During development, use interpreted mode. This allows a very fast
+   edit-run cycle, since you don't need to wait for mypyc compilation.
+
+2. Use type annotations liberally and use mypy to type check your code
+   during development. Mypy and tests can find most errors that would
+   break your compiled version, if you have good annotation
+   coverage. (Running mypy is faster than compiling, and you can run
+   your code even if there are mypy errors.)
+
+3. After you've implemented a feature or a fix, compile your project
+   and run tests again, now in compiled mode. Almost always, nothing
+   will break here, if your type annotation coverage is good
+   enough. This can happen locally or as part of a Continuous
+   Integration (CI) job. If you have good CI, usually compiling locally
+   is unncessary.
+
+4. Periodically release or deploy a compiled version, optionally along
+   with a fallback interpreted version for platforms that mypyc
+   doesn't support yet.
+
+This way of using mypyc has minimal impact on your productivity and
+requires minimal adjustments to a regular Python workflow. Most of
+development, testing and debugging happens in interpreted
+mode. Incremental mypy runs, especially when using mypy daemon, are
+very quick (often a few hundred milliseconds).
+
+Next steps
+----------
+
+You can often get good results by just annotating your code and
+compiling it. If this isn't providing meaningful performance gains, if
+you have trouble getting your code to work under mypyc, or if you want
+to optimize your code for maximum performance, you should read the
+rest of the documentation in some detail.
+
+Here are some specific recommendations, or you can just read the
+documentation in order:
+
+* TODO: using type annotations
+* TODO: native classes
+* TODO: differences from python
+* TODO: performance tips and tricks
