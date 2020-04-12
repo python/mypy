@@ -1,12 +1,13 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
-from typing import Dict, Any, Union, Optional
+from typing import Dict, Any, Union, Optional, List
 
 from mypy.nodes import (
     ClassDef, FuncDef, Decorator, OverloadedFuncDef, StrExpr, CallExpr, RefExpr, Expression,
     IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr, ARG_NAMED, ARG_NAMED_OPT, ARG_POS,
     ARG_OPT, GDEF
 )
+from mypy.types import Type, TupleType, get_proper_type
 
 from mypyc.ir.ops import Environment, AssignmentTargetRegister
 from mypyc.ir.rtypes import RInstance
@@ -135,3 +136,10 @@ def add_self_to_env(environment: Environment, cls: ClassIR) -> AssignmentTargetR
     return environment.add_local_reg(
         Var(SELF_NAME), RInstance(cls), is_arg=True
     )
+
+
+def get_namedtulpe_fields(typ: Type) -> Optional[List[str]]:
+    typ = get_proper_type(typ)
+    if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
+        return typ.partial_fallback.type.metadata['namedtuple']['fields']
+    return None

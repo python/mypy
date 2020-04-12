@@ -29,7 +29,7 @@ from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
-
+from mypyc.irbuild.util import get_namedtulpe_fields
 
 # Name and attribute references
 
@@ -93,6 +93,13 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         return builder.load_module(expr.node.fullname)
 
     obj = builder.accept(expr.expr)
+    # Special case: for named tuples transform attribute access into index access
+    # because it is faster.
+    fields = get_namedtulpe_fields(builder.types[expr.expr])
+    if fields and expr.name in fields:
+        index = builder.builder.load_static_int(fields.index(expr.name))
+        return builder.gen_method_call(
+            obj, '__getitem__', [index], object_rprimitive, expr.line)
     return builder.builder.get_attr(
         obj, expr.name, builder.node_type(expr), expr.line
     )
