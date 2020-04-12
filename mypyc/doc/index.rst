@@ -13,14 +13,18 @@ Welcome to mypyc's documentation!
    introduction
    getting_started
    using_type_annotations
+   native_classes
    differences_from_python
 
+   native_operations
    int_operations
    str_operations
    list_operations
    dict_operations
    set_operations
    tuple_operations
+
+   performance_tips_and_tricks
 
 Indices and tables
 ==================
