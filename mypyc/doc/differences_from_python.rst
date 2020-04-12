@@ -205,9 +205,6 @@ and are equivalent to this code::
 When run as interpreted, the first example will execute slower due to
 the extra namespace lookups.
 
-Function default values
------------------------
-
 Unsupported features
 --------------------
 
@@ -216,15 +213,25 @@ used in compiled code, or there are some limitations. You can
 partially work around some of these limitations by running your code
 in interpreted mode.
 
+Operator overloading
+********************
+
+Native classes can only use a few dunder methods to override operators:
+
+* ``__eq__``
+* ``__ne__``
+* ``__getitem__``
+* ``__setitem__``
+
+.. note::
+
+    This is an implementation limitation that will be lifted in the
+    future.
+
 Descriptors
 ***********
 
 Descriptors can't be used in native classes.
-
-Operator overloading
-********************
-
-TODO
 
 Stack introspection
 *******************
