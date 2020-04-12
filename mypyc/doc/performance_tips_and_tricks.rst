@@ -187,6 +187,21 @@ related operations):
 Generally anything documented as a native operation is fast, even if
 it's not explicitly mentioned here
 
+Adjusting garbage collection
+----------------------------
+
+Compilation does not speed up cyclic garbage collection. If everything
+else gets much faster, it's possible that garbage collection will take
+a big fraction of time. You can use ``gc.set_threshold()`` to adjust
+the garbage collector to run less often::
+
+    import gc
+
+    # Spend less time in gc; do this before significant computation
+    gc.set_threshold(150000)
+
+    ...  # Actual work happens here
+
 Work smarter
 ------------
 
