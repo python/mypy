@@ -90,6 +90,8 @@ Here's a summary of things that tend to be relatively slow:
 
 * Using ``*args`` or ``**kwargs``
 
+* Using floating point numbers (there are relatively unoptimized)
+
 * Using erased types, including callable values (i.e. not leveraging
   early binding to call functions or methods)
 
@@ -139,15 +141,18 @@ help in CPython, but it can slow things down in compiled code::
 Here are examples of features that are fast, in no particular order
 (this list is *not* exhaustive):
 
-* Calling compiled functions directly (defined in the same compilation
-  unit)
+* Calling compiled functions directly defined in the same compilation
+  unit (with positional and/or keyword arguments)
 
-* Calling methods of native classes (defined in the same compilation
-  unit)
+* Calling methods of native classes defined in the same compilation
+  unit (with positional and/or keyword arguments)
 
 * Many integer operations
 
-* Many list operations, such as indexing and ``append``
+* Booleans
+
+* Many list operations, such as indexing, ``append``, and list
+  comprehensions
 
 * While loops
 
@@ -174,6 +179,8 @@ related operations):
 * Constructing dictionaries
 
 * Setting dictionary items
+
+* Some set operations
 
 * Accessing module-level variables
 
