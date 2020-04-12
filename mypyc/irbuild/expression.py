@@ -93,18 +93,15 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         return builder.load_module(expr.node.fullname)
 
     obj = builder.accept(expr.expr)
-    # Special case: for named tuples transform attribute access into index
-    # access because it is faster.
+    rtype = builder.node_type(expr)
+    # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
         fields = typ.partial_fallback.type.metadata['namedtuple']['fields']
         if expr.name in fields:
             index = builder.builder.load_static_int(fields.index(expr.name))
-            return builder.gen_method_call(
-                obj, '__getitem__', [index], object_rprimitive, expr.line)
-    return builder.builder.get_attr(
-        obj, expr.name, builder.node_type(expr), expr.line
-    )
+            return builder.gen_method_call(obj, '__getitem__', [index], rtype, expr.line)
+    return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
 
 
 def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
