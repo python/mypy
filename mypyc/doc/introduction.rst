@@ -28,21 +28,21 @@ How fast is mypyc
 -----------------
 
 The speed improvement from compilation depends on many factors and is
-hard to predict. Mypyc speeds up certain operations by a big factor,
-while other operations see a minor benefit at most. Writing code in a
-way to avoid slow operations is key to big performance gains.
+not easy to predict. Mypyc speeds up certain operations a lot, while
+other operations are only slightly faster. Avoiding slow operations is
+the key to big performance gains.
 
 We can give some rough guidelines, however (a 2x improvement
 means that your code takes half as much time to run):
 
-* Compiling existing code with *good type annotations* may result in
+* Compiling existing code with *good type annotations* can expect a
   1.5x to 5x performance improvement.
 
-* Compiling existing code with *no type annotations* may result in
-  1.0x to 1.3x performance improvement (TODO: realistic figures).
+* Compiling existing code with *no type annotations* can expect a 1.0x
+  to 1.3x performance improvement (TODO: realistic figures).
 
-* Writing new code specifically with high performance as a goal may
-  result in **5x to 15x** performance improvement.
+* Code optimized for mypyc may result in **5x to 10x** performance
+  improvement.
 
 Note that only compiled code sees improved performance. Time spent in
 libraries or I/O will not be affected (unless you also compile

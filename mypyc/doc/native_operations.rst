@@ -14,6 +14,7 @@ Functions
 
 * ``isinstance(obj, type: type)``
 * ``isinstance(obj, type: tuple)``
+* ``cast(<type>, obj)``
 * ``type(obj)``
 * ``len(obj)``
 * ``id(obj)``
