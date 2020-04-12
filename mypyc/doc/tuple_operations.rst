@@ -1,5 +1,5 @@
 Native tuple operations
-======================
+=======================
 
 These ``tuple`` operations have fast, optimized implementations. Other
 tuple operations use generic implementations that are often slower.
