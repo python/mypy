@@ -1067,3 +1067,18 @@ test.py:5: note: Subscripting classes that are not generic at runtime may requir
 [out]
 mypy: stubgen does not support .pyd files: 'a.pyd'
 == Return code: 2
+
+[case testDuplicateModules]
+# cmd: mypy src
+[file mypy.ini]
+\[mypy]
+mypy_path = src
+[file src/__init__.py]
+[file src/a.py]
+import foo.bar
+[file src/foo/__init__.py]
+[file src/foo/bar.py]
+1+'x'
+[out]
+src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
+== Return code: 2
