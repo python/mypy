@@ -1,0 +1,164 @@
+[case testTupleGet]
+from typing import Tuple
+
+def f(x: Tuple[Tuple[int, bool], bool]) -> int:
+    return x[0][0]
+[out]
+def f(x):
+    x :: tuple[tuple[int, bool], bool]
+    r0 :: tuple[int, bool]
+    r1 :: int
+L0:
+    r0 = x[0]
+    r1 = r0[0]
+    return r1
+
+[case testTupleNew]
+from typing import Tuple
+
+def f() -> int:
+    t = (True, 1)
+    return t[1]
+[out]
+def f():
+    r0 :: bool
+    r1 :: short_int
+    r2, t :: tuple[bool, int]
+    r3 :: int
+L0:
+    r0 = True
+    r1 = 1
+    r2 = (r0, r1)
+    t = r2
+    r3 = t[1]
+    return r3
+
+[case testTupleLen]
+from typing import Tuple
+def f(x: Tuple[bool, bool, int]) -> int:
+    return len(x)
+[out]
+def f(x):
+    x :: tuple[bool, bool, int]
+    r0 :: short_int
+L0:
+    r0 = 3
+    return r0
+
+[case testSequenceTuple]
+from typing import List
+def f(x: List[bool]) -> bool:
+    return tuple(x)[1]
+[out]
+def f(x):
+    x :: list
+    r0 :: tuple
+    r1 :: short_int
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = tuple x :: list
+    r1 = 1
+    r2 = r0[r1] :: tuple
+    r3 = unbox(bool, r2)
+    return r3
+
+[case testSequenceTupleLen]
+from typing import Tuple
+def f(x: Tuple[int, ...]) -> int:
+  return len(x)
+[out]
+def f(x):
+    x :: tuple
+    r0 :: int
+L0:
+    r0 = len x :: tuple
+    return r0
+
+[case testSequenceTupleForced]
+from typing import Tuple
+def f() -> int:
+    t = (1, 2) # type: Tuple[int, ...]
+    return t[1]
+[out]
+def f():
+    r0, r1 :: short_int
+    r2 :: tuple[int, int]
+    t :: tuple
+    r3 :: object
+    r4 :: short_int
+    r5 :: object
+    r6 :: int
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = (r0, r1)
+    r3 = box(tuple[int, int], r2)
+    t = r3
+    r4 = 1
+    r5 = t[r4] :: tuple
+    r6 = unbox(int, r5)
+    return r6
+
+[case testTupleDisplay]
+from typing import Sequence, Tuple
+def f(x: Sequence[int], y: Sequence[int]) -> Tuple[int, ...]:
+    return (1, 2, *x, *y, 3)
+[out]
+def f(x, y):
+    x, y :: object
+    r0, r1, r2 :: short_int
+    r3, r4 :: object
+    r5 :: list
+    r6, r7, r8 :: object
+    r9 :: bool
+    r10 :: tuple
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = box(short_int, r0)
+    r4 = box(short_int, r1)
+    r5 = [r3, r4]
+    r6 = r5.extend(x) :: list
+    r7 = r5.extend(y) :: list
+    r8 = box(short_int, r2)
+    r9 = r5.append(r8) :: list
+    r10 = tuple r5 :: list
+    return r10
+
+[case testTupleFor]
+from typing import Tuple, List
+def f(xs: Tuple[str, ...]) -> None:
+    for x in xs:
+        pass
+[out]
+def f(xs):
+    xs :: tuple
+    r0, r1 :: short_int
+    r2 :: int
+    r3 :: bool
+    r4 :: object
+    x, r5 :: str
+    r6, r7 :: short_int
+    r8 :: None
+L0:
+    r0 = 0
+    r1 = r0
+L1:
+    r2 = len xs :: tuple
+    r3 = r1 < r2 :: int
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = xs[r1] :: tuple
+    r5 = cast(str, r4)
+    x = r5
+L3:
+    r6 = 1
+    r7 = r1 + r6 :: short_int
+    r1 = r7
+    goto L1
+L4:
+    r8 = None
+    return r8
+

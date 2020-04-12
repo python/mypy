@@ -1,10 +1,12 @@
 """Utility functions with no non-trivial dependencies."""
+
 import os
 import pathlib
 import re
 import subprocess
 import sys
 import hashlib
+import io
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -542,7 +544,16 @@ class FancyFormatter:
         if not CURSES_ENABLED:
             return False
         try:
-            curses.setupterm()
+            # setupterm wants a fd to potentially write an "initialization sequence".
+            # We override sys.stdout for the daemon API so if stdout doesn't have an fd,
+            # just give it /dev/null.
+            try:
+                fd = sys.stdout.fileno()
+            except io.UnsupportedOperation:
+                with open("/dev/null", "rb") as f:
+                    curses.setupterm(fd=f.fileno())
+            else:
+                curses.setupterm(fd=fd)
         except curses.error:
             # Most likely terminfo not found.
             return False
@@ -690,3 +701,8 @@ class FancyFormatter:
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
+
+
+def is_typeshed_file(file: str) -> bool:
+    # gross, but no other clear way to tell
+    return 'typeshed' in os.path.abspath(file).split(os.sep)

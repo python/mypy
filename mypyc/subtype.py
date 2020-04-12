@@ -1,6 +1,6 @@
 """Subtype check for RTypes."""
 
-from mypyc.ops import (
+from mypyc.ir.rtypes import (
     RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion,
     is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive,
     is_short_int_rprimitive,

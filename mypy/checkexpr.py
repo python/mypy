@@ -892,8 +892,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Apply method signature hook, if one exists
             call_function = self.transform_callee_type(
                 callable_name, call_function, args, arg_kinds, context, arg_names, callee)
-            return self.check_call(call_function, args, arg_kinds, context, arg_names,
-                                   callable_node, arg_messages, callable_name, callee)
+            result = self.check_call(call_function, args, arg_kinds, context, arg_names,
+                                     callable_node, arg_messages, callable_name, callee)
+            if callable_node:
+                # check_call() stored "call_function" as the type, which is incorrect.
+                # Override the type.
+                self.chk.store_type(callable_node, callee)
+            return result
         elif isinstance(callee, TypeVarType):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
@@ -2409,15 +2414,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         def lookup_operator(op_name: str, base_type: Type) -> Optional[Type]:
             """Looks up the given operator and returns the corresponding type,
             if it exists."""
-            local_errors = make_local_errors()
 
-            # TODO: Remove this call and rely just on analyze_member_access
-            # Currently, it seems we still need this to correctly deal with
-            # things like metaclasses?
-            #
-            # E.g. see the pythoneval.testMetaclassOpAccessAny test case.
+            # This check is an important performance optimization,
+            # even though it is mostly a subset of
+            # analyze_member_access.
+            # TODO: Find a way to remove this call without performance implications.
             if not self.has_member(base_type, op_name):
                 return None
+
+            local_errors = make_local_errors()
 
             member = analyze_member_access(
                 name=op_name,
@@ -2999,7 +3004,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   allow_none_return=True, always_allow_any=True)
         target_type = expr.type
         options = self.chk.options
-        if options.warn_redundant_casts and is_same_type(source_type, target_type):
+        if (options.warn_redundant_casts and not isinstance(get_proper_type(target_type), AnyType)
+                and is_same_type(source_type, target_type)):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
@@ -3362,12 +3368,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
-            if isinstance(get_proper_type(ret_type), NoneType):
-                # For "lambda ...: None", just use type from the context.
-                # Important when the context is Callable[..., None] which
-                # really means Void. See #1425.
-                self.chk.return_types.pop()
-                return inferred_type
             self.chk.return_types.pop()
             return replace_callable_return_type(inferred_type, ret_type)
 
@@ -3663,7 +3663,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     elif false_map is None:
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
-    def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
+    def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
         self.accept(e.cond)
         ctx = self.type_context[-1]
 
@@ -3676,10 +3676,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif else_map is None:
                 self.msg.redundant_condition_in_if(True, e.cond)
 
-        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
+        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx,
+                                           allow_none_return=allow_none_return)
 
         # Analyze the right branch using full type context and store the type
-        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx,
+                                                          allow_none_return=allow_none_return)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
@@ -3690,12 +3692,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: If it's possible that the previous analysis of
                 # the left branch produced errors that are avoided
                 # using this context, suppress those errors.
-                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type)
+                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type,
+                                                   allow_none_return=allow_none_return)
 
         else:
             # Analyze the right branch in the context of the left
             # branch's type.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
+            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type,
+                                                 allow_none_return=allow_none_return)
 
         # Only create a union type if the type context is a union, to be mostly
         # compatible with older mypy versions where we always did a join.
@@ -3709,15 +3713,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return res
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
-                            node: Expression, context: Optional[Type]) -> Type:
+                            node: Expression, context: Optional[Type],
+                            allow_none_return: bool = False) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
-                self.accept(node, type_context=context)
+                self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, type_context=context)
+            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
@@ -3745,6 +3750,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typ = self.visit_call_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, YieldFromExpr):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, ConditionalExpr):
+                typ = self.visit_conditional_expr(node, allow_none_return=True)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -3803,6 +3810,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Does type have member with the given name?"""
         # TODO: refactor this to use checkmember.analyze_member_access, otherwise
         # these two should be carefully kept in sync.
+        # This is much faster than analyze_member_access, though, and so using
+        # it first as a filter is important for performance.
         typ = get_proper_type(typ)
 
         if isinstance(typ, TypeVarType):

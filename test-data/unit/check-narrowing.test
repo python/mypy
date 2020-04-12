@@ -965,3 +965,22 @@ else:
     reveal_type(a)  # E: Statement is unreachable
     reveal_type(b)
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingLiteralTruthiness]
+from typing import Union
+from typing_extensions import Literal
+
+str_or_false: Union[Literal[False], str]
+
+if str_or_false:
+    reveal_type(str_or_false)   # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(str_or_false)   # N: Revealed type is 'Union[Literal[False], builtins.str]'
+
+true_or_false: Literal[True, False]
+
+if true_or_false:
+    reveal_type(true_or_false)  # N: Revealed type is 'Literal[True]'
+else:
+    reveal_type(true_or_false)  # N: Revealed type is 'Literal[False]'
+[builtins fixtures/primitives.pyi]

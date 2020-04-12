@@ -7951,14 +7951,18 @@ x = 1
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
+a.py:7: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
+a.py:11: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 ==
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
+a.py:7: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
+a.py:11: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testRefreshForWithTypeComment1]
 [file a.py]
@@ -8423,6 +8427,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testNamedTupleForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8440,6 +8445,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testNamedTupleForwardFunctionIndirectReveal]
 # flags: --ignore-missing-imports
@@ -8467,10 +8473,12 @@ B = func
 [out]
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
+m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
-m.py:5: note: Revealed type is 'A?'
-m.py:7: note: Revealed type is 'A?'
+m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+m.py:5: note: Revealed type is 'Any'
+m.py:7: note: Revealed type is 'Any'
 
 [case testAliasForwardFunctionDirect]
 # flags: --ignore-missing-imports
@@ -8484,6 +8492,7 @@ B = int()
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testAliasForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8500,6 +8509,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
+main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testLiteralFineGrainedVarConversion]
 import mod
@@ -9410,3 +9420,230 @@ x: List[C] = [a.f(), a.f()]
 ==
 a.py:2: error: "C" expects 2 type arguments, but 1 given
 [builtins fixtures/list.pyi]
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange]
+import b
+[file a.py]
+class A: pass
+class B: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, B)
+        self.x = x
+[file b.py]
+from a import Foo
+[file b.py.2]
+from a import Foo
+reveal_type(Foo().x)
+[builtins fixtures/isinstance.pyi]
+[out]
+==
+b.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange]
+import c
+[file a.py]
+class A: pass
+class B: pass
+class C: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, B)
+        self.x = x
+[file a.py.2]
+class A: pass
+class B: pass
+class C: pass
+
+class Foo:
+    def __init__(self) -> None:
+        x: A
+        assert isinstance(x, C)
+        self.x = x
+
+[file b.py]
+from a import Foo
+y = Foo().x
+
+[file c.py]
+from b import y
+reveal_type(y)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+==
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "C">'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang]
+import c
+[file a.py]
+class A: pass
+class B: pass
+class C: pass
+Extra = B
+[file a.py.2]
+class A: pass
+class B: pass
+class C: pass
+Extra = C
+
+[file b.py]
+from a import A, Extra
+x: A
+if isinstance(x, Extra):
+    y = x
+
+[file c.py]
+from b import y
+reveal_type(y)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'b.<subclass of "A" and "B">'
+==
+c.py:2: note: Revealed type is 'b.<subclass of "A" and "C">'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable]
+import c
+[file a.py]
+class A:
+    x: int
+class B:
+    x: int
+x: A
+assert isinstance(x, B)
+y = x
+
+[file a.py.2]
+class A:
+    x: int
+class B:
+    x: str
+x: A
+assert isinstance(x, B)
+y = x
+
+[file b.py]
+from a import y
+z = y
+
+[file c.py]
+from b import z
+reveal_type(z)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+==
+c.py:2: note: Revealed type is 'a.A'
+
+[case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection]
+import c
+[file a.py]
+class A:
+    x: int
+class B:
+    x: str
+x: A
+assert isinstance(x, B)
+y = x
+
+[file a.py.2]
+class A:
+    x: int
+class B:
+    x: int
+x: A
+assert isinstance(x, B)
+y = x
+
+[file b.py]
+from a import y
+z = y
+
+[file c.py]
+from b import z
+reveal_type(z)
+[builtins fixtures/isinstance.pyi]
+[out]
+c.py:2: note: Revealed type is 'a.A'
+==
+c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+
+[case testStubFixupIssues]
+[file a.py]
+import p
+[file a.py.2]
+import p
+# a change
+
+[file p/__init__.pyi]
+from p.util import *
+
+[file p/util.pyi]
+from p.params import N
+class Test: ...
+
+[file p/params.pyi]
+import p.util
+class N(p.util.Test):
+    ...
+
+[builtins fixtures/list.pyi]
+[out]
+==
+
+[case testDunderCall1]
+from a import C
+
+c = C()
+c(1)
+
+[file a.py]
+class C:
+    def __call__(self, x: int) -> None: ...
+
+[file a.py.2]
+class C:
+    def __call__(self, x: str) -> None: ...
+
+[out]
+==
+main:4: error: Argument 1 to "__call__" of "C" has incompatible type "int"; expected "str"
+
+[case testDunderCall2]
+from a import C
+
+C()(1)
+
+[file a.py]
+class C:
+    def __call__(self, x: int) -> None: ...
+
+[file a.py.2]
+class C:
+    def __call__(self, x: str) -> None: ...
+
+[out]
+==
+main:3: error: Argument 1 to "__call__" of "C" has incompatible type "int"; expected "str"
+
+[case testDunderCallAddition]
+from a import C
+
+c = C()
+x = c()  # type: ignore
+x + 42
+
+[file a.py]
+class C: ...
+
+[file a.py.2]
+class C:
+    def __call__(self) -> str: ...
+
+[out]
+==
+main:5: error: Unsupported left operand type for + ("str")

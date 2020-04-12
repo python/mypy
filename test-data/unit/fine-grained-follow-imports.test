@@ -1,0 +1,721 @@
+-- Test cases for --follow-imports=normal in fine-grained incremental mode.
+--
+-- Note that the implementation is mostly separate from normal incremental mode.
+
+[case testFollowImportsNormalBasic]
+# flags: --follow-imports=normal
+# cmd: mypy main.py a.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py]
+def f() -> None: pass
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[file a.py.3]
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalAddSuppressed]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[file a.py.3]
+def f() -> None: pass
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalAddSuppressed2]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a  # type: ignore
+a.f()
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[file a.py.3]
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalAddSuppressed3]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.b.f()
+
+[file a.py.2]
+import b
+
+[file b.py.2]
+def f(x: str) -> None: pass
+
+[file b.py.3]
+def f() -> None: pass
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalEditingFileBringNewModule]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+
+[file main.py.2]
+import a
+a.f()
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[file a.py.3]
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalEditingFileBringNewModules]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+
+[file main.py.2]
+import a
+a.b.f()
+
+[file a.py.2]
+import b
+
+[file b.py.2]
+def f(x: str) -> None: pass
+
+[file b.py.3]
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalDuringStartup]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py]
+def f() -> None: pass
+
+[file a.py.2]
+def f(x: str) -> None: pass
+
+[out]
+==
+main.py:2: error: Too few arguments for "f"
+
+[case testFollowImportsNormalDuringStartup2]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py]
+def f(x: str) -> None: pass
+
+[file a.py.2]
+def f() -> None: pass
+
+[out]
+main.py:2: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalDuringStartup3]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.g()
+
+[file a.py]
+import b
+g = b.f
+
+[file b.py]
+def f(x: str) -> None: pass
+
+[file b.py.2]
+def f() -> None: pass
+
+[file a.py.3]
+g = 0
+
+[out]
+main.py:2: error: Too few arguments
+==
+==
+main.py:2: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile1]
+# flags: --follow-imports=normal
+# cmd: mypy main.py a.py
+# cmd2: mypy main.py
+# cmd3: mypy main.py a.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py]
+def f() -> None: pass
+
+[delete a.py.2]
+
+[file a.py.3]
+def f(x: str) -> None: pass
+
+[out]
+==
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Too few arguments for "f"
+
+[case testFollowImportsNormalDeleteFile2]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+a.f()
+
+[file a.py]
+def f() -> None: pass
+
+[delete a.py.2]
+
+[file a.py.3]
+def f(x: str) -> None: pass
+
+[out]
+==
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Too few arguments for "f"
+
+[case testFollowImportsNormalDeleteFile3]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a  # type: ignore
+a.f()
+
+[file a.py]
+def f() -> None: pass
+
+[delete a.py.2]
+
+[file a.py.3]
+def f(x: str) -> None: pass
+
+[out]
+==
+==
+main.py:2: error: Too few arguments for "f"
+
+[case testFollowImportsNormalDeleteFile4]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+1()
+
+[file main.py.2]
+# don't import a
+
+[file main.py.3]
+import a
+
+[out]
+a.py:1: error: "int" not callable
+==
+==
+a.py:1: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile5]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+
+[file b.py]
+1()
+
+[file a.py.2]
+# don't import b
+
+[file a.py.3]
+import b
+
+[out]
+b.py:1: error: "int" not callable
+==
+==
+b.py:1: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile6]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+
+[file b.py]
+1()
+
+[delete a.py.2]
+
+[file a.py.3]
+import b
+
+[out]
+b.py:1: error: "int" not callable
+==
+main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+b.py:1: error: "int" not callable
+
+[case testFollowImportsNormalDeleteFile7]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+from c import f
+
+[file b.py]
+from d import *
+
+[file c.py]
+import a
+def f(): pass
+1()
+
+[file d.py]
+1()
+
+[file main.py.2]
+
+[file main.py.3]
+import d
+
+[out]
+d.py:1: error: "int" not callable
+c.py:3: error: "int" not callable
+==
+==
+d.py:1: error: "int" not callable
+
+[case testFollowImportsNormalKeepAliveViaNewFile]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import a
+
+[file a.py]
+import b
+
+[file b.py]
+1()
+
+[file a.py.2]
+import c
+
+[file c.py.2]
+import d
+
+[file d.py.2]
+import b
+
+[out]
+b.py:1: error: "int" not callable
+==
+b.py:1: error: "int" not callable
+
+[case testFollowImportsNormalPackage-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p.m  # type: ignore
+
+p.m.f()
+
+[file p/__init__.py.2]
+
+[file p/m.py.2]
+def f(x: str) -> None: pass
+
+1()
+
+[file p/m.py.3]
+def f(x: str) -> None: pass
+
+[delete p/m.py.4]
+[delete p/__init__.py.4]
+
+[out]
+==
+p/m.py:3: error: "int" not callable
+main.py:3: error: Too few arguments for "f"
+==
+main.py:3: error: Too few arguments for "f"
+==
+
+[case testFollowImportsNormalPackage-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p.m  # type: ignore
+
+p.m.f()
+
+[file p/__init__.py.2]
+
+[file p/m.py.2]
+def f(x: str) -> None: pass
+
+1()
+
+[delete p/m.py.3]
+[delete p/__init__.py.3]
+
+[out]
+==
+main.py:3: error: Too few arguments for "f"
+p/m.py:3: error: "int" not callable
+==
+
+[case testFollowImportsNormalPackageInitFile1]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p1.m
+from p2 import m
+
+[file p1/__init__.py.2]
+1()
+
+[file p1/m.py.2]
+
+[file p2/__init__.py.3]
+''()
+
+[file p2/m.py.3]
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p1.m'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: error: Cannot find implementation or library stub for module named 'p1'
+main.py:2: error: Cannot find implementation or library stub for module named 'p2'
+==
+main.py:2: error: Cannot find implementation or library stub for module named 'p2'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+p1/__init__.py:1: error: "int" not callable
+==
+p1/__init__.py:1: error: "int" not callable
+p2/__init__.py:1: error: "str" not callable
+
+[case testFollowImportsNormalPackageInitFile2]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+from p import m
+
+[file p/__init__.py.2]
+
+[file p/m.py.3]
+''()
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:1: error: Module 'p' has no attribute 'm'
+==
+p/m.py:1: error: "str" not callable
+
+[case testFollowImportsNormalPackageInitFile3]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p1.s1.m
+from p2.s2 import m
+p1.s1.m.f()
+m.f(1)
+
+[file p1/__init__.py.2]
+
+[file p1/s1/__init__.py.2]
+
+[file p1/s1/m.py.2]
+def f(x: str) -> None: pass
+
+[file p2/__init__.py.3]
+
+[file p2/s2/__init__.py.3]
+
+[file p2/s2/m.py.3]
+def f() -> None: pass
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p1.s1.m'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: error: Cannot find implementation or library stub for module named 'p1'
+main.py:1: error: Cannot find implementation or library stub for module named 'p1.s1'
+main.py:2: error: Cannot find implementation or library stub for module named 'p2.s2'
+==
+main.py:2: error: Cannot find implementation or library stub for module named 'p2.s2'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:3: error: Too few arguments for "f"
+==
+main.py:3: error: Too few arguments for "f"
+main.py:4: error: Too many arguments for "f"
+
+[case testFollowImportsNormalPackageInitFile4-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import p1.m  # type: ignore
+from p2 import m  # type: ignore
+
+[file p1/__init__.py.2]
+1()
+
+[file p1/m.py.2]
+''()
+
+[file p2/__init__.py.3]
+''()
+
+[file p2/m.py.3]
+
+[out]
+==
+p1/__init__.py:1: error: "int" not callable
+p1/m.py:1: error: "str" not callable
+==
+p1/__init__.py:1: error: "int" not callable
+p1/m.py:1: error: "str" not callable
+p2/__init__.py:1: error: "str" not callable
+
+[case testFollowImportsNormalSubmoduleCreatedWithImportInFunction]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+def f() -> None:
+    from p import m
+
+[file p/__init__.py.2]
+1()
+
+[file p/m.py.2]
+''()
+
+[out]
+main.py:2: error: Cannot find implementation or library stub for module named 'p'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+p/m.py:1: error: "str" not callable
+p/__init__.py:1: error: "int" not callable
+
+[case testFollowImportsNormalPackageInitFileStub]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+from p import m
+
+[file p/__init__.pyi.2]
+1()
+
+[file p/m.pyi.2]
+''()
+
+[file p/mm.pyi.3]
+x x x
+
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'p'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+p/m.pyi:1: error: "str" not callable
+p/__init__.pyi:1: error: "int" not callable
+==
+p/m.pyi:1: error: "str" not callable
+p/__init__.pyi:1: error: "int" not callable
+
+[case testFollowImportsNormalNamespacePackages]
+# flags: --follow-imports=normal --namespace-packages
+# cmd: mypy main.py
+
+[file main.py]
+import p1.m1
+import p2.m2
+
+[file p1/m1.py]
+1()
+
+[file p2/m2.py.2]
+''()
+
+[delete p2/m2.py.3]
+
+[out]
+p1/m1.py:1: error: "int" not callable
+main.py:2: error: Cannot find implementation or library stub for module named 'p2.m2'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+p2/m2.py:1: error: "str" not callable
+p1/m1.py:1: error: "int" not callable
+==
+main.py:2: error: Cannot find implementation or library stub for module named 'p2.m2'
+main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+p1/m1.py:1: error: "int" not callable
+
+[case testFollowImportsNormalNewFileOnCommandLine]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+# cmd2: mypy main.py x.py
+
+[file main.py]
+1()
+
+[file x.py.2]
+''()
+
+[out]
+main.py:1: error: "int" not callable
+==
+x.py:1: error: "str" not callable
+main.py:1: error: "int" not callable
+
+[case testFollowImportsNormalSearchPathUpdate-only_when_nocache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+# cmd2: mypy main.py src/foo.py
+
+[file main.py]
+
+[file src/foo.py.2]
+import bar
+''()
+
+[file src/bar.py.2]
+1()
+
+[out]
+==
+src/bar.py:1: error: "int" not callable
+src/foo.py:2: error: "str" not callable
+
+[case testFollowImportsNormalSearchPathUpdate-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+# cmd2: mypy main.py src/foo.py
+
+[file main.py]
+
+[file src/foo.py.2]
+import bar
+''()
+
+[file src/bar.py.2]
+1()
+
+[out]
+==
+src/foo.py:2: error: "str" not callable
+src/bar.py:1: error: "int" not callable
+
+[case testFollowImportsNormalSuppressedAffectsCachedFile-only_when_cache]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+from p import m  # type: ignore
+m.f(1)
+
+[file p/__init__.py]
+
+[file p/m.py.2]
+# This change will trigger a cached file (main.py) through a supressed
+# submodule, resulting in additional errors in main.py.
+def f() -> None: pass
+
+[out]
+==
+main.py:2: error: Too many arguments for "f"

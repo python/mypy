@@ -4,8 +4,8 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with fallback to ``setup.cfg`` in the current
-directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
+the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
 ``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
 if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
 to read a different file instead (see :ref:`config-file-flag`).
@@ -15,7 +15,7 @@ files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config
 has the highest precedence and must be correct; otherwise mypy will report
 an error and exit.  Without command line option, mypy will look for defaults,
 but will use only one of them.  The first one to read is ``mypy.ini``,
-and then ``setup.cfg``.
+then ``.mypy.ini``, and finally ``setup.cfg``.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some

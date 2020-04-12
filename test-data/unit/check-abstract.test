@@ -953,7 +953,7 @@ Config = NewType('Config', Mapping[str, str])
 bad = Mapping[str, str]()  # E: Cannot instantiate abstract class 'Mapping' with abstract attribute '__iter__'
 default = Config({'cannot': 'modify'})  # OK
 
-default[1] = 2  # E: Unsupported target for indexed assignment
+default[1] = 2  # E: Unsupported target for indexed assignment ("Config")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

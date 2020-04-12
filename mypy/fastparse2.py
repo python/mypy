@@ -187,7 +187,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt, ast27.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         return node
@@ -694,7 +694,7 @@ class ASTConverter:
             if item.name is None:
                 vs.append(None)
             elif isinstance(item.name, Name):
-                vs.append(NameExpr(item.name.id))
+                vs.append(self.set_line(NameExpr(item.name.id), item))
             else:
                 self.fail("Sorry, `except <expr>, <anything but a name>` is not supported",
                           item.lineno, item.col_offset)

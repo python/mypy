@@ -81,7 +81,9 @@ from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
-from mypy.messages import best_matches, MessageBuilder, pretty_or, SUGGESTED_TEST_FIXTURES
+from mypy.messages import (
+    best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES, TYPES_FOR_UNIMPORTED_HINTS
+)
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
@@ -103,7 +105,7 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import correct_relative_import, unmangle, module_prefix
+from mypy.util import correct_relative_import, unmangle, module_prefix, is_typeshed_file
 from mypy.scope import Scope
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -119,21 +121,6 @@ from mypy.reachability import (
 from mypy.mro import calculate_mro, MroError
 
 T = TypeVar('T')
-
-TYPES_FOR_UNIMPORTED_HINTS = {
-    'typing.Any',
-    'typing.Callable',
-    'typing.Dict',
-    'typing.Iterable',
-    'typing.Iterator',
-    'typing.List',
-    'typing.Optional',
-    'typing.Set',
-    'typing.Tuple',
-    'typing.TypeVar',
-    'typing.Union',
-    'typing.cast',
-}  # type: Final
 
 
 # Special cased built-in classes that are needed for basic functionality and need to be
@@ -199,7 +186,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
     # Note that a star import adds a special name '*' to the set, this blocks
     # adding _any_ names in the current file.
-    missing_names = None  # type: Set[str]
+    missing_names = None  # type: List[Set[str]]
     # Callbacks that will be called after semantic analysis to tweak things.
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
     loop_depth = 0         # Depth of breakable loops
@@ -249,6 +236,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.modules = modules
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
+        self.missing_names = [set()]
         # These namespaces are still in process of being populated. If we encounter a
         # missing name in these namespaces, we need to defer the current analysis target,
         # since it's possible that the name will be there once the namespace is complete.
@@ -356,7 +344,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.deferred = False
         self.incomplete = False
         self._final_iteration = final_iteration
-        self.missing_names = set()
+        self.missing_names[-1] = set()
 
         with self.file_context(file_node, options, active_type):
             if isinstance(node, MypyFile):
@@ -481,7 +469,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.cur_mod_id = file_node.fullname
         scope.enter_file(self.cur_mod_id)
         self.is_stub_file = file_node.path.lower().endswith('.pyi')
-        self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
+        self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
 
@@ -1170,6 +1158,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.is_comprehension_stack.append(False)
         self.block_depth.append(-1)  # The class body increments this to 0
         self.type = info
+        self.missing_names.append(set())
 
     def leave_class(self) -> None:
         """ Restore analyzer state. """
@@ -1177,6 +1166,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.locals.pop()
         self.is_comprehension_stack.pop()
         self.type = self.type_stack.pop()
+        self.missing_names.pop()
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
@@ -1755,13 +1745,25 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 fullname: str,
                                 context: ImportBase) -> None:
         imported_id = as_id or id
+        # 'from m import x as x' exports x in a stub file or when implicit
+        # re-exports are disabled.
+        module_public = (
+            not self.is_stub_file
+            and self.options.implicit_reexport
+            or as_id is not None
+        )
+        module_hidden = not module_public and fullname not in self.modules
+
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
                 self.report_missing_module_attribute(module_id, id, imported_id, context)
                 return
             else:
                 # This might become a type.
-                self.mark_incomplete(imported_id, node.node, becomes_typeinfo=True)
+                self.mark_incomplete(imported_id, node.node,
+                                     module_public=module_public,
+                                     module_hidden=module_hidden,
+                                     becomes_typeinfo=True)
         existing_symbol = self.globals.get(imported_id)
         if (existing_symbol and not isinstance(existing_symbol.node, PlaceholderNode) and
                 not isinstance(node.node, PlaceholderNode)):
@@ -1773,14 +1775,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Imports are special, some redefinitions are allowed, so wait until
             # we know what is the new symbol node.
             return
-        # 'from m import x as x' exports x in a stub file or when implicit
-        # re-exports are disabled.
-        module_public = (
-            not self.is_stub_file
-            and self.options.implicit_reexport
-            or as_id is not None
-        )
-        module_hidden = not module_public and fullname not in self.modules
         # NOTE: we take the original node even for final `Var`s. This is to support
         # a common pattern when constants are re-exported (same applies to import *).
         self.add_imported_symbol(imported_id, node, context,
@@ -1802,7 +1796,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             alternatives = set(module.names.keys()).difference({source_id})
             matches = best_matches(source_id, alternatives)[:3]
             if matches:
-                suggestion = "; maybe {}?".format(pretty_or(matches))
+                suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
                 message += "{}".format(suggestion)
         self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(imported_id, context)
@@ -1879,6 +1873,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.add_imported_symbol(name, node, i,
                                              module_public=module_public,
                                              module_hidden=not module_public)
+
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -3120,21 +3115,30 @@ class SemanticAnalyzer(NodeVisitor[None],
             rnode = self.lookup_type_node(rval)
             if rnode and isinstance(rnode.node, MypyFile):
                 for lval in lvals:
-                    if not isinstance(lval, NameExpr):
+                    if not isinstance(lval, RefExpr):
                         continue
                     # respect explicitly annotated type
                     if (isinstance(lval.node, Var) and lval.node.type is not None):
                         continue
-                    lnode = self.current_symbol_table().get(lval.name)
+
+                    # We can handle these assignments to locals and to self
+                    if isinstance(lval, NameExpr):
+                        lnode = self.current_symbol_table().get(lval.name)
+                    elif isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
+                        assert self.type is not None
+                        lnode = self.type.names.get(lval.name)
+                    else:
+                        continue
+
                     if lnode:
                         if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
+                            assert isinstance(lval, (NameExpr, MemberExpr))
                             self.fail(
                                 "Cannot assign multiple modules to name '{}' "
                                 "without explicit 'types.ModuleType' annotation".format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
-                            lnode.kind = self.current_symbol_kind()
                             assert rnode.node is not None
                             lnode.node = rnode.node
 
@@ -4273,7 +4277,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif name not in self.missing_names and '*' not in self.missing_names:
+        elif (name not in self.missing_names[-1] and '*' not in self.missing_names[-1]):
             names[name] = symbol
             self.progress = True
             return True
@@ -4342,6 +4346,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_public: bool = True,
                             module_hidden: bool = False) -> None:
         """Add an alias to an existing symbol through import."""
+        assert not module_hidden or not module_public
         symbol = SymbolTableNode(node.kind, node.node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
@@ -4425,7 +4430,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.num_incomplete_refs += 1
 
     def mark_incomplete(self, name: str, node: Node,
-                        becomes_typeinfo: bool = False) -> None:
+                        becomes_typeinfo: bool = False,
+                        module_public: bool = True,
+                        module_hidden: bool = False) -> None:
         """Mark a definition as incomplete (and defer current analysis target).
 
         Also potentially mark the current namespace as incomplete.
@@ -4444,8 +4451,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert self.statement
             placeholder = PlaceholderNode(fullname, node, self.statement.line,
                                           becomes_typeinfo=becomes_typeinfo)
-            self.add_symbol(name, placeholder, context=dummy_context())
-        self.missing_names.add(name)
+            self.add_symbol(name, placeholder,
+                            module_public=module_public, module_hidden=module_hidden,
+                            context=dummy_context())
+        self.missing_names[-1].add(name)
 
     def is_incomplete_namespace(self, fullname: str) -> bool:
         """Is a module or class namespace potentially missing some definitions?
@@ -4490,6 +4499,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.nonlocal_decls.append(set())
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
+        self.missing_names.append(set())
 
     def leave(self) -> None:
         self.locals.pop()
@@ -4497,6 +4507,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.global_decls.pop()
         self.nonlocal_decls.pop()
         self.block_depth.pop()
+        self.missing_names.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None

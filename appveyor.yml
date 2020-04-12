@@ -14,7 +14,7 @@ environment:
 
 install:
     - "git submodule update --init mypy/typeshed"
-    - "%PYTHON%\\python.exe -m pip install -U setuptools tox==3.9.0"
+    - '%PYTHON%\\python.exe -m pip install -U setuptools "virtualenv<20" tox==3.9.0'
     - "%PYTHON%\\python.exe -m tox -e py37 --notest"
 
 build: off

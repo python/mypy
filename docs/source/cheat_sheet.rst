@@ -113,7 +113,6 @@ Functions
        # type: (...) -> bool
        <code>
 
-
 When you're puzzled or when things are complicated
 **************************************************
 
@@ -256,3 +255,22 @@ Miscellaneous
            return sys.stdin
        else:
            return sys.stdout
+
+
+Decorators
+**********
+
+Decorator functions can be expressed via generics. See
+:ref:`declaring-decorators` for the more details.
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def bare_decorator(func):  # type: (F) -> F
+        ...
+
+    def decorator_args(url):  # type: (str) -> Callable[[F], F]
+        ...

@@ -72,7 +72,9 @@ class TypedDictAnalyzer:
             keys = []  # type: List[str]
             types = []
             required_keys = set()
-            for base in typeddict_bases:
+
+            # Iterate over bases in reverse order so that leftmost base class' keys take precedence
+            for base in reversed(typeddict_bases):
                 assert isinstance(base, RefExpr)
                 assert isinstance(base.node, TypeInfo)
                 assert isinstance(base.node.typeddict_type, TypedDictType)
@@ -81,9 +83,8 @@ class TypedDictAnalyzer:
                 valid_items = base_items.copy()
                 for key in base_items:
                     if key in keys:
-                        self.fail('Cannot overwrite TypedDict field "{}" while merging'
+                        self.fail('Overwriting TypedDict field "{}" while merging'
                                   .format(key), defn)
-                        valid_items.pop(key)
                 keys.extend(valid_items.keys())
                 types.extend(valid_items.values())
                 required_keys.update(base_typed_dict.required_keys)
@@ -132,9 +133,8 @@ class TypedDictAnalyzer:
             else:
                 name = stmt.lvalues[0].name
                 if name in (oldfields or []):
-                    self.fail('Cannot overwrite TypedDict field "{}" while extending'
+                    self.fail('Overwriting TypedDict field "{}" while extending'
                               .format(name), stmt)
-                    continue
                 if name in fields:
                     self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
                     continue

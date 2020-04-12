@@ -18,7 +18,7 @@ from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.test.helpers import copy_and_fudge_mtime, assert_module_equivalence
 
-from mypyc import emitmodule
+from mypyc.codegen import emitmodule
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.build import construct_groups

@@ -911,7 +911,7 @@ class C:
 [out]
 main:3: error: Invalid index type "C" for "A"; expected type "B"
 main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
-main:5: error: Unsupported target for indexed assignment
+main:5: error: Unsupported target for indexed assignment ("B")
 
 [case testOverloadedIndexing]
 from foo import *
@@ -1990,6 +1990,13 @@ a: Any
 x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, Literal[1]?]'
 reveal_type(a if int() else 1)  # N: Revealed type is 'Any'
 
+[case testConditionalExpressionStatementNoReturn]
+from typing import List, Union
+x = []
+y = ""
+x.append(y) if bool() else x.append(y)
+z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value
+[builtins fixtures/list.pyi]
 
 -- Special cases
 -- -------------
@@ -2753,6 +2760,13 @@ if str() == U_FOO:
 assert u'foo' == 'foo'
 assert u'foo' == u'bar'  # E: Non-overlapping equality check (left operand type: "Literal[u'foo']", right operand type: "Literal[u'bar']")
 [builtins_py2 fixtures/python2.pyi]
+
+[case testStrictEqualityWithFixedLengthTupleInCheck]
+# flags: --strict-equality
+if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", container item type: "str")
+    pass
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name 'Any' is not defined \

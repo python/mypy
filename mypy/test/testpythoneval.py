@@ -88,6 +88,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         if line.startswith(test_temp_dir + os.sep):
             output.append(line[len(test_temp_dir + os.sep):].rstrip("\r\n"))
         else:
+            # Normalize paths so that the output is the same on Windows and Linux/macOS.
+            line = line.replace(test_temp_dir + os.sep, test_temp_dir + '/')
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.

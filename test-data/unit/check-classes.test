@@ -512,6 +512,28 @@ class B(A):
     def h(cls) -> int: pass
 [builtins fixtures/classmethod.pyi]
 
+[case testAllowCovarianceInReadOnlyAttributes]
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
+
+class X:
+    pass
+
+
+class Y(X):
+    pass
+
+def dec(f: Callable[..., T]) -> T: pass
+
+class A:
+    @dec
+    def f(self) -> X: pass
+
+class B(A):
+    @dec
+    def f(self) -> Y: pass
+
 
 -- Constructors
 -- ------------
@@ -6677,3 +6699,50 @@ class B:
                                         # N: Perhaps you need "Callable[...]" or a callback protocol?
 
 [builtins fixtures/classmethod.pyi]
+
+[case testFinalClassWithAbstractAttributes]
+from abc import abstractmethod, ABCMeta
+from typing import final
+
+@final
+class A(metaclass=ABCMeta):  # E: Final class __main__.A has abstract attributes "bar", "foo"
+    @abstractmethod
+    def foo(self):
+        pass
+
+    @property
+    @abstractmethod
+    def bar(self):
+        pass
+
+[builtins fixtures/property.pyi]
+
+[case testFinalClassWithoutABCMeta]
+from abc import abstractmethod
+from typing import final
+
+@final
+class A():  # E: Final class __main__.A has abstract attributes "bar", "foo"
+    @abstractmethod
+    def foo(self):
+        pass
+
+    @property
+    @abstractmethod
+    def bar(self):
+        pass
+
+[builtins fixtures/property.pyi]
+
+[case testFinalClassInheritedAbstractAttributes]
+from abc import abstractmethod, ABCMeta
+from typing import final
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def foo(self):
+        pass
+
+@final
+class B(A):  # E: Final class __main__.B has abstract attributes "foo"
+    pass
