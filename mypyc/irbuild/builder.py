@@ -56,7 +56,7 @@ from mypyc.irbuild.nonlocalcontrol import (
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
-from mypyc.irbuild.util import is_constant, get_namedtulpe_fields
+from mypyc.irbuild.util import is_constant
 
 
 class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -393,12 +393,6 @@ class IRBuilder:
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
             obj = self.accept(lvalue.expr)
-            # Special case: for named tuples transform attribute access into index access
-            # because it is faster.
-            fields = get_namedtulpe_fields(self.types[lvalue.expr])
-            if fields and lvalue.name in fields:
-                index = self.builder.load_static_int(fields.index(lvalue.name))
-                return AssignmentTargetIndex(obj, index)
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
