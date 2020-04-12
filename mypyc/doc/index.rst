@@ -18,6 +18,7 @@ Welcome to mypyc's documentation!
 
    native_operations
    int_operations
+   bool_operations
    str_operations
    list_operations
    dict_operations

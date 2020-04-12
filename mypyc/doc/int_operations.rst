@@ -9,6 +9,7 @@ types are documented elsewhere, such as list indexing.
 Construction
 ------------
 
+* Integer literals
 * ``int(x: float)``
 * ``int(x: str)``
 * ``int(x: str, base: int)``

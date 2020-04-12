@@ -7,6 +7,7 @@ string operations use generic implementations that are often slower.
 Construction
 ------------
 
+* String literals
 * ``str(x: object)``
 
 Operators
