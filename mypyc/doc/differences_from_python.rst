@@ -2,9 +2,10 @@ Differences from Python
 =======================
 
 Mypyc aims to be sufficiently compatible with Python semantics so that
-migrating code to mypyc often doesn't require major changes to typical
-code. There are various differences to enable performance gains that
-you need to be aware of. This section documents notable deviations.
+migrating code to mypyc often doesn't require major code
+changes. There are various differences to enable performance gains
+that you need to be aware of, however. This section documents notable
+deviations.
 
 Running compiled code as module
 -------------------------------
@@ -19,13 +20,32 @@ code, like this::
     if __name__ == "__main__":  # Can't be used in compiled code!
         main()
 
+Type errors prevent compilation
+-------------------------------
+
+You can't compile code that generates mypy type check errors. You can
+sometimes ignore these with a ``# type: ignore`` comment, but this can
+result in bad code being generated, and it's considered dangerous.
+
+.. note::
+
+    In the future, mypyc may reject ``# type: ignore`` comments that
+    may be unsafe.
+
 Native classes
 --------------
 
 Native classes are compiled to C extension classes, which have some important
 differences from normal Python classes:
 
-* Type object namespaces and attribute namespaces are immutable.
+* Try type object namespace is immutable (though class variables can
+  be assigned to).
+
+* Only attributes defined within class definition can be assigned to
+  (similar to ``__slots__``).
+
+* Class variables much be explicitly declared as ``attr: ClassVar``
+  or ``attr: ClassVar[<type>]``.
 
 * Most metaclasses aren't supported, since their behavior is too
   dynamic.
@@ -35,32 +55,13 @@ differences from normal Python classes:
 
 * Only single inheritance is supported (except for traits).
 
+* Most non-native classes can't be used as base classes.
+
+* Instances don't usually have a ``__dict__`` attribute.
+
 If a class definition uses an unsupported metaclass or class
 decorator, *mypyc instead compiles the class into a regular Python
 class*.
-
-More subtle differences include access to attributes. Here an attribute has
-a fallback defined at the class body::
-
-    class Thing:
-        id = 0
-
-In Python, if you modify the class attribute, it affects the attribute value
-in already created instances::
-
-    x = Thing()
-    Thing.id = 1
-    print(x.id)  # 1
-
-In compiled code, the class-level fallback is copied to be the value of the
-attribute during object construction. A change to the class-level attribute
-only affects instances created after the assigned::
-
-    x = Thing()
-    Thing.id = 1
-    y = Thing()
-    print(x.id)  # 0
-    print(y.id)  # 1
 
 Runtime type checking
 ---------------------
@@ -80,7 +81,7 @@ being type checked::
     twice("blah")  # TypeError
 
 Also, values with *inferred* types will be type checked. For example,
-consider a call the stdlib function ``socket.gethostname()`` in
+consider a call to the stdlib function ``socket.gethostname()`` in
 compiled code. This function is not compiled (no stdlib modules are
 compiled with mypyc), but mypyc uses a *library stub file* to infer
 the return type as ``str``. Compiled code calling ``gethostname()``
@@ -89,16 +90,17 @@ incompatible value such as ``None``::
 
     import socket
 
-    name = socket.gethostname()  # Fail return value is not str
+    # Fail if returned value is not a str
+    name = socket.gethostname()
 
-``gethostname()`` is defined like this in the stub file for ``socket``
-(in typeshed)::
+Note that ``gethostname()`` is defined like this in the stub file for
+``socket`` (in typeshed)::
 
     def gethostname() -> str: ...
 
 Thus mypyc expects that library stub files and annotations in
-non-compiled code to be correctly annotated. This adds an extra layer
-of type safety.
+non-compiled code to be correct. This adds an extra layer of type
+safety.
 
 Casts such as ``cast(str, x)`` will also result in strict type
 checks. Consider this example::
@@ -116,29 +118,29 @@ The last line is essentially equivalent to this Python code when compiled::
 Primitive types
 ---------------
 
-Beyond strict runtime type checking, some primitive types have changes
-differently in compiled code.
+Some primitive types behave differently in compiled code to improve
+performance.
 
 ``int`` objects use an unboxed (non-heap-allocated) representation for small
 integer values. A side effect of this is that the exact runtime type of
 ``int`` values is lost. For example, consider this simple function::
 
-    def first_num(x: List[int]) -> int:
+    def first_int(x: List[int]) -> int:
         return x[0]
 
-    print(first_num([True]))  # Output is 1, instead of True!
+    print(first_int([True]))  # Output is 1, instead of True!
 
-``bool`` is a subclass of ``int`, so the above code is valid. However,
-when the list value is converted to ``int``, ``True`` is converted to
-the corresponding ``int`` value, which is ``1``.
+``bool`` is a subclass of ``int``, so the above code is
+valid. However, when the list value is converted to ``int``, ``True``
+is converted to the corresponding ``int`` value, which is ``1``.
 
 Note that integers are still arbitrary-precision in compiled code,
 similar to normal Python integers.
 
-Fixed-length tuples are unboxed, similar to integers. Similar to
-integers, the exact type and identity of fixed-length tuples is not
-preserved, and you can't reliably use ``is`` checks to compare tuples
-that are used in compiled code.
+Fixed-length tuples are unboxed, similar to integers. The exact type
+and identity of fixed-length tuples is not preserved, and you can't
+reliably use ``is`` checks to compare tuples that are used in compiled
+code.
 
 Early binding
 -------------
@@ -146,12 +148,39 @@ Early binding
 References to functions, types, most attributes, and methods in the
 same compilation unit use *early binding*: the target of the reference
 is decided at compile time, whenever possible. This contrasts with
-Python semantics use *late binding*, where the target is found by a
-namespace lookup at runtime. Omitting these namespace lookups allow
-improves performance, but some Python idioms require extra steps.
+normal Python behavior of *late binding*, where the target is found by
+a namespace lookup at runtime. Omitting these namespace lookups
+improves performance, but some Python idioms require changes.
 
-Note that non-final module-level attributes still use late binding.
+Note that non-final module-level variables still use late binding.
 These should be avoided in performance-critical code.
+
+Example::
+
+    from typing import Final
+
+    import lib  # "lib" not compiled
+
+    x = 0
+    y: Final = 1
+
+    def func() -> None:
+        pass
+
+    class Cls:
+        def __init__(self, attr: int) -> None:
+            self.attr = attr
+
+    def example() -> None:
+        # Early binding:
+        var = y
+        func()
+        o = Cls()
+        o.x
+
+        # Late binding:
+        var = x  # Module-level variable
+        lib.func()  # Accessing library that is not compiled
 
 Monkey patching
 ---------------
@@ -172,8 +201,8 @@ Stack overflows
 ---------------
 
 Compiled code currently doesn't check for stack overflows. Your
-program may crash in an unrecoverable fashion if you have too nested
-function calls, typically due to out-of-control recursion.
+program may crash in an unrecoverable fashion if you have too many
+nested function calls, typically due to out-of-control recursion.
 
 .. note::
 
@@ -183,7 +212,7 @@ function calls, typically due to out-of-control recursion.
 Final values
 ------------
 
-Compiled code replaced a reference to an attribute declared ``Final`` with
+Compiled code replaces a reference to an attribute declared ``Final`` with
 the value of the attribute computed at compile time. This is an example of
 *early binding*, which we discussed earlier. Example::
 
@@ -203,7 +232,8 @@ and are equivalent to this code::
          return x
 
 When run as interpreted, the first example will execute slower due to
-the extra namespace lookups.
+the extra namespace lookups. In interpreted code final attributes can
+also be modified.
 
 Unsupported features
 --------------------
