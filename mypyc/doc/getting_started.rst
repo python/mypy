@@ -21,8 +21,8 @@ Install Xcode command line tools:
 Linux
 *****
 
-You need a C compiler and CPython headers and libraries. The specifcs
-of how to instal these varies by distribution. Here are instructions for
+You need a C compiler and CPython headers and libraries. The specifics
+of how to install these varies by distribution. Here are instructions for
 Ubuntu 18.04, for example:
 
 .. code-block::
@@ -53,7 +53,7 @@ On some systems you need to use this instead:
 Compile and run a program
 -------------------------
 
-Let's compile a classic micro-benchmark, recursive fibonacci. Save
+Let's now compile a classic micro-benchmark, recursive fibonacci. Save
 this file as ``fib.py``:
 
 .. code-block:: python
@@ -70,9 +70,12 @@ this file as ``fib.py``:
    fib(32)
    print(time.time() - t0)
 
-Note that we added type annotations to ``fib``. Without them, the
-performance will not be improved as much when compiled.  Now we can
-run it as a regular, interpreted program using CPython:
+Note that we gave ``fib`` a type annotation. Without it, performance
+won't be as impressive after compilation.  `Mypy documentation
+<https://mypy.readthedocs.io/en/stable/index.html>`_ is a good
+introduction if you are new to type annotations.
+
+We can run ``fib.py`` as a regular, interpreted program using CPython:
 
 .. code-block:: console
 
@@ -99,7 +102,7 @@ the compiled module as a program:
     $ python3 -c "import fib"
     0.04097270965576172
 
-After compilation, the program is about 10x faster than previously. Nice!
+After compilation, the program is about 10x faster. Nice!
 
 .. note::
 
@@ -135,6 +138,10 @@ example::
         ]),
     )
 
+We used ``mypycify(...)`` to specify which files to compile using
+mypyc.  You can include additional Python files that won't be
+compiled.
+
 Now you can build a wheel (.whl) file for the package::
 
     python3 setup.py bdist_wheel
@@ -144,8 +151,11 @@ The wheel is created under ``dist/``.
 Recommended workflow
 --------------------
 
-The following workflow has worked very well for the development of
-mypy and mypyc, and we recommend you to try it out:
+A simple way to use mypyc is to always compile your code after any
+code changes, but this can get tedious. Instead, you may prefer an
+alternative workflow where you compile code less frequently.  The
+following development workflow has worked very well for the
+development of mypy and mypyc, and we recommend you to try it out:
 
 1. During development, use interpreted mode. This allows a very fast
    edit-run cycle, since you don't need to wait for mypyc compilation.
@@ -160,12 +170,12 @@ mypy and mypyc, and we recommend you to try it out:
    and run tests again, now in compiled mode. Almost always, nothing
    will break here, if your type annotation coverage is good
    enough. This can happen locally or as part of a Continuous
-   Integration (CI) job. If you have good CI, usually compiling locally
-   is unncessary.
+   Integration (CI) job. If you have good CI, compiling locally may be
+   mostly unncessary.
 
-4. Periodically release or deploy a compiled version, optionally along
-   with a fallback interpreted version for platforms that mypyc
-   doesn't support yet.
+4. Always release or deploy a compiled version, optionally along with
+   a fallback interpreted version for platforms that mypyc doesn't
+   support yet.
 
 This way of using mypyc has minimal impact on your productivity and
 requires minimal adjustments to a regular Python workflow. Most of
