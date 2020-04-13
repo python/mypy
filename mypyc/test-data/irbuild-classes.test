@@ -385,14 +385,14 @@ def __top_level__():
     r69 :: tuple
     r70 :: str
     r71, r72 :: object
-    r73, r74 :: bool
-    r75, r76 :: str
-    r77 :: tuple
-    r78 :: bool
-    r79 :: dict
-    r80 :: str
-    r81 :: bool
-    r82 :: None
+    r73 :: bool
+    r74, r75 :: str
+    r76 :: tuple
+    r77 :: bool
+    r78 :: dict
+    r79 :: str
+    r80 :: bool
+    r81 :: None
 L0:
     r0 = builtins :: module
     r1 = builtins.None :: object
@@ -482,17 +482,16 @@ L6:
     r71 = __main__.D_template :: type
     r72 = pytype_from_template(r71, r69, r70)
     r73 = D_trait_vtable_setup()
-    r74 = D_offset_table_setup()
-    r75 = unicode_8 :: static  ('__mypyc_attrs__')
-    r76 = unicode_11 :: static  ('__dict__')
-    r77 = (r76) :: tuple
-    r78 = setattr r72, r75, r77
+    r74 = unicode_8 :: static  ('__mypyc_attrs__')
+    r75 = unicode_11 :: static  ('__dict__')
+    r76 = (r75) :: tuple
+    r77 = setattr r72, r74, r76
     __main__.D = r72 :: type
-    r79 = __main__.globals :: static
-    r80 = unicode_12 :: static  ('D')
-    r81 = r79.__setitem__(r80, r72) :: dict
-    r82 = None
-    return r82
+    r78 = __main__.globals :: static
+    r79 = unicode_12 :: static  ('D')
+    r80 = r78.__setitem__(r79, r72) :: dict
+    r81 = None
+    return r81
 
 [case testIsInstance]
 class A: pass

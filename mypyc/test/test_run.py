@@ -52,7 +52,7 @@ setup(name='test_run_output',
 WORKDIR = 'build'
 
 # This will dump content of all generated C files.
-VERBOSE_DEBUG_DUMP = True
+VERBOSE_DEBUG_DUMP = False
 
 
 def run_setup(script_name: str, script_args: List[str]) -> bool:

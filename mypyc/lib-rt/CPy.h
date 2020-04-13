@@ -57,12 +57,12 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
     }
 }
 
-// Use the same logic (but search forward) for offset table.
+// Use the same logic for offset table.
 static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtable, size_t index) {
     int i;
     for (i = -3; ; i -= 3) {
         if ((PyTypeObject *)vtable[i] == trait) {
-            return ((size_t *)offset_table[i + 2])[index];
+            return ((size_t *)vtable[i + 2])[index];
         }
     }
 }

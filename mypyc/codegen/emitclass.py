@@ -345,7 +345,8 @@ def generate_vtables(base: ClassIR,
             max(1, len(vtable))))
         # Trait attributes entry.
         emitter.emit_line('static size_t {}[{}];'.format(
-            trait_offset_table_name, max(1, len(trait.attributes)))
+            trait_offset_table_name(trait),
+            max(1, len(trait.attributes)))
         )
 
     # Emit vtable setup function
@@ -369,7 +370,7 @@ def generate_vtables(base: ClassIR,
     emitter.emit_line('return 1;')
     emitter.emit_line('}')
 
-    return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 2)
+    return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 3)
 
 
 def generate_offset_table(trait_offset_table_name: str,

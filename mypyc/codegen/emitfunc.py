@@ -211,7 +211,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 offset,
                 'CPy_FindAttrOffset({}, {}, {})'.format(
                     self.emitter.type_struct_name(decl_cl),
-                    '({}{})->offset_table'.format(cast, obj),
+                    '({}{})->vtable'.format(cast, obj),
                     trait_attr_index,
                 )
             ))
