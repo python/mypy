@@ -76,13 +76,18 @@ faster at best, while others can get 10x faster, or more. Avoiding
 these slow features in performance-critical parts of your code can
 help a lot.
 
-Here's a summary of things that tend to be relatively slow:
+These are some of the most important things to avoid:
 
-* Using Python classes and instances of Python classes (native classes
-  are much faster)
+* Using class decorators or metaclasses in compiled code (that aren't
+  properly supported by mypyc)
 
 * Heavy reliance on interpreted Python libraries (C extensions are
   usually fine)
+
+These things also tend to be relatively slow:
+
+* Using Python classes and instances of Python classes (native classes
+  are much faster)
 
 * Calling decorated functions
 
@@ -92,13 +97,12 @@ Here's a summary of things that tend to be relatively slow:
 
 * Using ``*args`` or ``**kwargs``
 
+* Using generator functions
+
 * Using floating point numbers (there are relatively unoptimized)
 
 * Using erased types, including callable values (i.e. not leveraging
   early binding to call functions or methods)
-
-* Using class decorators or metaclasses (that aren't properly
-  supported by mypyc)
 
 Nested functions can often be replaced with module-level functions or
 methods of native classes.
