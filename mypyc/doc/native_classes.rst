@@ -62,6 +62,12 @@ If you override a method outside the original compilation unit or in a
 non-native subclass, calling the method will be slower, since it won't
 use the native calling convention.
 
+You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
+
+.. code-block:: text
+
+    pip install --upgrade mypy-extensions
+
 Class variables
 ---------------
 
