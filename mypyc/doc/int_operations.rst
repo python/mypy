@@ -1,3 +1,5 @@
+.. _int-ops:
+
 Native integer operations
 =========================
 

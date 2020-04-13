@@ -1,3 +1,5 @@
+.. _native-classes:
+
 Native classes
 ==============
 

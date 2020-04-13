@@ -1,3 +1,5 @@
+.. _differences-from-python:
+
 Differences from Python
 =======================
 
@@ -116,6 +118,8 @@ Fixed-length tuples are unboxed, similar to integers. The exact type
 and identity of fixed-length tuples is not preserved, and you can't
 reliably use ``is`` checks to compare tuples that are used in compiled
 code.
+
+.. _early-binding:
 
 Early binding
 -------------

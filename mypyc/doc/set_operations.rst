@@ -1,3 +1,5 @@
+.. _set-ops:
+
 Native set operations
 ======================
 

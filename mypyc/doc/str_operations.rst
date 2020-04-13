@@ -1,3 +1,5 @@
+.. _str-ops:
+
 Native string operations
 ========================
 

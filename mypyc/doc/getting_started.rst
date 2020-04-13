@@ -195,7 +195,7 @@ rest of the documentation in some detail.
 Here are some specific recommendations, or you can just read the
 documentation in order:
 
-* TODO: using type annotations
-* TODO: native classes
-* TODO: differences from python
-* TODO: performance tips and tricks
+* :ref:`using-type-annotations`
+* :ref:`native-classes`
+* :ref:`differences-from-python`
+* :ref:`performance-tips`

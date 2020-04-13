@@ -1,7 +1,10 @@
+.. _list-ops:
+
 Native list operations
 ======================
 
-Various ``list`` operations have fast, optimized implementations.
+These ``list`` operations have fast, optimized implementations. Other
+list operations use generic implementations that are often slower.
 
 Construction
 ------------

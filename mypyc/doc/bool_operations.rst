@@ -1,3 +1,5 @@
+.. _bool-ops:
+
 Native boolean operations
 =========================
 

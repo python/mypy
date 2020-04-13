@@ -1,3 +1,5 @@
+.. _performance-tips:
+
 Performance tips and tricks
 ===========================
 

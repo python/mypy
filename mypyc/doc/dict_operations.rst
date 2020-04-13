@@ -1,3 +1,5 @@
+.. _dict-ops:
+
 Native dict operations
 ======================
 
