@@ -299,7 +299,7 @@ def generate_vtables(base: ClassIR,
 
     This includes both the primary vtable and any trait implementation vtables.
 
-   The trait vtables go before the main vtable, and have the following layout:
+    The trait vtables go before the main vtable, and have the following layout:
         {
             CPyType_T1,
             C_T1_trait_vtable,  // array of method pointers
@@ -339,11 +339,11 @@ def generate_vtables(base: ClassIR,
         max(1, len(base.vtable_entries) + 3 * len(base.trait_vtables))))
 
     for trait, vtable in base.trait_vtables.items():
-        # Trait methods entry.
+        # Trait methods entry (vtable index -> method implementation).
         emitter.emit_line('static CPyVTableItem {}[{}];'.format(
             trait_vtable_name(trait),
             max(1, len(vtable))))
-        # Trait attributes entry.
+        # Trait attributes entry (attribute number in trait -> offset in actual struct).
         emitter.emit_line('static size_t {}[{}];'.format(
             trait_offset_table_name(trait),
             max(1, len(trait.attributes)))
