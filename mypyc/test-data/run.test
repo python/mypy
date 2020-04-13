@@ -4758,3 +4758,7 @@ from native import NT, nt, f
 
 assert f(nt) == 2
 assert f(NT(3, 2)) == 3
+
+class Sub(NT):
+    pass
+assert f(Sub(3, 2)) == 3
