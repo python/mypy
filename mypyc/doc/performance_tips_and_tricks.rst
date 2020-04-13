@@ -88,6 +88,8 @@ Here's a summary of things that tend to be relatively slow:
 
 * Calling nested functions
 
+* Calling functions or methods defined in other compilation units
+
 * Using ``*args`` or ``**kwargs``
 
 * Using floating point numbers (there are relatively unoptimized)

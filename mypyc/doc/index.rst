@@ -15,6 +15,7 @@ Welcome to mypyc's documentation!
    using_type_annotations
    native_classes
    differences_from_python
+   compilation_units
 
    native_operations
    int_operations
