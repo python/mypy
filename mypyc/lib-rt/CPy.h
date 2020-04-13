@@ -50,7 +50,7 @@ static void CPyDebug_Print(const char *msg) {
 // we know that it is there.
 static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableItem *vtable) {
     int i;
-    for (i = -2; ; i -= 2) {
+    for (i = -3; ; i -= 3) {
         if ((PyTypeObject *)vtable[i] == trait) {
             return (CPyVTableItem *)vtable[i + 1];
         }
@@ -58,11 +58,11 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
 }
 
 // Use the same logic (but search forward) for offset table.
-static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyOffsetTable *offset_table, size_t index) {
+static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtable, size_t index) {
     int i;
-    for (i = 0; ; i += 2) {
-        if ((PyTypeObject *)offset_table[i] == trait) {
-            return offset_table[i + 1][index];
+    for (i = -3; ; i -= 3) {
+        if ((PyTypeObject *)vtable[i] == trait) {
+            return ((size_t *)offset_table[i + 2])[index];
         }
     }
 }

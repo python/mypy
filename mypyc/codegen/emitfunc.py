@@ -202,6 +202,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         if decl_cl.is_trait and op.class_type.class_ir.is_trait:
             # For pure trait access find the offset first, offsets
             # are ordered by attribute position in the cl.attributes dict.
+            # TODO: pre-calculate the mapping to make this faster.
             trait_attr_index = list(decl_cl.attributes).index(op.attr)
             # TODO: reuse these names somehow?
             offset = self.emitter.temp_name()

@@ -117,7 +117,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     members_name = '{}_members'.format(name_prefix)
     getseters_name = '{}_getseters'.format(name_prefix)
     vtable_name = '{}_vtable'.format(name_prefix)
-    offset_table_name = '{}_offset_table'.format(name_prefix)
     traverse_name = '{}_traverse'.format(name_prefix)
     clear_name = '{}_clear'.format(name_prefix)
     dealloc_name = '{}_dealloc'.format(name_prefix)
@@ -247,100 +246,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         t=emitter.type_struct_name(cl)))
 
     emitter.emit_line()
-
-    if not cl.is_trait and any(base.is_trait for base in cl.mro):
-        generate_offset_table(cl, emitter, offset_table_name)
-        emitter.emit_line()
-        generate_offset_table_setup(cl, emitter, offset_table_name)
-        emitter.emit_line()
-
     if generate_full:
         generate_setup_for_class(
-            cl, setup_name, defaults_fn, vtable_name,
-            shadow_vtable_name, offset_table_name, emitter
-        )
+            cl, setup_name, defaults_fn, vtable_name, shadow_vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(
             cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
     if needs_getseters:
         generate_getseters(cl, emitter)
-
-
-def generate_offset_table(cl: ClassIR, emitter: Emitter,
-                          offset_table_name: str) -> None:
-    """Declare arrays for trait attribute offset maps.
-
-    These will look similar to trait vtables, but contain memory
-    offsets for trait attributes in class structs:
-        {
-            CPyType_T1,
-            {offsetof(native__C, _x1), offsetof(native__C, _y1), ...},
-            CPyType_T2,
-            {offsetof(native__C, _x2), offsetof(native__C, _y2), ...},
-            ...
-        }
-    """
-    # Allocate main offset table depending on number of trait bases.
-    trait_bases = [base for base in cl.mro if base.is_trait]
-    emitter.emit_line('static CPyOffsetTable {}[{}];'.format(
-        offset_table_name, max(1, len(trait_bases) * 2))
-    )
-    # Allocate each row depending on number of attributes defined in each base.
-    for base in trait_bases:
-        trait_offset_table_name = '{}_{}_offset_table'.format(
-            cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
-        )
-        emitter.emit_line('static size_t {}[{}];'.format(
-            trait_offset_table_name, max(1, len(base.attributes)))
-        )
-
-
-def generate_offset_table_setup(cl: ClassIR, emitter: Emitter,
-                                offset_table_name: str) -> None:
-    """Generate a C function that populates the class offset table.
-
-    This will be called on module import time after populating vtables.
-    """
-    trait_bases = [base for base in cl.mro if base.is_trait]
-    offset_table_setup_name = offset_table_name + '_setup'
-    emitter.emit_line('static bool')
-    emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, offset_table_setup_name))
-    emitter.emit_line('{')
-
-    # Generate table items first.
-    for base in trait_bases:
-        trait_offset_table_name = '{}_{}_offset_table'.format(
-            cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
-        )
-        emitter.emit_line('size_t {}_scratch[] = {{'.format(trait_offset_table_name))
-        for attr in base.attributes:
-            emitter.emit_line('offsetof({}, {}),'.format(
-                cl.struct_name(emitter.names), emitter.attr(attr)
-            ))
-        if not base.attributes:
-            # This is for MSVC.
-            emitter.emit_line('0')
-        emitter.emit_line('};')
-        emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
-            name=trait_offset_table_name)
-        )
-
-    # Copy items into actual table.
-    emitter.emit_line('CPyOffsetTable {}_scratch[] = {{'.format(offset_table_name))
-    for base in trait_bases:
-        trait_offset_table_name = '{}_{}_offset_table'.format(
-            cl.name_prefix(emitter.names), base.name_prefix(emitter.names)
-        )
-        emitter.emit_line('(CPyOffsetTable){},'.format(emitter.type_struct_name(base)))
-        emitter.emit_line('(CPyOffsetTable){},'.format(trait_offset_table_name))
-    emitter.emit_line('};')
-    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
-        name=offset_table_name)
-    )
-
-    emitter.emit_line('return 1;')
-    emitter.emit_line('}')
 
 
 def getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
@@ -356,8 +270,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines = []  # type: List[str]
     lines += ['typedef struct {',
               'PyObject_HEAD',
-              'CPyVTableItem *vtable;',
-              'CPyOffsetTable *offset_table;']
+              'CPyVTableItem *vtable;']
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
@@ -386,6 +299,17 @@ def generate_vtables(base: ClassIR,
 
     This includes both the primary vtable and any trait implementation vtables.
 
+   The trait vtables go before the main vtable, and have the following layout:
+        {
+            CPyType_T1,
+            C_T1_trait_vtable,  // array of method pointers
+            {offsetof(native__C, _x1), offsetof(native__C, _y1), ...},
+            CPyType_T2,
+            C_T2_trait_vtable,  // array of method pointers
+            {offsetof(native__C, _x2), offsetof(native__C, _y2), ...},
+            ...
+        }
+
     To account for both dynamic loading and dynamic class creation,
     vtables are populated dynamically at class creation time, so we
     emit empty array definitions to store the vtables and a function to
@@ -404,14 +328,25 @@ def generate_vtables(base: ClassIR,
             base.name_prefix(emitter.names), trait.name_prefix(emitter.names),
             '_shadow' if shadow else '')
 
+    def trait_offset_table_name(trait: ClassIR) -> str:
+        return '{}_{}_offset_table'.format(
+            base.name_prefix(emitter.names), trait.name_prefix(emitter.names)
+        )
+
     # Emit array definitions with enough space for all the entries
     emitter.emit_line('static CPyVTableItem {}[{}];'.format(
         vtable_name,
-        max(1, len(base.vtable_entries) + 2 * len(base.trait_vtables))))
+        max(1, len(base.vtable_entries) + 3 * len(base.trait_vtables))))
+
     for trait, vtable in base.trait_vtables.items():
+        # Trait methods entry.
         emitter.emit_line('static CPyVTableItem {}[{}];'.format(
             trait_vtable_name(trait),
             max(1, len(vtable))))
+        # Trait attributes entry.
+        emitter.emit_line('static size_t {}[{}];'.format(
+            trait_offset_table_name, max(1, len(trait.attributes)))
+        )
 
     # Emit vtable setup function
     emitter.emit_line('static bool')
@@ -424,8 +359,10 @@ def generate_vtables(base: ClassIR,
     subtables = []
     for trait, vtable in base.trait_vtables.items():
         name = trait_vtable_name(trait)
+        offset_name = trait_offset_table_name(trait)
         generate_vtable(vtable, name, emitter, [], shadow)
-        subtables.append((trait, name))
+        generate_offset_table(offset_name, emitter, trait, base)
+        subtables.append((trait, name, offset_name))
 
     generate_vtable(base.vtable_entries, vtable_name, emitter, subtables, shadow)
 
@@ -435,17 +372,37 @@ def generate_vtables(base: ClassIR,
     return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 2)
 
 
+def generate_offset_table(trait_offset_table_name: str,
+                          emitter: Emitter,
+                          trait: ClassIR,
+                          cl: ClassIR) -> None:
+    """Generate attribute offset row of a trait vtable."""
+    emitter.emit_line('size_t {}_scratch[] = {{'.format(trait_offset_table_name))
+    for attr in trait.attributes:
+        emitter.emit_line('offsetof({}, {}),'.format(
+            cl.struct_name(emitter.names), emitter.attr(attr)
+        ))
+    if not trait.attributes:
+        # This is for msvc.
+        emitter.emit_line('0')
+    emitter.emit_line('};')
+    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
+        name=trait_offset_table_name)
+    )
+
+
 def generate_vtable(entries: VTableEntries,
                     vtable_name: str,
                     emitter: Emitter,
-                    subtables: List[Tuple[ClassIR, str]],
+                    subtables: List[Tuple[ClassIR, str, str]],
                     shadow: bool) -> None:
     emitter.emit_line('CPyVTableItem {}_scratch[] = {{'.format(vtable_name))
     if subtables:
         emitter.emit_line('/* Array of trait vtables */')
-        for trait, table in subtables:
-            emitter.emit_line('(CPyVTableItem){}, (CPyVTableItem){},'.format(
-                emitter.type_struct_name(trait), table))
+        for trait, table, offset_table in subtables:
+            emitter.emit_line(
+                '(CPyVTableItem){}, (CPyVTableItem){}, (CPyVTableItem){},'.format(
+                    emitter.type_struct_name(trait), table, offset_table))
         emitter.emit_line('/* Start of real vtable */')
 
     for entry in entries:
@@ -467,7 +424,6 @@ def generate_setup_for_class(cl: ClassIR,
                              defaults_fn: Optional[FuncIR],
                              vtable_name: str,
                              shadow_vtable_name: Optional[str],
-                             offset_table_name: str,
                              emitter: Emitter) -> None:
     """Generate a native function that allocates an instance of a class."""
     emitter.emit_line('static PyObject *')
@@ -487,10 +443,6 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
-    if any(base.is_trait for base in cl.mro):
-        emitter.emit_line('self->offset_table = {};'.format(offset_table_name))
-    else:
-        emitter.emit_line('self->offset_table = NULL;')
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():

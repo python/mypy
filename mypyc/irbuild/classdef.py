@@ -177,14 +177,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
-        special_calls = ['_trait_vtable_setup']
-        if any(base.is_trait for base in ir.mro):
-            special_calls.append('_offset_table_setup')
-        for special_call in special_calls:
-            builder.add(Call(
-                FuncDecl(cdef.name + special_call,
-                         None, builder.module_name,
-                         FuncSignature([], bool_rprimitive)), [], -1))
+        builder.add(Call(
+            FuncDecl(cdef.name + '_trait_vtable_setup',
+                     None, builder.module_name,
+                     FuncSignature([], bool_rprimitive)), [], -1))
     # Populate a '__mypyc_attrs__' field containing the list of attrs
     builder.primitive_op(py_setattr_op, [
         tp, builder.load_static_unicode('__mypyc_attrs__'),
