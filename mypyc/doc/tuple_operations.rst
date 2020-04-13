@@ -12,7 +12,7 @@ tuples and variable-length tuples.
 Construction
 ------------
 
-* ``(item0, ..., itemN)`` (construct a tuple)
+* ``item0, ..., itemN`` (construct a tuple)
 * ``tuple(lst: list)`` (construct a variable-length tuple)
 * ``tuple(lst: Iterable)`` (construct a variable-length tuple)
 

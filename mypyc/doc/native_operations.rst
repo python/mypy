@@ -1,13 +1,21 @@
 Miscellaneous native operations
 ===============================
 
-We document various generic operations that have custom
-implementations here. Operations specific to various primitive types
-are described later. Type-specific operations are often faster than
-the generic operations described here.
+This is a list of various non-type-specific operations that have
+custom native implementations.  If an operation has no native
+implementation, mypyc will use fallback generic implementations that
+are often not as fast.
 
-If a function or method has no native implementation, mypyc will fall
-back to a generic implementation that works always but is not as fast.
+.. note::
+
+  Operations specific to various
+  primitive types are described elsewhere. Type-specific operations tend
+  to be faster than any generic operations described here.
+
+Operators
+---------
+
+* ``x is y`` (this is very fast for all types)
 
 Functions
 ---------
@@ -28,6 +36,14 @@ Functions
 * ``delattr(obj, name)``
 * ``slice(start, stop, step)``
 * ``globals()``
+
+Method decorators
+-----------------
+
+* ``@property``
+* ``@staticmethod``
+* ``@classmethod``
+* ``@abc.abstractmethod``
 
 Statements
 ----------

@@ -15,4 +15,4 @@ slower.
 Construction
 ------------
 
-* Float literals
+* Float literal

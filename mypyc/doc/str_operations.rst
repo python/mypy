@@ -9,7 +9,7 @@ string operations use generic implementations that are often slower.
 Construction
 ------------
 
-* String literals
+* String literal
 * ``str(x: object)``
 
 Operators
@@ -18,7 +18,6 @@ Operators
 Concatenation:
 
 * ``s1 + s2``
-* ``s1 += s2``
 
 Indexing:
 
@@ -27,6 +26,11 @@ Indexing:
 Comparisons:
 
 * ``s1 == s2``, ``s1 != s2``
+
+Statements
+----------
+
+* ``s1 += s2``
 
 Methods
 -------

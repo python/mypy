@@ -9,7 +9,8 @@ optimized implementations.
 Construction
 ------------
 
-* ``True`` and ``False``
+* ``True``
+* ``False``
 * ``bool(obj)``
 
 Operators

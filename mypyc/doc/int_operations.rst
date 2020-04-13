@@ -11,7 +11,7 @@ types are documented elsewhere, such as list indexing.
 Construction
 ------------
 
-* Integer literals
+* Integer literal
 * ``int(x: float)``
 * ``int(x: str)``
 * ``int(x: str, base: int)``

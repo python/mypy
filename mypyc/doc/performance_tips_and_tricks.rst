@@ -91,7 +91,8 @@ These things also tend to be relatively slow:
 * Using Python classes and instances of Python classes (native classes
   are much faster)
 
-* Calling decorated functions
+* Calling decorated functions (``@property``, ``@staticmethod``, and
+  ``@classmethod`` are special cased and thus fast)
 
 * Calling nested functions
 
@@ -159,8 +160,8 @@ Here are examples of features that are fast, in no particular order
 
 * Booleans
 
-* Many list operations, such as indexing, ``append``, and list
-  comprehensions
+* :ref:`Native list operations <list-ops>`, such as indexing,
+  ``append``, and list comprehensions
 
 * While loops
 
@@ -188,7 +189,7 @@ related operations):
 
 * Setting dictionary items
 
-* Some set operations
+* Native :ref:`dict <dict-ops>` and :ref:`set <set-ops>` operations
 
 * Accessing module-level variables
 
@@ -209,6 +210,23 @@ the garbage collector to run less often::
     gc.set_threshold(150000)
 
     ...  # Actual work happens here
+
+Fast interpreter shutdown
+-------------------------
+
+If you allocate many objects, it's possible that your program spends a
+lot of time cleaning up when the Python runtime shuts down. Mypyc
+won't speed up the shutdown of a Python process much.
+
+You can call ``os._exit(code)`` to immediately terminate the Python
+process, skipping normal cleanup. This can give a nice boost to a
+batch process or a command-line tool.
+
+.. note::
+
+   This can be dangerous and can lose data. You need to ensure
+   that all streams are flushed and everything is otherwise cleaned up
+   properly.
 
 Work smarter
 ------------
