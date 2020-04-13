@@ -247,6 +247,7 @@ existing code, they are implicitly replaced with list comprehensions.
 To work around this limitation, you can usually use a generator
 function instead.  You can sometimes replace the generator expression
 with an explicit list comprehension.
+
 Descriptors
 ***********
 

@@ -71,9 +71,15 @@ this file as ``fib.py``:
    print(time.time() - t0)
 
 Note that we gave ``fib`` a type annotation. Without it, performance
-won't be as impressive after compilation.  `Mypy documentation
-<https://mypy.readthedocs.io/en/stable/index.html>`_ is a good
-introduction if you are new to type annotations.
+won't be as impressive after compilation.
+
+.. note::
+
+   `Mypy documentation
+   <https://mypy.readthedocs.io/en/stable/index.html>`_ is a good
+   introduction if you are new to type annotations or mypy. Mypyc uses
+   mypy to perform type checking and type inference, so some familiarity
+   with mypy is very useful.
 
 We can run ``fib.py`` as a regular, interpreted program using CPython:
 
@@ -84,7 +90,7 @@ We can run ``fib.py`` as a regular, interpreted program using CPython:
 
 It took about 0.41s to run on my computer.
 
-Run ``mypyc`` to compile the program to a C extension:
+Run ``mypyc`` to compile the program to a binary C extension:
 
 .. code-block:: console
 
@@ -139,8 +145,8 @@ example::
     )
 
 We used ``mypycify(...)`` to specify which files to compile using
-mypyc.  You can include additional Python files that won't be
-compiled.
+mypyc.  Your ``setup.py`` can include additional Python files outside
+``mypycify(...)`` that won't be compiled.
 
 Now you can build a wheel (.whl) file for the package::
 
@@ -152,10 +158,10 @@ Recommended workflow
 --------------------
 
 A simple way to use mypyc is to always compile your code after any
-code changes, but this can get tedious. Instead, you may prefer an
-alternative workflow where you compile code less frequently.  The
-following development workflow has worked very well for the
-development of mypy and mypyc, and we recommend you to try it out:
+code changes, but this can get tedious. Instead, you may prefer
+another workflow, where you compile code less often.  The following
+development workflow has worked very well for developing mypy and
+mypyc, and we recommend that you to try it out:
 
 1. During development, use interpreted mode. This allows a very fast
    edit-run cycle, since you don't need to wait for mypyc compilation.
@@ -171,14 +177,14 @@ development of mypy and mypyc, and we recommend you to try it out:
    will break here, if your type annotation coverage is good
    enough. This can happen locally or as part of a Continuous
    Integration (CI) job. If you have good CI, compiling locally may be
-   mostly unncessary.
+   rarely needed.
 
-4. Always release or deploy a compiled version, optionally along with
-   a fallback interpreted version for platforms that mypyc doesn't
-   support yet.
+4. Release or deploy a compiled version. Optionally, include a
+   fallback interpreted version for platforms that mypyc doesn't
+   support.
 
 This way of using mypyc has minimal impact on your productivity and
-requires minimal adjustments to a regular Python workflow. Most of
+requires only minor adjustments to a typical Python workflow. Most of
 development, testing and debugging happens in interpreted
 mode. Incremental mypy runs, especially when using mypy daemon, are
 very quick (often a few hundred milliseconds).
@@ -186,7 +192,7 @@ very quick (often a few hundred milliseconds).
 Next steps
 ----------
 
-You can often get good results by just annotating your code and
+You can sometimes get good results by just annotating your code and
 compiling it. If this isn't providing meaningful performance gains, if
 you have trouble getting your code to work under mypyc, or if you want
 to optimize your code for maximum performance, you should read the
