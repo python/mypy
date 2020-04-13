@@ -204,6 +204,20 @@ If the type of the argument ``f`` was ``Any``, the type of ``n`` would
 also be ``Any``, resulting in a generic, slower increment operation
 being used.
 
+Strict runtime type checking
+----------------------------
+
+Compiled code ensures that any variable or expression with a
+non-erased type only has compatible values at runtime. This is in
+contrast with using *optional static typing*, such as by using mypy,
+when type annotations are not enforced at runtime. Mypyc ensures
+type safety both statically and at runtime.
+
+``Any`` types and erased types in general can compromise type safety,
+and this is by design. Inserting strict runtime type checks for all
+possible values would be too expensive and against the goal of
+high performance.
+
 .. _value-and-heap-types:
 
 Value and heap types
