@@ -32,37 +32,6 @@ result in bad code being generated, and it's considered dangerous.
     In the future, mypyc may reject ``# type: ignore`` comments that
     may be unsafe.
 
-Native classes
---------------
-
-Native classes are compiled to C extension classes, which have some important
-differences from normal Python classes:
-
-* Try type object namespace is immutable (though class variables can
-  be assigned to).
-
-* Only attributes defined within class definition can be assigned to
-  (similar to ``__slots__``).
-
-* Class variables much be explicitly declared as ``attr: ClassVar``
-  or ``attr: ClassVar[<type>]``.
-
-* Most metaclasses aren't supported, since their behavior is too
-  dynamic.
-
-* Most class decorators aren't supported, as they are usually too
-  dynamic. (``@dataclass`` is supported, as an exception.)
-
-* Only single inheritance is supported (except for traits).
-
-* Most non-native classes can't be used as base classes.
-
-* Instances don't usually have a ``__dict__`` attribute.
-
-If a class definition uses an unsupported metaclass or class
-decorator, *mypyc instead compiles the class into a regular Python
-class*.
-
 Runtime type checking
 ---------------------
 
@@ -114,6 +83,12 @@ The last line is essentially equivalent to this Python code when compiled::
     if not isinstance(y, x):
         raise TypeError(...)
     x = y
+
+Native classes
+--------------
+
+Native classes behave differently from Python classes.  See TODO for
+more information.
 
 Primitive types
 ---------------
