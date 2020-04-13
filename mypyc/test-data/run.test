@@ -4741,3 +4741,24 @@ assert f("a", 16) == 10
 assert f("1a", 16) == 26
 with assertRaises(ValueError, "invalid literal for int() with base 10: 'xyz'"):
     f("xyz")
+
+[case testNamedTupleAttributeRun]
+from typing import NamedTuple
+
+NT = NamedTuple('NT', [('x', int), ('y', int)])
+
+def f(nt: NT) -> int:
+    if nt.x > nt.y:
+        return nt.x
+    return nt.y
+
+nt = NT(1, 2)
+[file driver.py]
+from native import NT, nt, f
+
+assert f(nt) == 2
+assert f(NT(3, 2)) == 3
+
+class Sub(NT):
+    pass
+assert f(Sub(3, 2)) == 3
