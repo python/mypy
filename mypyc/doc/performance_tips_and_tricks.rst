@@ -43,18 +43,19 @@ Type annotations
 ----------------
 
 As discussed earlier, type annotations are key to major performance
-gains. This includes adding annotations to any performance-critical
-code.  It may also be helpful to annotate code called by this code,
-even if it's not compiled, since this may help mypy infer better types
-in the compile code. If you use libraries, ensure they have stub files
-with decent type annotation coverage. Writing a stub file is often
-easy, and you only need to annotate features you use a lot.
+gains. You should at least consider adding annotations to any
+performance-critical functions and classes.  It may also be helpful to
+annotate code called by this code, even if it's not compiled, since
+this may help mypy infer better types in the compile code. If you use
+libraries, ensure they have stub files with decent type annotation
+coverage. Writing a stub file is often easy, and you only need to
+annotate features you use a lot.
 
 If annotating external code or writing stubs feel too burdensome, a
 simple workaround is to annotate variables explicitly. For example,
-here we call ``acme.get_items()``, it has no type annotation. We can
-use an explicit type annotation for the variable to which we assign
-the result::
+here we call ``acme.get_items()``, but it has no type annotation. We
+can use an explicit type annotation for the variable to which we
+assign the result::
 
     from typing import List, Tuple
     import acme
@@ -66,8 +67,8 @@ the result::
             ...  # Do some work here
 
 Without the annotation on ``items``, the type would be ``Any`` (since
-``acme`` has no type annotation), resulting in slow, generic
-operations being used.
+``acme`` has no type annotation), resulting in slower, generic
+operations being used later in the function.
 
 Avoiding slow Python features
 -----------------------------
@@ -102,17 +103,18 @@ These things also tend to be relatively slow:
 
 * Using generator functions
 
-* Using floating point numbers (there are relatively unoptimized)
+* Using floating point numbers (they are relatively unoptimized)
 
-* Using erased types, including callable values (i.e. not leveraging
-  early binding to call functions or methods)
+* Using callable values (i.e. not leveraging early binding to call
+  functions or methods)
 
 Nested functions can often be replaced with module-level functions or
 methods of native classes.
 
 Callable values and nested functions can sometimes be replaced with an
 instance of a native class with a single method only, such as
-``call(...)``.
+``call(...)``. You can derive the class from an ABC, if there are
+multiple possible functions.
 
 .. note::
 
@@ -127,10 +129,9 @@ Some native operations are particularly quick relative to the
 corresponding interpreted operations. Using them as much as possible
 may allow you to see 10x or more in performance gains.
 
-The key thing to understand is that different things are fast in
-compiled code. Some things are not that much (or any) faster in
-compiled code, such as set math operations. Some things, such as
-calling a method of a native class, are much faster in compiled code.
+Some things are not much (or any) faster in compiled code, such as set
+math operations. In contrast, calling a method of a native class is
+much faster in compiled code.
 
 If you are used to optimizing for CPython, you might have replaced
 some class instances with dictionaries, as they can be
@@ -138,7 +139,8 @@ faster. However, in compiled code, this "optimization" would likely
 slow down your code.
 
 Similarly, caching a frequently called method in a local variable can
-help in CPython, but it can slow things down in compiled code::
+help in CPython, but it can slow things down in compiled code, since
+the code won't use :ref:`early binding <early-binding>`::
 
     def squares(n: int) -> List[int]:
         a = []
@@ -233,8 +235,7 @@ Work smarter
 
 Usually there are many things you can do to improve performance, even
 if most tweaks will yield only minor gains. The key to being effective
-is to focus on things that give a large gain with a small effort, and
-to stop once performance is fast enough.
+is to focus on things that give a large gain with a small effort.
 
 For example, low-level optimizations, such as avoiding a nested
 function, can be pointless, if you could instead avoid a metaclass --

@@ -6,8 +6,11 @@ Differences from Python
 Mypyc aims to be sufficiently compatible with Python semantics so that
 migrating code to mypyc often doesn't require major code
 changes. There are various differences to enable performance gains
-that you need to be aware of, however. This section documents notable
-deviations.
+that you need to be aware of, however.
+
+This section documents notable differences from Python. We discuss
+many of them also elsewhere, but it's convenient to have them here in
+one place.
 
 Running compiled code as module
 -------------------------------
@@ -19,7 +22,7 @@ your module.
 As a side effect, you can't rely on checking the ``__name__`` attribute in compiled
 code, like this::
 
-    if __name__ == "__main__":  # Can't be used in compiled code!
+    if __name__ == "__main__":  # Can't be used in compiled code
         main()
 
 Type errors prevent compilation
@@ -57,7 +60,7 @@ compiled code. This function is not compiled (no stdlib modules are
 compiled with mypyc), but mypyc uses a *library stub file* to infer
 the return type as ``str``. Compiled code calling ``gethostname()``
 will fail with ``TypeError`` if ``gethostname()`` would return an
-incompatible value such as ``None``::
+incompatible value, such as ``None``::
 
     import socket
 
@@ -69,9 +72,9 @@ Note that ``gethostname()`` is defined like this in the stub file for
 
     def gethostname() -> str: ...
 
-Thus mypyc expects that library stub files and annotations in
-non-compiled code to be correct. This adds an extra layer of type
-safety.
+Thus mypyc verifies that library stub files and annotations in
+non-compiled code match runtime values. This adds an extra layer of
+type safety.
 
 Casts such as ``cast(str, x)`` will also result in strict type
 checks. Consider this example::
@@ -82,15 +85,17 @@ checks. Consider this example::
 
 The last line is essentially equivalent to this Python code when compiled::
 
-    if not isinstance(y, x):
+    if not isinstance(y, str):
         raise TypeError(...)
     x = y
+
+In interpreted mode ``cast`` does not perform a runtime type check.
 
 Native classes
 --------------
 
-Native classes behave differently from Python classes.  See TODO for
-more information.
+Native classes behave differently from Python classes.  See
+:ref:`native-classes` for the details.
 
 Primitive types
 ---------------
@@ -111,7 +116,7 @@ integer values. A side effect of this is that the exact runtime type of
 valid. However, when the list value is converted to ``int``, ``True``
 is converted to the corresponding ``int`` value, which is ``1``.
 
-Note that integers are still arbitrary-precision in compiled code,
+Note that integers still have an arbitrary precision in compiled code,
 similar to normal Python integers.
 
 Fixed-length tuples are unboxed, similar to integers. The exact type
@@ -125,20 +130,21 @@ Early binding
 -------------
 
 References to functions, types, most attributes, and methods in the
-same compilation unit use *early binding*: the target of the reference
-is decided at compile time, whenever possible. This contrasts with
-normal Python behavior of *late binding*, where the target is found by
-a namespace lookup at runtime. Omitting these namespace lookups
-improves performance, but some Python idioms require changes.
+same :ref:`compilation unit <compilation-units>` use *early binding*:
+the target of the reference is decided at compile time, whenever
+possible. This contrasts with normal Python behavior of *late
+binding*, where the target is found by a namespace lookup at
+runtime. Omitting these namespace lookups improves performance, but
+some Python idioms don't work without changes.
 
 Note that non-final module-level variables still use late binding.
-These should be avoided in performance-critical code.
+You may want to avoid these in very performance-critical code.
 
-Example::
+Examples of early and late binding::
 
     from typing import Final
 
-    import lib  # "lib" not compiled
+    import lib  # "lib" is not compiled
 
     x = 0
     y: Final = 1
@@ -150,12 +156,16 @@ Example::
         def __init__(self, attr: int) -> None:
             self.attr = attr
 
+        def method(self) -> None:
+            pass
+
     def example() -> None:
         # Early binding:
         var = y
         func()
         o = Cls()
         o.x
+        o.method()
 
         # Late binding:
         var = x  # Module-level variable
@@ -185,15 +195,14 @@ nested function calls, typically due to out-of-control recursion.
 
 .. note::
 
-   This is an implementation limitation that will be fixed in a future
-   release.
+   This limitation will be fixed in the future.
 
 Final values
 ------------
 
 Compiled code replaces a reference to an attribute declared ``Final`` with
 the value of the attribute computed at compile time. This is an example of
-*early binding*, which we discussed earlier. Example::
+:ref:`early binding <early-binding>`. Example::
 
     MAX: Final = 100
 
@@ -225,7 +234,7 @@ in interpreted mode.
 Operator overloading
 ********************
 
-Native classes can only use a few dunder methods to override operators:
+Native classes can only use these dunder methods to override operators:
 
 * ``__eq__``
 * ``__ne__``
@@ -234,8 +243,7 @@ Native classes can only use a few dunder methods to override operators:
 
 .. note::
 
-    This is an implementation limitation that will be lifted in the
-    future.
+    This limitation will be lifted in the future.
 
 Generator expressions
 *********************

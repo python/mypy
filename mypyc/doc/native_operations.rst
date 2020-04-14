@@ -8,9 +8,8 @@ are often not as fast.
 
 .. note::
 
-  Operations specific to various
-  primitive types are described elsewhere. Type-specific operations tend
-  to be faster than any generic operations described here.
+  Operations specific to various primitive types are described
+  in the following sections.
 
 Operators
 ---------

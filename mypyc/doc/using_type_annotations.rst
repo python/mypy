@@ -161,8 +161,49 @@ Trait types
 -----------
 
 Trait types enable a form of multiple inheritance for native classes.
+A native class can inherit any number of traits.  Trait types are
+defined as classes using the ``mypy_extensions.trait`` decorator::
 
-TODO: explain
+    from mypy_extensions import trait
+
+    @trait
+    class MyTrait:
+        def method(self) -> None:
+            ...
+
+Traits can define methods, properties and attributes. They often
+define abstract methods. Traits can be generic.
+
+If a class subclasses both a non-trait class and traits, the traits
+must be placed at the end of the base class list::
+
+    class Base: ...
+
+    class Derived(Base, MyTrait, FooTrait):  # OK
+        ...
+
+    class Derived2(MyTrait, FooTrait, Base):
+        # Error: traits should come last
+        ...
+
+Traits have some special properties:
+
+* You shouldn't create instances of traits (though mypyc does not
+  prevent it yet).
+
+* Traits can subclass other traits, but they can't subclass non-trait
+  classes (other than ``object``).
+
+* Accessing methods or attributes through a trait type is somewhat
+  less efficient than through a native class type, but this is much
+  faster than through Python class types or other
+  :ref:`erased types <erased-types>`.
+
+You need to install ``mypy-extensions`` to use ``@trait``:
+
+.. code-block:: text
+
+    pip install --upgrade mypy-extensions
 
 .. _erased-types:
 

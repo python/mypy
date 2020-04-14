@@ -6,14 +6,14 @@ Native classes
 Classes in compiled modules are *native classes* by default (some
 exceptions are discussed below). Native classes are compiled to C
 extension classes, which have some important differences from normal
-Python classes. Native classes are similar to built-in types such as
-``int``, ``str``, and ``list``.
+Python classes. Native classes are similar in many ways to built-in
+types, such as ``int``, ``str``, and ``list``.
 
 Immutable namespaces
 --------------------
 
-The type object namespace of native classes is mostly immutable (class
-variables can be assigned to)::
+The type object namespace of native classes is mostly immutable (but
+class variables can be assigned to)::
 
     class Cls:
         def method1(self) -> None:
@@ -22,11 +22,11 @@ variables can be assigned to)::
         def method2(self) -> None:
             print("method2")
 
-    Cls.method1 = Cls.method2  # Error!
-    Cls.new_method = Cls.method2  # Error!
+    Cls.method1 = Cls.method2  # Error
+    Cls.new_method = Cls.method2  # Error
 
-Only attributes defined within class definition can be assigned to
-(similar to ``__slots__``)::
+Only attributes defined within a class definition (or in a base class)
+can be assigned to (similar to using ``__slots__``)::
 
     class Cls:
         x: int
@@ -48,8 +48,9 @@ Only attributes defined within class definition can be assigned to
 Inheritance
 -----------
 
-Only single inheritance is supported (except for traits). Most
-non-native classes can't be used as base classes.
+Only single inheritance is supported (except for :ref:`traits
+<trait-types>`). Most non-native classes can't be used as base
+classes.
 
 These non-native classes can be used as base classes of native
 classes:
@@ -77,7 +78,7 @@ defines the class. You can enable these through
 Allowing interpreted subclasses has only minor impact on performance
 of instances of the native class.  Accessing methods and attributes of
 a *non-native* subclass (or a subclass defined in another compilation
-unit) will be slower, since it needs to use the slower Python
+unit) will be slower, since it needs to use the normal Python
 attribute access mechanism.
 
 You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
@@ -109,9 +110,9 @@ Generic native classes
 Native classes can be generic. Type variables are *erased* at runtime,
 and instances don't keep track of type variable values.
 
-Generated code thus can't check the values type variables when performing
-runtime type checks, and these are delayed to when reading a value with
-a type variable type::
+Compiled code thus can't check the values of type variables when
+performing runtime type checks. These checks are delayed to when
+reading a value with a type variable type::
 
     from typing import TypeVar, Generic, cast
 
@@ -129,7 +130,7 @@ Metaclasses
 -----------
 
 Most metaclasses aren't supported with native classes, since their
-behavior is too dynamic. You can use these metaclasses:
+behavior is too dynamic. You can use these metaclasses, however:
 
 * ``abc.ABCMeta``
 * ``typing.GenericMeta`` (used by ``typing.Generic``)
@@ -144,10 +145,10 @@ Class decorators
 
 Similar to metaclasses, most class decorators aren't supported with
 native classes, as they are usually too dynamic. These class
-decorators have special support:
+decorators can be used with native classes, however:
 
-* ``mypy_extensions.trait`` (for defining trait types)
-* ``mypy_extensions.mypyc_attr`` (see below)
+* ``mypy_extensions.trait`` (for defining :ref:`trait types <trait-types>`)
+* ``mypy_extensions.mypyc_attr`` (see :ref:`above <inheritance>`)
 * ``dataclasses.dataclass``
 
 Dataclasses have partial native support, and they aren't as efficient
