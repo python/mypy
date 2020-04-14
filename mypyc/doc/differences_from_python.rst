@@ -261,6 +261,12 @@ Descriptors
 
 Descriptors can't be used in native classes.
 
+Defining protocols
+******************
+
+Protocols can't be defined in compiled code. You can use protocols
+defined elsewhere, however.
+
 Stack introspection
 *******************
 

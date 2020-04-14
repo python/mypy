@@ -228,6 +228,8 @@ types include these:
 
 * Type `Any <https://mypy.readthedocs.io/en/stable/dynamic_typing.html>`_
 
+* Protocol types
+
 Using erased types can still improve performance, since they can
 enable better types to be inferred for expressions that use these
 types.  For example, a value with type ``Callable[[], int]`` will not
