@@ -79,9 +79,9 @@ Mypyc can produce fast code through several features:
 * Mypyc uses *ahead-of-time compilation* to native code. This removes
   CPython interpreter overhead.
 
-* Mypyc enforces type annotations at runtime, raising ``TypeError`` if
-  runtime types don't match annotations. This lets mypyc use
-  operations specialized to specific types.
+* Mypyc enforces type annotations (and type comments) at runtime,
+  raising ``TypeError`` if runtime types don't match annotations. This
+  lets mypyc use operations specialized to specific types.
 
 * Mypyc uses *early binding* to resolve called functions and other
   references at compile time. Mypyc avoids many namespace dictionary
