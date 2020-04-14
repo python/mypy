@@ -48,7 +48,6 @@ class tuple(Generic[T]): pass
 class function: pass
 class float: pass
 class bool(int): pass
-class set(Iterable[T], Generic[T]): pass
 
 class ellipsis: pass
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
