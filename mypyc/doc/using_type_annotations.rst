@@ -109,7 +109,9 @@ Native classes have some notable different from Python classes:
 
 Native classes only support single inheritance. A limited form of
 multiple inheritance is supported through *trait types*. You generally
-must inherit from another native class (or ``object``).
+must inherit from another native class (or ``object``). By default,
+you can't inherit a Python class from a native class (but there's
+an :ref:`override <inheritance>` to allow that).
 
 See :ref:`native-classes` for more details.
 

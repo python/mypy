@@ -43,11 +43,25 @@ Only attributes defined within class definition can be assigned to
     o.z = "y"  # OK
     o.extra = 3  # Error: no attribute "extra"
 
+.. _inheritance:
+
 Inheritance
 -----------
 
 Only single inheritance is supported (except for traits). Most
 non-native classes can't be used as base classes.
+
+These non-native classes can be used as base classes of native
+classes:
+
+* ``object``
+* ``dict`` (and ``Dict[k, v]``)
+* ``BaseException``
+* ``Exception``
+* ``ValueError``
+* ``IndexError``
+* ``LookupError``
+* ``UserWarning``
 
 By default, a non-native class can't inherit a native class, and you
 can't inherit from a native class outside the compilation unit that
@@ -57,12 +71,14 @@ defines the class. You can enable these through
     from mypy_extensions import mypyc_attr
 
     @mypyc_attr(allow_interpreted_subclasses=True)
-    class Base:
+    class Cls:
         ...
 
-If you override a method outside the original compilation unit or in a
-non-native subclass, calling the method will be slower, since it won't
-use the native calling convention.
+Allowing interpreted subclasses has only minor impact on performance
+of instances of the native class.  Accessing methods and attributes of
+a *non-native* subclass (or a subclass defined in another compilation
+unit) will be slower, since it needs to use the slower Python
+attribute access mechanism.
 
 You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
 
