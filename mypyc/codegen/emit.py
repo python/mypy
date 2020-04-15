@@ -248,6 +248,21 @@ class Emitter:
 
         return result
 
+    def emit_undefined_attr_check(self, rtype: RType, attr_expr: str,
+                                  compare: str,
+                                  unlikely: bool = False) -> None:
+        if isinstance(rtype, RTuple):
+            check = '({})'.format(self.tuple_undefined_check_cond(
+                rtype, attr_expr, self.c_undefined_value, compare)
+            )
+        else:
+            check = '({} {} {})'.format(
+                attr_expr, compare, self.c_undefined_value(rtype)
+            )
+        if unlikely:
+            check = '(unlikely{})'.format(check)
+        self.emit_line('if {} {{'.format(check))
+
     def tuple_undefined_check_cond(
             self, rtuple: RTuple, tuple_expr_in_c: str,
             c_type_compare_val: Callable[[RType], str], compare: str) -> str:
