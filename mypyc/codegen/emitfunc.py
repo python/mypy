@@ -248,6 +248,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
             if attr_rtype.is_refcounted:
                 self.emitter.emit_undefined_attr_check(
                     attr_rtype, attr_expr, '==', unlikely=True
@@ -259,7 +260,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                     '} else {')
                 self.emitter.emit_inc_ref(attr_expr, attr_rtype)
                 self.emitter.emit_line('}')
-            self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)

@@ -190,12 +190,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_get_attr(self) -> None:
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
-            """if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
                } else {
                    CPyTagged_IncRef(((mod___AObject *)cpy_r_r)->_y);
                }
-               cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
             """)
 
     def test_set_attr(self) -> None:

@@ -298,17 +298,18 @@ def generate_vtables(base: ClassIR,
     """Emit the vtables and vtable setup functions for a class.
 
     This includes both the primary vtable and any trait implementation vtables.
-
     The trait vtables go before the main vtable, and have the following layout:
         {
-            CPyType_T1,
-            C_T1_trait_vtable,  // array of method pointers
-            {offsetof(native__C, _x1), offsetof(native__C, _y1), ...},
+            CPyType_T1,         // pointer to type object
+            C_T1_trait_vtable,  // pointer to array of method pointers
+            C_T1_offset_table,  // pointer to array of attribute offsets
             CPyType_T2,
-            C_T2_trait_vtable,  // array of method pointers
-            {offsetof(native__C, _x2), offsetof(native__C, _y2), ...},
+            C_T2_trait_vtable,
+            C_T2_offset_table,
             ...
         }
+    The method implementations are calculated at the end of IR pass, attribute
+    offsets are {offsetof(native__C, _x1), offsetof(native__C, _y1), ...}.
 
     To account for both dynamic loading and dynamic class creation,
     vtables are populated dynamically at class creation time, so we
@@ -320,7 +321,6 @@ def generate_vtables(base: ClassIR,
 
     Returns the expression to use to refer to the vtable, which might be
     different than the name, if there are trait vtables.
-
     """
 
     def trait_vtable_name(trait: ClassIR) -> str:
