@@ -441,7 +441,9 @@ class ForRange(ForGenerator):
         self.end_reg = end_reg
         self.step = step
         self.end_target = builder.maybe_spill(end_reg)
-        self.index_reg = builder.maybe_spill_assignable(start_reg)
+        index_reg = builder.alloc_temp(start_reg.type)
+        builder.assign(index_reg, start_reg, -1)
+        self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target = builder.get_assignment_target(
             self.index)  # type: Union[Register, AssignmentTarget]

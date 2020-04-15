@@ -51,6 +51,7 @@ def count(n: int) -> None:
 def count_between(n: int, k: int) -> None:
     for i in range(n, k):
         print(i)
+    print('n=', n)
 def count_down(n: int, k: int) -> None:
     for i in range(n, k, -1):
         print(i)
@@ -115,9 +116,11 @@ str_iter("abc")
 12
 13
 14
+n= 11
 100000000000000000000
 100000000000000000001
 100000000000000000002
+n= 100000000000000000000
 20
 19
 18
@@ -4741,3 +4744,24 @@ assert f("a", 16) == 10
 assert f("1a", 16) == 26
 with assertRaises(ValueError, "invalid literal for int() with base 10: 'xyz'"):
     f("xyz")
+
+[case testNamedTupleAttributeRun]
+from typing import NamedTuple
+
+NT = NamedTuple('NT', [('x', int), ('y', int)])
+
+def f(nt: NT) -> int:
+    if nt.x > nt.y:
+        return nt.x
+    return nt.y
+
+nt = NT(1, 2)
+[file driver.py]
+from native import NT, nt, f
+
+assert f(nt) == 2
+assert f(NT(3, 2)) == 3
+
+class Sub(NT):
+    pass
+assert f(Sub(3, 2)) == 3

@@ -7,6 +7,8 @@ import re
 import shutil
 from typing import List, Callable, Iterator, Optional, Tuple
 
+import pytest  # type: ignore[import]
+
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -110,7 +112,9 @@ def build_ir_for_single_file(input_lines: List[str],
         [result.files['__main__']], result.graph, result.types,
         Mapper({'__main__': None}),
         compiler_options, errors)
-    assert errors.num_errors == 0
+    if errors.num_errors:
+        errors.flush_errors()
+        pytest.fail('Errors while building IR')
 
     module = list(modules.values())[0]
     return module.functions
