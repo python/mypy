@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import os
 import pytest  # type: ignore
+import re
 import subprocess
 from subprocess import PIPE
 import sys
@@ -72,7 +73,7 @@ def install_package(pkg: str,
     working_dir = os.path.join(package_path, pkg)
     with tempfile.TemporaryDirectory() as dir:
         if use_pip:
-            install_cmd = [python_executable, '-m', 'pip', 'install', '-b {}'.format(dir)]
+            install_cmd = [python_executable, '-m', 'pip', 'install', '-b', '{}'.format(dir)]
             if editable:
                 install_cmd.append('-e')
             install_cmd.append('.')
@@ -100,10 +101,11 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
     else:
         python = sys.executable
     assert python is not None, "Should be impossible"
-    pkgs, args = parse_pkgs(testcase.input[0])
+    pkgs, pip_args = parse_pkgs(testcase.input[0])
+    mypy_args = parse_mypy_args(testcase.input[1])
     use_pip = True
     editable = False
-    for arg in args:
+    for arg in pip_args:
         if arg == 'no-pip':
             use_pip = False
         elif arg == 'editable':
@@ -122,9 +124,14 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             with open(program, 'w', encoding='utf-8') as f:
                 for s in testcase.input:
                     f.write('{}\n'.format(s))
-            cmd_line = [program, '--no-incremental', '--no-error-summary']
+            cmd_line = mypy_args + [program, '--no-incremental', '--no-error-summary']
             if python_executable != sys.executable:
                 cmd_line.append('--python-executable={}'.format(python_executable))
+            if testcase.files != []:
+                for name, content in testcase.files:
+                    if 'mypy.ini' in name:
+                        with open('mypy.ini', 'w') as m:
+                            m.write(content)
             output = []
             # Type check the module
             out, err, returncode = mypy.api.run(cmd_line)
@@ -151,6 +158,13 @@ def parse_pkgs(comment: str) -> Tuple[List[str], List[str]]:
     else:
         pkgs_str, *args = comment[7:].split(';')
         return ([pkg.strip() for pkg in pkgs_str.split(',')], [arg.strip() for arg in args])
+
+
+def parse_mypy_args(line: str) -> List[str]:
+    m = re.match('# flags: (.*)$', line)
+    if not m:
+        return []  # No args; mypy will spit out an error.
+    return m.group(1).split()
 
 
 @pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and

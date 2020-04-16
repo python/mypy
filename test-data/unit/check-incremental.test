@@ -3016,8 +3016,6 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 [case testAttrsIncrementalDunder]
 from a import A
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> a.A'
-reveal_type(A.__eq__)  # N: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__ne__)  # N: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__lt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__le__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__gt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
@@ -3055,20 +3053,18 @@ class A:
 [stale]
 [out2]
 main:2: note: Revealed type is 'def (a: builtins.int) -> a.A'
-main:3: note: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-main:4: note: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:3: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:4: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:5: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:6: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:7: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:8: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:17: error: Unsupported operand types for < ("A" and "int")
-main:18: error: Unsupported operand types for <= ("A" and "int")
-main:19: error: Unsupported operand types for > ("A" and "int")
-main:20: error: Unsupported operand types for >= ("A" and "int")
-main:24: error: Unsupported operand types for > ("A" and "int")
-main:25: error: Unsupported operand types for >= ("A" and "int")
-main:26: error: Unsupported operand types for < ("A" and "int")
-main:27: error: Unsupported operand types for <= ("A" and "int")
+main:15: error: Unsupported operand types for < ("A" and "int")
+main:16: error: Unsupported operand types for <= ("A" and "int")
+main:17: error: Unsupported operand types for > ("A" and "int")
+main:18: error: Unsupported operand types for >= ("A" and "int")
+main:22: error: Unsupported operand types for > ("A" and "int")
+main:23: error: Unsupported operand types for >= ("A" and "int")
+main:24: error: Unsupported operand types for < ("A" and "int")
+main:25: error: Unsupported operand types for <= ("A" and "int")
 
 [case testAttrsIncrementalSubclassModified]
 from b import B

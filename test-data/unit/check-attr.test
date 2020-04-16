@@ -185,8 +185,6 @@ from attr import attrib, attrs
 class A:
     a: int
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> __main__.A'
-reveal_type(A.__eq__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__ne__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__lt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__le__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__gt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
@@ -251,8 +249,6 @@ from attr import attrib, attrs
 class A:
     a: int
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> __main__.A'
-reveal_type(A.__eq__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__ne__)  # N: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
 
 A(1) < A(2)  # E: Unsupported left operand type for < ("A")
 A(1) <= A(2)  # E: Unsupported left operand type for <= ("A")
@@ -771,15 +767,6 @@ B() <= 1  # E: Unsupported operand types for <= ("B" and "int")
 C() <= 1  # E: Unsupported operand types for <= ("C" and "int")
 D() <= 1  # E: Unsupported operand types for <= ("D" and "int")
 
-A() == A()
-B() == A()
-C() == A()
-D() == A()
-
-A() == int
-B() == int
-C() == int
-D() == int
 [builtins fixtures/list.pyi]
 
 [case testAttrsComplexSuperclass]

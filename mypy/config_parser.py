@@ -79,12 +79,14 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'no_site_packages': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
     'cache_dir': expand_path,
     'python_executable': expand_path,
+    'strict': bool,
 }  # type: Final
 
 
@@ -208,7 +210,7 @@ def parse_section(prefix: str, template: Options,
                     options_key = key[3:]
                     invert = True
                 elif key == 'strict':
-                    set_strict_flags()
+                    pass  # Special handling below
                 else:
                     print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=stderr)
@@ -238,6 +240,10 @@ def parse_section(prefix: str, template: Options,
                 continue
         except ValueError as err:
             print("%s%s: %s" % (prefix, key, err), file=stderr)
+            continue
+        if key == 'strict':
+            if v:
+                set_strict_flags()
             continue
         if key == 'silent_imports':
             print("%ssilent_imports has been replaced by "

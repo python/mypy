@@ -376,6 +376,8 @@ class NamedTupleAnalyzer:
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base
         info.line = line
+        # For use by mypyc.
+        info.metadata['namedtuple'] = {'fields': items.copy()}
 
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a

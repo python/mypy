@@ -190,12 +190,23 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_get_attr(self) -> None:
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
-            """cpy_r_r0 = native_A_gety((mod___AObject *)cpy_r_r); /* y */""")
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
+               } else {
+                   CPyTagged_IncRef(((mod___AObject *)cpy_r_r)->_y);
+               }
+            """)
 
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
-            "cpy_r_r0 = native_A_sety((mod___AObject *)cpy_r_r, cpy_r_m); /* y */")
+            """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
+                   CPyTagged_DecRef(((mod___AObject *)cpy_r_r)->_y);
+               }
+               ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
+               cpy_r_r0 = 1;
+            """)
 
     def test_dict_get_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),

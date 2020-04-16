@@ -162,3 +162,34 @@ L4:
     r8 = None
     return r8
 
+[case testNamedTupleAttribute]
+from typing import NamedTuple
+
+NT = NamedTuple('NT', [('x', int), ('y', int)])
+
+def f(nt: NT, b: bool) -> int:
+    if b:
+        return nt.x
+    return nt.y
+[out]
+def f(nt, b):
+    nt :: tuple
+    b :: bool
+    r0 :: short_int
+    r1 :: object
+    r2 :: int
+    r3 :: short_int
+    r4 :: object
+    r5 :: int
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    r0 = 0
+    r1 = nt[r0] :: tuple
+    r2 = unbox(int, r1)
+    return r2
+L2:
+    r3 = 1
+    r4 = nt[r3] :: tuple
+    r5 = unbox(int, r4)
+    return r5

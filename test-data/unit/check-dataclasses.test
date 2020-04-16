@@ -377,48 +377,6 @@ Application.COUNTER = 1
 
 [builtins fixtures/list.pyi]
 
-[case testDataclassEquality]
-# flags: --python-version 3.6
-from dataclasses import dataclass
-
-@dataclass
-class Application:
-  name: str
-  rating: int
-
-app1 = Application("example-1", 5)
-app2 = Application("example-2", 5)
-app1 == app2
-app1 != app2
-app1 == None  # E: Unsupported operand types for == ("Application" and "None")
-
-[builtins fixtures/list.pyi]
-
-[case testDataclassCustomEquality]
-# flags: --python-version 3.6
-from dataclasses import dataclass
-
-@dataclass
-class Application:
-  name: str
-  rating: int
-
-  def __eq__(self, other: 'Application') -> bool:
-     ...
-
-app1 = Application("example-1", 5)
-app2 = Application("example-2", 5)
-app1 == app2
-app1 != app2  # E: Unsupported left operand type for != ("Application")
-app1 == None  # E: Unsupported operand types for == ("Application" and "None")
-
-class SpecializedApplication(Application):
-  ...
-
-app1 == SpecializedApplication("example-3", 5)
-
-[builtins fixtures/list.pyi]
-
 [case testDataclassOrdering]
 # flags: --python-version 3.6
 from dataclasses import dataclass
