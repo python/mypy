@@ -119,7 +119,8 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True, code=codes.SYNTAX)
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+                      code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
