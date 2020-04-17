@@ -298,6 +298,9 @@ beginner issues.
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Code of Conduct :
+[Make sure you don't violate this](https://github.com/python/mypy/Code_of_Conduct.md)
+
 
 License
 -------
