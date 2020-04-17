@@ -468,7 +468,7 @@ of the above sections.
 .. option:: --allow-redefinition
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This flag enables redefinion of a variable with an
+    unrelated type. This flag enables redefinition of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
     Example where this can be useful:
