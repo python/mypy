@@ -1,5 +1,6 @@
 """Code generation for native function bodies."""
 
+from typing import Union
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -15,19 +16,10 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
-from mypyc.namegen import NameGenerator
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
 DEBUG_ERRORS = False
-
-
-def native_getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, 'native_{}_get{}'.format(cl.name, attribute))
-
-
-def native_setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, 'native_{}_set{}'.format(cl.name, attribute))
 
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
@@ -199,13 +191,51 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = %s;' % (self.reg(op),
                                          self.c_error_value(op.type)))
 
+    def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
+        """Generate attribute accessor for normal (non-property) access.
+
+        This either has a form like obj->attr_name for attributes defined in non-trait
+        classes, and *(obj + attr_offset) for attributes defined by traits. We also
+        insert all necessary C casts here.
+        """
+        cast = '({} *)'.format(op.class_type.struct_name(self.emitter.names))
+        if decl_cl.is_trait and op.class_type.class_ir.is_trait:
+            # For pure trait access find the offset first, offsets
+            # are ordered by attribute position in the cl.attributes dict.
+            # TODO: pre-calculate the mapping to make this faster.
+            trait_attr_index = list(decl_cl.attributes).index(op.attr)
+            # TODO: reuse these names somehow?
+            offset = self.emitter.temp_name()
+            self.declarations.emit_line('size_t {};'.format(offset))
+            self.emitter.emit_line('{} = {};'.format(
+                offset,
+                'CPy_FindAttrOffset({}, {}, {})'.format(
+                    self.emitter.type_struct_name(decl_cl),
+                    '({}{})->vtable'.format(cast, obj),
+                    trait_attr_index,
+                )
+            ))
+            attr_cast = '({} *)'.format(self.ctype(op.class_type.attr_type(op.attr)))
+            return '*{}((char *){} + {})'.format(attr_cast, obj, offset)
+        else:
+            # Cast to something non-trait. Note: for this to work, all struct
+            # members for non-trait classes must obey monotonic linear growth.
+            if op.class_type.class_ir.is_trait:
+                assert not decl_cl.is_trait
+                cast = '({} *)'.format(decl_cl.struct_name(self.emitter.names))
+            return '({}{})->{}'.format(
+                cast, obj, self.emitter.attr(op.attr)
+            )
+
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
         cl = rtype.class_ir
-        version = '_TRAIT' if cl.is_trait else ''
-        if cl.is_trait or cl.get_method(op.attr):
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
+        if cl.get_method(op.attr):
+            # Properties are essentially methods, so use vtable access for them.
+            version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
                 dest,
                 version,
@@ -216,17 +246,20 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
         else:
-            typ, decl_cl = cl.attr_details(op.attr)
-            # FIXME: We use the lib_prefixed version which is an
-            # indirect call we can't inline. We should investigate
-            # duplicating getter/setter code.
-            self.emit_line('%s = %s%s((%s *)%s); /* %s */' % (
-                dest,
-                self.emitter.get_group_prefix(decl_cl),
-                native_getter_name(decl_cl, op.attr, self.emitter.names),
-                decl_cl.struct_name(self.names),
-                obj,
-                op.attr))
+            # Otherwise, use direct or offset struct access.
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
+            if attr_rtype.is_refcounted:
+                self.emitter.emit_undefined_attr_check(
+                    attr_rtype, attr_expr, '==', unlikely=True
+                )
+                exc_class = 'PyExc_AttributeError'
+                self.emitter.emit_lines(
+                    'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
+                        exc_class, repr(op.attr), repr(cl.name)),
+                    '} else {')
+                self.emitter.emit_inc_ref(attr_expr, attr_rtype)
+                self.emitter.emit_line('}')
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -234,8 +267,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         src = self.reg(op.src)
         rtype = op.class_type
         cl = rtype.class_ir
-        version = '_TRAIT' if cl.is_trait else ''
-        if cl.is_trait or cl.get_method(op.attr):
+        attr_rtype, decl_cl = cl.attr_details(op.attr)
+        if cl.get_method(op.attr):
+            # Again, use vtable access for properties...
+            version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,
                 version,
@@ -247,15 +282,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 self.ctype(rtype.attr_type(op.attr)),
                 op.attr))
         else:
-            typ, decl_cl = cl.attr_details(op.attr)
-            self.emit_line('%s = %s%s((%s *)%s, %s); /* %s */' % (
-                dest,
-                self.emitter.get_group_prefix(decl_cl),
-                native_setter_name(decl_cl, op.attr, self.emitter.names),
-                decl_cl.struct_name(self.names),
-                obj,
-                src,
-                op.attr))
+            # ...and struct access for normal attributes.
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            if attr_rtype.is_refcounted:
+                self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '!=')
+                self.emitter.emit_dec_ref(attr_expr, attr_rtype)
+                self.emitter.emit_line('}')
+            # This steal the reference to src, so we don't need to increment the arg
+            self.emitter.emit_lines(
+                '{} = {};'.format(attr_expr, src),
+                '{} = 1;'.format(dest),
+            )
 
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,
