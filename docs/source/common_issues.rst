@@ -72,7 +72,7 @@ flagged as an error.
   e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
-- **:py:meth:`__init__ <object.__init__>` method has no annotated
+- :py:meth:`__init__ <object.__init__>` **method has no annotated
   arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
   is considered fully-annotated **if at least one argument is annotated**,
   while mypy will infer the return type as ``None``.
