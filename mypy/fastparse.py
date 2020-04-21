@@ -1205,7 +1205,10 @@ class ASTConverter:
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
         self.set_line(e, n)
-        if isinstance(e.index, SliceExpr):
+        if (
+            isinstance(e.index, SliceExpr) or
+            (sys.version_info <= (3, 9) and isinstance(e.index, TupleExpr))
+        ):
             # Slice has no line/column in the raw ast.
             e.index.line = e.line
             e.index.column = e.column
@@ -1233,7 +1236,7 @@ class ASTConverter:
 
     # Tuple(expr* elts, expr_context ctx)
     def visit_Tuple(self, n: ast3.Tuple) -> TupleExpr:
-        e = TupleExpr([self.visit(e) for e in n.elts])
+        e = TupleExpr(self.translate_expr_list(n.elts))
         return self.set_line(e, n)
 
     # --- slice ---
