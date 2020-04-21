@@ -138,7 +138,7 @@ override a read-only property:
    class Derived(Base):
        ID: Final = 1  # OK
 
-Declaring a name as final only guarantees that the name wll not be re-bound
+Declaring a name as final only guarantees that the name will not be re-bound
 to another value. It doesn't make the value immutable. You can use immutable ABCs
 and containers to prevent mutating such values:
 
