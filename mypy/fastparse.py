@@ -1505,10 +1505,16 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
-    # Subscript(expr value, slice slice, expr_context ctx)
+    # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
+    # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if sys.version_info >= (3, 9):  # Really 3.9a5 or later
             sliceval = n.slice  # type: Any
+            if (isinstance(sliceval, ast3.Slice) or
+                (isinstance(sliceval, ast3.Tuple) and
+                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                return AnyType(TypeOfAny.from_error)
         else:
             # Python 3.8 or earlier use a different AST structure for subscripts
             if not isinstance(n.slice, Index):
