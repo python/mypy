@@ -126,7 +126,7 @@ def f(x: object, n: int, s: str) -> None:
 import m
 if int():
     from m import foobaz # E:5: Module 'm' has no attribute 'foobaz'; maybe "foobar"?
-(1).x # E:2: "int" has no attribute "x"
+1 .x # E:1: "int" has no attribute "x"
 (m.foobaz()) # E:2: Module has no attribute "foobaz"; maybe "foobar"?
 
 [file m.py]
@@ -407,7 +407,7 @@ def f(x: T) -> T:
     bb: List[int] = [''] # E:22: List item 0 has incompatible type "str"; expected "int"
     # XXX: Disabled because the column differs in 3.8
     # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
-    cc = (1).bad # E:11: "int" has no attribute "bad"
+    cc = 1 .bad # E:10: "int" has no attribute "bad"
     n: int = '' # E:14: Incompatible types in assignment (expression has type "str", variable has type "int")
     return x
 [builtins fixtures/list.pyi]
