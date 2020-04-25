@@ -1077,15 +1077,23 @@ def print_dict_methods(d1: Dict[int, int],
         print(v)
     for v in d3.values():
         print(v)
+
+class Custom(Dict[int, int]): pass
 [file driver.py]
-from native import print_dict_methods
+from native import print_dict_methods, Custom
 print_dict_methods({}, {}, {})
 print_dict_methods({1: 2}, {3: 4}, {5: 6})
+c = Custom({0: 1})
+print_dict_methods(c, c, c)
 [out]
 1
 3
 4
 6
+0
+0
+1
+1
 
 [case testPyMethodCall]
 from typing import List
