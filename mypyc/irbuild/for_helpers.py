@@ -468,7 +468,7 @@ class ForDictionaryItems(ForGenerator):
         self.expr_target = self.builder.maybe_spill(expr_reg)
         offset_reg = self.builder.add(LoadInt(0))
         self.offset_target = self.builder.maybe_spill_assignable(offset_reg)
-        self.size = self.builder.maybe_spill_assignable(self.load_len(self.expr_target))
+        self.size = self.builder.maybe_spill(self.load_len(self.expr_target))
 
     def gen_condition(self) -> None:
         builder = self.builder
