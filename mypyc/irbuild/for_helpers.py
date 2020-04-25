@@ -466,8 +466,8 @@ class ForDictionaryItems(ForGenerator):
     def init(self, expr_reg: Value, target_type: RType) -> None:
         self.target_type = target_type
         self.expr_target = self.builder.maybe_spill(expr_reg)
-        offset = self.builder.add(LoadInt(0))
-        self.offset_target = self.builder.maybe_spill_assignable(offset)
+        offset_reg = self.builder.add(LoadInt(0))
+        self.offset_target = self.builder.maybe_spill_assignable(offset_reg)
 
     def gen_condition(self) -> None:
         builder = self.builder
@@ -476,8 +476,10 @@ class ForDictionaryItems(ForGenerator):
             dict_next_pair_op, [builder.read(self.expr_target, line),
                                 builder.read(self.offset_target, line)], line)
         should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
+        new_offset = builder.add(TupleGet(self.next_tuple, 1, line))
+        builder.assign(self.offset_target, new_offset, line)
         builder.add(
-            Branch(should_continue, self.loop_exit, self.body_block, Branch.BOOL_EXPR)
+            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
         )
 
     def begin_body(self) -> None:
@@ -501,12 +503,6 @@ class ForDictionaryItems(ForGenerator):
         else:
             rvalue = builder.add(TupleSet([key, value], line))
             builder.assign(target, rvalue, line)
-
-    def gen_step(self) -> None:
-        builder = self.builder
-        line = self.line
-        new_offset = builder.add(TupleGet(self.next_tuple, 1, line))
-        builder.assign(self.offset_target, new_offset, line)
 
 
 class ForDictionaryKeys(ForDictionaryItems):

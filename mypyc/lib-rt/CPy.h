@@ -1396,13 +1396,17 @@ static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
     tuple_T4CIOO ret;
     Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
-    ret.f0 = PyDict_Next(dict, &py_offset, &ret.f2, &ret.f3)
+    ret.f0 = PyDict_Next(dict, &py_offset, &ret.f2, &ret.f3);
     if (ret.f0) {
         ret.f1 = CPyTagged_FromSsize_t(py_offset);
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
-        Py_INCREF(ret.f3);
+    } else {
+        // Set key and value to None, so mypyc can manage refcounts.
+        ret.f2 = Py_None;
+        ret.f3 = Py_None;
     }
+    // PyDict_Next() returns borrowed references.
+    Py_INCREF(ret.f2);
+    Py_INCREF(ret.f3);
     return ret;
 }
 
