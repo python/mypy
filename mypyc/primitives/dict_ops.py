@@ -3,7 +3,10 @@
 from typing import List
 
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
-from mypyc.ir.rtypes import dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive
+from mypyc.ir.rtypes import (
+    dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
+    dict_next_rtuple
+)
 
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
@@ -136,3 +139,12 @@ func_op(name='builtins.len',
         result_type=int_rprimitive,
         error_kind=ERR_NEVER,
         emit=emit_len)
+
+# PyDict_Next() fast iteration
+dict_next_pair_op = custom_op(
+    arg_types=[dict_rprimitive, int_rprimitive],
+    result_type=dict_next_rtuple,
+    error_kind=ERR_NEVER,
+    emit=call_emit('CPyDict_Next'),
+    format_str='{dest} = dict_next({colon_args})',
+)

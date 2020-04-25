@@ -399,6 +399,11 @@ class RTuple(RType):
 # Exception tuple: (exception class, exception instance, traceback object)
 exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 
+# Dictionary iterator tuple: (should continue, internal offset, key, value)
+dict_next_rtuple = RTuple(
+    [bool_rprimitive, int_rprimitive, object_rprimitive, object_rprimitive]
+)
+
 
 class RInstance(RType):
     """Instance of user-defined class (compiled to C extension class).
