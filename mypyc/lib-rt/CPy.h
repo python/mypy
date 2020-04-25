@@ -1381,7 +1381,7 @@ static tuple_T3OOO CPy_GetExcInfo(void) {
 #ifndef MYPYC_DECLARED_tuple_T4CIOO
 #define MYPYC_DECLARED_tuple_T4CIOO
 typedef struct tuple_T4CIOO {
-    char f0;  // Should continue
+    char f0;  // Should continue?
     CPyTagged f1;  // Last dict offset
     PyObject *f2;  // Next dictionary key
     PyObject *f3;  // Next dictionary value
@@ -1391,6 +1391,7 @@ static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 
 // Helper for fast dictionary iteration, returns a single tuple
 // instead of writing to multiple registers.
+// TODO: use separate helpers for keys/values to reduce refcount traffic?
 static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
     tuple_T4CIOO ret;
     Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);

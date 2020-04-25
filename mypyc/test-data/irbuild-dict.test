@@ -154,36 +154,35 @@ def increment(d):
     r0, r1 :: short_int
     r2 :: int
     r3 :: tuple[bool, int, object, object]
-    r4 :: bool
-    r5 :: int
-    r6 :: bool
-    r7 :: object
-    k, r8 :: str
-    r9 :: object
-    r10 :: short_int
-    r11, r12 :: object
-    r13 :: bool
+    r4 :: int
+    r5 :: bool
+    r6 :: object
+    k, r7 :: str
+    r8 :: object
+    r9 :: short_int
+    r10, r11 :: object
+    r12, r13 :: bool
 L0:
     r0 = 0
     r1 = r0
     r2 = len d :: dict
 L1:
     r3 = next d, offset=r1 :: dict
-    r4 = r3[0]
-    r5 = r3[1]
-    r1 = r5
-    if r4 goto L2 else goto L4 :: bool
+    r4 = r3[1]
+    r1 = r4
+    r5 = r3[0]
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r6 = assert size(d) == r2
-    r7 = r3[2]
-    r8 = cast(str, r7)
-    k = r8
-    r9 = d[k] :: dict
-    r10 = 1
-    r11 = box(short_int, r10)
-    r12 = r9 += r11
-    r13 = d.__setitem__(k, r12) :: dict
+    r6 = r3[2]
+    r7 = cast(str, r6)
+    k = r7
+    r8 = d[k] :: dict
+    r9 = 1
+    r10 = box(short_int, r9)
+    r11 = r8 += r10
+    r12 = d.__setitem__(k, r11) :: dict
 L3:
+    r13 = assert size(d) == r2
     goto L1
 L4:
     return d
@@ -229,25 +228,23 @@ def print_dict_methods(d1, d2):
     r0, r1 :: short_int
     r2 :: int
     r3 :: tuple[bool, int, object, object]
-    r4 :: bool
-    r5 :: int
-    r6 :: bool
-    r7 :: object
-    v, r8 :: int
-    r9 :: object
-    r10 :: bool
-    r11 :: None
+    r4 :: int
+    r5 :: bool
+    r6 :: object
+    v, r7 :: int
+    r8 :: object
+    r9 :: bool
+    r10 :: None
+    r11 :: bool
     r12, r13 :: short_int
     r14 :: int
     r15 :: tuple[bool, int, object, object]
-    r16 :: bool
-    r17 :: int
-    r18 :: bool
-    k :: int
-    r19, r20 :: object
-    r21, r22 :: int
-    r23, r24, r25, r26, r27 :: object
-    r28 :: bool
+    r16 :: int
+    r17 :: bool
+    r18, r19 :: object
+    r20, r21, k :: int
+    r22, r23, r24, r25, r26 :: object
+    r27, r28 :: bool
     r29 :: None
 L0:
     r0 = 0
@@ -255,23 +252,23 @@ L0:
     r2 = len d1 :: dict
 L1:
     r3 = next d1, offset=r1 :: dict
-    r4 = r3[0]
-    r5 = r3[1]
-    r1 = r5
-    if r4 goto L2 else goto L6 :: bool
+    r4 = r3[1]
+    r1 = r4
+    r5 = r3[0]
+    if r5 goto L2 else goto L6 :: bool
 L2:
-    r6 = assert size(d1) == r2
-    r7 = r3[3]
-    r8 = unbox(int, r7)
-    v = r8
-    r9 = box(int, v)
-    r10 = r9 in d2 :: dict
-    if r10 goto L3 else goto L4 :: bool
+    r6 = r3[3]
+    r7 = unbox(int, r6)
+    v = r7
+    r8 = box(int, v)
+    r9 = r8 in d2 :: dict
+    if r9 goto L3 else goto L4 :: bool
 L3:
-    r11 = None
-    return r11
+    r10 = None
+    return r10
 L4:
 L5:
+    r11 = assert size(d1) == r2
     goto L1
 L6:
     r12 = 0
@@ -279,25 +276,25 @@ L6:
     r14 = len d2 :: dict
 L7:
     r15 = next d2, offset=r13 :: dict
-    r16 = r15[0]
-    r17 = r15[1]
-    r13 = r17
-    if r16 goto L8 else goto L10 :: bool
+    r16 = r15[1]
+    r13 = r16
+    r17 = r15[0]
+    if r17 goto L8 else goto L10 :: bool
 L8:
-    r18 = assert size(d2) == r14
-    r19 = r15[2]
-    r20 = r15[3]
+    r18 = r15[2]
+    r19 = r15[3]
+    r20 = unbox(int, r18)
     r21 = unbox(int, r19)
-    r22 = unbox(int, r20)
-    k = r21
-    v = r22
-    r23 = box(int, k)
-    r24 = d2[r23] :: dict
-    r25 = box(int, v)
-    r26 = r24 += r25
-    r27 = box(int, k)
-    r28 = d2.__setitem__(r27, r26) :: dict
+    k = r20
+    v = r21
+    r22 = box(int, k)
+    r23 = d2[r22] :: dict
+    r24 = box(int, v)
+    r25 = r23 += r24
+    r26 = box(int, k)
+    r27 = d2.__setitem__(r26, r25) :: dict
 L9:
+    r28 = assert size(d2) == r14
     goto L7
 L10:
     r29 = None

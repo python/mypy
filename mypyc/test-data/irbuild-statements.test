@@ -299,13 +299,13 @@ def f(d):
     r0, r1 :: short_int
     r2 :: int
     r3 :: tuple[bool, int, object, object]
-    r4 :: bool
-    r5 :: int
-    r6 :: bool
-    r7 :: object
-    key, r8 :: int
-    r9, r10 :: object
-    r11 :: int
+    r4 :: int
+    r5 :: bool
+    r6 :: object
+    key, r7 :: int
+    r8, r9 :: object
+    r10 :: int
+    r11 :: bool
     r12 :: None
 L0:
     r0 = 0
@@ -313,19 +313,19 @@ L0:
     r2 = len d :: dict
 L1:
     r3 = next d, offset=r1 :: dict
-    r4 = r3[0]
-    r5 = r3[1]
-    r1 = r5
-    if r4 goto L2 else goto L4 :: bool
+    r4 = r3[1]
+    r1 = r4
+    r5 = r3[0]
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r6 = assert size(d) == r2
-    r7 = r3[2]
-    r8 = unbox(int, r7)
-    key = r8
-    r9 = box(int, key)
-    r10 = d[r9] :: dict
-    r11 = unbox(int, r10)
+    r6 = r3[2]
+    r7 = unbox(int, r6)
+    key = r7
+    r8 = box(int, key)
+    r9 = d[r8] :: dict
+    r10 = unbox(int, r9)
 L3:
+    r11 = assert size(d) == r2
     goto L1
 L4:
     r12 = None
@@ -349,19 +349,19 @@ def sum_over_even_values(d):
     r1, r2 :: short_int
     r3 :: int
     r4 :: tuple[bool, int, object, object]
-    r5 :: bool
-    r6 :: int
-    r7 :: bool
-    r8 :: object
-    key, r9 :: int
-    r10, r11 :: object
-    r12 :: int
-    r13 :: short_int
-    r14 :: int
-    r15 :: short_int
-    r16 :: bool
-    r17, r18 :: object
-    r19, r20 :: int
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11 :: int
+    r12 :: short_int
+    r13 :: int
+    r14 :: short_int
+    r15 :: bool
+    r16, r17 :: object
+    r18, r19 :: int
+    r20 :: bool
 L0:
     r0 = 0
     s = r0
@@ -370,32 +370,32 @@ L0:
     r3 = len d :: dict
 L1:
     r4 = next d, offset=r2 :: dict
-    r5 = r4[0]
-    r6 = r4[1]
-    r2 = r6
-    if r5 goto L2 else goto L6 :: bool
+    r5 = r4[1]
+    r2 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L6 :: bool
 L2:
-    r7 = assert size(d) == r3
-    r8 = r4[2]
-    r9 = unbox(int, r8)
-    key = r9
-    r10 = box(int, key)
-    r11 = d[r10] :: dict
-    r12 = unbox(int, r11)
-    r13 = 2
-    r14 = r12 % r13 :: int
-    r15 = 0
-    r16 = r14 != r15 :: int
-    if r16 goto L3 else goto L4 :: bool
+    r7 = r4[2]
+    r8 = unbox(int, r7)
+    key = r8
+    r9 = box(int, key)
+    r10 = d[r9] :: dict
+    r11 = unbox(int, r10)
+    r12 = 2
+    r13 = r11 % r12 :: int
+    r14 = 0
+    r15 = r13 != r14 :: int
+    if r15 goto L3 else goto L4 :: bool
 L3:
     goto L5
 L4:
-    r17 = box(int, key)
-    r18 = d[r17] :: dict
-    r19 = unbox(int, r18)
-    r20 = s + r19 :: int
-    s = r20
+    r16 = box(int, key)
+    r17 = d[r16] :: dict
+    r18 = unbox(int, r17)
+    r19 = s + r18 :: int
+    s = r19
 L5:
+    r20 = assert size(d) == r3
     goto L1
 L6:
     return s

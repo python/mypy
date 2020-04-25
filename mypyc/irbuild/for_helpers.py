@@ -7,20 +7,23 @@ such special case.
 
 from typing import Union, List, Optional, Tuple, Callable, Type
 
-from mypy.nodes import Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
+from mypy.nodes import (
+    Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
+)
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget,
-    TupleGet, AssignmentTargetTuple, TupleSet)
+    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget, TupleGet,
+    AssignmentTargetTuple, TupleSet
+)
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple, is_dict_rprimitive)
-from mypyc.primitives.dict_ops import dict_next_rtuple, dict_next_pair_op, dict_check_size_op
+    RTuple, is_dict_rprimitive
+)
+from mypyc.primitives.dict_ops import dict_next_pair_op, dict_check_size_op
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.primitives.tuple_ops import new_tuple_op
 
 GenFunc = Callable[[], None]
 
@@ -246,7 +249,7 @@ def make_for_loop_generator(builder: IRBuilder,
     if (isinstance(expr, CallExpr)
             and isinstance(expr.callee, MemberExpr)
             and not expr.args):
-        # Special cases for dictionary iterator methods.
+        # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
         if is_dict_rprimitive(rtype) and expr.callee.name in ('keys', 'values', 'items'):
             expr_reg = builder.accept(expr.callee.expr)
@@ -323,6 +326,7 @@ class ForGenerator:
         """Generate post-loop cleanup (if needed)."""
 
     def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
+        """A helper to get collection length, used by several subclasses."""
         return self.builder.builder.builtin_call(
             [self.builder.read(expr, self.line)],
             'builtins.len',
@@ -461,49 +465,96 @@ class ForSequence(ForGenerator):
              builder.add(LoadInt(step))], line), line)
 
 
-class ForDictionaryItems(ForGenerator):
-    # TODO: should we use dict iteration helpers for subclasses?
+class ForDictionaryCommon(ForGenerator):
+    """Generate optimized IR for a for loop over dictionary keys/values.
+
+    The logic is pretty straightforward, we use PyDict_Next() API wrapped in
+    a tuple, so that we can modify only a single register. The layout of the tuple:
+      * f0: are there more items (bool)
+      * f1: current offset (int)
+      * f2: next key (object)
+      * f3: next value (object)
+    For more info see https://docs.python.org/3/c-api/dict.html#c.PyDict_Next.
+
+    TODO: is it safe to use dict iteration helpers for subclasses?
+    """
     def init(self, expr_reg: Value, target_type: RType) -> None:
         self.target_type = target_type
+        # We add some variables to environment class, so they can be read across yield.
         self.expr_target = self.builder.maybe_spill(expr_reg)
         offset_reg = self.builder.add(LoadInt(0))
         self.offset_target = self.builder.maybe_spill_assignable(offset_reg)
         self.size = self.builder.maybe_spill(self.load_len(self.expr_target))
 
     def gen_condition(self) -> None:
+        """Get next key/value pair, set new offset, and check if we should continue."""
         builder = self.builder
         line = self.line
         self.next_tuple = self.builder.primitive_op(
             dict_next_pair_op, [builder.read(self.expr_target, line),
                                 builder.read(self.offset_target, line)], line)
-        should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
+
+        # Do this here instead of in gen_step() to minimize variables in environment.
         new_offset = builder.add(TupleGet(self.next_tuple, 1, line))
         builder.assign(self.offset_target, new_offset, line)
+
+        should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
         builder.add(
             Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
         )
 
-    def check_size(self) -> None:
+    def gen_step(self) -> None:
+        """Check that dictionary didn't change size during iteration.
+
+        Raise RuntimeError if it is not the case to match CPython behavior.
+        """
         builder = self.builder
         line = self.line
+        # Technically, we don't need a new primitive for this, but it is simpler.
         builder.primitive_op(dict_check_size_op,
                              [builder.read(self.expr_target, line),
                               builder.read(self.size, line)], line)
 
+
+class ForDictionaryKeys(ForDictionaryCommon):
+    """Generate optimized IR for a for loop over dictionary keys."""
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line
-        self.check_size()
 
-        target = builder.get_assignment_target(self.index)
+        # Key is stored at the third place in the tuple.
+        key = builder.add(TupleGet(self.next_tuple, 2, line))
+        builder.assign(builder.get_assignment_target(self.index),
+                       builder.coerce(key, self.target_type, line), line)
+
+
+class ForDictionaryValues(ForDictionaryCommon):
+    """Generate optimized IR for a for loop over dictionary values."""
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+
+        # Value is stored at the third place in the tuple.
+        value = builder.add(TupleGet(self.next_tuple, 3, line))
+        builder.assign(builder.get_assignment_target(self.index),
+                       builder.coerce(value, self.target_type, line), line)
+
+
+class ForDictionaryItems(ForDictionaryCommon):
+    """Generate optimized IR for a for loop over dictionary items."""
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+
         key = builder.add(TupleGet(self.next_tuple, 2, line))
         value = builder.add(TupleGet(self.next_tuple, 3, line))
-        assert isinstance(self.target_type, RTuple)
 
         # Coerce just in case e.g. key is itself a tuple to be unpacked.
+        assert isinstance(self.target_type, RTuple)
         key = builder.coerce(key, self.target_type.types[0], line)
         value = builder.coerce(value, self.target_type.types[1], line)
 
+        target = builder.get_assignment_target(self.index)
         if isinstance(target, AssignmentTargetTuple):
             # Simpler code for common case: for k, v in d.items().
             if len(target.items) != 2:
@@ -513,28 +564,6 @@ class ForDictionaryItems(ForGenerator):
         else:
             rvalue = builder.add(TupleSet([key, value], line))
             builder.assign(target, rvalue, line)
-
-
-class ForDictionaryKeys(ForDictionaryItems):
-    def begin_body(self) -> None:
-        builder = self.builder
-        line = self.line
-        self.check_size()
-
-        key = builder.add(TupleGet(self.next_tuple, 2, line))
-        builder.assign(builder.get_assignment_target(self.index),
-                       builder.coerce(key, self.target_type, line), line)
-
-
-class ForDictionaryValues(ForDictionaryItems):
-    def begin_body(self) -> None:
-        builder = self.builder
-        line = self.line
-        self.check_size()
-
-        value = builder.add(TupleGet(self.next_tuple, 3, line))
-        builder.assign(builder.get_assignment_target(self.index),
-                       builder.coerce(value, self.target_type, line), line)
 
 
 class ForRange(ForGenerator):
