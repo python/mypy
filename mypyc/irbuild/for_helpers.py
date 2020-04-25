@@ -14,7 +14,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
     RTuple, is_dict_rprimitive)
-from mypyc.primitives.dict_ops import dict_next_rtuple, dict_next_pair_op
+from mypyc.primitives.dict_ops import dict_next_rtuple, dict_next_pair_op, dict_check_size_op
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
@@ -249,7 +249,7 @@ def make_for_loop_generator(builder: IRBuilder,
         # Special cases for dictionary iterator methods.
         rtype = builder.node_type(expr.callee.expr)
         if is_dict_rprimitive(rtype) and expr.callee.name in ('keys', 'values', 'items'):
-            expr_reg = builder.accept(expr)
+            expr_reg = builder.accept(expr.callee.expr)
             for_dict_type = None  # type: Optional[Type[ForGenerator]]
             if expr.callee.name == 'keys':
                 target_type = builder.get_dict_key_type(expr.callee.expr)
@@ -321,6 +321,13 @@ class ForGenerator:
 
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
+
+    def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
+        return self.builder.builder.builtin_call(
+            [self.builder.read(expr, self.line)],
+            'builtins.len',
+            self.line,
+        )
 
 
 class ForIterable(ForGenerator):
@@ -401,16 +408,10 @@ class ForSequence(ForGenerator):
         if not reverse:
             index_reg = builder.add(LoadInt(0))
         else:
-            index_reg = builder.binary_op(self.load_len(), builder.add(LoadInt(1)), '-', self.line)
+            index_reg = builder.binary_op(self.load_len(self.expr_target),
+                                          builder.add(LoadInt(1)), '-', self.line)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
-
-    def load_len(self) -> Value:
-        return self.builder.builder.builtin_call(
-            [self.builder.read(self.expr_target, self.line)],
-            'builtins.len',
-            self.line,
-        )
 
     def gen_condition(self) -> None:
         builder = self.builder
@@ -428,7 +429,7 @@ class ForSequence(ForGenerator):
             builder.activate_block(second_check)
         # For compatibility with python semantics we recalculate the length
         # at every iteration.
-        len_reg = self.load_len()
+        len_reg = self.load_len(self.expr_target)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, '<', line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
@@ -462,12 +463,12 @@ class ForSequence(ForGenerator):
 
 class ForDictionaryItems(ForGenerator):
     # TODO: should we use dict iteration helpers for subclasses?
-    # This may be unsafe.
     def init(self, expr_reg: Value, target_type: RType) -> None:
         self.target_type = target_type
         self.expr_target = self.builder.maybe_spill(expr_reg)
         offset_reg = self.builder.add(LoadInt(0))
         self.offset_target = self.builder.maybe_spill_assignable(offset_reg)
+        self.size = self.builder.maybe_spill_assignable(self.load_len(self.expr_target))
 
     def gen_condition(self) -> None:
         builder = self.builder
@@ -482,20 +483,29 @@ class ForDictionaryItems(ForGenerator):
             Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
         )
 
+    def check_size(self) -> None:
+        builder = self.builder
+        line = self.line
+        builder.primitive_op(dict_check_size_op,
+                             [builder.read(self.expr_target, line),
+                              builder.read(self.size, line)], line)
+
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line
+        self.check_size()
+
         target = builder.get_assignment_target(self.index)
         key = builder.add(TupleGet(self.next_tuple, 2, line))
         value = builder.add(TupleGet(self.next_tuple, 3, line))
         assert isinstance(self.target_type, RTuple)
 
-        # In case e.g. key is itself a tuple to be unpacked.
+        # Coerce just in case e.g. key is itself a tuple to be unpacked.
         key = builder.coerce(key, self.target_type.types[0], line)
         value = builder.coerce(value, self.target_type.types[1], line)
 
         if isinstance(target, AssignmentTargetTuple):
-            # Fast track for common case: for k, v in d.items().
+            # Simpler code for common case: for k, v in d.items().
             if len(target.items) != 2:
                 builder.error("Expected a pair for dict item iteration", line)
             builder.assign(target.items[0], key, line)
@@ -509,6 +519,8 @@ class ForDictionaryKeys(ForDictionaryItems):
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line
+        self.check_size()
+
         key = builder.add(TupleGet(self.next_tuple, 2, line))
         builder.assign(builder.get_assignment_target(self.index),
                        builder.coerce(key, self.target_type, line), line)
@@ -518,6 +530,8 @@ class ForDictionaryValues(ForDictionaryItems):
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line
+        self.check_size()
+
         value = builder.add(TupleGet(self.next_tuple, 3, line))
         builder.assign(builder.get_assignment_target(self.index),
                        builder.coerce(value, self.target_type, line), line)

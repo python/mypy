@@ -1391,8 +1391,6 @@ static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 
 // Helper for fast dictionary iteration, returns a single tuple
 // instead of writing to multiple registers.
-// TODO: if the dictionary changes keys during iteration this segfaults.
-// We should somehow raise RuntimeError, like CPython does.
 static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
     tuple_T4CIOO ret;
     Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
@@ -1408,6 +1406,17 @@ static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
     Py_INCREF(ret.f2);
     Py_INCREF(ret.f3);
     return ret;
+}
+
+// Check that dictionary didn't change size during iteration.
+static char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
+    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
+    Py_ssize_t dict_size = PyDict_Size(dict);
+    if (py_size != dict_size) {
+        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
+        return 0;
+    }
+    return 1;
 }
 
 void CPy_Init(void);

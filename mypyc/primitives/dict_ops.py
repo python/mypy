@@ -146,5 +146,14 @@ dict_next_pair_op = custom_op(
     result_type=dict_next_rtuple,
     error_kind=ERR_NEVER,
     emit=call_emit('CPyDict_Next'),
-    format_str='{dest} = dict_next({colon_args})',
+    format_str='{dest} = next {args[0]}, offset={args[1]} :: dict',
+)
+
+# check that len(dict) == const during iteration
+dict_check_size_op = custom_op(
+    arg_types=[dict_rprimitive, int_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    emit=call_emit('CPyDict_CheckSize'),
+    format_str='{dest} = assert size({args[0]}) == {args[1]}',
 )
