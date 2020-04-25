@@ -5,7 +5,8 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
-from typing import Union, List, Optional, Tuple, Callable, Type
+from typing import Union, List, Optional, Tuple, Callable
+from typing_extensions import Type
 
 from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
