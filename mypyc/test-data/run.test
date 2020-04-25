@@ -1067,11 +1067,9 @@ assert u(10) == 10
 
 [case testDictIterationMethods]
 from typing import Dict
-def print_dict_methods(
-                       d1: Dict[int, int],
+def print_dict_methods(d1: Dict[int, int],
                        d2: Dict[int, int],
-                       d3: Dict[int, int]
-                       ) -> None:
+                       d3: Dict[int, int]) -> None:
     for k in d1.keys():
         print(k)
     for k, v in d2.items():

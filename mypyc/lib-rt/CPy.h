@@ -1399,6 +1399,7 @@ static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
         ret.f1 = CPyTagged_FromSsize_t(py_offset);
     } else {
         // Set key and value to None, so mypyc can manage refcounts.
+        ret.f1 = 0;
         ret.f2 = Py_None;
         ret.f3 = Py_None;
     }
