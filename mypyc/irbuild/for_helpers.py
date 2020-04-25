@@ -5,15 +5,15 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
-from typing import Union, List, Optional, Tuple, Callable
+from typing import Union, List, Optional, Tuple, Callable, Type
 
-from mypy.nodes import Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS
+from mypy.nodes import Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
 from mypyc.ir.ops import (
     Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget,
     TupleGet, AssignmentTargetTuple, TupleSet)
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple)
+    RTuple, is_dict_rprimitive)
 from mypyc.primitives.dict_ops import dict_next_rtuple, dict_next_pair_op
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
@@ -171,6 +171,15 @@ def make_for_loop_generator(builder: IRBuilder,
         for_list.init(expr_reg, target_type, reverse=False)
         return for_list
 
+    if is_dict_rprimitive(rtyp):
+        # Special case "for k in <dict>".
+        expr_reg = builder.accept(expr)
+        target_type = builder.get_dict_key_type(expr)
+
+        for_dict = ForDictionaryKeys(builder, index, body_block, loop_exit, line, nested)
+        for_dict.init(expr_reg, target_type)
+        return for_dict
+
     if (isinstance(expr, CallExpr)
             and isinstance(expr.callee, RefExpr)):
         if (expr.callee.fullname == 'builtins.range'
@@ -234,6 +243,26 @@ def make_for_loop_generator(builder: IRBuilder,
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
             return for_list
+    if (isinstance(expr, CallExpr)
+            and isinstance(expr.callee, MemberExpr)
+            and not expr.args):
+        # Special cases for dictionary iterator methods.
+        rtype = builder.node_type(expr.callee.expr)
+        if is_dict_rprimitive(rtype) and expr.callee.name in ('keys', 'values', 'items'):
+            expr_reg = builder.accept(expr)
+            for_dict_type = None  # type: Optional[Type[ForGenerator]]
+            if expr.callee.name == 'keys':
+                target_type = builder.get_dict_key_type(expr.callee.expr)
+                for_dict_type = ForDictionaryKeys
+            elif expr.callee.name == 'values':
+                target_type = builder.get_dict_value_type(expr.callee.expr)
+                for_dict_type = ForDictionaryValues
+            else:
+                target_type = builder.get_dict_item_type(expr.callee.expr)
+                for_dict_type = ForDictionaryItems
+            for_dict_gen = for_dict_type(builder, index, body_block, loop_exit, line, nested)
+            for_dict_gen.init(expr_reg, target_type)
+            return for_dict_gen
 
     # Default to a generic for loop.
     expr_reg = builder.accept(expr)
@@ -432,6 +461,8 @@ class ForSequence(ForGenerator):
 
 
 class ForDictionaryItems(ForGenerator):
+    # TODO: should we use dict iteration helpers for subclasses?
+    # This may be unsafe.
     def init(self, expr_reg: Value, target_type: RType) -> None:
         self.target_type = target_type
         self.expr_target = self.builder.maybe_spill(expr_reg)
@@ -455,10 +486,11 @@ class ForDictionaryItems(ForGenerator):
         target = builder.get_assignment_target(self.index)
         key = builder.add(TupleGet(self.next_tuple, 2, line))
         value = builder.add(TupleGet(self.next_tuple, 3, line))
-        if isinstance(self.target_type, RTuple):
-            # In case key or value are themselves tuples to be unpacked.
-            key = builder.coerce(key, self.target_type.types[0], line)
-            value = builder.coerce(value, self.target_type.types[1], line)
+        assert isinstance(self.target_type, RTuple)
+
+        # In case e.g. key is itself a tuple to be unpacked.
+        key = builder.coerce(key, self.target_type.types[0], line)
+        value = builder.coerce(value, self.target_type.types[1], line)
 
         if isinstance(target, AssignmentTargetTuple):
             # Fast track for common case: for k, v in d.items().
@@ -467,14 +499,7 @@ class ForDictionaryItems(ForGenerator):
             builder.assign(target.items[0], key, line)
             builder.assign(target.items[1], value, line)
         else:
-            if isinstance(self.target_type, RTuple):
-                # Less common: for item in d.items()
-                if len(self.target_type.types) != 2:
-                    builder.error("Unexpected type for dict item iteration", line)
-                rvalue = builder.add(TupleSet([key, value], line))
-            else:
-                # Slow case: target is Any or similar.
-                rvalue = builder.primitive_op(new_tuple_op, [key, value], line)
+            rvalue = builder.add(TupleSet([key, value], line))
             builder.assign(target, rvalue, line)
 
     def gen_step(self) -> None:

@@ -604,6 +604,23 @@ class IRBuilder:
         else:
             return self.type_to_rtype(target_type.args[0])
 
+    def get_dict_key_type(self, expr: Expression) -> RType:
+        target_type = get_proper_type(self.types[expr])
+        assert isinstance(target_type, Instance)
+        # TODO: be careful with subclasses.
+        return self.type_to_rtype(target_type.args[0])
+
+    def get_dict_value_type(self, expr: Expression) -> RType:
+        target_type = get_proper_type(self.types[expr])
+        assert isinstance(target_type, Instance)
+        # TODO: be careful with subclasses.
+        return self.type_to_rtype(target_type.args[1])
+
+    def get_dict_item_type(self, expr: Expression) -> RType:
+        key_type = self.get_dict_key_type(expr)
+        value_type = self.get_dict_value_type(expr)
+        return RTuple([key_type, value_type])
+
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""
         # This logic is copied from mypy's TypeChecker.analyze_iterable_item_type.
