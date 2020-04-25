@@ -9,17 +9,18 @@ from typing import Union, List, Optional, Tuple, Callable
 
 from mypy.nodes import Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget
-)
+    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget,
+    TupleGet, AssignmentTargetTuple, TupleSet)
 from mypyc.ir.rtypes import (
-    RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive
-)
+    RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
+    RTuple)
+from mypyc.primitives.dict_ops import dict_next_rtuple, dict_next_pair_op
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
-
+from mypyc.primitives.tuple_ops import new_tuple_op
 
 GenFunc = Callable[[], None]
 
@@ -428,6 +429,77 @@ class ForSequence(ForGenerator):
             unsafe_short_add,
             [builder.read(self.index_target, line),
              builder.add(LoadInt(step))], line), line)
+
+
+class ForDictionaryItems(ForGenerator):
+    def init(self, expr_reg: Value, target_type: RType) -> None:
+        self.target_type = target_type
+        self.expr_target = self.builder.maybe_spill(expr_reg)
+        offset = self.builder.add(LoadInt(0))
+        self.offset_target = self.builder.maybe_spill_assignable(offset)
+
+    def gen_condition(self) -> None:
+        builder = self.builder
+        line = self.line
+        self.next_tuple = self.builder.primitive_op(
+            dict_next_pair_op, [builder.read(self.expr_target, line),
+                                builder.read(self.offset_target, line)], line)
+        should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
+        builder.add(
+            Branch(should_continue, self.loop_exit, self.body_block, Branch.BOOL_EXPR)
+        )
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+        target = builder.get_assignment_target(self.index)
+        key = builder.add(TupleGet(self.next_tuple, 2, line))
+        value = builder.add(TupleGet(self.next_tuple, 3, line))
+        if isinstance(self.target_type, RTuple):
+            # In case key or value are themselves tuples to be unpacked.
+            key = builder.coerce(key, self.target_type.types[0], line)
+            value = builder.coerce(value, self.target_type.types[1], line)
+
+        if isinstance(target, AssignmentTargetTuple):
+            # Fast track for common case: for k, v in d.items().
+            if len(target.items) != 2:
+                builder.error("Expected a pair for dict item iteration", line)
+            builder.assign(target.items[0], key, line)
+            builder.assign(target.items[1], value, line)
+        else:
+            if isinstance(self.target_type, RTuple):
+                # Less common: for item in d.items()
+                if len(self.target_type.types) != 2:
+                    builder.error("Unexpected type for dict item iteration", line)
+                rvalue = builder.add(TupleSet([key, value], line))
+            else:
+                # Slow case: target is Any or similar.
+                rvalue = builder.primitive_op(new_tuple_op, [key, value], line)
+            builder.assign(target, rvalue, line)
+
+    def gen_step(self) -> None:
+        builder = self.builder
+        line = self.line
+        new_offset = builder.add(TupleGet(self.next_tuple, 1, line))
+        builder.assign(self.offset_target, new_offset, line)
+
+
+class ForDictionaryKeys(ForDictionaryItems):
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+        key = builder.add(TupleGet(self.next_tuple, 2, line))
+        builder.assign(builder.get_assignment_target(self.index),
+                       builder.coerce(key, self.target_type, line), line)
+
+
+class ForDictionaryValues(ForDictionaryItems):
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+        value = builder.add(TupleGet(self.next_tuple, 3, line))
+        builder.assign(builder.get_assignment_target(self.index),
+                       builder.coerce(value, self.target_type, line), line)
 
 
 class ForRange(ForGenerator):
