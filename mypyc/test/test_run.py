@@ -204,7 +204,7 @@ class TestRun(MypycDataSuite):
         try:
             compiler_options = CompilerOptions(
                 multi_file=self.multi_file, separate=self.separate,
-                ordered_dicts=sys.version_info[:2] >= (3,6)
+                ordered_dicts=sys.version_info[:2] >= (3, 6)
             )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
