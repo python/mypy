@@ -12,12 +12,12 @@ This section documents notable differences from Python. We discuss
 many of them also elsewhere, but it's convenient to have them here in
 one place.
 
-Running compiled code as module
--------------------------------
+Running compiled modules
+------------------------
 
-You can't use the CPython ``-m <module>`` command-line option to run compiled modules.
-Use ``python3 -c "import <module>"`` instead, or write a wrapper script that imports
-your module.
+You can't use ``python3 <module>.py`` or ``python3 -m <module>``
+to run compiled modules. Use ``python3 -c "import <module>"`` instead,
+or write a wrapper script that imports your module.
 
 As a side effect, you can't rely on checking the ``__name__`` attribute in compiled
 code, like this::
@@ -250,7 +250,7 @@ Generator expressions
 
 Generator expressions are not supported. To make it easier to compile
 existing code, they are implicitly replaced with list comprehensions.
-*This is not generally safe.*
+*This does not always produce the same behavior.*
 
 To work around this limitation, you can usually use a generator
 function instead.  You can sometimes replace the generator expression
@@ -259,7 +259,8 @@ with an explicit list comprehension.
 Descriptors
 ***********
 
-Descriptors can't be used in native classes.
+Native classes can't contain arbitrary descriptors. Properties, static
+methods and class methods are supported.
 
 Defining protocols
 ******************
