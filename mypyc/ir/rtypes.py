@@ -401,8 +401,11 @@ exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 
 # Dictionary iterator tuple: (should continue, internal offset, key, value)
 # See mypyc.irbuild.for_helpers.ForDictionaryCommon for more details.
-dict_next_rtuple = RTuple(
+dict_next_rtuple_pair = RTuple(
     [bool_rprimitive, int_rprimitive, object_rprimitive, object_rprimitive]
+)
+dict_next_rtuple_single = RTuple(
+    [bool_rprimitive, int_rprimitive, object_rprimitive]
 )
 
 

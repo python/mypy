@@ -153,7 +153,7 @@ def increment(d):
     d :: dict
     r0, r1 :: short_int
     r2 :: int
-    r3 :: tuple[bool, int, object, object]
+    r3 :: tuple[bool, int, object]
     r4 :: int
     r5 :: bool
     r6 :: object
@@ -167,7 +167,7 @@ L0:
     r1 = r0
     r2 = len d :: dict
 L1:
-    r3 = next d, offset=r1 :: dict
+    r3 = next_key d, offset=r1
     r4 = r3[1]
     r1 = r4
     r5 = r3[0]
@@ -227,7 +227,7 @@ def print_dict_methods(d1, d2):
     d1, d2 :: dict
     r0, r1 :: short_int
     r2 :: int
-    r3 :: tuple[bool, int, object, object]
+    r3 :: tuple[bool, int, object]
     r4 :: int
     r5 :: bool
     r6 :: object
@@ -251,13 +251,13 @@ L0:
     r1 = r0
     r2 = len d1 :: dict
 L1:
-    r3 = next d1, offset=r1 :: dict
+    r3 = next_value d1, offset=r1
     r4 = r3[1]
     r1 = r4
     r5 = r3[0]
     if r5 goto L2 else goto L6 :: bool
 L2:
-    r6 = r3[3]
+    r6 = r3[2]
     r7 = unbox(int, r6)
     v = r7
     r8 = box(int, v)
@@ -275,7 +275,7 @@ L6:
     r13 = r12
     r14 = len d2 :: dict
 L7:
-    r15 = next d2, offset=r13 :: dict
+    r15 = next_item d2, offset=r13
     r16 = r15[1]
     r13 = r16
     r17 = r15[0]

@@ -6,20 +6,22 @@ such special case.
 """
 
 from typing import Union, List, Optional, Tuple, Callable
-from typing_extensions import Type
+from typing_extensions import Type, ClassVar
 
 from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
 )
 from mypyc.ir.ops import (
     Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget, TupleGet,
-    AssignmentTargetTuple, TupleSet
+    AssignmentTargetTuple, TupleSet, OpDescription
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
     RTuple, is_dict_rprimitive
 )
-from mypyc.primitives.dict_ops import dict_next_pair_op, dict_check_size_op
+from mypyc.primitives.dict_ops import (
+    dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op
+)
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
@@ -479,6 +481,8 @@ class ForDictionaryCommon(ForGenerator):
 
     TODO: is it safe to use dict iteration helpers for subclasses?
     """
+    dict_next_op = None  # type: ClassVar[OpDescription]
+
     def init(self, expr_reg: Value, target_type: RType) -> None:
         self.target_type = target_type
         # We add some variables to environment class, so they can be read across yield.
@@ -492,7 +496,7 @@ class ForDictionaryCommon(ForGenerator):
         builder = self.builder
         line = self.line
         self.next_tuple = self.builder.primitive_op(
-            dict_next_pair_op, [builder.read(self.expr_target, line),
+            self.dict_next_op, [builder.read(self.expr_target, line),
                                 builder.read(self.offset_target, line)], line)
 
         # Do this here instead of in gen_step() to minimize variables in environment.
@@ -519,6 +523,8 @@ class ForDictionaryCommon(ForGenerator):
 
 class ForDictionaryKeys(ForDictionaryCommon):
     """Generate optimized IR for a for loop over dictionary keys."""
+    dict_next_op = dict_next_key_op
+
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line
@@ -531,18 +537,22 @@ class ForDictionaryKeys(ForDictionaryCommon):
 
 class ForDictionaryValues(ForDictionaryCommon):
     """Generate optimized IR for a for loop over dictionary values."""
+    dict_next_op = dict_next_value_op
+
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line
 
         # Value is stored at the third place in the tuple.
-        value = builder.add(TupleGet(self.next_tuple, 3, line))
+        value = builder.add(TupleGet(self.next_tuple, 2, line))
         builder.assign(builder.get_assignment_target(self.index),
                        builder.coerce(value, self.target_type, line), line)
 
 
 class ForDictionaryItems(ForDictionaryCommon):
     """Generate optimized IR for a for loop over dictionary items."""
+    dict_next_op = dict_next_item_op
+
     def begin_body(self) -> None:
         builder = self.builder
         line = self.line

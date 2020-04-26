@@ -1378,6 +1378,17 @@ static tuple_T3OOO CPy_GetExcInfo(void) {
 }
 
 // Our return tuple wrapper for dictionary iteration helper.
+#ifndef MYPYC_DECLARED_tuple_T3CIO
+#define MYPYC_DECLARED_tuple_T3CIO
+typedef struct tuple_T3CIO {
+    char f0;  // Should continue?
+    CPyTagged f1;  // Last dict offset
+    PyObject *f2;  // Next dictionary key or value
+} tuple_T3CIO;
+static tuple_T3CIO tuple_undefined_T3CIO = { 2, CPY_INT_TAG, NULL };
+#endif
+
+// Same as above but for both key and value.
 #ifndef MYPYC_DECLARED_tuple_T4CIOO
 #define MYPYC_DECLARED_tuple_T4CIOO
 typedef struct tuple_T4CIOO {
@@ -1391,8 +1402,41 @@ static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 
 // Helper for fast dictionary iteration, returns a single tuple
 // instead of writing to multiple registers.
-// TODO: use separate helpers for keys/values to reduce refcount traffic?
-static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
+static inline tuple_T3CIO CPyDict_NextKey(PyObject *dict, CPyTagged offset) {
+    tuple_T3CIO ret;
+    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
+    PyObject *dummy;
+    ret.f0 = PyDict_Next(dict, &py_offset, &ret.f2, &dummy);
+    if (ret.f0) {
+        ret.f1 = CPyTagged_FromSsize_t(py_offset);
+    } else {
+        // Set key to None, so mypyc can manage refcounts.
+        ret.f1 = 0;
+        ret.f2 = Py_None;
+    }
+    // PyDict_Next() returns borrowed references.
+    Py_INCREF(ret.f2);
+    return ret;
+}
+
+static inline tuple_T3CIO CPyDict_NextValue(PyObject *dict, CPyTagged offset) {
+    tuple_T3CIO ret;
+    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
+    PyObject *dummy;
+    ret.f0 = PyDict_Next(dict, &py_offset, &dummy, &ret.f2);
+    if (ret.f0) {
+        ret.f1 = CPyTagged_FromSsize_t(py_offset);
+    } else {
+        // Set value to None, so mypyc can manage refcounts.
+        ret.f1 = 0;
+        ret.f2 = Py_None;
+    }
+    // PyDict_Next() returns borrowed references.
+    Py_INCREF(ret.f2);
+    return ret;
+}
+
+static inline tuple_T4CIOO CPyDict_NextItem(PyObject *dict, CPyTagged offset) {
     tuple_T4CIOO ret;
     Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
     ret.f0 = PyDict_Next(dict, &py_offset, &ret.f2, &ret.f3);
@@ -1411,7 +1455,7 @@ static tuple_T4CIOO CPyDict_Next(PyObject *dict, CPyTagged offset) {
 }
 
 // Check that dictionary didn't change size during iteration.
-static char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
+static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
     Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
     Py_ssize_t dict_size = PyDict_Size(dict);
     if (py_size != dict_size) {

@@ -5,7 +5,7 @@ from typing import List
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
-    dict_next_rtuple
+    dict_next_rtuple_single, dict_next_rtuple_pair
 )
 
 from mypyc.primitives.registry import (
@@ -141,12 +141,28 @@ func_op(name='builtins.len',
         emit=emit_len)
 
 # PyDict_Next() fast iteration
-dict_next_pair_op = custom_op(
+dict_next_key_op = custom_op(
     arg_types=[dict_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple,
+    result_type=dict_next_rtuple_single,
     error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_Next'),
-    format_str='{dest} = next {args[0]}, offset={args[1]} :: dict',
+    emit=call_emit('CPyDict_NextKey'),
+    format_str='{dest} = next_key {args[0]}, offset={args[1]}',
+)
+
+dict_next_value_op = custom_op(
+    arg_types=[dict_rprimitive, int_rprimitive],
+    result_type=dict_next_rtuple_single,
+    error_kind=ERR_NEVER,
+    emit=call_emit('CPyDict_NextValue'),
+    format_str='{dest} = next_value {args[0]}, offset={args[1]}',
+)
+
+dict_next_item_op = custom_op(
+    arg_types=[dict_rprimitive, int_rprimitive],
+    result_type=dict_next_rtuple_pair,
+    error_kind=ERR_NEVER,
+    emit=call_emit('CPyDict_NextItem'),
+    format_str='{dest} = next_item {args[0]}, offset={args[1]}',
 )
 
 # check that len(dict) == const during iteration

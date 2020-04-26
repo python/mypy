@@ -298,7 +298,7 @@ def f(d):
     d :: dict
     r0, r1 :: short_int
     r2 :: int
-    r3 :: tuple[bool, int, object, object]
+    r3 :: tuple[bool, int, object]
     r4 :: int
     r5 :: bool
     r6 :: object
@@ -312,7 +312,7 @@ L0:
     r1 = r0
     r2 = len d :: dict
 L1:
-    r3 = next d, offset=r1 :: dict
+    r3 = next_key d, offset=r1
     r4 = r3[1]
     r1 = r4
     r5 = r3[0]
@@ -348,7 +348,7 @@ def sum_over_even_values(d):
     s :: int
     r1, r2 :: short_int
     r3 :: int
-    r4 :: tuple[bool, int, object, object]
+    r4 :: tuple[bool, int, object]
     r5 :: int
     r6 :: bool
     r7 :: object
@@ -369,7 +369,7 @@ L0:
     r2 = r1
     r3 = len d :: dict
 L1:
-    r4 = next d, offset=r2 :: dict
+    r4 = next_key d, offset=r2
     r5 = r4[1]
     r2 = r5
     r6 = r4[0]
