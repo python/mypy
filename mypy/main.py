@@ -914,11 +914,9 @@ def process_options(args: List[str],
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
-        return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
-        return targets, options
     else:
         try:
             targets = create_source_list(special_opts.files, options, fscache)
@@ -927,7 +925,15 @@ def process_options(args: List[str],
         # exceptions of different types.
         except InvalidSourceList as e2:
             fail(str(e2), stderr)
-        return targets, options
+
+    ignored_modules = []
+    for mod, opts in options.per_module_options.items():
+        if opts.get('ignore_errors'):
+            ignored_modules.append(mod)
+
+    targets = [t for t in targets if not t.module.startswith(tuple(ignored_modules))]
+
+    return targets, options
 
 
 def process_package_roots(fscache: Optional[FileSystemCache],
