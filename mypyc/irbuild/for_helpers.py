@@ -5,8 +5,9 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
+import sys
 from typing import Union, List, Optional, Tuple, Callable
-from typing_extensions import Type, ClassVar
+from typing_extensions import Type, ClassVar, Final
 
 from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
@@ -27,6 +28,9 @@ from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
+
+# Unfortunately fast dict iteration breaks too many tests on Python 3.5.
+ORDERED_DICTS = sys.version_info[:2] >= (3, 6)  # type: Final
 
 GenFunc = Callable[[], None]
 
@@ -177,7 +181,7 @@ def make_for_loop_generator(builder: IRBuilder,
         for_list.init(expr_reg, target_type, reverse=False)
         return for_list
 
-    if is_dict_rprimitive(rtyp):
+    if is_dict_rprimitive(rtyp) and ORDERED_DICTS:
         # Special case "for k in <dict>".
         expr_reg = builder.accept(expr)
         target_type = builder.get_dict_key_type(expr)
@@ -254,7 +258,9 @@ def make_for_loop_generator(builder: IRBuilder,
             and not expr.args):
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
-        if is_dict_rprimitive(rtype) and expr.callee.name in ('keys', 'values', 'items'):
+        if (is_dict_rprimitive(rtype)
+                and ORDERED_DICTS
+                and expr.callee.name in ('keys', 'values', 'items')):
             expr_reg = builder.accept(expr.callee.expr)
             for_dict_type = None  # type: Optional[Type[ForGenerator]]
             if expr.callee.name == 'keys':

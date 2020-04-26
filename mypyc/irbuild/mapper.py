@@ -1,8 +1,6 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
-import sys
 from typing import Dict, Optional, Union
-from typing_extensions import Final
 from collections import OrderedDict
 
 from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ARG_STAR, ARG_STAR2
@@ -20,8 +18,6 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
-
-UNORDERED_DICTS = sys.version_info[:2] < (3, 6)  # type: Final
 
 
 class Mapper:
@@ -65,9 +61,6 @@ class Mapper:
             # specifically support them, so make sure that dict operations
             # get optimized on them.
             elif any(cls.fullname == 'builtins.dict' for cls in typ.type.mro):
-                if UNORDERED_DICTS and typ.type.fullname == 'collections.OrderedDict':
-                    # Unfortunately fast dict iteration breaks order on Python 3.5.
-                    return object_rprimitive
                 return dict_rprimitive
             elif typ.type.fullname == 'builtins.set':
                 return set_rprimitive
