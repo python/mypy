@@ -280,14 +280,16 @@ representation (same as CPython).
 
 Value types have a few differences from heap types:
 
-* Object identity is not predictable (this includes ``is`` checks).
-
 * When an instance of a value type is used in a context that expects a
   heap value, for example as a list item, it will transparently switch
   to a heap-based representation (boxing) as needed.
 
 * Similarly, mypyc transparently changes from a heap-based
   representation to a value representation (unboxing).
+
+* Object identity of integers and tuples is not preserved. You should
+  use ``==`` instead of ``is`` if you are comparing two integers or
+  fixed-length tuples.
 
 * When an instance of a subclass of a value type is converted to the
   base type, it is implicitly converted to an instance of the target
@@ -300,13 +302,13 @@ happens in mypyc programs.
 Example::
 
     def example() -> None:
-        # Here x has a value (unboxed) representation.
+        # A small integer uses the value (unboxed) representation
         x = 5
-        # Here x has a heap (boxed) representation.
+        # A large integer the the heap (boxed) representation
         x = 2**500
-        # List always contains boxed integers.
+        # Lists always contain boxed integers
         a = [55]
-        # When reading from a list, the object is automatically unboxed.
+        # When reading from a list, the object is automatically unboxed
         x = a[0]
-        # True is converted to 1 on assignment.
+        # True is converted to 1 on assignment
         x = True

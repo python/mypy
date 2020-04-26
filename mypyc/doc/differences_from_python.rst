@@ -272,8 +272,8 @@ Stack introspection
 
 Frames of compiled functions can't be inspected using ``inspect``.
 
-Pofiling hooks and tracing
-**************************
+Profiling hooks and tracing
+***************************
 
 Compiled functions don't trigger profiling and tracing hooks, such as
 when using the ``profile``, ``cProfile``, or ``trace`` modules.

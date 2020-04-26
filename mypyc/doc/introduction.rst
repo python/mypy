@@ -28,9 +28,9 @@ fully work in interpreted mode).
 How fast is mypyc
 -----------------
 
-The speed improvement from compilation depends on many factors and is
-not easy to predict. Certain operations will be a lot faster, while
-other things will remain the same.
+The speed improvement from compilation depends on many factors.
+Certain operations will be a lot faster, while other things will
+remain the same.
 
 These estimates give a rough idea of what to expect (2x improvement
 halves the runtime):
@@ -91,7 +91,7 @@ Mypyc can produce fast code through several features:
   attributes declared ``Final`` are immutable (and tries to enforce
   this).
 
-* Classes are usually compiled to *C extension classes*. They use use
+* Classes are usually compiled to *C extension classes*. They use
   `vtables <https://en.wikipedia.org/wiki/Virtual_method_table>`_ for
   efficient method calls and attribute accesses.
 
@@ -103,9 +103,8 @@ Why mypyc
 
 **High performance and high productivity.** Since code compiled with
 mypyc can be run with CPython without compilation, and mypyc supports
-most Python features, mypyc lets you improve performance of Python
-with minor changes to workflows, and with minimal productivity
-impact.
+most Python features, mypyc improves performance of Python with minor
+changes to workflows, and with minimal productivity impact.
 
 **Migration path for existing Python code.** Existing Python code
 often requires only minor changes to compile using mypyc, especially
@@ -146,29 +145,29 @@ Use cases for mypyc
 
 Here are examples of use cases where mypyc can be effective:
 
-* You have a particular module in your project that you want to make
-  faster. Add type annotations and compile it for easy performance
-  gains.
+* Your project has a particular module that is critical for
+  performance. Add type annotations and compile it for quick
+  performance gains.
 
-* You are using mypy to type check your code and want to further
-  take advantage of type annotations by compiling with mypyc.
+* You've been using mypy to type check your code. Using mypyc is now
+  easy since your code is already annotated.
 
 * You want your entire program to be as fast as possible.  You compile
   all modules (except tests) for each release.  You continue to use
   interpreted mode during development, for a faster edit-run cycle.
   (This is how mypy achieved a 4x end-to-end performance improvement
-  through mypyc!)
+  through mypyc.)
 
-* You maintain a C extension, and you want to improve productivity and
-  make maintenance easier by rewriting your module in Python. You may
-  be able to use mypyc to get performance comparable to your original
-  C extension.
+* You are writing a new module that must be fast. You write the module
+  in Python, and focus on primitives that mypyc can optimize well. The
+  module is much faster when compiled, and you've saved a lot of
+  effort compared to writing an extension in C (and you don't need to
+  know C).
 
-* You are writing a new module that needs to be fast. You write the
-  module in Python, but focus on primitives that mypyc can compile
-  efficiently. Performance is much higher than pure Python, while you
-  have greatly higher developer productivity compared to writing an
-  extension in C.
+* You've written a C extension, but you are unhappy with it, and would
+  prefer to maintain Python code. In some cases you can switch to
+  Python and use mypyc to get performance comparable to the
+  original C.
 
 Development status
 ------------------
