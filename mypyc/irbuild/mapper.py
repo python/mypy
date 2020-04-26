@@ -62,7 +62,7 @@ class Mapper:
             # specifically support them, so make sure that dict operations
             # get optimized on them.
             elif any(cls.fullname == 'builtins.dict' for cls in typ.type.mro):
-                if (sys.version_info[:3] == (3, 5)
+                if (sys.version_info[:2] == (3, 5)
                         and typ.type.fullname == 'collections.OrderedDict'):
                     # Unfortunately fast dict iteration breaks order on Python 3.5.
                     return object_rprimitive
