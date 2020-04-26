@@ -202,7 +202,10 @@ class TestRun(MypycDataSuite):
         groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
-            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
+            compiler_options = CompilerOptions(
+                multi_file=self.multi_file, separate=self.separate,
+                ordered_dicts=sys.version_info[:2] >= (3,6)
+            )
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,

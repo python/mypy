@@ -404,6 +404,7 @@ exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 dict_next_rtuple_pair = RTuple(
     [bool_rprimitive, int_rprimitive, object_rprimitive, object_rprimitive]
 )
+# Same as above but just for key or value.
 dict_next_rtuple_single = RTuple(
     [bool_rprimitive, int_rprimitive, object_rprimitive]
 )

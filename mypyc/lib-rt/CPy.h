@@ -1400,7 +1400,7 @@ typedef struct tuple_T4CIOO {
 static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 #endif
 
-// Helper for fast dictionary iteration, returns a single tuple
+// Helpers for fast dictionary iteration, return a single tuple
 // instead of writing to multiple registers.
 static inline tuple_T3CIO CPyDict_NextKey(PyObject *dict, CPyTagged offset) {
     tuple_T3CIO ret;
