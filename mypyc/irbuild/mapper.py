@@ -1,5 +1,6 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
+import sys
 from typing import Dict, Optional, Union
 from collections import OrderedDict
 
@@ -61,6 +62,10 @@ class Mapper:
             # specifically support them, so make sure that dict operations
             # get optimized on them.
             elif any(cls.fullname == 'builtins.dict' for cls in typ.type.mro):
+                if (sys.version_info[:3] == (3, 5)
+                        and typ.type.fullname == 'collections.OrderedDict'):
+                    # Unfortunately fast dict iteration breaks order on Python 3.5.
+                    return object_rprimitive
                 return dict_rprimitive
             elif typ.type.fullname == 'builtins.set':
                 return set_rprimitive
