@@ -1,13 +1,16 @@
 """Mypy type checker command line tool."""
 
 import argparse
+from collections import OrderedDict
 from gettext import gettext
 import os
+import re
 import subprocess
 import sys
 import time
 
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
+
+from typing import Any, Dict, IO, List, Optional, Pattern, Sequence, Tuple, TextIO, Union
 from typing_extensions import Final, NoReturn
 
 from mypy import build
@@ -926,13 +929,56 @@ def process_options(args: List[str],
         except InvalidSourceList as e2:
             fail(str(e2), stderr)
 
-    ignored_modules = []
-    for mod, opts in options.per_module_options.items():
-        if opts.get('ignore_errors'):
-            ignored_modules.append(mod)
+    def filter_ignored_targets(targets: List[BuildSource],
+                               per_module_options: 'OrderedDict[str, Dict[str, object]]'
+                               ) -> List[BuildSource]:
 
-    targets = [t for t in targets if not t.module.startswith(tuple(ignored_modules))]
+        def convert_module_paths_to_regex(paths: List[str]) -> Pattern[str]:
+            # *.foo.*.baz => *\.foo\.*\.baz
+            paths_escape_dot = [
+                mod.replace(r".", r"\.")
+                for mod in paths
+            ]
+            # *\.foo\.*\.baz => *\.foo\..*\.baz
+            paths_allow_wildcard = [
+                mod.replace(r"\.*", r"\..*")
+                for mod in paths_escape_dot
+            ]
+            # *\.foo\..*\.baz => .*\.foo\..*\.baz
+            paths_allow_first_wildcard = [
+                re.sub(r"^\*", ".*", mod)
+                for mod in paths_allow_wildcard
+            ]
+            paths_pattern = r"|".join(paths_allow_first_wildcard)
+            return re.compile(paths_pattern)
 
+        ignored_modules = [
+            mod
+            for mod, opts in options.per_module_options.items()
+            if opts.get("ignore_errors")
+        ]
+        ignored_regex = convert_module_paths_to_regex(ignored_modules)
+
+        explicitly_needed_modules = [
+            mod
+            for mod, opts in options.per_module_options.items()
+            if opts.get("ignore_errors") is False
+        ]
+        explicitly_needed_regex = convert_module_paths_to_regex(explicitly_needed_modules)
+
+        if len(explicitly_needed_regex.pattern) > 0:
+            targets = [
+                t
+                for t in targets
+                if explicitly_needed_regex.fullmatch(t.module) or not ignored_regex.fullmatch(t.module)]
+        else:
+            targets = [
+                t
+                for t in targets
+                if not ignored_regex.fullmatch(t.module)]
+        return targets
+
+    targets = filter_ignored_targets(targets, options.per_module_options)
     return targets, options
 
 
