@@ -120,6 +120,7 @@ if USE_MYPYC:
     mypyc_targets = [x for x in mypyc_targets
                      if not x.startswith((os.path.join('mypy', 'test') + os.sep,
                                           os.path.join('mypyc', 'test') + os.sep,
+                                          os.path.join('mypyc', 'doc') + os.sep,
                                           os.path.join('mypyc', 'test-data') + os.sep,
                                           ))]
     # ... and add back in the one test module we need
