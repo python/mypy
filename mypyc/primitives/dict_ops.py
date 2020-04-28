@@ -3,7 +3,10 @@
 from typing import List
 
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
-from mypyc.ir.rtypes import dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive
+from mypyc.ir.rtypes import (
+    dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
+    list_rprimitive
+)
 
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
@@ -121,6 +124,60 @@ func_op(
     result_type=dict_rprimitive,
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyDict_FromAny'))
+
+# dict.keys()
+method_op(
+    name='keys',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = _PyDictView_New({args[0]}, &PyDictKeys_Type);')
+)
+
+# dict.values()
+method_op(
+    name='values',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = _PyDictView_New({args[0]}, &PyDictValues_Type);')
+)
+
+# dict.items()
+method_op(
+    name='items',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = _PyDictView_New({args[0]}, &PyDictItems_Type);')
+)
+
+# list(dict.keys())
+dict_keys_op = custom_op(
+    name='keys',
+    arg_types=[dict_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('PyDict_Keys')
+)
+
+# list(dict.values())
+dict_values_op = custom_op(
+    name='values',
+    arg_types=[dict_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('PyDict_Values')
+)
+
+# list(dict.items())
+dict_items_op = custom_op(
+    name='items',
+    arg_types=[dict_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('PyDict_Items')
+)
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
