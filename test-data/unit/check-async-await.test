@@ -731,3 +731,17 @@ reveal_type(f) # N: Revealed type is 'def () -> typing.Coroutine[Any, Any, None]
 reveal_type(g) # N: Revealed type is 'Any'
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAsyncDeferredAnalysis]
+
+def t() -> None:
+    async def f() -> int:
+        return 1
+
+    def g() -> int:
+        return next(iter(x))
+
+    x = [1]
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

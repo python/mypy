@@ -200,6 +200,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
     statement = None  # type: Optional[Statement]  # Statement/definition being analyzed
 
+    # Mapping from 'async def' function definitions to their return type wrapped as a
+    # 'Coroutine[Any, Any, T]'. Used to keep track of whether a function definition's
+    # return type has already been wrapped, by checking if the function definition's
+    # type is stored in this mapping and that it still matches.
+    wrapped_coro_return_types = {}  # type: Dict[FuncDef, Type]
+
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
@@ -571,7 +577,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
-        if defn.is_coroutine and isinstance(defn.type, CallableType) and not self.deferred:
+        if (defn.is_coroutine and
+                isinstance(defn.type, CallableType) and
+                self.wrapped_coro_return_types.get(defn) != defn.type):
             if defn.is_async_generator:
                 # Async generator types are handled elsewhere
                 pass
@@ -583,6 +591,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                                                    [any_type, any_type, defn.type.ret_type])
                 assert ret_type is not None, "Internal error: typing.Coroutine not found"
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
+                self.wrapped_coro_return_types[defn] = defn.type
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
