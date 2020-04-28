@@ -81,12 +81,12 @@ def translate_len(
 @specialize_function('builtins.list')
 def dict_methods_fast_path(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    if not (len(expr.args) == 1
-            and expr.arg_kinds == [ARG_POS]):
+    # Specialize a common case when list() is called in a dictionary view
+    # method call, for example foo = list(bar.keys()).
+    if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
-    if not (isinstance(arg, CallExpr)
-            and not arg.args[0]
+    if not (isinstance(arg, CallExpr) and not arg.args
             and isinstance(arg.callee, MemberExpr)):
         return None
     base = arg.callee.expr
