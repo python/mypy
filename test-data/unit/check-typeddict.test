@@ -2042,3 +2042,15 @@ class SomeGeneric(Generic[_DICT_T]):
         self._data['foo'] = 1
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictCreatedWithEmptyDict]
+from typing import TypedDict
+
+class TD(TypedDict, total=False):
+    foo: int
+    bar: int
+
+d: TD = dict()
+d2: TD = dict(foo=1)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
