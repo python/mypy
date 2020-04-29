@@ -3825,7 +3825,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(typ, NoneType):
             return [], [typ]
-            
+
         if isinstance(typ, UnionType):
             callables = []
             uncallables = []
