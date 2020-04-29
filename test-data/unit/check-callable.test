@@ -449,3 +449,11 @@ if callable():  # E: Too few arguments for "callable"
     pass
 
 [builtins fixtures/callable.pyi]
+
+[case testCallableWithNoneArgs]
+
+fn = None
+if callable(fn):
+  fn()
+
+[builtins fixtures/callable.pyi]
