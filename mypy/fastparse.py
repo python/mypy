@@ -1206,10 +1206,13 @@ class ASTConverter:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
         self.set_line(e, n)
         if (
-            isinstance(e.index, SliceExpr) or
-            (sys.version_info <= (3, 9) and isinstance(e.index, TupleExpr))
+            isinstance(n.slice, ast3.Slice) or
+            (sys.version_info < (3, 9) and isinstance(n.slice, ast3.ExtSlice))
         ):
-            # Slice has no line/column in the raw ast.
+            # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
+            # visit_Slice doesn't set_line, even in Python 3.9 on.
+            # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
+            # e.index when visiting n.slice.
             e.index.line = e.line
             e.index.column = e.column
         return e
