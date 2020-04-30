@@ -1,7 +1,0 @@
-[case testIntEnumArguments]
-# flags: --python-version 3.6
-
-from enum import intEnum
-a = IntEnum('a', ['ZERO', 'ONE', 'TWO'], _start=10) # E: Unexpected keyword _start arguments for IntEnum()
-b = IntEnum('b', ['ZERO', 'ONE', 'TWO'], start=10, qualname='SomeClass.b')
-c = IntEnum('c', ['A', 'B', 'C'], start=17, module=__name__, qual_name='SomeClass.c') # E: Unexpected keyword qual_name arguments for IntEnum()
