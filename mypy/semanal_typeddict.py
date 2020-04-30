@@ -1,6 +1,6 @@
 """Semantic analysis of TypedDict definitions."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 

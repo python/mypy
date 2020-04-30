@@ -1,7 +1,7 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
 from typing import Dict, Optional, Union
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ARG_STAR, ARG_STAR2
 from mypy.types import (

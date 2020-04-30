@@ -1,6 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
 from typing_extensions import Final

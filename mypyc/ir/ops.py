@@ -15,7 +15,7 @@ from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
     Union, Iterable, Set
 )
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from typing_extensions import Final, Type, TYPE_CHECKING
 from mypy_extensions import trait

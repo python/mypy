@@ -2,7 +2,7 @@
 
 
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.codegen.emit import Emitter, HeaderDeclaration

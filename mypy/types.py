@@ -3,7 +3,7 @@
 import copy
 import sys
 from abc import abstractmethod
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,

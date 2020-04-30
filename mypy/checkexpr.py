@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from contextlib import contextmanager
 import itertools
 from typing import (
