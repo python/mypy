@@ -385,6 +385,7 @@ x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeInvalidTypeArg]
+# flags: --strict-optional
 from typing import TypeVar, Generic
 
 T = TypeVar('T', int, str)
@@ -412,6 +413,16 @@ z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
 def h(a: TT, s: S) -> None:
     b: C[TT]  # E: Invalid type argument value for "C"  [type-var]
     c: C[S]  # E: Type variable "S" not valid as type argument value for "C"  [type-var]
+
+[case testErrorCodeInvalidTypeArgNonStrictOptional]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', int, str)
+TT = TypeVar('TT', int, None)
+
+class C(Generic[T]): pass
+
+C[TT]
 
 [case testErrorCodeOperators]
 class A: pass

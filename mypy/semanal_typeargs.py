@@ -89,8 +89,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                               valids: List[Type], arg_number: int, context: Context) -> None:
         for actual in get_proper_types(actuals):
             if (not isinstance(actual, AnyType) and
-                    not any(is_subtype(actual, value)
-                            for value in valids)):
+                    all(not is_subtype(actual, value) for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail('Invalid type argument value for "{}"'.format(
                         type.name), context, code=codes.TYPE_VAR)
