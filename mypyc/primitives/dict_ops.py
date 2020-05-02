@@ -140,7 +140,7 @@ method_op(
     arg_types=[dict_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('CPyDict_ValuesView')
+    emit=call_emit('CPyDict_ValuesView')
 )
 
 # dict.items()
@@ -149,7 +149,7 @@ method_op(
     arg_types=[dict_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('CPyDict_ItemsView')
+    emit=call_emit('CPyDict_ItemsView')
 )
 
 # list(dict.keys())
