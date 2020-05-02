@@ -29,6 +29,7 @@ from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
 
+
 GenFunc = Callable[[], None]
 
 
