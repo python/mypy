@@ -3151,7 +3151,7 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:-1(
+      TupleExpr:1(
         SliceExpr:-1(
           <empty>
           <empty>)
@@ -3166,7 +3166,7 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:-1(
+      TupleExpr:1(
         SliceExpr:-1(
           IntExpr(1)
           IntExpr(2))
@@ -3181,7 +3181,7 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:-1(
+      TupleExpr:1(
         SliceExpr:-1(
           IntExpr(1)
           IntExpr(2)
@@ -3426,25 +3426,25 @@ y = 30
 f'Hello {x!s:<{y+y}}'
 [out]
 MypyFile:1(
-  AssignmentStmt:1(             
-    NameExpr(x)                 
-    StrExpr(mypy))              
-  AssignmentStmt:2(             
-    NameExpr(y)                 
-    IntExpr(30))                
-  ExpressionStmt:3(             
-    CallExpr:3(                 
-      MemberExpr:3(             
-        StrExpr()               
-        join)                   
-      Args(                     
-        ListExpr:3(             
-          StrExpr(Hello )       
-          CallExpr:3(           
-            MemberExpr:3(       
-              StrExpr({!s:{}})  
-              format)           
-            Args(               
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(30))
+  ExpressionStmt:3(
+    CallExpr:3(
+      MemberExpr:3(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:3(
+          StrExpr(Hello )
+          CallExpr:3(
+            MemberExpr:3(
+              StrExpr({!s:{}})
+              format)
+            Args(
               NameExpr(x)
               CallExpr:3(
                 MemberExpr:3(

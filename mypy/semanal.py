@@ -3539,12 +3539,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.add_exports(expr.args[0].items)
 
     def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
-        """Translate 'dict(x=y, ...)' to {'x': y, ...}.
+        """Translate 'dict(x=y, ...)' to {'x': y, ...} and 'dict()' to {}.
 
         For other variants of dict(...), return None.
         """
-        if not call.args:
-            return None
         if not all(kind == ARG_NAMED for kind in call.arg_kinds):
             # Must still accept those args.
             for a in call.args:
