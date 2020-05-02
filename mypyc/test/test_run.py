@@ -51,6 +51,9 @@ setup(name='test_run_output',
 
 WORKDIR = 'build'
 
+# This will dump content of all generated C files.
+VERBOSE_DEBUG_DUMP = False
+
 
 def run_setup(script_name: str, script_args: List[str]) -> bool:
     """Run a setup script in a somewhat controlled environment.
@@ -202,10 +205,7 @@ class TestRun(MypycDataSuite):
         groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
-            compiler_options = CompilerOptions(
-                multi_file=self.multi_file, separate=self.separate,
-                ordered_dicts=sys.version_info[:2] >= (3, 6)
-            )
+            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
@@ -219,6 +219,12 @@ class TestRun(MypycDataSuite):
                 errors=errors,
                 groups=groups,
             )
+            if VERBOSE_DEBUG_DUMP:
+                for group in cfiles:
+                    for name, content in group:
+                        print(name)
+                        print('-' * len(name))
+                        print(content + '\n')
             if errors.num_errors:
                 errors.flush_errors()
                 assert False, "Compile error"

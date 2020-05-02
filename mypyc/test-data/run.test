@@ -1078,22 +1078,92 @@ def print_dict_methods(d1: Dict[int, int],
     for v in d3.values():
         print(v)
 
+def clear_during_iter(d: Dict[int, int]) -> None:
+    for k in d:
+        d.clear()
+
 class Custom(Dict[int, int]): pass
 [file driver.py]
-from native import print_dict_methods, Custom
+from native import print_dict_methods, Custom, clear_during_iter
+from collections import OrderedDict
 print_dict_methods({}, {}, {})
-print_dict_methods({1: 2}, {3: 4}, {5: 6})
+print_dict_methods({1: 2}, {3: 4, 5: 6}, {7: 8})
+print('==')
 c = Custom({0: 1})
 print_dict_methods(c, c, c)
+print('==')
+d = OrderedDict([(1, 2), (3, 4)])
+print_dict_methods(d, d, d)
+print('==')
+d.move_to_end(1)
+print_dict_methods(d, d, d)
+clear_during_iter({})  # OK
+try:
+    clear_during_iter({1: 2, 3: 4})
+except RuntimeError as e:
+    assert str(e) == "dictionary changed size during iteration"
+else:
+    assert False
+try:
+    clear_during_iter(d)
+except RuntimeError as e:
+    assert str(e) == "OrderedDict changed size during iteration"
+else:
+    assert False
+
+class CustomMad(dict):
+    def __iter__(self):
+        return self
+    def __next__(self):
+        raise ValueError
+m = CustomMad()
+try:
+    clear_during_iter(m)
+except ValueError:
+    pass
+else:
+    assert False
+
+class CustomBad(dict):
+    def items(self):
+        return [(1, 2, 3)]  # Oops
+b = CustomBad()
+try:
+    print_dict_methods(b, b, b)
+except TypeError as e:
+    assert str(e) == "a tuple of length 2 expected"
+else:
+    assert False
 [out]
 1
 3
 4
+5
 6
+8
+==
 0
 0
 1
 1
+==
+1
+3
+1
+2
+3
+4
+2
+4
+==
+3
+1
+3
+4
+1
+2
+4
+2
 
 [case testPyMethodCall]
 from typing import List

@@ -20,7 +20,8 @@ from mypyc.ir.rtypes import (
     RTuple, is_dict_rprimitive
 )
 from mypyc.primitives.dict_ops import (
-    dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op
+    dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
+    dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
 from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
@@ -177,8 +178,7 @@ def make_for_loop_generator(builder: IRBuilder,
         for_list.init(expr_reg, target_type, reverse=False)
         return for_list
 
-    # Unfortunately fast dict iteration breaks too many tests on Python 3.5.
-    if is_dict_rprimitive(rtyp) and builder.options.ordered_dicts:
+    if is_dict_rprimitive(rtyp):
         # Special case "for k in <dict>".
         expr_reg = builder.accept(expr)
         target_type = builder.get_dict_key_type(expr)
@@ -256,7 +256,6 @@ def make_for_loop_generator(builder: IRBuilder,
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
         if (is_dict_rprimitive(rtype)
-                and builder.options.ordered_dicts
                 and expr.callee.name in ('keys', 'values', 'items')):
             expr_reg = builder.accept(expr.callee.expr)
             for_dict_type = None  # type: Optional[Type[ForGenerator]]
@@ -482,24 +481,38 @@ class ForDictionaryCommon(ForGenerator):
       * f3: next value (object)
     For more info see https://docs.python.org/3/c-api/dict.html#c.PyDict_Next.
 
-    TODO: is it safe to use dict iteration helpers for subclasses?
+    Note that for subclasses we fall back to generic PyObject_GetIter() logic,
+    since they may override some iteration methods in subtly incompatible manner.
+    The fallback logic is implemented in CPy.h via dynamic type check.
     """
     dict_next_op = None  # type: ClassVar[OpDescription]
+    dict_iter_op = None  # type: ClassVar[OpDescription]
+
+    def need_cleanup(self) -> bool:
+        # Technically, a dict subclass can raise an unrelated exception
+        # in __next__(), so we need this.
+        return True
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
+        builder = self.builder
         self.target_type = target_type
+
         # We add some variables to environment class, so they can be read across yield.
-        self.expr_target = self.builder.maybe_spill(expr_reg)
-        offset_reg = self.builder.add(LoadInt(0))
-        self.offset_target = self.builder.maybe_spill_assignable(offset_reg)
-        self.size = self.builder.maybe_spill(self.load_len(self.expr_target))
+        self.expr_target = builder.maybe_spill(expr_reg)
+        offset_reg = builder.add(LoadInt(0))
+        self.offset_target = builder.maybe_spill_assignable(offset_reg)
+        self.size = builder.maybe_spill(self.load_len(self.expr_target))
+
+        # For dict class (not a subclass) this is the dictionary itself.
+        iter_reg = builder.primitive_op(self.dict_iter_op, [expr_reg], self.line)
+        self.iter_target = builder.maybe_spill(iter_reg)
 
     def gen_condition(self) -> None:
         """Get next key/value pair, set new offset, and check if we should continue."""
         builder = self.builder
         line = self.line
         self.next_tuple = self.builder.primitive_op(
-            self.dict_next_op, [builder.read(self.expr_target, line),
+            self.dict_next_op, [builder.read(self.iter_target, line),
                                 builder.read(self.offset_target, line)], line)
 
         # Do this here instead of in gen_step() to minimize variables in environment.
@@ -523,10 +536,15 @@ class ForDictionaryCommon(ForGenerator):
                              [builder.read(self.expr_target, line),
                               builder.read(self.size, line)], line)
 
+    def gen_cleanup(self) -> None:
+        # Same as for generic ForIterable.
+        self.builder.primitive_op(no_err_occurred_op, [], self.line)
+
 
 class ForDictionaryKeys(ForDictionaryCommon):
     """Generate optimized IR for a for loop over dictionary keys."""
     dict_next_op = dict_next_key_op
+    dict_iter_op = dict_key_iter_op
 
     def begin_body(self) -> None:
         builder = self.builder
@@ -541,6 +559,7 @@ class ForDictionaryKeys(ForDictionaryCommon):
 class ForDictionaryValues(ForDictionaryCommon):
     """Generate optimized IR for a for loop over dictionary values."""
     dict_next_op = dict_next_value_op
+    dict_iter_op = dict_value_iter_op
 
     def begin_body(self) -> None:
         builder = self.builder
@@ -555,6 +574,7 @@ class ForDictionaryValues(ForDictionaryCommon):
 class ForDictionaryItems(ForDictionaryCommon):
     """Generate optimized IR for a for loop over dictionary items."""
     dict_next_op = dict_next_item_op
+    dict_iter_op = dict_item_iter_op
 
     def begin_body(self) -> None:
         builder = self.builder

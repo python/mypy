@@ -141,8 +141,32 @@ func_op(name='builtins.len',
         emit=emit_len)
 
 # PyDict_Next() fast iteration
+dict_key_iter_op = custom_op(
+    name='key_iter',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_GetKeysIter'),
+)
+
+dict_value_iter_op = custom_op(
+    name='value_iter',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_GetValuesIter'),
+)
+
+dict_item_iter_op = custom_op(
+    name='item_iter',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_GetItemsIter'),
+)
+
 dict_next_key_op = custom_op(
-    arg_types=[dict_rprimitive, int_rprimitive],
+    arg_types=[object_rprimitive, int_rprimitive],
     result_type=dict_next_rtuple_single,
     error_kind=ERR_NEVER,
     emit=call_emit('CPyDict_NextKey'),
@@ -150,7 +174,7 @@ dict_next_key_op = custom_op(
 )
 
 dict_next_value_op = custom_op(
-    arg_types=[dict_rprimitive, int_rprimitive],
+    arg_types=[object_rprimitive, int_rprimitive],
     result_type=dict_next_rtuple_single,
     error_kind=ERR_NEVER,
     emit=call_emit('CPyDict_NextValue'),
@@ -158,7 +182,7 @@ dict_next_value_op = custom_op(
 )
 
 dict_next_item_op = custom_op(
-    arg_types=[dict_rprimitive, int_rprimitive],
+    arg_types=[object_rprimitive, int_rprimitive],
     result_type=dict_next_rtuple_pair,
     error_kind=ERR_NEVER,
     emit=call_emit('CPyDict_NextItem'),

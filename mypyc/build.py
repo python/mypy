@@ -481,7 +481,6 @@ def mypycify(
         separate=separate is not False,
         target_dir=target_dir,
         include_runtime_files=include_runtime_files,
-        ordered_dicts=sys.version_info[:2] >= (3, 6),
     )
 
     # Generate all the actual important C code
