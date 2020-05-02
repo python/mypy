@@ -96,6 +96,8 @@ def dict_methods_fast_path(
         return None
 
     obj = builder.accept(base)
+    # Note that it is not safe to use fast methods on dict subclasses, so
+    # the corresponding helpers in CPy.h fallback to (inlined) generic logic.
     if attr == 'keys':
         return builder.primitive_op(dict_keys_op, [obj], expr.line)
     elif attr == 'values':
