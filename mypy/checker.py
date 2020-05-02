@@ -3829,7 +3829,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, UnionType):
             callables = []
             uncallables = []
-            for subtype in typ.relevant_items():
+            for subtype in typ.items:
                 # Use unsound_partition when handling unions in order to
                 # allow the expected type discrimination.
                 subcallables, subuncallables = self.partition_by_callable(subtype,
