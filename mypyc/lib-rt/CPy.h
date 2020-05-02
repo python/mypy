@@ -1377,6 +1377,81 @@ static tuple_T3OOO CPy_GetExcInfo(void) {
     return ret;
 }
 
+static PyObject *CPyDict_KeysView(PyObject *dict) {
+    if (PyDict_CheckExact(dict)){
+        return _PyDictView_New(dict, &PyDictKeys_Type);
+    }
+    return PyObject_CallMethod(dict, "keys", NULL);
+}
+
+static PyObject *CPyDict_ValuesView(PyObject *dict) {
+    if (PyDict_CheckExact(dict)){
+        return _PyDictView_New(dict, &PyDictValues_Type);
+    }
+    return PyObject_CallMethod(dict, "values", NULL);
+}
+
+static PyObject *CPyDict_ItemsView(PyObject *dict) {
+    if (PyDict_CheckExact(dict)){
+        return _PyDictView_New(dict, &PyDictItems_Type);
+    }
+    return PyObject_CallMethod(dict, "items", NULL);
+}
+
+static PyObject *CPyDict_Keys(PyObject *dict) {
+    if PyDict_CheckExact(dict) {
+        return PyDict_Keys(dict);
+    }
+    PyObject *list = PyList_New(0);
+    PyObject *view = PyObject_CallMethod(dict, "keys", NULL);
+    if (view == NULL) {
+        return NULL;
+    }
+    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    Py_DECREF(view);
+    if (res == NULL) {
+        return NULL;
+    }
+    Py_DECREF(res);
+    return list;
+}
+
+static PyObject *CPyDict_Values(PyObject *dict) {
+    if PyDict_CheckExact(dict) {
+        return PyDict_Values(dict);
+    }
+    PyObject *list = PyList_New(0);
+    PyObject *view = PyObject_CallMethod(dict, "values", NULL);
+    if (view == NULL) {
+        return NULL;
+    }
+    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    Py_DECREF(view);
+    if (res == NULL) {
+        return NULL;
+    }
+    Py_DECREF(res);
+    return list;
+}
+
+static PyObject *CPyDict_Items(PyObject *dict) {
+    if PyDict_CheckExact(dict) {
+        return PyDict_Items(dict);
+    }
+    PyObject *list = PyList_New(0);
+    PyObject *view = PyObject_CallMethod(dict, "items", NULL);
+    if (view == NULL) {
+        return NULL;
+    }
+    PyObject *res = _PyList_Extend((PyListObject *)list, view);
+    Py_DECREF(view);
+    if (res == NULL) {
+        return NULL;
+    }
+    Py_DECREF(res);
+    return list;
+}
+
 void CPy_Init(void);
 
 

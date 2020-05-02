@@ -131,7 +131,7 @@ method_op(
     arg_types=[dict_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = _PyDictView_New({args[0]}, &PyDictKeys_Type);')
+    emit=call_emit('CPyDict_KeysView')
 )
 
 # dict.values()
@@ -140,7 +140,7 @@ method_op(
     arg_types=[dict_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = _PyDictView_New({args[0]}, &PyDictValues_Type);')
+    emit=simple_emit('CPyDict_ValuesView')
 )
 
 # dict.items()
@@ -149,7 +149,7 @@ method_op(
     arg_types=[dict_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = _PyDictView_New({args[0]}, &PyDictItems_Type);')
+    emit=simple_emit('CPyDict_ItemsView')
 )
 
 # list(dict.keys())
@@ -158,7 +158,7 @@ dict_keys_op = custom_op(
     arg_types=[dict_rprimitive],
     result_type=list_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=call_emit('PyDict_Keys')
+    emit=call_emit('CPyDict_Keys')
 )
 
 # list(dict.values())
@@ -167,7 +167,7 @@ dict_values_op = custom_op(
     arg_types=[dict_rprimitive],
     result_type=list_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=call_emit('PyDict_Values')
+    emit=call_emit('CPyDict_Values')
 )
 
 # list(dict.items())
@@ -176,7 +176,7 @@ dict_items_op = custom_op(
     arg_types=[dict_rprimitive],
     result_type=list_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=call_emit('PyDict_Items')
+    emit=call_emit('CPyDict_Items')
 )
 
 
