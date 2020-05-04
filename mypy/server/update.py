@@ -342,6 +342,12 @@ class FineGrainedBuildManager:
         self.manager.log_fine_grained('--- update single %r ---' % module)
         self.updated_modules.append(module)
 
+        # builtins and friends could potentially get triggered because
+        # of protocol stuff, but nothing good could possibly come from
+        # actually updating them.
+        if module in ('builtins', 'typing', 'mypy_extensions', 'typing_extensions'):
+            return [], (module, path), None
+
         manager = self.manager
         previous_modules = self.previous_modules
         graph = self.graph
