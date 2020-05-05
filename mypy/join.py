@@ -513,8 +513,11 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     elif isinstance(typ, TypeVarType) and isinstance(typ.upper_bound, ProperType):
         return object_or_any_from_type(typ.upper_bound)
     elif isinstance(typ, UnionType):
-        joined = join_type_list([it for it in typ.items if isinstance(it, ProperType)])
-        return object_or_any_from_type(joined)
+        for item in typ.items:
+            if isinstance(item, ProperType):
+                candidate = object_or_any_from_type(item)
+                if isinstance(candidate, Instance):
+                    return candidate
     return AnyType(TypeOfAny.implementation_artifact)
 
 
