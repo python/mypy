@@ -1025,13 +1025,13 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA + 1 # E: The type alias to Callable is invalid in runtime context
+cs = CA + 1 # E: Unsupported left operand type for + ("object")
 reveal_type(cs) # N: Revealed type is 'Any'
 
-ts = TA() # E: The type alias to Tuple is invalid in runtime context
+ts = TA() # E: "object" not callable
 reveal_type(ts) # N: Revealed type is 'Any'
 
-us = UA.x # E: The type alias to Union is invalid in runtime context
+us = UA.x # E: "object" has no attribute "x"
 reveal_type(us) # N: Revealed type is 'Any'
 
 xx = CA[str] + 1  # E: Type application is only supported for generic classes
