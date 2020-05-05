@@ -449,3 +449,27 @@ if callable():  # E: Too few arguments for "callable"
     pass
 
 [builtins fixtures/callable.pyi]
+
+[case testCallableWithNoneArgs]
+
+fn = None
+if callable(fn):
+  fn()
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableUnionOfNoneAndCallable]
+
+from typing import Union, Callable
+
+def f() -> int:
+    return 42
+
+fn = f  # type: Union[None, Callable[[], int]]
+
+if callable(fn):
+    reveal_type(fn) # N: Revealed type is 'def () -> builtins.int'
+else:
+    reveal_type(fn) # N: Revealed type is 'None'
+
+[builtins fixtures/callable.pyi]
