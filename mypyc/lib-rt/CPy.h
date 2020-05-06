@@ -1453,6 +1453,7 @@ static PyObject *CPyDict_Items(PyObject *dict) {
     }
     Py_DECREF(res);
     return list;
+}
 
 static PyObject *CPyDict_GetKeysIter(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
