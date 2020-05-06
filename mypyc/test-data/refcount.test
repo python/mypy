@@ -788,36 +788,54 @@ def f(d: Dict[int, int]) -> None:
 [out]
 def f(d):
     d :: dict
-    r0, r1 :: object
-    r2, key :: int
-    r3, r4 :: object
+    r0, r1 :: short_int
+    r2 :: int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
     r5 :: int
     r6 :: bool
-    r7 :: None
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11 :: int
+    r12, r13 :: bool
+    r14 :: None
 L0:
-    r0 = iter d :: object
+    r0 = 0
+    r1 = r0
+    r2 = len d :: dict
+    r3 = key_iter d :: dict
 L1:
-    r1 = next r0 :: object
-    if is_error(r1) goto L5 else goto L2
+    r4 = next_key r3, offset=r1
+    r5 = r4[1]
+    r1 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L6 :: bool
 L2:
-    r2 = unbox(int, r1)
-    dec_ref r1
-    key = r2
-    r3 = box(int, key)
-    r4 = d[r3] :: dict
-    dec_ref r3
-    r5 = unbox(int, r4)
+    r7 = r4[2]
     dec_ref r4
-    dec_ref r5 :: int
-    goto L1
+    r8 = unbox(int, r7)
+    dec_ref r7
+    key = r8
+    r9 = box(int, key)
+    r10 = d[r9] :: dict
+    dec_ref r9
+    r11 = unbox(int, r10)
+    dec_ref r10
+    dec_ref r11 :: int
 L3:
-    r6 = no_err_occurred
+    r12 = assert size(d) == r2
+    goto L1
 L4:
-    r7 = None
-    return r7
+    r13 = no_err_occurred
 L5:
-    dec_ref r0
-    goto L3
+    r14 = None
+    return r14
+L6:
+    dec_ref r2 :: int
+    dec_ref r3
+    dec_ref r4
+    goto L4
 
 [case testBorrowRefs]
 def make_garbage(arg: object) -> None:

@@ -151,29 +151,43 @@ def increment(d: Dict[str, int]) -> Dict[str, int]:
 [out]
 def increment(d):
     d :: dict
-    r0, r1 :: object
-    r2, k :: str
+    r0, r1 :: short_int
+    r2 :: int
     r3 :: object
-    r4 :: short_int
-    r5, r6 :: object
-    r7, r8 :: bool
+    r4 :: tuple[bool, int, object]
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    k, r8 :: str
+    r9 :: object
+    r10 :: short_int
+    r11, r12 :: object
+    r13, r14, r15 :: bool
 L0:
-    r0 = iter d :: object
+    r0 = 0
+    r1 = r0
+    r2 = len d :: dict
+    r3 = key_iter d :: dict
 L1:
-    r1 = next r0 :: object
-    if is_error(r1) goto L4 else goto L2
+    r4 = next_key r3, offset=r1
+    r5 = r4[1]
+    r1 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L4 :: bool
 L2:
-    r2 = cast(str, r1)
-    k = r2
-    r3 = d[k] :: dict
-    r4 = 1
-    r5 = box(short_int, r4)
-    r6 = r3 += r5
-    r7 = d.__setitem__(k, r6) :: dict
+    r7 = r4[2]
+    r8 = cast(str, r7)
+    k = r8
+    r9 = d[k] :: dict
+    r10 = 1
+    r11 = box(short_int, r10)
+    r12 = r9 += r11
+    r13 = d.__setitem__(k, r12) :: dict
 L3:
+    r14 = assert size(d) == r2
     goto L1
 L4:
-    r8 = no_err_occurred
+    r15 = no_err_occurred
 L5:
     return d
 
@@ -203,4 +217,98 @@ L0:
     r6 = box(short_int, r2)
     r7 = r4.__setitem__(r1, r6) :: dict
     return r4
+
+[case testDictIterationMethods]
+from typing import Dict
+def print_dict_methods(d1: Dict[int, int], d2: Dict[int, int]) -> None:
+    for v in d1.values():
+        if v in d2:
+            return
+    for k, v in d2.items():
+        d2[k] += v
+[out]
+def print_dict_methods(d1, d2):
+    d1, d2 :: dict
+    r0, r1 :: short_int
+    r2 :: int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    v, r8 :: int
+    r9 :: object
+    r10 :: bool
+    r11 :: None
+    r12, r13 :: bool
+    r14, r15 :: short_int
+    r16 :: int
+    r17 :: object
+    r18 :: tuple[bool, int, object, object]
+    r19 :: int
+    r20 :: bool
+    r21, r22 :: object
+    r23, r24, k :: int
+    r25, r26, r27, r28, r29 :: object
+    r30, r31, r32 :: bool
+    r33 :: None
+L0:
+    r0 = 0
+    r1 = r0
+    r2 = len d1 :: dict
+    r3 = value_iter d1 :: dict
+L1:
+    r4 = next_value r3, offset=r1
+    r5 = r4[1]
+    r1 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L6 :: bool
+L2:
+    r7 = r4[2]
+    r8 = unbox(int, r7)
+    v = r8
+    r9 = box(int, v)
+    r10 = r9 in d2 :: dict
+    if r10 goto L3 else goto L4 :: bool
+L3:
+    r11 = None
+    return r11
+L4:
+L5:
+    r12 = assert size(d1) == r2
+    goto L1
+L6:
+    r13 = no_err_occurred
+L7:
+    r14 = 0
+    r15 = r14
+    r16 = len d2 :: dict
+    r17 = item_iter d2 :: dict
+L8:
+    r18 = next_item r17, offset=r15
+    r19 = r18[1]
+    r15 = r19
+    r20 = r18[0]
+    if r20 goto L9 else goto L11 :: bool
+L9:
+    r21 = r18[2]
+    r22 = r18[3]
+    r23 = unbox(int, r21)
+    r24 = unbox(int, r22)
+    k = r23
+    v = r24
+    r25 = box(int, k)
+    r26 = d2[r25] :: dict
+    r27 = box(int, v)
+    r28 = r26 += r27
+    r29 = box(int, k)
+    r30 = d2.__setitem__(r29, r28) :: dict
+L10:
+    r31 = assert size(d2) == r16
+    goto L8
+L11:
+    r32 = no_err_occurred
+L12:
+    r33 = None
+    return r33
 

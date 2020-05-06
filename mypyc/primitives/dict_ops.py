@@ -3,7 +3,10 @@
 from typing import List
 
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
-from mypyc.ir.rtypes import dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive
+from mypyc.ir.rtypes import (
+    dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
+    dict_next_rtuple_single, dict_next_rtuple_pair
+)
 
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
@@ -136,3 +139,61 @@ func_op(name='builtins.len',
         result_type=int_rprimitive,
         error_kind=ERR_NEVER,
         emit=emit_len)
+
+# PyDict_Next() fast iteration
+dict_key_iter_op = custom_op(
+    name='key_iter',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_GetKeysIter'),
+)
+
+dict_value_iter_op = custom_op(
+    name='value_iter',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_GetValuesIter'),
+)
+
+dict_item_iter_op = custom_op(
+    name='item_iter',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_GetItemsIter'),
+)
+
+dict_next_key_op = custom_op(
+    arg_types=[object_rprimitive, int_rprimitive],
+    result_type=dict_next_rtuple_single,
+    error_kind=ERR_NEVER,
+    emit=call_emit('CPyDict_NextKey'),
+    format_str='{dest} = next_key {args[0]}, offset={args[1]}',
+)
+
+dict_next_value_op = custom_op(
+    arg_types=[object_rprimitive, int_rprimitive],
+    result_type=dict_next_rtuple_single,
+    error_kind=ERR_NEVER,
+    emit=call_emit('CPyDict_NextValue'),
+    format_str='{dest} = next_value {args[0]}, offset={args[1]}',
+)
+
+dict_next_item_op = custom_op(
+    arg_types=[object_rprimitive, int_rprimitive],
+    result_type=dict_next_rtuple_pair,
+    error_kind=ERR_NEVER,
+    emit=call_emit('CPyDict_NextItem'),
+    format_str='{dest} = next_item {args[0]}, offset={args[1]}',
+)
+
+# check that len(dict) == const during iteration
+dict_check_size_op = custom_op(
+    arg_types=[dict_rprimitive, int_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    emit=call_emit('CPyDict_CheckSize'),
+    format_str='{dest} = assert size({args[0]}) == {args[1]}',
+)
