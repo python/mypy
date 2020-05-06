@@ -2973,7 +2973,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(key_type, Instance) and key_type.last_known_value is not None:
                     key_type = key_type.last_known_value
 
-                if isinstance(key_type, LiteralType) and isinstance(key_type.value, str):
+                if (isinstance(key_type, LiteralType)
+                        and isinstance(key_type.value, str)
+                        and key_type.fallback.type.fullname != 'builtins.bytes'):
                     key_names.append(key_type.value)
                 else:
                     self.msg.typeddict_key_must_be_string_literal(td_type, index)
