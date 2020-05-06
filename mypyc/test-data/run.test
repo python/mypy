@@ -989,7 +989,7 @@ update(s, [5, 4, 3])
 assert s == {1, 2, 3, 4, 5}
 
 [case testDictStuff]
-from typing import Dict, Any
+from typing import Dict, Any, List, Set, Tuple
 from defaultdictwrap import make_dict
 
 def f(x: int) -> int:
@@ -1035,6 +1035,11 @@ def u(x: int) -> int:
     d.update(x=x)
     return d['x']
 
+def get_content(d: Dict[int, int]) -> Tuple[List[int], List[int], List[Tuple[int, int]]]:
+    return list(d.keys()), list(d.values()), list(d.items())
+
+def get_content_set(d: Dict[int, int]) -> Tuple[Set[int], Set[int], Set[Tuple[int, int]]]:
+    return set(d.keys()), set(d.values()), set(d.items())
 [file defaultdictwrap.py]
 from typing import Dict
 from collections import defaultdict  # type: ignore
@@ -1042,7 +1047,10 @@ def make_dict() -> Dict[str, int]:
     return defaultdict(int)
 
 [file driver.py]
-from native import f, g, h, u, make_dict1, make_dict2, update_dict
+from collections import OrderedDict
+from native import (
+    f, g, h, u, make_dict1, make_dict2, update_dict, get_content, get_content_set
+)
 assert f(1) == 2
 assert f(2) == 1
 assert g() == 30
@@ -1064,6 +1072,14 @@ update_dict(d, object.__dict__)
 assert d == dict(object.__dict__)
 
 assert u(10) == 10
+assert get_content({1: 2}) == ([1], [2], [(1, 2)])
+od = OrderedDict([(1, 2), (3, 4)])
+assert get_content(od) == ([1, 3], [2, 4], [(1, 2), (3, 4)])
+od.move_to_end(1)
+assert get_content(od) == ([3, 1], [4, 2], [(3, 4), (1, 2)])
+assert get_content_set({1: 2}) == ({1}, {2}, {(1, 2)})
+assert get_content_set(od) == ({1, 3}, {2, 4}, {(1, 2), (3, 4)})
+[typing fixtures/typing-full.pyi]
 
 [case testDictIterationMethodsRun]
 from typing import Dict

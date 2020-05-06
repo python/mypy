@@ -5,7 +5,7 @@ from typing import List
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
-    dict_next_rtuple_single, dict_next_rtuple_pair
+    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair
 )
 
 from mypyc.primitives.registry import (
@@ -124,6 +124,60 @@ func_op(
     result_type=dict_rprimitive,
     error_kind=ERR_MAGIC,
     emit=call_emit('CPyDict_FromAny'))
+
+# dict.keys()
+method_op(
+    name='keys',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_KeysView')
+)
+
+# dict.values()
+method_op(
+    name='values',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_ValuesView')
+)
+
+# dict.items()
+method_op(
+    name='items',
+    arg_types=[dict_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_ItemsView')
+)
+
+# list(dict.keys())
+dict_keys_op = custom_op(
+    name='keys',
+    arg_types=[dict_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_Keys')
+)
+
+# list(dict.values())
+dict_values_op = custom_op(
+    name='values',
+    arg_types=[dict_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_Values')
+)
+
+# list(dict.items())
+dict_items_op = custom_op(
+    name='items',
+    arg_types=[dict_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_Items')
+)
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:

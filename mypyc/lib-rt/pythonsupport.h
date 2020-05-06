@@ -366,6 +366,25 @@ CPyGen_SetStopIterationValue(PyObject *value)
     return 0;
 }
 
+// Copied from dictobject.c and dictobject.h, these are not Public before
+// Python 3.8. Also remove some error checks that we do in the callers.
+typedef struct {
+    PyObject_HEAD
+    PyDictObject *dv_dict;
+} _CPyDictViewObject;
+
+static PyObject *
+_CPyDictView_New(PyObject *dict, PyTypeObject *type)
+{
+    _CPyDictViewObject *dv = PyObject_GC_New(_CPyDictViewObject, type);
+    if (dv == NULL)
+        return NULL;
+    Py_INCREF(dict);
+    dv->dv_dict = (PyDictObject *)dict;
+    PyObject_GC_Track(dv);
+    return (PyObject *)dv;
+}
+
 #ifdef __cplusplus
 }
 #endif

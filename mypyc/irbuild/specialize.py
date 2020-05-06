@@ -22,8 +22,9 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive
+    bool_rprimitive, is_dict_rprimitive
 )
+from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.misc_ops import true_op, false_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
@@ -75,6 +76,34 @@ def translate_len(
             builder.accept(expr.args[0])
             return builder.add(LoadInt(len(expr_rtype.types)))
     return None
+
+
+@specialize_function('builtins.list')
+def dict_methods_fast_path(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Specialize a common case when list() is called on a dictionary view
+    # method call, for example foo = list(bar.keys()).
+    if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
+        return None
+    arg = expr.args[0]
+    if not (isinstance(arg, CallExpr) and not arg.args
+            and isinstance(arg.callee, MemberExpr)):
+        return None
+    base = arg.callee.expr
+    attr = arg.callee.name
+    rtype = builder.node_type(base)
+    if not (is_dict_rprimitive(rtype) and attr in ('keys', 'values', 'items')):
+        return None
+
+    obj = builder.accept(base)
+    # Note that it is not safe to use fast methods on dict subclasses, so
+    # the corresponding helpers in CPy.h fallback to (inlined) generic logic.
+    if attr == 'keys':
+        return builder.primitive_op(dict_keys_op, [obj], expr.line)
+    elif attr == 'values':
+        return builder.primitive_op(dict_values_op, [obj], expr.line)
+    else:
+        return builder.primitive_op(dict_items_op, [obj], expr.line)
 
 
 @specialize_function('builtins.tuple')
