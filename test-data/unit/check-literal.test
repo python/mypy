@@ -1815,13 +1815,13 @@ Alias = Literal[3]
 
 isinstance(3, Literal[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, Alias)                # E: Cannot use isinstance() with Literal type \
-                                    # E: The type alias to Literal is invalid in runtime context
+                                    # E: Argument 2 to "isinstance" has incompatible type "object"; expected "Union[type, Tuple[Any, ...]]"
 isinstance(3, Renamed[3])           # E: Cannot use isinstance() with Literal type
 isinstance(3, indirect.Literal[3])  # E: Cannot use isinstance() with Literal type
 
 issubclass(int, Literal[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, Alias)                # E: Cannot use issubclass() with Literal type \
-                                      # E: The type alias to Literal is invalid in runtime context
+                                      # E: Argument 2 to "issubclass" has incompatible type "object"; expected "Union[type, Tuple[Any, ...]]"
 issubclass(int, Renamed[3])           # E: Cannot use issubclass() with Literal type
 issubclass(int, indirect.Literal[3])  # E: Cannot use issubclass() with Literal type
 [builtins fixtures/isinstancelist.pyi]
@@ -1855,7 +1855,7 @@ Alias = Literal[3]
 Literal[3]()           # E: The type "Type[Literal]" is not generic and not indexable
 Renamed[3]()           # E: The type "Type[Literal]" is not generic and not indexable
 indirect.Literal[3]()  # E: The type "Type[Literal]" is not generic and not indexable
-Alias()                # E: The type alias to Literal is invalid in runtime context
+Alias()                # E: "object" not callable
 
 # TODO: Add appropriate error messages to the following lines
 Literal()

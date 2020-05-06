@@ -137,7 +137,9 @@ from mypy.fscache import FileSystemCache
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
-from mypy.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
+from mypy.semanal_main import (
+    semantic_analysis_for_scc, semantic_analysis_for_targets, core_modules
+)
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target, SavedAttributes
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
@@ -147,6 +149,8 @@ from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
 
 MAX_ITER = 1000  # type: Final
+
+SENSITIVE_INTERNAL_MODULES = tuple(core_modules) + ("mypy_extensions", "typing_extensions")
 
 
 class FineGrainedBuildManager:
@@ -341,6 +345,12 @@ class FineGrainedBuildManager:
         """
         self.manager.log_fine_grained('--- update single %r ---' % module)
         self.updated_modules.append(module)
+
+        # builtins and friends could potentially get triggered because
+        # of protocol stuff, but nothing good could possibly come from
+        # actually updating them.
+        if module in SENSITIVE_INTERNAL_MODULES:
+            return [], (module, path), None
 
         manager = self.manager
         previous_modules = self.previous_modules

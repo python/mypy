@@ -24,6 +24,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
 )
+from mypy.maptype import map_instance_to_supertype
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
 
@@ -603,6 +604,30 @@ class IRBuilder:
             return str_rprimitive
         else:
             return self.type_to_rtype(target_type.args[0])
+
+    def get_dict_base_type(self, expr: Expression) -> Instance:
+        """Find dict type of a dict-like expression.
+
+        This is useful for dict subclasses like SymbolTable.
+        """
+        target_type = get_proper_type(self.types[expr])
+        assert isinstance(target_type, Instance)
+        dict_base = next(base for base in target_type.type.mro
+                         if base.fullname == 'builtins.dict')
+        return map_instance_to_supertype(target_type, dict_base)
+
+    def get_dict_key_type(self, expr: Expression) -> RType:
+        dict_base_type = self.get_dict_base_type(expr)
+        return self.type_to_rtype(dict_base_type.args[0])
+
+    def get_dict_value_type(self, expr: Expression) -> RType:
+        dict_base_type = self.get_dict_base_type(expr)
+        return self.type_to_rtype(dict_base_type.args[1])
+
+    def get_dict_item_type(self, expr: Expression) -> RType:
+        key_type = self.get_dict_key_type(expr)
+        value_type = self.get_dict_value_type(expr)
+        return RTuple([key_type, value_type])
 
     def _analyze_iterable_item_type(self, expr: Expression) -> Type:
         """Return the item type given by 'expr' in an iterable context."""

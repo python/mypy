@@ -296,30 +296,44 @@ def f(d: Dict[int, int]) -> None:
 [out]
 def f(d):
     d :: dict
-    r0, r1 :: object
-    r2, key :: int
-    r3, r4 :: object
+    r0, r1 :: short_int
+    r2 :: int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
     r5 :: int
     r6 :: bool
-    r7 :: None
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11 :: int
+    r12, r13 :: bool
+    r14 :: None
 L0:
-    r0 = iter d :: object
+    r0 = 0
+    r1 = r0
+    r2 = len d :: dict
+    r3 = key_iter d :: dict
 L1:
-    r1 = next r0 :: object
-    if is_error(r1) goto L4 else goto L2
+    r4 = next_key r3, offset=r1
+    r5 = r4[1]
+    r1 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L4 :: bool
 L2:
-    r2 = unbox(int, r1)
-    key = r2
-    r3 = box(int, key)
-    r4 = d[r3] :: dict
-    r5 = unbox(int, r4)
+    r7 = r4[2]
+    r8 = unbox(int, r7)
+    key = r8
+    r9 = box(int, key)
+    r10 = d[r9] :: dict
+    r11 = unbox(int, r10)
 L3:
+    r12 = assert size(d) == r2
     goto L1
 L4:
-    r6 = no_err_occurred
+    r13 = no_err_occurred
 L5:
-    r7 = None
-    return r7
+    r14 = None
+    return r14
 
 [case testForDictContinue]
 from typing import Dict
@@ -336,47 +350,61 @@ def sum_over_even_values(d):
     d :: dict
     r0 :: short_int
     s :: int
-    r1, r2 :: object
-    r3, key :: int
-    r4, r5 :: object
+    r1, r2 :: short_int
+    r3 :: int
+    r4 :: object
+    r5 :: tuple[bool, int, object]
     r6 :: int
-    r7 :: short_int
-    r8 :: int
-    r9 :: short_int
-    r10 :: bool
-    r11, r12 :: object
-    r13, r14 :: int
-    r15 :: bool
+    r7 :: bool
+    r8 :: object
+    key, r9 :: int
+    r10, r11 :: object
+    r12 :: int
+    r13 :: short_int
+    r14 :: int
+    r15 :: short_int
+    r16 :: bool
+    r17, r18 :: object
+    r19, r20 :: int
+    r21, r22 :: bool
 L0:
     r0 = 0
     s = r0
-    r1 = iter d :: object
+    r1 = 0
+    r2 = r1
+    r3 = len d :: dict
+    r4 = key_iter d :: dict
 L1:
-    r2 = next r1 :: object
-    if is_error(r2) goto L6 else goto L2
+    r5 = next_key r4, offset=r2
+    r6 = r5[1]
+    r2 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L6 :: bool
 L2:
-    r3 = unbox(int, r2)
-    key = r3
-    r4 = box(int, key)
-    r5 = d[r4] :: dict
-    r6 = unbox(int, r5)
-    r7 = 2
-    r8 = r6 % r7 :: int
-    r9 = 0
-    r10 = r8 != r9 :: int
-    if r10 goto L3 else goto L4 :: bool
+    r8 = r5[2]
+    r9 = unbox(int, r8)
+    key = r9
+    r10 = box(int, key)
+    r11 = d[r10] :: dict
+    r12 = unbox(int, r11)
+    r13 = 2
+    r14 = r12 % r13 :: int
+    r15 = 0
+    r16 = r14 != r15 :: int
+    if r16 goto L3 else goto L4 :: bool
 L3:
     goto L5
 L4:
-    r11 = box(int, key)
-    r12 = d[r11] :: dict
-    r13 = unbox(int, r12)
-    r14 = s + r13 :: int
-    s = r14
+    r17 = box(int, key)
+    r18 = d[r17] :: dict
+    r19 = unbox(int, r18)
+    r20 = s + r19 :: int
+    s = r20
 L5:
+    r21 = assert size(d) == r3
     goto L1
 L6:
-    r15 = no_err_occurred
+    r22 = no_err_occurred
 L7:
     return s
 
