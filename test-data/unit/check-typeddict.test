@@ -2054,3 +2054,18 @@ d: TD = dict()
 d2: TD = dict(foo=1)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictBytesKey]
+from typing import TypedDict
+
+class TD(TypedDict):
+    foo: int
+
+d: TD = {b'foo': 2} # E: Expected TypedDict key to be string literal
+d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ('foo') \
+    # E: Argument 1 has incompatible type "bytes"; expected "str"
+d[b'foo'] # E: TypedDict key must be a string literal; expected one of ('foo')
+d[3] # E: TypedDict key must be a string literal; expected one of ('foo')
+d[True] # E: TypedDict key must be a string literal; expected one of ('foo')
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
