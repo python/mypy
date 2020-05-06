@@ -5,8 +5,8 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
-    Sequence, Mapping, Generic, AbstractSet, Callable
+    Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator,
+    Iterable, Sequence, Mapping, Generic, AbstractSet, Callable
 )
 from typing_extensions import Final
 
@@ -2600,7 +2600,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert declared_type is not None
                 clean_items.append((type, declared_type))
 
-            types, declared_types = zip(*clean_items)
+            # TODO: fix signature of zip() in typeshed.
+            types, declared_types = cast(Any, zip)(*clean_items)
             self.binder.assign_type(expr,
                                     make_simplified_union(list(types)),
                                     make_simplified_union(list(declared_types)),
