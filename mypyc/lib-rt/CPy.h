@@ -1379,21 +1379,21 @@ static tuple_T3OOO CPy_GetExcInfo(void) {
 
 static PyObject *CPyDict_KeysView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
-        return _PyDictView_New(dict, &PyDictKeys_Type);
+        return _CPyDictView_New(dict, &PyDictKeys_Type);
     }
     return PyObject_CallMethod(dict, "keys", NULL);
 }
 
 static PyObject *CPyDict_ValuesView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
-        return _PyDictView_New(dict, &PyDictValues_Type);
+        return _CPyDictView_New(dict, &PyDictValues_Type);
     }
     return PyObject_CallMethod(dict, "values", NULL);
 }
 
 static PyObject *CPyDict_ItemsView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
-        return _PyDictView_New(dict, &PyDictItems_Type);
+        return _CPyDictView_New(dict, &PyDictItems_Type);
     }
     return PyObject_CallMethod(dict, "items", NULL);
 }
