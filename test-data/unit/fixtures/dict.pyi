@@ -36,6 +36,7 @@ class int: # for convenience
 
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
+class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases
     def __getitem__(self, x: int) -> T: pass
