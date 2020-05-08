@@ -1399,7 +1399,7 @@ static PyObject *CPyDict_ItemsView(PyObject *dict) {
 }
 
 static PyObject *CPyDict_Keys(PyObject *dict) {
-    if PyDict_CheckExact(dict) {
+    if (PyDict_CheckExact(dict)) {
         return PyDict_Keys(dict);
     }
     // Inline generic fallback logic to also return a list.
@@ -1418,7 +1418,7 @@ static PyObject *CPyDict_Keys(PyObject *dict) {
 }
 
 static PyObject *CPyDict_Values(PyObject *dict) {
-    if PyDict_CheckExact(dict) {
+    if (PyDict_CheckExact(dict)) {
         return PyDict_Values(dict);
     }
     // Inline generic fallback logic to also return a list.
@@ -1437,7 +1437,7 @@ static PyObject *CPyDict_Values(PyObject *dict) {
 }
 
 static PyObject *CPyDict_Items(PyObject *dict) {
-    if PyDict_CheckExact(dict) {
+    if (PyDict_CheckExact(dict)) {
         return PyDict_Items(dict);
     }
     // Inline generic fallback logic to also return a list.
