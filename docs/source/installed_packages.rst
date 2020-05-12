@@ -78,6 +78,11 @@ the ``setup.py`` might look like
 
    If you use :doc:`setuptools <setuptools:index>`, you must pass the option ``zip_safe=False`` to
    ``setup()``, or mypy will not be able to find the installed package.
+   
+.. note::
+
+   If you use `pyproject.toml` instead of `setup.py`, you don't need to do anything specific. 
+   `py.typed` will be picked up automatically.
 
 Some packages have a mix of stub files and runtime files. These packages also
 require a ``py.typed`` file. An example can be seen below
