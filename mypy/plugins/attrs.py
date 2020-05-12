@@ -358,7 +358,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
-    last_kw_only = False
 
     for i, attribute in enumerate(attributes):
         if not attribute.init:
@@ -366,7 +365,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
 
         if attribute.kw_only:
             # Keyword-only attributes don't care whether they are default or not.
-            last_kw_only = True
             continue
 
         # If the issue comes from merging different classes, report it
@@ -377,11 +375,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.fail(
                 "Non-default attributes not allowed after default attributes.",
                 context)
-        if last_kw_only:
-            ctx.api.fail(
-                "Non keyword-only attributes are not allowed after a keyword-only attribute.",
-                context
-            )
         last_default |= attribute.has_default
 
     return attributes
@@ -626,7 +619,18 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
               adder: 'MethodAdder') -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
-    args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
+    # Convert attributes to arguments with kw_only arguments at the  end of
+    # the argument list
+    pos_args = []
+    kw_only_args = []
+    for attribute in attributes:
+        if not attribute.init:
+            continue
+        if attribute.kw_only:
+            kw_only_args.append(attribute.argument(ctx))
+        else:
+            pos_args.append(attribute.argument(ctx))
+    args = pos_args + kw_only_args
     if all(
         # We use getattr rather than instance checks because the variable.type
         # might be wrapped into a Union or some other type, but even non-Any
