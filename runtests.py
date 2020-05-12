@@ -2,17 +2,9 @@
 import subprocess
 from subprocess import Popen
 from os import system
-from sys import argv, exit, platform, executable, version_info
+from sys import argv, exit
 
-
-# Use the Python provided to execute the script, or fall back to a sane default
-if version_info >= (3, 5, 0):
-    python_name = executable
-else:
-    if platform == 'win32':
-        python_name = 'py -3'
-    else:
-        python_name = 'python3'
+python_name = 'python'
 
 # Slow test suites
 CMDLINE = 'PythonCmdline'
@@ -91,7 +83,7 @@ cmds = {
 }
 
 # Stop run immediately if these commands fail
-FAST_FAIL = ['self', 'lint']
+FAST_FAIL = ['self']
 
 DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd != 'mypyc-extra']
 
