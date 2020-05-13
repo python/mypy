@@ -4,3 +4,21 @@ requires = [
     "wheel >= 0.30.0",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 200
+target-version = ['py36', 'py37', 'py38']
+skip-string-normalization = true
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.*
+  | \.git
+  | \.mypy_cache
+  | \.venv
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+  | profiling
+)/
+'''
