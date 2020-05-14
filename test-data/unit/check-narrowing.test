@@ -1013,4 +1013,16 @@ if str_or_true is not True:
 else:
     reveal_type(str_or_true)  # N: Revealed type is 'Literal[True]'
 
+str_or_bool_literal: Union[Literal[False], Literal[True], str]
+
+if str_or_bool_literal is not True:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'Union[Literal[False], builtins.str]'
+else:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'Literal[True]'
+
+if str_or_bool_literal is not True and str_or_bool_literal is not False:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'Union[Literal[False], Literal[True]]'
+
 [builtins fixtures/primitives.pyi]

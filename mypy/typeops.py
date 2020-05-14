@@ -604,7 +604,7 @@ def is_singleton_type(typ: Type) -> bool:
     constructing two distinct instances of 100001.
     """
     typ = get_proper_type(typ)
-    # TODO: Also make this return True if the type is a bool LiteralType.
+    # TODO:
     # Also make this return True if the type corresponds to ... (ellipsis) or NotImplemented?
     return (
             isinstance(typ, NoneType)
