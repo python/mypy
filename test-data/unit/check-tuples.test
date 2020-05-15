@@ -1421,3 +1421,10 @@ t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3
                                                                     # E: Incompatible types in assignment (expression has type Tuple[int, int, ... <15 more items>], variable has type Tuple[int, int, ... <10 more items>])
 
 [builtins fixtures/tuple.pyi]
+
+[case testTupleWithStarExpr]
+from typing import Tuple
+points = (1, 2)  # type: Tuple[int, int]
+x, y, z = *points, 0
+
+[builtins fixtures/tuple.pyi]

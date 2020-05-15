@@ -2483,8 +2483,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
 
-            rvalues = rvalue.items
-
+            rvalues = []  # type: List[Expression]
+            for rval in rvalue.items:
+                if isinstance(rval, StarExpr):
+                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    if isinstance(typs, TupleType):
+                        rvalues.extend([TempNode(typ) for typ in typs.items])
+                    else:
+                        rvalues.append(TempNode(typs))
+                else:
+                    rvalues.append(rval)
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
                 star_index = next((i for i, lv in enumerate(lvalues) if
                                    isinstance(lv, StarExpr)), len(lvalues))
