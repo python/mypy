@@ -984,3 +984,45 @@ if true_or_false:
 else:
     reveal_type(true_or_false)  # N: Revealed type is 'Literal[False]'
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingLiteralIdentityCheck]
+from typing import Union
+from typing_extensions import Literal
+
+str_or_false: Union[Literal[False], str]
+
+if str_or_false is not False:
+    reveal_type(str_or_false)   # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(str_or_false)   # N: Revealed type is 'Literal[False]'
+
+if str_or_false is False:
+    reveal_type(str_or_false)  # N: Revealed type is 'Literal[False]'
+else:
+    reveal_type(str_or_false)  # N: Revealed type is 'builtins.str'
+
+str_or_true: Union[Literal[True], str]
+
+if str_or_true is True:
+    reveal_type(str_or_true)  # N: Revealed type is 'Literal[True]'
+else:
+    reveal_type(str_or_true)  # N: Revealed type is 'builtins.str'
+
+if str_or_true is not True:
+    reveal_type(str_or_true)  # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(str_or_true)  # N: Revealed type is 'Literal[True]'
+
+str_or_bool_literal: Union[Literal[False], Literal[True], str]
+
+if str_or_bool_literal is not True:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'Union[Literal[False], builtins.str]'
+else:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'Literal[True]'
+
+if str_or_bool_literal is not True and str_or_bool_literal is not False:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'builtins.str'
+else:
+    reveal_type(str_or_bool_literal)  # N: Revealed type is 'Union[Literal[False], Literal[True]]'
+
+[builtins fixtures/primitives.pyi]

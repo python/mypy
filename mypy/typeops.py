@@ -604,10 +604,12 @@ def is_singleton_type(typ: Type) -> bool:
     constructing two distinct instances of 100001.
     """
     typ = get_proper_type(typ)
-    # TODO: Also make this return True if the type is a bool LiteralType.
+    # TODO:
     # Also make this return True if the type corresponds to ... (ellipsis) or NotImplemented?
     return (
-            isinstance(typ, NoneType) or (isinstance(typ, LiteralType) and typ.is_enum_literal())
+            isinstance(typ, NoneType)
+            or (isinstance(typ, LiteralType)
+                and (typ.is_enum_literal() or isinstance(typ.value, bool)))
             or (isinstance(typ, Instance) and typ.type.is_enum and len(get_enum_values(typ)) == 1)
     )
 
