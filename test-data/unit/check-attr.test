@@ -1070,11 +1070,12 @@ class A:
      a = attr.ib(default=0)
 @attr.s
 class B(A):
-    b = attr.ib()  # E: Non keyword-only attributes are not allowed after a keyword-only attribute.
+    b = attr.ib()
 @attr.s
 class C:
     a = attr.ib(kw_only=True)
-    b = attr.ib(15)  # E: Non keyword-only attributes are not allowed after a keyword-only attribute.
+    b = attr.ib(15)
+
 [builtins fixtures/attr.pyi]
 
 [case testAttrsKwOnlyPy2]
