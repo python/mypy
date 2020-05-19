@@ -5099,3 +5099,28 @@ def foo(x: MyInt) -> int: ...
 def foo(x):
     ...
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadedToGeneric]
+from typing import TypeVar, Callable, NewType, overload, Union
+
+# int in our stubs isn't overloaded
+class fakeint:
+    @overload
+    def __init__(self, x: Union[str, bytes] = ...) -> None: ...
+    @overload
+    def __init__(self, x: Union[str, bytes], base: int) -> None: ...
+    def __init__(self, *args) -> None: pass  # type: ignore
+
+
+U = TypeVar('U')
+V = TypeVar('V')
+W = TypeVar('W')
+def compose(f: Callable[[U], V], g: Callable[[W], U]) -> Callable[[W], V]:
+    return lambda x: f(g(x))
+
+ID = NewType("ID", fakeint)
+
+compose(ID, fakeint)("test")
+reveal_type(compose(ID, fakeint))  # N: Revealed type is 'def (Union[builtins.str, builtins.bytes]) -> __main__.ID*'
+
+[builtins fixtures/tuple.pyi]
