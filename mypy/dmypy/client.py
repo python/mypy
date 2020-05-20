@@ -390,6 +390,7 @@ def check_output(response: Dict[str, Any], verbose: bool,
     except KeyError:
         fail("Response: %s" % str(response))
     sys.stdout.write(out)
+    sys.stdout.flush()
     sys.stderr.write(err)
     if verbose:
         show_stats(response)

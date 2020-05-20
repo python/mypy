@@ -202,17 +202,33 @@ p: Point
 reveal_type(p) # N: Revealed type is 'TypedDict('__main__.Point', {'x': builtins.int, '_y': builtins.int})'
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictWithDuplicateField]
+[case testCannotCreateTypedDictWithDuplicateKey1]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
 
 class Bad(TypedDict):
     x: int
-    x: str # E: Duplicate TypedDict field "x"
+    x: str # E: Duplicate TypedDict key "x"
 
 b: Bad
 reveal_type(b) # N: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.int})'
 [builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithDuplicateKey2]
+from typing import TypedDict
+
+D1 = TypedDict("D1", {
+    "x": int,
+    "x": int,  # E: Duplicate TypedDict key "x"
+})
+D2 = TypedDict("D2", {"x": int, "x": str})  # E: Duplicate TypedDict key "x"
+
+d1: D1
+d2: D2
+reveal_type(d1) # N: Revealed type is 'TypedDict('__main__.D1', {'x': builtins.int})'
+reveal_type(d2) # N: Revealed type is 'TypedDict('__main__.D2', {'x': builtins.str})'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictWithClassOverwriting]
 # flags: --python-version 3.6

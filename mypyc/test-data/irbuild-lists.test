@@ -185,7 +185,7 @@ L0:
     r2 = r0
     i = r2
 L1:
-    r3 = i < r1 :: int
+    r3 = r2 < r1 :: short_int
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = l[i] :: list

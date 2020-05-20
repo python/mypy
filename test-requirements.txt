@@ -1,8 +1,8 @@
 -r mypy-requirements.txt
 attrs>=18.0
-flake8>=3.7
+flake8>=3.8.1
 flake8-bugbear; python_version >= '3.5'
-flake8-pyi; python_version >= '3.6'
+flake8-pyi>=20.5; python_version >= '3.6'
 lxml>=4.4.0
 psutil>=4.0
 pytest==5.3.2

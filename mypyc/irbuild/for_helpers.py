@@ -604,8 +604,6 @@ class ForDictionaryItems(ForDictionaryCommon):
 class ForRange(ForGenerator):
     """Generate optimized IR for a for loop over an integer range."""
 
-    # TODO: Use a separate register for the index to allow safe index mutation.
-
     def init(self, start_reg: Value, end_reg: Value, step: int) -> None:
         builder = self.builder
         self.start_reg = start_reg
@@ -625,7 +623,7 @@ class ForRange(ForGenerator):
         line = self.line
         # Add loop condition check.
         cmp = '<' if self.step > 0 else '>'
-        comparison = builder.binary_op(builder.read(self.index_target, line),
+        comparison = builder.binary_op(builder.read(self.index_reg, line),
                                        builder.read(self.end_target, line), cmp, line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 

@@ -486,12 +486,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                  template: CallableType) -> List[Constraint]:
         # Create constraints by matching an overloaded type against a template.
         # This is tricky to do in general. We cheat by only matching against
-        # the first overload item, and by only matching the return type. This
+        # the first overload item that is callable compatible. This
         # seems to work somewhat well, but we should really use a more
         # reliable technique.
         item = find_matching_overload_item(overloaded, template)
-        return infer_constraints(template.ret_type, item.ret_type,
-                                 self.direction)
+        return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
