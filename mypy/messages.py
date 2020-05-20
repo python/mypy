@@ -1050,7 +1050,7 @@ class MessageBuilder:
             self.note(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
-        self.fail('Unsupported type Type[{}]'.format(format_type(item)), context)
+        self.fail('Cannot instantiate type "Type[{}]"'.format(format_type_bare(item)), context)
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.fail('Redundant cast to {}'.format(format_type(typ)), context,
