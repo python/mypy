@@ -625,7 +625,7 @@ class ForRange(ForGenerator):
         line = self.line
         # Add loop condition check.
         cmp = '<' if self.step > 0 else '>'
-        comparison = builder.binary_op(builder.read(self.index_target, line),
+        comparison = builder.binary_op(builder.read(self.index_reg, line),
                                        builder.read(self.end_target, line), cmp, line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
