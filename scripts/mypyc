@@ -25,7 +25,7 @@ from distutils.core import setup
 from mypyc.build import mypycify
 
 setup(name='mypyc_output',
-      ext_modules=mypycify({}, {}),
+      ext_modules=mypycify({}, opt_level="{}"),
 )
 """
 
@@ -36,7 +36,7 @@ def main() -> None:
     except FileExistsError:
         pass
 
-    opt_level = os.getenv("MYPYC_OPT_LEVEL", '')
+    opt_level = os.getenv("MYPYC_OPT_LEVEL", '3')
 
     setup_file = os.path.join(build_dir, 'setup.py')
     with open(setup_file, 'w') as f:
