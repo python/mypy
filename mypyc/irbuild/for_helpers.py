@@ -604,8 +604,6 @@ class ForDictionaryItems(ForDictionaryCommon):
 class ForRange(ForGenerator):
     """Generate optimized IR for a for loop over an integer range."""
 
-    # TODO: Use a separate register for the index to allow safe index mutation.
-
     def init(self, start_reg: Value, end_reg: Value, step: int) -> None:
         builder = self.builder
         self.start_reg = start_reg
