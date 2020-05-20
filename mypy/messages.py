@@ -772,6 +772,14 @@ class MessageBuilder:
                   .format(arg_num, name, target, arg_type_in_supertype_f),
                   context,
                   code=codes.OVERRIDE)
+        self.note(
+            'This violates the Liskov substitution principle',
+            context,
+            code=codes.OVERRIDE)
+        self.note(
+            'See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides',
+            context,
+            code=codes.OVERRIDE)
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
