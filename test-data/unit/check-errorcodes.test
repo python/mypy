@@ -279,7 +279,9 @@ class D:
     def f(self, x: int) -> int:
         return 0
 class E(D):
-    def f(self, x: str) -> int:  # E: Argument 1 of "f" is incompatible with supertype "D"; supertype defines the argument type as "int"  [override]
+    def f(self, x: str) -> int:  # E: Argument 1 of "f" is incompatible with supertype "D"; supertype defines the argument type as "int"  [override] \
+                                 # N: This violates the Liskov substitution principle \
+                                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         return 0
 
 class O:
