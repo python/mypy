@@ -54,6 +54,14 @@ func_op(
     emit=call_emit('CPyLong_FromStrWithBase'),
     priority=1)
 
+# str(n) on ints
+func_op(name='builtins.str',
+        arg_types=[int_rprimitive],
+        result_type=str_rprimitive,
+        error_kind=ERR_MAGIC,
+        emit=call_emit('CPyTagged_Str'),
+        priority=2)
+
 
 def int_binary_op(op: str, c_func_name: str,
                   result_type: RType = int_rprimitive,

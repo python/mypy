@@ -241,12 +241,10 @@ def use_c(x: C, y: object) -> int:
 def A.foo(self, x):
     self :: __main__.A
     x :: int
-    r0 :: object
-    r1 :: str
+    r0 :: str
 L0:
-    r0 = box(int, x)
-    r1 = str r0 :: object
-    return r1
+    r0 = str x :: int
+    return r0
 def B.foo(self, x):
     self :: __main__.B
     x :: object
