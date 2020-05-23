@@ -724,7 +724,7 @@ class C:
 
 o = C([1, 2, 3])
 o = C(['a'])  # E: List item 0 has incompatible type "str"; expected "int"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingListConverter]
 from typing import List
