@@ -65,3 +65,10 @@ c_function_op(
     return_type=tuple_rprimitive,
     c_function_name='PySequence_Tuple',
     error_kind=ERR_MAGIC)
+
+# tuple[begin:end]
+tuple_slice_op = custom_op(name='tuple_slice',
+                           arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
+                           result_type=object_rprimitive,
+                           error_kind=ERR_MAGIC,
+                           emit=call_emit('CPySequenceTuple_GetSlice'))

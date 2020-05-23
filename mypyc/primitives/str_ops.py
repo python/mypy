@@ -7,8 +7,8 @@ from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
-    c_method_op, c_binary_op, c_function_op
+    func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
+    c_method_op, c_binary_op, custom_op
 )
 
 
@@ -105,3 +105,10 @@ binary_op(op='!=',
           result_type=bool_rprimitive,
           error_kind=ERR_MAGIC,
           emit=emit_str_compare('!= 0'))
+
+# str[begin:end]
+str_slice_op = custom_op(name='str_slice',
+                         arg_types=[str_rprimitive, int_rprimitive, int_rprimitive],
+                         result_type=object_rprimitive,
+                         error_kind=ERR_MAGIC,
+                         emit=call_emit('CPyStr_GetSlice'))
