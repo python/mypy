@@ -62,12 +62,14 @@ class Converter:
 
 def expand_arg_type(
         callable_type: CallableType,
-        target_type: Type,
+        target_type: Optional[Type],
 ) -> Type:
     # The result is based on the type of the first argument of the callable
     arg_type = get_proper_type(callable_type.arg_types[0])
     ret_type = get_proper_type(callable_type.ret_type)
     target_type = get_proper_type(target_type)
+    if target_type is None:
+        target_type = AnyType(TypeOfAny.unannotated)
 
     if ret_type == target_type or isinstance(ret_type, AnyType):
         # If the callable has the exact same return type as the target
