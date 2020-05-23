@@ -63,7 +63,7 @@ class Converter:
 def expand_arg_type(
         callable_type: CallableType,
         target_type: Type,
-):
+) -> Type:
     # The result is based on the type of the first argument of the callable
     arg_type = get_proper_type(callable_type.arg_types[0])
     ret_type = get_proper_type(callable_type.ret_type)
@@ -87,6 +87,7 @@ def expand_arg_type(
     type_map = {
         tid: sol
         for tid, sol in zip(type_var_ids, solutions)
+        if sol is not None
     }
 
     # Now we can use these solutions to expand the generic arg type into a
