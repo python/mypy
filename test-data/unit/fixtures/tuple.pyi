@@ -11,6 +11,10 @@ class type:
     def __init__(self, *a: object) -> None: pass
     def __call__(self, *a: object) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: Iterable[Tco]) -> None: pass
     def __iter__(self) -> Iterator[Tco]: pass
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, x: int) -> Tco: pass
