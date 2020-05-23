@@ -189,7 +189,9 @@ class C: pass
 class D: pass
 class A(B[C]):
     def f(self, a: D) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C"
+        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: C) -> None: pass
 [out]
 
@@ -202,7 +204,9 @@ class B:
     def g(self, a: C) -> None: pass
 class A(B, Generic[T]):
     def f(self, a: T) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C"
+        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: 'C') -> None: pass
 [out]
 
@@ -215,7 +219,9 @@ class B(Generic[T]):
     def g(self, a: T) -> None: pass
 class A(B[S], Generic[T, S]):
     def f(self, a: T) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "S"
+        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "S" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: S) -> None: pass
 [out]
 
@@ -233,7 +239,9 @@ class C(Generic[T, U, V]):
 class B(C[D, D, T], Generic[T]): pass
 class A(B[S], Generic[T, S]):
     def f(self, a: T) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "S"
+        # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "S" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: S) -> None: pass
 [out]
 
@@ -283,6 +291,8 @@ class D(A):
     def f(self, x: T1, y: S) -> None: pass # TODO: This error could be more specific.
 [out]
 main:12: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "S"
+main:12: note: This violates the Liskov substitution principle
+main:12: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:14: error: Signature of "f" incompatible with supertype "A"
 
 
@@ -538,7 +548,9 @@ class I(Generic[T]):
     def g(self, a: T) -> None: pass
 class A(I[C]):
     def f(self, a: 'D') -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C"
+        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: 'C') -> None: pass
 class C: pass
 class D: pass
@@ -570,7 +582,9 @@ class B(I[C]):
     def g(self, a: 'C', b: Any) -> None: pass
 class A(B):
     def g(self, a: 'C', b: 'C') -> None: pass \
-        # E: Argument 2 of "g" is incompatible with supertype "I"; supertype defines the argument type as "D"
+        # E: Argument 2 of "g" is incompatible with supertype "I"; supertype defines the argument type as "D" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def f(self, a: 'C', b: 'C') -> None: pass
 class C: pass
 class D: pass
@@ -587,7 +601,9 @@ class B(I[C]):
     def f(self, a: 'C', b: Any) -> None: pass
 class A(B):
     def f(self, a: 'C', b: 'D') -> None: pass \
-        # E: Argument 2 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C"
+        # E: Argument 2 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 class C: pass
 class D: pass
 [out]

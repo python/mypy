@@ -311,7 +311,9 @@ class A(metaclass=ABCMeta):
     def g(self, x: int) -> int: pass
 class B(A):
     def f(self, x: str) -> int: \
-            # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
+            # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+            # N: This violates the Liskov substitution principle \
+            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         pass
     def g(self, x: int) -> int: pass
 [out]
@@ -327,7 +329,9 @@ class J(metaclass=ABCMeta):
     def g(self, x: str) -> str: pass
 class A(I, J):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int"
+        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, x: str) -> int: pass \
         # E: Return type "int" of "g" incompatible with return type "str" in supertype "J"
     def h(self) -> int: pass # Not related to any base class
@@ -342,7 +346,9 @@ class J(metaclass=ABCMeta):
 class I(J): pass
 class A(I):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "int"
+        # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "int" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [out]
 
 [case testInvalidOverridingAbstractMethod]
@@ -353,7 +359,9 @@ class J(metaclass=ABCMeta):
     def f(self, x: 'J') -> None: pass
 class I(J):
     @abstractmethod
-    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "J"
+    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "J" \
+                                      # N: This violates the Liskov substitution principle \
+                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [out]
 
 [case testAbstractClassCoAndContraVariance]
@@ -375,6 +383,8 @@ class A(I):
         pass
 [out]
 main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
+main:11: note: This violates the Liskov substitution principle
+main:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 
 

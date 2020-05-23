@@ -262,7 +262,9 @@ if int():
 class A:
     def f(self, x: int) -> None: pass
 class B(A):
-    def f(self, x: str) -> None: pass # E:5: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
+    def f(self, x: str) -> None: pass # E:5: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                      # N:5: This violates the Liskov substitution principle \
+                                      # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 class C(A):
     def f(self, x: int) -> int: pass # E:5: Return type "int" of "f" incompatible with return type "None" in supertype "A"
 class D(A):
