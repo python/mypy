@@ -24,7 +24,8 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
-    bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive
+    bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
+    void_rtype
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -652,9 +653,9 @@ class LowLevelIRBuilder:
                args: List[Value],
                line: int,
                result_type: Optional[RType]) -> Value:
-        # TODO: we should handle void cases
-        assert result_type is not None
-        target = self.add(CallC(function_name, args, result_type, line))
+        # handle void function via singleton RVoid instance
+        ret_type = void_rtype if result_type is None else result_type
+        target = self.add(CallC(function_name, args, ret_type, line))
         return target
 
     def matching_call_c(self,

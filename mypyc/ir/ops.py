@@ -1150,7 +1150,6 @@ class CallC(RegisterOp):
         super().__init__(line)
         self.function_name = function_name
         self.args = args
-        # TODO: handle void C function by adding a new flag and make this Optional
         self.type = ret_type
 
     def to_str(self, env: Environment) -> str:
