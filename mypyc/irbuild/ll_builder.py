@@ -33,7 +33,7 @@ from mypyc.common import (
 )
 from mypyc.primitives.registry import (
     binary_ops, unary_ops, method_ops, func_ops,
-    call_c_ops, CallCDescription
+    call_c_ops, CFunctionDescription
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
@@ -658,13 +658,13 @@ class LowLevelIRBuilder:
         return target
 
     def matching_call_c(self,
-                        candidates: List[CallCDescription],
+                        candidates: List[CFunctionDescription],
                         args: List[Value],
                         line: int,
                         result_type: Optional[RType] = None) -> Optional[Value]:
         # TODO: this function is very similar to matching_primitive_op
         # we should remove the old one or refactor both them into only as we move forward
-        matching = None  # type: Optional[CallCDescription]
+        matching = None  # type: Optional[CFunctionDescription]
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue

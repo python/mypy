@@ -44,12 +44,12 @@ from mypyc.ir.rtypes import RType,  bool_rprimitive
 
 # TODO: comment, we don't need error_kind since C functions are all ERR_MAGIC
 # however, other fields may need further investigation
-CallCDescription = NamedTuple(
-    'CallCDescription',  [('name', str),
-                          ('arg_types', List[RType]),
-                          ('result_type', Optional[RType]),
-                          ('c_function_name', str),
-                          ('priority', int)])
+CFunctionDescription = NamedTuple(
+    'CFunctionDescription',  [('name', str),
+                              ('arg_types', List[RType]),
+                              ('result_type', Optional[RType]),
+                              ('c_function_name', str),
+                              ('priority', int)])
 
 # Primitive binary ops (key is operator such as '+')
 binary_ops = {}  # type: Dict[str, List[OpDescription]]
@@ -66,7 +66,7 @@ method_ops = {}  # type: Dict[str, List[OpDescription]]
 # Primitive ops for reading module attributes (key is name such as 'builtins.None')
 name_ref_ops = {}  # type: Dict[str, OpDescription]
 
-call_c_ops = {}  # type: Dict[str, List[CallCDescription]]
+call_c_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
 
 def simple_emit(template: str) -> EmitCallback:
@@ -328,7 +328,7 @@ def call_c_op(name: str,
               c_function_name: str,
               priority: int = 1) -> None:
     ops = call_c_ops.setdefault(name, [])
-    desc = CallCDescription(name, arg_types, result_type, c_function_name, priority)
+    desc = CFunctionDescription(name, arg_types, result_type, c_function_name, priority)
     ops.append(desc)
 
 
