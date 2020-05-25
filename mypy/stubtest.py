@@ -254,7 +254,7 @@ def verify_typeinfo(
 def _verify_static_class_methods(
     stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
 ) -> Iterator[str]:
-    if runtime.__name__ == "__new__":
+    if stub.name == "__new__":
         # Special cased by Python, so never declared as staticmethod
         return
     if inspect.isbuiltin(runtime):
