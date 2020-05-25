@@ -38,7 +38,8 @@ call_c_op(
     name='join',
     arg_types=[str_rprimitive, object_rprimitive],
     result_type=str_rprimitive,
-    c_function_name='PyUnicode_Join'
+    c_function_name='PyUnicode_Join',
+    error_kind=ERR_MAGIC
 )
 
 # str[index] (for an int index)
