@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
-    c_function_call_op
+    call_c_op
 )
 
 
@@ -34,7 +34,7 @@ binary_op(op='+',
           emit=call_emit('PyUnicode_Concat'))
 
 # str.join(obj)
-c_function_call_op(
+call_c_op(
     name='join',
     arg_types=[str_rprimitive, object_rprimitive],
     result_type=str_rprimitive,

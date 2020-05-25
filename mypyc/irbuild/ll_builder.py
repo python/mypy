@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue, CFunctionCall
+    NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue, CallC
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -33,7 +33,7 @@ from mypyc.common import (
 )
 from mypyc.primitives.registry import (
     binary_ops, unary_ops, method_ops, func_ops,
-    c_function_call_ops, LLOpDescription
+    call_c_ops, CallCDescription
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
@@ -647,24 +647,24 @@ class LowLevelIRBuilder:
                 value = self.primitive_op(bool_op, [value], value.line)
         self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
-    def c_function_call(self,
-                        function_name: str,
-                        args: List[Value],
-                        line: int,
-                        result_type: Optional[RType]) -> Value:
+    def call_c(self,
+               function_name: str,
+               args: List[Value],
+               line: int,
+               result_type: Optional[RType]) -> Value:
         # TODO: we should handle void cases
         assert result_type is not None
-        target = self.add(CFunctionCall(function_name, args, result_type, line))
+        target = self.add(CallC(function_name, args, result_type, line))
         return target
 
-    def matching_c_function_call(self,
-                                 candidates: List[LLOpDescription],
-                                 args: List[Value],
-                                 line: int,
-                                 result_type: Optional[RType] = None) -> Optional[Value]:
+    def matching_call_c(self,
+                        candidates: List[CallCDescription],
+                        args: List[Value],
+                        line: int,
+                        result_type: Optional[RType] = None) -> Optional[Value]:
         # TODO: this function is very similar to matching_primitive_op
         # we should remove the old one or refactor both them into only as we move forward
-        matching = None  # type: Optional[LLOpDescription]
+        matching = None  # type: Optional[CallCDescription]
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
@@ -678,7 +678,7 @@ class LowLevelIRBuilder:
                 else:
                     matching = desc
         if matching:
-            target = self.c_function_call(matching.c_function_name, args, line, result_type)
+            target = self.call_c(matching.c_function_name, args, line, result_type)
             return target
         return None
 
@@ -766,11 +766,11 @@ class LowLevelIRBuilder:
         Return None if no translation found; otherwise return the target register.
         """
         ops = method_ops.get(name, [])
-        c_func_call_ops = c_function_call_ops.get(name, [])
-        c_function_call = self.matching_c_function_call(c_func_call_ops, [base_reg] + args, line,
-                                                        result_type=result_type)
-        if c_function_call is not None:
-            return c_function_call
+        call_c_ops_candidates = call_c_ops.get(name, [])
+        call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args, line,
+                                         result_type=result_type)
+        if call_c_op is not None:
+            return call_c_op
         return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)
 
     def translate_eq_cmp(self,

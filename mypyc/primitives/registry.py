@@ -44,12 +44,12 @@ from mypyc.ir.rtypes import RType,  bool_rprimitive
 
 # TODO: comment, we don't need error_kind since C functions are all ERR_MAGIC
 # however, other fields may need further investigation
-LLOpDescription = NamedTuple(
-    'LLOpDescription',  [('name', str),
-                        ('arg_types', List[RType]),
-                        ('result_type', Optional[RType]),
-                        ('c_function_name', str),
-                        ('priority', int)])
+CallCDescription = NamedTuple(
+    'CallCDescription',  [('name', str),
+                          ('arg_types', List[RType]),
+                          ('result_type', Optional[RType]),
+                          ('c_function_name', str),
+                          ('priority', int)])
 
 # Primitive binary ops (key is operator such as '+')
 binary_ops = {}  # type: Dict[str, List[OpDescription]]
@@ -66,7 +66,7 @@ method_ops = {}  # type: Dict[str, List[OpDescription]]
 # Primitive ops for reading module attributes (key is name such as 'builtins.None')
 name_ref_ops = {}  # type: Dict[str, OpDescription]
 
-c_function_call_ops = {}  # type: Dict[str, List[LLOpDescription]]
+call_c_ops = {}  # type: Dict[str, List[CallCDescription]]
 
 
 def simple_emit(template: str) -> EmitCallback:
@@ -322,13 +322,13 @@ def custom_op(arg_types: List[RType],
                          emit, steals, is_borrowed, 0)
 
 
-def c_function_call_op(name: str,
-                       arg_types: List[RType],
-                       result_type: Optional[RType],
-                       c_function_name: str,
-                       priority: int = 1) -> None:
-    ops = c_function_call_ops.setdefault(name, [])
-    desc = LLOpDescription(name, arg_types, result_type, c_function_name, priority)
+def call_c_op(name: str,
+              arg_types: List[RType],
+              result_type: Optional[RType],
+              c_function_name: str,
+              priority: int = 1) -> None:
+    ops = call_c_ops.setdefault(name, [])
+    desc = CallCDescription(name, arg_types, result_type, c_function_name, priority)
     ops.append(desc)
 
 
