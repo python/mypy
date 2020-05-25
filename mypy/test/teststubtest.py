@@ -588,6 +588,38 @@ class StubtestUnit(unittest.TestCase):
             error="X.__mangle_bad"
         )
 
+    @collect_cases
+    def test_mro(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class A:
+                def foo(self, x: int) -> None: ...
+            class B(A):
+                pass
+            class C(A):
+                pass
+            """,
+            runtime="""
+            class A:
+                def foo(self, x: int) -> None: ...
+            class B(A):
+                def foo(self, x: int) -> None: ...
+            class C(A):
+                def foo(self, y: int) -> None: ...
+            """,
+            error="C.foo"
+        )
+        yield Case(
+            stub="""
+            class X: ...
+            """,
+            runtime="""
+            class X:
+                def __init__(self, x): pass
+            """,
+            error="X.__init__"
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
