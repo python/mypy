@@ -662,15 +662,6 @@ def verify_funcitem(
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        try:
-            # We shouldn't really get here since that would involve something not existing both in
-            # the stub and the runtime, however, some modules like distutils.command have some
-            # weird things going on. Try to see if we can find a runtime object by importing it,
-            # otherwise crash.
-            runtime = importlib.import_module(".".join(object_path))
-        except ImportError:
-            raise RuntimeError
     yield Error(object_path, "is not present in stub", stub, runtime)
 
 
