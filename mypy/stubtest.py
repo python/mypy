@@ -237,8 +237,11 @@ def verify_typeinfo(
         return
 
     to_check = set(stub.names)
+    dunders_to_check = ("__init__", "__new__", "__call__")
     # cast to workaround mypyc complaints
-    to_check.update(m for m in cast(Any, vars)(runtime) if not m.startswith("_"))
+    to_check.update(
+        m for m in cast(Any, vars)(runtime) if m in dunders_to_check or not m.startswith("_")
+    )
 
     for entry in sorted(to_check):
         mangled_entry = entry
