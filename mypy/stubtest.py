@@ -237,8 +237,11 @@ def verify_typeinfo(
         return
 
     to_check = set(stub.names)
+    dunders_to_check = ("__init__", "__new__", "__call__")
     # cast to workaround mypyc complaints
-    to_check.update(m for m in cast(Any, vars)(runtime) if not m.startswith("_"))
+    to_check.update(
+        m for m in cast(Any, vars)(runtime) if m in dunders_to_check or not m.startswith("_")
+    )
 
     for entry in sorted(to_check):
         mangled_entry = entry
@@ -254,7 +257,7 @@ def verify_typeinfo(
 def _verify_static_class_methods(
     stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
 ) -> Iterator[str]:
-    if runtime.__name__ == "__new__":
+    if stub.name == "__new__":
         # Special cased by Python, so never declared as staticmethod
         return
     if inspect.isbuiltin(runtime):
@@ -662,15 +665,6 @@ def verify_funcitem(
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        try:
-            # We shouldn't really get here since that would involve something not existing both in
-            # the stub and the runtime, however, some modules like distutils.command have some
-            # weird things going on. Try to see if we can find a runtime object by importing it,
-            # otherwise crash.
-            runtime = importlib.import_module(".".join(object_path))
-        except ImportError:
-            raise RuntimeError
     yield Error(object_path, "is not present in stub", stub, runtime)
 
 
