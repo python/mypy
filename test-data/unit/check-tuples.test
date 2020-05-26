@@ -1423,8 +1423,26 @@ t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithStarExpr]
-from typing import Tuple
-points = (1, 2)  # type: Tuple[int, int]
+from typing import Tuple, List
+points = (1, "test")  # type: Tuple[int, str]
 x, y, z = *points, 0
+reveal_type(x) # N: Revealed type is 'builtins.int'
+reveal_type(y) # N: Revealed type is 'builtins.str'
+reveal_type(z) # N: Revealed type is 'builtins.int'
+
+points2 = [1,2]
+x2, y2, z2= *points2, "test"
+
+reveal_type(x2) # N: Revealed type is 'builtins.int*'
+reveal_type(y2) # N: Revealed type is 'builtins.int*'
+reveal_type(z2) # N: Revealed type is 'builtins.str'
+
+x3, x4, y3, y4, z3 = *points, *points2, "test"
+
+reveal_type(x3) # N: Revealed type is 'builtins.int'
+reveal_type(x4) # N: Revealed type is 'builtins.str'
+reveal_type(y3) # N: Revealed type is 'builtins.int*'
+reveal_type(y4) # N: Revealed type is 'builtins.int*'
+reveal_type(z3) # N: Revealed type is 'builtins.str'
 
 [builtins fixtures/tuple.pyi]

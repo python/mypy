@@ -2482,17 +2482,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
-
             rvalues = []  # type: List[Expression]
+            lhs_len = len(lvalues)
+            idx_of_iterable = []
+            item_type_of_iterable = []  # type: List['mypy.types.Type']
+            idx = 0
             for rval in rvalue.items:
                 if isinstance(rval, StarExpr):
                     typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
                     if isinstance(typs, TupleType):
                         rvalues.extend([TempNode(typ) for typ in typs.items])
+                        lhs_len -= len(typs.items)
+                        idx += len(typs.items)
+                    elif self.type_is_iterable(typs) and isinstance(typs, Instance):
+                        item_type_of_iterable.append(self.iterable_item_type(typs))
+                        idx_of_iterable.append(idx)
                     else:
-                        rvalues.append(TempNode(typs))
+                        self.fail("StarExpr should not be a '{}'".format(typs), context)
                 else:
                     rvalues.append(rval)
+                    lhs_len -= 1
+                    idx += 1
+            num_every_iterable = 0
+            num_last_iterable = 0
+            if len(idx_of_iterable):
+                num_every_iterable = int(lhs_len / len(idx_of_iterable))
+                num_last_iterable = lhs_len - (len(idx_of_iterable) - 1) * int(num_every_iterable)
+            for i, (idx, item_type) in enumerate(zip(idx_of_iterable, item_type_of_iterable)):
+                if i == (len(idx_of_iterable) - 1):
+                    rvalues[idx:idx] = [TempNode(item_type) for _ in range(num_last_iterable)]
+                else:
+                    rvalues[idx:idx] = [TempNode(item_type) for _ in range(num_every_iterable)]
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
                 star_index = next((i for i, lv in enumerate(lvalues) if
                                    isinstance(lv, StarExpr)), len(lvalues))
