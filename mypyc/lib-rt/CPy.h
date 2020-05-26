@@ -692,6 +692,10 @@ static PyObject *CPyTagged_Str(CPyTagged n) {
 	}
 }
 
+static PyObject *CPyBool_Str(bool b) {
+	return PyObject_Str(b ? Py_True : Py_False);
+}
+
 static PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     PyObject *result = PyList_GET_ITEM(list, n);
