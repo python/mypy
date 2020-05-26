@@ -47,7 +47,7 @@ def fib(n: int) -> Iterator[int]:
         yield a
         a, b = b, a + b
 ```
-See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
+See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more related examples.
 
 For Python 2.7, the standard annotations are written as comments:
 ```python
@@ -294,7 +294,7 @@ Any help in testing, development, documentation and other tasks is
 highly appreciated and useful to the project. There are tasks for
 contributors of all experience levels. If you're just getting started,
 ask on the [gitter chat](https://gitter.im/python/typing) for ideas of good
-beginner issues.
+beginner issues.Contribution to this repository is welcome!
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 
