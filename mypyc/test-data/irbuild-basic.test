@@ -3394,4 +3394,4 @@ def f(x, y):
     r0 :: str
 L0:
     r0 = PyUnicode_Join(x, y)
-    return r1
+    return r0
