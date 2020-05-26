@@ -34,7 +34,7 @@ from mypyc.common import (
 )
 from mypyc.primitives.registry import (
     binary_ops, unary_ops, method_ops, func_ops,
-    call_c_ops, CFunctionDescription
+    c_method_call_ops, CFunctionDescription
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
@@ -767,7 +767,7 @@ class LowLevelIRBuilder:
         Return None if no translation found; otherwise return the target register.
         """
         ops = method_ops.get(name, [])
-        call_c_ops_candidates = call_c_ops.get(name, [])
+        call_c_ops_candidates = c_method_call_ops.get(name, [])
         call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args, line,
                                          result_type=result_type)
         if call_c_op is not None:

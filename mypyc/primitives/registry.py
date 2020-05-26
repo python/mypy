@@ -42,8 +42,6 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType,  bool_rprimitive
 
-# TODO: comment, we don't need error_kind since C functions are all ERR_MAGIC
-# however, other fields may need further investigation
 CFunctionDescription = NamedTuple(
     'CFunctionDescription',  [('name', str),
                               ('arg_types', List[RType]),
@@ -67,7 +65,7 @@ method_ops = {}  # type: Dict[str, List[OpDescription]]
 # Primitive ops for reading module attributes (key is name such as 'builtins.None')
 name_ref_ops = {}  # type: Dict[str, OpDescription]
 
-call_c_ops = {}  # type: Dict[str, List[CFunctionDescription]]
+c_method_call_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
 
 def simple_emit(template: str) -> EmitCallback:
@@ -323,13 +321,13 @@ def custom_op(arg_types: List[RType],
                          emit, steals, is_borrowed, 0)
 
 
-def call_c_op(name: str,
-              arg_types: List[RType],
-              result_type: Optional[RType],
-              c_function_name: str,
-              error_kind: int,
-              priority: int = 1) -> None:
-    ops = call_c_ops.setdefault(name, [])
+def c_method_op(name: str,
+                arg_types: List[RType],
+                result_type: Optional[RType],
+                c_function_name: str,
+                error_kind: int,
+                priority: int = 1) -> None:
+    ops = c_method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, result_type,
                                 c_function_name, error_kind, priority)
     ops.append(desc)
