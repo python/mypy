@@ -3,7 +3,7 @@
 
 import sys
 
-if sys.version_info <= (3, 5):
+if sys.version_info < (3, 6):
     from collections import OrderedDict as OrderedDict
 else:
     OrderedDict = dict
