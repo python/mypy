@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 import re
 import pprint
 import sys

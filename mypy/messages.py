@@ -9,7 +9,7 @@ Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 import re
 import difflib
 from textwrap import dedent

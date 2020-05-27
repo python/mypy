@@ -1,6 +1,6 @@
 import unittest
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
