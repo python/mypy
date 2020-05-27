@@ -70,6 +70,7 @@ func_op(name='builtins.str',
         emit=call_emit('CPyBool_Str'),
         priority=3)
 
+
 def int_binary_op(op: str, c_func_name: str,
                   result_type: RType = int_rprimitive,
                   error_kind: int = ERR_NEVER) -> None:
