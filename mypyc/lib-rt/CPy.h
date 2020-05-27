@@ -644,6 +644,7 @@ static CPyTagged CPyTagged_Id(PyObject *o) {
 static int fmt_ssize_t(char *out, Py_ssize_t n) {
 	if (!n) {
 		out[0] = '0';
+		out[1] = '\0';
 		return 1;
 	}
 

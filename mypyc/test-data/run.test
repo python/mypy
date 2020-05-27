@@ -848,6 +848,9 @@ assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
 
+assert int(tostr(0)) == 0
+assert int(tostr(20)) == 20
+
 [case testFstring]
 
 var = 'mypyc'
