@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError
+    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC
 )
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -414,6 +414,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         else:
             self.emitter.emit_line('PyErr_SetNone(PyExc_{});'.format(op.class_name))
         self.emitter.emit_line('{} = 0;'.format(self.reg(op)))
+
+    def visit_call_c(self, op: CallC) -> None:
+        dest = self.get_dest_assign(op)
+        args = ', '.join(self.reg(arg) for arg in op.args)
+        self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
 
     # Helpers
 

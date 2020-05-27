@@ -35,13 +35,20 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, NamedTuple
 
 from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
 from mypyc.ir.rtypes import RType,  bool_rprimitive
 
+CFunctionDescription = NamedTuple(
+    'CFunctionDescription',  [('name', str),
+                              ('arg_types', List[RType]),
+                              ('result_type', Optional[RType]),
+                              ('c_function_name', str),
+                              ('error_kind', int),
+                              ('priority', int)])
 
 # Primitive binary ops (key is operator such as '+')
 binary_ops = {}  # type: Dict[str, List[OpDescription]]
@@ -57,6 +64,8 @@ method_ops = {}  # type: Dict[str, List[OpDescription]]
 
 # Primitive ops for reading module attributes (key is name such as 'builtins.None')
 name_ref_ops = {}  # type: Dict[str, OpDescription]
+
+c_method_call_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
 
 def simple_emit(template: str) -> EmitCallback:
@@ -310,6 +319,18 @@ def custom_op(arg_types: List[RType],
     assert format_str is not None
     return OpDescription('<custom>', arg_types, result_type, is_var_arg, error_kind, format_str,
                          emit, steals, is_borrowed, 0)
+
+
+def c_method_op(name: str,
+                arg_types: List[RType],
+                result_type: Optional[RType],
+                c_function_name: str,
+                error_kind: int,
+                priority: int = 1) -> None:
+    ops = c_method_call_ops.setdefault(name, [])
+    desc = CFunctionDescription(name, arg_types, result_type,
+                                c_function_name, error_kind, priority)
+    ops.append(desc)
 
 
 # Import various modules that set up global state.

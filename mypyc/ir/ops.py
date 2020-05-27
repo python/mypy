@@ -1138,6 +1138,31 @@ class RaiseStandardError(RegisterOp):
         return visitor.visit_raise_standard_error(self)
 
 
+class CallC(RegisterOp):
+    """ret = func_call(arg0, arg1, ...)
+
+    A call to a C function
+    """
+
+    error_kind = ERR_MAGIC
+
+    def __init__(self, function_name: str, args: List[Value], ret_type: RType, line: int) -> None:
+        super().__init__(line)
+        self.function_name = function_name
+        self.args = args
+        self.type = ret_type
+
+    def to_str(self, env: Environment) -> str:
+        args_str = ', '.join(env.format('%r', arg) for arg in self.args)
+        return env.format('%r = %s(%s)', self, self.function_name, args_str)
+
+    def sources(self) -> List[Value]:
+        return self.args
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_call_c(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1226,6 +1251,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_raise_standard_error(self, op: RaiseStandardError) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_call_c(self, op: CallC) -> T:
         raise NotImplementedError
 
 

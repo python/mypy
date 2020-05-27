@@ -3383,3 +3383,15 @@ L0:
     r5 = None
     return r5
 
+[case testCallCWithStrJoin]
+from typing import List
+def f(x: str, y: List[str]) -> str:
+    return x.join(y)
+[out]
+def f(x, y):
+    x :: str
+    y :: list
+    r0 :: str
+L0:
+    r0 = PyUnicode_Join(x, y)
+    return r0
