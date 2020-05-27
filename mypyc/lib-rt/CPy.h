@@ -634,6 +634,62 @@ static CPyTagged CPyTagged_Id(PyObject *o) {
     return CPyTagged_FromSsize_t((Py_ssize_t)o);
 }
 
+
+#define MAX_INT_CHARS 22
+#define _PyUnicode_LENGTH(op)                           \
+    (((PyASCIIObject *)(op))->length)
+
+// using snprintf or PyUnicode_FromFormat was way slower than
+// boxing the int and calling PyObject_Str on it, so we implement our own
+static int fmt_ssize_t(char *out, Py_ssize_t n) {
+	bool neg = n < 0;
+	if (neg) n = -n;
+
+	// buf gets filled backward and then we copy it forward
+	char buf[MAX_INT_CHARS];
+	int i = 0;
+	do {
+		buf[i] = (n % 10) + '0';
+		n /= 10;
+		i++;
+	} while (n);
+
+
+	int len = i;
+	int j = 0;
+	if (neg) {
+		out[j++] = '-';
+		len++;
+	}
+
+	for (; j < len; j++, i--) {
+		out[j] = buf[i-1];
+	}
+	out[j] = '\0';
+
+	return len;
+}
+
+static PyObject *CPyTagged_ShortToStr(Py_ssize_t n) {
+	PyObject *obj = PyUnicode_New(MAX_INT_CHARS, 127);
+	if (!obj) return NULL;
+	int len = fmt_ssize_t((char *)PyUnicode_1BYTE_DATA(obj), n);
+	_PyUnicode_LENGTH(obj) = len;
+	return obj;
+}
+
+static PyObject *CPyTagged_Str(CPyTagged n) {
+	if (CPyTagged_CheckShort(n)) {
+		return CPyTagged_ShortToStr(CPyTagged_ShortAsSsize_t(n));
+	} else {
+		return PyObject_Str(CPyTagged_AsObject(n));
+	}
+}
+
+static PyObject *CPyBool_Str(bool b) {
+	return PyObject_Str(b ? Py_True : Py_False);
+}
+
 static PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     PyObject *result = PyList_GET_ITEM(list, n);

@@ -825,6 +825,8 @@ def g() -> str:
     return 'some\a \v \t \x7f " \n \0string 🐍'
 def tostr(x: int) -> str:
     return str(x)
+def booltostr(x: bool) -> str:
+    return str(x)
 def concat(x: str, y: str) -> str:
     return x + y
 def eq(x: str) -> int:
@@ -835,14 +837,19 @@ def eq(x: str) -> int:
     return 2
 
 [file driver.py]
-from native import f, g, tostr, concat, eq
+from native import f, g, tostr, booltostr, concat, eq
 assert f() == 'some string'
 assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
 assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
+assert booltostr(True) == 'True'
+assert booltostr(False) == 'False'
 assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
+
+assert int(tostr(0)) == 0
+assert int(tostr(20)) == 20
 
 [case testFstring]
 
