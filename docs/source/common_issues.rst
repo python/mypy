@@ -808,3 +808,55 @@ not necessary:
     class NarrowerArgument(A):
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
+
+Unreachable code during typechecking
+------------------------------------
+
+Sometimes a part of the code can become unreachable, even if not immediately obvious.
+It is important to note that in such cases, that part of the code will *not* be type-checked
+by mypy anymore. Consider the following code snippet:
+
+.. code-block:: python
+
+    class Foo:
+        bar:str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        return
+        x:int = 'abc'
+
+It is trivial to notice that any statement after ``return`` is unreachable and hence mypy will
+not complain about the mis-typed code below it. For a more subtle example, consider:
+
+.. code-block:: python
+
+    class Foo:
+        bar:str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        assert foo.bar is None
+        x:int = 'abc'
+
+Again, mypy will not throw any errors because the type of ``foo.bar`` says it's ``str`` and never ``None``.
+Hence the ``assert`` statement will always fail and the statement below will never be executed.
+Note that in Python, ``None`` is not a null-reference but an object of type ``NoneType``. This can
+also be demonstrated by the following:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        if not foo.bar:
+            return
+        x:int = 'abc'
+
+Here mypy will go on to check the last line as well and report ``Incompatible types in assignment``.
+
+If we want to let mypy warn us of such unreachable code blocks, we can use the ``--warn-unreachable``
+option. With this mypy will throw ``Statement is unreachable`` error along with the line number from
+where the unreachable block starts.
