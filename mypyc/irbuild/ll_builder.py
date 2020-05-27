@@ -34,7 +34,7 @@ from mypyc.common import (
 )
 from mypyc.primitives.registry import (
     binary_ops, unary_ops, method_ops, func_ops,
-    c_method_call_ops, CFunctionDescription
+    c_method_call_ops, CFunctionDescription, c_function_ops
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
@@ -574,6 +574,10 @@ class LowLevelIRBuilder:
                      args: List[Value],
                      fn_op: str,
                      line: int) -> Value:
+        call_c_ops_candidates = c_function_ops.get(fn_op, [])
+        target = self.matching_call_c(call_c_ops_candidates, args, line)
+        if target:
+            return target
         ops = func_ops.get(fn_op, [])
         target = self.matching_primitive_op(ops, args, line)
         assert target, 'Unsupported builtin function: %s' % fn_op
@@ -661,8 +665,7 @@ class LowLevelIRBuilder:
     def matching_call_c(self,
                         candidates: List[CFunctionDescription],
                         args: List[Value],
-                        line: int,
-                        result_type: Optional[RType] = None) -> Optional[Value]:
+                        line: int) -> Optional[Value]:
         # TODO: this function is very similar to matching_primitive_op
         # we should remove the old one or refactor both them into only as we move forward
         matching = None  # type: Optional[CFunctionDescription]
@@ -679,7 +682,7 @@ class LowLevelIRBuilder:
                 else:
                     matching = desc
         if matching:
-            target = self.call_c(matching.c_function_name, args, line, result_type)
+            target = self.call_c(matching.c_function_name, args, line, matching.result_type)
             return target
         return None
 
@@ -768,8 +771,7 @@ class LowLevelIRBuilder:
         """
         ops = method_ops.get(name, [])
         call_c_ops_candidates = c_method_call_ops.get(name, [])
-        call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args, line,
-                                         result_type=result_type)
+        call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args, line)
         if call_c_op is not None:
             return call_c_op
         return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)

@@ -65,8 +65,11 @@ method_ops = {}  # type: Dict[str, List[OpDescription]]
 # Primitive ops for reading module attributes (key is name such as 'builtins.None')
 name_ref_ops = {}  # type: Dict[str, OpDescription]
 
+# CallC op for method call(such as 'str.join')
 c_method_call_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
+# CallC op for top level function call(such as 'builtins.list')
+c_function_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
 def simple_emit(template: str) -> EmitCallback:
     """Construct a simple PrimitiveOp emit callback function.
@@ -326,11 +329,24 @@ def c_method_op(name: str,
                 result_type: Optional[RType],
                 c_function_name: str,
                 error_kind: int,
-                priority: int = 1) -> None:
+                priority: int = 1) -> CFunctionDescription:
     ops = c_method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, result_type,
                                 c_function_name, error_kind, priority)
     ops.append(desc)
+    return desc
+
+def c_function_op(name: str,
+                  arg_types: List[RType],
+                  result_type: Optional[RType],
+                  c_function_name: str,
+                  error_kind: int,
+                  priority: int = 1) -> CFunctionDescription:
+    ops = c_function_ops.setdefault(name, [])
+    desc = CFunctionDescription(name, arg_types, result_type,
+                                c_function_name, error_kind, priority)
+    ops.append(desc)
+    return desc
 
 
 # Import various modules that set up global state.

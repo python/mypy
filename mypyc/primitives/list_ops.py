@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, func_op, method_op, custom_op, name_emit,
-    call_emit, call_negative_bool_emit,
+    call_emit, call_negative_bool_emit, c_function_op,
 )
 
 
@@ -19,14 +19,21 @@ name_ref_op('builtins.list',
             emit=name_emit('&PyList_Type', target_type='PyObject *'),
             is_borrowed=True)
 
-# list(obj)
-to_list = func_op(
+# # list(obj)
+# to_list = func_op(
+#     name='builtins.list',
+#     arg_types=[object_rprimitive],
+#     result_type=list_rprimitive,
+#     error_kind=ERR_MAGIC,
+#     emit=call_emit('PySequence_List'))
+
+to_list = c_function_op(
     name='builtins.list',
     arg_types=[object_rprimitive],
     result_type=list_rprimitive,
+    c_function_name='PySequence_List',
     error_kind=ERR_MAGIC,
-    emit=call_emit('PySequence_List'))
-
+)
 
 def emit_new(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     # TODO: This would be better split into multiple smaller ops.
