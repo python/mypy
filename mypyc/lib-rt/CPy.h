@@ -642,13 +642,12 @@ static CPyTagged CPyTagged_Id(PyObject *o) {
 // using snprintf or PyUnicode_FromFormat was way slower than
 // boxing the int and calling PyObject_Str on it, so we implement our own
 static int fmt_ssize_t(char *out, Py_ssize_t n) {
-	Py_ssize_t in = n;
 	bool neg = n < 0;
 	if (neg) n = -n;
-	char buf[MAX_INT_CHARS];
-	int i = 0;
 
 	// buf gets filled backward and then we copy it forward
+	char buf[MAX_INT_CHARS];
+	int i = 0;
 	do {
 		buf[i] = (n % 10) + '0';
 		n /= 10;
