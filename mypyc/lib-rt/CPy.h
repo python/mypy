@@ -1220,6 +1220,35 @@ static void CPy_TypeError(const char *expected, PyObject *value) {
     }
 }
 
+
+#ifdef MYPYC_LOG_GETATTR
+static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
+    PyObject *module = PyImport_ImportModule("getattr_hook");
+    if (module) {
+        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
+        Py_XDECREF(res);
+        Py_DECREF(module);
+    }
+    PyErr_Clear();
+}
+#else
+#define CPy_LogGetAttr(method, obj, attr) (void)0
+#endif
+
+// Intercept a method call and log it. This needs to be a macro
+// because there is no API that accepts va_args for making a
+// call. Worse, it needs to use the comma operator to return the right
+// value.
+#define CPyObject_CallMethodObjArgs(obj, attr, ...)             \
+    (CPy_LogGetAttr("log_method", (obj), (attr)),               \
+     PyObject_CallMethodObjArgs((obj), (attr), __VA_ARGS__))
+
+// This one is a macro for consistency with the above, I guess.
+#define CPyObject_GetAttr(obj, attr)                       \
+    (CPy_LogGetAttr("log", (obj), (attr)),                 \
+     PyObject_GetAttr((obj), (attr)))
+
+
 // These functions are basically exactly PyCode_NewEmpty and
 // _PyTraceback_Add which are available in all the versions we support.
 // We're continuing to use them because we'll probably optimize them later.
