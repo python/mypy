@@ -709,14 +709,26 @@ from typing import List
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
+
+    def foo(self, x: int) -> int:
+        return x
+
 class B(A):
     def __init__(self, x: int, y: int) -> None:
         super().__init__(x)
         self.y = y
+
+    def foo(self, x: int) -> int:
+        return super().foo(x+1)
+
 class C(B):
     def __init__(self, x: int, y: int) -> None:
         init = super(C, self).__init__
         init(x, y+1)
+
+    def foo(self, x: int) -> int:
+        # should go to A, not B
+        return super(B, self).foo(x+1)
 
 class X:
     def __init__(self, x: int) -> None:
@@ -752,6 +764,8 @@ c = C(10, 20)
 assert c.x == 10 and c.y == 21
 z = Z(10, 20)
 assert z.x == 10 and z.y == 20
+
+assert c.foo(10) == 11
 
 PrintList().v_list([1,2,3])
 [out]

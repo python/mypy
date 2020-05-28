@@ -241,8 +241,28 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
 
 def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: SuperExpr) -> Value:
-    if callee.info is None or callee.call.args:
+    if callee.info is None or (len(callee.call.args) != 0 and len(callee.call.args) != 2):
         return translate_call(builder, expr, callee)
+
+    # We support two-argument super but only when it is super(CurrentClass, self)
+    # TODO: We could support it when it is a parent class in many cases?
+    if len(callee.call.args) == 2:
+        self_arg = callee.call.args[1]
+        if (
+            not isinstance(self_arg, NameExpr)
+            or not isinstance(self_arg.node, Var)
+            or not self_arg.node.is_self
+        ):
+            return translate_call(builder, expr, callee)
+
+        typ_arg = callee.call.args[0]
+        if (
+            not isinstance(typ_arg, NameExpr)
+            or not isinstance(typ_arg.node, TypeInfo)
+            or callee.info is not typ_arg.node
+        ):
+            return translate_call(builder, expr, callee)
+
     ir = builder.mapper.type_to_ir[callee.info]
     # Search for the method in the mro, skipping ourselves.
     for base in ir.mro[1:]:
