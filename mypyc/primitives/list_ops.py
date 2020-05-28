@@ -19,7 +19,7 @@ name_ref_op('builtins.list',
             emit=name_emit('&PyList_Type', target_type='PyObject *'),
             is_borrowed=True)
 
-
+# list(obj)
 to_list = c_function_op(
     name='builtins.list',
     arg_types=[object_rprimitive],
