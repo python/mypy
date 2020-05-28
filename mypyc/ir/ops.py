@@ -1113,6 +1113,7 @@ class RaiseStandardError(RegisterOp):
     STOP_ITERATION = 'StopIteration'  # type: Final
     UNBOUND_LOCAL_ERROR = 'UnboundLocalError'  # type: Final
     RUNTIME_ERROR = 'RuntimeError'  # type: Final
+    NAME_ERROR = 'NameError'  # type: Final
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)
