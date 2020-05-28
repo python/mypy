@@ -6,6 +6,7 @@ __pycache__
 /build
 /env*/
 docs/build/
+docs/source/_build
 *.iml
 /out/
 .venv*/
