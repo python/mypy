@@ -183,6 +183,8 @@ class TypeError(Exception): pass
 
 class AttributeError(Exception): pass
 
+class NameError(Exception): pass
+
 class LookupError(Exception): pass
 
 class KeyError(LookupError): pass

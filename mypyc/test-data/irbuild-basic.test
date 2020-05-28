@@ -3247,7 +3247,7 @@ L0:
     r0 = __main__.x :: static
     if is_error(r0) goto L1 else goto L2
 L1:
-    raise ValueError('value for final name "x" was not set')
+    raise NameError('value for final name "x" was not set')
     unreachable
 L2:
     r2 = 0
@@ -3271,7 +3271,7 @@ L0:
     r0 = __main__.x :: static
     if is_error(r0) goto L1 else goto L2
 L1:
-    raise ValueError('value for final name "x" was not set')
+    raise NameError('value for final name "x" was not set')
     unreachable
 L2:
     r2 = r0[0]
@@ -3294,7 +3294,7 @@ L0:
     r0 = __main__.x :: static
     if is_error(r0) goto L1 else goto L2
 L1:
-    raise ValueError('value for final name "x" was not set')
+    raise NameError('value for final name "x" was not set')
     unreachable
 L2:
     r2 = 1

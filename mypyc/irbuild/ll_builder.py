@@ -19,8 +19,9 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, LoadErrorValue, CallC
+    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC,
+    RaiseStandardError, Unreachable, LoadErrorValue,
+    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC,
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -456,6 +457,23 @@ class LowLevelIRBuilder:
         """
         static_symbol = self.literal_static_name(value)
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
+
+    def load_static_checked(self, typ: RType, identifier: str, module_name: Optional[str] = None,
+                            namespace: str = NAMESPACE_STATIC,
+                            line: int = -1,
+                            error_msg: Optional[str] = None) -> Value:
+        if error_msg is None:
+            error_msg = "name '{}' is not defined".format(identifier)
+        ok_block, error_block = BasicBlock(), BasicBlock()
+        value = self.add(LoadStatic(typ, identifier, module_name, namespace, line=line))
+        self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
+        self.activate_block(error_block)
+        self.add(RaiseStandardError(RaiseStandardError.NAME_ERROR,
+                                    error_msg,
+                                    line))
+        self.add(Unreachable())
+        self.activate_block(ok_block)
+        return value
 
     def load_module(self, name: str) -> Value:
         return self.add(LoadStatic(object_rprimitive, name, namespace=NAMESPACE_MODULE))

@@ -4451,7 +4451,7 @@ def f() -> int:
 from native import f
 try:
     print(f())
-except ValueError as e:
+except NameError as e:
     print(e.args[0])
 [out]
 value for final name "x" was not set

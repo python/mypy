@@ -34,7 +34,7 @@ from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError
+    InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
@@ -315,20 +315,12 @@ class IRBuilder:
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:
-        if error_name is None:
-            error_name = fullname
-        ok_block, error_block = BasicBlock(), BasicBlock()
         split_name = split_target(self.graph, fullname)
         assert split_name is not None
-        value = self.add(LoadStatic(typ, split_name[1], split_name[0], line=line))
-        self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
-        self.activate_block(error_block)
-        self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
-                                    'value for final name "{}" was not set'.format(error_name),
-                                    line))
-        self.add(Unreachable())
-        self.activate_block(ok_block)
-        return value
+        module, name = split_name
+        return self.builder.load_static_checked(
+            typ, name, module, line=line,
+            error_msg='value for final name "{}" was not set'.format(error_name))
 
     def load_final_literal_value(self, val: Union[int, str, bytes, float, bool],
                                  line: int) -> Value:
