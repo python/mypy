@@ -230,7 +230,7 @@ class IRBuilder:
         return self.builder.load_module(name)
 
     def call_c(self, desc: CFunctionDescription, args: List[Value], line: int) -> Value:
-        return self.builder.call_c(desc.c_function_name, args, line, desc.result_type)
+        return self.builder.call_c(desc, args, line)
 
     @property
     def environment(self) -> Environment:
