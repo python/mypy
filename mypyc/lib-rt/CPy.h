@@ -82,7 +82,11 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     bool matches = false;
     if (PyUnicode_CompareWithASCIIString(module, "typing") == 0 &&
             (strcmp(metaclass->tp_name, "TypingMeta") == 0
-             || strcmp(metaclass->tp_name, "GenericMeta") == 0)) {
+             || strcmp(metaclass->tp_name, "GenericMeta") == 0
+             || strcmp(metaclass->tp_name, "_ProtocolMeta") == 0)) {
+        matches = true;
+    } else if (PyUnicode_CompareWithASCIIString(module, "typing_extensions") == 0 &&
+               strcmp(metaclass->tp_name, "_ProtocolMeta") == 0) {
         matches = true;
     } else if (PyUnicode_CompareWithASCIIString(module, "abc") == 0 &&
                strcmp(metaclass->tp_name, "ABCMeta") == 0) {

@@ -958,6 +958,48 @@ assert b.z is None
 # N.B: this doesn't match cpython
 assert not hasattr(b, 'bogus')
 
+[case testProtocol]
+from typing_extensions import Protocol
+
+class Proto(Protocol):
+    def foo(self, x: int) -> None:
+        pass
+
+    def bar(self, x: int) -> None:
+        pass
+
+class A:
+    def foo(self, x: int) -> None:
+        print("A:", x)
+
+    def bar(self, *args: int, **kwargs: int) -> None:
+        print("A:", args, kwargs)
+
+class B(A, Proto):
+    def foo(self, x: int) -> None:
+        print("B:", x)
+
+    def bar(self, *args: int, **kwargs: int) -> None:
+        print("B:", args, kwargs)
+
+def f(x: Proto) -> None:
+    x.foo(20)
+    x.bar(x=20)
+
+[file driver.py]
+from native import A, B, f
+
+f(A())
+f(B())
+
+# ... this exploits a bug in glue methods to distinguish whether we
+# are making a direct call or a pycall...
+[out]
+A: 20
+A: () {'x': 20}
+B: 20
+B: (20,) {}
+
 [case testMethodOverrideDefault1]
 class A:
     def foo(self, x: int) -> None:

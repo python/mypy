@@ -19,7 +19,7 @@ def is_trait_decorator(d: Expression) -> bool:
 
 
 def is_trait(cdef: ClassDef) -> bool:
-    return any(is_trait_decorator(d) for d in cdef.decorators)
+    return any(is_trait_decorator(d) for d in cdef.decorators) or cdef.info.is_protocol
 
 
 def is_dataclass_decorator(d: Expression) -> bool:
