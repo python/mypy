@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, func_op, method_op, custom_op, name_emit,
-    call_emit, call_negative_bool_emit, c_function_op,
+    call_emit, call_negative_bool_emit, c_function_op, c_method_op
 )
 
 
@@ -76,13 +76,14 @@ list_get_item_unsafe_op = custom_op(
     emit=call_emit('CPyList_GetItemUnsafe'))
 
 # list[index] = obj
-list_set_item_op = method_op(
+list_set_item_op = c_method_op(
     name='__setitem__',
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
-    steals=[False, False, True],
     result_type=bool_rprimitive,
+    c_function_name='CPyList_SetItem',
     error_kind=ERR_FALSE,
-    emit=call_emit('CPyList_SetItem'))
+    steals=[False, False, True],
+)
 
 
 # list.append(obj)

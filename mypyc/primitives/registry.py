@@ -48,6 +48,7 @@ CFunctionDescription = NamedTuple(
                               ('result_type', Optional[RType]),
                               ('c_function_name', str),
                               ('error_kind', int),
+                              ('steals', StealsDescription),
                               ('priority', int)])
 
 # Primitive binary ops (key is operator such as '+')
@@ -330,10 +331,11 @@ def c_method_op(name: str,
                 result_type: Optional[RType],
                 c_function_name: str,
                 error_kind: int,
+                steals: StealsDescription = False,
                 priority: int = 1) -> CFunctionDescription:
     ops = c_method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, result_type,
-                                c_function_name, error_kind, priority)
+                                c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
 
@@ -343,10 +345,11 @@ def c_function_op(name: str,
                   result_type: Optional[RType],
                   c_function_name: str,
                   error_kind: int,
+                  steals: StealsDescription = False,
                   priority: int = 1) -> CFunctionDescription:
     ops = c_function_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, result_type,
-                                c_function_name, error_kind, priority)
+                                c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
 

@@ -8,7 +8,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value
+    SetAttr, Op, Value, CallC
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -157,7 +157,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.l, self.n, self.o], list_set_item_op, 55),
+        assert list_set_item_op.result_type
+        self.assert_emit(CallC(list_set_item_op.c_function_name, [self.l, self.n, self.o],
+                               list_set_item_op.result_type, list_set_item_op.steals, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
     def test_box(self) -> None:
