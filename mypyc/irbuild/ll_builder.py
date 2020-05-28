@@ -653,13 +653,17 @@ class LowLevelIRBuilder:
         self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
     def call_c(self,
-               function_name: str,
+               desc: CFunctionDescription,
                args: List[Value],
-               line: int,
-               result_type: Optional[RType]) -> Value:
+               line: int) -> Value:
         # handle void function via singleton RVoid instance
-        ret_type = void_rtype if result_type is None else result_type
-        target = self.add(CallC(function_name, args, ret_type, line))
+        ret_type = void_rtype if desc.result_type is None else desc.result_type
+        coerced = []
+        for i, arg in enumerate(args):
+            formal_type = desc.arg_types[i]
+            arg = self.coerce(arg, formal_type, line)
+            coerced.append(arg)
+        target = self.add(CallC(desc.c_function_name, coerced, ret_type, line))
         return target
 
     def matching_call_c(self,
@@ -682,7 +686,7 @@ class LowLevelIRBuilder:
                 else:
                     matching = desc
         if matching:
-            target = self.call_c(matching.c_function_name, args, line, matching.result_type)
+            target = self.call_c(matching, args, line)
             return target
         return None
 
