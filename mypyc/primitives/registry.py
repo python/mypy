@@ -45,7 +45,7 @@ from mypyc.ir.rtypes import RType,  bool_rprimitive
 CFunctionDescription = NamedTuple(
     'CFunctionDescription',  [('name', str),
                               ('arg_types', List[RType]),
-                              ('result_type', Optional[RType]),
+                              ('return_type', RType),
                               ('c_function_name', str),
                               ('error_kind', int),
                               ('steals', StealsDescription),
@@ -328,13 +328,13 @@ def custom_op(arg_types: List[RType],
 
 def c_method_op(name: str,
                 arg_types: List[RType],
-                result_type: Optional[RType],
+                return_type: RType,
                 c_function_name: str,
                 error_kind: int,
                 steals: StealsDescription = False,
                 priority: int = 1) -> CFunctionDescription:
     ops = c_method_call_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, arg_types, result_type,
+    desc = CFunctionDescription(name, arg_types, return_type,
                                 c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
@@ -342,13 +342,13 @@ def c_method_op(name: str,
 
 def c_function_op(name: str,
                   arg_types: List[RType],
-                  result_type: Optional[RType],
+                  return_type: RType,
                   c_function_name: str,
                   error_kind: int,
                   steals: StealsDescription = False,
                   priority: int = 1) -> CFunctionDescription:
     ops = c_function_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, arg_types, result_type,
+    desc = CFunctionDescription(name, arg_types, return_type,
                                 c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc

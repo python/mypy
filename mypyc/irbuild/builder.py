@@ -727,7 +727,8 @@ class IRBuilder:
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
             call_c_ops_candidates = c_function_ops.get(callee.fullname, [])
-            target = self.builder.matching_call_c(call_c_ops_candidates, arg_values, expr.line)
+            target = self.builder.matching_call_c(call_c_ops_candidates, arg_values,
+                                                  expr.line, self.node_type(expr))
             if target:
                 return target
             ops = func_ops.get(callee.fullname, [])

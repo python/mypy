@@ -23,7 +23,7 @@ name_ref_op('builtins.list',
 to_list = c_function_op(
     name='builtins.list',
     arg_types=[object_rprimitive],
-    result_type=list_rprimitive,
+    return_type=list_rprimitive,
     c_function_name='PySequence_List',
     error_kind=ERR_MAGIC,
 )
