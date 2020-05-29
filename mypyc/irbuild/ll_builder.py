@@ -663,7 +663,8 @@ class LowLevelIRBuilder:
             formal_type = desc.arg_types[i]
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
-        target = self.add(CallC(desc.c_function_name, coerced, ret_type, desc.steals, line))
+        target = self.add(CallC(desc.c_function_name, coerced, ret_type, desc.steals,
+                                desc.error_kind, line))
         return target
 
     def matching_call_c(self,

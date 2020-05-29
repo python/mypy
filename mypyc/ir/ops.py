@@ -1144,19 +1144,19 @@ class CallC(RegisterOp):
     A call to a C function
     """
 
-    error_kind = ERR_MAGIC
-
     def __init__(self,
                  function_name: str,
                  args: List[Value],
                  ret_type: RType,
                  steals: StealsDescription,
+                 error_kind: int,
                  line: int) -> None:
         super().__init__(line)
         self.function_name = function_name
         self.args = args
         self.type = ret_type
         self.steals = steals
+        self.error_kind = error_kind
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)
