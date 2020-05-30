@@ -2572,3 +2572,9 @@ lambda a=nonsense: a  # E: Name 'nonsense' is not defined
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
 def f(x: int = i):  # E: Name 'i' is not defined
     i = 42
+
+[case testRevealTypeOfCallExpressionReturningNoneWorks]
+def foo() -> None:
+    pass
+
+reveal_type(foo()) # N: Revealed type is 'None'
