@@ -121,13 +121,13 @@ def f(a):
     r7 :: None
 L0:
     r0 = 2
-    r1 = a * r0 :: list
+    r1 = CPySequence_Multiply(a, r0)
     b = r1
     r2 = 3
     r3 = 4
     r4 = box(short_int, r3)
     r5 = [r4]
-    r6 = r2 * r5 :: list
+    r6 = CPySequence_RMultiply(r2, r5)
     b = r6
     r7 = None
     return r7
