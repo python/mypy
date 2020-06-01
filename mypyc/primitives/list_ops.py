@@ -7,8 +7,8 @@ from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, binary_op, func_op, method_op, custom_op, name_emit,
-    call_emit, call_negative_bool_emit, c_function_op
+    name_ref_op, func_op, method_op, custom_op, name_emit,
+    call_emit, call_negative_bool_emit, c_function_op, c_binary_op
 )
 
 
@@ -125,20 +125,18 @@ method_op(
     emit=call_emit('CPyList_Count'))
 
 # list * int
-binary_op(op='*',
-          arg_types=[list_rprimitive, int_rprimitive],
-          result_type=list_rprimitive,
-          error_kind=ERR_MAGIC,
-          format_str='{dest} = {args[0]} * {args[1]} :: list',
-          emit=call_emit("CPySequence_Multiply"))
+c_binary_op(name='*',
+            arg_types=[list_rprimitive, int_rprimitive],
+            return_type=list_rprimitive,
+            c_function_name='CPySequence_Multiply',
+            error_kind=ERR_MAGIC)
 
 # int * list
-binary_op(op='*',
-          arg_types=[int_rprimitive, list_rprimitive],
-          result_type=list_rprimitive,
-          error_kind=ERR_MAGIC,
-          format_str='{dest} = {args[0]} * {args[1]} :: list',
-          emit=call_emit("CPySequence_RMultiply"))
+c_binary_op(name='*',
+            arg_types=[int_rprimitive, list_rprimitive],
+            return_type=list_rprimitive,
+            c_function_name='CPySequence_RMultiply',
+            error_kind=ERR_MAGIC)
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
