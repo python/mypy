@@ -970,7 +970,8 @@ def process_options(args: List[str],
             targets = [
                 t
                 for t in targets
-                if explicitly_needed_regex.fullmatch(t.module) or not ignored_regex.fullmatch(t.module)]
+                if explicitly_needed_regex.fullmatch(t.module)
+                or not ignored_regex.fullmatch(t.module)]
         else:
             targets = [
                 t
