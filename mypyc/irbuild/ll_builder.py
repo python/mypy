@@ -34,7 +34,8 @@ from mypyc.common import (
 )
 from mypyc.primitives.registry import (
     binary_ops, unary_ops, method_ops, func_ops,
-    c_method_call_ops, CFunctionDescription, c_function_ops
+    c_method_call_ops, CFunctionDescription, c_function_ops,
+    c_binary_ops
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
@@ -541,6 +542,10 @@ class LowLevelIRBuilder:
         if value is not None:
             return value
 
+        call_c_ops_candidates = c_binary_ops.get(expr_op, [])
+        target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
+        if target:
+            return target
         ops = binary_ops.get(expr_op, [])
         target = self.matching_primitive_op(ops, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % expr_op
