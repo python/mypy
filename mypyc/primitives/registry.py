@@ -72,6 +72,9 @@ c_method_call_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 # CallC op for top level function call(such as 'builtins.list')
 c_function_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
+# CallC op for binary ops
+c_binary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
+
 
 def simple_emit(template: str) -> EmitCallback:
     """Construct a simple PrimitiveOp emit callback function.
@@ -350,6 +353,20 @@ def c_function_op(name: str,
     ops = c_function_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type,
                                 c_function_name, error_kind, steals, priority)
+    ops.append(desc)
+    return desc
+
+
+def c_binary_op(name: str,
+                arg_types: List[RType],
+                return_type: RType,
+                c_function_name: str,
+                error_kind: int,
+                steals: StealsDescription = False,
+                priority: int = 1) -> CFunctionDescription:
+    ops = c_binary_ops.setdefault(name, [])
+    desc = CFunctionDescription(name, arg_types, return_type,
+                            c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
 

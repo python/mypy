@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
-    c_method_op
+    c_method_op, c_binary_op
 )
 
 
@@ -68,12 +68,12 @@ for i in range(len(str_split_types)):
 #
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
-binary_op(op='+=',
-          arg_types=[str_rprimitive, str_rprimitive],
-          steals=[True, False],
-          result_type=str_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=call_emit('CPyStr_Append'))
+c_binary_op(name='+=',
+            arg_types=[str_rprimitive, str_rprimitive],
+            return_type=str_rprimitive,
+            c_function_name='CPyStr_Append',
+            error_kind=ERR_MAGIC,
+            steals=[True, False])
 
 
 def emit_str_compare(comparison: str) -> Callable[[EmitterInterface, List[str], str], None]:
