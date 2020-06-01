@@ -3383,7 +3383,7 @@ L0:
     r5 = None
     return r5
 
-[case testCallCWithStrJoin]
+[case testCallCWithStrJoinMethod]
 from typing import List
 def f(x: str, y: List[str]) -> str:
     return x.join(y)
@@ -3394,4 +3394,40 @@ def f(x, y):
     r0 :: str
 L0:
     r0 = PyUnicode_Join(x, y)
+    return r0
+
+[case testCallCWithToListFunction]
+from typing import List, Iterable, Tuple, Dict
+# generic object
+def f(x: Iterable[int]) -> List[int]:
+    return list(x)
+
+# need coercing
+def g(x: Tuple[int, int, int]) -> List[int]:
+    return list(x)
+
+# non-list object
+def h(x: Dict[int, str]) -> List[int]:
+    return list(x)
+
+[out]
+def f(x):
+    x :: object
+    r0 :: list
+L0:
+    r0 = PySequence_List(x)
+    return r0
+def g(x):
+    x :: tuple[int, int, int]
+    r0 :: object
+    r1 :: list
+L0:
+    r0 = box(tuple[int, int, int], x)
+    r1 = PySequence_List(r0)
+    return r1
+def h(x):
+    x :: dict
+    r0 :: list
+L0:
+    r0 = PySequence_List(x)
     return r0

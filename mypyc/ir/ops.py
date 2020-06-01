@@ -1145,13 +1145,19 @@ class CallC(RegisterOp):
     A call to a C function
     """
 
-    error_kind = ERR_MAGIC
-
-    def __init__(self, function_name: str, args: List[Value], ret_type: RType, line: int) -> None:
+    def __init__(self,
+                 function_name: str,
+                 args: List[Value],
+                 ret_type: RType,
+                 steals: StealsDescription,
+                 error_kind: int,
+                 line: int) -> None:
+        self.error_kind = error_kind
         super().__init__(line)
         self.function_name = function_name
         self.args = args
         self.type = ret_type
+        self.steals = steals
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)
@@ -1159,6 +1165,13 @@ class CallC(RegisterOp):
 
     def sources(self) -> List[Value]:
         return self.args
+
+    def stolen(self) -> List[Value]:
+        if isinstance(self.steals, list):
+            assert len(self.steals) == len(self.args)
+            return [arg for arg, steal in zip(self.args, self.steals) if steal]
+        else:
+            return [] if not self.steals else self.sources()
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_call_c(self)

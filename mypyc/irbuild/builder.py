@@ -43,7 +43,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.registry import func_ops
+from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function_ops
 from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
@@ -228,6 +228,9 @@ class IRBuilder:
 
     def load_module(self, name: str) -> Value:
         return self.builder.load_module(name)
+
+    def call_c(self, desc: CFunctionDescription, args: List[Value], line: int) -> Value:
+        return self.builder.call_c(desc, args, line)
 
     @property
     def environment(self) -> Environment:
@@ -498,7 +501,7 @@ class IRBuilder:
         # Assign the starred value and all values after it
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1:]
-            iter_list = self.primitive_op(to_list, [iterator], line)
+            iter_list = self.call_c(to_list, [iterator], line)
             iter_list_len = self.primitive_op(list_len_op, [iter_list], line)
             post_star_len = self.add(LoadInt(len(post_star_vals)))
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
@@ -715,6 +718,11 @@ class IRBuilder:
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
+            call_c_ops_candidates = c_function_ops.get(callee.fullname, [])
+            target = self.builder.matching_call_c(call_c_ops_candidates, arg_values,
+                                                  expr.line, self.node_type(expr))
+            if target:
+                return target
             ops = func_ops.get(callee.fullname, [])
             target = self.builder.matching_primitive_op(
                 ops, arg_values, expr.line, self.node_type(expr)

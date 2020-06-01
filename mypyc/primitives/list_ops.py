@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, func_op, method_op, custom_op, name_emit,
-    call_emit, call_negative_bool_emit,
+    call_emit, call_negative_bool_emit, c_function_op
 )
 
 
@@ -20,12 +20,13 @@ name_ref_op('builtins.list',
             is_borrowed=True)
 
 # list(obj)
-to_list = func_op(
+to_list = c_function_op(
     name='builtins.list',
     arg_types=[object_rprimitive],
-    result_type=list_rprimitive,
+    return_type=list_rprimitive,
+    c_function_name='PySequence_List',
     error_kind=ERR_MAGIC,
-    emit=call_emit('PySequence_List'))
+)
 
 
 def emit_new(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -82,7 +83,6 @@ list_set_item_op = method_op(
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
     emit=call_emit('CPyList_SetItem'))
-
 
 # list.append(obj)
 list_append_op = method_op(
