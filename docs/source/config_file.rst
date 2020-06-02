@@ -230,10 +230,17 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+``no_site_packages`` (bool, default False)
+    Disables using type information in installed packages (see :pep:`561`).
+    This will also disable searching for a usable Python executable. This acts
+    the same as :option:`--no-site-packages <mypy --no-site-packages>` command
+    line flag.
+
 ``no_silence_site_packages`` (bool, default False)
-    Enables reporting error messages generated within :pep:`561` compliant packages.
-    Those error messages are suppressed by default, since you are usually
-    not able to control errors in 3rd party code.
+    Enables reporting error messages generated within installed packages (see
+    :pep:`561` for more details on distributing type information). Those error
+    messages are suppressed by default, since you are usually not able to
+    control errors in 3rd party code.
 
     This option may only be set in the global section (``[mypy]``).
 
