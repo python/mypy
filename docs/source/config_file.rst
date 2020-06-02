@@ -233,7 +233,7 @@ section of the command line docs.
 ``no_site_packages`` (bool, default False)
     Disables using type information in installed packages (see :pep:`561`).
     This will also disable searching for a usable Python executable. This acts
-    the same as :ref:`--no-site-packages <no-site-packages>` command line flag.
+    the same as :option:`--no-site-packages` command line flag.
 
 ``no_silence_site_packages`` (bool, default False)
     Enables reporting error messages generated within installed packages (see
