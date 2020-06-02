@@ -40,28 +40,24 @@ Use ``dmypy run -- <flags> <files>`` to typecheck a set of files
 You can use almost arbitrary mypy flags after ``--``.  The daemon
 will always run on the current host. Example::
 
-    dmypy run -- --follow-imports=error prog.py pkg1/ pkg2/
-
-.. note::
-   You'll need to use either the :option:`--follow-imports=error <mypy --follow-imports>` or the
-   :option:`--follow-imports=skip <mypy --follow-imports>` option with dmypy because the current
-   implementation can't follow imports.
-   See :ref:`follow-imports` for details on how these work.
-   You can also define these using a
-   :ref:`configuration file <config-file>`.
+    dmypy run -- prog.py pkg/*.py
 
 ``dmypy run`` will automatically restart the daemon if the
 configuration or mypy version changes.
 
-You need to provide all files or directories you want to type check
-(other than stubs) as arguments. This is a result of the
-:option:`--follow-imports <mypy --follow-imports>` restriction mentioned above.
-
 The initial run will process all the code and may take a while to
 finish, but subsequent runs will be quick, especially if you've only
-changed a few files. You can use :ref:`remote caching <remote-cache>`
+changed a few files. (You can use :ref:`remote caching <remote-cache>`
 to speed up the initial run. The speedup can be significant if
-you have a large codebase.
+you have a large codebase.)
+
+.. note::
+
+   Mypy 0.780 added support for following imports in dmypy (enabled by
+   default). This functionality is still experimental. You can use
+   ``--follow-imports=skip`` or ``--follow-imports=error`` to fall
+   back to the stable functionality.  See :ref:`follow-imports` for
+   details on how these work.
 
 Daemon client commands
 **********************
