@@ -463,7 +463,7 @@ def f(n):
     r1 :: int
 L0:
     r0 = 1
-    r1 = -r0 :: int
+    r1 = CPyTagged_Negate(r0)
     return r1
 
 [case testConditionalExpr]
@@ -1027,7 +1027,7 @@ L1:
     r2 = x
     goto L3
 L2:
-    r3 = -x :: int
+    r3 = CPyTagged_Negate(x)
     r2 = r3
 L3:
     return r2
