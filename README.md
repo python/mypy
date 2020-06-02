@@ -61,7 +61,7 @@ See [the documentation for Python 2 support](http://mypy.readthedocs.io/en/lates
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
 
-Requirements
+Requirements:
 ------------
 
 You need Python 3.5 or later to run mypy.  You can have multiple Python
@@ -105,7 +105,7 @@ Yusuke Miyazaki).
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 
 
-IDE, Linter Integrations, and Pre-commit
+IDE, Linter Integrations, and Pre-commit:
 ----------------------------------------
 
 Mypy can be integrated into popular IDEs:
@@ -129,7 +129,7 @@ can be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 [flake8-mypy]: https://github.com/ambv/flake8-mypy
 [pre-commit mirrors-mypy]: https://github.com/pre-commit/mirrors-mypy
 
-Web site and documentation
+Web site and documentation:
 --------------------------
 
 Documentation and additional information is available at the web site:
@@ -141,7 +141,7 @@ Or you can jump straight to the documentation:
   http://mypy.readthedocs.io/
 
 
-Troubleshooting
+Troubleshooting:
 ---------------
 
 Depending on your configuration, you may have to run `pip` like
