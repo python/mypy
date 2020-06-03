@@ -8,7 +8,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value
+    SetAttr, Op, Value, CallC
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -98,7 +98,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "cpy_r_r0 = CPyTagged_Subtract(cpy_r_m, cpy_r_k);")
 
     def test_int_neg(self) -> None:
-        self.assert_emit(PrimitiveOp([self.m], int_neg_op, 55),
+        self.assert_emit(CallC(int_neg_op.c_function_name, [self.m], int_neg_op.return_type,
+                               int_neg_op.steals, int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
     def test_list_len(self) -> None:

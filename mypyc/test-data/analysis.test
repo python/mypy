@@ -539,7 +539,7 @@ L3:
     if r5 goto L4 else goto L5 :: bool
 L4:
     r6 = 1
-    r7 = -r6 :: int
+    r7 = CPyTagged_Negate(r6)
     restore_exc_info r1
     return r7
 L5:
