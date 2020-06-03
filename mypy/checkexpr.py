@@ -2683,7 +2683,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
                     self.msg.warn_both_operands_are_from_unions(context)
                 elif len(left_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Left", base_type, context=right_expr)
+                    self.msg.warn_operand_was_from_union("Left", base_type, context=context)
                 elif len(right_variants) >= 2:
                     self.msg.warn_operand_was_from_union("Right", right_type, context=right_expr)
 

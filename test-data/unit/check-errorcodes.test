@@ -736,3 +736,15 @@ class C:
     def __rsub__(self, x): pass
 
 x - C()  # type: ignore[operator]
+
+[case testErrorCodeMultiLineBinaryOperatorOperand]
+# flags: --strict-optional
+from typing import Optional
+
+class C: pass
+
+def f() -> Optional[C]:
+    return None
+
+f(  # type: ignore[operator]
+) + C()
