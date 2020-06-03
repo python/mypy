@@ -31,7 +31,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, SymbolTable
+    CallExpr, SymbolTable, TempNode
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -144,6 +144,14 @@ class MessageBuilder:
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
+
+    def most_recent_context(self) -> Context:
+        """Return a dummy context matching the most recent generated error in current file."""
+        line, column = self.errors.most_recent_error_location()
+        node = TempNode(NoneType())
+        node.line = line
+        node.column = column
+        return node
 
     def report(self,
                msg: str,
