@@ -974,8 +974,8 @@ def foo() -> Union[int, str, A]: pass
 def bar() -> None:
     x = foo()
     x + 1  # E: Unsupported left operand type for + ("A") \
-           # E: Unsupported operand types for + ("str" and "int") \
-           # N: Left operand is of type "Union[int, str, A]"
+           # N: Left operand is of type "Union[int, str, A]" \
+           # E: Unsupported operand types for + ("str" and "int")
     if isinstance(x, A):
        x.a
     else:
