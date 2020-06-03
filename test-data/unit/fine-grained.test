@@ -932,12 +932,11 @@ asdict(my_var)['attr'] + "foo"
 [file b.py.2]
 AttributeInOtherModule = int
 
+[typing fixtures/typing-typeddict.pyi]
+[builtins fixtures/fine_grained.pyi]
 [out]
 ==
 c.py:3 error: Unsupported left operand type for + ("int")
-
-[typing fixtures/typing-typeddict.pyi]
-[builtins fixtures/fine_grained.pyi]
 
 [case testAttrsUpdate1]
 [file a.py]
