@@ -24,7 +24,7 @@ from mypy.nodes import (
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
-    is_final_node, ARG_NAMED, PlaceholderNode
+    is_final_node, ARG_NAMED
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash, Key
@@ -4595,8 +4595,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
-        sym = self.lookup_qualified(qualified_name)
-        if not sym or isinstance(sym.node, PlaceholderNode):
+        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        if not sym:
             return None
         node = sym.node
         if isinstance(node, TypeAlias):
@@ -4690,6 +4690,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 msg = "Failed qualified lookup: '{}' (fullname = '{}')."
                 raise KeyError(msg.format(last, name))
+
+    def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
+        """Lookup a fully qualified name that refers to a module-level definition.
+
+        Don't assume that the name is defined. This happens in the global namespace --
+        the local module namespace is ignored. This does not dereference indirect
+        refs.
+
+        Note that this can't be used for names nested in class namespaces.
+        """
+        # TODO: unify/clean-up/simplify lookup methods, see #4157.
+        # TODO: support nested classes (but consider performance impact,
+        #       we might keep the module level only lookup for thing like 'builtins.int').
+        assert '.' in fullname
+        module, name = fullname.rsplit('.', maxsplit=1)
+        if module not in self.modules:
+            return None
+        filenode = self.modules[module]
+        result = filenode.names.get(name)
+        if result is None:
+            raise KeyError("Failed fully qualified lookup: (fullname = '{}').".format(fullname))
+        return result
 
     @contextmanager
     def enter_partial_types(self, *, is_function: bool = False,

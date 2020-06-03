@@ -322,6 +322,7 @@ class TypedDictAnalyzer:
     def fail(self, msg: str, ctx: Context) -> None:
         self.api.fail(msg, ctx)
 
+
 def get_anonymous_typeddict_type(
         api: Union[SemanticAnalyzerInterface, CheckerPluginInterface]) -> Optional[Instance]:
     # Prefer typing then typing_extensions if available.

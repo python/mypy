@@ -3,7 +3,7 @@ from typing import Callable, Optional, List, Tuple
 
 from mypy import message_registry
 from mypy.nodes import (
-    Expression, StrExpr, IntExpr, DictExpr, UnaryExpr, MypyFile, ImportFrom, Import, ImportAll
+    Expression, StrExpr, IntExpr, DictExpr, UnaryExpr, MypyFile
 )
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,

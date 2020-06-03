@@ -10,7 +10,7 @@ from mypy.semanal import set_callable_name
 from mypy.semanal_typeddict import get_anonymous_typeddict_type
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
-    TypedDictType, Instance, TPDICT_FB_NAMES
+    TypedDictType
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
