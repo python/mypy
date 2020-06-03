@@ -371,6 +371,15 @@ def c_binary_op(name: str,
     return desc
 
 
+def c_custom_op(arg_types: List[RType],
+                return_type: RType,
+                c_function_name: str,
+                error_kind: int,
+                steals: StealsDescription = False) -> CFunctionDescription:
+    return CFunctionDescription('<custom>', arg_types, return_type,
+                            c_function_name, error_kind, steals, 0)
+
+
 # Import various modules that set up global state.
 import mypyc.primitives.int_ops  # noqa
 import mypyc.primitives.str_ops  # noqa
