@@ -2680,12 +2680,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if msg.is_errors():
                 self.msg.add_errors(msg)
+                # Point any notes to the same location as an existing message.
+                recent_context = msg.most_recent_context()
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
-                    self.msg.warn_both_operands_are_from_unions(context)
+                    self.msg.warn_both_operands_are_from_unions(recent_context)
                 elif len(left_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Left", base_type, context=right_expr)
+                    self.msg.warn_operand_was_from_union(
+                        "Left", base_type, context=recent_context)
                 elif len(right_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Right", right_type, context=right_expr)
+                    self.msg.warn_operand_was_from_union(
+                        "Right", right_type, context=recent_context)
 
             # See the comment in 'check_overload_call' for more details on why
             # we call 'combine_function_signature' instead of just unioning the inferred
