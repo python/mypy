@@ -97,11 +97,7 @@ def main(script_path: Optional[str],
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
                          if glob in options.unused_configs)),
               file=stderr)
-    if options.junit_xml:
-        t1 = time.time()
-        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
-                             py_version, options.platform)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -907,10 +903,10 @@ def process_options(args: List[str],
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),
-                     stderr)
+                     stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p), stderr)
+                fail("Can't find package '{}'".format(p), stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -926,7 +922,7 @@ def process_options(args: List[str],
         # which causes issues when using the same variable to catch
         # exceptions of different types.
         except InvalidSourceList as e2:
-            fail(str(e2), stderr)
+            fail(str(e2), stderr, options)
         return targets, options
 
 
@@ -987,6 +983,15 @@ def process_cache_map(parser: argparse.ArgumentParser,
         options.cache_map[source] = (meta_file, data_file)
 
 
-def fail(msg: str, stderr: TextIO) -> None:
+def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
+    if options.junit_xml:
+        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
+        util.write_junit_xml(
+            td, serious, messages, options.junit_xml, py_version, options.platform)
+
+
+def fail(msg: str, stderr: TextIO, options: Options) -> None:
+    """Fail with a serious error."""
     stderr.write('%s\n' % msg)
+    maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)
