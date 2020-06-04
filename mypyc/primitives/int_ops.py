@@ -6,14 +6,14 @@ representation (CPyTagged).
 See also the documentation for mypyc.rtypes.int_rprimitive.
 """
 
-from mypyc.ir.ops import OpDescription, ERR_NEVER, ERR_MAGIC
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
     str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    name_ref_op, binary_op, unary_op, func_op, custom_op,
-    simple_emit, call_emit, name_emit,
+    name_ref_op, binary_op, func_op, custom_op,
+    simple_emit, call_emit, name_emit, c_unary_op, CFunctionDescription
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -131,13 +131,12 @@ unsafe_short_add = custom_op(
     emit=simple_emit('{dest} = {args[0]} + {args[1]};'))
 
 
-def int_unary_op(op: str, c_func_name: str) -> OpDescription:
-    return unary_op(op=op,
-                    arg_type=int_rprimitive,
-                    result_type=int_rprimitive,
-                    error_kind=ERR_NEVER,
-                    format_str='{dest} = %s{args[0]} :: int' % op,
-                    emit=call_emit(c_func_name))
+def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
+    return c_unary_op(name=name,
+                      arg_type=int_rprimitive,
+                      return_type=int_rprimitive,
+                      c_function_name=c_function_name,
+                      error_kind=ERR_NEVER)
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
