@@ -22,9 +22,6 @@ from mypy.checkexpr import is_literal_type_like
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
-    def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
-        return [(10, "typing_extensions", -1)]
-
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         from mypy.plugins import ctypes
