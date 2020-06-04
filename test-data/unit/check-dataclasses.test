@@ -1057,7 +1057,6 @@ class Foo:
 reveal_type(asdict(Foo('bar')))  # N: Revealed type is 'TypedDict({'bar': builtins.str})'
 
 [typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
 
 [case testDataclassesAsdictRecursion]
 from dataclasses import dataclass, asdict
@@ -1098,7 +1097,6 @@ class Customer:
 reveal_type(asdict(Customer("foo")))  # N: Revealed type is 'TypedDict({'card': Union[builtins.str, TypedDict({'last4': builtins.int})]})'
 
 [typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
 
 [case testDataclassesAsdictType]
 from dataclasses import dataclass, asdict
@@ -1116,7 +1114,7 @@ class Customer:
 reveal_type(asdict(Customer(Card)))  # N: Revealed type is 'TypedDict({'card': Type[__main__.Card]})'
 
 [typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+
 
 [case testDataclassesAsdictCallable]
 from dataclasses import dataclass, asdict
@@ -1136,7 +1134,7 @@ def func(_: Card) -> Card: pass
 reveal_type(asdict(Customer(func)))  # N: Revealed type is 'TypedDict({'card': def (__main__.Card) -> __main__.Card})'
 
 [typing fixtures/typing-full.pyi]
-[builtins fixtures/tuple.pyi]
+
 
 [case testDataclassesAsdictList]
 from dataclasses import dataclass, asdict
