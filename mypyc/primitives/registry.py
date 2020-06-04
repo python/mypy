@@ -396,7 +396,7 @@ def c_unary_op(name: str,
                steals: StealsDescription = False,
                priority: int = 1) -> CFunctionDescription:
     ops = c_unary_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, [arg_type], return_type,
+    desc = CFunctionDescription(name, [arg_type], return_type, None,
                             c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
