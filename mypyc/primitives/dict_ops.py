@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit,
+    name_emit, c_custom_op
 )
 
 
@@ -107,6 +107,19 @@ new_dict_op = custom_op(
     format_str='{dest} = {{{colon_args}}}',
     error_kind=ERR_MAGIC,
     emit=emit_new_dict)
+
+dict_new_op = c_custom_op(
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_New',
+    error_kind=ERR_MAGIC)
+
+dict_build_op = c_custom_op(
+    arg_types=[int_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive,)
 
 # Construct a dictionary from another dictionary.
 func_op(

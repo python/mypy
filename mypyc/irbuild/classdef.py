@@ -21,7 +21,7 @@ from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand, pytype_from_template_op, py_calc_meta_op, type_object_op,
     not_implemented_op, true_op
 )
-from mypyc.primitives.dict_ops import dict_set_item_op, new_dict_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.primitives.tuple_ops import new_tuple_op
 from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
@@ -73,7 +73,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         # We populate __annotations__ for non-extension classes
         # because dataclasses uses it to determine which attributes to compute on.
         # TODO: Maybe generate more precise types for annotations
-        non_ext_anns = builder.primitive_op(new_dict_op, [], cdef.line)
+        non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
         non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
         dataclass_non_ext = None
         type_obj = None
@@ -258,7 +258,7 @@ def setup_non_ext_dict(builder: IRBuilder,
     builder.goto(exit_block)
 
     builder.activate_block(false_block)
-    builder.assign(non_ext_dict, builder.primitive_op(new_dict_op, [], cdef.line), cdef.line)
+    builder.assign(non_ext_dict, builder.call_c(dict_new_op, [], cdef.line), cdef.line)
     builder.goto(exit_block)
     builder.activate_block(exit_block)
 
@@ -518,9 +518,9 @@ def dataclass_non_ext_info(builder: IRBuilder, cdef: ClassDef) -> Optional[NonEx
     """
     if is_dataclass(cdef):
         return NonExtClassInfo(
-            builder.primitive_op(new_dict_op, [], cdef.line),
+            builder.call_c(dict_new_op, [], cdef.line),
             builder.add(TupleSet([], cdef.line)),
-            builder.primitive_op(new_dict_op, [], cdef.line),
+            builder.call_c(dict_new_op, [], cdef.line),
             builder.primitive_op(type_object_op, [], cdef.line),
         )
     else:

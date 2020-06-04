@@ -8,7 +8,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value
+    SetAttr, Op, Value, CallC
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -25,7 +25,7 @@ from mypyc.primitives.list_ops import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
 from mypyc.primitives.dict_ops import (
-    new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
+    dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
 )
 from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
@@ -221,7 +221,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                         """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o) >= 0;""")
 
     def test_new_dict(self) -> None:
-        self.assert_emit(PrimitiveOp([], new_dict_op, 1),
+        self.assert_emit(CallC(dict_new_op.c_function_name, [], dict_new_op.return_type,
+                               dict_new_op.steals, dict_new_op.error_kind, 1),
                          """cpy_r_r0 = PyDict_New();""")
 
     def test_dict_contains(self) -> None:

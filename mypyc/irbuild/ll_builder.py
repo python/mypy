@@ -681,12 +681,22 @@ class LowLevelIRBuilder:
                result_type: Optional[RType] = None) -> Value:
         # handle void function via singleton RVoid instance
         coerced = []
-        for i, arg in enumerate(args):
+        # coerce fixed number arguments
+        for i in range(min(len(args), len(desc.arg_types))):
             formal_type = desc.arg_types[i]
+            arg = args[i]
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
+        # coerce any var_arg
+        var_arg_idx = -1
+        if desc.var_arg_type is not None:
+            var_arg_idx = len(desc.arg_types)
+            for i in range(len(desc.arg_types), len(args)):
+                arg = args[i]
+                arg = self.coerce(arg, desc.var_arg_type, line)
+                coerced.append(arg)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.error_kind, line))
+                                desc.error_kind, line, var_arg_idx))
         if result_type and not is_runtime_subtype(target.type, result_type):
             if is_none_rprimitive(result_type):
                 # Special case None return. The actual result may actually be a bool
