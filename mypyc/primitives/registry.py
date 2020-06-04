@@ -378,7 +378,6 @@ def c_binary_op(name: str,
     return desc
 
 
-
 def c_custom_op(arg_types: List[RType],
                 return_type: RType,
                 c_function_name: str,
