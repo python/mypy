@@ -1936,7 +1936,7 @@ def f():
     r21 :: bool
     r22, r23 :: short_int
 L0:
-    r0 = {}
+    r0 = PyDict_New()
     r1 = 1
     r2 = 2
     r3 = 3
