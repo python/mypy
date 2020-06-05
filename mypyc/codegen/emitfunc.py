@@ -13,7 +13,7 @@ from mypyc.ir.ops import (
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC
 )
-from mypyc.ir.rtypes import RType, RTuple
+from mypyc.ir.rtypes import RType, RTuple, is_c_int_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
 
@@ -179,7 +179,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_load_int(self, op: LoadInt) -> None:
         dest = self.reg(op)
-        self.emit_line('%s = %d;' % (dest, op.value * 2))
+        if is_c_int_rprimitive(op.type):
+            self.emit_line('%s = %d;' % (dest, op.value))
+        else:
+            self.emit_line('%s = %d;' % (dest, op.value * 2))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):
