@@ -174,7 +174,7 @@ class RPrimitive(RType):
         self.is_unboxed = is_unboxed
         self._ctype = ctype
         self.is_refcounted = is_refcounted
-        if ctype in ('CPyTagged', 'int'):
+        if ctype in ('CPyTagged', 'Py_ssize_t'):
             self.c_undefined = 'CPY_INT_TAG'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
