@@ -26,6 +26,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
+    c_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -41,7 +42,9 @@ from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
-from mypyc.primitives.dict_ops import new_dict_op, dict_update_in_display_op
+from mypyc.primitives.dict_ops import (
+    dict_update_in_display_op, dict_new_op, dict_build_op
+)
 from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op
 )
@@ -583,7 +586,13 @@ class LowLevelIRBuilder:
             else:
                 # **value
                 if result is None:
-                    result = self.primitive_op(new_dict_op, initial_items, line)
+                    items_size = len(initial_items)
+                    if items_size > 0:
+                        # use the number of k-v pairs instead of values
+                        size = self.add(LoadInt(items_size // 2, -1, c_int_rprimitive))
+                        result = self.call_c(dict_build_op, [size] + initial_items, line)
+                    else:
+                        result = self.call_c(dict_new_op, [], line)
 
                 self.primitive_op(
                     dict_update_in_display_op,
@@ -592,7 +601,12 @@ class LowLevelIRBuilder:
                 )
 
         if result is None:
-            result = self.primitive_op(new_dict_op, initial_items, line)
+            items_size = len(initial_items)
+            if items_size > 0:
+                size = self.add(LoadInt(items_size // 2, -1, c_int_rprimitive))
+                result = self.call_c(dict_build_op, [size] + initial_items, line)
+            else:
+                result = self.call_c(dict_new_op, [], line)
 
         return result
 
