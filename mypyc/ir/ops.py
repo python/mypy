@@ -783,10 +783,10 @@ class LoadInt(RegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, value: int, line: int = -1) -> None:
+    def __init__(self, value: int, line: int = -1, rtype: RType = short_int_rprimitive) -> None:
         super().__init__(line)
         self.value = value
-        self.type = short_int_rprimitive
+        self.type = rtype
 
     def sources(self) -> List[Value]:
         return []

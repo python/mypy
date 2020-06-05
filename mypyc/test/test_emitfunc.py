@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
-    dict_rprimitive, object_rprimitive
+    dict_rprimitive, object_rprimitive, c_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
@@ -70,6 +70,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_load_int(self) -> None:
         self.assert_emit(LoadInt(5),
                          "cpy_r_r0 = 10;")
+        self.assert_emit(LoadInt(5, -1, c_int_rprimitive),
+                         "cpy_r_r00 = 5;")
 
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), 'cpy_r_r0 = cpy_r_t.f1;')
