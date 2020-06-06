@@ -808,3 +808,80 @@ not necessary:
     class NarrowerArgument(A):
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
+
+Each type variable is distinct
+------------------------------------------------
+
+TypeVars are *not* equivalent even if they are identically defined since they are independent of each other
+and are bound to specific types separately.
+
+Example using two TypeVars:
+
+.. code-block:: python
+
+    from typing import Callable, Iterable, TypeVar
+
+    A = TypeVar("A")
+    B = TypeVar("B")
+
+    def identity(x: A) -> A:
+        return x
+
+    # ok
+    def map_1(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]:
+        return map(function, queue)
+
+    # fails
+    def map_2(queue: Iterable[B], function: Callable[[B], A] = identity) -> Iterable[A]:
+        return map(function, queue)
+
+
+The signature of ``map_2()`` triggers:
+
+.. code-block:: python
+
+    error: Incompatible default for argument "function" (default has type "Callable[[A], A]",
+    argument has type "Callable[[B], A]")
+
+Likewise, this error will occur for constrained and bound TypeVars as well.
+
+.. code-block:: python
+
+    A = TypeVar("A", int, str)
+    B = TypeVar("B", int, str)
+    # or
+    A = TypeVar("A", bound=complex)
+    B = TypeVar("B", bound=complex)
+
+
+In some cases, the ``@overload`` decorator can be used to provide the desired type checking. Here's an example:
+
+.. code-block:: python
+
+    from typing import Callable, Iterable, TypeVar, overload, Tuple
+
+    A = TypeVar("A")
+    B = TypeVar("B")
+
+    def identity(x: A) -> A:
+        return x
+
+    def second(tup: Tuple[int, str]) -> str:
+        return tup[1]
+
+    @overload
+    def map_2(queue: Iterable[A]) -> Iterable[A]: ...
+    @overload
+    def map_2(queue: Iterable[A], function: Callable[[A], A]) -> Iterable[A]: ...
+    @overload
+    def map_2(queue: Iterable[B], function: Callable[[B], A]) -> Iterable[A]: ...
+    def map_2(queue, function=identity):
+        return map(function, queue)
+
+    list_1 = [2, 4, 6, 8]
+    list_2 = ["hello", "world"]
+    list_3 = list(enumerate(["fazzle", "baz", "rompl" ]))
+
+    mapped_1 = [n for n in map_2(list_1)]
+    mapped_2 = [s for s in map_2(list_2, identity)]
+    mapped_3 = [t for t in map_2(list_3, second)]
