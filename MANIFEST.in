@@ -5,6 +5,15 @@ recursive-include docs *
 recursive-include mypy/typeshed *.py *.pyi
 recursive-include mypy/xml *.xsd *.xslt *.css
 recursive-include mypyc/lib-rt *.c *.h *.tmpl
+recursive-include mypyc/ir *.py
+recursive-include mypyc/codegen *.py
+recursive-include mypyc/irbuild *.py
+recursive-include mypyc/primitives *.py
+recursive-include mypyc/transform *.py
+recursive-include mypyc/test *.py
+recursive-include mypyc/test-data *.test
+recursive-include mypyc/test-data/fixtures *.py *.pyi
+recursive-include mypyc/doc *.rst *.py *.md Makefile *.bat
 include mypy_bootstrap.ini
 include mypy_self_check.ini
 include LICENSE
