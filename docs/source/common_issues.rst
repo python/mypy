@@ -860,3 +860,35 @@ Here mypy will go on to check the last line as well and report ``Incompatible ty
 If we want to let mypy warn us of such unreachable code blocks, we can use the ``--warn-unreachable``
 option. With this mypy will throw ``Statement is unreachable`` error along with the line number from
 where the unreachable block starts.
+
+Unpacking Dictionary in keyword arguments
+-----------------------------------
+
+If you are unpacking a dictionary into a Callable's arguments, then
+you need to ensure the types of dictionary members by providing either
+a TypedDict or a variable with type Dict[str, Any].
+
+For example, the following function calls are valid:
+
+.. code-block:: python
+
+    def func(a: int, b: str, c: List[int]):
+        ...
+    
+    some_dict: Dict[str, Any] = {
+        "a": 1,
+        "b": "somestr",
+        "c": [1, 2, 3],
+    }
+
+    func(**some_dict)
+
+    TypedArgs = TypedDict("VarArgs", {"a": int, "b": str, "c": List[float]})
+
+    some_other_dict: TypedArgs = {
+        "a": 1,
+        "b": "somestr",
+        "c": [1, 2, 3],
+    }
+
+    func(**some_other_dict)
