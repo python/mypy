@@ -89,14 +89,6 @@ method_op(
     emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
 
 
-def emit_new_dict(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    if not args:
-        emitter.emit_line('%s = PyDict_New();' % (dest,))
-        return
-
-    emitter.emit_line('%s = CPyDict_Build(%s, %s);' % (dest, len(args) // 2, ', '.join(args)))
-
-
 # Construct an empty dictionary.
 dict_new_op = c_custom_op(
     arg_types=[],
