@@ -88,7 +88,6 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
 
-
 # Construct an empty dictionary.
 dict_new_op = c_custom_op(
     arg_types=[],
