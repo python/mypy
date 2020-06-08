@@ -1595,7 +1595,7 @@ def format_type_inner(typ: Type,
             base_str = itype.type.fullname
         else:
             base_str = itype.type.name
-        if itype.args == []:
+        if not itype.args:
             # No type arguments, just return the type name
             return base_str
         elif itype.type.fullname == 'builtins.tuple':

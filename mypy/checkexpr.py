@@ -3135,7 +3135,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # This type is invalid in most runtime contexts, give it an 'object' type.
             return self.named_type('builtins.object')
 
-    def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
+    def apply_type_arguments_to_callable(
+        self, tp: Type, args: Sequence[Type], ctx: Context
+    ) -> Type:
         """Apply type arguments to a generic callable type coming from a type object.
 
         This will first perform type arguments count checks, report the
