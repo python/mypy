@@ -4076,18 +4076,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item_type = operand_types[left_index]
                     collection_type = operand_types[right_index]
 
-                    # We only try and narrow away 'None' for now
-                    if not is_optional(item_type):
+                    proper_item = get_proper_type(item_type)
+                    collection_item_type = get_proper_type(builtin_item_type(collection_type))
+                    # nothing to narrow
+                    if not isinstance(proper_item, UnionType):
                         continue
 
-                    collection_item_type = get_proper_type(builtin_item_type(collection_type))
-                    if collection_item_type is None or is_optional(collection_item_type):
+                    if collection_item_type is None:
+                        continue
+                    if is_optional(collection_item_type) and is_optional(item_type):
                         continue
                     if (isinstance(collection_item_type, Instance)
                             and collection_item_type.type.fullname == 'builtins.object'):
                         continue
-                    if is_overlapping_erased_types(item_type, collection_item_type):
-                        if_map, else_map = {operands[left_index]: remove_optional(item_type)}, {}
+
+                    # optionals need type erasure
+                    if is_optional(item_type):
+                        if is_overlapping_erased_types(item_type, collection_item_type):
+                            if_map = {operands[left_index]: remove_optional(item_type)}
+                            else_map = {}
+                        else:
+                            continue
+                    elif isinstance(collection_item_type, UnionType):
+                        # generic unions produce their intersection
+                        items_set = frozenset(proper_item.items)
+                        collection_set = frozenset(collection_item_type.items)
+                        intersect = items_set & collection_set
+                        if not intersect:
+                            continue
+                        if_map = {operands[left_index]: UnionType.make_union(list(intersect))}
+                        else_map = {operands[left_index]: UnionType.make_union(
+                            list(items_set - collection_set))}
                     else:
                         continue
                 else:

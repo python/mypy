@@ -1048,3 +1048,17 @@ def foo(a: T2, b: T2) -> T2:
 def bar(a: T4, b: T4) -> T4:  # test multi-level alias
     return a + b
 [builtins fixtures/ops.pyi]
+
+
+[case testNarrowingUnionFromInContainer]
+from typing import Union, NewType, Set
+MyCoolInt = NewType('MyCoolInt', int)
+T1 = Union[int, float, MyCoolInt, str]
+
+my_cool_set: Set[Union[int, str]] = set(2, 'hi')
+
+def my_cool_function(my_cool_arg: T1):
+    if my_cool_arg in my_cool_set:
+        reveal_type(my_cool_arg)  # N: Revealed type is Union[int, str]
+    else:
+        reveal_type(my_cool_arg)  # N: Revealed type is Union[float, MyCoolint]
