@@ -569,12 +569,14 @@ class LowLevelIRBuilder:
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result = None  # type: Union[Value, None]
-        initial_items = []  # type: List[Value]
+        keys = []  # type: List[Value]
+        values = []  # type: List[Value]
         for key, value in key_value_pairs:
             if key is not None:
                 # key:value
                 if result is None:
-                    initial_items.extend((key, value))
+                    keys.append(key)
+                    values.append(value)
                     continue
 
                 self.translate_special_method_call(
@@ -586,13 +588,7 @@ class LowLevelIRBuilder:
             else:
                 # **value
                 if result is None:
-                    items_size = len(initial_items)
-                    if items_size > 0:
-                        # use the number of k-v pairs instead of values
-                        size = self.add(LoadInt(items_size // 2, -1, c_int_rprimitive))
-                        result = self.call_c(dict_build_op, [size] + initial_items, line)
-                    else:
-                        result = self.call_c(dict_new_op, [], line)
+                    result = self._create_dict(keys, values, line)
 
                 self.primitive_op(
                     dict_update_in_display_op,
@@ -601,12 +597,7 @@ class LowLevelIRBuilder:
                 )
 
         if result is None:
-            items_size = len(initial_items)
-            if items_size > 0:
-                size = self.add(LoadInt(items_size // 2, -1, c_int_rprimitive))
-                result = self.call_c(dict_build_op, [size] + initial_items, line)
-            else:
-                result = self.call_c(dict_new_op, [], line)
+            result = self._create_dict(keys, values, line)
 
         return result
 
@@ -883,3 +874,18 @@ class LowLevelIRBuilder:
             ltype,
             line
         )
+
+    def _create_dict(self,
+                     keys: List[Value],
+                     values: List[Value],
+                     line: int) -> Value:
+        """Create a dictionary(possibly empty) using keys and values"""
+        # keys and values should have the same number of items
+        size = len(keys)
+        if size > 0:
+            load_size_op = self.add(LoadInt(size, -1, c_int_rprimitive))
+            # merge keys and values
+            items = [i for t in list(zip(keys, values)) for i in t]
+            return self.call_c(dict_build_op, [load_size_op] + items, line)
+        else:
+            return self.call_c(dict_new_op, [], line)

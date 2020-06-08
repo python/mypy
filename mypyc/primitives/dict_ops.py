@@ -97,23 +97,16 @@ def emit_new_dict(emitter: EmitterInterface, args: List[str], dest: str) -> None
     emitter.emit_line('%s = CPyDict_Build(%s, %s);' % (dest, len(args) // 2, ', '.join(args)))
 
 
-# Construct a dictionary from keys and values.
-# Arguments are (key1, value1, ..., keyN, valueN).
-new_dict_op = custom_op(
-    name='builtins.dict',
-    arg_types=[object_rprimitive],
-    is_var_arg=True,
-    result_type=dict_rprimitive,
-    format_str='{dest} = {{{colon_args}}}',
-    error_kind=ERR_MAGIC,
-    emit=emit_new_dict)
-
+# Construct an empty dictionary.
 dict_new_op = c_custom_op(
     arg_types=[],
     return_type=dict_rprimitive,
     c_function_name='PyDict_New',
     error_kind=ERR_MAGIC)
 
+# Construct a dictionary from keys and values.
+# Positional argument is the number of key-value pairs
+# Variable arguments are (key1, value1, ..., keyN, valueN).
 dict_build_op = c_custom_op(
     arg_types=[c_int_rprimitive],
     return_type=dict_rprimitive,

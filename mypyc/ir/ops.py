@@ -1159,7 +1159,7 @@ class CallC(RegisterOp):
         self.args = args
         self.type = ret_type
         self.steals = steals
-        self.var_arg_idx = var_arg_idx
+        self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)

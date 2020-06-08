@@ -73,7 +73,6 @@ c_binary_op(name='+=',
             return_type=str_rprimitive,
             c_function_name='CPyStr_Append',
             error_kind=ERR_MAGIC,
-            var_arg_type=None,
             steals=[True, False])
 
 
