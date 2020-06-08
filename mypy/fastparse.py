@@ -169,6 +169,11 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
+        if sys.version_info < (3, 9) and e.filename == "<fstring>":
+            # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
+            # start of the f-string. This would be misleading, as mypy will report the error as the
+            # lineno within the file.
+            e.lineno = None
         errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
                       code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
