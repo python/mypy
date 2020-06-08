@@ -86,8 +86,7 @@ jobs:
 
 install:
 - pip install -U pip setuptools
-- pip install -U 'virtualenv<20'
-- pip install -U tox==3.9.0
+- pip install -U tox>=3.15
 - tox --notest
 
 # This is a big hack and only works because the layout of our directories
