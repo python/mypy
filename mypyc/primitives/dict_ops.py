@@ -9,18 +9,18 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    name_ref_op, method_op, binary_op, func_op, custom_op,
+    method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit,
+    c_name_ref_op
 )
 
 
 # Get the 'dict' type object.
-name_ref_op('builtins.dict',
-            result_type=object_rprimitive,
-            error_kind=ERR_NEVER,
-            emit=name_emit('&PyDict_Type', target_type="PyObject *"),
-            is_borrowed=True)
+c_name_ref_op('builtins.dict',
+              return_type=object_rprimitive,
+              identifier="PyDict_Type",
+              cast_str="PyObject *",
+              load_address=True)
 
 # dict[key]
 dict_get_item_op = method_op(

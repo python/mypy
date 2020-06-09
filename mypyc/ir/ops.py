@@ -1177,6 +1177,38 @@ class CallC(RegisterOp):
         return visitor.visit_call_c(self)
 
 
+class LoadGlobal(RegisterOp):
+    """ret = func_call(arg0, arg1, ...)
+
+    A call to a C function
+    """
+
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self,
+                 identifier: str,
+                 ret_type: RType,
+                 cast_str: str,
+                 load_address: bool,
+                 line: int) -> None:
+        super().__init__(line)
+        self.identifier = identifier
+        self.type = ret_type
+        self.cast_str = cast_str
+        self.load_address = load_address
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        name = "&" if self.load_address else "" + self.identifier
+        return env.format('%r = %s(%s)', self, self.cast_str, name)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_global(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1269,6 +1301,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_call_c(self, op: CallC) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_global(self, op: LoadGlobal) -> T:
         raise NotImplementedError
 
 
