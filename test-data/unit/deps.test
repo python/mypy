@@ -1450,6 +1450,12 @@ class B(A):
 
 [case testDataclassesAsdictDeps]
 # flags: --python-version 3.8
+from dataclasses import asdict
+from a import my_var
+x = asdict(my_var)
+x['attr'] + "foo"
+
+[file a.py]
 from dataclasses import dataclass
 from b import AttributeInOtherModule
 
@@ -1466,3 +1472,9 @@ AttributeInOtherModule = str
 [builtins fixtures/fine_grained.pyi]
 
 [out]
+<m.x> -> m
+<a.MyDataclass[wildcard]> -> m
+<a.my_var> -> m
+<a> -> m
+<dataclasses.asdict> -> m
+<dataclasses> -> m

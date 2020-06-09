@@ -231,8 +231,17 @@ class CheckerPluginInterface:
         """Construct an instance of a builtin type with given type arguments."""
         raise NotImplementedError
 
+    @abstractmethod
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        """Specify semantic dependencies for generated methods/variables.
+
+        See the same function on SemanticAnalyzerPluginInterface for more details.
+        """
         raise NotImplementedError
 
 

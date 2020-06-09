@@ -414,6 +414,9 @@ class AsDictVisitor(TypeTranslator):
         info = t.type
         any_type = AnyType(TypeOfAny.implementation_artifact)
         if is_type_dataclass(info):
+            # The resultant type from the asdict call depends on the set of attributes in the
+            # referenced dataclass and all dataclasses that are referenced by it
+            self.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
             if info.fullname in self.seen_dataclasses:
                 # Recursive types not supported, so fall back to Dict[str, Any]
                 # Note: Would be nicer to fallback to default_return_type, but that is Any

@@ -4619,6 +4619,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: assert len(args) == len(info.defn.type_vars)
         return Instance(info, args)
 
+    def add_plugin_dependency(self, trigger: str, target: Optional[str] = None) -> None:
+        if target is None:
+            target = self.tscope.current_target()
+
+        cur_module_node = self.modules[self.tscope.current_module_id()]
+        cur_module_node.plugin_deps.setdefault(trigger, set()).add(target)
+
     def lookup_typeinfo(self, fullname: str) -> TypeInfo:
         # Assume that the name refers to a class.
         sym = self.lookup_qualified(fullname)
