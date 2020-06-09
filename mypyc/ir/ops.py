@@ -1178,10 +1178,7 @@ class CallC(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """ret = func_call(arg0, arg1, ...)
-
-    A call to a C function
-    """
+    """Load a C global variable/pointer"""
 
     error_kind = ERR_NEVER
     is_borrowed = True
