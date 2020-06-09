@@ -1448,7 +1448,7 @@ class B(A):
 <dataclasses> -> m
 
 
-[case testDataclassAsdictDeps]
+[case testDataclassesAsdictDeps]
 # flags: --python-version 3.8
 from dataclasses import dataclass
 from b import AttributeInOtherModule

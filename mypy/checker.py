@@ -4709,8 +4709,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None
         filenode = self.modules[module]
         result = filenode.names.get(name)
-        if result is None:
-            raise KeyError("Failed fully qualified lookup: (fullname = '{}').".format(fullname))
         return result
 
     @contextmanager
