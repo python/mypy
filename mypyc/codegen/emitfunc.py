@@ -425,9 +425,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.get_dest_assign(op)
-        name = "&" if op.load_address else "" + op.identifier
+        name = ("&" if op.load_address else "") + op.identifier
         cast_str = op.cast_str
-        self.emitter.emit_line("{} = {}({});".format(dest, cast_str, name))
+        self.emitter.emit_line("{}{}({});".format(dest, cast_str, name))
 
     # Helpers
 

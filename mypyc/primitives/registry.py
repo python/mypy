@@ -404,7 +404,7 @@ def c_name_ref_op(name: str,
                   cast_str: Optional[str] = None,
                   load_address: bool = False) -> CLoadGlobalDescription:
     assert name not in c_name_ref_ops, 'already defined: %s' % name
-    cast_str = cast_str if cast_str else ""
+    cast_str = ("(" + cast_str + ")") if cast_str else ""
     desc = CLoadGlobalDescription(name, return_type, identifier, cast_str, load_address)
     c_name_ref_ops[name] = desc
     return desc

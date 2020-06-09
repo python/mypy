@@ -1202,7 +1202,7 @@ class LoadGlobal(RegisterOp):
         return []
 
     def to_str(self, env: Environment) -> str:
-        name = "&" if self.load_address else "" + self.identifier
+        name = ("&" if self.load_address else "") + self.identifier
         return env.format('%r = %s(%s)', self, self.cast_str, name)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
