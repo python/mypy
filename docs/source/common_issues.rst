@@ -883,12 +883,37 @@ For example, the following function calls are valid:
 
     func(**some_dict)
 
-    TypedArgs = TypedDict("VarArgs", {"a": int, "b": str, "c": List[float]})
+    TypedArgs = TypedDict("TypedArgs", {"a": int, "b": str, "c": List[float]})
 
     some_other_dict: TypedArgs = {
         "a": 1,
         "b": "somestr",
         "c": [1, 2, 3],
+    }
+
+    func(**some_other_dict)
+
+The following function calls are invalid, on account of untyped/mistyped unpacking:
+
+.. code-block:: python
+
+    def func(a: int, b: str, c: List[int]):
+        ...
+    
+    some_dict = {
+        "a": 1,
+        "b": "somestr",
+        "c": [1, 2, 3],
+    }
+
+    func(**some_dict)
+
+    TypedArgs = TypedDict("TypedArgs", {"a": int, "b": str, "c": List[str]})
+
+    some_other_dict: TypedArgs = {
+        "a": 1,
+        "b": "somestr",
+        "c": ["1", "2", "3"],
     }
 
     func(**some_other_dict)
