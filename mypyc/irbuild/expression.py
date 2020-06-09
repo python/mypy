@@ -25,7 +25,7 @@ from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
 from mypyc.primitives.tuple_ops import list_tuple_op
-from mypyc.primitives.dict_ops import new_dict_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
@@ -541,7 +541,7 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
-    d = builder.primitive_op(new_dict_op, [], o.line)
+    d = builder.call_c(dict_new_op, [], o.line)
     loop_params = list(zip(o.indices, o.sequences, o.condlists))
 
     def gen_inner_stmts() -> None:

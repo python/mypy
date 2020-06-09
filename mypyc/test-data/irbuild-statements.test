@@ -635,29 +635,13 @@ L3:
     r9 = None
     return r9
 
-[case testDel]
+[case testDelList]
 def delList() -> None:
     l = [1, 2]
     del l[1]
-def delDict() -> None:
-    d = {"one":1, "two":2}
-    del d["one"]
 def delListMultiple() -> None:
     l = [1, 2, 3, 4, 5, 6, 7]
     del l[1], l[2], l[3]
-def delDictMultiple() -> None:
-    d = {"one":1, "two":2, "three":3, "four":4}
-    del d["one"], d["four"]
-class Dummy():
-    def __init__(self, x: int, y: int) -> None:
-        self.x = x
-        self.y = y
-def delAttribute() -> None:
-    dummy = Dummy(1, 2)
-    del dummy.x
-def delAttributeMultiple() -> None:
-    dummy = Dummy(1, 2)
-    del dummy.x, dummy.y
 [out]
 def delList():
     r0, r1 :: short_int
@@ -679,29 +663,6 @@ L0:
     r7 = l.__delitem__(r6) :: object
     r8 = None
     return r8
-def delDict():
-    r0 :: str
-    r1 :: short_int
-    r2 :: str
-    r3 :: short_int
-    r4, r5 :: object
-    r6, d :: dict
-    r7 :: str
-    r8 :: bool
-    r9 :: None
-L0:
-    r0 = unicode_1 :: static  ('one')
-    r1 = 1
-    r2 = unicode_2 :: static  ('two')
-    r3 = 2
-    r4 = box(short_int, r1)
-    r5 = box(short_int, r3)
-    r6 = {r0: r4, r2: r5}
-    d = r6
-    r7 = unicode_1 :: static  ('one')
-    r8 = d.__delitem__(r7) :: object
-    r9 = None
-    return r9
 def delListMultiple():
     r0, r1, r2, r3, r4, r5, r6 :: short_int
     r7, r8, r9, r10, r11, r12, r13 :: object
@@ -742,6 +703,40 @@ L0:
     r23 = l.__delitem__(r22) :: object
     r24 = None
     return r24
+
+[case testDelDict]
+def delDict() -> None:
+    d = {"one":1, "two":2}
+    del d["one"]
+def delDictMultiple() -> None:
+    d = {"one":1, "two":2, "three":3, "four":4}
+    del d["one"], d["four"]
+[out]
+def delDict():
+    r0 :: str
+    r1 :: short_int
+    r2 :: str
+    r3 :: short_int
+    r4 :: c_int
+    r5, r6 :: object
+    r7, d :: dict
+    r8 :: str
+    r9 :: bool
+    r10 :: None
+L0:
+    r0 = unicode_1 :: static  ('one')
+    r1 = 1
+    r2 = unicode_2 :: static  ('two')
+    r3 = 2
+    r4 = 2
+    r5 = box(short_int, r1)
+    r6 = box(short_int, r3)
+    r7 = CPyDict_Build(r4, r0, r5, r2, r6)
+    d = r7
+    r8 = unicode_1 :: static  ('one')
+    r9 = d.__delitem__(r8) :: object
+    r10 = None
+    return r10
 def delDictMultiple():
     r0 :: str
     r1 :: short_int
@@ -751,11 +746,12 @@ def delDictMultiple():
     r5 :: short_int
     r6 :: str
     r7 :: short_int
-    r8, r9, r10, r11 :: object
-    r12, d :: dict
-    r13, r14 :: str
-    r15, r16 :: bool
-    r17 :: None
+    r8 :: c_int
+    r9, r10, r11, r12 :: object
+    r13, d :: dict
+    r14, r15 :: str
+    r16, r17 :: bool
+    r18 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
     r1 = 1
@@ -765,18 +761,32 @@ L0:
     r5 = 3
     r6 = unicode_4 :: static  ('four')
     r7 = 4
-    r8 = box(short_int, r1)
-    r9 = box(short_int, r3)
-    r10 = box(short_int, r5)
-    r11 = box(short_int, r7)
-    r12 = {r0: r8, r2: r9, r4: r10, r6: r11}
-    d = r12
-    r13 = unicode_1 :: static  ('one')
-    r14 = unicode_4 :: static  ('four')
-    r15 = d.__delitem__(r13) :: object
+    r8 = 4
+    r9 = box(short_int, r1)
+    r10 = box(short_int, r3)
+    r11 = box(short_int, r5)
+    r12 = box(short_int, r7)
+    r13 = CPyDict_Build(r8, r0, r9, r2, r10, r4, r11, r6, r12)
+    d = r13
+    r14 = unicode_1 :: static  ('one')
+    r15 = unicode_4 :: static  ('four')
     r16 = d.__delitem__(r14) :: object
-    r17 = None
-    return r17
+    r17 = d.__delitem__(r15) :: object
+    r18 = None
+    return r18
+
+[case testDelAttribute]
+class Dummy():
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+def delAttribute() -> None:
+    dummy = Dummy(1, 2)
+    del dummy.x
+def delAttributeMultiple() -> None:
+    dummy = Dummy(1, 2)
+    del dummy.x, dummy.y
+[out]
 def Dummy.__init__(self, x, y):
     self :: __main__.Dummy
     x, y :: int
@@ -798,7 +808,7 @@ L0:
     r1 = 2
     r2 = Dummy(r0, r1)
     dummy = r2
-    r3 = unicode_7 :: static  ('x')
+    r3 = unicode_3 :: static  ('x')
     r4 = delattr dummy, r3
     r5 = None
     return r5
@@ -815,9 +825,9 @@ L0:
     r1 = 2
     r2 = Dummy(r0, r1)
     dummy = r2
-    r3 = unicode_7 :: static  ('x')
+    r3 = unicode_3 :: static  ('x')
     r4 = delattr dummy, r3
-    r5 = unicode_8 :: static  ('y')
+    r5 = unicode_4 :: static  ('y')
     r6 = delattr dummy, r5
     r7 = None
     return r7

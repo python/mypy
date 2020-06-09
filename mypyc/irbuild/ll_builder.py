@@ -26,6 +26,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
+    c_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -41,7 +42,9 @@ from mypyc.primitives.list_ops import (
     list_extend_op, list_len_op, new_list_op
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
-from mypyc.primitives.dict_ops import new_dict_op, dict_update_in_display_op
+from mypyc.primitives.dict_ops import (
+    dict_update_in_display_op, dict_new_op, dict_build_op
+)
 from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op
 )
@@ -566,12 +569,14 @@ class LowLevelIRBuilder:
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result = None  # type: Union[Value, None]
-        initial_items = []  # type: List[Value]
+        keys = []  # type: List[Value]
+        values = []  # type: List[Value]
         for key, value in key_value_pairs:
             if key is not None:
                 # key:value
                 if result is None:
-                    initial_items.extend((key, value))
+                    keys.append(key)
+                    values.append(value)
                     continue
 
                 self.translate_special_method_call(
@@ -583,7 +588,7 @@ class LowLevelIRBuilder:
             else:
                 # **value
                 if result is None:
-                    result = self.primitive_op(new_dict_op, initial_items, line)
+                    result = self._create_dict(keys, values, line)
 
                 self.primitive_op(
                     dict_update_in_display_op,
@@ -592,7 +597,7 @@ class LowLevelIRBuilder:
                 )
 
         if result is None:
-            result = self.primitive_op(new_dict_op, initial_items, line)
+            result = self._create_dict(keys, values, line)
 
         return result
 
@@ -685,12 +690,22 @@ class LowLevelIRBuilder:
                result_type: Optional[RType] = None) -> Value:
         # handle void function via singleton RVoid instance
         coerced = []
-        for i, arg in enumerate(args):
+        # coerce fixed number arguments
+        for i in range(min(len(args), len(desc.arg_types))):
             formal_type = desc.arg_types[i]
+            arg = args[i]
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
+        # coerce any var_arg
+        var_arg_idx = -1
+        if desc.var_arg_type is not None:
+            var_arg_idx = len(desc.arg_types)
+            for i in range(len(desc.arg_types), len(args)):
+                arg = args[i]
+                arg = self.coerce(arg, desc.var_arg_type, line)
+                coerced.append(arg)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.error_kind, line))
+                                desc.error_kind, line, var_arg_idx))
         if result_type and not is_runtime_subtype(target.type, result_type):
             if is_none_rprimitive(result_type):
                 # Special case None return. The actual result may actually be a bool
@@ -859,3 +874,18 @@ class LowLevelIRBuilder:
             ltype,
             line
         )
+
+    def _create_dict(self,
+                     keys: List[Value],
+                     values: List[Value],
+                     line: int) -> Value:
+        """Create a dictionary(possibly empty) using keys and values"""
+        # keys and values should have the same number of items
+        size = len(keys)
+        if size > 0:
+            load_size_op = self.add(LoadInt(size, -1, c_int_rprimitive))
+            # merge keys and values
+            items = [i for t in list(zip(keys, values)) for i in t]
+            return self.call_c(dict_build_op, [load_size_op] + items, line)
+        else:
+            return self.call_c(dict_new_op, [], line)

@@ -1088,20 +1088,22 @@ def call_python_function_with_keyword_arg(x):
     r1 :: object
     r2 :: str
     r3 :: tuple
-    r4 :: object
-    r5 :: dict
-    r6 :: object
-    r7 :: int
+    r4 :: c_int
+    r5 :: object
+    r6 :: dict
+    r7 :: object
+    r8 :: int
 L0:
     r0 = 2
     r1 = int
     r2 = unicode_3 :: static  ('base')
     r3 = (x) :: tuple
-    r4 = box(short_int, r0)
-    r5 = {r2: r4}
-    r6 = py_call_with_kwargs(r1, r3, r5)
-    r7 = unbox(int, r6)
-    return r7
+    r4 = 1
+    r5 = box(short_int, r0)
+    r6 = CPyDict_Build(r4, r2, r5)
+    r7 = py_call_with_kwargs(r1, r3, r6)
+    r8 = unbox(int, r7)
+    return r8
 def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
     first, second :: int
@@ -1111,17 +1113,19 @@ def call_python_method_with_keyword_args(xs, first, second):
     r3 :: str
     r4 :: object
     r5 :: tuple
-    r6 :: object
-    r7 :: dict
-    r8 :: object
-    r9 :: short_int
-    r10 :: str
-    r11 :: object
-    r12, r13 :: str
-    r14 :: tuple
-    r15, r16 :: object
-    r17 :: dict
-    r18 :: object
+    r6 :: c_int
+    r7 :: object
+    r8 :: dict
+    r9 :: object
+    r10 :: short_int
+    r11 :: str
+    r12 :: object
+    r13, r14 :: str
+    r15 :: tuple
+    r16 :: c_int
+    r17, r18 :: object
+    r19 :: dict
+    r20 :: object
 L0:
     r0 = 0
     r1 = unicode_4 :: static  ('insert')
@@ -1129,19 +1133,21 @@ L0:
     r3 = unicode_5 :: static  ('x')
     r4 = box(short_int, r0)
     r5 = (r4) :: tuple
-    r6 = box(int, first)
-    r7 = {r3: r6}
-    r8 = py_call_with_kwargs(r2, r5, r7)
-    r9 = 1
-    r10 = unicode_4 :: static  ('insert')
-    r11 = getattr xs, r10
-    r12 = unicode_5 :: static  ('x')
-    r13 = unicode_6 :: static  ('i')
-    r14 = () :: tuple
-    r15 = box(int, second)
-    r16 = box(short_int, r9)
-    r17 = {r12: r15, r13: r16}
-    r18 = py_call_with_kwargs(r11, r14, r17)
+    r6 = 1
+    r7 = box(int, first)
+    r8 = CPyDict_Build(r6, r3, r7)
+    r9 = py_call_with_kwargs(r2, r5, r8)
+    r10 = 1
+    r11 = unicode_4 :: static  ('insert')
+    r12 = getattr xs, r11
+    r13 = unicode_5 :: static  ('x')
+    r14 = unicode_6 :: static  ('i')
+    r15 = () :: tuple
+    r16 = 2
+    r17 = box(int, second)
+    r18 = box(short_int, r10)
+    r19 = CPyDict_Build(r16, r13, r17, r14, r18)
+    r20 = py_call_with_kwargs(r12, r15, r19)
     return xs
 
 [case testObjectAsBoolean]
@@ -1628,7 +1634,7 @@ L0:
     r8 = box(tuple[int, int, int], r3)
     r9 = r7.extend(r8) :: list
     r10 = tuple r7 :: list
-    r11 = {}
+    r11 = PyDict_New()
     r12 = py_call_with_kwargs(r6, r10, r11)
     r13 = unbox(tuple[int, int, int], r12)
     return r13
@@ -1657,7 +1663,7 @@ L0:
     r9 = box(tuple[int, int], r3)
     r10 = r8.extend(r9) :: list
     r11 = tuple r8 :: list
-    r12 = {}
+    r12 = PyDict_New()
     r13 = py_call_with_kwargs(r6, r11, r12)
     r14 = unbox(tuple[int, int, int], r13)
     return r14
@@ -1684,15 +1690,16 @@ def g():
     r3 :: short_int
     r4 :: str
     r5 :: short_int
-    r6, r7, r8 :: object
-    r9, r10 :: dict
-    r11 :: str
-    r12 :: object
-    r13 :: tuple
-    r14 :: dict
-    r15 :: bool
-    r16 :: object
-    r17 :: tuple[int, int, int]
+    r6 :: c_int
+    r7, r8, r9 :: object
+    r10, r11 :: dict
+    r12 :: str
+    r13 :: object
+    r14 :: tuple
+    r15 :: dict
+    r16 :: bool
+    r17 :: object
+    r18 :: tuple[int, int, int]
 L0:
     r0 = unicode_3 :: static  ('a')
     r1 = 1
@@ -1700,53 +1707,56 @@ L0:
     r3 = 2
     r4 = unicode_5 :: static  ('c')
     r5 = 3
-    r6 = box(short_int, r1)
-    r7 = box(short_int, r3)
-    r8 = box(short_int, r5)
-    r9 = {r0: r6, r2: r7, r4: r8}
-    r10 = __main__.globals :: static
-    r11 = unicode_6 :: static  ('f')
-    r12 = r10[r11] :: dict
-    r13 = () :: tuple
-    r14 = {}
-    r15 = r14.update(r9) (display) :: dict
-    r16 = py_call_with_kwargs(r12, r13, r14)
-    r17 = unbox(tuple[int, int, int], r16)
-    return r17
+    r6 = 3
+    r7 = box(short_int, r1)
+    r8 = box(short_int, r3)
+    r9 = box(short_int, r5)
+    r10 = CPyDict_Build(r6, r0, r7, r2, r8, r4, r9)
+    r11 = __main__.globals :: static
+    r12 = unicode_6 :: static  ('f')
+    r13 = r11[r12] :: dict
+    r14 = () :: tuple
+    r15 = PyDict_New()
+    r16 = r15.update(r10) (display) :: dict
+    r17 = py_call_with_kwargs(r13, r14, r15)
+    r18 = unbox(tuple[int, int, int], r17)
+    return r18
 def h():
     r0 :: short_int
     r1 :: str
     r2 :: short_int
     r3 :: str
     r4 :: short_int
-    r5, r6 :: object
-    r7, r8 :: dict
-    r9 :: str
-    r10, r11 :: object
-    r12 :: tuple
-    r13 :: dict
-    r14 :: bool
-    r15 :: object
-    r16 :: tuple[int, int, int]
+    r5 :: c_int
+    r6, r7 :: object
+    r8, r9 :: dict
+    r10 :: str
+    r11, r12 :: object
+    r13 :: tuple
+    r14 :: dict
+    r15 :: bool
+    r16 :: object
+    r17 :: tuple[int, int, int]
 L0:
     r0 = 1
     r1 = unicode_4 :: static  ('b')
     r2 = 2
     r3 = unicode_5 :: static  ('c')
     r4 = 3
-    r5 = box(short_int, r2)
-    r6 = box(short_int, r4)
-    r7 = {r1: r5, r3: r6}
-    r8 = __main__.globals :: static
-    r9 = unicode_6 :: static  ('f')
-    r10 = r8[r9] :: dict
-    r11 = box(short_int, r0)
-    r12 = (r11) :: tuple
-    r13 = {}
-    r14 = r13.update(r7) (display) :: dict
-    r15 = py_call_with_kwargs(r10, r12, r13)
-    r16 = unbox(tuple[int, int, int], r15)
-    return r16
+    r5 = 2
+    r6 = box(short_int, r2)
+    r7 = box(short_int, r4)
+    r8 = CPyDict_Build(r5, r1, r6, r3, r7)
+    r9 = __main__.globals :: static
+    r10 = unicode_6 :: static  ('f')
+    r11 = r9[r10] :: dict
+    r12 = box(short_int, r0)
+    r13 = (r12) :: tuple
+    r14 = PyDict_New()
+    r15 = r14.update(r8) (display) :: dict
+    r16 = py_call_with_kwargs(r11, r13, r14)
+    r17 = unbox(tuple[int, int, int], r16)
+    return r17
 
 [case testFunctionCallWithDefaultArgs]
 def f(x: int, y: int = 3, z: str = "test") -> None:
@@ -1936,7 +1946,7 @@ def f():
     r21 :: bool
     r22, r23 :: short_int
 L0:
-    r0 = {}
+    r0 = PyDict_New()
     r1 = 1
     r2 = 2
     r3 = 3

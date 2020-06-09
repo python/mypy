@@ -1151,13 +1151,15 @@ class CallC(RegisterOp):
                  ret_type: RType,
                  steals: StealsDescription,
                  error_kind: int,
-                 line: int) -> None:
+                 line: int,
+                 var_arg_idx: int = -1) -> None:
         self.error_kind = error_kind
         super().__init__(line)
         self.function_name = function_name
         self.args = args
         self.type = ret_type
         self.steals = steals
+        self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)

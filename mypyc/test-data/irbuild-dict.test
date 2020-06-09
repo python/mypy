@@ -45,7 +45,7 @@ def f():
     r0, d :: dict
     r1 :: None
 L0:
-    r0 = {}
+    r0 = PyDict_New()
     d = r0
     r1 = None
     return r1
@@ -58,19 +58,21 @@ def f(x):
     x :: object
     r0, r1 :: short_int
     r2 :: str
-    r3, r4 :: object
-    r5, d :: dict
-    r6 :: None
+    r3 :: c_int
+    r4, r5 :: object
+    r6, d :: dict
+    r7 :: None
 L0:
     r0 = 1
     r1 = 2
     r2 = unicode_1 :: static
-    r3 = box(short_int, r0)
-    r4 = box(short_int, r1)
-    r5 = {r3: r4, r2: x}
-    d = r5
-    r6 = None
-    return r6
+    r3 = 2
+    r4 = box(short_int, r0)
+    r5 = box(short_int, r1)
+    r6 = CPyDict_Build(r3, r4, r5, r2, x)
+    d = r6
+    r7 = None
+    return r7
 
 [case testInDict]
 from typing import Dict
@@ -202,21 +204,23 @@ def f(x, y):
     r0 :: short_int
     r1 :: str
     r2 :: short_int
-    r3 :: object
-    r4 :: dict
-    r5 :: bool
-    r6 :: object
-    r7 :: bool
+    r3 :: c_int
+    r4 :: object
+    r5 :: dict
+    r6 :: bool
+    r7 :: object
+    r8 :: bool
 L0:
     r0 = 2
     r1 = unicode_3 :: static  ('z')
     r2 = 3
-    r3 = box(short_int, r0)
-    r4 = {x: r3}
-    r5 = r4.update(y) (display) :: dict
-    r6 = box(short_int, r2)
-    r7 = r4.__setitem__(r1, r6) :: dict
-    return r4
+    r3 = 1
+    r4 = box(short_int, r0)
+    r5 = CPyDict_Build(r3, x, r4)
+    r6 = r5.update(y) (display) :: dict
+    r7 = box(short_int, r2)
+    r8 = r5.__setitem__(r1, r7) :: dict
+    return r5
 
 [case testDictIterationMethods]
 from typing import Dict

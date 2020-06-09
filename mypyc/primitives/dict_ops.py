@@ -5,13 +5,13 @@ from typing import List
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
-    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair
+    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_int_rprimitive
 )
 
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit,
+    name_emit, c_custom_op
 )
 
 
@@ -88,25 +88,22 @@ method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
 
-
-def emit_new_dict(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    if not args:
-        emitter.emit_line('%s = PyDict_New();' % (dest,))
-        return
-
-    emitter.emit_line('%s = CPyDict_Build(%s, %s);' % (dest, len(args) // 2, ', '.join(args)))
-
+# Construct an empty dictionary.
+dict_new_op = c_custom_op(
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_New',
+    error_kind=ERR_MAGIC)
 
 # Construct a dictionary from keys and values.
-# Arguments are (key1, value1, ..., keyN, valueN).
-new_dict_op = custom_op(
-    name='builtins.dict',
-    arg_types=[object_rprimitive],
-    is_var_arg=True,
-    result_type=dict_rprimitive,
-    format_str='{dest} = {{{colon_args}}}',
+# Positional argument is the number of key-value pairs
+# Variable arguments are (key1, value1, ..., keyN, valueN).
+dict_build_op = c_custom_op(
+    arg_types=[c_int_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_Build',
     error_kind=ERR_MAGIC,
-    emit=emit_new_dict)
+    var_arg_type=object_rprimitive,)
 
 # Construct a dictionary from another dictionary.
 func_op(
