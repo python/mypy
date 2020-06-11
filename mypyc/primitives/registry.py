@@ -387,7 +387,6 @@ def c_unary_op(name: str,
     ops.append(desc)
     return desc
 
-
 # Import various modules that set up global state.
 import mypyc.primitives.int_ops  # noqa
 import mypyc.primitives.str_ops  # noqa

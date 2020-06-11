@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit
+    name_emit,
 )
 
 

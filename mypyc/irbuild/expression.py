@@ -16,7 +16,7 @@ from mypy.nodes import (
 from mypy.types import TupleType, get_proper_type
 
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign, LoadGlobal
+    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
 from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
