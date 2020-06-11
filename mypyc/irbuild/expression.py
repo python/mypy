@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import name_ref_ops, c_name_ref_ops
+from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
@@ -38,10 +38,6 @@ from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehensio
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
     fullname = expr.node.fullname
-    if fullname in c_name_ref_ops:
-        c_desc = c_name_ref_ops[fullname]
-        return builder.add(LoadGlobal(c_desc.identifier, c_desc.return_type,
-                                      c_desc.cast_str, c_desc.load_address, expr.line))
     if fullname in name_ref_ops:
         # Use special access op for this particular name.
         desc = name_ref_ops[fullname]

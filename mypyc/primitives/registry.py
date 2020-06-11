@@ -51,13 +51,6 @@ CFunctionDescription = NamedTuple(
                               ('steals', StealsDescription),
                               ('priority', int)])
 
-CLoadGlobalDescription = NamedTuple(
-    'CLoadGlobalDescription',  [('name', str),
-                                ('return_type', RType),
-                                ('identifier', str),
-                                ('cast_str', str),
-                                ('load_address', bool)])
-
 # Primitive binary ops (key is operator such as '+')
 binary_ops = {}  # type: Dict[str, List[OpDescription]]
 
@@ -84,9 +77,6 @@ c_binary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
 # CallC op for unary ops
 c_unary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
-
-# LoadGlobal op for reading module attributes
-c_name_ref_ops = {}  # type: Dict[str, CLoadGlobalDescription]
 
 
 def simple_emit(template: str) -> EmitCallback:
@@ -397,17 +387,6 @@ def c_unary_op(name: str,
     ops.append(desc)
     return desc
 
-
-def c_name_ref_op(name: str,
-                  return_type: RType,
-                  identifier: str,
-                  cast_str: Optional[str] = None,
-                  load_address: bool = False) -> CLoadGlobalDescription:
-    assert name not in c_name_ref_ops, 'already defined: %s' % name
-    cast_str = ("(" + cast_str + ")") if cast_str else ""
-    desc = CLoadGlobalDescription(name, return_type, identifier, cast_str, load_address)
-    c_name_ref_ops[name] = desc
-    return desc
 
 # Import various modules that set up global state.
 import mypyc.primitives.int_ops  # noqa

@@ -1178,7 +1178,7 @@ class CallC(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """Load a C global variable/pointer"""
+    """Load a global variable/pointer"""
 
     error_kind = ERR_NEVER
     is_borrowed = True
