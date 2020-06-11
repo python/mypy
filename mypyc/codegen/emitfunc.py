@@ -1,17 +1,16 @@
 """Code generation for native function bodies."""
 
 from typing import Union
-from typing_extensions import Final
 
 from mypyc.common import (
-    REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
+    REG_PREFIX, NATIVE_PREFIX
 )
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
-    BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC
+    BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable,
+    NAMESPACE_TYPE, RaiseStandardError, CallC
 )
 from mypyc.ir.rtypes import RType, RTuple, is_c_int_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -297,15 +296,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 '{} = 1;'.format(dest),
             )
 
-    PREFIX_MAP = {
-        NAMESPACE_STATIC: STATIC_PREFIX,
-        NAMESPACE_TYPE: TYPE_PREFIX,
-        NAMESPACE_MODULE: MODULE_PREFIX,
-    }  # type: Final
-
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
-        prefix = self.PREFIX_MAP[op.namespace]
+        prefix = op.prefix
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = '(PyObject *)%s' % name
@@ -318,7 +311,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
-        prefix = self.PREFIX_MAP[op.namespace]
+        prefix = op.prefix
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             value = '(PyTypeObject *)%s' % value

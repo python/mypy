@@ -27,7 +27,7 @@ from mypyc.ir.rtypes import (
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype
 )
-from mypyc.common import short_name
+from mypyc.common import short_name, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX
 
 if TYPE_CHECKING:
     from mypyc.ir.class_ir import ClassIR  # noqa
@@ -890,6 +890,12 @@ NAMESPACE_TYPE = 'type'  # type: Final
 # Namespace for modules
 NAMESPACE_MODULE = 'module'  # type: Final
 
+PREFIX_MAP = {
+    NAMESPACE_STATIC: STATIC_PREFIX,
+    NAMESPACE_TYPE: TYPE_PREFIX,
+    NAMESPACE_MODULE: MODULE_PREFIX,
+}  # type: Final
+
 
 class LoadStatic(RegisterOp):
     """Load a static name (name :: static).
@@ -918,6 +924,7 @@ class LoadStatic(RegisterOp):
         self.namespace = namespace
         self.type = type
         self.ann = ann  # An object to pretty print with the load
+        self.prefix = PREFIX_MAP[self.namespace]
 
     def sources(self) -> List[Value]:
         return []
@@ -952,6 +959,7 @@ class InitStatic(RegisterOp):
         self.module_name = module_name
         self.namespace = namespace
         self.value = value
+        self.prefix = PREFIX_MAP[self.namespace]
 
     def sources(self) -> List[Value]:
         return [self.value]
