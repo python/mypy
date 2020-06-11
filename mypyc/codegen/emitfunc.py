@@ -424,10 +424,13 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
 
     def visit_load_global(self, op: LoadGlobal) -> None:
-        dest = self.get_dest_assign(op)
-        name = ("&" if op.load_address else "") + op.identifier
-        cast_str = op.cast_str
-        self.emitter.emit_line("{}{}({});".format(dest, cast_str, name))
+        dest = self.reg(op)
+        ann = ''
+        if op.ann:
+            s = repr(op.ann)
+            if not any(x in s for x in ('/*', '*/', '\0')):
+                ann = ' /* %s */' % s
+        self.emit_line('%s = %s;%s' % (dest, op.identifier, ann))
 
     # Helpers
 
