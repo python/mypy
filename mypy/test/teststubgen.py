@@ -19,7 +19,9 @@ from mypy.stubgen import (
     mypy_options, is_blacklisted_path, is_non_library_module
 )
 from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
-from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
+from mypy.stubgenc import (
+    generate_c_type_stub, infer_method_sig, generate_c_function_stub, generate_c_property_stub
+)
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring, FunctionSig, ArgSig,
@@ -777,6 +779,21 @@ class StubgencSuite(unittest.TestCase):
         generate_c_function_stub(mod, 'test', test, output, imports)
         assert_equal(output, ['def test(arg0: str) -> Action: ...'])
         assert_equal(imports, [])
+
+    def test_generate_c_property_with_pybind11(self) -> None:
+        """Signatures included by PyBind11 inside property.fget are read."""
+        class TestClass:
+            def get_attribute(self) -> str:
+                """
+                (self: TestClass) -> str
+                """
+                pass
+            attribute = property(get_attribute, doc="")
+
+        output = []
+        generate_c_property_stub('attribute', TestClass.attribute, output, readonly=True)
+        assert_equal(output, ['@property', 'def attribute(self) -> str: ...'])
+
 
     def test_generate_c_type_with_overload_pybind11(self) -> None:
         class TestClass:

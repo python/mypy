@@ -247,6 +247,14 @@ def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
     return []
 
 
+def infer_ret_type_sig_from_docstring(docstr: str) -> Optional[str]:
+    """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
+    ret = infer_sig_from_docstring("stub" + docstr.strip(), "stub")
+    if ret:
+        return ret[0].ret_type
+    return None
+
+
 def parse_signature(sig: str) -> Optional[Tuple[str,
                                                 List[str],
                                                 List[str]]]:
