@@ -534,8 +534,8 @@ def read_status(status_file: str) -> Dict[str, object]:
     with open(status_file) as f:
         try:
             data = json.load(f)
-        except Exception:
-            raise BadStatus("Malformed status file (not JSON)")
+        except Exception as e:
+            raise BadStatus("Malformed status file (not JSON)") from e
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
     return data
