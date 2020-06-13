@@ -219,10 +219,13 @@ def generate_c_property_stub(name: str, obj: object, output: List[str], readonly
     """
     def infer_prop_type(docstr: Optional[str]) -> Optional[str]:
         """Infer property type from docstring or docstring signature."""
-        inferred = infer_ret_type_sig_from_docstring(docstr)
-        if not inferred:
-            inferred = infer_prop_type_from_docstring(docstr)
-        return inferred
+        if docstr is not None:
+            inferred = infer_ret_type_sig_from_docstring(docstr)
+            if not inferred:
+                inferred = infer_prop_type_from_docstring(docstr)
+            return inferred
+        else:
+            return None
 
     inferred = infer_prop_type(getattr(obj, '__doc__', None))
     if not inferred:
