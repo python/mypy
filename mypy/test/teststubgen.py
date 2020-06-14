@@ -790,10 +790,9 @@ class StubgencSuite(unittest.TestCase):
                 pass
             attribute = property(get_attribute, doc="")
 
-        output = []
+        output = []  # type: List[str]
         generate_c_property_stub('attribute', TestClass.attribute, output, readonly=True)
         assert_equal(output, ['@property', 'def attribute(self) -> str: ...'])
-
 
     def test_generate_c_type_with_overload_pybind11(self) -> None:
         class TestClass:
