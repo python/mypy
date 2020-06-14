@@ -50,10 +50,10 @@ On some systems you need to use this instead:
 
     $ python -m pip install -U mypy
 
-Compile and run a program
--------------------------
+Example program
+---------------
 
-Let's now compile a classic micro-benchmark, recursive fibonacci. Save
+Let's start with a classic micro-benchmark, recursive fibonacci. Save
 this file as ``fib.py``:
 
 .. code-block:: python
@@ -70,8 +70,8 @@ this file as ``fib.py``:
    fib(32)
    print(time.time() - t0)
 
-Note that we gave ``fib`` a type annotation. Without it, performance
-won't be as impressive after compilation.
+Note that we gave the ``fib`` function a type annotation. Without it,
+performance won't be as impressive after compilation.
 
 .. note::
 
@@ -80,6 +80,9 @@ won't be as impressive after compilation.
    introduction if you are new to type annotations or mypy. Mypyc uses
    mypy to perform type checking and type inference, so some familiarity
    with mypy is very useful.
+
+Compiling and running
+---------------------
 
 We can run ``fib.py`` as a regular, interpreted program using CPython:
 
@@ -118,8 +121,8 @@ You can also pass most
 `mypy command line options <https://mypy.readthedocs.io/en/stable/command_line.html>`_
 to ``mypyc``.
 
-Delete compiled binary
-----------------------
+Deleting compiled binary
+------------------------
 
 You can manually delete the C extension to get back to an interpreted
 version (this example works on Linux):
@@ -128,11 +131,11 @@ version (this example works on Linux):
 
     $ rm fib.*.so
 
-Compile using setup.py
-----------------------
+Using setup.py
+--------------
 
 You can also use ``setup.py`` to compile modules using mypyc. Here is an
-example::
+example ``setup.py`` file::
 
     from setuptools import setup
 
@@ -155,12 +158,12 @@ Now you can build a wheel (.whl) file for the package::
 
     python3 setup.py bdist_wheel
 
+The wheel is created under ``dist/``.
+
 You can also compile the C extensions in-place, in the current directory (similar
 to using ``mypyc`` to compile modules)::
 
     python3 setup.py build_ext --inplace
-
-The wheel is created under ``dist/``.
 
 You can include most `mypy command line options
 <https://mypy.readthedocs.io/en/stable/command_line.html>`_ in the
@@ -190,10 +193,10 @@ Recommended workflow
 --------------------
 
 A simple way to use mypyc is to always compile your code after any
-code changes, but this can get tedious. Instead, you may prefer
-another workflow, where you compile code less often.  The following
-development workflow has worked very well for developing mypy and
-mypyc, and we recommend that you to try it out:
+code changes, but this can get tedious. Instead, you can do most
+development in interpreted mode. This development workflow has worked
+smoothly for developing mypy and mypyc (often we forget that we aren't
+working on an entirely ordinary Python project):
 
 1. During development, use interpreted mode. This allows a very fast
    edit-run cycle, since you don't need to wait for mypyc compilation.
@@ -206,7 +209,7 @@ mypyc, and we recommend that you to try it out:
 
 3. After you've implemented a feature or a fix, compile your project
    and run tests again, now in compiled mode. Almost always, nothing
-   will break here, if your type annotation coverage is good
+   will break here, assuming your type annotation coverage is good
    enough. This can happen locally or as part of a Continuous
    Integration (CI) job. If you have good CI, compiling locally may be
    rarely needed.
@@ -215,11 +218,11 @@ mypyc, and we recommend that you to try it out:
    fallback interpreted version for platforms that mypyc doesn't
    support.
 
-This way of using mypyc has minimal impact on your productivity and
+This mypyc workflow has minimal impact on your productivity and
 requires only minor adjustments to a typical Python workflow. Most of
-development, testing and debugging happens in interpreted
-mode. Incremental mypy runs, especially when using mypy daemon, are
-very quick (often a few hundred milliseconds).
+development, testing and debugging happens in interpreted mode.
+Incremental mypy runs, especially when using the mypy daemon, are very
+quick (often a few hundred milliseconds).
 
 Next steps
 ----------
