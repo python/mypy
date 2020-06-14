@@ -338,9 +338,11 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
 
 
 def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optional[Value]:
-    """Generate specialized slice op, if possible.
+    """Generate specialized slice op for some index expressions.
 
-    Return None if specialized op isn't supported.
+    Return None if a specialized op isn't available.
+
+    This supports obj[x:y], obj[:x], and obj[x:] for a few types.
     """
     if index.stride:
         # We can only handle the default stride of 1.
@@ -364,7 +366,8 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
         if index.end_index:
             end = builder.accept(index.end_index)
         else:
-            # TODO: Use bigger value in 64-bit platforms.
+            # Replace missing end index with the largest short integer
+            # (a sequence can't be longer).
             end = builder.load_static_int(MAX_LITERAL_SHORT_INT)
         candidates = [slice_op, list_slice_op, tuple_slice_op, str_slice_op]
         return builder.builder.matching_primitive_op(candidates, [base, begin, end], index.line)
