@@ -114,6 +114,9 @@ After compilation, the program is about 10x faster. Nice!
 
    ``__name__`` in ``fib.py`` would now be ``"fib"``, not ``"__main__"``.
 
+You can also pass most
+`mypy command line options <https://mypy.readthedocs.io/en/stable/command_line.html>`_
+to ``mypyc``.
 
 Delete compiled binary
 ----------------------
@@ -152,7 +155,36 @@ Now you can build a wheel (.whl) file for the package::
 
     python3 setup.py bdist_wheel
 
+You can also compile the C extensions in-place, in the current directory (similar
+to using ``mypyc`` to compile modules)::
+
+    python3 setup.py build_ext --inplace
+
 The wheel is created under ``dist/``.
+
+You can include most `mypy command line options
+<https://mypy.readthedocs.io/en/stable/command_line.html>`_ in the
+list of arguments passed to ``mypycify()``. For example, here we use
+the ``--disallow-untyped-defs`` flag to require that all functions
+have type annotations::
+
+    ...
+    setup(
+        name='frobnicate',
+        packages=['frobnicate'],
+        ext_modules=mypycify([
+            '--disallow-untyped-defs',  # Pass a mypy flag
+            'frobnicate.py',
+        ]),
+    )
+
+.. note:
+
+   You may be tempted to use `--check-untyped-defs
+   <https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-check-untyped-defs>`_
+   to type check functions without type annotations. Note that this
+   may reduce performance, due to many transitions between type-checked and unchecked
+   code.
 
 Recommended workflow
 --------------------
