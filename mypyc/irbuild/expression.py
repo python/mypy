@@ -372,7 +372,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             bin_op = 'or' if e.operators[0] == 'in' else 'and'
             lhs = e.operands[0]
             exprs = (ComparisonExpr([cmp_op], [lhs, item]) for item in items)
-            or_expr: Expression = next(exprs)
+            or_expr = next(exprs)  # type: Expression
             for expr in exprs:
                 or_expr = OpExpr(bin_op, or_expr, expr)
             return builder.accept(or_expr)
