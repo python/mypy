@@ -4,7 +4,6 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-import functools
 from typing import List, Optional, Union
 
 from mypy.nodes import (
@@ -373,7 +372,9 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             bin_op = 'or' if e.operators[0] == 'in' else 'and'
             lhs = e.operands[0]
             exprs = (ComparisonExpr([cmp_op], [lhs, item]) for item in items)
-            or_expr = functools.reduce(lambda left, right: OpExpr(bin_op, left, right), exprs)
+            or_expr: Expression = next(exprs)
+            for expr in exprs:
+                or_expr = OpExpr(bin_op, or_expr, expr)
             return builder.accept(or_expr)
 
     # TODO: Don't produce an expression when used in conditional context
