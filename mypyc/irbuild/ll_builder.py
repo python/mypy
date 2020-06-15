@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC,
-    RaiseStandardError, Unreachable, LoadErrorValue,
+    RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC,
 )
 from mypyc.ir.rtypes import (
@@ -32,6 +32,7 @@ from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
+    STATIC_PREFIX
 )
 from mypyc.primitives.registry import (
     binary_ops, unary_ops, method_ops, func_ops,
@@ -427,30 +428,30 @@ class LowLevelIRBuilder:
         return self.add(PrimitiveOp([], none_object_op, line=-1))
 
     def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
-        return self.mapper.literal_static_name(self.current_module, value)
+        return STATIC_PREFIX + self.mapper.literal_static_name(self.current_module, value)
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
         if abs(value) > MAX_LITERAL_SHORT_INT:
-            static_symbol = self.literal_static_name(value)
-            return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
+            identifier = self.literal_static_name(value)
+            return self.add(LoadGlobal(int_rprimitive, identifier, ann=value))
         else:
             return self.add(LoadInt(value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
-        static_symbol = self.literal_static_name(value)
-        return self.add(LoadStatic(float_rprimitive, static_symbol, ann=value))
+        identifier = self.literal_static_name(value)
+        return self.add(LoadGlobal(float_rprimitive, identifier, ann=value))
 
     def load_static_bytes(self, value: bytes) -> Value:
         """Loads a static bytes value into a register."""
-        static_symbol = self.literal_static_name(value)
-        return self.add(LoadStatic(object_rprimitive, static_symbol, ann=value))
+        identifier = self.literal_static_name(value)
+        return self.add(LoadGlobal(object_rprimitive, identifier, ann=value))
 
     def load_static_complex(self, value: complex) -> Value:
         """Loads a static complex value into a register."""
-        static_symbol = self.literal_static_name(value)
-        return self.add(LoadStatic(object_rprimitive, static_symbol, ann=value))
+        identifier = self.literal_static_name(value)
+        return self.add(LoadGlobal(object_rprimitive, identifier, ann=value))
 
     def load_static_unicode(self, value: str) -> Value:
         """Loads a static unicode value into a register.
@@ -458,8 +459,8 @@ class LowLevelIRBuilder:
         This is useful for more than just unicode literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        static_symbol = self.literal_static_name(value)
-        return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
+        identifier = self.literal_static_name(value)
+        return self.add(LoadGlobal(str_rprimitive, identifier, ann=value))
 
     def load_static_checked(self, typ: RType, identifier: str, module_name: Optional[str] = None,
                             namespace: str = NAMESPACE_STATIC,

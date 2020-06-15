@@ -1179,6 +1179,36 @@ class CallC(RegisterOp):
         return visitor.visit_call_c(self)
 
 
+class LoadGlobal(RegisterOp):
+    """Load a global variable/pointer"""
+
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self,
+                 type: RType,
+                 identifier: str,
+                 line: int = -1,
+                 ann: object = None) -> None:
+        super().__init__(line)
+        self.identifier = identifier
+        self.type = type
+        self.ann = ann  # An object to pretty print with the load
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        ann = '  ({})'.format(repr(self.ann)) if self.ann else ''
+        # return env.format('%r = %s%s', self, self.identifier, ann)
+        # TODO: a hack to prevent lots of failed IR tests when developing prototype
+        #       eventually we will change all the related tests
+        return env.format('%r = %s :: static%s ', self, self.identifier[10:], ann)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_global(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1271,6 +1301,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_call_c(self, op: CallC) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_global(self, op: LoadGlobal) -> T:
         raise NotImplementedError
 
 
