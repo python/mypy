@@ -56,9 +56,9 @@ CFunctionDescription = NamedTuple(
 CLoadDescription = NamedTuple(
     'CLoadDescription',     [('name', str),
                             ('return_type', RType),
-                            ('identifier', str),
-                            ('cast_str', str),
-                            ('load_address', bool)])
+                            ('identifier', str),  # name of the target to load
+                            ('cast_str', str),  # string represents optional type cast
+                            ('load_address', bool)])  # True for LoadAddress otherwise LoadGlobal
 
 # Primitive binary ops (key is operator such as '+')
 binary_ops = {}  # type: Dict[str, List[OpDescription]]
