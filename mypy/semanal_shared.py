@@ -221,4 +221,4 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == 'builtins.tuple'
-    fallback.args[0] = join.join_type_list(list(typ.items))
+    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]

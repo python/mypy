@@ -3023,7 +3023,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a reveal_type expression."""
         if expr.kind == REVEAL_TYPE:
             assert expr.expr is not None
-            revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
+            revealed_type = self.accept(expr.expr, type_context=self.type_context[-1],
+                                        allow_none_return=True)
             if not self.chk.current_node_deferred:
                 self.msg.reveal_type(revealed_type, expr.expr)
                 if not self.chk.in_checked_function():
@@ -3134,7 +3135,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # This type is invalid in most runtime contexts, give it an 'object' type.
             return self.named_type('builtins.object')
 
-    def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
+    def apply_type_arguments_to_callable(
+        self, tp: Type, args: Sequence[Type], ctx: Context
+    ) -> Type:
         """Apply type arguments to a generic callable type coming from a type object.
 
         This will first perform type arguments count checks, report the

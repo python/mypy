@@ -39,7 +39,7 @@ def replace_col_hook(ctx):
                 if new_sym:
                     new_info = new_sym.node
                     assert isinstance(new_info, TypeInfo)
-                    node.type = Instance(new_info, node.type.args.copy(),
+                    node.type = Instance(new_info, node.type.args,
                                          node.type.line,
                                          node.type.column)
 

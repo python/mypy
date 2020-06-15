@@ -30,7 +30,7 @@ class CFG:
 
     def __str__(self) -> str:
         lines = []
-        lines.append('exits: %s' % sorted(self.exits))
+        lines.append('exits: %s' % sorted(self.exits, key=lambda e: e.label))
         lines.append('succ: %s' % self.succ)
         lines.append('pred: %s' % self.pred)
         return '\n'.join(lines)
