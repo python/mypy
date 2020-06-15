@@ -4,6 +4,7 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
+import functools
 from typing import List, Optional, Union
 
 from mypy.nodes import (
@@ -352,8 +353,30 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 
 
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
-    # TODO: Don't produce an expression when used in conditional context
+    # x in (...)/[...]
+    if e.operators[0] in ['in', 'not in'] and isinstance(e.operands[1], (TupleExpr, ListExpr)):
+        cmp_op = '==' if e.operators[0] == 'in' else '!='
+        items = e.operands[1].items
+        n_items = len(items)
+        # x in []/() -> False
+        if n_items == 0:
+            name = 'builtins.False' if e.operators[0] == 'in' else 'builtins.True'
+            return builder.add(PrimitiveOp([], name_ref_ops[name], e.line))
+        # # x in [y]/(y) -> x == y
+        # # x not in [y]/(y) -> x != y
+        elif n_items == 1:
+            e.operators = [cmp_op]
+            e.operands[1] = items[0]
+        # x in y -> x == y[0] or ... or x == y[n]
+        # 16 is arbitrarily chosen to limit code size
+        elif n_items < 16:
+            bin_op = 'or' if e.operators[0] == 'in' else 'and'
+            lhs = e.operands[0]
+            exprs = (ComparisonExpr([cmp_op], [lhs, item]) for item in items)
+            or_expr = functools.reduce(lambda left, right: OpExpr(bin_op, left, right), exprs)
+            return builder.accept(or_expr)
 
+    # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
     # `e1 < e2 and e2 > e3` except that `e2` is only evaluated once.
