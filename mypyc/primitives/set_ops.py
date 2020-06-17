@@ -1,8 +1,8 @@
 """Primitive set (and frozenset) ops."""
 
 from mypyc.primitives.registry import (
-    func_op, method_op, binary_op,
-    simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
+    func_op, method_op, binary_op, simple_emit, negative_int_emit,
+    call_negative_bool_emit, c_function_op, c_method_op
 )
 from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEVER, EmitterInterface
 from mypyc.ir.rtypes import object_rprimitive, bool_rprimitive, set_rprimitive, int_rprimitive
@@ -19,22 +19,20 @@ new_set_op = func_op(
 )
 
 # set(obj)
-func_op(
+c_function_op(
     name='builtins.set',
     arg_types=[object_rprimitive],
-    result_type=set_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySet_New')
-)
+    return_type=set_rprimitive,
+    c_function_name='PySet_New',
+    error_kind=ERR_MAGIC)
 
 # frozenset(obj)
-func_op(
+c_function_op(
     name='builtins.frozenset',
     arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PyFrozenSet_New')
-)
+    return_type=object_rprimitive,
+    c_function_name='PyFrozenSet_New',
+    error_kind=ERR_MAGIC)
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -64,13 +62,12 @@ binary_op(
 )
 
 # set.remove(obj)
-method_op(
+c_method_op(
     name='remove',
     arg_types=[set_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_emit('CPySet_Remove')
-)
+    return_type=bool_rprimitive,
+    c_function_name='CPySet_Remove',
+    error_kind=ERR_FALSE)
 
 # set.discard(obj)
 method_op(
@@ -111,10 +108,9 @@ method_op(
 )
 
 # set.pop()
-method_op(
+c_method_op(
     name='pop',
     arg_types=[set_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySet_Pop')
-)
+    return_type=object_rprimitive,
+    c_function_name='PySet_Pop',
+    error_kind=ERR_MAGIC)

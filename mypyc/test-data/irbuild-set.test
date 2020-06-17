@@ -45,7 +45,7 @@ def f(l):
     l :: list
     r0 :: set
 L0:
-    r0 = set l :: object
+    r0 = PySet_New(l)
     return r0
 
 [case testSetSize]
@@ -126,7 +126,7 @@ L0:
     x = r0
     r1 = 1
     r2 = box(short_int, r1)
-    r3 = x.remove(r2) :: set
+    r3 = CPySet_Remove(x, r2)
     r4 = None
     return x
 
@@ -202,7 +202,7 @@ def f(s):
     r0 :: object
     r1 :: int
 L0:
-    r0 = s.pop() :: set
+    r0 = PySet_Pop(s)
     r1 = unbox(int, r0)
     return r1
 

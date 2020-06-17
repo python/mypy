@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit, c_custom_op
+    name_emit, c_custom_op, c_method_op
 )
 
 
@@ -73,12 +73,12 @@ method_op(
     emit=call_negative_bool_emit('CPyDict_UpdateFromAny'))
 
 # dict.get(key, default)
-method_op(
+c_method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Get'))
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_Get',
+    error_kind=ERR_MAGIC)
 
 # dict.get(key)
 method_op(
@@ -115,6 +115,7 @@ func_op(
     priority=2)
 
 # Generic one-argument dict constructor: dict(obj)
+
 func_op(
     name='builtins.dict',
     arg_types=[object_rprimitive],
@@ -123,31 +124,28 @@ func_op(
     emit=call_emit('CPyDict_FromAny'))
 
 # dict.keys()
-method_op(
+c_method_op(
     name='keys',
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_KeysView')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_KeysView',
+    error_kind=ERR_MAGIC)
 
 # dict.values()
-method_op(
+c_method_op(
     name='values',
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_ValuesView')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_ValuesView',
+    error_kind=ERR_MAGIC)
 
 # dict.items()
-method_op(
+c_method_op(
     name='items',
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_ItemsView')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_ItemsView',
+    error_kind=ERR_MAGIC)
 
 # list(dict.keys())
 dict_keys_op = custom_op(

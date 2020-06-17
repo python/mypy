@@ -243,7 +243,7 @@ def A.foo(self, x):
     x :: int
     r0 :: str
 L0:
-    r0 = str x :: int
+    r0 = CPyTagged_Str(x)
     return r0
 def B.foo(self, x):
     self :: __main__.B
@@ -263,7 +263,7 @@ def C.foo(self, x):
     x :: object
     r0 :: int
 L0:
-    r0 = id x :: object
+    r0 = CPyTagged_Id(x)
     return r0
 def C.foo__B_glue(self, x):
     self :: __main__.C

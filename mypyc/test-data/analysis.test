@@ -525,7 +525,7 @@ def lol(x):
     r11, r12 :: int
 L0:
 L1:
-    r0 = id x :: object
+    r0 = CPyTagged_Id(x)
     st = r0
     goto L10
 L2:

@@ -12,8 +12,8 @@ from mypyc.ir.rtypes import (
     str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    name_ref_op, binary_op, func_op, custom_op,
-    simple_emit, call_emit, name_emit, c_unary_op, CFunctionDescription
+    name_ref_op, binary_op, custom_op, simple_emit, call_emit, name_emit,
+    c_unary_op, CFunctionDescription, c_function_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -28,47 +28,46 @@ name_ref_op('builtins.int',
             is_borrowed=True)
 
 # Convert from a float to int. We could do a bit better directly.
-func_op(
+c_function_op(
     name='builtins.int',
     arg_types=[float_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyLong_FromFloat'),
-    priority=1)
+    return_type=object_rprimitive,
+    c_function_name='CPyLong_FromFloat',
+    error_kind=ERR_MAGIC)
 
 # int(string)
-func_op(
+c_function_op(
     name='builtins.int',
     arg_types=[str_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyLong_FromStr'),
-    priority=1)
+    return_type=object_rprimitive,
+    c_function_name='CPyLong_FromStr',
+    error_kind=ERR_MAGIC)
 
 # int(string, base)
-func_op(
+c_function_op(
     name='builtins.int',
     arg_types=[str_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyLong_FromStrWithBase'),
-    priority=1)
+    return_type=object_rprimitive,
+    c_function_name='CPyLong_FromStrWithBase',
+    error_kind=ERR_MAGIC)
 
 # str(n) on ints
-func_op(name='builtins.str',
-        arg_types=[int_rprimitive],
-        result_type=str_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=call_emit('CPyTagged_Str'),
-        priority=2)
+c_function_op(
+    name='builtins.str',
+    arg_types=[int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPyTagged_Str',
+    error_kind=ERR_MAGIC,
+    priority=2)
 
 # We need a specialization for str on bools also since the int one is wrong...
-func_op(name='builtins.str',
-        arg_types=[bool_rprimitive],
-        result_type=str_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=call_emit('CPyBool_Str'),
-        priority=3)
+c_function_op(
+    name='builtins.str',
+    arg_types=[bool_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPyBool_Str',
+    error_kind=ERR_MAGIC,
+    priority=3)
 
 
 def int_binary_op(op: str, c_func_name: str,
