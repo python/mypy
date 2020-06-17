@@ -58,8 +58,6 @@ c_function_op(
     return_type=str_rprimitive,
     c_function_name='CPyTagged_Str',
     error_kind=ERR_MAGIC,
-    var_arg_type=None,
-    steals=False,
     priority=2)
 
 # We need a specialization for str on bools also since the int one is wrong...
@@ -69,8 +67,6 @@ c_function_op(
     return_type=str_rprimitive,
     c_function_name='CPyBool_Str',
     error_kind=ERR_MAGIC,
-    var_arg_type=None,
-    steals=False,
     priority=3)
 
 
