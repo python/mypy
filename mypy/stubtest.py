@@ -957,7 +957,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     except mypy.errors.CompileError as e:
         output = [_style("error: ", color="red", bold=True), "failed mypy compile.\n", str(e)]
         print("".join(output))
-        raise RuntimeError
+        raise RuntimeError from e
     if res.errors:
         output = [_style("error: ", color="red", bold=True), "failed mypy build.\n"]
         print("".join(output) + "\n".join(res.errors))

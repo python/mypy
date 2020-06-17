@@ -192,10 +192,11 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
                                           ['-c', 'import sys; print(sys.executable)'],
                                           stderr=subprocess.STDOUT).decode().strip()
         return sys_exe
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         raise PythonExecutableInferenceError(
             'failed to find a Python executable matching version {},'
-            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version)
+        ) from e
 
 
 def infer_python_executable(options: Options,

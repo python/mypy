@@ -82,7 +82,7 @@ def run_setup(script_name: str, script_args: List[str]) -> bool:
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
         if code == "interrupted":
-            raise KeyboardInterrupt
+            raise KeyboardInterrupt from e
 
         return code == 0 or code is None
 

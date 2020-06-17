@@ -132,7 +132,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     try:
         source_text = source.decode(encoding)
     except LookupError as lookuperr:
-        raise DecodeError(str(lookuperr))
+        raise DecodeError(str(lookuperr)) from lookuperr
     return source_text
 
 

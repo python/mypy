@@ -568,8 +568,8 @@ class SuggestionEngine:
             raise SuggestionFailure('Source file is not a Python file')
         try:
             modname, _ = self.finder.crawl_up(os.path.normpath(file))
-        except InvalidSourceList:
-            raise SuggestionFailure('Invalid source file name: ' + file)
+        except InvalidSourceList as e:
+            raise SuggestionFailure('Invalid source file name: ' + file) from e
         if modname not in self.graph:
             raise SuggestionFailure('Unknown module: ' + modname)
         # We must be sure about any edits in this file as this might affect the line numbers.
