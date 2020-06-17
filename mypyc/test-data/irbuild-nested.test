@@ -167,7 +167,7 @@ L0:
     r1 = r0.inner
     inner = r1
     r2 = unicode_4 :: static  ('!')
-    r3 = s + r2
+    r3 = PyUnicode_Concat(s, r2)
     return r3
 def c(num):
     num :: float
@@ -206,7 +206,7 @@ L0:
     r1 = r0.inner
     inner = r1
     r2 = unicode_5 :: static  ('?')
-    r3 = s + r2
+    r3 = PyUnicode_Concat(s, r2)
     return r3
 def d(num):
     num :: float

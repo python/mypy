@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import (
     name_ref_op, method_op, binary_op, func_op, custom_op,
     simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit, c_custom_op, c_method_op, c_function_op
+    name_emit, c_custom_op, c_method_op
 )
 
 
@@ -129,8 +129,7 @@ c_method_op(
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_KeysView',
-    error_kind=ERR_MAGIC
-)
+    error_kind=ERR_MAGIC)
 
 # dict.values()
 c_method_op(
@@ -138,8 +137,7 @@ c_method_op(
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_ValuesView',
-    error_kind=ERR_MAGIC
-)
+    error_kind=ERR_MAGIC)
 
 # dict.items()
 c_method_op(
@@ -147,8 +145,7 @@ c_method_op(
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_ItemsView',
-    error_kind=ERR_MAGIC
-)
+    error_kind=ERR_MAGIC)
 
 # list(dict.keys())
 dict_keys_op = custom_op(

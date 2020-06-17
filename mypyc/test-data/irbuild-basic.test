@@ -166,14 +166,14 @@ def f(x, y):
     r2 :: bool
     r3 :: str
 L0:
-    r1 = str x :: object
+    r1 = PyObject_Str(x)
     r2 = bool r1 :: object
     if r2 goto L1 else goto L2 :: bool
 L1:
     r0 = r1
     goto L3
 L2:
-    r3 = str y :: object
+    r3 = PyObject_Str(y)
     r0 = r3
 L3:
     return r0
@@ -216,14 +216,14 @@ def f(x, y):
     r2 :: bool
     r3 :: str
 L0:
-    r1 = str x :: object
+    r1 = PyObject_Str(x)
     r2 = bool r1 :: object
     if r2 goto L2 else goto L1 :: bool
 L1:
     r0 = r1
     goto L3
 L2:
-    r3 = str y :: object
+    r3 = PyObject_Str(y)
     r0 = r3
 L3:
     return r0

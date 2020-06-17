@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, func_op, method_op, custom_op, name_emit,
-    call_emit, call_negative_bool_emit, c_function_op, c_binary_op
+    call_emit, call_negative_bool_emit, c_function_op, c_binary_op, c_method_op
 )
 
 
@@ -117,19 +117,20 @@ list_pop = method_op(
     emit=call_emit('CPyList_Pop'))
 
 # list.count(obj)
-method_op(
+c_method_op(
     name='count',
     arg_types=[list_rprimitive, object_rprimitive],
-    result_type=short_int_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_Count'))
+    return_type=short_int_rprimitive,
+    c_function_name='CPyList_Count',
+    error_kind=ERR_MAGIC)
 
 # list * int
-c_binary_op(name='*',
-            arg_types=[list_rprimitive, int_rprimitive],
-            return_type=list_rprimitive,
-            c_function_name='CPySequence_Multiply',
-            error_kind=ERR_MAGIC)
+c_binary_op(
+    name='*',
+    arg_types=[list_rprimitive, int_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPySequence_Multiply',
+    error_kind=ERR_MAGIC)
 
 # int * list
 c_binary_op(name='*',

@@ -75,7 +75,7 @@ L2:
     goto L4
 L3:
     r4 = unicode_2 :: static  ('hi')
-    r5 = str r4 :: object
+    r5 = PyObject_Str(r4)
 L4:
     goto L8
 L5: (handler for L1, L2, L3, L4)

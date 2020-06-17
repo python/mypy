@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
-    call_negative_magic_emit
+    call_negative_magic_emit, c_function_op
 )
 
 
@@ -53,11 +53,12 @@ not_implemented_op = name_ref_op(name='builtins.NotImplemented',
                                  is_borrowed=True)
 
 # id(obj)
-func_op(name='builtins.id',
-        arg_types=[object_rprimitive],
-        result_type=int_rprimitive,
-        error_kind=ERR_NEVER,
-        emit=call_emit('CPyTagged_Id'))
+c_function_op(
+    name='builtins.id',
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyTagged_Id',
+    error_kind=ERR_NEVER)
 
 # Return the result of obj.__await()__ or obj.__iter__() (if no __await__ exists)
 coro_op = custom_op(name='get_coroutine_obj',
