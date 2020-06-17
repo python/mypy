@@ -197,11 +197,11 @@ L0:
     r0 = 0
     r1 = 0
     r2 = box(short_int, r0)
-    r3 = x.__setitem__(r1, r2) :: list
+    r3 = CPyList_SetItem(x, r1, r2)
     r4 = None
     r5 = 1
     r6 = box(None, r4)
-    r7 = x.__setitem__(r5, r6) :: list
+    r7 = CPyList_SetItem(x, r5, r6)
     r8 = None
     return r8
 
@@ -334,7 +334,7 @@ def f(x):
     r2 :: union[int, str]
 L0:
     r0 = 0
-    r1 = x[r0] :: list
+    r1 = CPyList_GetItemShort(x, r0)
     r2 = cast(union[int, str], r1)
     return r2
 

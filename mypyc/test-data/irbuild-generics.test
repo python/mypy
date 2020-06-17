@@ -20,7 +20,7 @@ def g(x):
     r2 :: list
 L0:
     r0 = 0
-    r1 = x[r0] :: list
+    r1 = CPyList_GetItemShort(x, r0)
     r2 = [r1]
     return r2
 def h(x, y):

@@ -49,20 +49,20 @@ new_list_op = custom_op(arg_types=[object_rprimitive],
 
 
 # list[index] (for an integer index)
-list_get_item_op = method_op(
+list_get_item_op = c_method_op(
     name='__getitem__',
     arg_types=[list_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_GetItem'))
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItem',
+    error_kind=ERR_MAGIC)
 
 # Version with no int bounds check for when it is known to be short
-method_op(
+c_method_op(
     name='__getitem__',
     arg_types=[list_rprimitive, short_int_rprimitive],
-    result_type=object_rprimitive,
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemShort',
     error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_GetItemShort'),
     priority=2)
 
 # This is unsafe because it assumes that the index is a non-negative short integer
@@ -76,13 +76,13 @@ list_get_item_unsafe_op = custom_op(
     emit=call_emit('CPyList_GetItemUnsafe'))
 
 # list[index] = obj
-list_set_item_op = method_op(
+list_set_item_op = c_method_op(
     name='__setitem__',
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
-    steals=[False, False, True],
-    result_type=bool_rprimitive,
+    return_type=bool_rprimitive,
+    c_function_name='CPyList_SetItem',
     error_kind=ERR_FALSE,
-    emit=call_emit('CPyList_SetItem'))
+    steals=[False, False, True])
 
 # list.append(obj)
 list_append_op = method_op(
@@ -101,20 +101,20 @@ list_extend_op = method_op(
     emit=call_emit('CPyList_Extend'))
 
 # list.pop()
-list_pop_last = method_op(
+list_pop_last = c_method_op(
     name='pop',
     arg_types=[list_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_PopLast'))
+    return_type=object_rprimitive,
+    c_function_name='CPyList_PopLast',
+    error_kind=ERR_MAGIC)
 
 # list.pop(index)
-list_pop = method_op(
+list_pop = c_method_op(
     name='pop',
     arg_types=[list_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_Pop'))
+    return_type=object_rprimitive,
+    c_function_name='CPyList_Pop',
+    error_kind=ERR_MAGIC)
 
 # list.count(obj)
 c_method_op(

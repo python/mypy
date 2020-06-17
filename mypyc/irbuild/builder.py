@@ -517,7 +517,7 @@ class IRBuilder:
             self.activate_block(ok_block)
 
             for litem in reversed(post_star_vals):
-                ritem = self.primitive_op(list_pop_last, [iter_list], line)
+                ritem = self.call_c(list_pop_last, [iter_list], line)
                 self.assign(litem, ritem, line)
 
             # Assign the starred value

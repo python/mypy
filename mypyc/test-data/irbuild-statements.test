@@ -559,7 +559,7 @@ L0:
     a.x = r1; r2 = is_error
     r3 = t[1]
     r4 = r3[0]
-    r5 = l.__setitem__(r0, r4) :: list
+    r5 = CPyList_SetItem(l, r0, r4)
     r6 = r3[1]
     r7 = unbox(int, r6)
     z = r7

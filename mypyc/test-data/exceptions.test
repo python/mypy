@@ -14,7 +14,7 @@ def f(x):
     r2, r3 :: int
 L0:
     r0 = 0
-    r1 = x[r0] :: list
+    r1 = CPyList_GetItemShort(x, r0)
     if is_error(r1) goto L3 (error at f:3) else goto L1
 L1:
     r2 = unbox(int, r1)
@@ -51,7 +51,7 @@ L1:
     r2 = None
     inc_ref z :: int
     r3 = box(int, z)
-    r4 = x.__setitem__(y, r3) :: list
+    r4 = CPyList_SetItem(x, y, r3)
     if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
     r5 = None
@@ -144,7 +144,7 @@ L1:
     r2 = i < l :: int
     if r2 goto L2 else goto L7 :: bool
 L2:
-    r3 = a[i] :: list
+    r3 = CPyList_GetItem(a, i)
     if is_error(r3) goto L8 (error at sum:6) else goto L3
 L3:
     r4 = unbox(int, r3)

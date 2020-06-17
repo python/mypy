@@ -57,9 +57,9 @@ def f(x):
     r2 :: object
     r3 :: bool
 L0:
-    r0 = tuple x :: list
+    r0 = PyList_AsTuple(x)
     r1 = 1
-    r2 = r0[r1] :: tuple
+    r2 = CPySequenceTuple_GetItem(r0, r1)
     r3 = unbox(bool, r2)
     return r3
 
@@ -96,7 +96,7 @@ L0:
     r3 = box(tuple[int, int], r2)
     t = r3
     r4 = 1
-    r5 = t[r4] :: tuple
+    r5 = CPySequenceTuple_GetItem(t, r4)
     r6 = unbox(int, r5)
     return r6
 
@@ -124,7 +124,7 @@ L0:
     r7 = r5.extend(y) :: list
     r8 = box(short_int, r2)
     r9 = r5.append(r8) :: list
-    r10 = tuple r5 :: list
+    r10 = PyList_AsTuple(r5)
     return r10
 
 [case testTupleFor]
@@ -150,7 +150,7 @@ L1:
     r3 = r1 < r2 :: int
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = xs[r1] :: tuple
+    r4 = CPySequenceTuple_GetItem(xs, r1)
     r5 = cast(str, r4)
     x = r5
 L3:
@@ -185,11 +185,11 @@ L0:
     if b goto L1 else goto L2 :: bool
 L1:
     r0 = 0
-    r1 = nt[r0] :: tuple
+    r1 = CPySequenceTuple_GetItem(nt, r0)
     r2 = unbox(int, r1)
     return r2
 L2:
     r3 = 1
-    r4 = nt[r3] :: tuple
+    r4 = CPySequenceTuple_GetItem(nt, r3)
     r5 = unbox(int, r4)
     return r5

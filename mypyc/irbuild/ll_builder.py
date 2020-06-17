@@ -270,7 +270,7 @@ class LowLevelIRBuilder:
             pos_args_list = self.primitive_op(new_list_op, pos_arg_values, line)
             for star_arg_value in star_arg_values:
                 self.primitive_op(list_extend_op, [pos_args_list, star_arg_value], line)
-            pos_args_tuple = self.primitive_op(list_tuple_op, [pos_args_list], line)
+            pos_args_tuple = self.call_c(list_tuple_op, [pos_args_list], line)
 
         kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
 

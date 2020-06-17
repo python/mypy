@@ -10,17 +10,18 @@ from mypyc.ir.ops import (
     EmitterInterface, ERR_NEVER, ERR_MAGIC
 )
 from mypyc.ir.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
-from mypyc.primitives.registry import func_op, method_op, custom_op, call_emit, simple_emit
+from mypyc.primitives.registry import (
+    func_op, c_method_op, custom_op, simple_emit, c_function_op
+)
 
 
 # tuple[index] (for an int index)
-tuple_get_item_op = method_op(
+tuple_get_item_op = c_method_op(
     name='__getitem__',
     arg_types=[tuple_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPySequenceTuple_GetItem'))
-
+    return_type=object_rprimitive,
+    c_function_name='CPySequenceTuple_GetItem',
+    error_kind=ERR_MAGIC)
 
 # Construct a boxed tuple from items: (item1, item2, ...)
 new_tuple_op = custom_op(
@@ -49,18 +50,18 @@ tuple_len_op = func_op(
     emit=emit_len)
 
 # Construct tuple from a list.
-list_tuple_op = func_op(
+list_tuple_op = c_function_op(
     name='builtins.tuple',
     arg_types=[list_rprimitive],
-    result_type=tuple_rprimitive,
+    return_type=tuple_rprimitive,
+    c_function_name='PyList_AsTuple',
     error_kind=ERR_MAGIC,
-    emit=call_emit('PyList_AsTuple'),
     priority=2)
 
 # Construct tuple from an arbitrary (iterable) object.
-func_op(
+c_function_op(
     name='builtins.tuple',
     arg_types=[object_rprimitive],
-    result_type=tuple_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySequence_Tuple'))
+    return_type=tuple_rprimitive,
+    c_function_name='PySequence_Tuple',
+    error_kind=ERR_MAGIC)
