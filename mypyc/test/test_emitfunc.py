@@ -156,11 +156,15 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(DecRef(self.tt), 'CPyTagged_DecRef(cpy_r_tt.f0.f0);')
 
     def test_list_get_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.m, self.k], list_get_item_op, 55),
+        self.assert_emit(CallC(list_get_item_op.c_function_name, [self.m, self.k],
+                               list_get_item_op.return_type, list_get_item_op.steals,
+                               list_get_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.l, self.n, self.o], list_set_item_op, 55),
+        self.assert_emit(CallC(list_set_item_op.c_function_name, [self.l, self.n, self.o],
+                               list_set_item_op.return_type, list_set_item_op.steals,
+                               list_set_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
     def test_box(self) -> None:

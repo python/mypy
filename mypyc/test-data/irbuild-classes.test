@@ -60,7 +60,7 @@ L0:
     r3 = [c]
     a = r3
     r4 = 0
-    r5 = a[r4] :: list
+    r5 = CPyList_GetItemShort(a, r4)
     r6 = cast(__main__.C, r5)
     d = r6
     r7 = d.x

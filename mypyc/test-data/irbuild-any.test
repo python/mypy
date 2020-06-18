@@ -116,7 +116,7 @@ L0:
     r5 = a.__setitem__(r3, r4) :: object
     r6 = box(int, n)
     r7 = l.__setitem__(a, r6) :: object
-    r8 = l.__setitem__(n, a) :: list
+    r8 = CPyList_SetItem(l, n, a)
     r9 = box(int, n)
     r10 = [a, r9]
     r11 = None
