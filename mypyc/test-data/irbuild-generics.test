@@ -68,7 +68,7 @@ L0:
     r4 = 2
     r5 = c.x
     r6 = unbox(int, r5)
-    r7 = r4 + r6 :: int
+    r7 = CPyTagged_Add(r4, r6)
     r8 = None
     return r8
 
@@ -129,7 +129,7 @@ L0:
     r1 = unbox(int, r0)
     y = r1
     r2 = 1
-    r3 = y + r2 :: int
+    r3 = CPyTagged_Add(y, r2)
     r4 = box(int, r3)
     r5 = x.set(r4)
     r6 = 2

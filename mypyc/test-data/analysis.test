@@ -21,7 +21,7 @@ def f(a):
 L0:
     r0 = 1
     x = r0
-    r1 = x == a :: int
+    r1 = CPyTagged_IsEq(x, a)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = 1
@@ -64,7 +64,7 @@ L0:
     r0 = 1
     x = r0
     r1 = 1
-    r2 = x == r1 :: int
+    r2 = CPyTagged_IsEq(x, r1)
     if r2 goto L1 else goto L2 :: bool
 L1:
     return a
@@ -156,7 +156,7 @@ def f(a):
     r5 :: None
 L0:
     r0 = 1
-    r1 = a == r0 :: int
+    r1 = CPyTagged_IsEq(a, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = 1
@@ -210,11 +210,11 @@ def f(n):
 L0:
 L1:
     r0 = 5
-    r1 = n < r0 :: int
+    r1 = CPyTagged_IsLt(n, r0)
     if r1 goto L2 else goto L3 :: bool
 L2:
     r2 = 1
-    r3 = n + r2 :: int
+    r3 = CPyTagged_Add(n, r2)
     n = r3
     m = n
     goto L1
@@ -262,13 +262,13 @@ L0:
     y = r1
 L1:
     r2 = 1
-    r3 = n < r2 :: int
+    r3 = CPyTagged_IsLt(n, r2)
     if r3 goto L2 else goto L6 :: bool
 L2:
     n = y
 L3:
     r4 = 2
-    r5 = n < r4 :: int
+    r5 = CPyTagged_IsLt(n, r4)
     if r5 goto L4 else goto L5 :: bool
 L4:
     r6 = 1
@@ -319,7 +319,7 @@ L1:
     r2 = f(a)
     if is_error(r2) goto L3 (error at f:3) else goto L2
 L2:
-    r3 = r2 + a :: int
+    r3 = CPyTagged_Add(r2, a)
     return r3
 L3:
     r4 = <error> :: int
@@ -349,11 +349,11 @@ def f(a):
     r2 :: None
 L0:
 L1:
-    r0 = a < a :: int
+    r0 = CPyTagged_IsLt(a, a)
     if r0 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r1 = a < a :: int
+    r1 = CPyTagged_IsLt(a, a)
     if r1 goto L4 else goto L5 :: bool
 L4:
     y = a
@@ -422,7 +422,7 @@ def f(a):
     x :: int
     r2, r3 :: short_int
 L0:
-    r0 = a == a :: int
+    r0 = CPyTagged_IsEq(a, a)
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 2
@@ -472,13 +472,13 @@ L0:
     r1 = 0
     i = r1
 L1:
-    r2 = i <= a :: int
+    r2 = CPyTagged_IsLe(i, a)
     if r2 goto L2 else goto L3 :: bool
 L2:
-    r3 = sum + i :: int
+    r3 = CPyTagged_Add(sum, i)
     sum = r3
     r4 = 1
-    r5 = i + r4 :: int
+    r5 = CPyTagged_Add(i, r4)
     i = r5
     goto L1
 L3:
@@ -558,7 +558,7 @@ L9:
     unreachable
 L10:
     r10 = 1
-    r11 = st + r10 :: int
+    r11 = CPyTagged_Add(st, r10)
     return r11
 L11:
     r12 = <error> :: int

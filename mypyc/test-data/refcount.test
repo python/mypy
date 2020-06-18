@@ -56,7 +56,7 @@ L0:
     inc_ref x :: int
     y = x
     z = x
-    r1 = y + z :: int
+    r1 = CPyTagged_Add(y, z)
     dec_ref y :: int
     dec_ref z :: int
     return r1
@@ -82,7 +82,7 @@ L0:
     r1 = 2
     y = r1
     r2 = 1
-    r3 = x == r2 :: int
+    r3 = CPyTagged_IsEq(x, r2)
     if r3 goto L3 else goto L4 :: bool
 L1:
     return x
@@ -107,9 +107,9 @@ def f(a, b):
     r1, x, r2, y :: int
 L0:
     r0 = 1
-    r1 = a + r0 :: int
+    r1 = CPyTagged_Add(a, r0)
     x = r1
-    r2 = x + a :: int
+    r2 = CPyTagged_Add(x, a)
     dec_ref x :: int
     y = r2
     return y
@@ -133,7 +133,7 @@ L0:
     y = a
     r0 = 1
     x = r0
-    r1 = x + y :: int
+    r1 = CPyTagged_Add(x, y)
     dec_ref x :: int
     dec_ref y :: int
     return r1
@@ -222,7 +222,7 @@ def f(a):
     r3 :: short_int
     r4, y :: int
 L0:
-    r0 = a == a :: int
+    r0 = CPyTagged_IsEq(a, a)
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 1
@@ -235,7 +235,7 @@ L2:
     goto L4
 L3:
     r3 = 1
-    r4 = a + r3 :: int
+    r4 = CPyTagged_Add(a, r3)
     dec_ref a :: int
     y = r4
     return y
@@ -260,7 +260,7 @@ def f(a):
     r2, r3 :: short_int
     r4, y :: int
 L0:
-    r0 = a == a :: int
+    r0 = CPyTagged_IsEq(a, a)
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 2
@@ -272,7 +272,7 @@ L2:
     a = r2
 L3:
     r3 = 1
-    r4 = a + r3 :: int
+    r4 = CPyTagged_Add(a, r3)
     dec_ref a :: int
     y = r4
     return y
@@ -291,7 +291,7 @@ def f(a):
     r0 :: bool
     r1 :: short_int
 L0:
-    r0 = a == a :: int
+    r0 = CPyTagged_IsEq(a, a)
     if r0 goto L1 else goto L3 :: bool
 L1:
     r1 = 1
@@ -322,7 +322,7 @@ L0:
     inc_ref x :: int
     dec_ref x :: int
     x = x
-    r1 = x + a :: int
+    r1 = CPyTagged_Add(x, a)
     dec_ref x :: int
     dec_ref a :: int
     return r1
@@ -344,15 +344,15 @@ def f(a):
     r4, r5 :: int
 L0:
     r0 = 1
-    r1 = a + r0 :: int
+    r1 = CPyTagged_Add(a, r0)
     a = r1
     r2 = 1
     x = r2
     r3 = 1
-    r4 = x + r3 :: int
+    r4 = CPyTagged_Add(x, r3)
     dec_ref x :: int
     x = r4
-    r5 = a + x :: int
+    r5 = CPyTagged_Add(a, x)
     dec_ref a :: int
     dec_ref x :: int
     return r5
@@ -372,7 +372,7 @@ L0:
     r0 = 1
     x = r0
     r1 = 1
-    r2 = x + r1 :: int
+    r2 = CPyTagged_Add(x, r1)
     dec_ref x :: int
     x = r2
     dec_ref x :: int
@@ -394,7 +394,7 @@ L0:
     r0 = 1
     y = r0
     r1 = 1
-    r2 = y + r1 :: int
+    r2 = CPyTagged_Add(y, r1)
     dec_ref y :: int
     x = r2
     dec_ref x :: int
@@ -411,10 +411,10 @@ def f(a: int) -> int:
 def f(a):
     a, r0, x, r1 :: int
 L0:
-    r0 = a + a :: int
+    r0 = CPyTagged_Add(a, a)
     a = r0
     x = a
-    r1 = x + x :: int
+    r1 = CPyTagged_Add(x, x)
     dec_ref x :: int
     x = r1
     return x
@@ -428,9 +428,9 @@ def f(a: int) -> int:
 def f(a):
     a, r0, x, r1, y :: int
 L0:
-    r0 = a + a :: int
+    r0 = CPyTagged_Add(a, a)
     x = r0
-    r1 = x + x :: int
+    r1 = CPyTagged_Add(x, x)
     dec_ref x :: int
     y = r1
     return y
@@ -447,12 +447,12 @@ def f(a):
     y, r2, z :: int
     r3 :: None
 L0:
-    r0 = a + a :: int
+    r0 = CPyTagged_Add(a, a)
     x = r0
     dec_ref x :: int
     r1 = 1
     y = r1
-    r2 = y + y :: int
+    r2 = CPyTagged_Add(y, y)
     dec_ref y :: int
     z = r2
     dec_ref z :: int
@@ -471,12 +471,12 @@ def f(a):
     x, r2 :: int
     r3 :: None
 L0:
-    r0 = a + a :: int
+    r0 = CPyTagged_Add(a, a)
     a = r0
     dec_ref a :: int
     r1 = 1
     x = r1
-    r2 = x + x :: int
+    r2 = CPyTagged_Add(x, x)
     dec_ref x :: int
     x = r2
     dec_ref x :: int
@@ -510,17 +510,17 @@ L0:
     y = r1
     r2 = 3
     z = r2
-    r3 = z == z :: int
+    r3 = CPyTagged_IsEq(z, z)
     if r3 goto L3 else goto L4 :: bool
 L1:
     return z
 L2:
     r4 = 1
     a = r4
-    r5 = x + y :: int
+    r5 = CPyTagged_Add(x, y)
     dec_ref x :: int
     dec_ref y :: int
-    r6 = r5 - a :: int
+    r6 = CPyTagged_Subtract(r5, a)
     dec_ref r5 :: int
     dec_ref a :: int
     return r6
@@ -557,14 +557,14 @@ L0:
     r1 = 0
     i = r1
 L1:
-    r2 = i <= a :: int
+    r2 = CPyTagged_IsLe(i, a)
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = sum + i :: int
+    r3 = CPyTagged_Add(sum, i)
     dec_ref sum :: int
     sum = r3
     r4 = 1
-    r5 = i + r4 :: int
+    r5 = CPyTagged_Add(i, r4)
     dec_ref i :: int
     i = r5
     goto L1
@@ -584,7 +584,7 @@ def f(a):
     r1, r2 :: int
 L0:
     r0 = 1
-    r1 = a + r0 :: int
+    r1 = CPyTagged_Add(a, r0)
     r2 = f(r1)
     dec_ref r1 :: int
     return r2

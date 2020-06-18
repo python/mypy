@@ -19,7 +19,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.primitives.registry import binary_ops
+from mypyc.primitives.registry import binary_ops, c_binary_ops
 from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
 from mypyc.primitives.list_ops import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
@@ -264,6 +264,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                               left: Value,
                               right: Value,
                               expected: str) -> None:
+        # TODO: merge this
+        if op in c_binary_ops:
+            c_ops = c_binary_ops[op]
+            for c_desc in c_ops:
+                if (is_subtype(left.type, c_desc.arg_types[0])
+                        and is_subtype(right.type, c_desc.arg_types[1])):
+                    self.assert_emit(CallC(c_desc.c_function_name, [left, right],
+                                           c_desc.return_type, c_desc.steals, c_desc.error_kind,
+                                           55), expected)
+                    return
         ops = binary_ops[op]
         for desc in ops:
             if (is_subtype(left.type, desc.arg_types[0])

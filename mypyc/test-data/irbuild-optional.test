@@ -266,7 +266,7 @@ L0:
     r1 = box(None, r0)
     x = r1
     r2 = 1
-    r3 = y == r2 :: int
+    r3 = CPyTagged_IsEq(y, r2)
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = box(int, y)
@@ -312,7 +312,7 @@ L0:
 L1:
     r2 = unbox(int, x)
     r3 = 1
-    r4 = r2 + r3 :: int
+    r4 = CPyTagged_Add(r2, r3)
     return r4
 L2:
     r5 = cast(__main__.A, x)

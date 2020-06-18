@@ -80,8 +80,8 @@ def f(x, y):
     r1, r2 :: int
 L0:
     r0 = 1
-    r1 = y + r0 :: int
-    r2 = x * r1 :: int
+    r1 = CPyTagged_Add(y, r0)
+    r2 = CPyTagged_Multiply(x, r1)
     return r2
 
 [case testIf]
@@ -95,7 +95,7 @@ def f(x, y):
     r0 :: bool
     r1 :: short_int
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 1
@@ -116,7 +116,7 @@ def f(x, y):
     r0 :: bool
     r1, r2 :: short_int
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 1
@@ -141,10 +141,10 @@ def f(x, y):
     r0, r1 :: bool
     r2, r3 :: short_int
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L1 else goto L3 :: bool
 L1:
-    r1 = x > y :: int
+    r1 = CPyTagged_IsGt(x, y)
     if r1 goto L2 else goto L3 :: bool
 L2:
     r2 = 1
@@ -191,10 +191,10 @@ def f(x, y):
     r0, r1 :: bool
     r2, r3 :: short_int
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L2 else goto L1 :: bool
 L1:
-    r1 = x > y :: int
+    r1 = CPyTagged_IsGt(x, y)
     if r1 goto L2 else goto L3 :: bool
 L2:
     r2 = 1
@@ -239,7 +239,7 @@ def f(x, y):
     r0 :: bool
     r1 :: short_int
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L2 else goto L1 :: bool
 L1:
     r1 = 1
@@ -258,10 +258,10 @@ def f(x, y):
     r0, r1 :: bool
     r2 :: short_int
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = x > y :: int
+    r1 = CPyTagged_IsGt(x, y)
     if r1 goto L3 else goto L2 :: bool
 L2:
     r2 = 1
@@ -281,10 +281,10 @@ def f(x, y):
     r1 :: int
 L0:
 L1:
-    r0 = x > y :: int
+    r0 = CPyTagged_IsGt(x, y)
     if r0 goto L2 else goto L3 :: bool
 L2:
-    r1 = x - y :: int
+    r1 = CPyTagged_Subtract(x, y)
     x = r1
     goto L1
 L3:
@@ -306,10 +306,10 @@ L0:
     r0 = 1
     x = r0
 L1:
-    r1 = x > y :: int
+    r1 = CPyTagged_IsGt(x, y)
     if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = x - y :: int
+    r2 = CPyTagged_Subtract(x, y)
     x = r2
     goto L1
 L3:
@@ -352,7 +352,7 @@ def f(x, y):
     r1, r2 :: short_int
     r3 :: None
 L0:
-    r0 = x < y :: int
+    r0 = CPyTagged_IsLt(x, y)
     if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = 1
@@ -382,19 +382,19 @@ def f(n):
     r7, r8, r9 :: int
 L0:
     r0 = 1
-    r1 = n <= r0 :: int
+    r1 = CPyTagged_IsLe(n, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = 1
     return r2
 L2:
     r3 = 1
-    r4 = n - r3 :: int
+    r4 = CPyTagged_Subtract(n, r3)
     r5 = f(r4)
     r6 = 2
-    r7 = n - r6 :: int
+    r7 = CPyTagged_Subtract(n, r6)
     r8 = f(r7)
-    r9 = r5 + r8 :: int
+    r9 = CPyTagged_Add(r5, r8)
     return r9
 L3:
     unreachable
@@ -432,7 +432,7 @@ def f(n):
     r5, r6 :: short_int
 L0:
     r0 = 0
-    r1 = n < r0 :: int
+    r1 = CPyTagged_IsLt(n, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = 1
@@ -440,7 +440,7 @@ L1:
     goto L6
 L2:
     r3 = 0
-    r4 = n == r3 :: int
+    r4 = CPyTagged_IsEq(n, r3)
     if r4 goto L3 else goto L4 :: bool
 L3:
     r5 = 1
@@ -478,7 +478,7 @@ def f(n):
     r3, r4 :: short_int
 L0:
     r0 = 0
-    r1 = n == r0 :: int
+    r1 = CPyTagged_IsEq(n, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r3 = 0
@@ -505,7 +505,7 @@ L0:
     r0 = 0
     x = r0
     r1 = 1
-    r2 = x += r1 :: int
+    r2 = CPyTagged_Add(x, r1)
     x = r2
     return x
 
@@ -1021,7 +1021,7 @@ def absolute_value(x):
     r2, r3 :: int
 L0:
     r0 = 0
-    r1 = x > r0 :: int
+    r1 = CPyTagged_IsGt(x, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = x
@@ -1193,7 +1193,7 @@ def num(x):
     r2, r3 :: short_int
 L0:
     r0 = 0
-    r1 = x != r0 :: int
+    r1 = CPyTagged_IsNe(x, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = 1
@@ -1211,7 +1211,7 @@ def lst(x):
 L0:
     r0 = len x :: list
     r1 = 0
-    r2 = r0 != r1 :: short_int
+    r2 = CPyTagged_IsNe(r0, r1)
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = 1
@@ -1260,7 +1260,7 @@ L0:
 L1:
     r2 = unbox(int, x)
     r3 = 0
-    r4 = r2 != r3 :: int
+    r4 = CPyTagged_IsNe(r2, r3)
     if r4 goto L2 else goto L3 :: bool
 L2:
     r5 = 1
@@ -1894,25 +1894,25 @@ L0:
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = r9 < r10 :: short_int
+    r11 = CPyTagged_IsLt(r9, r10)
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: unsafe list
     r13 = unbox(int, r12)
     x = r13
     r14 = 2
-    r15 = x != r14 :: int
+    r15 = CPyTagged_IsNe(x, r14)
     if r15 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
     r16 = 3
-    r17 = x != r16 :: int
+    r17 = CPyTagged_IsNe(x, r16)
     if r17 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r18 = x * x :: int
+    r18 = CPyTagged_Multiply(x, x)
     r19 = box(int, r18)
     r20 = r0.append(r19) :: list
 L7:
@@ -1958,25 +1958,25 @@ L0:
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = r9 < r10 :: short_int
+    r11 = CPyTagged_IsLt(r9, r10)
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: unsafe list
     r13 = unbox(int, r12)
     x = r13
     r14 = 2
-    r15 = x != r14 :: int
+    r15 = CPyTagged_IsNe(x, r14)
     if r15 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
     r16 = 3
-    r17 = x != r16 :: int
+    r17 = CPyTagged_IsNe(x, r16)
     if r17 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r18 = x * x :: int
+    r18 = CPyTagged_Multiply(x, x)
     r19 = box(int, x)
     r20 = box(int, r18)
     r21 = r0.__setitem__(r19, r20) :: dict
@@ -2019,7 +2019,7 @@ L0:
     r1 = r0
 L1:
     r2 = len l :: list
-    r3 = r1 < r2 :: short_int
+    r3 = CPyTagged_IsLt(r1, r2)
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = l[r1] :: unsafe list
@@ -2041,7 +2041,7 @@ L4:
     r13 = r12
 L5:
     r14 = len l :: list
-    r15 = r13 < r14 :: short_int
+    r15 = CPyTagged_IsLt(r13, r14)
     if r15 goto L6 else goto L8 :: bool
 L6:
     r16 = l[r13] :: unsafe list
@@ -2052,8 +2052,8 @@ L6:
     y0 = r19
     r20 = r17[2]
     z0 = r20
-    r21 = x0 + y0 :: int
-    r22 = r21 + z0 :: int
+    r21 = CPyTagged_Add(x0, y0)
+    r22 = CPyTagged_Add(r21, z0)
     r23 = box(int, r22)
     r24 = r11.append(r23) :: list
 L7:
@@ -2086,13 +2086,13 @@ L0:
 L1:
     r2 = self.left
     r3 = self.right
-    r4 = r2 + r3 :: int
+    r4 = CPyTagged_Add(r2, r3)
     r1 = r4
     goto L3
 L2:
     r5 = self.left
     r6 = self.right
-    r7 = r5 - r6 :: int
+    r7 = CPyTagged_Subtract(r5, r6)
     r1 = r7
 L3:
     return r1
@@ -2114,7 +2114,7 @@ def PropertyHolder.twice_value(self):
 L0:
     r0 = 2
     r1 = self.value
-    r2 = r0 * r1 :: int
+    r2 = CPyTagged_Multiply(r0, r1)
     return r2
 
 [case testPropertyDerivedGen]
@@ -2187,7 +2187,7 @@ def BaseProperty.next(self):
 L0:
     r0 = self._incrementer
     r1 = 1
-    r2 = r0 + r1 :: int
+    r2 = CPyTagged_Add(r0, r1)
     r3 = BaseProperty(r2)
     return r3
 def BaseProperty.__init__(self, value):
@@ -2389,7 +2389,7 @@ L0:
     r0 = a.__getitem__(c)
     r1 = CPyList_GetItem(b, c)
     r2 = unbox(int, r1)
-    r3 = r0 + r2 :: int
+    r3 = CPyTagged_Add(r0, r2)
     return r3
 
 [case testTypeAlias_toplevel]
@@ -2588,14 +2588,14 @@ def f(x, y, z):
 L0:
     r0 = g(x)
     r1 = g(y)
-    r3 = r0 < r1 :: int
+    r3 = CPyTagged_IsLt(r0, r1)
     if r3 goto L2 else goto L1 :: bool
 L1:
     r2 = r3
     goto L3
 L2:
     r4 = g(z)
-    r5 = r1 > r4 :: int
+    r5 = CPyTagged_IsGt(r1, r4)
     r2 = r5
 L3:
     return r2
@@ -3053,7 +3053,7 @@ L2:
     r4 = unbox(int, r3)
     i = r4
     r5 = 0
-    r6 = i == r5 :: int
+    r6 = CPyTagged_IsEq(i, r5)
     if r6 goto L3 else goto L4 :: bool
 L3:
     r7 = True
@@ -3085,7 +3085,7 @@ L2:
     r4 = unbox(int, r3)
     i = r4
     r5 = 0
-    r6 = i == r5 :: int
+    r6 = CPyTagged_IsEq(i, r5)
     r7 = !r6
     if r7 goto L3 else goto L4 :: bool
 L3:
@@ -3308,7 +3308,7 @@ L1:
     unreachable
 L2:
     r2 = 1
-    r3 = r0 - r2 :: int
+    r3 = CPyTagged_Subtract(r0, r2)
     return r3
 
 [case testFinalRestrictedTypeVar]

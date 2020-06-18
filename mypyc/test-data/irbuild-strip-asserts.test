@@ -11,7 +11,7 @@ def g():
 L0:
     r0 = 1
     r1 = 2
-    r2 = r0 + r1 :: int
+    r2 = CPyTagged_Add(r0, r1)
     r3 = box(int, r2)
     x = r3
     return x

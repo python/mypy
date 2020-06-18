@@ -141,7 +141,7 @@ L0:
     r1 = 0
     i = r1
 L1:
-    r2 = i < l :: int
+    r2 = CPyTagged_IsLt(i, l)
     if r2 goto L2 else goto L7 :: bool
 L2:
     r3 = CPyList_GetItem(a, i)
@@ -151,12 +151,12 @@ L3:
     dec_ref r3
     if is_error(r4) goto L8 (error at sum:6) else goto L4
 L4:
-    r5 = sum + r4 :: int
+    r5 = CPyTagged_Add(sum, r4)
     dec_ref sum :: int
     dec_ref r4 :: int
     sum = r5
     r6 = 1
-    r7 = i + r6 :: int
+    r7 = CPyTagged_Add(i, r6)
     dec_ref i :: int
     i = r7
     goto L1

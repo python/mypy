@@ -65,7 +65,7 @@ L0:
     d = r6
     r7 = d.x
     r8 = 1
-    r9 = r7 + r8 :: int
+    r9 = CPyTagged_Add(r7, r8)
     return r9
 
 [case testMethodCall]
@@ -84,7 +84,7 @@ def A.f(self, x, y):
     r1 :: int
 L0:
     r0 = 10
-    r1 = x + r0 :: int
+    r1 = CPyTagged_Add(x, r0)
     return r1
 def g(a):
     a :: __main__.A
@@ -146,7 +146,7 @@ L1:
     r6 = self.next
     r7 = cast(__main__.Node, r6)
     r8 = r7.length()
-    r9 = r5 + r8 :: int
+    r9 = CPyTagged_Add(r5, r8)
     return r9
 L2:
     r10 = 1
@@ -214,7 +214,7 @@ def increment(o):
 L0:
     r0 = o.x
     r1 = 1
-    r2 = r0 += r1 :: int
+    r2 = CPyTagged_Add(r0, r1)
     o.x = r2; r3 = is_error
     return o
 
@@ -705,7 +705,7 @@ def C.foo(x):
     r1 :: int
 L0:
     r0 = 10
-    r1 = r0 + x :: int
+    r1 = CPyTagged_Add(r0, x)
     return r1
 def C.bar(cls, x):
     cls :: object
@@ -714,7 +714,7 @@ def C.bar(cls, x):
     r1 :: int
 L0:
     r0 = 10
-    r1 = r0 + x :: int
+    r1 = CPyTagged_Add(r0, x)
     return r1
 def lol():
     r0 :: short_int
@@ -728,7 +728,7 @@ L0:
     r2 = __main__.C :: type
     r3 = 2
     r4 = C.bar(r2, r3)
-    r5 = r1 + r4 :: int
+    r5 = CPyTagged_Add(r1, r4)
     return r5
 
 [case testSuper1]
