@@ -107,9 +107,9 @@ def f(a, b):
     r1, x, r2, y :: int
 L0:
     r0 = 1
-    r1 = a + r0 :: int
+    r1 = CPyTagged_Add(a, r0)
     x = r1
-    r2 = x + a :: int
+    r2 = CPyTagged_Add(x, a)
     dec_ref x :: int
     y = r2
     return y
