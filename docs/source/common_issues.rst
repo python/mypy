@@ -861,5 +861,5 @@ False:
             return
         x: int = 'abc'  # Reachable -- error
 
-If you use the :option:`--warn-unreachable` flag, mypy will generate
+If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
 an error about each unreachable code block.
