@@ -147,7 +147,7 @@ L0:
     r1 = r0
 L1:
     r2 = len xs :: tuple
-    r3 = r1 < r2 :: int
+    r3 = CPyTagged_IsLt(r1, r2)
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = CPySequenceTuple_GetItem(xs, r1)

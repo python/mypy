@@ -21,10 +21,10 @@ L0:
     r3 = r1
     i = r3
 L1:
-    r4 = r3 < r2 :: short_int
+    r4 = CPyTagged_IsLt(r3, r2)
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = x + i :: int
+    r5 = CPyTagged_Add(x, i)
     x = r5
 L3:
     r6 = 1
@@ -53,7 +53,7 @@ L0:
     r2 = r0
     i = r2
 L1:
-    r3 = r2 > r1 :: short_int
+    r3 = CPyTagged_IsGt(r2, r1)
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -83,7 +83,7 @@ L0:
     n = r0
 L1:
     r1 = 5
-    r2 = n < r1 :: int
+    r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L3 :: bool
 L2:
 L3:
@@ -107,7 +107,7 @@ L0:
     r2 = r0
     n = r2
 L1:
-    r3 = r2 < r1 :: short_int
+    r3 = CPyTagged_IsLt(r2, r1)
     if r3 goto L2 else goto L4 :: bool
 L2:
     goto L4
@@ -142,12 +142,12 @@ L0:
     n = r0
 L1:
     r1 = 5
-    r2 = n < r1 :: int
+    r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
     r3 = 4
-    r4 = n < r3 :: int
+    r4 = CPyTagged_IsLt(n, r3)
     if r4 goto L4 else goto L5 :: bool
 L4:
 L5:
@@ -172,7 +172,7 @@ L0:
     n = r0
 L1:
     r1 = 5
-    r2 = n < r1 :: int
+    r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L3 :: bool
 L2:
     goto L1
@@ -197,7 +197,7 @@ L0:
     r2 = r0
     n = r2
 L1:
-    r3 = r2 < r1 :: short_int
+    r3 = CPyTagged_IsLt(r2, r1)
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -231,12 +231,12 @@ L0:
     n = r0
 L1:
     r1 = 5
-    r2 = n < r1 :: int
+    r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
     r3 = 4
-    r4 = n < r3 :: int
+    r4 = CPyTagged_IsLt(n, r3)
     if r4 goto L4 else goto L5 :: bool
 L4:
     goto L3
@@ -271,13 +271,13 @@ L0:
     r2 = r1
 L1:
     r3 = len ls :: list
-    r4 = r2 < r3 :: short_int
+    r4 = CPyTagged_IsLt(r2, r3)
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = ls[r2] :: unsafe list
     r6 = unbox(int, r5)
     x = r6
-    r7 = y + x :: int
+    r7 = CPyTagged_Add(y, x)
     y = r7
 L3:
     r8 = 1
@@ -388,9 +388,9 @@ L2:
     r11 = d[r10] :: dict
     r12 = unbox(int, r11)
     r13 = 2
-    r14 = r12 % r13 :: int
+    r14 = CPyTagged_Remainder(r12, r13)
     r15 = 0
-    r16 = r14 != r15 :: int
+    r16 = CPyTagged_IsNe(r14, r15)
     if r16 goto L3 else goto L4 :: bool
 L3:
     goto L5
@@ -398,7 +398,7 @@ L4:
     r17 = box(int, key)
     r18 = d[r17] :: dict
     r19 = unbox(int, r18)
-    r20 = s + r19 :: int
+    r20 = CPyTagged_Add(s, r19)
     s = r20
 L5:
     r21 = assert size(d) == r3
@@ -860,13 +860,13 @@ L0:
     r3 = r2
 L1:
     r4 = len a :: list
-    r5 = r3 < r4 :: short_int
+    r5 = CPyTagged_IsLt(r3, r4)
     if r5 goto L2 else goto L4 :: bool
 L2:
     r6 = a[r3] :: unsafe list
     r7 = unbox(int, r6)
     x = r7
-    r8 = i + x :: int
+    r8 = CPyTagged_Add(i, x)
 L3:
     r9 = 1
     r10 = r1 + r9 :: short_int
@@ -943,7 +943,7 @@ L0:
     r2 = iter b :: object
 L1:
     r3 = len a :: list
-    r4 = r1 < r3 :: short_int
+    r4 = CPyTagged_IsLt(r1, r3)
     if r4 goto L2 else goto L7 :: bool
 L2:
     r5 = next r2 :: object
@@ -998,10 +998,10 @@ L1:
     if is_error(r6) goto L6 else goto L2
 L2:
     r7 = len b :: list
-    r8 = r2 < r7 :: short_int
+    r8 = CPyTagged_IsLt(r2, r7)
     if r8 goto L3 else goto L6 :: bool
 L3:
-    r9 = r5 < r4 :: short_int
+    r9 = CPyTagged_IsLt(r5, r4)
     if r9 goto L4 else goto L6 :: bool
 L4:
     r10 = unbox(bool, r6)

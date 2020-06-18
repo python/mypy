@@ -12,8 +12,8 @@ from mypyc.ir.rtypes import (
     str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    name_ref_op, binary_op, custom_op, simple_emit, call_emit, name_emit,
-    c_unary_op, CFunctionDescription, c_function_op
+    name_ref_op, binary_op, custom_op, simple_emit, name_emit,
+    c_unary_op, CFunctionDescription, c_function_op, c_binary_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -70,20 +70,20 @@ c_function_op(
     priority=3)
 
 
-def int_binary_op(op: str, c_func_name: str,
-                  result_type: RType = int_rprimitive,
+def int_binary_op(name: str, c_function_name: str,
+                  return_type: RType = int_rprimitive,
                   error_kind: int = ERR_NEVER) -> None:
-    binary_op(op=op,
-              arg_types=[int_rprimitive, int_rprimitive],
-              result_type=result_type,
-              error_kind=error_kind,
-              format_str='{dest} = {args[0]} %s {args[1]} :: int' % op,
-              emit=call_emit(c_func_name))
+    c_binary_op(name=name,
+                arg_types=[int_rprimitive, int_rprimitive],
+                return_type=return_type,
+                c_function_name=c_function_name,
+                error_kind=error_kind)
 
 
-def int_compare_op(op: str, c_func_name: str) -> None:
-    int_binary_op(op, c_func_name, bool_rprimitive)
+def int_compare_op(name: str, c_function_name: str) -> None:
+    int_binary_op(name, c_function_name, bool_rprimitive)
     # Generate a straight compare if we know both sides are short
+    op = name
     binary_op(op=op,
               arg_types=[short_int_rprimitive, short_int_rprimitive],
               result_type=bool_rprimitive,

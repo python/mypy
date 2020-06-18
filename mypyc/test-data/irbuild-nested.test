@@ -369,7 +369,7 @@ L0:
     r7 = py_call(r6)
     r8 = unbox(int, r7)
     r9 = r0.num
-    r10 = r8 + r9 :: int
+    r10 = CPyTagged_Add(r8, r9)
     return r10
 def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
@@ -518,7 +518,7 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r4 = r0.x
     r5 = 1
-    r6 = r4 += r5 :: int
+    r6 = CPyTagged_Add(r4, r5)
     r0.x = r6; r7 = is_error
     r8 = c_a_b_obj()
     r8.__mypyc_env__ = r2; r9 = is_error
@@ -676,7 +676,7 @@ L0:
     foo = r1
     r2 = r0.a
     r3 = 1
-    r4 = r2 + r3 :: int
+    r4 = CPyTagged_Add(r2, r3)
     return r4
 def bar_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
@@ -733,18 +733,18 @@ L0:
     r1 = r0.baz
     baz = r1
     r2 = 0
-    r3 = n == r2 :: int
+    r3 = CPyTagged_IsEq(n, r2)
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = 0
     return r4
 L2:
     r5 = 1
-    r6 = n - r5 :: int
+    r6 = CPyTagged_Subtract(n, r5)
     r7 = box(int, r6)
     r8 = py_call(baz, r7)
     r9 = unbox(int, r8)
-    r10 = n + r9 :: int
+    r10 = CPyTagged_Add(n, r9)
     return r10
 def f(a):
     a :: int
@@ -780,7 +780,7 @@ L0:
     r16 = box(int, r14)
     r17 = py_call(r15, r16)
     r18 = unbox(int, r17)
-    r19 = r13 + r18 :: int
+    r19 = CPyTagged_Add(r13, r18)
     return r19
 
 [case testLambdas]
@@ -875,14 +875,14 @@ def baz(n):
     r4, r5, r6 :: int
 L0:
     r0 = 0
-    r1 = n == r0 :: int
+    r1 = CPyTagged_IsEq(n, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = 0
     return r2
 L2:
     r3 = 1
-    r4 = n - r3 :: int
+    r4 = CPyTagged_Subtract(n, r3)
     r5 = baz(r4)
-    r6 = n + r5 :: int
+    r6 = CPyTagged_Add(n, r5)
     return r6
