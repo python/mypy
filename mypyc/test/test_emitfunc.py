@@ -265,13 +265,15 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                               right: Value,
                               expected: str) -> None:
         # TODO: merge this
-        c_ops = c_binary_ops[op]
-        for c_desc in c_ops:
-            if (is_subtype(left.type, c_desc.arg_types[0])
-                    and is_subtype(right.type, c_desc.arg_types[1])):
-                self.assert_emit(CallC(c_desc.c_function_name, [left, right], c_desc.return_type,
-                                       c_desc.steals, c_desc.error_kind, 55), expected)
-                return
+        if op in c_binary_ops:
+            c_ops = c_binary_ops[op]
+            for c_desc in c_ops:
+                if (is_subtype(left.type, c_desc.arg_types[0])
+                        and is_subtype(right.type, c_desc.arg_types[1])):
+                    self.assert_emit(CallC(c_desc.c_function_name, [left, right],
+                                           c_desc.return_type, c_desc.steals, c_desc.error_kind,
+                                           55), expected)
+                    return
         ops = binary_ops[op]
         for desc in ops:
             if (is_subtype(left.type, desc.arg_types[0])
