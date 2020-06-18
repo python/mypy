@@ -3228,3 +3228,18 @@ y: Literal[F.A]
 reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
 reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
 [builtins fixtures/tuple.pyi]
+
+[case testStrictEqualityLiteralTrueVsFalse]
+# mypy: strict-equality
+
+class C:
+    a = True
+
+    def update(self) -> None:
+        self.a = False
+
+c = C()
+assert c.a is True
+c.update()
+assert c.a is False
+[builtins fixtures/bool.pyi]

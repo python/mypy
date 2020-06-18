@@ -2306,6 +2306,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
                 return not is_overlapping_types(left.args[0], right.args[0])
+        if isinstance(left, LiteralType) and isinstance(right, LiteralType):
+            if isinstance(left.value, bool) and isinstance(right.value, bool):
+                # Comparing different booleans is not dangerous.
+                return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
