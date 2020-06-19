@@ -353,29 +353,43 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
+    # x not in (...)/[...]
     if e.operators[0] in ['in', 'not in'] and isinstance(e.operands[1], (TupleExpr, ListExpr)):
-        cmp_op = '==' if e.operators[0] == 'in' else '!='
         items = e.operands[1].items
         n_items = len(items)
-        # x in []/() -> False
-        if n_items == 0:
-            name = 'builtins.False' if e.operators[0] == 'in' else 'builtins.True'
-            return builder.add(PrimitiveOp([], name_ref_ops[name], e.line))
-        # # x in [y]/(y) -> x == y
-        # # x not in [y]/(y) -> x != y
-        elif n_items == 1:
-            e.operators = [cmp_op]
-            e.operands[1] = items[0]
         # x in y -> x == y[0] or ... or x == y[n]
+        # x not in y -> x != y[0] and ... and x != y[n]
         # 16 is arbitrarily chosen to limit code size
-        elif n_items < 16:
-            bin_op = 'or' if e.operators[0] == 'in' else 'and'
+        if 1 < n_items < 16:
+            if e.operators[0] == 'in':
+                bin_op = 'or'
+                cmp_op = '=='
+            else:
+                bin_op = 'and'
+                cmp_op = '!='
             lhs = e.operands[0]
             exprs = (ComparisonExpr([cmp_op], [lhs, item]) for item in items)
             or_expr = next(exprs)  # type: Expression
             for expr in exprs:
                 or_expr = OpExpr(bin_op, or_expr, expr)
             return builder.accept(or_expr)
+        # x in [y]/(y) -> x == y
+        # x not in [y]/(y) -> x != y
+        elif n_items == 1:
+            if e.operators[0] == 'in':
+                cmp_op = '=='
+            else:
+                cmp_op = '!='
+            e.operators = [cmp_op]
+            e.operands[1] = items[0]
+        # x in []/() -> False
+        # x not in []/() -> True
+        elif n_items == 0:
+            if e.operators[0] == 'in':
+                name = 'builtins.False'
+            else:
+                name = 'builtins.True'
+            return builder.add(PrimitiveOp([], name_ref_ops[name], e.line))
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
