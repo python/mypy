@@ -193,6 +193,8 @@ L2:
     r4 = CPySequenceTuple_GetItem(nt, r3)
     r5 = unbox(int, r4)
     return r5
+
+
 [case testTupleOperatorIn]
 def f(i: int) -> bool:
     return i in [1, 2, 3]
@@ -208,14 +210,14 @@ def f(i):
     r7 :: bool
 L0:
     r2 = 1
-    r3 = i == r2 :: int
+    r3 = CPyTagged_IsEq(i, r2)
     if r3 goto L1 else goto L2 :: bool
 L1:
     r1 = r3
     goto L3
 L2:
     r4 = 2
-    r5 = i == r4 :: int
+    r5 = CPyTagged_IsEq(i, r4)
     r1 = r5
 L3:
     if r1 goto L4 else goto L5 :: bool
@@ -224,7 +226,7 @@ L4:
     goto L6
 L5:
     r6 = 3
-    r7 = i == r6 :: int
+    r7 = CPyTagged_IsEq(i, r6)
     r0 = r7
 L6:
     return r0
