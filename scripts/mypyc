@@ -19,6 +19,7 @@ import tempfile
 import time
 import argparse
 from typing import Dict, List
+from typing_extensions import Final
 import shutil
 
 
@@ -44,14 +45,14 @@ mode_mapping = {
 
 
 class Options:
-    def __init__(self):
+    def __init__(self) -> None:
         self.files = []  # type: List[str]
         self.build_dir = ''  # type: str
         self.mode = MODE_BUILD  # type: int
         self.opt_level = '3'  # type: str
 
 
-def parse_options():
+def parse_options() -> Options:
     options = Options()
     # keep default mypyc configs
     options.opt_level = os.getenv("MYPYC_OPT_LEVEL", '3')
