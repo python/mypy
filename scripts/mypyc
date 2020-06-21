@@ -124,7 +124,7 @@ def mypyc_clean(options: Options) -> None:
         # TODO: this simply hardcodes what generates now
         # a better solution is to use some configuration files
         # maybe use a `.mypyc_cache` folder to store them
-        with os.scandir(options.build_dir) as entries:
+        with os.scandir(options.build_dir) as entries:  # type: ignore
             for entry in entries:
                 if entry.is_dir() and entry.path.find("temp") != -1:
                     directories.append(entry.path)
