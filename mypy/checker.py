@@ -15,7 +15,7 @@ from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
-    TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
+    TupleExpr, ListExpr, DictExpr, SetExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
@@ -2146,7 +2146,118 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
+                    self.check_forbidden_inference_types(inferred, rvalue, rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+
+    def check_forbidden_inference_types(self, var: Var, rvalue: Context,
+                                        rvalue_type: Type) -> None:
+        """Check for any list or dict literals that are inferred ambiguously and require annotation.
+        List and Dict literals with multiple object types require annotation:
+        >>> x = [1, 'a']  # Error
+        >>> x = {'a': 1, 'b': 'c'}  # Error
+        >>> x: List[object] = [1, 'a']  # OK
+        Unannotated List and Dict literals that contain an object of type `object` are OK:
+        >>> x = [1, 'a', object()]  # OK
+        Dict keys may be inferred to type `object` without annotation:
+        >>> x = ['a': 1, 2: 2]  # OK
+        """
+        if not self.scope.top_function() and self.options.allow_untyped_globals:
+            return
+
+        rvalue_type = get_proper_type(rvalue_type)
+        if isinstance(rvalue_type, Instance):
+            if isinstance(rvalue, ListExpr):
+                list_arg_type = rvalue_type.args[0]
+                list_arg_type = get_proper_type(list_arg_type)
+                if isinstance(list_arg_type, Instance):
+                    if list_arg_type.type.fullname != 'builtins.object':
+                        # This list already has a specific type, no further checks needed
+                        return
+
+                    if self.iterable_has_object_type(rvalue.items):
+                        # A list that contains an an instance must
+                        # necessarily be of type List[object], since
+                        # there is no more specific type that can be
+                        # assigned
+                        return
+
+                    list_arg_type_names = self.get_arg_type_names(rvalue.items)
+                    if list_arg_type_names and len(list_arg_type_names) > 1:
+                        msg = 'Suggested annotation: List[Any] or List[Union[' + ', '.join(
+                            sorted(list_arg_type_names)) + ']]'
+                    else:
+                        msg = 'Suggested annotation: List[Any]'
+                    self.msg.need_annotation_for_var(var, rvalue)
+                    self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
+
+            elif isinstance(rvalue, SetExpr):
+                set_arg_type = rvalue_type.args[0]
+                set_arg_type = get_proper_type(set_arg_type)
+                if isinstance(set_arg_type, Instance):
+                    if set_arg_type.type.fullname != 'builtins.object':
+                        return
+
+                    if self.iterable_has_object_type(rvalue.items):
+                        return
+
+                    set_arg_type_names = self.get_arg_type_names(rvalue.items)
+                    if set_arg_type_names and len(set_arg_type_names) > 1:
+                        msg = 'Suggested annotation: Set[Any] or Set[Union[' + ', '.join(
+                            sorted(set_arg_type_names)) + ']]'
+                    else:
+                        msg = 'Suggested annotation: Set[Any]'
+                    self.msg.need_annotation_for_var(var, rvalue)
+                    self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
+
+            elif isinstance(rvalue, DictExpr):
+                dict_arg_type = rvalue_type.args[1]
+                dict_arg_type = get_proper_type(dict_arg_type)
+                if isinstance(dict_arg_type, Instance):
+                    if dict_arg_type.type.fullname != 'builtins.object':
+                        # The values in this dict have a specific type, no further checks
+                        return
+
+                    if self.iterable_has_object_type([v for k, v in rvalue.items]):
+                        return
+
+                    dict_items_type_names = self.get_arg_type_names(
+                        [v for k, v in rvalue.items]
+                    )
+                    dict_key = get_proper_type(rvalue_type.args[0])
+                    dict_keys_type_name = 'Any'
+                    if isinstance(dict_key, Instance):
+                        dict_keys_type_name = dict_key.type.name
+                    if dict_items_type_names and len(dict_items_type_names) > 1:
+                        msg = 'Suggested annotation: Dict[{}, Any] or Dict[{}, Union['.format(
+                            dict_keys_type_name, dict_keys_type_name) + ', '.join(
+                            sorted(dict_items_type_names)) + ']]'
+                    else:
+                        msg = 'Suggested annotation: Dict[{}, Any]'.format(
+                            dict_keys_type_name)
+                    self.msg.need_annotation_for_var(var, rvalue)
+                    self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
+
+    def iterable_has_object_type(self, items: Iterable[Expression]) -> bool:
+        """Check for any instance that has type object
+        """
+        for i in items:
+            i_type = self.type_map[i]
+            i_type = get_proper_type(i_type)
+            if isinstance(i_type, Instance):
+                if i_type.type.fullname == 'builtins.object':
+                    return True
+        return False
+
+    def get_arg_type_names(self, items: Iterable[Expression]) -> Set[str]:
+        """Returns a set of names of the type of args in an iterable
+        """
+        arg_type_names = set()
+        for i in items:
+            i_type = self.type_map[i]
+            i_type = get_proper_type(i_type)
+            if isinstance(i_type, Instance):
+                arg_type_names.add(i_type.type.name)
+        return arg_type_names
 
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops = {
