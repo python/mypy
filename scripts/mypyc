@@ -41,7 +41,7 @@ mode_mapping = {
     'build': MODE_BUILD,
     'run': MODE_RUN,
     'clean': MODE_CLEAN
-}  # type: Dict[str, strß]
+}  # type: Dict[str, str]
 
 
 class Options:
