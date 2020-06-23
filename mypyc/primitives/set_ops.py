@@ -4,8 +4,10 @@ from mypyc.primitives.registry import (
     func_op, method_op, binary_op, simple_emit, negative_int_emit,
     call_negative_bool_emit, c_function_op, c_method_op
 )
-from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEVER, EmitterInterface
-from mypyc.ir.rtypes import object_rprimitive, bool_rprimitive, set_rprimitive, int_rprimitive
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEVER, ERR_NEG_INT, EmitterInterface
+from mypyc.ir.rtypes import (
+    object_rprimitive, bool_rprimitive, set_rprimitive, int_rprimitive, c_int_rprimitive
+)
 from typing import List
 
 
@@ -70,13 +72,12 @@ c_method_op(
     error_kind=ERR_FALSE)
 
 # set.discard(obj)
-method_op(
+c_method_op(
     name='discard',
     arg_types=[set_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PySet_Discard')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PySet_Discard',
+    error_kind=ERR_NEG_INT)
 
 # set.add(obj)
 set_add_op = method_op(
