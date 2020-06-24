@@ -141,7 +141,7 @@ def f():
     r0, x :: set
     r1 :: short_int
     r2 :: object
-    r3 :: c_int32
+    r3 :: int32
     r4 :: None
 L0:
     r0 = set
