@@ -174,7 +174,7 @@ class RPrimitive(RType):
         self.is_unboxed = is_unboxed
         self._ctype = ctype
         self.is_refcounted = is_refcounted
-        if ctype in ('CPyTagged', 'int32_t', 'int64_t'):
+        if ctype in ('CPyTagged', 'int', 'Py_ssize_t'):
             self.c_undefined = 'CPY_INT_TAG'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
@@ -236,9 +236,9 @@ short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=Fa
 
 # low level integer (corresponds to C's 'int's).
 c_int32_rprimitive = RPrimitive('c_int32', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t')  # type: Final
+                              ctype='int')  # type: Final
 c_int64_rprimitive = RPrimitive('c_int64', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t')  # type: Final
+                              ctype='Py_ssize_t')  # type: Final
 # integer alias
 c_int_rprimitive = c_int32_rprimitive
 c_pyssize_t_rprimitive = c_int64_rprimitive
