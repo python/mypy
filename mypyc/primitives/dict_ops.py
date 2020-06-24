@@ -5,7 +5,7 @@ from typing import List
 from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
-    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_int_rprimitive
+    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive
 )
 
 from mypyc.primitives.registry import (
@@ -99,7 +99,7 @@ dict_new_op = c_custom_op(
 # Positional argument is the number of key-value pairs
 # Variable arguments are (key1, value1, ..., keyN, valueN).
 dict_build_op = c_custom_op(
-    arg_types=[c_int_rprimitive],
+    arg_types=[c_pyssize_t_rprimitive],
     return_type=dict_rprimitive,
     c_function_name='CPyDict_Build',
     error_kind=ERR_MAGIC,
