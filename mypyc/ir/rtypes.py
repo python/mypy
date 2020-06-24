@@ -235,13 +235,13 @@ short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=Fa
                                   ctype='CPyTagged')  # type: Final
 
 # low level integer (corresponds to C's 'int's).
-c_int32_rprimitive = RPrimitive('c_int32', is_unboxed=True, is_refcounted=False,
+int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
                               ctype='int')  # type: Final
-c_int64_rprimitive = RPrimitive('c_int64', is_unboxed=True, is_refcounted=False,
+int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
                               ctype='Py_ssize_t')  # type: Final
 # integer alias
-c_int_rprimitive = c_int32_rprimitive
-c_pyssize_t_rprimitive = c_int64_rprimitive
+c_int_rprimitive = int32_rprimitive
+c_pyssize_t_rprimitive = int64_rprimitive
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
@@ -284,20 +284,12 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
     return rtype is short_int_rprimitive
 
 
-def is_c_int32_rprimitive(rtype: RType) -> bool:
-    return rtype is c_int32_rprimitive
+def is_int32_rprimitive(rtype: RType) -> bool:
+    return rtype is int32_rprimitive
 
 
-def is_c_int64_rprimitive(rtype: RType) -> bool:
-    return rtype is c_int64_rprimitive
-
-
-def is_c_int_rprimitive(rtype: RType) -> bool:
-    return rtype is c_int_rprimitive
-
-
-def is_c_pyssize_t_rprimitive(rtype: RType) -> bool:
-    return rtype is c_pyssize_t_rprimitive
+def is_int64_rprimitive(rtype: RType) -> bool:
+    return rtype is int64_rprimitive
 
 
 def is_float_rprimitive(rtype: RType) -> bool:
