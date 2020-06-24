@@ -2,6 +2,7 @@
 #define CPY_CPY_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <Python.h>
 #include <frameobject.h>
 #include <structmember.h>
