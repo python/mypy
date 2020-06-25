@@ -16,6 +16,7 @@ from typing_extensions import Final
 
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
+from mypy.stubinfo import legacy_bundled_packages
 from mypy import sitepkgs
 
 # Paths to be searched in find_module().
@@ -52,17 +53,23 @@ class ModuleNotFoundReason(Enum):
     # was able to be found in the parent directory.
     WRONG_WORKING_DIRECTORY = 2
 
+    # Stub PyPI package (typically types-pkgname) known to exist but not installed.
+    STUBS_NOT_INSTALLED = 3
+
     def error_message_templates(self) -> Tuple[str, str]:
         if self is ModuleNotFoundReason.NOT_FOUND:
-            msg = "Cannot find implementation or library stub for module named '{}'"
+            msg = 'Cannot find implementation or library stub for module named "{}"'
             note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
             msg = "Cannot find implementation or library stub for module named '{}'"
             note = ("You may be running mypy in a subpackage, "
                     "mypy should be run on the package root")
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
-            msg = "Skipping analyzing '{}': found module but no type hints or library stubs"
+            msg = 'Skipping analyzing "{}": found module but no type hints or library stubs'
             note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+        elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+            msg = 'Library stubs not installed for "{}"'
+            note = 'Hint: "python3 -m pip install {}"'
         else:
             assert False
         return msg, note
@@ -194,7 +201,9 @@ class FindModuleCache:
             elif not plausible_match and (self.fscache.isdir(dir_path)
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
-        if plausible_match:
+        if components[0] in legacy_bundled_packages:
+            return ModuleNotFoundReason.STUBS_NOT_INSTALLED
+        elif plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
@@ -236,6 +245,7 @@ class FindModuleCache:
         third_party_inline_dirs = []  # type: PackageDirs
         third_party_stubs_dirs = []  # type: PackageDirs
         found_possible_third_party_missing_type_hints = False
+        need_installed_stubs = False
         # Third-party stub/typed packages
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
@@ -266,6 +276,8 @@ class FindModuleCache:
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
+                elif non_stub_match is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+                    need_installed_stubs = True
             else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
@@ -359,7 +371,9 @@ class FindModuleCache:
         if ancestor is not None:
             return ancestor
 
-        if found_possible_third_party_missing_type_hints:
+        if need_installed_stubs:
+            return ModuleNotFoundReason.STUBS_NOT_INSTALLED
+        elif found_possible_third_party_missing_type_hints:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND

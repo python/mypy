@@ -59,6 +59,7 @@ from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
+from mypy.stubinfo import legacy_bundled_packages
 from mypy import errorcodes as codes
 
 
@@ -2499,6 +2500,8 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.raise_error()
     else:
         msg, note = reason.error_message_templates()
+        if '{}' in note:
+            note = note.format(legacy_bundled_packages[target])
         errors.report(line, 0, msg.format(target), code=codes.IMPORT)
         errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     errors.set_import_context(save_import_context)
