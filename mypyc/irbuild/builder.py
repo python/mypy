@@ -19,8 +19,7 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED,
-    ComparisonExpr
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -40,7 +39,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive, bool_rprimitive,
+    str_rprimitive,
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -835,8 +834,6 @@ class IRBuilder:
             # TODO: Don't special case IntExpr
             return int_rprimitive
         if node not in self.types:
-            if isinstance(node, (ComparisonExpr, OpExpr)):
-                return bool_rprimitive
             return object_rprimitive
         mypy_type = self.types[node]
         return self.type_to_rtype(mypy_type)

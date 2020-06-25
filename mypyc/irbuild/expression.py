@@ -4,7 +4,7 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -13,12 +13,13 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
-from mypy.types import TupleType, get_proper_type
+from mypy.types import TupleType, get_proper_type, Instance
 
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
+from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, \
+    bool_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.generic_ops import iter_op
@@ -368,10 +369,19 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                 bin_op = 'and'
                 cmp_op = '!='
             lhs = e.operands[0]
-            exprs = (ComparisonExpr([cmp_op], [lhs, item]) for item in items)
-            or_expr = next(exprs)  # type: Expression
+            mypy_file = builder.graph['builtins'].tree
+            assert mypy_file is not None
+            bool_type = Instance(cast(TypeInfo, mypy_file.names['bool'].node), [])
+            exprs = []
+            for item in items:
+                expr = ComparisonExpr([cmp_op], [lhs, item])
+                builder.types[expr] = bool_type
+                exprs.append(expr)
+
+            or_expr = exprs.pop(0)  # type: Expression
             for expr in exprs:
                 or_expr = OpExpr(bin_op, or_expr, expr)
+                builder.types[or_expr] = bool_type
             return builder.accept(or_expr)
         # x in [y]/(y) -> x == y
         # x not in [y]/(y) -> x != y
