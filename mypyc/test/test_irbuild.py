@@ -6,7 +6,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import TOP_LEVEL_NAME, IS_32_BIT_PLATFORM
 from mypyc.ir.func_ir import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
@@ -42,7 +42,9 @@ class TestGenOps(MypycDataSuite):
         """Perform a runtime checking transformation test case."""
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
-
+            # replace native_int with platform specific ints
+            int_format_str = 'int32' if IS_32_BIT_PLATFORM else 'int64'
+            expected_output = [s.replace('native_int', int_format_str) for s in expected_output]
             try:
                 ir = build_ir_for_single_file(testcase.input, options)
             except CompileError as e:

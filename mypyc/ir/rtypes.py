@@ -20,13 +20,12 @@ mypyc.irbuild.mapper.Mapper.type_to_rtype converts mypy Types to mypyc
 RTypes.
 """
 
-import sys
 from abc import abstractmethod
 from typing import Optional, Union, List, Dict, Generic, TypeVar
 
 from typing_extensions import Final, ClassVar, TYPE_CHECKING
 
-from mypyc.common import JsonDict, short_name
+from mypyc.common import JsonDict, short_name, IS_32_BIT_PLATFORM
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -175,6 +174,8 @@ class RPrimitive(RType):
         self.is_unboxed = is_unboxed
         self._ctype = ctype
         self.is_refcounted = is_refcounted
+        # TODO: For low-level integers, they actually don't have undefined values
+        #       we need to figure out some way to represent here.
         if ctype in ('CPyTagged', 'int32_t', 'int64_t'):
             self.c_undefined = 'CPY_INT_TAG'
         elif ctype == 'PyObject *':
@@ -242,7 +243,7 @@ int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
                               ctype='int64_t')  # type: Final
 # integer alias
 c_int_rprimitive = int32_rprimitive
-if sys.maxsize < (1 << 31):
+if IS_32_BIT_PLATFORM:
     c_pyssize_t_rprimitive = int32_rprimitive
 else:
     c_pyssize_t_rprimitive = int64_rprimitive
