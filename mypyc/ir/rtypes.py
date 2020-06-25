@@ -20,6 +20,7 @@ mypyc.irbuild.mapper.Mapper.type_to_rtype converts mypy Types to mypyc
 RTypes.
 """
 
+import sys
 from abc import abstractmethod
 from typing import Optional, Union, List, Dict, Generic, TypeVar
 
@@ -241,7 +242,10 @@ int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
                               ctype='int64_t')  # type: Final
 # integer alias
 c_int_rprimitive = int32_rprimitive
-c_pyssize_t_rprimitive = int64_rprimitive
+if sys.maxsize < (1 << 31):
+    c_pyssize_t_rprimitive = int32_rprimitive
+else:
+    c_pyssize_t_rprimitive = int64_rprimitive
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
