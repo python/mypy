@@ -141,14 +141,14 @@ def f():
     r0, x :: set
     r1 :: short_int
     r2 :: object
-    r3 :: bool
+    r3 :: int32
     r4 :: None
 L0:
     r0 = set
     x = r0
     r1 = 1
     r2 = box(short_int, r1)
-    r3 = x.discard(r2) :: set
+    r3 = PySet_Discard(x, r2)
     r4 = None
     return x
 

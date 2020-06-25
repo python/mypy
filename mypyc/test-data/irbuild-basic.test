@@ -1088,7 +1088,7 @@ def call_python_function_with_keyword_arg(x):
     r1 :: object
     r2 :: str
     r3 :: tuple
-    r4 :: c_int
+    r4 :: native_int
     r5 :: object
     r6 :: dict
     r7 :: object
@@ -1113,7 +1113,7 @@ def call_python_method_with_keyword_args(xs, first, second):
     r3 :: str
     r4 :: object
     r5 :: tuple
-    r6 :: c_int
+    r6 :: native_int
     r7 :: object
     r8 :: dict
     r9 :: object
@@ -1122,7 +1122,7 @@ def call_python_method_with_keyword_args(xs, first, second):
     r12 :: object
     r13, r14 :: str
     r15 :: tuple
-    r16 :: c_int
+    r16 :: native_int
     r17, r18 :: object
     r19 :: dict
     r20 :: object
@@ -1690,7 +1690,7 @@ def g():
     r3 :: short_int
     r4 :: str
     r5 :: short_int
-    r6 :: c_int
+    r6 :: native_int
     r7, r8, r9 :: object
     r10, r11 :: dict
     r12 :: str
@@ -1727,7 +1727,7 @@ def h():
     r2 :: short_int
     r3 :: str
     r4 :: short_int
-    r5 :: c_int
+    r5 :: native_int
     r6, r7 :: object
     r8, r9 :: dict
     r10 :: str

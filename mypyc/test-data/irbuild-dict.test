@@ -58,7 +58,7 @@ def f(x):
     x :: object
     r0, r1 :: short_int
     r2 :: str
-    r3 :: c_int
+    r3 :: native_int
     r4, r5 :: object
     r6, d :: dict
     r7 :: None
@@ -204,7 +204,7 @@ def f(x, y):
     r0 :: short_int
     r1 :: str
     r2 :: short_int
-    r3 :: c_int
+    r3 :: native_int
     r4 :: object
     r5 :: dict
     r6 :: bool

@@ -1,3 +1,4 @@
+import sys
 from typing import Dict, Any
 
 from typing_extensions import Final
@@ -27,6 +28,8 @@ TOP_LEVEL_NAME = '__top_level__'  # type: Final # Special function representing 
 
 # Maximal number of subclasses for a class to trigger fast path in isinstance() checks.
 FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
+
+IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
 
 
 def decorator_helper_name(func_name: str) -> str:

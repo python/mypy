@@ -740,7 +740,7 @@ def g(x):
     r1 :: object
     r2 :: str
     r3 :: tuple
-    r4 :: c_int
+    r4 :: native_int
     r5 :: object
     r6 :: dict
     r7 :: object

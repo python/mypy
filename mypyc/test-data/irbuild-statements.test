@@ -717,7 +717,7 @@ def delDict():
     r1 :: short_int
     r2 :: str
     r3 :: short_int
-    r4 :: c_int
+    r4 :: native_int
     r5, r6 :: object
     r7, d :: dict
     r8 :: str
@@ -746,7 +746,7 @@ def delDictMultiple():
     r5 :: short_int
     r6 :: str
     r7 :: short_int
-    r8 :: c_int
+    r8 :: native_int
     r9, r10, r11, r12 :: object
     r13, d :: dict
     r14, r15 :: str

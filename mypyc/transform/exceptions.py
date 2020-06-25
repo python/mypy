@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from mypyc.ir.ops import (
     BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, NO_TRACEBACK_LINE_NO,
+    ERR_FALSE, ERR_NEG_INT, NO_TRACEBACK_LINE_NO,
 )
 from mypyc.ir.func_ir import FuncIR
 
@@ -74,6 +74,9 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     # Op returns a C false value on error.
                     variant = Branch.BOOL_EXPR
                     negated = True
+                elif op.error_kind == ERR_NEG_INT:
+                    variant = Branch.NEG_INT_EXPR
+                    negated = False
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind
 
