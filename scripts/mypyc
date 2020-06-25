@@ -59,13 +59,31 @@ def parse_options() -> Options:
     options.build_dir = 'build'  # can this be overridden??
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('subcommand', type=str, choices=['build', 'run', 'clean'],
-                        help='mypyc subcommand')
-    parser.add_argument(metavar='files', nargs='*', dest='files',
+    subparsers = parser.add_subparsers(help='mypyc subcommand', dest='subcommand')
+    subparsers.required = True
+
+    # create subparsers
+    build_parser = subparsers.add_parser('build', help='compile python files')
+    run_parser = subparsers.add_parser('run', help='compile and run a single python file')
+    clean_parser = subparsers.add_parser('clean', help='clean build directory')
+
+    # construct build subcommand's extra param
+    build_parser.add_argument(metavar='files', nargs='+', dest='files',
                         help="Compile given files")
+
+    # construct run subcommand's extra param
+    run_parser.add_argument('file', type=str, help="Compile and run given file")
+
+
     args = parser.parse_args()
     options.mode = mode_mapping[args.subcommand]
-    options.files = args.files
+
+    if options.mode == MODE_BUILD:
+        options.files = args.files
+    elif options.mode == MODE_RUN:
+        options.files = [args.file]
+    else:
+        options.files = []
     return options
 
 
