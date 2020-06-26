@@ -628,7 +628,8 @@ class FancyFormatter:
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
-            return loc + self.style('note:', 'blue') + self.underline_link(msg)
+            formatted = self.highlight_quote_groups(self.underline_link(msg))
+            return loc + self.style('note:', 'blue') + formatted
         elif error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
             # TODO: detecting source code highlights through an indent can be surprising.
             if '^' not in error:
