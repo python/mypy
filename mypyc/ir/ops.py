@@ -1184,6 +1184,13 @@ class CallC(RegisterOp):
 
 
 class Truncate(RegisterOp):
+    """truncate src: src_type to dst_type
+
+    Truncate a value from type with more bits to type with less bits
+
+    both src_type and dst_type should be non-reference counted integer types or bool
+    especially note that int_rprimitive is reference counted so should never be used here
+    """
 
     error_kind = ERR_NEVER
 

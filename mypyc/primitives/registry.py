@@ -365,6 +365,9 @@ def c_method_op(name: str,
         c_function_name: name of the C function to call
         error_kind: how errors are represented in the result (one of ERR_*)
         var_arg_type: type of all variable arguments
+        truncated_type: type to truncated to(See Truncate for info)
+                        if it's defined both return_type and it should be non-referenced
+                        integer types or bool type
         steals: description of arguments that this steals (ref count wise)
         priority: if multiple ops match, the one with the highest priority is picked
     """
