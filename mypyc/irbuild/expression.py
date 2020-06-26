@@ -18,8 +18,7 @@ from mypy.types import TupleType, get_proper_type, Instance
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, \
-    bool_rprimitive
+from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.generic_ops import iter_op
