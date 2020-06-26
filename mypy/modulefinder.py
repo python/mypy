@@ -70,7 +70,9 @@ class ModuleNotFoundReason(Enum):
             notes = [doc_link]
         elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
             msg = 'Library stubs not installed for "{}"'
-            notes = ['Hint: "python3 -m pip install {}"', doc_link]
+            notes = ['Hint: "python3 -m pip install {}"',
+                     '(or run "mypy --install-types" to install all missing stub packages)',
+                     doc_link]
         else:
             assert False
         return msg, notes

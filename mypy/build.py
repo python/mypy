@@ -270,6 +270,8 @@ def _build(sources: List[BuildSource],
         if not cache_dir_existed and os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
             exclude_from_backups(options.cache_dir)
+        if os.path.isdir(options.cache_dir):
+            record_missing_stub_packages(options.cache_dir, manager.missing_stub_packages)
 
 
 def default_data_dir() -> str:
@@ -642,6 +644,8 @@ class BuildManager:
         # the semantic analyzer, used only for testing. Currently used only by the new
         # semantic analyzer.
         self.processed_targets = []  # type: List[str]
+        # Missing stub packages encountered.
+        self.missing_stub_packages = set()  # type: Set[str]
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -2516,6 +2520,8 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
             if '{}' in note:
                 note = note.format(legacy_bundled_packages[target])
             errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
+        if reason is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+            manager.missing_stub_packages.add(legacy_bundled_packages[target])
     errors.set_import_context(save_import_context)
 
 
@@ -3232,3 +3238,23 @@ def topsort(data: Dict[AbstractSet[str],
                 for item, dep in data.items()
                 if item not in ready}
     assert not data, "A cyclic dependency exists amongst %r" % data
+
+
+def missing_stubs_file(cache_dir: str) -> str:
+    return os.path.join(cache_dir, 'missing_stubs')
+
+
+def record_missing_stub_packages(cache_dir: str, missing_stub_packages: Set[str]) -> None:
+    """Write a file containing missing stub packages.
+
+    This allows a subsequent "mypy --install-types" run (without other arguments)
+    to install missing stub packages.
+    """
+    fnam = missing_stubs_file(cache_dir)
+    if missing_stub_packages:
+        with open(fnam, 'w') as f:
+            for pkg in sorted(missing_stub_packages):
+                f.write('%s\n' % pkg)
+    else:
+        if os.path.isfile(fnam):
+            os.remove(fnam)
