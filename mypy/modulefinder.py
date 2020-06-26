@@ -56,23 +56,24 @@ class ModuleNotFoundReason(Enum):
     # Stub PyPI package (typically types-pkgname) known to exist but not installed.
     STUBS_NOT_INSTALLED = 3
 
-    def error_message_templates(self) -> Tuple[str, str]:
+    def error_message_templates(self) -> Tuple[str, List[str]]:
+        doc_link = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
             msg = 'Cannot find implementation or library stub for module named "{}"'
-            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+            notes = [doc_link]
         elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
             msg = "Cannot find implementation or library stub for module named '{}'"
-            note = ("You may be running mypy in a subpackage, "
-                    "mypy should be run on the package root")
+            notes = ["You may be running mypy in a subpackage, "
+                     "mypy should be run on the package root"]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
             msg = 'Skipping analyzing "{}": found module but no type hints or library stubs'
-            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+            notes = [doc_link]
         elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
             msg = 'Library stubs not installed for "{}"'
-            note = 'Hint: "python3 -m pip install {}"'
+            notes = ['Hint: "python3 -m pip install {}"', doc_link]
         else:
             assert False
-        return msg, note
+        return msg, notes
 
 
 # If we found the module, returns the path to the module as a str.
