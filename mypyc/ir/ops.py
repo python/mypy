@@ -1201,10 +1201,10 @@ class Truncate(RegisterOp):
         return [self.src]
 
     def stolen(self) -> List[Value]:
-        return [self.src]
+        return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format("truncate %r: %r to %r", self.src, self.src_type, self.type)
+        return env.format("%r = truncate %r: %r to %r", self, self.src, self.src_type, self.type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_truncate(self)

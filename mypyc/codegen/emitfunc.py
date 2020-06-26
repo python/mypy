@@ -429,8 +429,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_truncate(self, op: Truncate) -> None:
         dest = self.reg(op)
         value = self.reg(op.src)
-        # TODO: for now we'd only consider assign a int to char
-        #       it's better to have a helper to handle different situations
+        # for C backend the generated code are straight assignments
         self.emit_line("{} = {};".format(dest, value))
 
     def visit_load_global(self, op: LoadGlobal) -> None:

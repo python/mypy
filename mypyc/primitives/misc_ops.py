@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
     RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
-    int_rprimitive, dict_rprimitive, c_int_rprimitive, short_int_rprimitive
+    int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
     name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
