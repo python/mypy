@@ -299,25 +299,27 @@ def f(x: Union[int, A]) -> int:
 def f(x):
     x :: union[int, __main__.A]
     r0 :: object
-    r1 :: bool
-    r2 :: int
-    r3 :: short_int
-    r4 :: int
-    r5 :: __main__.A
-    r6 :: int
+    r1 :: int32
+    r2 :: bool
+    r3 :: int
+    r4 :: short_int
+    r5 :: int
+    r6 :: __main__.A
+    r7 :: int
 L0:
     r0 = int
-    r1 = isinstance x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = truncate r1: int32 to builtins.bool
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = unbox(int, x)
-    r3 = 1
-    r4 = CPyTagged_Add(r2, r3)
-    return r4
+    r3 = unbox(int, x)
+    r4 = 1
+    r5 = CPyTagged_Add(r3, r4)
+    return r5
 L2:
-    r5 = cast(__main__.A, x)
-    r6 = r5.a
-    return r6
+    r6 = cast(__main__.A, x)
+    r7 = r6.a
+    return r7
 L3:
     unreachable
 
