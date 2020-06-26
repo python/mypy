@@ -1183,6 +1183,33 @@ class CallC(RegisterOp):
         return visitor.visit_call_c(self)
 
 
+class Truncate(RegisterOp):
+
+    error_kind = ERR_NEVER
+
+    def __init__(self,
+                 src: Value,
+                 src_type: RType,
+                 dst_type: RType,
+                 line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.src_type = src_type
+        self.type = dst_type
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("truncate %r: %r to %r", self.src, self.src_type, self.type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_truncate(self)
+
+
 class LoadGlobal(RegisterOp):
     """Load a global variable/pointer"""
 
@@ -1305,6 +1332,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_call_c(self, op: CallC) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_truncate(self, op: Truncate) -> T:
         raise NotImplementedError
 
     @abstractmethod

@@ -19,7 +19,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC,
+    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC,
 )
@@ -714,7 +714,11 @@ class LowLevelIRBuilder:
                 target = self.none()
             else:
                 target = self.coerce(target, result_type, line)
-        return target
+        if desc.truncated_type is None:
+            return target
+        else:
+            truncate = self.add(Truncate(target, desc.return_type, desc.truncated_type))
+            return truncate
 
     def matching_call_c(self,
                         candidates: List[CFunctionDescription],
