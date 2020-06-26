@@ -19,7 +19,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC,
+    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC,
 )
@@ -707,14 +707,19 @@ class LowLevelIRBuilder:
                 coerced.append(arg)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
                                 desc.error_kind, line, var_arg_idx))
-        if result_type and not is_runtime_subtype(target.type, result_type):
+        if desc.truncated_type is None:
+            result = target
+        else:
+            truncate = self.add(Truncate(target, desc.return_type, desc.truncated_type))
+            result = truncate
+        if result_type and not is_runtime_subtype(result.type, result_type):
             if is_none_rprimitive(result_type):
                 # Special case None return. The actual result may actually be a bool
                 # and so we can't just coerce it.
-                target = self.none()
+                result = self.none()
             else:
-                target = self.coerce(target, result_type, line)
-        return target
+                result = self.coerce(target, result_type, line)
+        return result
 
     def matching_call_c(self,
                         candidates: List[CFunctionDescription],
