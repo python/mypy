@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal
+    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate
 )
 from mypyc.ir.rtypes import RType, RTuple, is_int32_rprimitive, is_int64_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -425,6 +425,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
         self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
+
+    def visit_truncate(self, op: Truncate) -> None:
+        dest = self.reg(op)
+        value = self.reg(op.src)
+        # for C backend the generated code are straight assignments
+        self.emit_line("{} = {};".format(dest, value))
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)

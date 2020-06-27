@@ -1502,19 +1502,21 @@ def main() -> None:
 def foo(x):
     x :: union[int, str]
     r0 :: object
-    r1 :: bool
-    r2 :: __main__.B
-    r3 :: __main__.A
+    r1 :: int32
+    r2 :: bool
+    r3 :: __main__.B
+    r4 :: __main__.A
 L0:
     r0 = int
-    r1 = isinstance x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = truncate r1: int32 to builtins.bool
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = B()
-    return r2
-L2:
-    r3 = A()
+    r3 = B()
     return r3
+L2:
+    r4 = A()
+    return r4
 def main():
     r0 :: short_int
     r1 :: object

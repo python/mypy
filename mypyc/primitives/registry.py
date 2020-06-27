@@ -47,6 +47,7 @@ CFunctionDescription = NamedTuple(
                               ('arg_types', List[RType]),
                               ('return_type', RType),
                               ('var_arg_type', Optional[RType]),
+                              ('truncated_type', Optional[RType]),
                               ('c_function_name', str),
                               ('error_kind', int),
                               ('steals', StealsDescription),
@@ -350,6 +351,7 @@ def c_method_op(name: str,
                 c_function_name: str,
                 error_kind: int,
                 var_arg_type: Optional[RType] = None,
+                truncated_type: Optional[RType] = None,
                 steals: StealsDescription = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a method call.
@@ -363,11 +365,14 @@ def c_method_op(name: str,
         c_function_name: name of the C function to call
         error_kind: how errors are represented in the result (one of ERR_*)
         var_arg_type: type of all variable arguments
+        truncated_type: type to truncated to(See Truncate for info)
+                        if it's defined both return_type and it should be non-referenced
+                        integer types or bool type
         steals: description of arguments that this steals (ref count wise)
         priority: if multiple ops match, the one with the highest priority is picked
     """
     ops = c_method_call_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, arg_types, return_type, var_arg_type,
+    desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
                                 c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
@@ -379,6 +384,7 @@ def c_function_op(name: str,
                   c_function_name: str,
                   error_kind: int,
                   var_arg_type: Optional[RType] = None,
+                  truncated_type: Optional[RType] = None,
                   steals: StealsDescription = False,
                   priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a function call.
@@ -392,7 +398,7 @@ def c_function_op(name: str,
         arg_types: positional argument types for which this applies
     """
     ops = c_function_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, arg_types, return_type, var_arg_type,
+    desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
                                 c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
@@ -404,6 +410,7 @@ def c_binary_op(name: str,
                 c_function_name: str,
                 error_kind: int,
                 var_arg_type: Optional[RType] = None,
+                truncated_type: Optional[RType] = None,
                 steals: StealsDescription = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for a binary operation.
@@ -414,7 +421,7 @@ def c_binary_op(name: str,
     are expected.
     """
     ops = c_binary_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, arg_types, return_type, var_arg_type,
+    desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
                             c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc
@@ -425,12 +432,13 @@ def c_custom_op(arg_types: List[RType],
                 c_function_name: str,
                 error_kind: int,
                 var_arg_type: Optional[RType] = None,
+                truncated_type: Optional[RType] = None,
                 steals: StealsDescription = False) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
     Most arguments are similar to c_method_op().
     """
-    return CFunctionDescription('<custom>', arg_types, return_type, var_arg_type,
+    return CFunctionDescription('<custom>', arg_types, return_type, var_arg_type, truncated_type,
                             c_function_name, error_kind, steals, 0)
 
 
@@ -439,6 +447,7 @@ def c_unary_op(name: str,
                return_type: RType,
                c_function_name: str,
                error_kind: int,
+               truncated_type: Optional[RType] = None,
                steals: StealsDescription = False,
                priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for an unary operation.
@@ -449,7 +458,7 @@ def c_unary_op(name: str,
     is expected.
     """
     ops = c_unary_ops.setdefault(name, [])
-    desc = CFunctionDescription(name, [arg_type], return_type, None,
+    desc = CFunctionDescription(name, [arg_type], return_type, None, truncated_type,
                             c_function_name, error_kind, steals, priority)
     ops.append(desc)
     return desc

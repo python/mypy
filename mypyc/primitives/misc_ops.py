@@ -1,9 +1,9 @@
 """Miscellaneous primitive ops."""
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
     RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
-    int_rprimitive, dict_rprimitive
+    int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
     name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
@@ -150,11 +150,14 @@ get_module_dict_op = custom_op(
     is_borrowed=True)
 
 # isinstance(obj, cls)
-func_op('builtins.isinstance',
-        arg_types=[object_rprimitive, object_rprimitive],
-        result_type=bool_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=call_negative_magic_emit('PyObject_IsInstance'))
+c_function_op(
+    name='builtins.isinstance',
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_IsInstance',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive
+)
 
 # Faster isinstance(obj, cls) that only works with native classes and doesn't perform
 # type checking of the type argument.
