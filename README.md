@@ -1,14 +1,15 @@
 <img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="300px"/>
 
-Mypy: Optional Static Typing for Python
-=======================================
+# Mypy: Optional Static Typing for Python
+
+---------------------------------
 
 [![Build Status](https://api.travis-ci.org/python/mypy.svg?branch=master)](https://travis-ci.org/python/mypy)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 
-Got a question? Join us on Gitter!
+# Got a question? Join us on Gitter!
 ----------------------------------
 
 We don't have a mailing list; but we are always happy to answer
@@ -61,7 +62,7 @@ See [the documentation for Python 2 support](https://mypy.readthedocs.io/en/late
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
 
-Requirements
+# Requirements
 ------------
 
 You need Python 3.5 or later to run mypy.  You can have multiple Python
@@ -76,7 +77,7 @@ For other Linux flavors, macOS and Windows, packages are available at
   https://www.python.org/getit/
 
 
-Quick start
+# Quick start
 -----------
 
 Mypy can be installed using pip:
@@ -105,7 +106,7 @@ Yusuke Miyazaki).
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 
 
-IDE, Linter Integrations, and Pre-commit
+# IDE, Linter Integrations, and Pre-commit
 ----------------------------------------
 
 Mypy can be integrated into popular IDEs:
@@ -129,7 +130,7 @@ can be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 [flake8-mypy]: https://github.com/ambv/flake8-mypy
 [pre-commit mirrors-mypy]: https://github.com/pre-commit/mirrors-mypy
 
-Web site and documentation
+# Web site and documentation
 --------------------------
 
 Documentation and additional information is available at the web site:
@@ -141,7 +142,7 @@ Or you can jump straight to the documentation:
   http://mypy.readthedocs.io/
 
 
-Troubleshooting
+# Troubleshooting
 ---------------
 
 Depending on your configuration, you may have to run `pip` like
@@ -171,7 +172,7 @@ In Windows, the script is generally installed in
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
 
-### Working with `virtualenv`
+## Working with `virtualenv`
 
 If you are using [`virtualenv`](https://virtualenv.pypa.io/en/stable/),
 make sure you are running a python3 environment. Installing via `pip3`
@@ -182,7 +183,7 @@ modules from the command line.
     $ python3 -m virtualenv env
 
 
-Quick start for contributing to mypy
+# Quick start for contributing to mypy
 ------------------------------------
 
 If you want to contribute, first clone the mypy git repository:
@@ -215,7 +216,7 @@ see "Troubleshooting" above.
 > NOTE: Installing with sudo can be a security risk, please try with flag `--user` first.
     $ python3 -m pip install --user -U . 
 
-Working with the git version of mypy
+# Working with the git version of mypy
 ------------------------------------
 
 mypy contains a submodule, "typeshed". See https://github.com/python/typeshed.
@@ -230,7 +231,7 @@ whenever you change branches, merge, rebase, or pull.
 (It's possible to automate this: Search Google for "git hook update submodule")
 
 
-Tests
+# Tests
 -----
 
 The basic way to run tests:
@@ -243,7 +244,7 @@ For more on the tests, such as how to write tests and how to control
 which tests to run, see [Test README.md](test-data/unit/README.md).
 
 
-Development status
+# Development status
 ------------------
 
 Mypy is beta software, but it has already been used in production
@@ -253,13 +254,13 @@ See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.
 
 
-Changelog
+# Changelog
 ---------
 
 Follow mypy's updates on the blog: https://mypy-lang.blogspot.com/
 
 
-Issue tracker
+# Issue tracker
 -------------
 
 Please report any bugs and enhancement ideas using the mypy issue
@@ -269,7 +270,7 @@ If you have any questions about using mypy or types, please ask
 in the typing gitter instead: https://gitter.im/python/typing
 
 
-Compiled version of mypy
+# Compiled version of mypy
 ------------------------
 
 We have built a compiled version of mypy using the [mypyc
@@ -287,7 +288,7 @@ version of mypy, you can directly install a binary from
 https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
 
 
-Help wanted
+# Help wanted
 -----------
 
 Any help in testing, development, documentation and other tasks is
@@ -299,7 +300,7 @@ beginner issues.
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 
 
-License
+# License
 -------
 
 Mypy is licensed under the terms of the MIT License (see the file
