@@ -332,5 +332,4 @@ FastAPI takes advantage of these type hints to do several things.
 # License
 -------
 
-Mypy is licensed under the terms of the MIT License (see the file
-LICENSE).
+Mypy is licensed under the terms of the MIT License (see the file LICENSE).
