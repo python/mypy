@@ -4542,9 +4542,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.is_func_scope():
             assert self.locals[-1] is not None
             if escape_comprehensions:
+                assert len(self.locals) == len(self.is_comprehension_stack)
+                # Retrieve the symbol table from the enclosing non-comprehension scope.
                 for i, is_comprehension in enumerate(reversed(self.is_comprehension_stack)):
                     if not is_comprehension:
-                        names = self.locals[-1 - i]
+                        if i == len(self.locals) - 1:  # The last iteration.
+                            # The caller of the comprehension is in the global space.
+                            names = self.globals
+                        else:
+                            names = cast(SymbolTable, self.locals[-1 - i])
                         break
                 else:
                     assert False, "Should have at least one non-comprehension scope"
