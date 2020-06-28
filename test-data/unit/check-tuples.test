@@ -1445,4 +1445,16 @@ reveal_type(y3) # N: Revealed type is 'builtins.int*'
 reveal_type(y4) # N: Revealed type is 'builtins.int*'
 reveal_type(z3) # N: Revealed type is 'builtins.str'
 
+x5, x6, y5, y6, z4 = *points2, *points2, "test"
+
+reveal_type(x5) # N: Revealed type is 'builtins.int*'
+reveal_type(x6) # N: Revealed type is 'builtins.int*'
+reveal_type(y5) # N: Revealed type is 'builtins.int*'
+reveal_type(y6) # N: Revealed type is 'builtins.int*'
+reveal_type(z4) # N: Revealed type is 'builtins.str'
+
+points3 = ["test1", "test2"]
+x7, x8, y7, y8 = *points2, *points3 # E: Contiguous iterable with same type expected
+
+x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same type expected
 [builtins fixtures/tuple.pyi]
