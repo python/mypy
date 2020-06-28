@@ -218,6 +218,19 @@ def f(x: int = (c := 4)) -> int:
     reveal_type(filtered_data)  # N: Revealed type is 'builtins.list[builtins.int*]'
     reveal_type(y3)  # N: Revealed type is 'builtins.int'
 
+    d = {'a': (a2 := 1), 'b': a2 + 1, 'c': a2 + 2}
+    reveal_type(d)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+    reveal_type(a2)  # N: Revealed type is 'builtins.int'
+
+    d2 = {(prefix := 'key_') + 'a': (start_val := 1), prefix + 'b': start_val + 1, prefix + 'c': start_val + 2}
+    reveal_type(d2)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+    reveal_type(prefix)  # N: Revealed type is 'builtins.str'
+    reveal_type(start_val)  # N: Revealed type is 'builtins.int'
+
+    filtered_dict = {k: new_v for k, v in [('a', 1), ('b', 2), ('c', 3)] if (new_v := v + 1) == 2}
+    reveal_type(filtered_dict)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+    reveal_type(new_v)  # N: Revealed type is 'builtins.int'
+
     # https://www.python.org/dev/peps/pep-0572/#exceptional-cases
     (y4 := 3)
     reveal_type(y4)  # N: Revealed type is 'builtins.int'
