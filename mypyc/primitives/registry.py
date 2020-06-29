@@ -372,7 +372,9 @@ def c_method_op(name: str,
                         integer types or bool type
         ordering: optional ordering of the arguments, if defined,
                   reorders the arguments accordingly.
-                  should never be used together with var_arg_type
+                  should never be used together with var_arg_type.
+                  all the other arguments(such as arg_types) are in the order
+                  accepted by the python syntax(before reordering)
         steals: description of arguments that this steals (ref count wise)
         priority: if multiple ops match, the one with the highest priority is picked
     """
