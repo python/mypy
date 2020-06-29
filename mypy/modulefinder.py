@@ -59,18 +59,18 @@ class ModuleNotFoundReason(Enum):
     def error_message_templates(self) -> Tuple[str, List[str]]:
         doc_link = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
-            msg = 'Cannot find implementation or library stub for module named "{}"'
+            msg = 'Cannot find implementation or library stub for module named "{module}"'
             notes = [doc_link]
         elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
             msg = "Cannot find implementation or library stub for module named '{}'"
             notes = ["You may be running mypy in a subpackage, "
                      "mypy should be run on the package root"]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
-            msg = 'Skipping analyzing "{}": found module but no type hints or library stubs'
+            msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
             notes = [doc_link]
         elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
-            msg = 'Library stubs not installed for "{}"'
-            notes = ['Hint: "python3 -m pip install {}"',
+            msg = 'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
+            notes = ['Hint: "python3 -m pip install {stub_dist}"',
                      '(or run "mypy --install-types" to install all missing stub packages)',
                      doc_link]
         else:
@@ -253,7 +253,7 @@ class FindModuleCache:
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
             stub_dir = os.path.join(pkg_dir, stub_name)
-            if fscache.isdir(stub_dir):
+            if fscache.isdir(stub_dir) and self._is_compatible_stub_package(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, 'py.typed')
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
@@ -382,6 +382,24 @@ class FindModuleCache:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
+
+    def _is_compatible_stub_package(self, stub_dir: str) -> bool:
+        """Does a stub package support the target Python version?
+
+        Stub packages may contain a metadata file which specifies
+        whether the stubs are compatible with Python 2 and 3.
+        """
+        metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
+        if os.path.isfile(metadata_fnam) and self.options:
+            # Delay import for a possible minor performance win.
+            import toml
+            with open(metadata_fnam, 'r') as f:
+                metadata = toml.load(f)
+            if self.options.python_version[0] == 2:
+                return bool(metadata.get('python2', False))
+            else:
+                return bool(metadata.get('python3', True))
+        return True
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)

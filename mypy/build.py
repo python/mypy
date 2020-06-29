@@ -2515,11 +2515,11 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.raise_error()
     else:
         msg, notes = reason.error_message_templates()
-        errors.report(line, 0, msg.format(target), code=codes.IMPORT)
+        pyver = '%d.%d' %  manager.options.python_version
+        errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
         top_level = target.partition('.')[0]
         for note in notes:
-            if '{}' in note:
-                note = note.format(legacy_bundled_packages[top_level])
+            note = note.format(stub_dist=legacy_bundled_packages[top_level])
             errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
             manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
