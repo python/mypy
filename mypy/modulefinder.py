@@ -126,6 +126,7 @@ class FindModuleCache:
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
         self.stdlib_py_versions = load_stdlib_py_versions()
+        self.python2 = options and options.python_version[0] == 2
 
     def clear(self) -> None:
         self.results.clear()
@@ -253,6 +254,12 @@ class FindModuleCache:
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
             stub_dir = os.path.join(pkg_dir, stub_name)
+            if self.python2:
+                alt_stub_name = components[0] + '-python2-stubs'
+                alt_stub_dir = os.path.join(pkg_dir, alt_stub_name)
+                if fscache.isdir(alt_stub_dir):
+                    stub_name = alt_stub_name
+                    stub_dir = alt_stub_dir
             if fscache.isdir(stub_dir) and self._is_compatible_stub_package(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, 'py.typed')
                 stub_components = [stub_name] + components[1:]
@@ -314,7 +321,11 @@ class FindModuleCache:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                path_stubs = base_path + '-stubs' + sepinit + extension
+                suffix = '-stubs'
+                if self.python2:
+                    if os.path.isdir(base_path + '-python2-stubs'):
+                        suffix = '-python2-stubs'
+                path_stubs = base_path + suffix + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
                     has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
@@ -390,12 +401,12 @@ class FindModuleCache:
         whether the stubs are compatible with Python 2 and 3.
         """
         metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
-        if os.path.isfile(metadata_fnam) and self.options:
+        if os.path.isfile(metadata_fnam):
             # Delay import for a possible minor performance win.
             import toml
             with open(metadata_fnam, 'r') as f:
                 metadata = toml.load(f)
-            if self.options.python_version[0] == 2:
+            if self.python2:
                 return bool(metadata.get('python2', False))
             else:
                 return bool(metadata.get('python3', True))
