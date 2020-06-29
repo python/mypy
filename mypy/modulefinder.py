@@ -290,11 +290,13 @@ class FindModuleCache:
             third_party_stubs_dirs.clear()
             found_possible_third_party_missing_type_hints = False
         python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
-        candidate_base_dirs = (self.find_lib_path_dirs(id, python_mypy_path) +
-                               third_party_stubs_dirs +
-                               third_party_inline_dirs)
+        candidate_base_dirs = self.find_lib_path_dirs(id, python_mypy_path)
         if use_typeshed:
+            # Search for stdlib stubs in typeshed before installed
+            # stubs to avoid picking up backports (dataclasses, for
+            # example) when the library is included in stdlib.
             candidate_base_dirs += self.find_lib_path_dirs(id, self.search_paths.typeshed_path)
+        candidate_base_dirs += third_party_stubs_dirs + third_party_inline_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
