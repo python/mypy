@@ -124,7 +124,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named "mod" (also at 'one/mod/__init__.py')
+two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
 == Return code: 2
 
 [case promptsForgotInit]
@@ -136,7 +136,7 @@ two/mod/__init__.py: error: Duplicate module named "mod" (also at 'one/mod/__ini
 [file one/mod/a.py]
 #type: ignore
 [out]
-one/mod/a.py: error: Duplicate module named "a" (also at 'a.py')
+one/mod/a.py: error: Duplicate module named 'a' (also at 'a.py')
 one/mod/a.py: error: Are you missing an __init__.py?
 == Return code: 2
 
