@@ -52,7 +52,7 @@ f()
 def f() -> None: pass
 [out]
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 
@@ -68,10 +68,10 @@ f(1)
 def f() -> None: pass
 [out]
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 b.py:2: error: Too many arguments for "f"
@@ -88,10 +88,10 @@ x = 'whatever'
 def f() -> None: pass
 [out]
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 b.py:2: error: Too many arguments for "f"
@@ -118,10 +118,10 @@ f(1)
 # unrelated change
 [out]
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAddFilePreservesError2]
@@ -161,7 +161,7 @@ x = 1
 import a
 [out]
 ==
-b.py:2: error: Cannot find implementation or library stub for module named 'a'
+b.py:2: error: Cannot find implementation or library stub for module named "a"
 b.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testImportLineNumber2]
@@ -174,13 +174,13 @@ from c import f
 [file x.py.3]
 [out]
 ==
-b.py:2: error: Cannot find implementation or library stub for module named 'a'
+b.py:2: error: Cannot find implementation or library stub for module named "a"
 b.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-b.py:3: error: Cannot find implementation or library stub for module named 'c'
+b.py:3: error: Cannot find implementation or library stub for module named "c"
 ==
-b.py:2: error: Cannot find implementation or library stub for module named 'a'
+b.py:2: error: Cannot find implementation or library stub for module named "a"
 b.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-b.py:3: error: Cannot find implementation or library stub for module named 'c'
+b.py:3: error: Cannot find implementation or library stub for module named "c"
 
 [case testAddPackage1]
 import p.a
@@ -189,9 +189,9 @@ p.a.f(1)
 [file p/a.py.2]
 def f(x: str) -> None: pass
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -203,7 +203,7 @@ from p.a import f
 [file p/a.py.2]
 def f(x: str) -> None: pass
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
@@ -215,11 +215,11 @@ p.a.f(1)
 [file p/a.py.3]
 def f(x: str) -> None: pass
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
@@ -232,13 +232,13 @@ p.a.f(1)
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -266,13 +266,13 @@ p.a.f(1)
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-main:4: error: Cannot find implementation or library stub for module named 'p.a'
+main:4: error: Cannot find implementation or library stub for module named "p.a"
 main:4: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:4: error: Cannot find implementation or library stub for module named 'p'
+main:4: error: Cannot find implementation or library stub for module named "p"
 ==
-main:4: error: Cannot find implementation or library stub for module named 'p.a'
+main:4: error: Cannot find implementation or library stub for module named "p.a"
 main:4: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:4: error: Cannot find implementation or library stub for module named 'p'
+main:4: error: Cannot find implementation or library stub for module named "p"
 ==
 main:5: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -301,7 +301,7 @@ f(1)
 def f(x: str) -> None: pass
 [file p/__init__.py.2]
 [out]
-x.py:1: error: Cannot find implementation or library stub for module named 'p.a'
+x.py:1: error: Cannot find implementation or library stub for module named "p.a"
 x.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 x.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
@@ -374,7 +374,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-a.py:1: error: Cannot find implementation or library stub for module named 'b'
+a.py:1: error: Cannot find implementation or library stub for module named "b"
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:4: error: Missing positional argument "x" in call to "f"
@@ -388,7 +388,7 @@ def f() -> None: pass
 def f() -> None: pass
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 
@@ -404,7 +404,7 @@ from p import q
 ==
 main:1: error: Module 'p' has no attribute 'q'
 -- TODO: The following messages are different compared to non-incremental mode
-main:1: error: Cannot find implementation or library stub for module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named "p.q"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 
@@ -420,7 +420,7 @@ from p import q
 [file p/q.py.3]
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named "p.q"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 
@@ -435,7 +435,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named "p.q"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:2: error: Missing positional argument "x" in call to "f"
@@ -450,7 +450,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named "p.q"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 
@@ -481,7 +481,7 @@ def f() -> str:
 ==
 a.py:2: error: Incompatible return value type (got "int", expected "str")
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeleteModuleWithErrorInsidePackage]
@@ -496,7 +496,7 @@ def f() -> str:
 [out]
 a/b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a.b'
+main:1: error: Cannot find implementation or library stub for module named "a.b"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModifyTwoFilesNoError1]
@@ -635,9 +635,9 @@ import b
 def g() -> None: pass
 b.f()
 [out]
-a.py:1: error: Cannot find implementation or library stub for module named 'b'
+a.py:1: error: Cannot find implementation or library stub for module named "b"
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-a.py:2: error: Cannot find implementation or library stub for module named 'c'
+a.py:2: error: Cannot find implementation or library stub for module named "c"
 ==
 
 [case testAddTwoFilesErrorsInBoth]
@@ -656,9 +656,9 @@ import b
 def g() -> None: pass
 b.f(1)
 [out]
-a.py:1: error: Cannot find implementation or library stub for module named 'b'
+a.py:1: error: Cannot find implementation or library stub for module named "b"
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-a.py:2: error: Cannot find implementation or library stub for module named 'c'
+a.py:2: error: Cannot find implementation or library stub for module named "c"
 ==
 c.py:3: error: Too many arguments for "f"
 b.py:3: error: Too many arguments for "g"
@@ -673,9 +673,9 @@ def f() -> None: pass
 [file b.py.2]
 def g() -> None: pass
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named 'b'
+main:2: error: Cannot find implementation or library stub for module named "b"
 ==
 main:3: error: Too many arguments for "f"
 main:4: error: Too many arguments for "g"
@@ -693,9 +693,9 @@ def g() -> None: pass
 [delete b.py.2]
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named 'b'
+main:2: error: Cannot find implementation or library stub for module named "b"
 
 [case testDeleteTwoFilesNoErrors]
 import a
@@ -734,9 +734,9 @@ a.f(1)
 b.py:3: error: Too many arguments for "f"
 a.py:3: error: Too many arguments for "g"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named 'b'
+main:2: error: Cannot find implementation or library stub for module named "b"
 
 [case testAddFileWhichImportsLibModule]
 import a
@@ -746,7 +746,7 @@ import sys
 x = sys.platform
 [builtins fixtures/tuple.pyi]
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
@@ -760,7 +760,7 @@ import broken
 x = broken.x
 z
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'a'
+main:2: error: Cannot find implementation or library stub for module named "a"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:3: error: Name 'z' is not defined
@@ -827,7 +827,7 @@ def g() -> None: pass
 [out]
 a.py:2: error: Too many arguments for "g"
 ==
-a.py:1: error: Cannot find implementation or library stub for module named 'm.x'
+a.py:1: error: Cannot find implementation or library stub for module named "m.x"
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 a.py:2: error: Module has no attribute "x"
 
@@ -843,9 +843,9 @@ def f(x: str) -> None: pass
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage2]
 import p
@@ -859,7 +859,7 @@ def f(x: str) -> None: pass
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeletePackage3]
@@ -875,13 +875,13 @@ def f(x: str) -> None: pass
 [out]
 main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:2: error: Cannot find implementation or library stub for module named 'p.a'
+main:2: error: Cannot find implementation or library stub for module named "p.a"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:3: error: Module has no attribute "a"
 ==
-main:2: error: Cannot find implementation or library stub for module named 'p.a'
+main:2: error: Cannot find implementation or library stub for module named "p.a"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named 'p'
+main:2: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage4]
 import p.a
@@ -894,13 +894,13 @@ def f(x: str) -> None: pass
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 ==
-main:1: error: Cannot find implementation or library stub for module named 'p.a'
+main:1: error: Cannot find implementation or library stub for module named "p.a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'p'
+main:1: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage5]
 # cmd1: mypy main p/a.py p/__init__.py
@@ -917,13 +917,13 @@ def f(x: str) -> None: pass
 [out]
 main:6: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:5: error: Cannot find implementation or library stub for module named 'p.a'
+main:5: error: Cannot find implementation or library stub for module named "p.a"
 main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:5: error: Cannot find implementation or library stub for module named 'p'
+main:5: error: Cannot find implementation or library stub for module named "p"
 ==
-main:5: error: Cannot find implementation or library stub for module named 'p.a'
+main:5: error: Cannot find implementation or library stub for module named "p.a"
 main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:5: error: Cannot find implementation or library stub for module named 'p'
+main:5: error: Cannot find implementation or library stub for module named "p"
 
 
 [case testDeletePackage6]
@@ -943,7 +943,7 @@ f(12)
 [out]
 p/b.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-p/b.py:1: error: Cannot find implementation or library stub for module named 'p.a'
+p/b.py:1: error: Cannot find implementation or library stub for module named "p.a"
 p/b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 p/b.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
@@ -1417,7 +1417,7 @@ def f() -> None: pass
 
 [out]
 ==
-a.py:1: error: Cannot find implementation or library stub for module named 'b'
+a.py:1: error: Cannot find implementation or library stub for module named "b"
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 
@@ -1813,7 +1813,7 @@ x = 2
 [out]
 ==
 ==
-a.py:2: error: Cannot find implementation or library stub for module named 'b'
+a.py:2: error: Cannot find implementation or library stub for module named "b"
 a.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testErrorButDontIgnore1]
@@ -1888,7 +1888,7 @@ x = 1
 ==
 p/b.py: error: Ancestor package 'p' ignored
 p/b.py: note: (Using --follow-imports=error, submodule passed on command line)
-p/b.py:1: error: Cannot find implementation or library stub for module named 'z'
+p/b.py:1: error: Cannot find implementation or library stub for module named "z"
 p/b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testTurnPackageToModule]

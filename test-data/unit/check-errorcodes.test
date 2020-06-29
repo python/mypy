@@ -499,13 +499,13 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: Cannot find implementation or library stub for module named 'defusedxml'  [import] \
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import] \
                             # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-from nonexistent import foobar  # E: Cannot find implementation or library stub for module named 'nonexistent'  [import]
-import nonexistent2  # E: Cannot find implementation or library stub for module named 'nonexistent2'  [import]
-from nonexistent3 import *  # E: Cannot find implementation or library stub for module named 'nonexistent3'  [import]
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
+from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
 from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named 'pkg.bad2'  [import]
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]

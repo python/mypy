@@ -473,7 +473,7 @@ x = 3
 ==
 ==
 ==
-a.py:1: error: Cannot find implementation or library stub for module named 'b'
+a.py:1: error: Cannot find implementation or library stub for module named "b"
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIgnoreWorksWithMissingImports]
@@ -507,7 +507,7 @@ from xyz import x  # type: ignore
 [file xyz.py.3]
 x = str()
 [out]
-b.py:1: error: Cannot find implementation or library stub for module named 'xyz'
+b.py:1: error: Cannot find implementation or library stub for module named "xyz"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 ==
@@ -526,7 +526,7 @@ from xyz import x
 x = str()
 [out]
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'xyz'
+b.py:1: error: Cannot find implementation or library stub for module named "xyz"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -1809,7 +1809,7 @@ def f() -> Iterator[None]:
 [out]
 main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
-a.py:3: error: Cannot find implementation or library stub for module named 'b'
+a.py:3: error: Cannot find implementation or library stub for module named "b"
 a.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
@@ -1856,7 +1856,7 @@ def g() -> None:
 [out]
 a.py:11: error: Too many arguments for "h"
 ==
-a.py:10: error: Cannot find implementation or library stub for module named 'b'
+a.py:10: error: Cannot find implementation or library stub for module named "b"
 a.py:10: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:11: error: Too many arguments for "h"
@@ -1890,7 +1890,7 @@ def f(x: List[int]) -> Iterator[None]:
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:3: error: Cannot find implementation or library stub for module named 'b'
+a.py:3: error: Cannot find implementation or library stub for module named "b"
 a.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 ==
@@ -2509,10 +2509,10 @@ def g() -> None: pass
 [delete n.py.2]
 [out]
 ==
-main:2: error: Cannot find implementation or library stub for module named 'm'
+main:2: error: Cannot find implementation or library stub for module named "m"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:7: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-main:9: error: Cannot find implementation or library stub for module named 'n'
+main:9: error: Cannot find implementation or library stub for module named "n"
 
 [case testOverloadSpecialCase]
 from typing import overload
@@ -2538,10 +2538,10 @@ def g() -> None: pass
 [builtins fixtures/ops.pyi]
 [out]
 ==
-main:2: error: Cannot find implementation or library stub for module named 'm'
+main:2: error: Cannot find implementation or library stub for module named "m"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:12: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-main:14: error: Cannot find implementation or library stub for module named 'n'
+main:14: error: Cannot find implementation or library stub for module named "n"
 
 [case testOverloadClassmethodDisappears]
 from typing import overload

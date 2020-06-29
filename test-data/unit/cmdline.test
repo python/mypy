@@ -124,7 +124,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
+two/mod/__init__.py: error: Duplicate module named "mod" (also at 'one/mod/__init__.py')
 == Return code: 2
 
 [case promptsForgotInit]
@@ -136,7 +136,7 @@ two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__ini
 [file one/mod/a.py]
 #type: ignore
 [out]
-one/mod/a.py: error: Duplicate module named 'a' (also at 'a.py')
+one/mod/a.py: error: Duplicate module named "a" (also at 'a.py')
 one/mod/a.py: error: Are you missing an __init__.py?
 == Return code: 2
 
@@ -334,7 +334,7 @@ from baz import baz
 baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
-file.py:1: error: Cannot find implementation or library stub for module named 'no_stubs'
+file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
 file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
@@ -489,7 +489,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = False
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'missing'
+main.py:1: error: Cannot find implementation or library stub for module named "missing"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
@@ -567,9 +567,9 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'a.b'
+main.py:1: error: Cannot find implementation or library stub for module named "a.b"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
