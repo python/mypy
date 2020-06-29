@@ -235,12 +235,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_contains(self) -> None:
         self.assert_emit_binary_op(
             'in', self.b, self.o, self.d,
-            """int __tmp1 = PyDict_Contains(cpy_r_d, cpy_r_o);
-               if (__tmp1 < 0)
-                   cpy_r_r0 = 2;
-               else
-                   cpy_r_r0 = __tmp1;
-            """)
+            """cpy_r_r0 = PyDict_Contains(cpy_r_o, cpy_r_d);""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
