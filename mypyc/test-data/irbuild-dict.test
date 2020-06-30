@@ -86,18 +86,20 @@ def f(d):
     d :: dict
     r0 :: short_int
     r1 :: object
-    r2, r3, r4 :: bool
+    r2 :: int32
+    r3, r4, r5 :: bool
 L0:
     r0 = 4
     r1 = box(short_int, r0)
-    r2 = r1 in d :: dict
-    if r2 goto L1 else goto L2 :: bool
+    r2 = PyDict_Contains(d, r1)
+    r3 = truncate r2: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r3 = True
-    return r3
-L2:
-    r4 = False
+    r4 = True
     return r4
+L2:
+    r5 = False
+    return r5
 L3:
     unreachable
 
@@ -113,19 +115,21 @@ def f(d):
     d :: dict
     r0 :: short_int
     r1 :: object
-    r2, r3, r4, r5 :: bool
+    r2 :: int32
+    r3, r4, r5, r6 :: bool
 L0:
     r0 = 4
     r1 = box(short_int, r0)
-    r2 = r1 in d :: dict
-    r3 = !r2
-    if r3 goto L1 else goto L2 :: bool
+    r2 = PyDict_Contains(d, r1)
+    r3 = truncate r2: int32 to builtins.bool
+    r4 = !r3
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r4 = True
-    return r4
-L2:
-    r5 = False
+    r5 = True
     return r5
+L2:
+    r6 = False
+    return r6
 L3:
     unreachable
 
@@ -242,20 +246,21 @@ def print_dict_methods(d1, d2):
     r7 :: object
     v, r8 :: int
     r9 :: object
-    r10 :: bool
-    r11 :: None
-    r12, r13 :: bool
-    r14, r15 :: short_int
-    r16 :: int
-    r17 :: object
-    r18 :: tuple[bool, int, object, object]
-    r19 :: int
-    r20 :: bool
-    r21, r22 :: object
-    r23, r24, k :: int
-    r25, r26, r27, r28, r29 :: object
-    r30, r31, r32 :: bool
-    r33 :: None
+    r10 :: int32
+    r11 :: bool
+    r12 :: None
+    r13, r14 :: bool
+    r15, r16 :: short_int
+    r17 :: int
+    r18 :: object
+    r19 :: tuple[bool, int, object, object]
+    r20 :: int
+    r21 :: bool
+    r22, r23 :: object
+    r24, r25, k :: int
+    r26, r27, r28, r29, r30 :: object
+    r31, r32, r33 :: bool
+    r34 :: None
 L0:
     r0 = 0
     r1 = r0
@@ -272,47 +277,48 @@ L2:
     r8 = unbox(int, r7)
     v = r8
     r9 = box(int, v)
-    r10 = r9 in d2 :: dict
-    if r10 goto L3 else goto L4 :: bool
+    r10 = PyDict_Contains(d2, r9)
+    r11 = truncate r10: int32 to builtins.bool
+    if r11 goto L3 else goto L4 :: bool
 L3:
-    r11 = None
-    return r11
+    r12 = None
+    return r12
 L4:
 L5:
-    r12 = assert size(d1) == r2
+    r13 = assert size(d1) == r2
     goto L1
 L6:
-    r13 = no_err_occurred
+    r14 = no_err_occurred
 L7:
-    r14 = 0
-    r15 = r14
-    r16 = len d2 :: dict
-    r17 = item_iter d2 :: dict
+    r15 = 0
+    r16 = r15
+    r17 = len d2 :: dict
+    r18 = item_iter d2 :: dict
 L8:
-    r18 = next_item r17, offset=r15
-    r19 = r18[1]
-    r15 = r19
-    r20 = r18[0]
-    if r20 goto L9 else goto L11 :: bool
+    r19 = next_item r18, offset=r16
+    r20 = r19[1]
+    r16 = r20
+    r21 = r19[0]
+    if r21 goto L9 else goto L11 :: bool
 L9:
-    r21 = r18[2]
-    r22 = r18[3]
-    r23 = unbox(int, r21)
+    r22 = r19[2]
+    r23 = r19[3]
     r24 = unbox(int, r22)
-    k = r23
-    v = r24
-    r25 = box(int, k)
-    r26 = d2[r25] :: dict
-    r27 = box(int, v)
-    r28 = r26 += r27
-    r29 = box(int, k)
-    r30 = d2.__setitem__(r29, r28) :: dict
+    r25 = unbox(int, r23)
+    k = r24
+    v = r25
+    r26 = box(int, k)
+    r27 = d2[r26] :: dict
+    r28 = box(int, v)
+    r29 = r27 += r28
+    r30 = box(int, k)
+    r31 = d2.__setitem__(r30, r29) :: dict
 L10:
-    r31 = assert size(d2) == r16
+    r32 = assert size(d2) == r17
     goto L8
 L11:
-    r32 = no_err_occurred
+    r33 = no_err_occurred
 L12:
-    r33 = None
-    return r33
+    r34 = None
+    return r34
 

@@ -697,6 +697,10 @@ class LowLevelIRBuilder:
             arg = args[i]
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
+        # reorder args if necessary
+        if desc.ordering is not None:
+            assert desc.var_arg_type is None
+            coerced = [coerced[i] for i in desc.ordering]
         # coerce any var_arg
         var_arg_idx = -1
         if desc.var_arg_type is not None:

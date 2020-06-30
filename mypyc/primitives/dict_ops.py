@@ -2,16 +2,17 @@
 
 from typing import List
 
-from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER, ERR_NEG_INT
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
-    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive
+    list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive,
+    c_int_rprimitive
 )
 
 from mypyc.primitives.registry import (
-    name_ref_op, method_op, binary_op, func_op, custom_op,
-    simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
-    name_emit, c_custom_op, c_method_op, c_function_op
+    name_ref_op, method_op, func_op, custom_op,
+    simple_emit, call_emit, call_negative_bool_emit,
+    name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
 )
 
 
@@ -39,12 +40,14 @@ dict_set_item_op = method_op(
     emit=call_negative_bool_emit('CPyDict_SetItem'))
 
 # key in dict
-binary_op(op='in',
-          arg_types=[object_rprimitive, dict_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_MAGIC,
-          format_str='{dest} = {args[0]} in {args[1]} :: dict',
-          emit=negative_int_emit('{dest} = PyDict_Contains({args[1]}, {args[0]});'))
+c_binary_op(
+    name='in',
+    arg_types=[object_rprimitive, dict_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyDict_Contains',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0])
 
 # dict1.update(dict2)
 dict_update_op = method_op(
