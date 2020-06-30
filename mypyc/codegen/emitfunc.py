@@ -104,15 +104,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         cond = ''
         # for this variant we do not need to generate comparison
         # since it will always be false
-        if op.op == Branch.ALWAYS_FALSE:
-            # this should be in a helper
-            self.emit_traceback(op)
-            # TODO: ignore the op.false's generation
-            self.emit_lines(
-                'goto %s;' % self.label(op.true)
-            )
-            return
-        elif op.op == Branch.BOOL_EXPR:
+        if op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
         elif op.op == Branch.NEG_INT_EXPR:
