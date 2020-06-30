@@ -102,7 +102,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         neg = '!' if op.negated else ''
 
         cond = ''
-        if op.op == Branch.BOOL_EXPR:
+        # for this variant we do not need to generate comparison
+        # since it will always be false
+        if op.op == Branch.ALWAYS_FALSE:
+            # this should be in a helper
+            self.emit_traceback(op)
+            # TODO: ignore the op.false's generation
+            self.emit_lines(
+                'goto %s;' % self.label(op.true)
+            )
+            return
+        elif op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
         elif op.op == Branch.NEG_INT_EXPR:
@@ -130,15 +140,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
         self.emit_line('if ({}) {{'.format(cond))
 
-        if op.traceback_entry is not None:
-            globals_static = self.emitter.static_name('globals', self.module_name)
-            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                op.traceback_entry[1],
-                globals_static))
-            if DEBUG_ERRORS:
-                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+        self.emit_traceback(op)
 
         self.emit_lines(
             'goto %s;' % self.label(op.true),
@@ -472,3 +474,14 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def emit_declaration(self, line: str) -> None:
         self.declarations.emit_line(line)
+
+    def emit_traceback(self, op: Branch) -> None:
+        if op.traceback_entry is not None:
+            globals_static = self.emitter.static_name('globals', self.module_name)
+            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
+                self.source_path.replace("\\", "\\\\"),
+                op.traceback_entry[0],
+                op.traceback_entry[1],
+                globals_static))
+            if DEBUG_ERRORS:
+                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')

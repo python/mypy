@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from mypyc.ir.ops import (
     BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, ERR_NEG_INT, NO_TRACEBACK_LINE_NO,
+    ERR_FALSE, ERR_NEG_INT, ERR_ALWAYS, NO_TRACEBACK_LINE_NO,
 )
 from mypyc.ir.func_ir import FuncIR
 
@@ -77,12 +77,16 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                 elif op.error_kind == ERR_NEG_INT:
                     variant = Branch.NEG_INT_EXPR
                     negated = False
+                elif op.error_kind == ERR_ALWAYS:
+                    variant = Branch.ALWAYS_FALSE
+                    negated = False
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind
 
                 # Void ops can't generate errors since error is always
                 # indicated by a special value stored in a register.
-                assert not op.is_void, "void op generating errors?"
+                if op.error_kind != ERR_ALWAYS:
+                    assert not op.is_void, "void op generating errors?"
 
                 branch = Branch(op,
                                 true_label=error_label,

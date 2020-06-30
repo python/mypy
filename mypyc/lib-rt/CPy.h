@@ -1393,16 +1393,18 @@ static void CPy_RestoreExcInfo(tuple_T3OOO info) {
     PyErr_SetExcInfo(_CPy_FromDummy(info.f0), _CPy_FromDummy(info.f1), _CPy_FromDummy(info.f2));
 }
 
-static void CPy_Raise(PyObject *exc) {
+// TODO: hack for now
+static bool CPy_Raise(PyObject *exc) {
     if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
         PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);
         if (!obj)
-            return;
+            return false;
         PyErr_SetObject(exc, obj);
         Py_DECREF(obj);
     } else {
         PyErr_SetObject((PyObject *)Py_TYPE(exc), exc);
     }
+    return true;
 }
 
 static void CPy_Reraise(void) {
