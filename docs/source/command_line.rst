@@ -841,6 +841,26 @@ format into the specified directory.
 Miscellaneous
 *************
 
+.. option:: --install-types
+
+    This flag causes mypy to install known missing stub packages for
+    third-party libraries using pip.  It will display the pip command
+    line to run, and expects a confirmation before installing
+    anything.
+
+    If you use this option without providing any files or modules to
+    type check, mypy will install stub packages suggested during the
+    previous mypy run. If there are files or modules to type check,
+    mypy first type checks those, and proposes to install missing
+    stubs at the end of the run, but only if any missing modules were
+    detected.
+
+    .. note::
+
+        This is new in mypy 0.800. Previous mypy versions included a
+        selection of third-party packages, instead of having them
+        installed separately.
+
 .. option:: --junit-xml JUNIT_XML
 
     Causes mypy to generate a JUnit XML test result document with

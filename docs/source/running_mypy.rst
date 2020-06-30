@@ -127,17 +127,21 @@ The third outcome is what mypy will do in the ideal case. The following
 sections will discuss what to do in the other two cases.
 
 .. _ignore-missing-imports:
+.. _fix-missing-imports:
 
 Missing imports
 ***************
 
-When you import a module, mypy may report that it is unable to
-follow the import.
+When you import a module, mypy may report that it is unable to follow
+the import.
 
-This can cause errors that look like the following::
+This can cause errors that look like the following:
 
-    main.py:1: error: Skipping analyzing 'django': found module but no type hints or library stubs
-    main.py:2: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.8)
+    main.py:2: error: Skipping analyzing 'django': found module but no type hints or library stubs
+    main.py:3: error: Cannot find implementation or library stub for module named "this_module_does_not_exist"
 
 If you get any of these errors on an import, mypy will assume the type of that
 module is ``Any``, the dynamic type. This means attempting to access any
@@ -152,6 +156,36 @@ attribute of the module will automatically succeed:
     x = does_not_exist.foobar()
 
 The next sections describe what each error means and recommended next steps.
+
+Library stubs not installed
+---------------------------
+
+If mypy can't find stubs for a third-party library, and it knows that stubs exist for
+the library, you will get a message like this:
+
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+    main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+    main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
+
+You can resolve the issue by running the suggested pip command or
+commands. Alternatively, you can use :option:`--install-types <mypy
+--install-types>` to install all known missing stubs:
+
+.. code-block:: text
+
+    mypy --install-types
+
+This installs any stub packages that were suggested in the previous
+mypy run. You can also use your normal mypy command line with the
+extra :option:`--install-types <mypy --install-types>` option to
+install missing stubs at the end of the run (if any were found).
+
+You can also get this message if the stubs only support Python 3 and
+your target Python version is Python 2, or vice versa. In this case
+follow instructions in
+:ref:`missing-type-hints-for-third-party-library`.
 
 .. _missing-type-hints-for-third-party-library:
 
