@@ -12,10 +12,11 @@ only be placed at the end of a basic block.
 from typing import List, Optional
 
 from mypyc.ir.ops import (
-    BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, ERR_NEVER, ERR_MAGIC,
+    BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, LoadInt, ERR_NEVER, ERR_MAGIC,
     ERR_FALSE, ERR_NEG_INT, ERR_ALWAYS, NO_TRACEBACK_LINE_NO,
 )
 from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.rtypes import bool_rprimitive
 
 
 def insert_exception_handling(ir: FuncIR) -> None:
@@ -60,6 +61,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
         block.error_handler = None
 
         for op in ops:
+            target = op
             cur_block.ops.append(op)
             if isinstance(op, RegisterOp) and op.error_kind != ERR_NEVER:
                 # Split
@@ -78,8 +80,11 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     variant = Branch.NEG_INT_EXPR
                     negated = False
                 elif op.error_kind == ERR_ALWAYS:
-                    variant = Branch.ALWAYS_FALSE
-                    negated = False
+                    variant = Branch.BOOL_EXPR
+                    negated = True
+                    tmp = LoadInt(0, rtype=bool_rprimitive)
+                    cur_block.ops.append(tmp)
+                    target = tmp
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind
 
@@ -88,7 +93,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                 if op.error_kind != ERR_ALWAYS:
                     assert not op.is_void, "void op generating errors?"
 
-                branch = Branch(op,
+                branch = Branch(target,
                                 true_label=error_label,
                                 false_label=new_block,
                                 op=variant,

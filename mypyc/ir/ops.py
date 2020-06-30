@@ -418,13 +418,11 @@ class Branch(ControlOp):
     BOOL_EXPR = 100  # type: Final
     IS_ERROR = 101  # type: Final
     NEG_INT_EXPR = 102  # type: Final
-    ALWAYS_FALSE = 103  # type: Final
 
     op_names = {
         BOOL_EXPR: ('%r', 'bool'),
         IS_ERROR: ('is_error(%r)', ''),
         NEG_INT_EXPR: ('%r < 0', ''),
-        ALWAYS_FALSE: ('always_false(%r)', ''),
     }  # type: Final
 
     def __init__(self,
