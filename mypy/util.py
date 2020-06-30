@@ -541,7 +541,7 @@ class FancyFormatter:
             self.RED = '\033[91m'
             self.YELLOW = '\033[93m'
             self.NORMAL = '\033[0m'
-            self.DIM = '\033[2m'
+            self.DIM = parse_gray_color(curses.tigetstr('cup'))
             return True
         return False
 
@@ -567,6 +567,7 @@ class FancyFormatter:
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
         set_eseq = curses.tigetstr('cup')
+
         if not (bold and under and set_color and set_eseq):
             return False
 
