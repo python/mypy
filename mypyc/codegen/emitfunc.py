@@ -102,8 +102,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         neg = '!' if op.negated else ''
 
         cond = ''
-        # for this variant we do not need to generate comparison
-        # since it will always be false
         if op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
@@ -416,7 +414,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emitter.emit_line('{} = 0;'.format(self.reg(op)))
 
     def visit_call_c(self, op: CallC) -> None:
-        dest = self.get_dest_assign(op)
+        if op.is_void:
+            dest = ''
+        else:
+            dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
         self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
 
