@@ -12,8 +12,7 @@ from mypyc.primitives.registry import (
 # TODO: Making this raise conditionally is kind of hokey.
 raise_exception_op = c_custom_op(
     arg_types=[object_rprimitive],
-    # TODO: this should be void
-    return_type=bool_rprimitive,
+    return_type=void_rtype,
     c_function_name='CPy_Raise',
     error_kind=ERR_ALWAYS)
 

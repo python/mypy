@@ -614,8 +614,7 @@ def complex_msg(x, s):
     r4 :: object
     r5 :: str
     r6, r7 :: object
-    r8 :: bool
-    r9 :: None
+    r8 :: None
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
@@ -629,11 +628,11 @@ L2:
     r5 = unicode_3 :: static  ('AssertionError')
     r6 = getattr r4, r5
     r7 = py_call(r6, s)
-    raise_exception(r7); r8 = 0
+    CPy_Raise(r7)
     unreachable
 L3:
-    r9 = None
-    return r9
+    r8 = None
+    return r8
 
 [case testDelList]
 def delList() -> None:
