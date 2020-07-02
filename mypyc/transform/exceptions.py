@@ -83,6 +83,8 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                 elif op.error_kind == ERR_ALWAYS:
                     variant = Branch.BOOL_EXPR
                     negated = True
+                    # this is a hack to represent the always fail
+                    # semantics, using a temporary bool with value false
                     tmp = LoadInt(0, rtype=bool_rprimitive)
                     cur_block.ops.append(tmp)
                     env.add_op(tmp)

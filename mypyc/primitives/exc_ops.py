@@ -8,8 +8,6 @@ from mypyc.primitives.registry import (
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
 # that the argument is an exception object, and raise it.
-#
-# TODO: Making this raise conditionally is kind of hokey.
 raise_exception_op = c_custom_op(
     arg_types=[object_rprimitive],
     return_type=void_rtype,
