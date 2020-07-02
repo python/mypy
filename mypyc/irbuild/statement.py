@@ -243,7 +243,7 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
         return
 
     exc = builder.accept(s.expr)
-    builder.primitive_op(raise_exception_op, [exc], s.line)
+    builder.call_c(raise_exception_op, [exc], s.line)
     builder.add(Unreachable())
 
 
@@ -614,7 +614,7 @@ def transform_assert_stmt(builder: IRBuilder, a: AssertStmt) -> None:
         message = builder.accept(a.msg)
         exc_type = builder.load_module_attr_by_fullname('builtins.AssertionError', a.line)
         exc = builder.py_call(exc_type, [message], a.line)
-        builder.primitive_op(raise_exception_op, [exc], a.line)
+        builder.call_c(raise_exception_op, [exc], a.line)
     builder.add(Unreachable())
     builder.activate_block(ok_block)
 

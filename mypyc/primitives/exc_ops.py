@@ -1,21 +1,18 @@
 """Exception-related primitive ops."""
 
-from mypyc.ir.ops import ERR_NEVER, ERR_FALSE
+from mypyc.ir.ops import ERR_NEVER, ERR_FALSE, ERR_ALWAYS
 from mypyc.ir.rtypes import bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple
 from mypyc.primitives.registry import (
-    simple_emit, call_emit, call_void_emit, call_and_fail_emit, custom_op,
+    simple_emit, call_emit, call_void_emit, call_and_fail_emit, custom_op, c_custom_op
 )
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
 # that the argument is an exception object, and raise it.
-#
-# TODO: Making this raise conditionally is kind of hokey.
-raise_exception_op = custom_op(
+raise_exception_op = c_custom_op(
     arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='raise_exception({args[0]}); {dest} = 0',
-    emit=call_and_fail_emit('CPy_Raise'))
+    return_type=void_rtype,
+    c_function_name='CPy_Raise',
+    error_kind=ERR_ALWAYS)
 
 # Raise StopIteration exception with the specified value (which can be NULL).
 set_stop_iteration_value = custom_op(

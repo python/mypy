@@ -277,14 +277,13 @@ def a(b):
     r1 :: object
     r2 :: str
     r3, r4 :: object
-    r5 :: bool
-    r6, r7, r8 :: tuple[object, object, object]
-    r9 :: str
-    r10 :: object
-    r11 :: str
-    r12, r13 :: object
-    r14, r15 :: bool
-    r16 :: None
+    r5, r6, r7 :: tuple[object, object, object]
+    r8 :: str
+    r9 :: object
+    r10 :: str
+    r11, r12 :: object
+    r13, r14 :: bool
+    r15 :: None
 L0:
 L1:
     if b goto L2 else goto L3 :: bool
@@ -294,39 +293,39 @@ L2:
     r2 = unicode_2 :: static  ('Exception')
     r3 = getattr r1, r2
     r4 = py_call(r3, r0)
-    raise_exception(r4); r5 = 0
+    CPy_Raise(r4)
     unreachable
 L3:
 L4:
 L5:
-    r7 = <error> :: tuple[object, object, object]
-    r6 = r7
+    r6 = <error> :: tuple[object, object, object]
+    r5 = r6
     goto L7
 L6: (handler for L1, L2, L3)
-    r8 = error_catch
-    r6 = r8
+    r7 = error_catch
+    r5 = r7
 L7:
-    r9 = unicode_3 :: static  ('finally')
-    r10 = builtins :: module
-    r11 = unicode_4 :: static  ('print')
-    r12 = getattr r10, r11
-    r13 = py_call(r12, r9)
-    if is_error(r6) goto L9 else goto L8
+    r8 = unicode_3 :: static  ('finally')
+    r9 = builtins :: module
+    r10 = unicode_4 :: static  ('print')
+    r11 = getattr r9, r10
+    r12 = py_call(r11, r8)
+    if is_error(r5) goto L9 else goto L8
 L8:
-    reraise_exc; r14 = 0
+    reraise_exc; r13 = 0
     unreachable
 L9:
     goto L13
 L10: (handler for L7, L8)
-    if is_error(r6) goto L12 else goto L11
+    if is_error(r5) goto L12 else goto L11
 L11:
-    restore_exc_info r6
+    restore_exc_info r5
 L12:
-    r15 = keep_propagating
+    r14 = keep_propagating
     unreachable
 L13:
-    r16 = None
-    return r16
+    r15 = None
+    return r15
 
 [case testWith]
 from typing import Any

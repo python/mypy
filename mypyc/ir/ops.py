@@ -295,6 +295,8 @@ ERR_MAGIC = 1  # type: Final
 ERR_FALSE = 2  # type: Final
 # Generates negative integer on exception
 ERR_NEG_INT = 3  # type: Final
+# Always fails
+ERR_ALWAYS = 4  # type: Final
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -1167,7 +1169,10 @@ class CallC(RegisterOp):
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)
-        return env.format('%r = %s(%s)', self, self.function_name, args_str)
+        if self.is_void:
+            return env.format('%s(%s)', self.function_name, args_str)
+        else:
+            return env.format('%r = %s(%s)', self, self.function_name, args_str)
 
     def sources(self) -> List[Value]:
         return self.args

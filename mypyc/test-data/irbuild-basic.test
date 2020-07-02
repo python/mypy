@@ -1322,24 +1322,22 @@ def foo():
     r0 :: object
     r1 :: str
     r2, r3 :: object
-    r4 :: bool
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('Exception')
     r2 = getattr r0, r1
     r3 = py_call(r2)
-    raise_exception(r3); r4 = 0
+    CPy_Raise(r3)
     unreachable
 def bar():
     r0 :: object
     r1 :: str
     r2 :: object
-    r3 :: bool
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('Exception')
     r2 = getattr r0, r1
-    raise_exception(r2); r3 = 0
+    CPy_Raise(r2)
     unreachable
 
 [case testModuleTopLevel_toplevel]
