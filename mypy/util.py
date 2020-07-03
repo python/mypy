@@ -534,7 +534,7 @@ class FancyFormatter:
             self.RED = '\033[91m'
             self.YELLOW = '\033[93m'
             self.NORMAL = '\033[0m'
-            self.DIM = parse_gray_color(curses.tigetstr('cup'))
+            self.DIM = '\033[2m'
             return True
         return False
 
