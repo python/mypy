@@ -854,7 +854,7 @@ class MessageBuilder:
                 suffix = ', not {}'.format(format_type(typ))
             self.fail(
                 'Argument after ** must be a mapping{}'.format(suffix),
-                context)
+                context, code=codes.ARG_TYPE)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -867,7 +867,8 @@ class MessageBuilder:
             type_str = 'a non-type instance'
         else:
             type_str = format_type(actual)
-        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
+        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context,
+                  code=codes.ARG_TYPE)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context,
@@ -1188,7 +1189,8 @@ class MessageBuilder:
             expected: Type,
             context: Context) -> None:
         msg = 'Argument 2 to "setdefault" of "TypedDict" has incompatible type {}; expected {}'
-        self.fail(msg.format(format_type(default), format_type(expected)), context)
+        self.fail(msg.format(format_type(default), format_type(expected)), context,
+                  code=codes.ARG_TYPE)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)

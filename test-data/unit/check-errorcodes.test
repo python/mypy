@@ -748,3 +748,26 @@ def f() -> Optional[C]:
 
 f(  # type: ignore[operator]
 ) + C()
+
+[case testErrorCodeSpecialArgTypeErrors]
+from typing import TypedDict
+
+class C(TypedDict):
+    x: int
+
+c: C
+c.setdefault('x', '1')  # type: ignore[arg-type]
+
+class A:
+    pass
+
+class B(A):
+    def f(self) -> None:
+        super(1, self).foo()  # type: ignore[arg-type]
+
+def f(**x: int) -> None:
+    pass
+
+f(**1)  # type: ignore[arg-type]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
