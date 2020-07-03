@@ -180,7 +180,8 @@ setup(name='mypy',
       ext_modules=ext_modules,
       packages=[
           'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
-          'mypyc', 'mypyc.test',
+          'mypyc', 'mypyc.test', 'mypyc.codegen', 'mypyc.ir', 'mypyc.irbuild',
+          'mypyc.primitives', 'mypyc.transform'
       ],
       package_data={'mypy': package_data},
       scripts=['scripts/mypyc'],
