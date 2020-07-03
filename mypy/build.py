@@ -2548,16 +2548,17 @@ def log_configuration(manager: BuildManager) -> None:
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
 
-    # Complete list of searched paths can get very long, put them under TRACE
+    manager.log("Module Search Paths:")
     for path_type, paths in manager.search_paths._asdict().items():
         if not paths:
-            manager.trace("No %s" % path_type)
+            manager.log("    %s:" % path_type)
+            manager.log("        (empty)")
             continue
 
-        manager.trace("%s:" % path_type)
+        manager.log("    %s:" % path_type)
 
         for pth in paths:
-            manager.trace("    %s" % pth)
+            manager.log("        %s" % pth)
 
 
 # The driver
