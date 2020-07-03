@@ -1421,3 +1421,40 @@ t6: Tuple[int, int, int, int, int, int, int, int, int, int, int, int] = (1, 2, 3
                                                                     # E: Incompatible types in assignment (expression has type Tuple[int, int, ... <15 more items>], variable has type Tuple[int, int, ... <10 more items>])
 
 [builtins fixtures/tuple.pyi]
+
+[case testTupleWithStarExpr]
+from typing import Tuple, List
+points = (1, "test")  # type: Tuple[int, str]
+x, y, z = *points, 0
+reveal_type(x) # N: Revealed type is 'builtins.int'
+reveal_type(y) # N: Revealed type is 'builtins.str'
+reveal_type(z) # N: Revealed type is 'builtins.int'
+
+points2 = [1,2]
+x2, y2, z2= *points2, "test"
+
+reveal_type(x2) # N: Revealed type is 'builtins.int*'
+reveal_type(y2) # N: Revealed type is 'builtins.int*'
+reveal_type(z2) # N: Revealed type is 'builtins.str'
+
+x3, x4, y3, y4, z3 = *points, *points2, "test"
+
+reveal_type(x3) # N: Revealed type is 'builtins.int'
+reveal_type(x4) # N: Revealed type is 'builtins.str'
+reveal_type(y3) # N: Revealed type is 'builtins.int*'
+reveal_type(y4) # N: Revealed type is 'builtins.int*'
+reveal_type(z3) # N: Revealed type is 'builtins.str'
+
+x5, x6, y5, y6, z4 = *points2, *points2, "test"
+
+reveal_type(x5) # N: Revealed type is 'builtins.int*'
+reveal_type(x6) # N: Revealed type is 'builtins.int*'
+reveal_type(y5) # N: Revealed type is 'builtins.int*'
+reveal_type(y6) # N: Revealed type is 'builtins.int*'
+reveal_type(z4) # N: Revealed type is 'builtins.str'
+
+points3 = ["test1", "test2"]
+x7, x8, y7, y8 = *points2, *points3 # E: Contiguous iterable with same type expected
+
+x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same type expected
+[builtins fixtures/tuple.pyi]

@@ -2482,8 +2482,47 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
-
-            rvalues = rvalue.items
+            rvalues = []  # type: List[Expression]
+            iterable_type = None  # type: Optional[Type]
+            last_idx = None  # type: Optional[int]
+            for idx_rval, rval in enumerate(rvalue.items):
+                if isinstance(rval, StarExpr):
+                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    if isinstance(typs, TupleType):
+                        rvalues.extend([TempNode(typ) for typ in typs.items])
+                    elif self.type_is_iterable(typs) and isinstance(typs, Instance):
+                        if (iterable_type is not None
+                                and iterable_type != self.iterable_item_type(typs)):
+                            self.fail("Contiguous iterable with same type expected", context)
+                        else:
+                            if last_idx is None or last_idx + 1 == idx_rval:
+                                rvalues.append(rval)
+                                last_idx = idx_rval
+                                iterable_type = self.iterable_item_type(typs)
+                            else:
+                                self.fail("Contiguous iterable with same type expected", context)
+                    else:
+                        self.fail("Invalid type '{}' for *expr (iterable expected)".format(typs),
+                             context)
+                else:
+                    rvalues.append(rval)
+            iterable_start = None  # type: Optional[int]
+            iterable_end = None  # type: Optional[int]
+            for i, rval in enumerate(rvalues):
+                if isinstance(rval, StarExpr):
+                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    if self.type_is_iterable(typs) and isinstance(typs, Instance):
+                        if iterable_start is None:
+                            iterable_start = i
+                        iterable_end = i
+            if (iterable_start is not None
+                    and iterable_end is not None
+                    and iterable_type is not None):
+                iterable_num = iterable_end - iterable_start + 1
+                rvalue_needed = len(lvalues) - (len(rvalues) - iterable_num)
+                if rvalue_needed > 0:
+                    rvalues = rvalues[0: iterable_start] + [TempNode(iterable_type)
+                        for i in range(rvalue_needed)] + rvalues[iterable_end + 1:]
 
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
                 star_index = next((i for i, lv in enumerate(lvalues) if
