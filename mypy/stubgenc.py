@@ -18,6 +18,7 @@ from mypy.stubdoc import (
 )
 
 
+# Members of the typing module to consider for importing by default.
 _DEFAULT_TYPING_IMPORTS = (
     'Any'
     'Dict',
@@ -28,7 +29,6 @@ _DEFAULT_TYPING_IMPORTS = (
     'Tuple',
     'Union',
 )
-"""Members of the typing module to consider for importing by default."""
 
 
 def generate_stub_for_c_module(module_name: str,
