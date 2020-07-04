@@ -1,4 +1,4 @@
-# Test cases for strings (compile and run)
+# Test cases for lists (compile and run)
 
 [case testListPlusEquals]
 from typing import Any

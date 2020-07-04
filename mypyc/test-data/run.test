@@ -95,31 +95,6 @@ with assertRaises(NameError):
 [out]
 lol
 
-[case testImports]
-import testmodule
-
-def f(x: int) -> int:
-    return testmodule.factorial(5)
-def g(x: int) -> int:
-    from welp import foo
-    return foo(x)
-[file testmodule.py]
-def factorial(x: int) -> int:
-    if x == 0:
-        return 1
-    else:
-        return x * factorial(x-1)
-[file welp.py]
-def foo(x: int) -> int:
-    return x
-[file driver.py]
-from native import f, g
-print(f(5))
-print(g(5))
-[out]
-120
-5
-
 [case testBuiltins]
 y = 10
 def f(x: int) -> None:
@@ -133,20 +108,6 @@ from native import f
 f(5)
 [out]
 5
-
-[case testImportMissing]
-# The unchecked module is configured by the test harness to not be
-# picked up by mypy, so we can test that we do that right thing when
-# calling library modules without stubs.
-import unchecked  # type: ignore
-import unchecked as lol  # type: ignore
-assert unchecked.x == 10
-assert lol.x == 10
-[file unchecked.py]
-x = 10
-
-[file driver.py]
-import native
 
 [case testOptional]
 from typing import Optional
@@ -173,18 +134,6 @@ assert f(None) is None
 assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
-
-[case testFromImport]
-from testmodule import g
-
-def f(x: int) -> int:
-    return g(x)
-[file testmodule.py]
-def g(x: int) -> int:
-    return x + 1
-[file driver.py]
-from native import f
-assert f(1) == 2
 
 [case testSets]
 from typing import Set, List
@@ -1393,15 +1342,6 @@ assert call_all(mixed_110) == 1
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
-[case testAssignModule]
-import a
-assert a.x == 20
-a.x = 10
-[file a.py]
-x = 20
-[file driver.py]
-import native
-
 [case testNoneStuff]
 from typing import Optional
 class A:
@@ -1575,31 +1515,3 @@ from native import foo
 
 assert foo(None) == None
 assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
-
-[case testReexport]
-# Test that we properly handle accessing values that have been reexported
-import a
-def f(x: int) -> int:
-    return a.g(x) + a.foo + a.b.foo
-
-whatever = a.A()
-
-[file a.py]
-from b import g as g, A as A, foo as foo
-import b
-
-[file b.py]
-def g(x: int) -> int:
-    return x + 1
-
-class A:
-    pass
-
-foo = 20
-
-[file driver.py]
-from native import f, whatever
-import b
-
-assert f(20) == 61
-assert isinstance(whatever, b.A)
