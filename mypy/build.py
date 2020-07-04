@@ -2811,11 +2811,16 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
 
                         if seen_state is None:
                             if os.path.isabs(newst_path):
-                                newst_path = os.path.relpath(newst_path)
+                                try:
+                                    newst_path = os.path.relpath(newst_path)
+                                except ValueError:
+                                    # Ignore when newst_path does not start with os.curdir
+                                    pass
+                                else:
+                                    seen_state = seen_files.get(newst_path)
                             else:
                                 newst_path = os.path.abspath(newst_path)
-
-                            seen_state = seen_files.get(newst_path)
+                                seen_state = seen_files.get(newst_path)
 
                         if seen_state is not None:
                             manager.errors.report(
