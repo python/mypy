@@ -221,7 +221,7 @@ class TestRun(MypycDataSuite):
                 assert False, "Compile error"
         except CompileError as e:
             for line in e.messages:
-                print(line)
+                print(fix_native_line_number(line, testcase.file, testcase.line))
             assert False, 'Compile error'
 
         # Check that serialization works on this IR. (Only on the first
@@ -290,6 +290,8 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output (step {})'.format(incremental_step)
                 expected = testcase.output2.get(incremental_step, [])
 
+            outlines = [fix_native_line_number(line, testcase.file, testcase.line)
+                        for line in outlines]
             assert_test_output(testcase, outlines, msg, expected)
 
         if incremental_step > 1 and options.incremental:
@@ -339,3 +341,28 @@ class TestRunSeparate(TestRun):
         'run-multimodule.test',
         'run-mypy-sim.test',
     ]
+
+
+def fix_native_line_number(message: str, fnam: str, delta: int) -> None:
+    """Update code locations in test case output to point to the .test file.
+
+    The description of the test case is written to native.py, and line numbers
+    in test case output often are relative to native.py. This translates the
+    line numbers to be relative to the .test file that contains the test case
+    description, and also updates the file name to the .test file name.
+
+    Args:
+        message: message to update
+        fnam: path of the .test file
+        delta: line number of the beginning of the test case in the .test file
+
+    Returns updated message (or original message if we couldn't find anything).
+    """
+    fnam = os.path.basename(fnam)
+    message = re.sub(r'native\.py:([0-9]+):',
+                     lambda m: '%s:%d:' % (fnam, int(m.group(1)) + delta),
+                     message)
+    message = re.sub(r'"native.py", line ([0-9]+),',
+                     lambda m: '"%s", line %d,' % (fnam, int(m.group(1)) + delta),
+                     message)
+    return message
