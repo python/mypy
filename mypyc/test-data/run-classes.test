@@ -390,29 +390,6 @@ assert c.a == 13
 assert type(c) == C
 assert not hasattr(c, 'b')
 
-[case testListOfUserDefinedClass]
-class C:
-    x: int
-
-def f() -> int:
-    c = C()
-    c.x = 5
-    a = [c]
-    d = a[0]
-    return d.x + 1
-
-def g() -> int:
-    a = [C()]
-    a[0].x = 3
-    return a[0].x + 4
-[file driver.py]
-from native import f, g
-print(f())
-print(g())
-[out]
-6
-7
-
 [case testCastUserClass]
 from typing import List
 

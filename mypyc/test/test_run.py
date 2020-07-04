@@ -34,6 +34,7 @@ files = [
     'run.test',
     'run-strings.test',
     'run-tuples.test',
+    'run-lists.test',
     'run-classes.test',
     'run-traits.test',
     'run-multimodule.test',
