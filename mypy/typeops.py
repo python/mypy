@@ -5,8 +5,9 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar
+from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any
 from typing_extensions import Type as TypingType
+import itertools
 import sys
 
 from mypy.types import (
@@ -315,7 +316,8 @@ def callable_corresponding_argument(typ: CallableType,
 
 def make_simplified_union(items: Sequence[Type],
                           line: int = -1, column: int = -1,
-                          *, keep_erased: bool = False) -> ProperType:
+                          *, keep_erased: bool = False,
+                          contract_literals: bool = True) -> ProperType:
     """Build union type with redundant union items removed.
 
     If only a single item remains, this may return a non-union type.
@@ -377,6 +379,11 @@ def make_simplified_union(items: Sequence[Type],
                 items[i] = true_or_false(ti)
 
     simplified_set = [items[i] for i in range(len(items)) if i not in removed]
+
+    # If more than one literal exists in the union, try to simplify
+    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+        simplified_set = try_contracting_literals_in_union(simplified_set)
+
     return UnionType.make_union(simplified_set, line, column)
 
 
@@ -684,7 +691,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
 
     if isinstance(typ, UnionType):
         items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
-        return make_simplified_union(items)
+        return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname == target_fullname:
         new_items = []
         for name, symbol in typ.type.names.items():
@@ -702,9 +709,37 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
         # only using CPython, but we might as well for the sake of full correctness.
         if sys.version_info < (3, 7):
             new_items.sort(key=lambda lit: lit.value)
-        return make_simplified_union(new_items)
+        return make_simplified_union(new_items, contract_literals=False)
     else:
         return typ
+
+
+def try_contracting_literals_in_union(types: List[ProperType]) -> List[ProperType]:
+    """Contracts any literal types back into a sum type if possible.
+
+    Will replace the first instance of the literal with the sum type and
+    remove all others.
+
+    if we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
+    this function will return Color.
+    """
+    sum_types = {}  # type: Dict[str, Tuple[Set[Any], List[int]]]
+    marked_for_deletion = set()
+    for idx, typ in enumerate(types):
+        if isinstance(typ, LiteralType):
+            fullname = typ.fallback.type.fullname
+            if typ.fallback.type.is_enum:
+                if fullname not in sum_types:
+                    sum_types[fullname] = (set(get_enum_values(typ.fallback)), [])
+                literals, indexes = sum_types[fullname]
+                literals.discard(typ.value)
+                indexes.append(idx)
+                if not literals:
+                    first, *rest = indexes
+                    types[first] = typ.fallback
+                    marked_for_deletion |= set(rest)
+    return list(itertools.compress(types, [(i not in marked_for_deletion)
+                                           for i in range(len(types))]))
 
 
 def coerce_to_literal(typ: Type) -> Type:
