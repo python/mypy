@@ -852,42 +852,35 @@ assert int(tostr(0)) == 0
 assert int(tostr(20)) == 20
 
 [case testFstring]
-
 var = 'mypyc'
 
 num = 20
 
-f1 = f'Hello {var}, this is a test'
+def test_simple() -> None:
+    f1 = f'Hello {var}, this is a test'
+    assert f1 == "Hello mypyc, this is a test"
 
-f2 = f'Hello {var!r}'
+def test_conversion() -> None:
+    f2 = f'Hello {var!r}'
+    assert f2 == "Hello 'mypyc'"
+    f3 = f'Hello {var!a}'
+    assert f3 == "Hello 'mypyc'"
+    f4 = f'Hello {var!s}'
+    assert f4 == "Hello mypyc"
 
-f3 = f'Hello {var!a}'
+def test_align() -> None:
+    f5 = f'Hello {var:>20}'
+    assert f5 == "Hello                mypyc"
+    f6 = f'Hello {var!r:>20}'
+    assert f6 == "Hello              'mypyc'"
+    f7 = f'Hello {var:>{num}}'
+    assert f7 == "Hello                mypyc"
+    f8 = f'Hello {var!r:>{num}}'
+    assert f8 == "Hello              'mypyc'"
 
-f4 = f'Hello {var!s}'
-
-f5 = f'Hello {var:>20}'
-
-f6 = f'Hello {var!r:>20}'
-
-f7 = f'Hello {var:>{num}}'
-
-f8 = f'Hello {var!r:>{num}}'
-
-f9 = f'Hello {var}, hello again {var}'
-
-[file driver.py]
-from native import f1, f2, f3, f4, f5, f6, f7, f8, f9
-assert f1 == "Hello mypyc, this is a test"
-assert f2 == "Hello 'mypyc'"
-assert f3 == "Hello 'mypyc'"
-assert f4 == "Hello mypyc"
-assert f5 == "Hello                mypyc"
-assert f6 == "Hello              'mypyc'"
-assert f7 == "Hello                mypyc"
-assert f8 == "Hello              'mypyc'"
-assert f9 == "Hello mypyc, hello again mypyc"
-
-[out]
+def test_multi() -> None:
+    f9 = f'Hello {var}, hello again {var}'
+    assert f9 == "Hello mypyc, hello again mypyc"
 
 [case testSets]
 from typing import Set, List
