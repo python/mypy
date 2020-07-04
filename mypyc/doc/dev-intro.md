@@ -193,20 +193,22 @@ information. See the test cases in
 `mypyc/test-data/irbuild-basic.test` for examples of what the IR looks
 like in a pretty-printed form.
 
-## Tests
+## Testing overview
 
-Mypyc test cases are defined in the same format (`.test`) as used for
-test cases for mypy. Look at mypy developer documentation for a general
-overview of how things work.  Test cases live under `mypyc/test-data/`,
-and you can run all mypyc tests via `pytest mypyc`. If you don't make
-changes to code under `mypy/`, it's not important to regularly run mypy
-tests during development.
+Most mypyc test cases are defined in the same format (`.test`) as used
+for test cases for mypy. Look at mypy developer documentation for a
+general overview of how things work. Test cases live under
+`mypyc/test-data/`, and you can run all mypyc tests via `pytest
+mypyc`. If you don't make changes to code under `mypy/`, it's not
+important to regularly run mypy tests during development.
 
 When you create a PR, we have Continuous Integration jobs set up that
 compile mypy using mypyc and run the mypy test suite using the
 compiled mypy. This will sometimes catch additional issues not caught
 by the mypyc test suite. It's okay to not do this in your local
 development environment.
+
+We discuss writing tests in more detail later in this document.
 
 ## Inspecting Generated IR
 
@@ -290,10 +292,61 @@ what to do to implement specific kinds of mypyc features.
 Our bread-and-butter testing strategy is compiling code with mypyc and
 running it. There are downsides to this (kind of slow, tests a huge
 number of components at once, insensitive to the particular details of
-the IR), but there really is no substitute for running code.
+the IR), but there really is no substitute for running code. You can
+also write tests that test the generated IR, however.
+
+### Tests that compile and run code
 
 Test cases that compile and run code are located in
-`test-data/run*.test` and the test driver is in `mypyc.test.test_run`.
+`test-data/run*.test` and the test runner is in `mypyc.test.test_run`.
+The code to compile comes after `[case test<name>]`. The code gets
+saved into the file `native.py`, and it gets compiled into the module
+`native`.
+
+Each test case uses a non-compiled Python driver that imports the
+`native` module and typically calls some compiled functions. Some
+tests also perform assertions and print messages in the driver.
+
+If you don't provide a driver, a default driver is used. The default
+driver just calls each module-level function that is prefixed with
+`test_` and reports any uncaught exceptions as failures. (Failure to
+build or a segfault also count as failures.) `testStringOps` in
+`mypyc/test-data/run-strings.test` is an example of a test that uses
+the default driver. You should usually use the default driver. It's
+the simplest way to write most tests.
+
+Here's an example test case that uses the default driver:
+
+```
+[case testConcatenateLists]
+def test_concat_lists() -> None:
+    assert [1, 2] + [5, 6] == [1, 2, 5, 6]
+
+def test_concat_empty_lists() -> None:
+    assert [] + [] == []
+```
+
+There is one test case, `testConcatenateLists`. It has two sub-cases,
+`test_concat_lists` and `test_concat_empty_lists`. Note that you can
+use the pytest -k argument to only run `testConcetanateLists`, but you
+can't filter tests at the sub-case level.
+
+It's recommended to have multiple sub-cases per test case, since each
+test case has significant fixed overhead. Each test case is run in a
+fresh Python subprocess.
+
+Many of the existing test cases provide a custom driver by having
+`[file driver.py]`, followed by the driver implementation. Here the
+driver is not compiled, which is useful if you want to test
+interactions between compiled and non-compiled code. However, many of
+the tests don't have a good reason to use a custom driver -- when they
+were written, the default driver wasn't available.
+
+Test cases can also have a `[out]` section, which specifies the
+expected contents of stdout the test case should produce. New test
+cases should prefer assert statements to `[out]` sections.
+
+### IR tests
 
 If the specifics of the generated IR of a change is important
 (because, for example, you want to make sure a particular optimization
