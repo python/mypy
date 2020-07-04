@@ -181,6 +181,8 @@ class UserWarning(Warning): pass
 
 class TypeError(Exception): pass
 
+class ValueError(Exception): pass
+
 class AttributeError(Exception): pass
 
 class NameError(Exception): pass
