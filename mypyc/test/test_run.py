@@ -30,8 +30,8 @@ from mypyc.test.testutil import (
 from mypyc.test.test_serialization import check_serialization_roundtrip
 
 files = [
-    'run-functions.test',
     'run.test',
+    'run-functions.test',
     'run-integers.test',
     'run-strings.test',
     'run-tuples.test',
@@ -39,6 +39,7 @@ files = [
     'run-dicts.test',
     'run-classes.test',
     'run-traits.test',
+    'run-generators.test',
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
