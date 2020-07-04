@@ -37,6 +37,7 @@ files = [
     'run-tuples.test',
     'run-lists.test',
     'run-dicts.test',
+    'run-sets.test',
     'run-loops.test',
     'run-exceptions.test',
     'run-imports.test',
