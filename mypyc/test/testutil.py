@@ -148,9 +148,11 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         print(data, file=f)
 
 
-def assert_test_output(testcase: DataDrivenTestCase, actual: List[str],
+def assert_test_output(testcase: DataDrivenTestCase,
+                       actual: List[str],
                        message: str,
-                       expected: Optional[List[str]] = None) -> None:
+                       expected: Optional[List[str]] = None,
+                       formatted: Optional[List[str]] = None) -> None:
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption('--update-data', False):
         update_testcase_output(testcase, actual)

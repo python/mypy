@@ -290,8 +290,11 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output (step {})'.format(incremental_step)
                 expected = testcase.output2.get(incremental_step, [])
 
-            outlines = [fix_native_line_number(line, testcase.file, testcase.line)
-                        for line in outlines]
+            if not expected:
+                # Tweak some line numbers, but only if the expected output is empty,
+                # as tweaked output might not match expected output.
+                outlines = [fix_native_line_number(line, testcase.file, testcase.line)
+                            for line in outlines]
             assert_test_output(testcase, outlines, msg, expected)
 
         if incremental_step > 1 and options.incremental:
