@@ -244,6 +244,13 @@ class TestRun(MypycDataSuite):
         assert glob.glob('native.*.{}'.format(suffix))
 
         driver_path = 'driver.py'
+        if not os.path.isfile(driver_path):
+            # No driver.py provided by test case. Use the default one
+            # (mypyc/test-data/driver/driver.py) that calls each
+            # function named test_*.
+            default_driver = os.path.join(
+                os.path.dirname(__file__), '..', 'test-data', 'driver', 'driver.py')
+            shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
 
@@ -312,8 +319,9 @@ class TestRun(MypycDataSuite):
             return True
 
 
-# Run the main multi-module tests in multi-file compilation mode
 class TestRunMultiFile(TestRun):
+    """Run the main multi-module tests in multi-file compilation mode."""
+
     multi_file = True
     test_name_suffix = '_multi'
     files = [
@@ -322,8 +330,9 @@ class TestRunMultiFile(TestRun):
     ]
 
 
-# Run the main multi-module tests in separate compilation mode
 class TestRunSeparate(TestRun):
+    """Run the main multi-module tests in separate compilation mode."""
+
     separate = True
     test_name_suffix = '_separate'
     files = [
