@@ -38,6 +38,7 @@ files = [
     'run-lists.test',
     'run-dicts.test',
     'run-loops.test',
+    'run-exceptions.test',
     'run-classes.test',
     'run-traits.test',
     'run-generators.test',
