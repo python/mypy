@@ -383,25 +383,6 @@ assert get_item(d, 'x') == 5
 set_item(d, 'y', 6)
 assert d['y'] == 6
 
-[case testSubclassAttributeAccess]
-from mypy_extensions import trait
-
-class A:
-    v = 0
-
-class B(A):
-    v = 1
-
-class C(B):
-    v = 2
-
-[file driver.py]
-from native import A, B, C
-
-a = A()
-b = B()
-c = C()
-
 [case testAnyAttributeAndMethodAccess]
 from typing import Any, List
 class C:

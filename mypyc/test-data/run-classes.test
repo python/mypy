@@ -1749,3 +1749,22 @@ import other
 import other_interpreted
 
 [out]
+
+[case testSubclassAttributeAccess]
+from mypy_extensions import trait
+
+class A:
+    v = 0
+
+class B(A):
+    v = 1
+
+class C(B):
+    v = 2
+
+[file driver.py]
+from native import A, B, C
+
+a = A()
+b = B()
+c = C()
