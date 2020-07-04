@@ -347,7 +347,7 @@ class TestRunSeparate(TestRun):
     ]
 
 
-def fix_native_line_number(message: str, fnam: str, delta: int) -> None:
+def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
     """Update code locations in test case output to point to the .test file.
 
     The description of the test case is written to native.py, and line numbers
