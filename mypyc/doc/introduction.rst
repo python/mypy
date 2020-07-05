@@ -49,19 +49,19 @@ libraries).
 Why speed matters
 -----------------
 
-These are many reasons to make your code faster:
+Faster code has many benefits, some obvious and others less so:
 
 * Users prefer efficient and responsive applications, tools and
-  libraries. Speed can give you an edge over the competition.
+  libraries.
 
-* If your server application is faster, you can directly save money on
-  hardware costs.
+* If your server application is faster, you need less hardware, which
+  saves money.
 
-* Faster code uses less energy to run, especially on servers that run
-  24/7. This lowers your environmental footprint.
+* Faster code uses less energy, especially on servers that run 24/7.
+  This lowers your environmental footprint.
 
-* You can be more productive and save time by making tests or batch
-  jobs faster.
+* If tests or batch jobs run faster, you'll be more productive and
+  save time.
 
 How does mypyc work
 -------------------
