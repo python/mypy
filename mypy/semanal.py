@@ -4550,7 +4550,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                             # The caller of the comprehension is in the global space.
                             names = self.globals
                         else:
-                            names = cast(SymbolTable, self.locals[-1 - i])
+                            names_candidate = self.locals[-1 - i]
+                            assert names_candidate is not None, \
+                                "Escaping comprehension from invalid scope"
+                            names = names_candidate
                         break
                 else:
                     assert False, "Should have at least one non-comprehension scope"
