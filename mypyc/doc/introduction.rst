@@ -93,7 +93,7 @@ Mypyc produces fast code via several techniques:
 Why mypyc
 ---------
 
-Mypyc has useful properties beyond performance.
+Here are some mypyc properties and features that can be useful.
 
 **Powerful Python types.** Mypyc leverages most features of standard
 Python type hint syntax, unlike tools such as Cython, which focus on
