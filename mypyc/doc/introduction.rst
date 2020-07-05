@@ -105,19 +105,19 @@ making code easier to understand and modify.
 
 **Fast program startup.** Python implementations using a JIT compiler,
 such as PyPy, slow down program startup, sometimes significantly.
-Mypyc uses ahead-of-time compilation, so compilation does not impact
-program startup speed.
+Mypyc uses ahead-of-time compilation, so compilation does not slow
+down program startup.
 
 **Python ecosystem compatibility.** Since mypyc uses the standard
-CPython runtime, you can use the stdlib and all existing third-party
-libraries, including C extensions.
+CPython runtime, you can freely use the stdlib and use pip to install
+arbitary third-party libraries, including C extensions.
 
 **Migration path for existing Python code.** Existing Python code
-often requires at most minor changes to compile using mypyc.
+often requires only minor changes to compile using mypyc.
 
 **No need to wait for compilation.** Compiled code also runs as normal
 Python code. You can use intepreted Python during development, with
-familiar workflows and minimal impact to productivity.
+familiar workflows.
 
 **Runtime type safety.** Mypyc aims to protect you from segfaults and
 memory corruption. We consider any unexpected runtime type safety
@@ -128,8 +128,8 @@ checking that will catch many bugs, saving you from a lot of
 debugging.
 
 **Easy path to static typing.** Mypyc lets Python developers easily
-try out modern static typing, without having to learn new syntax,
-libraries and tools.
+dip their toes into modern static typing, without having to learn all
+new syntax, libraries and idioms.
 
 Use cases for mypyc
 -------------------
@@ -137,27 +137,27 @@ Use cases for mypyc
 Here are examples of use cases where mypyc can be effective.
 
 **Address a performance bottleneck.** Profiling shows that most time
-is spent in one module. Add type annotations and compile the module
-for easy performance gains.
+is spent in a certain Python module. Add type annotations and compile
+the module for performance gains.
 
 **Leverage existing type hints.** You already use mypy to type check
-your code. Using mypyc will now be easy since you already use static
+your code. Using mypyc will now be easy, since you already use static
 typing.
 
-**Compile everything.** You want your entire application to be fast.
+**Compile everything.** You want your whole application to be fast.
 During development you use interpreted mode, for a quick edit-run
 cycle, but in your releases all (non-test) code is compiled. This is
 how mypy achieved a 4x performance improvement using mypyc.
 
-**Alternative to C (or Cython).** You are writing a new module that
-must be fast. You write the module in Python, and try to use
-operations that mypyc can optimize well. The module is much faster
-when compiled, and you've saved a lot of effort compared to writing an
-extension in C (and all without needing to learn C).
+**Alternative to C.** You are writing a new module that must be fast.
+You write the module in Python, and try to use operations that mypyc
+can optimize well. The module is much faster when compiled, and you've
+saved a lot of effort compared to writing an extension in C (and you
+don't need to know C).
 
-**Rewriting a C extension.** You've written a C extension, but you'd
-much prefer to maintain Python code. You might be able to switch to
-Python and use mypyc to get performance comparable to the original C.
+**Rewriting a C extension.** You've written a C extension, but
+maintaining C code is no fun. You might be able to switch to Python
+and use mypyc to get performance comparable to the original C.
 
 Development status
 ------------------

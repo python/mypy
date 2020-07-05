@@ -193,36 +193,34 @@ Recommended workflow
 --------------------
 
 A simple way to use mypyc is to always compile your code after any
-code changes, but this can get tedious. Instead, you can do most
-development in interpreted mode. This development workflow has worked
-smoothly for developing mypy and mypyc (often we forget that we aren't
-working on an entirely ordinary Python project):
+code changes, but this can get tedious, especially if you have a lot
+of code. Instead, you can do most development in interpreted mode.
+This development workflow has worked smoothly for developing mypy and
+mypyc (often we forget that we aren't working on a vanilla Python
+project):
 
-1. During development, use interpreted mode. This allows a very fast
-   edit-run cycle, since you don't need to wait for mypyc compilation.
+1. During development, use interpreted mode. This gives you a fast
+   edit-run cycle.
 
 2. Use type annotations liberally and use mypy to type check your code
    during development. Mypy and tests can find most errors that would
-   break your compiled version, if you have good annotation
-   coverage. (Running mypy is faster than compiling, and you can run
-   your code even if there are mypy errors.)
+   break your compiled code, if you have good type annotation
+   coverage. (Running mypy is pretty quick.)
 
 3. After you've implemented a feature or a fix, compile your project
-   and run tests again, now in compiled mode. Almost always, nothing
-   will break here, assuming your type annotation coverage is good
-   enough. This can happen locally or as part of a Continuous
-   Integration (CI) job. If you have good CI, compiling locally may be
-   rarely needed.
+   and run tests again, now in compiled mode. Usually nothing will
+   break here, assuming your type annotation coverage is good. This
+   can happen locally or in a Continuous Integration (CI) job. If you
+   have CI, compiling locally may be rarely needed.
 
 4. Release or deploy a compiled version. Optionally, include a
    fallback interpreted version for platforms that mypyc doesn't
    support.
 
-This mypyc workflow has minimal impact on your productivity and
-requires only minor adjustments to a typical Python workflow. Most of
-development, testing and debugging happens in interpreted mode.
-Incremental mypy runs, especially when using the mypy daemon, are very
-quick (often a few hundred milliseconds).
+This mypyc workflow only involves minor tweaks to a typical Python
+workflow. Most of development, testing and debugging happens in
+interpreted mode. Incremental mypy runs, especially when using the
+mypy daemon, are very quick (often a few hundred milliseconds).
 
 Next steps
 ----------
