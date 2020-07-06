@@ -686,7 +686,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self, callee: FunctionLike, args: List[Expression],
             arg_kinds: List[int], context: Context,
             arg_names: Optional[Sequence[Optional[str]]],
-            signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
+            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a function."""
         if isinstance(callee, CallableType):
             num_formals = len(callee.arg_kinds)
@@ -811,18 +811,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         (if appropriate) before the signature is passed to check_call.
         """
         callee = get_proper_type(callee)
-        if (callable_name is not None
-                and isinstance(callee, FunctionLike)):
+        if callable_name is not None and isinstance(callee, FunctionLike):
             if object_type is not None:
-                signature_hook = self.plugin.get_method_signature_hook(callable_name)
-                if signature_hook:
+                method_sig_hook = self.plugin.get_method_signature_hook(callable_name)
+                if method_sig_hook:
                     return self.apply_method_signature_hook(
-                        callee, args, arg_kinds, context, arg_names, object_type, signature_hook)
+                        callee, args, arg_kinds, context, arg_names, object_type, method_sig_hook)
             else:
-                signature_hook = self.plugin.get_function_signature_hook(callable_name)
-                if signature_hook:
+                function_sig_hook = self.plugin.get_function_signature_hook(callable_name)
+                if function_sig_hook:
                     return self.apply_function_signature_hook(
-                        callee, args, arg_kinds, context, arg_names, signature_hook)
+                        callee, args, arg_kinds, context, arg_names, function_sig_hook)
 
         return callee
 

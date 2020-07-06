@@ -544,7 +544,7 @@ class Plugin(CommonPluginApi):
         return None
 
     def get_function_signature_hook(self, fullname: str
-                                    ) -> Optional[Callable[[FunctionSigContext], Type]]:
+                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
         """Adjust the signature a function.
 
         This method is called before type checking a function call. Plugin
@@ -748,7 +748,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
 
     def get_function_signature_hook(self, fullname: str
-                                    ) -> Optional[Callable[[FunctionSigContext], Type]]:
+                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
         return self._find_hook(lambda plugin: plugin.get_function_signature_hook(fullname))
 
     def get_function_hook(self, fullname: str
