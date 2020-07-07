@@ -28,7 +28,7 @@ L2:
     x = r5
 L3:
     r6 = 1
-    r7 = r3 + r6 :: short_int
+    r7 = r3 + r6
     r3 = r7
     i = r7
     goto L1
@@ -58,7 +58,7 @@ L1:
 L2:
 L3:
     r4 = -1
-    r5 = r2 + r4 :: short_int
+    r5 = r2 + r4
     r2 = r5
     i = r5
     goto L1
@@ -113,7 +113,7 @@ L2:
     goto L4
 L3:
     r4 = 1
-    r5 = r2 + r4 :: short_int
+    r5 = r2 + r4
     r2 = r5
     n = r5
     goto L1
@@ -202,7 +202,7 @@ L1:
 L2:
 L3:
     r4 = 1
-    r5 = r2 + r4 :: short_int
+    r5 = r2 + r4
     r2 = r5
     n = r5
     goto L1
@@ -281,7 +281,7 @@ L2:
     y = r7
 L3:
     r8 = 1
-    r9 = r2 + r8 :: short_int
+    r9 = r2 + r8
     r2 = r9
     goto L1
 L4:
@@ -868,11 +868,11 @@ L2:
     r8 = CPyTagged_Add(i, x)
 L3:
     r9 = 1
-    r10 = r1 + r9 :: short_int
+    r10 = r1 + r9
     r1 = r10
     i = r10
     r11 = 1
-    r12 = r3 + r11 :: short_int
+    r12 = r3 + r11
     r3 = r12
     goto L1
 L4:
@@ -901,7 +901,7 @@ L2:
     n = r4
 L3:
     r5 = 1
-    r6 = r1 + r5 :: short_int
+    r6 = r1 + r5
     r1 = r6
     i = r6
     goto L1
@@ -961,7 +961,7 @@ L4:
 L5:
 L6:
     r11 = 1
-    r12 = r1 + r11 :: short_int
+    r12 = r1 + r11
     r1 = r12
     goto L1
 L7:
@@ -1012,10 +1012,10 @@ L4:
     x = r13
 L5:
     r14 = 1
-    r15 = r2 + r14 :: short_int
+    r15 = r2 + r14
     r2 = r15
     r16 = 1
-    r17 = r5 + r16 :: short_int
+    r17 = r5 + r16
     r5 = r17
     z = r17
     goto L1
@@ -1024,3 +1024,4 @@ L6:
 L7:
     r19 = None
     return r19
+

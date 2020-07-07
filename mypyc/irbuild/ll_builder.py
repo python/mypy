@@ -21,7 +21,7 @@ from mypyc.ir.ops import (
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC,
+    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -749,6 +749,9 @@ class LowLevelIRBuilder:
             target = self.call_c(matching, args, line, result_type)
             return target
         return None
+
+    def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.add(BinaryIntOp(type, lhs, rhs, op, line))
 
     # Internal helpers
 

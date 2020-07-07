@@ -1917,7 +1917,7 @@ L6:
     r20 = r0.append(r19) :: list
 L7:
     r21 = 1
-    r22 = r9 + r21 :: short_int
+    r22 = r9 + r21
     r9 = r22
     goto L1
 L8:
@@ -1982,7 +1982,7 @@ L6:
     r21 = r0.__setitem__(r19, r20) :: dict
 L7:
     r22 = 1
-    r23 = r9 + r22 :: short_int
+    r23 = r9 + r22
     r9 = r23
     goto L1
 L8:
@@ -2032,7 +2032,7 @@ L2:
     z = r8
 L3:
     r9 = 1
-    r10 = r1 + r9 :: short_int
+    r10 = r1 + r9
     r1 = r10
     goto L1
 L4:
@@ -2058,7 +2058,7 @@ L6:
     r24 = r11.append(r23) :: list
 L7:
     r25 = 1
-    r26 = r13 + r25 :: short_int
+    r26 = r13 + r25
     r13 = r26
     goto L5
 L8:

@@ -232,6 +232,9 @@ class IRBuilder:
     def call_c(self, desc: CFunctionDescription, args: List[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
 
+    def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.builder.binary_int_op(type, lhs, rhs, op, line)
+
     @property
     def environment(self) -> Environment:
         return self.builder.environment
