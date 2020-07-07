@@ -1260,16 +1260,43 @@ class BinaryIntOp(RegisterOp):
     """
     error_kind = ERR_NEVER
 
+    # arithmetic
     ADD = 0  # type: Final
     SUB = 1  # type: Final
     MUL = 2  # type: Final
     DIV = 3  # type: Final
+    MOD = 4  # type: Final
+    # logical
+    EQ = 100  # type: Final
+    NEQ = 101  # type: Final
+    LT = 102  # type: Final
+    GT = 103  # type: Final
+    LEQ = 104  # type: Final
+    GEQ = 105  # type: Final
+    # bitwise
+    AND = 200  # type: Final
+    OR = 201  # type: Final
+    XOR = 202  # type: Final
+    LEFT_SHIFT = 203 # type: Final
+    RIGHT_SHIFT = 204  # type: Final
 
     op_str = {
         ADD: '+',
         SUB: '-',
         MUL: '*',
         DIV: '/',
+        MOD: '%',
+        EQ: '==',
+        NEQ: '!=',
+        LT: '<',
+        GT: '>',
+        LEQ: '<=',
+        GEQ: '>=',
+        AND: '&',
+        OR: '|',
+        XOR: '^',
+        LEFT_SHIFT: '<<',
+        RIGHT_SHIFT: '>>',
     }  # type: Final
 
     def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
