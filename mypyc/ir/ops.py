@@ -1252,6 +1252,43 @@ class LoadGlobal(RegisterOp):
         return visitor.visit_load_global(self)
 
 
+class BinaryIntOp(RegisterOp):
+    """Binary operations on integer types
+
+    These ops are low-level and will be eventually generated to simple x op y form.
+    The left and right values should be of low-level integer types that support those ops
+    """
+    error_kind = ERR_NEVER
+
+    ADD = 0  # type: Final
+    SUB = 1  # type: Final
+    MUL = 2  # type: Final
+    DIV = 3  # type: Final
+
+    op_str = {
+        ADD: '+',
+        SUB: '-',
+        MUL: '*',
+        DIV: '/',
+    }  # type: Final
+
+    def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> List[Value]:
+        return [self.lhs, self.rhs]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r %s %r', self, self.lhs, self.op_str[self.op], self.rhs)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_binary_int_op(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1352,6 +1389,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_global(self, op: LoadGlobal) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_binary_int_op(self, op: BinaryIntOp) -> T:
         raise NotImplementedError
 
 

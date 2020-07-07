@@ -13,17 +13,16 @@ from mypy.nodes import (
 )
 from mypyc.ir.ops import (
     Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget, TupleGet,
-    AssignmentTargetTuple, TupleSet, OpDescription
+    AssignmentTargetTuple, TupleSet, OpDescription, BinaryIntOp
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple, is_dict_rprimitive
+    RTuple, is_dict_rprimitive, short_int_rprimitive
 )
 from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
-from mypyc.primitives.int_ops import unsafe_short_add
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
@@ -465,10 +464,10 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         step = 1 if not self.reverse else -1
-        builder.assign(self.index_target, builder.primitive_op(
-            unsafe_short_add,
-            [builder.read(self.index_target, line),
-             builder.add(LoadInt(step))], line), line)
+        add = builder.binary_int_op(short_int_rprimitive,
+                                    builder.read(self.index_target, line),
+                                    builder.add(LoadInt(step)), BinaryIntOp.ADD, line)
+        builder.assign(self.index_target, add, line)
 
 
 class ForDictionaryCommon(ForGenerator):
@@ -635,9 +634,9 @@ class ForRange(ForGenerator):
         # short ints.
         if (is_short_int_rprimitive(self.start_reg.type)
                 and is_short_int_rprimitive(self.end_reg.type)):
-            new_val = builder.primitive_op(
-                unsafe_short_add, [builder.read(self.index_reg, line),
-                                   builder.add(LoadInt(self.step))], line)
+            new_val = builder.binary_int_op(short_int_rprimitive,
+                            builder.read(self.index_reg, line),
+                            builder.add(LoadInt(self.step)), BinaryIntOp.ADD, line)
 
         else:
             new_val = builder.binary_op(
@@ -665,9 +664,9 @@ class ForInfiniteCounter(ForGenerator):
         # We can safely assume that the integer is short, since we are not going to wrap
         # around a 63-bit integer.
         # NOTE: This would be questionable if short ints could be 32 bits.
-        new_val = builder.primitive_op(
-            unsafe_short_add, [builder.read(self.index_reg, line),
-                               builder.add(LoadInt(1))], line)
+        new_val = builder.binary_int_op(short_int_rprimitive,
+                builder.read(self.index_reg, line),
+                builder.add(LoadInt(1)), BinaryIntOp.ADD, line)
         builder.assign(self.index_reg, new_val, line)
         builder.assign(self.index_target, new_val, line)
 

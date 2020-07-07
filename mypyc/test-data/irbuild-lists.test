@@ -195,7 +195,7 @@ L2:
     r8 = CPyList_SetItem(l, i, r7)
 L3:
     r9 = 1
-    r10 = r2 + r9 :: short_int
+    r10 = r2 + r9
     r2 = r10
     i = r10
     goto L1

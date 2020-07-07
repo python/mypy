@@ -155,7 +155,7 @@ L2:
     x = r5
 L3:
     r6 = 1
-    r7 = r1 + r6 :: short_int
+    r7 = r1 + r6
     r1 = r7
     goto L1
 L4:

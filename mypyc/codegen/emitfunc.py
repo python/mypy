@@ -11,7 +11,8 @@ from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate
+    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
+    BinaryIntOp
 )
 from mypyc.ir.rtypes import RType, RTuple, is_int32_rprimitive, is_int64_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -435,6 +436,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             if not any(x in s for x in ('/*', '*/', '\0')):
                 ann = ' /* %s */' % s
         self.emit_line('%s = %s;%s' % (dest, op.identifier, ann))
+
+    def visit_binary_int_op(self, op: BinaryIntOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
 
     # Helpers
 
