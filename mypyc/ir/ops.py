@@ -1277,7 +1277,7 @@ class BinaryIntOp(RegisterOp):
     AND = 200  # type: Final
     OR = 201  # type: Final
     XOR = 202  # type: Final
-    LEFT_SHIFT = 203 # type: Final
+    LEFT_SHIFT = 203  # type: Final
     RIGHT_SHIFT = 204  # type: Final
 
     op_str = {
