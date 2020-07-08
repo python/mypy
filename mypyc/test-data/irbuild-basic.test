@@ -1632,7 +1632,7 @@ L0:
     r6 = r4[r5] :: dict
     r7 = []
     r8 = box(tuple[int, int, int], r3)
-    r9 = r7.extend(r8) :: list
+    r9 = CPyList_Extend(r7, r8)
     r10 = PyList_AsTuple(r7)
     r11 = PyDict_New()
     r12 = py_call_with_kwargs(r6, r10, r11)
@@ -1661,7 +1661,7 @@ L0:
     r7 = box(short_int, r0)
     r8 = [r7]
     r9 = box(tuple[int, int], r3)
-    r10 = r8.extend(r9) :: list
+    r10 = CPyList_Extend(r8, r9)
     r11 = PyList_AsTuple(r8)
     r12 = PyDict_New()
     r13 = py_call_with_kwargs(r6, r11, r12)
@@ -1879,7 +1879,7 @@ def f():
     r17 :: bool
     r18 :: int
     r19 :: object
-    r20 :: bool
+    r20 :: int32
     r21, r22 :: short_int
 L0:
     r0 = []
@@ -1914,7 +1914,7 @@ L5:
 L6:
     r18 = CPyTagged_Multiply(x, x)
     r19 = box(int, r18)
-    r20 = r0.append(r19) :: list
+    r20 = PyList_Append(r0, r19)
 L7:
     r21 = 1
     r22 = r9 + r21
@@ -2012,7 +2012,7 @@ def f(l):
     r17 :: tuple[int, int, int]
     r18, r19, r20, r21, r22 :: int
     r23 :: object
-    r24 :: bool
+    r24 :: int32
     r25, r26 :: short_int
 L0:
     r0 = 0
@@ -2055,7 +2055,7 @@ L6:
     r21 = CPyTagged_Add(x0, y0)
     r22 = CPyTagged_Add(r21, z0)
     r23 = box(int, r22)
-    r24 = r11.append(r23) :: list
+    r24 = PyList_Append(r11, r23)
 L7:
     r25 = 1
     r26 = r13 + r25

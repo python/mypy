@@ -65,11 +65,11 @@ STUBTEST_OPT_IN = [STUBTEST, STUBTEST_MISC, STUBTEST_INTEGRATION]
 # time to run.
 cmds = {
     # Self type check
-    'self': python_name + ' -m mypy --config-file mypy_self_check.ini -p mypy',
+    'self': python_name + ' -m mypy --config-file mypy_self_check.ini -p mypyc',
     # Lint
     'lint': 'flake8 -j0',
     # Fast test cases only (this is the bulk of the test suite)
-    'pytest-fast': 'pytest -k "not (%s)"' % ' or '.join(ALL_NON_FAST),
+    'pytest-fast': 'pytest --update-data -k "not (%s)"' % ' or '.join(ALL_NON_FAST),
     # Test cases that invoke mypy (with small inputs)
     'pytest-cmdline': 'pytest -k "%s"' % ' or '.join([CMDLINE,
                                                       EVALUATION,
