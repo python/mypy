@@ -194,7 +194,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(CallC(list_append_op.c_function_name, [self.l, self.o],
                                list_append_op.return_type, list_append_op.steals,
                                list_append_op.error_kind, 1),
-                         """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o) >= 0;""")
+                         """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o);""")
 
     def test_get_attr(self) -> None:
         self.assert_emit(
