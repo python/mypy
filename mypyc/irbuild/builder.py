@@ -48,7 +48,7 @@ from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function
 from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.int_ops import int_equal
+from mypyc.primitives.int_ops import int_logical_op_mapping
 from mypyc.primitives.misc_ops import true_op, false_op, import_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
@@ -242,30 +242,31 @@ class IRBuilder:
         return self.builder.environment
 
     # Helpers for IR building
+    def check_tagged_short_int(self, val: Value, line: int) -> Value:
+        int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+        bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, val,
+                                         int_tag, BinaryIntOp.AND, line)
+        zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
+        check = self.binary_int_op(bool_rprimitive, bitwise_and, zero, BinaryIntOp.EQ, line)
+        return check
+
     def binary_comparison_op(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
-        # TODO: use dispatch table
-        if op == '==':
-            result = self.alloc_temp(bool_rprimitive)
-            short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
-            # CPY_INT_TAG
-            int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
-            bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, lhs,
-                                             int_tag, BinaryIntOp.AND, line)
-            zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
-            eq = self.binary_int_op(bool_rprimitive, bitwise_and, zero, BinaryIntOp.EQ, line)
-            branch = Branch(eq, short_int_block, int_block, Branch.BOOL_EXPR)
-            branch.negated = False
-            self.add(branch)
-            self.activate_block(short_int_block)
-            lhs_rhs_eq = self.binary_int_op(bool_rprimitive, lhs, rhs, BinaryIntOp.EQ, line)
-            self.assign(result, lhs_rhs_eq, line)
-            self.goto(out)
-            self.activate_block(int_block)
-            call = self.call_c(int_equal, [lhs, rhs], line)
-            self.assign(result, call, line)
-            self.goto_and_activate(out)
-            return result
-        return self.alloc_temp(bool_rprimitive)
+        op_type, c_func_desc = int_logical_op_mapping[op]
+        result = self.alloc_temp(bool_rprimitive)
+        short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
+        check = self.check_tagged_short_int(lhs, line)
+        branch = Branch(check, short_int_block, int_block, Branch.BOOL_EXPR)
+        branch.negated = False
+        self.add(branch)
+        self.activate_block(short_int_block)
+        eq = self.binary_int_op(bool_rprimitive, lhs, rhs, op_type, line)
+        self.assign(result, eq, line)
+        self.goto(out)
+        self.activate_block(int_block)
+        call = self.call_c(c_func_desc, [lhs, rhs], line)
+        self.assign(result, call, line)
+        self.goto_and_activate(out)
+        return result
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:

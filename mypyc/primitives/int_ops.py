@@ -6,7 +6,8 @@ representation (CPyTagged).
 See also the documentation for mypyc.rtypes.int_rprimitive.
 """
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
+from typing import Dict, Tuple
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, BinaryIntOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
     str_rprimitive, RType
@@ -145,3 +146,7 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
+
+int_logical_op_mapping = {
+    '==': (BinaryIntOp.EQ, int_equal)
+}  # type: Dict[str, Tuple[int, CFunctionDescription]]
