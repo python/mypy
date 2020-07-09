@@ -209,7 +209,7 @@ def f(x, y):
     r0 :: short_int
     r1 :: str
     r2 :: short_int
-    r3 :: int64
+    r3 :: native_int
     r4 :: object
     r5 :: dict
     r6 :: int32

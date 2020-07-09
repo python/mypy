@@ -1690,7 +1690,7 @@ def g():
     r3 :: short_int
     r4 :: str
     r5 :: short_int
-    r6 :: int64
+    r6 :: native_int
     r7, r8, r9 :: object
     r10, r11 :: dict
     r12 :: str
@@ -1727,7 +1727,7 @@ def h():
     r2 :: short_int
     r3 :: str
     r4 :: short_int
-    r5 :: int64
+    r5 :: native_int
     r6, r7 :: object
     r8, r9 :: dict
     r10 :: str

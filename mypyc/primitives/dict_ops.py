@@ -149,31 +149,25 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # list(dict.keys())
-dict_keys_op = custom_op(
-    name='keys',
+dict_keys_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=list_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Keys')
-)
+    return_type=list_rprimitive,
+    c_function_name='CPyDict_Keys',
+    error_kind=ERR_MAGIC)
 
 # list(dict.values())
-dict_values_op = custom_op(
-    name='values',
+dict_values_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=list_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Values')
-)
+    return_type=list_rprimitive,
+    c_function_name='CPyDict_Values',
+    error_kind=ERR_MAGIC)
 
 # list(dict.items())
-dict_items_op = custom_op(
-    name='items',
+dict_items_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=list_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Items')
-)
+    return_type=list_rprimitive,
+    c_function_name='CPyDict_Items',
+    error_kind=ERR_MAGIC)
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:

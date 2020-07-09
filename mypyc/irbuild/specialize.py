@@ -99,11 +99,11 @@ def dict_methods_fast_path(
     # Note that it is not safe to use fast methods on dict subclasses, so
     # the corresponding helpers in CPy.h fallback to (inlined) generic logic.
     if attr == 'keys':
-        return builder.primitive_op(dict_keys_op, [obj], expr.line)
+        return builder.call_c(dict_keys_op, [obj], expr.line)
     elif attr == 'values':
-        return builder.primitive_op(dict_values_op, [obj], expr.line)
+        return builder.call_c(dict_values_op, [obj], expr.line)
     else:
-        return builder.primitive_op(dict_items_op, [obj], expr.line)
+        return builder.call_c(dict_items_op, [obj], expr.line)
 
 
 @specialize_function('builtins.tuple')
