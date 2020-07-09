@@ -217,31 +217,45 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1, r2 :: short_int
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7, r8 :: short_int
     x :: int
-    r3 :: short_int
-    r4, y :: int
+    r9 :: short_int
+    r10, y :: int
 L0:
-    r0 = CPyTagged_IsEq(a, a)
-    if r0 goto L1 else goto L2 :: bool
-L1:
     r1 = 1
-    a = r1
+    r2 = a & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = a == a
+    r0 = r5
     goto L3
 L2:
-    r2 = 2
-    x = r2
-    dec_ref x :: int
-    goto L4
+    r6 = CPyTagged_IsEq_(a, a)
+    r0 = r6
 L3:
-    r3 = 1
-    r4 = CPyTagged_Add(a, r3)
-    dec_ref a :: int
-    y = r4
-    return y
+    if r0 goto L4 else goto L5 :: bool
 L4:
+    r7 = 1
+    a = r7
+    goto L6
+L5:
+    r8 = 2
+    x = r8
+    dec_ref x :: int
+    goto L7
+L6:
+    r9 = 1
+    r10 = CPyTagged_Add(a, r9)
+    dec_ref a :: int
+    y = r10
+    return y
+L7:
     inc_ref a :: int
-    goto L3
+    goto L6
 
 [case testConditionalAssignToArgument2]
 def f(a: int) -> int:
@@ -255,30 +269,44 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: short_int
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7 :: short_int
     x :: int
-    r2, r3 :: short_int
-    r4, y :: int
+    r8, r9 :: short_int
+    r10, y :: int
 L0:
-    r0 = CPyTagged_IsEq(a, a)
-    if r0 goto L1 else goto L2 :: bool
+    r1 = 1
+    r2 = a & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r1 = 2
-    x = r1
-    dec_ref x :: int
-    goto L4
-L2:
-    r2 = 1
-    a = r2
-L3:
-    r3 = 1
-    r4 = CPyTagged_Add(a, r3)
-    dec_ref a :: int
-    y = r4
-    return y
-L4:
-    inc_ref a :: int
+    r5 = a == a
+    r0 = r5
     goto L3
+L2:
+    r6 = CPyTagged_IsEq_(a, a)
+    r0 = r6
+L3:
+    if r0 goto L4 else goto L5 :: bool
+L4:
+    r7 = 2
+    x = r7
+    dec_ref x :: int
+    goto L7
+L5:
+    r8 = 1
+    a = r8
+L6:
+    r9 = 1
+    r10 = CPyTagged_Add(a, r9)
+    dec_ref a :: int
+    y = r10
+    return y
+L7:
+    inc_ref a :: int
+    goto L6
 
 [case testConditionalAssignToArgument3]
 def f(a: int) -> int:
@@ -289,18 +317,32 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: short_int
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7 :: short_int
 L0:
-    r0 = CPyTagged_IsEq(a, a)
-    if r0 goto L1 else goto L3 :: bool
-L1:
     r1 = 1
-    a = r1
+    r2 = a & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = a == a
+    r0 = r5
+    goto L3
 L2:
-    return a
+    r6 = CPyTagged_IsEq_(a, a)
+    r0 = r6
 L3:
+    if r0 goto L4 else goto L6 :: bool
+L4:
+    r7 = 1
+    a = r7
+L5:
+    return a
+L6:
     inc_ref a :: int
-    goto L2
+    goto L5
 
 [case testAssignRegisterToItself]
 def f(a: int) -> int:
@@ -501,8 +543,10 @@ def f():
     r2 :: short_int
     z :: int
     r3 :: bool
-    r4 :: short_int
-    a, r5, r6 :: int
+    r4, r5, r6 :: native_int
+    r7, r8, r9 :: bool
+    r10 :: short_int
+    a, r11, r12 :: int
 L0:
     r0 = 1
     x = r0
@@ -510,27 +554,39 @@ L0:
     y = r1
     r2 = 3
     z = r2
-    r3 = CPyTagged_IsEq(z, z)
-    if r3 goto L3 else goto L4 :: bool
-L1:
-    return z
-L2:
     r4 = 1
-    a = r4
-    r5 = CPyTagged_Add(x, y)
-    dec_ref x :: int
-    dec_ref y :: int
-    r6 = CPyTagged_Subtract(r5, a)
-    dec_ref r5 :: int
-    dec_ref a :: int
-    return r6
+    r5 = z & r4
+    r6 = 0
+    r7 = r5 == r6
+    if r7 goto L1 else goto L2 :: bool
+L1:
+    r8 = z == z
+    r3 = r8
+    goto L3
+L2:
+    r9 = CPyTagged_IsEq_(z, z)
+    r3 = r9
 L3:
+    if r3 goto L6 else goto L7 :: bool
+L4:
+    return z
+L5:
+    r10 = 1
+    a = r10
+    r11 = CPyTagged_Add(x, y)
     dec_ref x :: int
     dec_ref y :: int
-    goto L1
-L4:
+    r12 = CPyTagged_Subtract(r11, a)
+    dec_ref r11 :: int
+    dec_ref a :: int
+    return r12
+L6:
+    dec_ref x :: int
+    dec_ref y :: int
+    goto L4
+L7:
     dec_ref z :: int
-    goto L2
+    goto L5
 
 [case testLoop]
 def f(a: int) -> int:

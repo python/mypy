@@ -40,7 +40,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive, c_int_rprimitive, bool_rprimitive
+    str_rprimitive, c_pyssize_t_rprimitive, bool_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -245,29 +245,27 @@ class IRBuilder:
     def binary_comparison_op(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         # TODO: use dispatch table
         if op == '==':
-            result = Register(bool_rprimitive, line)
+            result = self.alloc_temp(bool_rprimitive)
             short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
             # CPY_INT_TAG
-            int_tag = self.add(LoadInt(1, line, rtype=c_int_rprimitive))
-            bitwise_and = self.add(self.binary_int_op(c_int_rprimitive,
-                                                      lhs, int_tag, BinaryIntOp.AND, line))
-            zero = self.add(LoadInt(0, line, rtype=c_int_rprimitive))
-            eq = self.add(self.binary_int_op(bool_rprimitive,
-                                             bitwise_and, zero, BinaryIntOp.EQ, line))
+            int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, lhs,
+                                             int_tag, BinaryIntOp.AND, line)
+            zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
+            eq = self.binary_int_op(bool_rprimitive, bitwise_and, zero, BinaryIntOp.EQ, line)
             branch = Branch(eq, short_int_block, int_block, Branch.BOOL_EXPR)
             branch.negated = False
             self.add(branch)
             self.activate_block(short_int_block)
-            eq = self.add(self.binary_int_op(bool_rprimitive,
-                                             lhs, rhs, BinaryIntOp.EQ, line))
-            self.add(self.assign(result, eq, line))
+            lhs_rhs_eq = self.binary_int_op(bool_rprimitive, lhs, rhs, BinaryIntOp.EQ, line)
+            self.assign(result, lhs_rhs_eq, line)
             self.goto(out)
             self.activate_block(int_block)
-            call = self.add(self.call_c(int_equal, [lhs, rhs], line))
-            self.add(self.assign(result, call, line))
+            call = self.call_c(int_equal, [lhs, rhs], line)
+            self.assign(result, call, line)
             self.goto_and_activate(out)
             return result
-        return Register(bool_rprimitive, line)
+        return self.alloc_temp(bool_rprimitive)
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:

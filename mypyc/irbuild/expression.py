@@ -382,7 +382,7 @@ def transform_basic_comparison(builder: IRBuilder,
                                left: Value,
                                right: Value,
                                line: int) -> Value:
-    if is_int_rprimitive(left.type) and is_int_rprimitive(right.type) and op in ('=='):
+    if is_int_rprimitive(left.type) and is_int_rprimitive(right.type) and op in ('==',):
         return builder.binary_comparison_op(left, right, op, line)
     negate = False
     if op == 'is not':
