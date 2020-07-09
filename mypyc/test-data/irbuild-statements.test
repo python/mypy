@@ -312,9 +312,9 @@ L0:
     r0 = 0
     r1 = r0
     r2 = len d :: dict
-    r3 = key_iter d :: dict
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = next_key r3, offset=r1
+    r4 = CPyDict_NextKey(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -373,9 +373,9 @@ L0:
     r1 = 0
     r2 = r1
     r3 = len d :: dict
-    r4 = key_iter d :: dict
+    r4 = CPyDict_GetKeysIter(d)
 L1:
-    r5 = next_key r4, offset=r2
+    r5 = CPyDict_NextKey(r4, r2)
     r6 = r5[1]
     r2 = r6
     r7 = r5[0]

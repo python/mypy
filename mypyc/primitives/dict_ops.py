@@ -10,9 +10,8 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    name_ref_op, method_op, func_op, custom_op,
-    simple_emit, call_emit,
-    name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
+    name_ref_op, method_op, func_op,
+    simple_emit, name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
 )
 
 
@@ -185,53 +184,41 @@ func_op(name='builtins.len',
         emit=emit_len)
 
 # PyDict_Next() fast iteration
-dict_key_iter_op = custom_op(
-    name='key_iter',
+dict_key_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetKeysIter'),
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetKeysIter',
+    error_kind=ERR_MAGIC)
 
-dict_value_iter_op = custom_op(
-    name='value_iter',
+dict_value_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetValuesIter'),
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetValuesIter',
+    error_kind=ERR_MAGIC)
 
-dict_item_iter_op = custom_op(
-    name='item_iter',
+dict_item_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetItemsIter'),
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetItemsIter',
+    error_kind=ERR_MAGIC)
 
-dict_next_key_op = custom_op(
+dict_next_key_op = c_custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple_single,
-    error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_NextKey'),
-    format_str='{dest} = next_key {args[0]}, offset={args[1]}',
-)
+    return_type=dict_next_rtuple_single,
+    c_function_name='CPyDict_NextKey',
+    error_kind=ERR_NEVER)
 
-dict_next_value_op = custom_op(
+dict_next_value_op = c_custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple_single,
-    error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_NextValue'),
-    format_str='{dest} = next_value {args[0]}, offset={args[1]}',
-)
+    return_type=dict_next_rtuple_single,
+    c_function_name='CPyDict_NextValue',
+    error_kind=ERR_NEVER)
 
-dict_next_item_op = custom_op(
+dict_next_item_op = c_custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple_pair,
-    error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_NextItem'),
-    format_str='{dest} = next_item {args[0]}, offset={args[1]}',
-)
+    return_type=dict_next_rtuple_pair,
+    c_function_name='CPyDict_NextItem',
+    error_kind=ERR_NEVER)
 
 # check that len(dict) == const during iteration
 dict_check_size_op = c_custom_op(
