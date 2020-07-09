@@ -547,7 +547,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.primitive_op(dict_set_item_op, [d, k, v], o.line)
+        builder.call_c(dict_set_item_op, [d, k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return d

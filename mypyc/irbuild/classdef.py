@@ -149,12 +149,12 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         builder.add(InitStatic(non_ext_class, cdef.name, builder.module_name, NAMESPACE_TYPE))
 
         # Add the non-extension class to the dict
-        builder.primitive_op(dict_set_item_op,
-                          [
-                              builder.load_globals_dict(),
-                              builder.load_static_unicode(cdef.name),
-                              non_ext_class
-                          ], cdef.line)
+        builder.call_c(dict_set_item_op,
+                       [
+                           builder.load_globals_dict(),
+                           builder.load_static_unicode(cdef.name),
+                           non_ext_class
+                       ], cdef.line)
 
         # Cache any cachable class attributes
         cache_class_attrs(builder, attrs_to_cache, cdef)
@@ -191,12 +191,12 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.add(InitStatic(tp, cdef.name, builder.module_name, NAMESPACE_TYPE))
 
     # Add it to the dict
-    builder.primitive_op(dict_set_item_op,
-                      [
-                          builder.load_globals_dict(),
-                          builder.load_static_unicode(cdef.name),
-                          tp,
-                      ], cdef.line)
+    builder.call_c(dict_set_item_op,
+                [
+                    builder.load_globals_dict(),
+                    builder.load_static_unicode(cdef.name),
+                    tp,
+                ], cdef.line)
 
     return tp
 
@@ -280,7 +280,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
     # TODO: Maybe generate more precise types for annotations
     key = builder.load_static_unicode(lvalue.name)
     typ = builder.primitive_op(type_object_op, [], stmt.line)
-    builder.primitive_op(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+    builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
     # Only add the attribute to the __dict__ if the assignment is of the form:
     # x: type = value (don't add attributes of the form 'x: type' to the __dict__).
@@ -470,9 +470,9 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
 
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
     # Add __annotations__ to the class dict.
-    builder.primitive_op(dict_set_item_op,
-                      [non_ext.dict, builder.load_static_unicode('__annotations__'),
-                       non_ext.anns], -1)
+    builder.call_c(dict_set_item_op,
+                [non_ext.dict, builder.load_static_unicode('__annotations__'),
+                non_ext.anns], -1)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
     # dataclass decorator, dataclass will not try to look for __text_signature__.

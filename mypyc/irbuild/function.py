@@ -93,10 +93,10 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         decorated_func = load_decorated_func(builder, dec.func, orig_func)
 
         # Set the callable object representing the decorated function as a global.
-        builder.primitive_op(dict_set_item_op,
-                          [builder.load_globals_dict(),
-                           builder.load_static_unicode(dec.func.name), decorated_func],
-                          decorated_func.line)
+        builder.call_c(dict_set_item_op,
+                    [builder.load_globals_dict(),
+                    builder.load_static_unicode(dec.func.name), decorated_func],
+                    decorated_func.line)
 
     builder.functions.append(func_ir)
 

@@ -24,20 +24,20 @@ name_ref_op('builtins.dict',
             is_borrowed=True)
 
 # dict[key]
-dict_get_item_op = method_op(
+dict_get_item_op = c_method_op(
     name='__getitem__',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetItem'))
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetItem',
+    error_kind=ERR_MAGIC)
 
 # dict[key] = value
-dict_set_item_op = method_op(
+dict_set_item_op = c_method_op(
     name='__setitem__',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_SetItem'))
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_SetItem',
+    error_kind=ERR_NEG_INT)
 
 # key in dict
 c_binary_op(
@@ -241,10 +241,8 @@ dict_next_item_op = custom_op(
 )
 
 # check that len(dict) == const during iteration
-dict_check_size_op = custom_op(
+dict_check_size_op = c_custom_op(
     arg_types=[dict_rprimitive, int_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_emit('CPyDict_CheckSize'),
-    format_str='{dest} = assert size({args[0]}) == {args[1]}',
-)
+    return_type=bool_rprimitive,
+    c_function_name='CPyDict_CheckSize',
+    error_kind=ERR_FALSE)

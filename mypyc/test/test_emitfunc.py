@@ -218,12 +218,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """)
 
     def test_dict_get_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),
+        self.assert_emit(CallC(dict_get_item_op.c_function_name, [self.d, self.o2],
+                               dict_get_item_op.return_type, dict_get_item_op.steals,
+                               dict_get_item_op.error_kind, 1),
                          """cpy_r_r0 = CPyDict_GetItem(cpy_r_d, cpy_r_o2);""")
 
     def test_dict_set_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.d, self.o, self.o2], dict_set_item_op, 1),
-                         """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2) >= 0;""")
+        self.assert_emit(CallC(dict_set_item_op.c_function_name, [self.d, self.o, self.o2],
+                               dict_set_item_op.return_type, dict_set_item_op.steals,
+                               dict_set_item_op.error_kind, 1),
+                        """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2);""")
 
     def test_dict_update(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o], dict_update_op, 1),

@@ -532,9 +532,9 @@ class ForDictionaryCommon(ForGenerator):
         builder = self.builder
         line = self.line
         # Technically, we don't need a new primitive for this, but it is simpler.
-        builder.primitive_op(dict_check_size_op,
-                             [builder.read(self.expr_target, line),
-                              builder.read(self.size, line)], line)
+        builder.call_c(dict_check_size_op,
+                       [builder.read(self.expr_target, line),
+                        builder.read(self.size, line)], line)
 
     def gen_cleanup(self) -> None:
         # Same as for generic ForIterable.

@@ -820,13 +820,13 @@ L2:
     dec_ref r7
     key = r8
     r9 = box(int, key)
-    r10 = d[r9] :: dict
+    r10 = CPyDict_GetItem(d, r9)
     dec_ref r9
     r11 = unbox(int, r10)
     dec_ref r10
     dec_ref r11 :: int
 L3:
-    r12 = assert size(d) == r2
+    r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
     r13 = no_err_occurred
