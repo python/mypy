@@ -99,7 +99,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # StopIteration instead of using RaiseStandardError because
         # the obvious thing doesn't work if the value is a tuple
         # (???).
-        builder.primitive_op(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
+        builder.call_c(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
 
@@ -159,7 +159,7 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
         self.saved = saved
 
     def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
-        builder.primitive_op(restore_exc_info_op, [builder.read(self.saved)], line)
+        builder.call_c(restore_exc_info_op, [builder.read(self.saved)], line)
 
 
 class FinallyNonlocalControl(CleanupNonlocalControl):
@@ -187,5 +187,5 @@ class FinallyNonlocalControl(CleanupNonlocalControl):
         target, cleanup = BasicBlock(), BasicBlock()
         builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))
         builder.activate_block(cleanup)
-        builder.primitive_op(restore_exc_info_op, [self.saved], line)
+        builder.call_c(restore_exc_info_op, [self.saved], line)
         builder.goto_and_activate(target)

@@ -3063,7 +3063,7 @@ L4:
 L5:
     goto L1
 L6:
-    r8 = no_err_occurred
+    r8 = CPy_NoErrOccured()
 L7:
 L8:
     return r0
@@ -3096,7 +3096,7 @@ L4:
 L5:
     goto L1
 L6:
-    r9 = no_err_occurred
+    r9 = CPy_NoErrOccured()
 L7:
 L8:
     return r0
