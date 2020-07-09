@@ -130,12 +130,6 @@ unsafe_short_add = custom_op(
     format_str='{dest} = {args[0]} + {args[1]} :: short_int',
     emit=simple_emit('{dest} = {args[0]} + {args[1]};'))
 
-int_equal = c_custom_op(
-    arg_types=[int_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
-    c_function_name='CPyTagged_IsEq_',
-    error_kind=ERR_NEVER)
-
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
     return c_unary_op(name=name,
@@ -147,6 +141,17 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
 
+# integer comparsion operation implementation related:
+
+# description for equal operation on two boxed tagged integers
+int_equal_ = c_custom_op(
+    arg_types=[int_rprimitive, int_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPyTagged_IsEq_',
+    error_kind=ERR_NEVER)
+
+# provide mapping from textual op to short int's op variant and boxed int's description
+# note these are not complete implementations
 int_logical_op_mapping = {
-    '==': (BinaryIntOp.EQ, int_equal)
+    '==': (BinaryIntOp.EQ, int_equal_)
 }  # type: Dict[str, Tuple[int, CFunctionDescription]]

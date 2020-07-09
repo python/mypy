@@ -385,7 +385,7 @@ def transform_basic_comparison(builder: IRBuilder,
                                line: int) -> Value:
     if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
             and op in int_logical_op_mapping.keys()):
-        return builder.binary_comparison_op(left, right, op, line)
+        return builder.compare_tagged(left, right, op, line)
     negate = False
     if op == 'is not':
         op, negate = 'is', True
