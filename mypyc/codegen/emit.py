@@ -13,7 +13,7 @@ from mypyc.ir.rtypes import (
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
-    int_rprimitive, is_optional_type, optional_value_type
+    int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive, is_int64_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -695,6 +695,11 @@ class Emitter:
             self.emit_lines('{}{} = Py_None;'.format(declaration, dest))
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
+        # TODO: This is a hack to handle mypy's false negative on unreachable code.
+        #       All ops returning int32/int64 should not be coerced into object.
+        #       Since their result will not be used elsewhere, it's safe to use NULL here
+        elif is_int32_rprimitive(typ) or is_int64_rprimitive(typ):
+            self.emit_lines('{}{} = NULL;'.format(declaration, dest))
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
