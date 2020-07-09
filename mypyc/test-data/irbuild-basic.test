@@ -594,7 +594,7 @@ def f(x):
 L0:
     r0 = __main__.globals :: static
     r1 = unicode_2 :: static  ('g')
-    r2 = r0[r1] :: dict
+    r2 = CPyDict_GetItem(r0, r1)
     r3 = box(int, x)
     r4 = py_call(r2, r3)
     r5 = unbox(int, r4)
@@ -1058,7 +1058,7 @@ def return_callable_type():
 L0:
     r0 = __main__.globals :: static
     r1 = unicode_4 :: static  ('return_float')
-    r2 = r0[r1] :: dict
+    r2 = CPyDict_GetItem(r0, r1)
     return r2
 def call_callable_type():
     r0, f, r1 :: object
@@ -1359,7 +1359,7 @@ def f():
 L0:
     r0 = __main__.globals :: static
     r1 = unicode_1 :: static  ('x')
-    r2 = r0[r1] :: dict
+    r2 = CPyDict_GetItem(r0, r1)
     r3 = unbox(int, r2)
     r4 = builtins :: module
     r5 = unicode_2 :: static  ('print')
@@ -1377,7 +1377,7 @@ def __top_level__():
     r6 :: dict
     r7 :: str
     r8 :: object
-    r9 :: bool
+    r9 :: int32
     r10 :: dict
     r11 :: str
     r12 :: object
@@ -1400,10 +1400,10 @@ L2:
     r6 = __main__.globals :: static
     r7 = unicode_1 :: static  ('x')
     r8 = box(short_int, r5)
-    r9 = r6.__setitem__(r7, r8) :: dict
+    r9 = CPyDict_SetItem(r6, r7, r8)
     r10 = __main__.globals :: static
     r11 = unicode_1 :: static  ('x')
-    r12 = r10[r11] :: dict
+    r12 = CPyDict_GetItem(r10, r11)
     r13 = unbox(int, r12)
     r14 = builtins :: module
     r15 = unicode_2 :: static  ('print')
@@ -1629,10 +1629,10 @@ L0:
     r3 = (r0, r1, r2)
     r4 = __main__.globals :: static
     r5 = unicode_3 :: static  ('f')
-    r6 = r4[r5] :: dict
+    r6 = CPyDict_GetItem(r4, r5)
     r7 = []
     r8 = box(tuple[int, int, int], r3)
-    r9 = r7.extend(r8) :: list
+    r9 = CPyList_Extend(r7, r8)
     r10 = PyList_AsTuple(r7)
     r11 = PyDict_New()
     r12 = py_call_with_kwargs(r6, r10, r11)
@@ -1657,11 +1657,11 @@ L0:
     r3 = (r1, r2)
     r4 = __main__.globals :: static
     r5 = unicode_3 :: static  ('f')
-    r6 = r4[r5] :: dict
+    r6 = CPyDict_GetItem(r4, r5)
     r7 = box(short_int, r0)
     r8 = [r7]
     r9 = box(tuple[int, int], r3)
-    r10 = r8.extend(r9) :: list
+    r10 = CPyList_Extend(r8, r9)
     r11 = PyList_AsTuple(r8)
     r12 = PyDict_New()
     r13 = py_call_with_kwargs(r6, r11, r12)
@@ -1697,7 +1697,7 @@ def g():
     r13 :: object
     r14 :: tuple
     r15 :: dict
-    r16 :: bool
+    r16 :: int32
     r17 :: object
     r18 :: tuple[int, int, int]
 L0:
@@ -1714,10 +1714,10 @@ L0:
     r10 = CPyDict_Build(r6, r0, r7, r2, r8, r4, r9)
     r11 = __main__.globals :: static
     r12 = unicode_6 :: static  ('f')
-    r13 = r11[r12] :: dict
+    r13 = CPyDict_GetItem(r11, r12)
     r14 = () :: tuple
     r15 = PyDict_New()
-    r16 = r15.update(r10) (display) :: dict
+    r16 = CPyDict_UpdateInDisplay(r15, r10)
     r17 = py_call_with_kwargs(r13, r14, r15)
     r18 = unbox(tuple[int, int, int], r17)
     return r18
@@ -1734,7 +1734,7 @@ def h():
     r11, r12 :: object
     r13 :: tuple
     r14 :: dict
-    r15 :: bool
+    r15 :: int32
     r16 :: object
     r17 :: tuple[int, int, int]
 L0:
@@ -1749,11 +1749,11 @@ L0:
     r8 = CPyDict_Build(r5, r1, r6, r3, r7)
     r9 = __main__.globals :: static
     r10 = unicode_6 :: static  ('f')
-    r11 = r9[r10] :: dict
+    r11 = CPyDict_GetItem(r9, r10)
     r12 = box(short_int, r0)
     r13 = (r12) :: tuple
     r14 = PyDict_New()
-    r15 = r14.update(r8) (display) :: dict
+    r15 = CPyDict_UpdateInDisplay(r14, r8)
     r16 = py_call_with_kwargs(r11, r13, r14)
     r17 = unbox(tuple[int, int, int], r16)
     return r17
@@ -1879,7 +1879,7 @@ def f():
     r17 :: bool
     r18 :: int
     r19 :: object
-    r20 :: bool
+    r20 :: int32
     r21, r22 :: short_int
 L0:
     r0 = []
@@ -1914,7 +1914,7 @@ L5:
 L6:
     r18 = CPyTagged_Multiply(x, x)
     r19 = box(int, r18)
-    r20 = r0.append(r19) :: list
+    r20 = PyList_Append(r0, r19)
 L7:
     r21 = 1
     r22 = r9 + r21
@@ -1943,7 +1943,7 @@ def f():
     r17 :: bool
     r18 :: int
     r19, r20 :: object
-    r21 :: bool
+    r21 :: int32
     r22, r23 :: short_int
 L0:
     r0 = PyDict_New()
@@ -1979,7 +1979,7 @@ L6:
     r18 = CPyTagged_Multiply(x, x)
     r19 = box(int, x)
     r20 = box(int, r18)
-    r21 = r0.__setitem__(r19, r20) :: dict
+    r21 = CPyDict_SetItem(r0, r19, r20)
 L7:
     r22 = 1
     r23 = r9 + r22
@@ -2012,7 +2012,7 @@ def f(l):
     r17 :: tuple[int, int, int]
     r18, r19, r20, r21, r22 :: int
     r23 :: object
-    r24 :: bool
+    r24 :: int32
     r25, r26 :: short_int
 L0:
     r0 = 0
@@ -2055,7 +2055,7 @@ L6:
     r21 = CPyTagged_Add(x0, y0)
     r22 = CPyTagged_Add(r21, z0)
     r23 = box(int, r22)
-    r24 = r11.append(r23) :: list
+    r24 = PyList_Append(r11, r23)
 L7:
     r25 = 1
     r26 = r13 + r25
@@ -2412,15 +2412,15 @@ def __top_level__():
     r12 :: str
     r13 :: object
     r14 :: str
-    r15 :: bool
+    r15 :: int32
     r16 :: str
     r17 :: object
     r18 :: str
-    r19 :: bool
+    r19 :: int32
     r20 :: str
     r21 :: object
     r22 :: str
-    r23 :: bool
+    r23 :: int32
     r24, r25 :: str
     r26 :: object
     r27 :: tuple[str, object]
@@ -2436,7 +2436,7 @@ def __top_level__():
     r37, r38 :: object
     r39 :: dict
     r40 :: str
-    r41 :: bool
+    r41 :: int32
     r42 :: short_int
     r43 :: str
     r44 :: dict
@@ -2445,13 +2445,13 @@ def __top_level__():
     r49 :: tuple
     r50 :: dict
     r51 :: str
-    r52 :: bool
+    r52 :: int32
     r53 :: dict
     r54 :: str
     r55, r56, r57 :: object
     r58 :: dict
     r59 :: str
-    r60 :: bool
+    r60 :: int32
     r61 :: str
     r62 :: dict
     r63 :: str
@@ -2461,7 +2461,7 @@ def __top_level__():
     r67, r68 :: object
     r69 :: dict
     r70 :: str
-    r71 :: bool
+    r71 :: int32
     r72, r73, r74 :: short_int
     r75, r76, r77 :: object
     r78 :: list
@@ -2470,7 +2470,7 @@ def __top_level__():
     r81, r82 :: object
     r83 :: dict
     r84 :: str
-    r85 :: bool
+    r85 :: int32
     r86 :: None
 L0:
     r0 = builtins :: module
@@ -2496,15 +2496,15 @@ L4:
     r12 = unicode_2 :: static  ('List')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('List')
-    r15 = r11.__setitem__(r14, r13) :: dict
+    r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = unicode_3 :: static  ('NewType')
     r17 = getattr r10, r16
     r18 = unicode_3 :: static  ('NewType')
-    r19 = r11.__setitem__(r18, r17) :: dict
+    r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = unicode_4 :: static  ('NamedTuple')
     r21 = getattr r10, r20
     r22 = unicode_4 :: static  ('NamedTuple')
-    r23 = r11.__setitem__(r22, r21) :: dict
+    r23 = CPyDict_SetItem(r11, r22, r21)
     r24 = unicode_5 :: static  ('Lol')
     r25 = unicode_6 :: static  ('a')
     r26 = int
@@ -2518,41 +2518,41 @@ L4:
     r34 = box(tuple[object, object], r33)
     r35 = __main__.globals :: static
     r36 = unicode_4 :: static  ('NamedTuple')
-    r37 = r35[r36] :: dict
+    r37 = CPyDict_GetItem(r35, r36)
     r38 = py_call(r37, r24, r34)
     r39 = __main__.globals :: static
     r40 = unicode_5 :: static  ('Lol')
-    r41 = r39.__setitem__(r40, r38) :: dict
+    r41 = CPyDict_SetItem(r39, r40, r38)
     r42 = 1
     r43 = unicode_8 :: static
     r44 = __main__.globals :: static
     r45 = unicode_5 :: static  ('Lol')
-    r46 = r44[r45] :: dict
+    r46 = CPyDict_GetItem(r44, r45)
     r47 = box(short_int, r42)
     r48 = py_call(r46, r47, r43)
     r49 = cast(tuple, r48)
     r50 = __main__.globals :: static
     r51 = unicode_9 :: static  ('x')
-    r52 = r50.__setitem__(r51, r49) :: dict
+    r52 = CPyDict_SetItem(r50, r51, r49)
     r53 = __main__.globals :: static
     r54 = unicode_2 :: static  ('List')
-    r55 = r53[r54] :: dict
+    r55 = CPyDict_GetItem(r53, r54)
     r56 = int
     r57 = r55[r56] :: object
     r58 = __main__.globals :: static
     r59 = unicode_10 :: static  ('Foo')
-    r60 = r58.__setitem__(r59, r57) :: dict
+    r60 = CPyDict_SetItem(r58, r59, r57)
     r61 = unicode_11 :: static  ('Bar')
     r62 = __main__.globals :: static
     r63 = unicode_10 :: static  ('Foo')
-    r64 = r62[r63] :: dict
+    r64 = CPyDict_GetItem(r62, r63)
     r65 = __main__.globals :: static
     r66 = unicode_3 :: static  ('NewType')
-    r67 = r65[r66] :: dict
+    r67 = CPyDict_GetItem(r65, r66)
     r68 = py_call(r67, r61, r64)
     r69 = __main__.globals :: static
     r70 = unicode_11 :: static  ('Bar')
-    r71 = r69.__setitem__(r70, r68) :: dict
+    r71 = CPyDict_SetItem(r69, r70, r68)
     r72 = 1
     r73 = 2
     r74 = 3
@@ -2562,11 +2562,11 @@ L4:
     r78 = [r75, r76, r77]
     r79 = __main__.globals :: static
     r80 = unicode_11 :: static  ('Bar')
-    r81 = r79[r80] :: dict
+    r81 = CPyDict_GetItem(r79, r80)
     r82 = py_call(r81, r78)
     r83 = __main__.globals :: static
     r84 = unicode_12 :: static  ('y')
-    r85 = r83.__setitem__(r84, r82) :: dict
+    r85 = CPyDict_SetItem(r83, r84, r82)
     r86 = None
     return r86
 
@@ -2829,11 +2829,11 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = __main__.globals :: static
     r4 = unicode_8 :: static  ('b')
-    r5 = r3[r4] :: dict
+    r5 = CPyDict_GetItem(r3, r4)
     r6 = py_call(r5, r1)
     r7 = __main__.globals :: static
     r8 = unicode_9 :: static  ('a')
-    r9 = r7[r8] :: dict
+    r9 = CPyDict_GetItem(r7, r8)
     r10 = py_call(r9, r6)
     r0.d = r10; r11 = is_error
     r12 = unicode_10 :: static  ('c')
@@ -2857,7 +2857,7 @@ def __top_level__():
     r12 :: str
     r13 :: object
     r14 :: str
-    r15 :: bool
+    r15 :: int32
     r16 :: dict
     r17 :: str
     r18 :: object
@@ -2869,7 +2869,7 @@ def __top_level__():
     r25, r26 :: object
     r27 :: dict
     r28 :: str
-    r29 :: bool
+    r29 :: int32
     r30 :: None
 L0:
     r0 = builtins :: module
@@ -2895,21 +2895,21 @@ L4:
     r12 = unicode_2 :: static  ('Callable')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('Callable')
-    r15 = r11.__setitem__(r14, r13) :: dict
+    r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = __main__.globals :: static
     r17 = unicode_11 :: static  ('__mypyc_c_decorator_helper__')
-    r18 = r16[r17] :: dict
+    r18 = CPyDict_GetItem(r16, r17)
     r19 = __main__.globals :: static
     r20 = unicode_8 :: static  ('b')
-    r21 = r19[r20] :: dict
+    r21 = CPyDict_GetItem(r19, r20)
     r22 = py_call(r21, r18)
     r23 = __main__.globals :: static
     r24 = unicode_9 :: static  ('a')
-    r25 = r23[r24] :: dict
+    r25 = CPyDict_GetItem(r23, r24)
     r26 = py_call(r25, r22)
     r27 = __main__.globals :: static
     r28 = unicode_10 :: static  ('c')
-    r29 = r27.__setitem__(r28, r26) :: dict
+    r29 = CPyDict_SetItem(r27, r28, r26)
     r30 = None
     return r30
 
@@ -2995,7 +2995,7 @@ def __top_level__():
     r12 :: str
     r13 :: object
     r14 :: str
-    r15 :: bool
+    r15 :: int32
     r16 :: None
 L0:
     r0 = builtins :: module
@@ -3021,7 +3021,7 @@ L4:
     r12 = unicode_2 :: static  ('Callable')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('Callable')
-    r15 = r11.__setitem__(r14, r13) :: dict
+    r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = None
     return r16
 

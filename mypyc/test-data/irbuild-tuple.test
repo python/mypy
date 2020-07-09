@@ -111,7 +111,7 @@ def f(x, y):
     r3, r4 :: object
     r5 :: list
     r6, r7, r8 :: object
-    r9 :: bool
+    r9 :: int32
     r10 :: tuple
 L0:
     r0 = 1
@@ -120,10 +120,10 @@ L0:
     r3 = box(short_int, r0)
     r4 = box(short_int, r1)
     r5 = [r3, r4]
-    r6 = r5.extend(x) :: list
-    r7 = r5.extend(y) :: list
+    r6 = CPyList_Extend(r5, x)
+    r7 = CPyList_Extend(r5, y)
     r8 = box(short_int, r2)
-    r9 = r5.append(r8) :: list
+    r9 = PyList_Append(r5, r8)
     r10 = PyList_AsTuple(r5)
     return r10
 

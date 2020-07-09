@@ -13,12 +13,13 @@ from mypy.nodes import (
 )
 from mypyc.ir.ops import (
     Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget, TupleGet,
-    AssignmentTargetTuple, TupleSet, OpDescription, BinaryIntOp
+    AssignmentTargetTuple, TupleSet, BinaryIntOp
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
     RTuple, is_dict_rprimitive, short_int_rprimitive
 )
+from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
@@ -92,7 +93,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(list_append_op, [list_ops, e], gen.line)
+        builder.call_c(list_append_op, [list_ops, e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return list_ops
@@ -485,8 +486,8 @@ class ForDictionaryCommon(ForGenerator):
     since they may override some iteration methods in subtly incompatible manner.
     The fallback logic is implemented in CPy.h via dynamic type check.
     """
-    dict_next_op = None  # type: ClassVar[OpDescription]
-    dict_iter_op = None  # type: ClassVar[OpDescription]
+    dict_next_op = None  # type: ClassVar[CFunctionDescription]
+    dict_iter_op = None  # type: ClassVar[CFunctionDescription]
 
     def need_cleanup(self) -> bool:
         # Technically, a dict subclass can raise an unrelated exception
@@ -504,14 +505,14 @@ class ForDictionaryCommon(ForGenerator):
         self.size = builder.maybe_spill(self.load_len(self.expr_target))
 
         # For dict class (not a subclass) this is the dictionary itself.
-        iter_reg = builder.primitive_op(self.dict_iter_op, [expr_reg], self.line)
+        iter_reg = builder.call_c(self.dict_iter_op, [expr_reg], self.line)
         self.iter_target = builder.maybe_spill(iter_reg)
 
     def gen_condition(self) -> None:
         """Get next key/value pair, set new offset, and check if we should continue."""
         builder = self.builder
         line = self.line
-        self.next_tuple = self.builder.primitive_op(
+        self.next_tuple = self.builder.call_c(
             self.dict_next_op, [builder.read(self.iter_target, line),
                                 builder.read(self.offset_target, line)], line)
 
@@ -532,9 +533,9 @@ class ForDictionaryCommon(ForGenerator):
         builder = self.builder
         line = self.line
         # Technically, we don't need a new primitive for this, but it is simpler.
-        builder.primitive_op(dict_check_size_op,
-                             [builder.read(self.expr_target, line),
-                              builder.read(self.size, line)], line)
+        builder.call_c(dict_check_size_op,
+                       [builder.read(self.expr_target, line),
+                        builder.read(self.size, line)], line)
 
     def gen_cleanup(self) -> None:
         # Same as for generic ForIterable.

@@ -7,22 +7,22 @@ def f():
     r0, r1, r2 :: short_int
     r3 :: set
     r4 :: object
-    r5 :: bool
+    r5 :: int32
     r6 :: object
-    r7 :: bool
+    r7 :: int32
     r8 :: object
-    r9 :: bool
+    r9 :: int32
 L0:
     r0 = 1
     r1 = 2
     r2 = 3
     r3 = set
     r4 = box(short_int, r0)
-    r5 = r3.add(r4) :: set
+    r5 = PySet_Add(r3, r4)
     r6 = box(short_int, r1)
-    r7 = r3.add(r6) :: set
+    r7 = PySet_Add(r3, r6)
     r8 = box(short_int, r2)
-    r9 = r3.add(r8) :: set
+    r9 = PySet_Add(r3, r8)
     return r3
 
 [case testNewEmptySet]
@@ -57,11 +57,11 @@ def f():
     r0, r1, r2 :: short_int
     r3 :: set
     r4 :: object
-    r5 :: bool
+    r5 :: int32
     r6 :: object
-    r7 :: bool
+    r7 :: int32
     r8 :: object
-    r9 :: bool
+    r9 :: int32
     r10 :: int
 L0:
     r0 = 1
@@ -69,11 +69,11 @@ L0:
     r2 = 3
     r3 = set
     r4 = box(short_int, r0)
-    r5 = r3.add(r4) :: set
+    r5 = PySet_Add(r3, r4)
     r6 = box(short_int, r1)
-    r7 = r3.add(r6) :: set
+    r7 = PySet_Add(r3, r6)
     r8 = box(short_int, r2)
-    r9 = r3.add(r8) :: set
+    r9 = PySet_Add(r3, r8)
     r10 = len r3 :: set
     return r10
 
@@ -87,26 +87,28 @@ def f():
     r0, r1 :: short_int
     r2 :: set
     r3 :: object
-    r4 :: bool
+    r4 :: int32
     r5 :: object
-    r6 :: bool
+    r6 :: int32
     x :: set
     r7 :: short_int
     r8 :: object
-    r9 :: bool
+    r9 :: int32
+    r10 :: bool
 L0:
     r0 = 3
     r1 = 4
     r2 = set
     r3 = box(short_int, r0)
-    r4 = r2.add(r3) :: set
+    r4 = PySet_Add(r2, r3)
     r5 = box(short_int, r1)
-    r6 = r2.add(r5) :: set
+    r6 = PySet_Add(r2, r5)
     x = r2
     r7 = 5
     r8 = box(short_int, r7)
-    r9 = r8 in x :: set
-    return r9
+    r9 = PySet_Contains(x, r8)
+    r10 = truncate r9: int32 to builtins.bool
+    return r10
 
 [case testSetRemove]
 from typing import Set
@@ -163,14 +165,14 @@ def f():
     r0, x :: set
     r1 :: short_int
     r2 :: object
-    r3 :: bool
+    r3 :: int32
     r4 :: None
 L0:
     r0 = set
     x = r0
     r1 = 1
     r2 = box(short_int, r1)
-    r3 = x.add(r2) :: set
+    r3 = PySet_Add(x, r2)
     r4 = None
     return x
 
@@ -183,12 +185,12 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: bool
+    r1 :: int32
     r2 :: None
 L0:
     r0 = set
     x = r0
-    r1 = x.clear() :: set
+    r1 = PySet_Clear(x)
     r2 = None
     return x
 
@@ -214,10 +216,10 @@ def update(s: Set[int], x: List[int]) -> None:
 def update(s, x):
     s :: set
     x :: list
-    r0 :: bool
+    r0 :: int32
     r1, r2 :: None
 L0:
-    r0 = s.update(x) :: set
+    r0 = _PySet_Update(s, x)
     r1 = None
     r2 = None
     return r2
@@ -232,23 +234,23 @@ def f(x, y):
     r0, r1, r2 :: short_int
     r3 :: set
     r4 :: object
-    r5 :: bool
+    r5 :: int32
     r6 :: object
-    r7, r8, r9 :: bool
+    r7, r8, r9 :: int32
     r10 :: object
-    r11 :: bool
+    r11 :: int32
 L0:
     r0 = 1
     r1 = 2
     r2 = 3
     r3 = set
     r4 = box(short_int, r0)
-    r5 = r3.add(r4) :: set
+    r5 = PySet_Add(r3, r4)
     r6 = box(short_int, r1)
-    r7 = r3.add(r6) :: set
-    r8 = r3.update(x) :: set
-    r9 = r3.update(y) :: set
+    r7 = PySet_Add(r3, r6)
+    r8 = _PySet_Update(r3, x)
+    r9 = _PySet_Update(r3, y)
     r10 = box(short_int, r2)
-    r11 = r3.add(r10) :: set
+    r11 = PySet_Add(r3, r10)
     return r3
 

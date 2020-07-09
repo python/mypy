@@ -2,13 +2,14 @@
 
 from typing import List
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, EmitterInterface
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, ERR_NEG_INT, EmitterInterface
 from mypyc.ir.rtypes import (
-    int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive
+    int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive,
+    c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, func_op, method_op, custom_op, name_emit,
-    call_emit, call_negative_bool_emit, c_function_op, c_binary_op, c_method_op
+    name_ref_op, func_op, custom_op, name_emit,
+    call_emit, c_function_op, c_binary_op, c_method_op
 )
 
 
@@ -85,20 +86,20 @@ list_set_item_op = c_method_op(
     steals=[False, False, True])
 
 # list.append(obj)
-list_append_op = method_op(
+list_append_op = c_method_op(
     name='append',
     arg_types=[list_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PyList_Append'))
+    return_type=c_int_rprimitive,
+    c_function_name='PyList_Append',
+    error_kind=ERR_NEG_INT)
 
 # list.extend(obj)
-list_extend_op = method_op(
+list_extend_op = c_method_op(
     name='extend',
     arg_types=[list_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyList_Extend'))
+    return_type=object_rprimitive,
+    c_function_name='CPyList_Extend',
+    error_kind=ERR_MAGIC)
 
 # list.pop()
 list_pop_last = c_method_op(

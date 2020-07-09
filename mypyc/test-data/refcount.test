@@ -770,12 +770,12 @@ def f(a, x):
     a :: list
     x :: int
     r0 :: object
-    r1 :: bool
+    r1 :: int32
     r2, r3 :: None
 L0:
     inc_ref x :: int
     r0 = box(int, x)
-    r1 = a.append(r0) :: list
+    r1 = PyList_Append(a, r0)
     dec_ref r0
     r2 = None
     r3 = None
@@ -806,9 +806,9 @@ L0:
     r0 = 0
     r1 = r0
     r2 = len d :: dict
-    r3 = key_iter d :: dict
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = next_key r3, offset=r1
+    r4 = CPyDict_NextKey(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -820,13 +820,13 @@ L2:
     dec_ref r7
     key = r8
     r9 = box(int, key)
-    r10 = d[r9] :: dict
+    r10 = CPyDict_GetItem(d, r9)
     dec_ref r9
     r11 = unbox(int, r10)
     dec_ref r10
     dec_ref r11 :: int
 L3:
-    r12 = assert size(d) == r2
+    r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
     r13 = no_err_occurred

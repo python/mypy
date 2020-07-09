@@ -126,8 +126,8 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
 
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
         mod_dict = builder.primitive_op(get_module_dict_op, [], node.line)
-        obj = builder.primitive_op(dict_get_item_op,
-                                [mod_dict, builder.load_static_unicode(base)], node.line)
+        obj = builder.call_c(dict_get_item_op,
+                             [mod_dict, builder.load_static_unicode(base)], node.line)
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_static_unicode(name), obj],
             result_type=None, line=node.line)

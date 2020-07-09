@@ -312,9 +312,9 @@ L0:
     r0 = 0
     r1 = r0
     r2 = len d :: dict
-    r3 = key_iter d :: dict
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = next_key r3, offset=r1
+    r4 = CPyDict_NextKey(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -324,10 +324,10 @@ L2:
     r8 = unbox(int, r7)
     key = r8
     r9 = box(int, key)
-    r10 = d[r9] :: dict
+    r10 = CPyDict_GetItem(d, r9)
     r11 = unbox(int, r10)
 L3:
-    r12 = assert size(d) == r2
+    r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
     r13 = no_err_occurred
@@ -373,9 +373,9 @@ L0:
     r1 = 0
     r2 = r1
     r3 = len d :: dict
-    r4 = key_iter d :: dict
+    r4 = CPyDict_GetKeysIter(d)
 L1:
-    r5 = next_key r4, offset=r2
+    r5 = CPyDict_NextKey(r4, r2)
     r6 = r5[1]
     r2 = r6
     r7 = r5[0]
@@ -385,7 +385,7 @@ L2:
     r9 = unbox(int, r8)
     key = r9
     r10 = box(int, key)
-    r11 = d[r10] :: dict
+    r11 = CPyDict_GetItem(d, r10)
     r12 = unbox(int, r11)
     r13 = 2
     r14 = CPyTagged_Remainder(r12, r13)
@@ -396,12 +396,12 @@ L3:
     goto L5
 L4:
     r17 = box(int, key)
-    r18 = d[r17] :: dict
+    r18 = CPyDict_GetItem(d, r17)
     r19 = unbox(int, r18)
     r20 = CPyTagged_Add(s, r19)
     s = r20
 L5:
-    r21 = assert size(d) == r3
+    r21 = CPyDict_CheckSize(d, r3)
     goto L1
 L6:
     r22 = no_err_occurred

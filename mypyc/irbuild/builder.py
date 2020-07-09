@@ -245,7 +245,7 @@ class IRBuilder:
                             key: str, val: Value, line: int) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_static_unicode(key)
-        self.primitive_op(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+        self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
@@ -884,7 +884,7 @@ class IRBuilder:
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
         reg = self.load_static_unicode(name)
-        return self.primitive_op(dict_get_item_op, [_globals, reg], line)
+        return self.call_c(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
         return self.add(LoadStatic(dict_rprimitive, 'globals', self.module_name))

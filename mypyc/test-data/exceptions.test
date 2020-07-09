@@ -36,7 +36,7 @@ def f(x, y, z):
     x :: list
     y, z :: int
     r0 :: object
-    r1 :: bool
+    r1 :: int32
     r2 :: None
     r3 :: object
     r4 :: bool
@@ -44,9 +44,9 @@ def f(x, y, z):
 L0:
     inc_ref y :: int
     r0 = box(int, y)
-    r1 = x.append(r0) :: list
+    r1 = PyList_Append(x, r0)
     dec_ref r0
-    if not r1 goto L3 (error at f:3) else goto L1 :: bool
+    if r1 < 0 goto L3 (error at f:3) else goto L1
 L1:
     r2 = None
     inc_ref z :: int

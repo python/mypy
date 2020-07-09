@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import name_ref_ops
+from mypyc.primitives.registry import name_ref_ops, CFunctionDescription
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
@@ -491,8 +491,8 @@ def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
 def _visit_display(builder: IRBuilder,
                    items: List[Expression],
                    constructor_op: OpDescription,
-                   append_op: OpDescription,
-                   extend_op: OpDescription,
+                   append_op: CFunctionDescription,
+                   extend_op: CFunctionDescription,
                    line: int
                    ) -> Value:
     accepted_items = []
@@ -512,7 +512,7 @@ def _visit_display(builder: IRBuilder,
         if result is None:
             result = builder.primitive_op(constructor_op, initial_items, line)
 
-        builder.primitive_op(extend_op if starred else append_op, [result, value], line)
+        builder.call_c(extend_op if starred else append_op, [result, value], line)
 
     if result is None:
         result = builder.primitive_op(constructor_op, initial_items, line)
@@ -534,7 +534,7 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(set_add_op, [set_ops, e], o.line)
+        builder.call_c(set_add_op, [set_ops, e], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return set_ops
@@ -547,7 +547,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.primitive_op(dict_set_item_op, [d, k, v], o.line)
+        builder.call_c(dict_set_item_op, [d, k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return d

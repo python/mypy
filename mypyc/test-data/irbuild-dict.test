@@ -11,7 +11,7 @@ def f(d):
 L0:
     r0 = 0
     r1 = box(short_int, r0)
-    r2 = d[r1] :: dict
+    r2 = CPyDict_GetItem(d, r1)
     r3 = unbox(bool, r2)
     return r3
 
@@ -25,14 +25,14 @@ def f(d):
     r0 :: bool
     r1 :: short_int
     r2, r3 :: object
-    r4 :: bool
+    r4 :: int32
     r5 :: None
 L0:
     r0 = False
     r1 = 0
     r2 = box(short_int, r1)
     r3 = box(bool, r0)
-    r4 = d.__setitem__(r2, r3) :: dict
+    r4 = CPyDict_SetItem(d, r2, r3)
     r5 = None
     return r5
 
@@ -140,10 +140,10 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
 [out]
 def f(a, b):
     a, b :: dict
-    r0 :: bool
+    r0 :: int32
     r1, r2 :: None
 L0:
-    r0 = a.update(b) :: dict
+    r0 = CPyDict_Update(a, b)
     r1 = None
     r2 = None
     return r2
@@ -168,14 +168,15 @@ def increment(d):
     r9 :: object
     r10 :: short_int
     r11, r12 :: object
-    r13, r14, r15 :: bool
+    r13 :: int32
+    r14, r15 :: bool
 L0:
     r0 = 0
     r1 = r0
     r2 = len d :: dict
-    r3 = key_iter d :: dict
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = next_key r3, offset=r1
+    r4 = CPyDict_NextKey(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -184,13 +185,13 @@ L2:
     r7 = r4[2]
     r8 = cast(str, r7)
     k = r8
-    r9 = d[k] :: dict
+    r9 = CPyDict_GetItem(d, k)
     r10 = 1
     r11 = box(short_int, r10)
     r12 = r9 += r11
-    r13 = d.__setitem__(k, r12) :: dict
+    r13 = CPyDict_SetItem(d, k, r12)
 L3:
-    r14 = assert size(d) == r2
+    r14 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
     r15 = no_err_occurred
@@ -211,9 +212,9 @@ def f(x, y):
     r3 :: native_int
     r4 :: object
     r5 :: dict
-    r6 :: bool
+    r6 :: int32
     r7 :: object
-    r8 :: bool
+    r8 :: int32
 L0:
     r0 = 2
     r1 = unicode_3 :: static  ('z')
@@ -221,9 +222,9 @@ L0:
     r3 = 1
     r4 = box(short_int, r0)
     r5 = CPyDict_Build(r3, x, r4)
-    r6 = r5.update(y) (display) :: dict
+    r6 = CPyDict_UpdateInDisplay(r5, y)
     r7 = box(short_int, r2)
-    r8 = r5.__setitem__(r1, r7) :: dict
+    r8 = CPyDict_SetItem(r5, r1, r7)
     return r5
 
 [case testDictIterationMethods]
@@ -259,15 +260,16 @@ def print_dict_methods(d1, d2):
     r22, r23 :: object
     r24, r25, k :: int
     r26, r27, r28, r29, r30 :: object
-    r31, r32, r33 :: bool
+    r31 :: int32
+    r32, r33 :: bool
     r34 :: None
 L0:
     r0 = 0
     r1 = r0
     r2 = len d1 :: dict
-    r3 = value_iter d1 :: dict
+    r3 = CPyDict_GetValuesIter(d1)
 L1:
-    r4 = next_value r3, offset=r1
+    r4 = CPyDict_NextValue(r3, r1)
     r5 = r4[1]
     r1 = r5
     r6 = r4[0]
@@ -285,7 +287,7 @@ L3:
     return r12
 L4:
 L5:
-    r13 = assert size(d1) == r2
+    r13 = CPyDict_CheckSize(d1, r2)
     goto L1
 L6:
     r14 = no_err_occurred
@@ -293,9 +295,9 @@ L7:
     r15 = 0
     r16 = r15
     r17 = len d2 :: dict
-    r18 = item_iter d2 :: dict
+    r18 = CPyDict_GetItemsIter(d2)
 L8:
-    r19 = next_item r18, offset=r16
+    r19 = CPyDict_NextItem(r18, r16)
     r20 = r19[1]
     r16 = r20
     r21 = r19[0]
@@ -308,13 +310,13 @@ L9:
     k = r24
     v = r25
     r26 = box(int, k)
-    r27 = d2[r26] :: dict
+    r27 = CPyDict_GetItem(d2, r26)
     r28 = box(int, v)
     r29 = r27 += r28
     r30 = box(int, k)
-    r31 = d2.__setitem__(r30, r29) :: dict
+    r31 = CPyDict_SetItem(d2, r30, r29)
 L10:
-    r32 = assert size(d2) == r17
+    r32 = CPyDict_CheckSize(d2, r17)
     goto L8
 L11:
     r33 = no_err_occurred

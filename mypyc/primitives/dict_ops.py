@@ -10,9 +10,8 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    name_ref_op, method_op, func_op, custom_op,
-    simple_emit, call_emit, call_negative_bool_emit,
-    name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
+    name_ref_op, method_op, func_op,
+    simple_emit, name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
 )
 
 
@@ -24,20 +23,20 @@ name_ref_op('builtins.dict',
             is_borrowed=True)
 
 # dict[key]
-dict_get_item_op = method_op(
+dict_get_item_op = c_method_op(
     name='__getitem__',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetItem'))
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetItem',
+    error_kind=ERR_MAGIC)
 
 # dict[key] = value
-dict_set_item_op = method_op(
+dict_set_item_op = c_method_op(
     name='__setitem__',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_SetItem'))
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_SetItem',
+    error_kind=ERR_NEG_INT)
 
 # key in dict
 c_binary_op(
@@ -50,30 +49,29 @@ c_binary_op(
     ordering=[1, 0])
 
 # dict1.update(dict2)
-dict_update_op = method_op(
+dict_update_op = c_method_op(
     name='update',
     arg_types=[dict_rprimitive, dict_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_Update'),
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_Update',
+    error_kind=ERR_NEG_INT,
     priority=2)
 
 # Operation used for **value in dict displays.
 # This is mostly like dict.update(obj), but has customized error handling.
-dict_update_in_display_op = custom_op(
+dict_update_in_display_op = c_custom_op(
     arg_types=[dict_rprimitive, dict_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_UpdateInDisplay'),
-    format_str='{dest} = {args[0]}.update({args[1]}) (display) :: dict',)
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_UpdateInDisplay',
+    error_kind=ERR_NEG_INT)
 
 # dict.update(obj)
-method_op(
+c_method_op(
     name='update',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_UpdateFromAny'))
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_UpdateFromAny',
+    error_kind=ERR_NEG_INT)
 
 # dict.get(key, default)
 c_method_op(
@@ -150,31 +148,25 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # list(dict.keys())
-dict_keys_op = custom_op(
-    name='keys',
+dict_keys_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=list_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Keys')
-)
+    return_type=list_rprimitive,
+    c_function_name='CPyDict_Keys',
+    error_kind=ERR_MAGIC)
 
 # list(dict.values())
-dict_values_op = custom_op(
-    name='values',
+dict_values_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=list_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Values')
-)
+    return_type=list_rprimitive,
+    c_function_name='CPyDict_Values',
+    error_kind=ERR_MAGIC)
 
 # list(dict.items())
-dict_items_op = custom_op(
-    name='items',
+dict_items_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=list_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_Items')
-)
+    return_type=list_rprimitive,
+    c_function_name='CPyDict_Items',
+    error_kind=ERR_MAGIC)
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -192,59 +184,45 @@ func_op(name='builtins.len',
         emit=emit_len)
 
 # PyDict_Next() fast iteration
-dict_key_iter_op = custom_op(
-    name='key_iter',
+dict_key_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetKeysIter'),
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetKeysIter',
+    error_kind=ERR_MAGIC)
 
-dict_value_iter_op = custom_op(
-    name='value_iter',
+dict_value_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetValuesIter'),
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetValuesIter',
+    error_kind=ERR_MAGIC)
 
-dict_item_iter_op = custom_op(
-    name='item_iter',
+dict_item_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyDict_GetItemsIter'),
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetItemsIter',
+    error_kind=ERR_MAGIC)
 
-dict_next_key_op = custom_op(
+dict_next_key_op = c_custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple_single,
-    error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_NextKey'),
-    format_str='{dest} = next_key {args[0]}, offset={args[1]}',
-)
+    return_type=dict_next_rtuple_single,
+    c_function_name='CPyDict_NextKey',
+    error_kind=ERR_NEVER)
 
-dict_next_value_op = custom_op(
+dict_next_value_op = c_custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple_single,
-    error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_NextValue'),
-    format_str='{dest} = next_value {args[0]}, offset={args[1]}',
-)
+    return_type=dict_next_rtuple_single,
+    c_function_name='CPyDict_NextValue',
+    error_kind=ERR_NEVER)
 
-dict_next_item_op = custom_op(
+dict_next_item_op = c_custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
-    result_type=dict_next_rtuple_pair,
-    error_kind=ERR_NEVER,
-    emit=call_emit('CPyDict_NextItem'),
-    format_str='{dest} = next_item {args[0]}, offset={args[1]}',
-)
+    return_type=dict_next_rtuple_pair,
+    c_function_name='CPyDict_NextItem',
+    error_kind=ERR_NEVER)
 
 # check that len(dict) == const during iteration
-dict_check_size_op = custom_op(
+dict_check_size_op = c_custom_op(
     arg_types=[dict_rprimitive, int_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_emit('CPyDict_CheckSize'),
-    format_str='{dest} = assert size({args[0]}) == {args[1]}',
-)
+    return_type=bool_rprimitive,
+    c_function_name='CPyDict_CheckSize',
+    error_kind=ERR_FALSE)
