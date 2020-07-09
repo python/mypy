@@ -13,7 +13,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, custom_op, simple_emit, name_emit,
-    c_unary_op, CFunctionDescription, c_function_op, c_binary_op
+    c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -128,6 +128,12 @@ unsafe_short_add = custom_op(
     error_kind=ERR_NEVER,
     format_str='{dest} = {args[0]} + {args[1]} :: short_int',
     emit=simple_emit('{dest} = {args[0]} + {args[1]};'))
+
+int_equal = c_custom_op(
+    arg_types=[int_rprimitive, int_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPyTagged_IsEq_',
+    error_kind=ERR_NEVER)
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:

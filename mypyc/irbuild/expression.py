@@ -18,7 +18,7 @@ from mypy.types import TupleType, get_proper_type
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
+from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops
 from mypyc.primitives.generic_ops import iter_op
@@ -382,6 +382,8 @@ def transform_basic_comparison(builder: IRBuilder,
                                left: Value,
                                right: Value,
                                line: int) -> Value:
+    if is_int_rprimitive(left.type) and is_int_rprimitive(right.type) and op in ('=='):
+        return builder.binary_comparison_op(left, right, op, line)
     negate = False
     if op == 'is not':
         op, negate = 'is', True
