@@ -139,6 +139,9 @@ class Options:
         # Apply strict None checking
         self.strict_optional = True
 
+        # Testing new flag
+        self.check_need_type_annotation = True
+
         # Show "note: In function "foo":" messages.
         self.show_error_context = False
 

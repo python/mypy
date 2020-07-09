@@ -2146,7 +2146,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
-                    self.check_forbidden_inference_types(inferred, rvalue, rvalue_type)
+                    if self.options.check_need_type_annotation:
+                        self.check_forbidden_inference_types(inferred, rvalue, rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
 
     def check_forbidden_inference_types(self, var: Var, rvalue: Context,

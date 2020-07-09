@@ -618,6 +618,13 @@ def process_options(args: List[str],
         '--enable-error-code', metavar='NAME', action='append', default=[],
         help="Enable a specific error code"
     )
+    forbidden_inference_group = parser.add_argument_group(
+        title='Handling forbidden inference related type checks',
+        description="Warn when infered type is List[object], Set[Object] or Dict[*, Object].")
+    add_invertible_flag('--suppress-need-type-annotation-errors', default=True,
+                        dest='check_need_type_annotation',
+                        help='Suppress "Need type annotation" errors',
+                        group=forbidden_inference_group)
 
     error_group = parser.add_argument_group(
         title='Configuring error messages',
