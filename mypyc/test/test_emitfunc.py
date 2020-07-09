@@ -230,8 +230,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                         """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2);""")
 
     def test_dict_update(self) -> None:
-        self.assert_emit(PrimitiveOp([self.d, self.o], dict_update_op, 1),
-                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o) >= 0;""")
+        self.assert_emit(CallC(dict_update_op.c_function_name, [self.d, self.o],
+                               dict_update_op.return_type, dict_update_op.steals,
+                               dict_update_op.error_kind, 1),
+                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o);""")
 
     def test_new_dict(self) -> None:
         self.assert_emit(CallC(dict_new_op.c_function_name, [], dict_new_op.return_type,

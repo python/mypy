@@ -591,7 +591,7 @@ class LowLevelIRBuilder:
                 if result is None:
                     result = self._create_dict(keys, values, line)
 
-                self.primitive_op(
+                self.call_c(
                     dict_update_in_display_op,
                     [result, value],
                     line=line

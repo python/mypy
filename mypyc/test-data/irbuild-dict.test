@@ -140,10 +140,10 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
 [out]
 def f(a, b):
     a, b :: dict
-    r0 :: bool
+    r0 :: int32
     r1, r2 :: None
 L0:
-    r0 = a.update(b) :: dict
+    r0 = CPyDict_Update(a, b)
     r1 = None
     r2 = None
     return r2
@@ -212,7 +212,7 @@ def f(x, y):
     r3 :: int64
     r4 :: object
     r5 :: dict
-    r6 :: bool
+    r6 :: int32
     r7 :: object
     r8 :: int32
 L0:
@@ -222,7 +222,7 @@ L0:
     r3 = 1
     r4 = box(short_int, r0)
     r5 = CPyDict_Build(r3, x, r4)
-    r6 = r5.update(y) (display) :: dict
+    r6 = CPyDict_UpdateInDisplay(r5, y)
     r7 = box(short_int, r2)
     r8 = CPyDict_SetItem(r5, r1, r7)
     return r5

@@ -1068,10 +1068,10 @@ def foo(x: WelpDict) -> None:
 [out]
 def foo(x):
     x :: dict
-    r0 :: bool
+    r0 :: int32
     r1, r2 :: None
 L0:
-    r0 = x.update(x) :: dict
+    r0 = CPyDict_Update(x, x)
     r1 = None
     r2 = None
     return r2

@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 
 from mypyc.primitives.registry import (
     name_ref_op, method_op, func_op, custom_op,
-    simple_emit, call_emit, call_negative_bool_emit,
+    simple_emit, call_emit,
     name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
 )
 
@@ -50,30 +50,29 @@ c_binary_op(
     ordering=[1, 0])
 
 # dict1.update(dict2)
-dict_update_op = method_op(
+dict_update_op = c_method_op(
     name='update',
     arg_types=[dict_rprimitive, dict_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_Update'),
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_Update',
+    error_kind=ERR_NEG_INT,
     priority=2)
 
 # Operation used for **value in dict displays.
 # This is mostly like dict.update(obj), but has customized error handling.
-dict_update_in_display_op = custom_op(
+dict_update_in_display_op = c_custom_op(
     arg_types=[dict_rprimitive, dict_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_UpdateInDisplay'),
-    format_str='{dest} = {args[0]}.update({args[1]}) (display) :: dict',)
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_UpdateInDisplay',
+    error_kind=ERR_NEG_INT)
 
 # dict.update(obj)
-method_op(
+c_method_op(
     name='update',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('CPyDict_UpdateFromAny'))
+    return_type=c_int_rprimitive,
+    c_function_name='CPyDict_UpdateFromAny',
+    error_kind=ERR_NEG_INT)
 
 # dict.get(key, default)
 c_method_op(

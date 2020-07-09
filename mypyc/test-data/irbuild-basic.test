@@ -1697,7 +1697,7 @@ def g():
     r13 :: object
     r14 :: tuple
     r15 :: dict
-    r16 :: bool
+    r16 :: int32
     r17 :: object
     r18 :: tuple[int, int, int]
 L0:
@@ -1717,7 +1717,7 @@ L0:
     r13 = CPyDict_GetItem(r11, r12)
     r14 = () :: tuple
     r15 = PyDict_New()
-    r16 = r15.update(r10) (display) :: dict
+    r16 = CPyDict_UpdateInDisplay(r15, r10)
     r17 = py_call_with_kwargs(r13, r14, r15)
     r18 = unbox(tuple[int, int, int], r17)
     return r18
@@ -1734,7 +1734,7 @@ def h():
     r11, r12 :: object
     r13 :: tuple
     r14 :: dict
-    r15 :: bool
+    r15 :: int32
     r16 :: object
     r17 :: tuple[int, int, int]
 L0:
@@ -1753,7 +1753,7 @@ L0:
     r12 = box(short_int, r0)
     r13 = (r12) :: tuple
     r14 = PyDict_New()
-    r15 = r14.update(r8) (display) :: dict
+    r15 = CPyDict_UpdateInDisplay(r14, r8)
     r16 = py_call_with_kwargs(r11, r13, r14)
     r17 = unbox(tuple[int, int, int], r16)
     return r17
