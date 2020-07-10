@@ -2740,6 +2740,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
+        # If left_map is None then we know mypy considers the left expression
+        # to be reundant.
+        #
+        # Note that we perform these checks *before* we take into account
+        # the analysis from the semanal phase below. We assume that nodes
+        # marked as unreachable during semantic analysis were done so intentionally.
+        # So, we shouldn't report an error.
+        if self.chk.options.warn_redundant_expr:
+            if left_map is None:
+                self.msg.redundant_left_operand(e.op, e.left)
+
         # If right_map is None then we know mypy considers the right branch
         # to be unreachable and therefore any errors found in the right branch
         # should be suppressed.
@@ -2749,10 +2760,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
         if self.chk.options.warn_unreachable:
-            if left_map is None:
-                self.msg.redundant_left_operand(e.op, e.left)
             if right_map is None:
-                self.msg.redundant_right_operand(e.op, e.right)
+                self.msg.unreachable_right_operand(e.op, e.right)
 
         if e.right_unreachable:
             right_map = None
@@ -3673,7 +3682,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     for var, type in true_map.items():
                         self.chk.binder.put(var, type)
 
-                if self.chk.options.warn_unreachable:
+                if self.chk.options.warn_redundant_expr:
                     if true_map is None:
                         self.msg.redundant_condition_in_comprehension(False, condition)
                     elif false_map is None:
@@ -3686,7 +3695,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Gain type information from isinstance if it is there
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
-        if self.chk.options.warn_unreachable:
+        if self.chk.options.warn_redundant_expr:
             if if_map is None:
                 self.msg.redundant_condition_in_if(False, e.cond)
             elif else_map is None:

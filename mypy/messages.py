@@ -1280,7 +1280,7 @@ class MessageBuilder:
         """
         self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
 
-    def redundant_right_operand(self, op_name: str, context: Context) -> None:
+    def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the right operand of a boolean expression is redundant:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
@@ -1299,7 +1299,7 @@ class MessageBuilder:
 
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
-                  context, code=codes.UNREACHABLE)
+                  context, code=codes.REDUNDANT_EXPR)
 
     def impossible_intersection(self,
                                 formatted_base_class_list: str,
