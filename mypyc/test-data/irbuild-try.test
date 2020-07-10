@@ -79,17 +79,17 @@ L3:
 L4:
     goto L8
 L5: (handler for L1, L2, L3, L4)
-    r6 = error_catch
+    r6 = CPy_CatchError()
     r7 = unicode_3 :: static  ('weeee')
     r8 = builtins :: module
     r9 = unicode_4 :: static  ('print')
     r10 = getattr r8, r9
     r11 = py_call(r10, r7)
 L6:
-    restore_exc_info r6
+    CPy_RestoreExcInfo(r6)
     goto L8
 L7: (handler for L5)
-    restore_exc_info r6
+    CPy_RestoreExcInfo(r6)
     r12 = keep_propagating
     unreachable
 L8:
