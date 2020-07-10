@@ -202,7 +202,7 @@ L2:
     dec_ref r2
     if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
-    r4 = error_catch
+    r4 = CPy_CatchError()
     r5 = unicode_2 :: static  ('weeee')
     r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
@@ -213,11 +213,11 @@ L4:
     dec_ref r8
     if is_error(r9) goto L6 (error at g:5) else goto L11
 L5:
-    restore_exc_info r4
+    CPy_RestoreExcInfo(r4)
     dec_ref r4
     goto L8
 L6:
-    restore_exc_info r4
+    CPy_RestoreExcInfo(r4)
     dec_ref r4
     r10 = keep_propagating
     if not r10 goto L9 else goto L7 :: bool
@@ -258,8 +258,9 @@ def a():
     r12 :: object
     r13 :: str
     r14, r15 :: object
-    r16, r17 :: bool
-    r18 :: str
+    r16 :: bool
+    r17 :: str
+    r18 :: bool
 L0:
 L1:
     r0 = builtins :: module
@@ -281,7 +282,7 @@ L4:
 L5:
     r9 = <error> :: str
     r5 = r9
-    r10 = error_catch
+    r10 = CPy_CatchError()
     r6 = r10
 L6:
     r11 = unicode_3 :: static  ('goodbye!')
@@ -296,8 +297,9 @@ L7:
 L8:
     if is_error(r6) goto L11 else goto L9
 L9:
-    reraise_exc; r16 = 0
-    if not r16 goto L13 else goto L22 :: bool
+    CPy_Reraise()
+    r18 = 0
+    if not r18 goto L13 else goto L22 :: bool
 L10:
     unreachable
 L11:
@@ -309,18 +311,18 @@ L13:
 L14:
     if is_error(r6) goto L16 else goto L15
 L15:
-    restore_exc_info r6
+    CPy_RestoreExcInfo(r6)
     dec_ref r6
 L16:
-    r17 = keep_propagating
-    if not r17 goto L19 else goto L17 :: bool
+    r16 = keep_propagating
+    if not r16 goto L19 else goto L17 :: bool
 L17:
     unreachable
 L18:
     unreachable
 L19:
-    r18 = <error> :: str
-    return r18
+    r17 = <error> :: str
+    return r17
 L20:
     dec_ref r3
     goto L3
@@ -373,9 +375,9 @@ L2:
     st = r1
     goto L4
 L3:
-    r2 = error_catch
+    r2 = CPy_CatchError()
     r3 = unicode_4 :: static
-    restore_exc_info r2
+    CPy_RestoreExcInfo(r2)
     dec_ref r2
     inc_ref r3
     return r3
@@ -418,9 +420,9 @@ L3:
     b = r3
     goto L6
 L4:
-    r4 = error_catch
+    r4 = CPy_CatchError()
 L5:
-    restore_exc_info r4
+    CPy_RestoreExcInfo(r4)
     dec_ref r4
 L6:
     if is_error(a) goto L17 else goto L9

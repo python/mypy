@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_FALSE, ERR_ALWAYS
 from mypyc.ir.rtypes import bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple
 from mypyc.primitives.registry import (
-    simple_emit, call_emit, call_void_emit, call_and_fail_emit, custom_op, c_custom_op
+    simple_emit, custom_op, c_custom_op
 )
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
@@ -15,37 +15,33 @@ raise_exception_op = c_custom_op(
     error_kind=ERR_ALWAYS)
 
 # Raise StopIteration exception with the specified value (which can be NULL).
-set_stop_iteration_value = custom_op(
+set_stop_iteration_value = c_custom_op(
     arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='set_stop_iteration_value({args[0]}); {dest} = 0',
-    emit=call_and_fail_emit('CPyGen_SetStopIterationValue'))
+    return_type=void_rtype,
+    c_function_name='CPyGen_SetStopIterationValue',
+    error_kind=ERR_ALWAYS)
 
 # Raise exception with traceback.
 # Arguments are (exception type, exception value, traceback).
-raise_exception_with_tb_op = custom_op(
+raise_exception_with_tb_op = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='raise_exception_with_tb({args[0]}, {args[1]}, {args[2]}); {dest} = 0',
-    emit=call_and_fail_emit('CPyErr_SetObjectAndTraceback'))
+    return_type=void_rtype,
+    c_function_name='CPyErr_SetObjectAndTraceback',
+    error_kind=ERR_ALWAYS)
 
 # Reraise the currently raised exception.
-reraise_exception_op = custom_op(
+reraise_exception_op = c_custom_op(
     arg_types=[],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='reraise_exc; {dest} = 0',
-    emit=call_and_fail_emit('CPy_Reraise'))
+    return_type=void_rtype,
+    c_function_name='CPy_Reraise',
+    error_kind=ERR_ALWAYS)
 
 # Propagate exception if the CPython error indicator is set (an exception was raised).
-no_err_occurred_op = custom_op(
+no_err_occurred_op = c_custom_op(
     arg_types=[],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='{dest} = no_err_occurred',
-    emit=call_emit('CPy_NoErrOccured'))
+    return_type=bool_rprimitive,
+    c_function_name='CPy_NoErrOccured',
+    error_kind=ERR_FALSE)
 
 # Assert that the error indicator has been set.
 assert_err_occured_op = custom_op(
@@ -68,42 +64,37 @@ keep_propagating_op = custom_op(
 # handled exception" (by sticking it into sys.exc_info()). Returns the
 # exception that was previously being handled, which must be restored
 # later.
-error_catch_op = custom_op(
+error_catch_op = c_custom_op(
     arg_types=[],
-    result_type=exc_rtuple,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = error_catch',
-    emit=call_emit('CPy_CatchError'))
+    return_type=exc_rtuple,
+    c_function_name='CPy_CatchError',
+    error_kind=ERR_NEVER)
 
 # Restore an old "currently handled exception" returned from.
 # error_catch (by sticking it into sys.exc_info())
-restore_exc_info_op = custom_op(
+restore_exc_info_op = c_custom_op(
     arg_types=[exc_rtuple],
-    result_type=void_rtype,
-    error_kind=ERR_NEVER,
-    format_str='restore_exc_info {args[0]}',
-    emit=call_void_emit('CPy_RestoreExcInfo'))
+    return_type=void_rtype,
+    c_function_name='CPy_RestoreExcInfo',
+    error_kind=ERR_NEVER)
 
 # Checks whether the exception currently being handled matches a particular type.
-exc_matches_op = custom_op(
+exc_matches_op = c_custom_op(
     arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = exc_matches {args[0]}',
-    emit=call_emit('CPy_ExceptionMatches'))
+    return_type=bool_rprimitive,
+    c_function_name='CPy_ExceptionMatches',
+    error_kind=ERR_NEVER)
 
 # Get the value of the exception currently being handled.
-get_exc_value_op = custom_op(
+get_exc_value_op = c_custom_op(
     arg_types=[],
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = get_exc_value',
-    emit=call_emit('CPy_GetExcValue'))
+    return_type=object_rprimitive,
+    c_function_name='CPy_GetExcValue',
+    error_kind=ERR_NEVER)
 
 # Get exception info (exception type, exception instance, traceback object).
-get_exc_info_op = custom_op(
+get_exc_info_op = c_custom_op(
     arg_types=[],
-    result_type=exc_rtuple,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = get_exc_info',
-    emit=call_emit('CPy_GetExcInfo'))
+    return_type=exc_rtuple,
+    c_function_name='CPy_GetExcInfo',
+    error_kind=ERR_NEVER)

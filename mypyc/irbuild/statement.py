@@ -238,7 +238,7 @@ def transform_continue_stmt(builder: IRBuilder, node: ContinueStmt) -> None:
 
 def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
     if s.expr is None:
-        builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         return
 
@@ -278,7 +278,7 @@ def transform_try_except(builder: IRBuilder,
     # exception is raised, based on the exception in exc_info.
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
-    old_exc = builder.maybe_spill(builder.primitive_op(error_catch_op, [], line))
+    old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
     builder.nonlocal_control.append(
         ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
@@ -288,7 +288,7 @@ def transform_try_except(builder: IRBuilder,
         next_block = None
         if type:
             next_block, body_block = BasicBlock(), BasicBlock()
-            matches = builder.primitive_op(
+            matches = builder.call_c(
                 exc_matches_op, [builder.accept(type)], type.line
             )
             builder.add(Branch(matches, body_block, next_block, Branch.BOOL_EXPR))
@@ -297,7 +297,7 @@ def transform_try_except(builder: IRBuilder,
             target = builder.get_assignment_target(var)
             builder.assign(
                 target,
-                builder.primitive_op(get_exc_value_op, [], var.line),
+                builder.call_c(get_exc_value_op, [], var.line),
                 var.line
             )
         handler_body()
@@ -307,7 +307,7 @@ def transform_try_except(builder: IRBuilder,
 
     # Reraise the exception if needed
     if next_block:
-        builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
 
     builder.nonlocal_control.pop()
@@ -317,14 +317,14 @@ def transform_try_except(builder: IRBuilder,
     # restore the saved exc_info information and continue propagating
     # the exception if it exists.
     builder.activate_block(cleanup_block)
-    builder.primitive_op(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
     builder.goto(exit_block)
 
     # Cleanup for if we leave except through a raised exception:
     # restore the saved exc_info information and continue propagating
     # the exception.
     builder.activate_block(double_except_block)
-    builder.primitive_op(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
     builder.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
@@ -402,7 +402,7 @@ def try_finally_entry_blocks(builder: IRBuilder,
                 builder.add(LoadErrorValue(builder.ret_types[-1]))
             )
         )
-    builder.add(Assign(old_exc, builder.primitive_op(error_catch_op, [], -1)))
+    builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], -1)))
     builder.goto(finally_block)
 
     return old_exc
@@ -442,7 +442,7 @@ def try_finally_resolve_control(builder: IRBuilder,
 
     # Reraise the exception if there was one
     builder.activate_block(reraise)
-    builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+    builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
     builder.builder.pop_error_handler()
 
@@ -520,7 +520,7 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
 
 
 def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
-    exc_info = builder.primitive_op(get_exc_info_op, [], -1)
+    exc_info = builder.call_c(get_exc_info_op, [], -1)
     return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
 
 
@@ -557,7 +557,7 @@ def transform_with(builder: IRBuilder,
             reraise_block
         )
         builder.activate_block(reraise_block)
-        builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.activate_block(out_block)
 

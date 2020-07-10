@@ -386,7 +386,7 @@ class ForIterable(ForGenerator):
         # an exception was raised during the loop, then err_reg wil be set to
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
-        self.builder.primitive_op(no_err_occurred_op, [], self.line)
+        self.builder.call_c(no_err_occurred_op, [], self.line)
 
 
 def unsafe_index(
@@ -539,7 +539,7 @@ class ForDictionaryCommon(ForGenerator):
 
     def gen_cleanup(self) -> None:
         # Same as for generic ForIterable.
-        self.builder.primitive_op(no_err_occurred_op, [], self.line)
+        self.builder.call_c(no_err_occurred_op, [], self.line)
 
 
 class ForDictionaryKeys(ForDictionaryCommon):

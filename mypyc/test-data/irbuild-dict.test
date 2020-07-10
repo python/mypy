@@ -194,7 +194,7 @@ L3:
     r14 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r15 = no_err_occurred
+    r15 = CPy_NoErrOccured()
 L5:
     return d
 
@@ -290,7 +290,7 @@ L5:
     r13 = CPyDict_CheckSize(d1, r2)
     goto L1
 L6:
-    r14 = no_err_occurred
+    r14 = CPy_NoErrOccured()
 L7:
     r15 = 0
     r16 = r15
@@ -319,7 +319,7 @@ L10:
     r32 = CPyDict_CheckSize(d2, r17)
     goto L8
 L11:
-    r33 = no_err_occurred
+    r33 = CPy_NoErrOccured()
 L12:
     r34 = None
     return r34

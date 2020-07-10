@@ -568,49 +568,51 @@ def lol(x):
     r5 :: bool
     r6 :: short_int
     r7 :: int
-    r8, r9 :: bool
-    r10 :: short_int
-    r11, r12 :: int
+    r8 :: bool
+    r9 :: short_int
+    r10, r11 :: int
+    r12 :: bool
 L0:
 L1:
     r0 = CPyTagged_Id(x)
     st = r0
     goto L10
 L2:
-    r1 = error_catch
+    r1 = CPy_CatchError()
     r2 = builtins :: module
     r3 = unicode_1 :: static  ('Exception')
     r4 = getattr r2, r3
     if is_error(r4) goto L8 (error at lol:4) else goto L3
 L3:
-    r5 = exc_matches r4
+    r5 = CPy_ExceptionMatches(r4)
     if r5 goto L4 else goto L5 :: bool
 L4:
     r6 = 1
     r7 = CPyTagged_Negate(r6)
-    restore_exc_info r1
+    CPy_RestoreExcInfo(r1)
     return r7
 L5:
-    reraise_exc; r8 = 0
-    if not r8 goto L8 else goto L6 :: bool
+    CPy_Reraise()
+    r12 = 0
+    if not r12 goto L8 else goto L6 :: bool
 L6:
     unreachable
 L7:
-    restore_exc_info r1
+    CPy_RestoreExcInfo(r1)
     goto L10
 L8:
-    restore_exc_info r1
-    r9 = keep_propagating
-    if not r9 goto L11 else goto L9 :: bool
+    CPy_RestoreExcInfo(r1)
+    r8 = keep_propagating
+    if not r8 goto L11 else goto L9 :: bool
 L9:
     unreachable
 L10:
-    r10 = 1
-    r11 = CPyTagged_Add(st, r10)
-    return r11
+    r9 = 1
+    r10 = CPyTagged_Add(st, r9)
+    return r10
 L11:
-    r12 = <error> :: int
-    return r12
+    r11 = <error> :: int
+    return r11
 (0, 0)   {x}                     {x}
 (1, 0)   {x}                     {r0}
 (1, 1)   {r0}                    {st}
@@ -626,18 +628,19 @@ L11:
 (4, 1)   {r1, r6}                {r1, r7}
 (4, 2)   {r1, r7}                {r7}
 (4, 3)   {r7}                    {}
-(5, 0)   {r1}                    {r1, r8}
-(5, 1)   {r1, r8}                {r1}
+(5, 0)   {r1}                    {r1}
+(5, 1)   {r1}                    {r1, r12}
+(5, 2)   {r1, r12}               {r1}
 (6, 0)   {}                      {}
 (7, 0)   {r1, st}                {st}
 (7, 1)   {st}                    {st}
 (8, 0)   {r1}                    {}
-(8, 1)   {}                      {r9}
-(8, 2)   {r9}                    {}
+(8, 1)   {}                      {r8}
+(8, 2)   {r8}                    {}
 (9, 0)   {}                      {}
-(10, 0)  {st}                    {r10, st}
-(10, 1)  {r10, st}               {r11}
-(10, 2)  {r11}                   {}
-(11, 0)  {}                      {r12}
-(11, 1)  {r12}                   {}
+(10, 0)  {st}                    {r9, st}
+(10, 1)  {r9, st}                {r10}
+(10, 2)  {r10}                   {}
+(11, 0)  {}                      {r11}
+(11, 1)  {r11}                   {}
 
