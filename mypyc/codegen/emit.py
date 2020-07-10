@@ -695,11 +695,10 @@ class Emitter:
             self.emit_lines('{}{} = Py_None;'.format(declaration, dest))
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
-        # TODO: This is a hack to handle mypy's false negative on unreachable code.
-        #       All ops returning int32/int64 should not be coerced into object.
-        #       Since their result will not be used elsewhere, it's safe to use NULL here
-        elif is_int32_rprimitive(typ) or is_int64_rprimitive(typ):
-            self.emit_lines('{}{} = NULL;'.format(declaration, dest))
+        elif is_int32_rprimitive(typ):
+            self.emit_line('{}{} = PyLong_FromLong({});'.format(declaration, dest, src))
+        elif is_int64_rprimitive(typ):
+            self.emit_line('{}{} = PyLong_FromLongLong({});'.format(declaration, dest, src))
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
