@@ -32,6 +32,7 @@ from mypyc.test.test_serialization import check_serialization_roundtrip
 files = [
     'run-functions.test',
     'run.test',
+    'run-strings.test',
     'run-classes.test',
     'run-traits.test',
     'run-multimodule.test',
@@ -221,7 +222,7 @@ class TestRun(MypycDataSuite):
                 assert False, "Compile error"
         except CompileError as e:
             for line in e.messages:
-                print(line)
+                print(fix_native_line_number(line, testcase.file, testcase.line))
             assert False, 'Compile error'
 
         # Check that serialization works on this IR. (Only on the first
@@ -244,6 +245,13 @@ class TestRun(MypycDataSuite):
         assert glob.glob('native.*.{}'.format(suffix))
 
         driver_path = 'driver.py'
+        if not os.path.isfile(driver_path):
+            # No driver.py provided by test case. Use the default one
+            # (mypyc/test-data/driver/driver.py) that calls each
+            # function named test_*.
+            default_driver = os.path.join(
+                os.path.dirname(__file__), '..', 'test-data', 'driver', 'driver.py')
+            shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
 
@@ -283,6 +291,11 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output (step {})'.format(incremental_step)
                 expected = testcase.output2.get(incremental_step, [])
 
+            if not expected:
+                # Tweak some line numbers, but only if the expected output is empty,
+                # as tweaked output might not match expected output.
+                outlines = [fix_native_line_number(line, testcase.file, testcase.line)
+                            for line in outlines]
             assert_test_output(testcase, outlines, msg, expected)
 
         if incremental_step > 1 and options.incremental:
@@ -312,8 +325,9 @@ class TestRun(MypycDataSuite):
             return True
 
 
-# Run the main multi-module tests in multi-file compilation mode
 class TestRunMultiFile(TestRun):
+    """Run the main multi-module tests in multi-file compilation mode."""
+
     multi_file = True
     test_name_suffix = '_multi'
     files = [
@@ -322,11 +336,37 @@ class TestRunMultiFile(TestRun):
     ]
 
 
-# Run the main multi-module tests in separate compilation mode
 class TestRunSeparate(TestRun):
+    """Run the main multi-module tests in separate compilation mode."""
+
     separate = True
     test_name_suffix = '_separate'
     files = [
         'run-multimodule.test',
         'run-mypy-sim.test',
     ]
+
+
+def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
+    """Update code locations in test case output to point to the .test file.
+
+    The description of the test case is written to native.py, and line numbers
+    in test case output often are relative to native.py. This translates the
+    line numbers to be relative to the .test file that contains the test case
+    description, and also updates the file name to the .test file name.
+
+    Args:
+        message: message to update
+        fnam: path of the .test file
+        delta: line number of the beginning of the test case in the .test file
+
+    Returns updated message (or original message if we couldn't find anything).
+    """
+    fnam = os.path.basename(fnam)
+    message = re.sub(r'native\.py:([0-9]+):',
+                     lambda m: '%s:%d:' % (fnam, int(m.group(1)) + delta),
+                     message)
+    message = re.sub(r'"native.py", line ([0-9]+),',
+                     lambda m: '"%s", line %d,' % (fnam, int(m.group(1)) + delta),
+                     message)
+    return message

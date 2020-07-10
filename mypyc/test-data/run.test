@@ -1,3 +1,4 @@
+# Misc test cases (compile and run)
 
 [case testCallTrivialFunction]
 def f(x: int) -> int:
@@ -817,77 +818,6 @@ def g(x: int) -> int:
 [file driver.py]
 from native import f
 assert f(1) == 2
-
-[case testStr]
-def f() -> str:
-    return 'some string'
-def g() -> str:
-    return 'some\a \v \t \x7f " \n \0string 🐍'
-def tostr(x: int) -> str:
-    return str(x)
-def booltostr(x: bool) -> str:
-    return str(x)
-def concat(x: str, y: str) -> str:
-    return x + y
-def eq(x: str) -> int:
-    if x == 'foo':
-        return 0
-    elif x != 'bar':
-        return 1
-    return 2
-
-[file driver.py]
-from native import f, g, tostr, booltostr, concat, eq
-assert f() == 'some string'
-assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
-assert tostr(57) == '57'
-assert concat('foo', 'bar') == 'foobar'
-assert booltostr(True) == 'True'
-assert booltostr(False) == 'False'
-assert eq('foo') == 0
-assert eq('zar') == 1
-assert eq('bar') == 2
-
-assert int(tostr(0)) == 0
-assert int(tostr(20)) == 20
-
-[case testFstring]
-
-var = 'mypyc'
-
-num = 20
-
-f1 = f'Hello {var}, this is a test'
-
-f2 = f'Hello {var!r}'
-
-f3 = f'Hello {var!a}'
-
-f4 = f'Hello {var!s}'
-
-f5 = f'Hello {var:>20}'
-
-f6 = f'Hello {var!r:>20}'
-
-f7 = f'Hello {var:>{num}}'
-
-f8 = f'Hello {var!r:>{num}}'
-
-f9 = f'Hello {var}, hello again {var}'
-
-[file driver.py]
-from native import f1, f2, f3, f4, f5, f6, f7, f8, f9
-assert f1 == "Hello mypyc, this is a test"
-assert f2 == "Hello 'mypyc'"
-assert f3 == "Hello 'mypyc'"
-assert f4 == "Hello mypyc"
-assert f5 == "Hello                mypyc"
-assert f6 == "Hello              'mypyc'"
-assert f7 == "Hello                mypyc"
-assert f8 == "Hello              'mypyc'"
-assert f9 == "Hello mypyc, hello again mypyc"
-
-[out]
 
 [case testSets]
 from typing import Set, List
@@ -4837,66 +4767,6 @@ import b
 
 assert f(20) == 61
 assert isinstance(whatever, b.A)
-
-[case testStrSplit]
-from typing import List, Optional
-def f(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
-    if sep is not None:
-        if max_split is not None:
-            return s.split(sep, max_split)
-        else:
-            return s.split(sep)
-    return s.split()
-
-[file driver.py]
-from native import f
-s = "abc abcd abcde abcdef"
-
-assert f(s) == ["abc", "abcd", "abcde", "abcdef"]
-assert f(s, " ") == ["abc", "abcd", "abcde", "abcdef"]
-assert f(s, "-") == ["abc abcd abcde abcdef"]
-assert f(s, " ", -1) == ["abc", "abcd", "abcde", "abcdef"]
-assert f(s, " ", 0) == ["abc abcd abcde abcdef"]
-assert f(s, " ", 1) == ["abc", "abcd abcde abcdef"]
-assert f(s, " ", 2) == ["abc", "abcd", "abcde abcdef"]
-
-[case testStrGetItem]
-def f(s: str, index: int) -> str:
-    return s[index]
-
-[file driver.py]
-from testutil import assertRaises
-from native import f
-s = "abc"
-
-assert f(s, 0) == "a"
-assert f(s, 1) == "b"
-assert f(s, 2) == "c"
-assert f(s, -3) == "a"
-assert f(s, -2) == "b"
-assert f(s, -1) == "c"
-with assertRaises(IndexError, "string index out of range"):
-    f(s, 4)
-with assertRaises(IndexError, "string index out of range"):
-    f(s, -4)
-
-[case testIntCastOnStr]
-from typing import Optional
-def f(s: str, base: Optional[int] = None) -> int:
-    if base:
-        return int(s, base)
-    else:
-        return int(s)
-
-[file driver.py]
-from testutil import assertRaises
-from native import f
-assert f("1") == 1
-assert f("10") == 10
-assert f("a", 16) == 10
-assert f("1a", 16) == 26
-with assertRaises(ValueError, "invalid literal for int() with base 10: 'xyz'"):
-    f("xyz")
 
 [case testNamedTupleAttributeRun]
 from typing import NamedTuple
