@@ -6,7 +6,7 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import TOP_LEVEL_NAME, IS_32_BIT_PLATFORM
 from mypyc import analysis
 from mypyc.transform import exceptions
 from mypyc.ir.func_ir import format_func
@@ -29,6 +29,9 @@ class TestAnalysis(MypycDataSuite):
         """Perform a data-flow analysis test case."""
 
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
+            # replace native_int with platform specific ints
+            int_format_str = 'int32' if IS_32_BIT_PLATFORM else 'int64'
+            testcase.output = [s.replace('native_int', int_format_str) for s in testcase.output]
             try:
                 ir = build_ir_for_single_file(testcase.input)
             except CompileError as e:

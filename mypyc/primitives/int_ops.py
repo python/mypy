@@ -6,14 +6,15 @@ representation (CPyTagged).
 See also the documentation for mypyc.rtypes.int_rprimitive.
 """
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
+from typing import Dict, Tuple
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, BinaryIntOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
     str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, custom_op, simple_emit, name_emit,
-    c_unary_op, CFunctionDescription, c_function_op, c_binary_op
+    c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -139,3 +140,18 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
+
+# integer comparsion operation implementation related:
+
+# description for equal operation on two boxed tagged integers
+int_equal_ = c_custom_op(
+    arg_types=[int_rprimitive, int_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPyTagged_IsEq_',
+    error_kind=ERR_NEVER)
+
+# provide mapping from textual op to short int's op variant and boxed int's description
+# note these are not complete implementations
+int_logical_op_mapping = {
+    '==': (BinaryIntOp.EQ, int_equal_)
+}  # type: Dict[str, Tuple[int, CFunctionDescription]]

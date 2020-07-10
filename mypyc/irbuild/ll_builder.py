@@ -52,6 +52,7 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.misc_ops import (
     none_op, none_object_op, false_op, fast_isinstance_op, bool_op, type_is_op
 )
+from mypyc.primitives.int_ops import int_logical_op_mapping
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
@@ -554,6 +555,34 @@ class LowLevelIRBuilder:
         target = self.matching_primitive_op(ops, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % expr_op
         return target
+
+    def check_tagged_short_int(self, val: Value, line: int) -> Value:
+        """Check if a tagged integer is a short integer"""
+        int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+        bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, val,
+                                         int_tag, BinaryIntOp.AND, line)
+        zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
+        check = self.binary_int_op(bool_rprimitive, bitwise_and, zero, BinaryIntOp.EQ, line)
+        return check
+
+    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        """Compare two tagged integers using given op"""
+        op_type, c_func_desc = int_logical_op_mapping[op]
+        result = self.alloc_temp(bool_rprimitive)
+        short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
+        check = self.check_tagged_short_int(lhs, line)
+        branch = Branch(check, short_int_block, int_block, Branch.BOOL_EXPR)
+        branch.negated = False
+        self.add(branch)
+        self.activate_block(short_int_block)
+        eq = self.binary_int_op(bool_rprimitive, lhs, rhs, op_type, line)
+        self.add(Assign(result, eq, line))
+        self.goto(out)
+        self.activate_block(int_block)
+        call = self.call_c(c_func_desc, [lhs, rhs], line)
+        self.add(Assign(result, call, line))
+        self.goto_and_activate(out)
+        return result
 
     def unary_op(self,
                  lreg: Value,
