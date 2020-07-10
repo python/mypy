@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
 from mypyc.primitives.registry import (
-    func_op, c_method_op, custom_op, simple_emit, c_function_op
+    func_op, c_method_op, custom_op, simple_emit, c_function_op, call_emit
 )
 
 
