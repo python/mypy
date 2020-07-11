@@ -1,4 +1,4 @@
-# Test cases for for and while loops (compile and run)
+# Test cases for "for" and "while" loops (compile and run)
 
 [case testFor]
 from typing import List, Tuple

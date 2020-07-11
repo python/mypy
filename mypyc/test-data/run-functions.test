@@ -280,7 +280,6 @@ assert A(3).outer(4) == 12
 
 assert toplevel_lambda(5) == 35
 
-
 [case testNestedFunctions2]
 from typing import Callable
 
