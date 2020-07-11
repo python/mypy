@@ -30,12 +30,21 @@ from mypyc.test.testutil import (
 from mypyc.test.test_serialization import check_serialization_roundtrip
 
 files = [
+    'run-misc.test',
     'run-functions.test',
-    'run.test',
+    'run-integers.test',
     'run-strings.test',
     'run-tuples.test',
+    'run-lists.test',
+    'run-dicts.test',
+    'run-sets.test',
+    'run-primitives.test',
+    'run-loops.test',
+    'run-exceptions.test',
+    'run-imports.test',
     'run-classes.test',
     'run-traits.test',
+    'run-generators.test',
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
