@@ -694,17 +694,6 @@ static PyObject *CPyBool_Str(bool b) {
 	return PyObject_Str(b ? Py_True : Py_False);
 }
 
-static bool CPySet_Remove(PyObject *set, PyObject *key) {
-    int success = PySet_Discard(set, key);
-    if (success == 1) {
-        return true;
-    }
-    if (success == 0) {
-        _PyErr_SetKeyError(key);
-    }
-    return false;
-}
-
 static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
@@ -1666,6 +1655,9 @@ PyObject *CPyDict_FromAny(PyObject *obj);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
+
+// Set operations
+bool CPySet_Remove(PyObject *set, PyObject *key);
 
 #ifdef __cplusplus
 }

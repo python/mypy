@@ -38,6 +38,7 @@ RUNTIME_C_FILES = [
     'list_ops.c',
     'dict_ops.c',
     'str_ops.c',
+    'set_ops.c',
 ]  # type: Final
 
 
