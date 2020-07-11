@@ -694,31 +694,6 @@ static PyObject *CPyBool_Str(bool b) {
 	return PyObject_Str(b ? Py_True : Py_False);
 }
 
-static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        Py_ssize_t size = PyTuple_GET_SIZE(tuple);
-        if (n >= 0) {
-            if (n >= size) {
-                PyErr_SetString(PyExc_IndexError, "tuple index out of range");
-                return NULL;
-            }
-        } else {
-            n += size;
-            if (n < 0) {
-                PyErr_SetString(PyExc_IndexError, "tuple index out of range");
-                return NULL;
-            }
-        }
-        PyObject *result = PyTuple_GET_ITEM(tuple, n);
-        Py_INCREF(result);
-        return result;
-    } else {
-        PyErr_SetString(PyExc_IndexError, "tuple index out of range");
-        return NULL;
-    }
-}
-
 static PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
     Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
     if (size == -1 && PyErr_Occurred()) {
@@ -1658,6 +1633,9 @@ PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 
 // Set operations
 bool CPySet_Remove(PyObject *set, PyObject *key);
+
+// Tuple operations
+PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 
 #ifdef __cplusplus
 }
