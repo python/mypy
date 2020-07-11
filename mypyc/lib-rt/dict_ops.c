@@ -1,6 +1,6 @@
 // Dict primitive operations
 //
-// These are registered in mypyc.primitives.str_ops.
+// These are registered in mypyc.primitives.dict_ops.
 
 #include <Python.h>
 #include "CPy.h"

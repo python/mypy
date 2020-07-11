@@ -694,109 +694,6 @@ static PyObject *CPyBool_Str(bool b) {
 	return PyObject_Str(b ? Py_True : Py_False);
 }
 
-static PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
-    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-    PyObject *result = PyList_GET_ITEM(list, n);
-    Py_INCREF(result);
-    return result;
-}
-
-static PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
-    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-    Py_ssize_t size = PyList_GET_SIZE(list);
-    if (n >= 0) {
-        if (n >= size) {
-            PyErr_SetString(PyExc_IndexError, "list index out of range");
-            return NULL;
-        }
-    } else {
-        n += size;
-        if (n < 0) {
-            PyErr_SetString(PyExc_IndexError, "list index out of range");
-            return NULL;
-        }
-    }
-    PyObject *result = PyList_GET_ITEM(list, n);
-    Py_INCREF(result);
-    return result;
-}
-
-static PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        Py_ssize_t size = PyList_GET_SIZE(list);
-        if (n >= 0) {
-            if (n >= size) {
-                PyErr_SetString(PyExc_IndexError, "list index out of range");
-                return NULL;
-            }
-        } else {
-            n += size;
-            if (n < 0) {
-                PyErr_SetString(PyExc_IndexError, "list index out of range");
-                return NULL;
-            }
-        }
-        PyObject *result = PyList_GET_ITEM(list, n);
-        Py_INCREF(result);
-        return result;
-    } else {
-        PyErr_SetString(PyExc_IndexError, "list index out of range");
-        return NULL;
-    }
-}
-
-static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        Py_ssize_t size = PyList_GET_SIZE(list);
-        if (n >= 0) {
-            if (n >= size) {
-                PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-                return false;
-            }
-        } else {
-            n += size;
-            if (n < 0) {
-                PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-                return false;
-            }
-        }
-        // PyList_SET_ITEM doesn't decref the old element, so we do
-        Py_DECREF(PyList_GET_ITEM(list, n));
-        // N.B: Steals reference
-        PyList_SET_ITEM(list, n, value);
-        return true;
-    } else {
-        PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
-        return false;
-    }
-}
-
-static PyObject *CPyList_PopLast(PyObject *obj)
-{
-    // I tried a specalized version of pop_impl for just removing the
-    // last element and it wasn't any faster in microbenchmarks than
-    // the generic one so I ditched it.
-    return list_pop_impl((PyListObject *)obj, -1);
-}
-
-static PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
-{
-    if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        return list_pop_impl((PyListObject *)obj, n);
-    } else {
-        PyErr_SetString(PyExc_IndexError, "pop index out of range");
-        return NULL;
-    }
-}
-
-static CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
-{
-    return list_count((PyListObject *)obj, value);
-}
-
 static bool CPySet_Remove(PyObject *set, PyObject *key) {
     int success = PySet_Discard(set, key);
     if (success == 1) {
@@ -806,10 +703,6 @@ static bool CPySet_Remove(PyObject *set, PyObject *key) {
         _PyErr_SetKeyError(key);
     }
     return false;
-}
-
-static PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
-    return _PyList_Extend((PyListObject *)o1, o2);
 }
 
 static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
@@ -1748,6 +1641,16 @@ fail:
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
 
+
+// List operations
+PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+PyObject *CPyList_PopLast(PyObject *obj);
+PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
+CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
+PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 
 // Dict operations
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);

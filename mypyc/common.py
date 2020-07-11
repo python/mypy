@@ -35,8 +35,9 @@ IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
 RUNTIME_C_FILES = [
     'CPy.c',
     'getargs.c',
-    'str_ops.c',
+    'list_ops.c',
     'dict_ops.c',
+    'str_ops.c',
 ]  # type: Final
 
 
