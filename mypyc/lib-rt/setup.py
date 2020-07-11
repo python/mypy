@@ -1,3 +1,8 @@
+"""Build script for mypyc C runtime library unit tests.
+
+The tests are written in C++ and use the Google Test framework.
+"""
+
 from distutils.core import setup, Extension
 
 setup(name='test_capi',
