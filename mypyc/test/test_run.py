@@ -33,6 +33,7 @@ files = [
     'run-functions.test',
     'run.test',
     'run-strings.test',
+    'run-tuples.test',
     'run-classes.test',
     'run-traits.test',
     'run-multimodule.test',
