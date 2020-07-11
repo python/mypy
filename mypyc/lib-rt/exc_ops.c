@@ -5,9 +5,6 @@
 #include <Python.h>
 #include "CPy.h"
 
-struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
-PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
-
 void CPy_Raise(PyObject *exc) {
     if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
         PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);

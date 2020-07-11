@@ -1,8 +1,8 @@
-#include <stdbool.h>
 #include <Python.h>
-#include <frameobject.h>
-#include <assert.h>
 #include "CPy.h"
+
+struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
+PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
 
 // Because its dynamic linker is more restricted than linux/OS X,
 // Windows doesn't allow initializing globals with values from

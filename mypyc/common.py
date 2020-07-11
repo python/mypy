@@ -33,7 +33,7 @@ IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
 
 # Runtime C library files
 RUNTIME_C_FILES = [
-    'CPy.c',
+    'init.c',
     'getargs.c',
     'int_ops.c',
     'list_ops.c',
