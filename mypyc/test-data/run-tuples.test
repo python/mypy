@@ -1,4 +1,4 @@
-# Test cases for strings (compile and run)
+# Test cases for tuples (compile and run)
 
 [case testTuple]
 from typing import List, Optional, Tuple
