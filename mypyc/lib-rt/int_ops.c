@@ -269,3 +269,7 @@ PyObject *CPyLong_FromFloat(PyObject *o) {
         return PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
     }
 }
+
+PyObject *CPyBool_Str(bool b) {
+    return PyObject_Str(b ? Py_True : Py_False);
+}

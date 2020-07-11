@@ -1,4 +1,4 @@
-// Mypyc runtime library
+// Mypyc C API
 
 #ifndef CPY_CPY_H
 #define CPY_CPY_H
@@ -26,6 +26,9 @@ extern "C" {
 // Short: tagged short int (unboxed)
 // Ssize_t: A Py_ssize_t, which ought to be the same width as pointers
 // Object: CPython object (PyObject *)
+
+
+// Tuple type definitions needed for API functions
 
 
 #ifndef MYPYC_DECLARED_tuple_T3OOO
@@ -61,20 +64,9 @@ typedef struct tuple_T4CIOO {
 static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
 #endif
 
-/* We use intentionally non-inlined decrefs since it pretty
- * substantially speeds up compile time while only causing a ~1%
- * performance degradation. We have our own copies both to avoid the
- * null check in Py_DecRef and to avoid making an indirect PIC
- * call. */
-CPy_NOINLINE
-static void CPy_DecRef(PyObject *p) {
-    CPy_DECREF(p);
-}
 
-CPy_NOINLINE
-static void CPy_XDecRef(PyObject *p) {
-    CPy_XDECREF(p);
-}
+// Native object operations
+
 
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait
@@ -124,6 +116,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 
 // Int operations
 
+
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromObject(PyObject *object);
 CPyTagged CPyTagged_StealFromObject(PyObject *object);
@@ -146,6 +139,7 @@ PyObject *CPyTagged_Str(CPyTagged n);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyLong_FromFloat(PyObject *o);
+PyObject *CPyBool_Str(bool b);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
@@ -247,38 +241,67 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 }
 
 
-static PyObject *CPyBool_Str(bool b) {
-	return PyObject_Str(b ? Py_True : Py_False);
+// Generic operations (that work with arbitrary types)
+
+
+/* We use intentionally non-inlined decrefs since it pretty
+ * substantially speeds up compile time while only causing a ~1%
+ * performance degradation. We have our own copies both to avoid the
+ * null check in Py_DecRef and to avoid making an indirect PIC
+ * call. */
+CPy_NOINLINE
+static void CPy_DecRef(PyObject *p) {
+    CPy_DECREF(p);
 }
 
-static PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
-    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
-    if (size == -1 && PyErr_Occurred()) {
-        return NULL;
-    }
-    return PySequence_Repeat(seq, size);
+CPy_NOINLINE
+static void CPy_XDecRef(PyObject *p) {
+    CPy_XDECREF(p);
 }
 
-static PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
-    return CPySequence_Multiply(seq, t_size);
-}
-
-static inline int CPy_ObjectToStatus(PyObject *obj) {
-    if (obj) {
-        Py_DECREF(obj);
-        return 0;
+static inline CPyTagged CPyObject_Size(PyObject *obj) {
+    Py_ssize_t s = PyObject_Size(obj);
+    if (s < 0) {
+        return CPY_INT_TAG;
     } else {
-        return -1;
+        // Technically __len__ could return a really big number, so we
+        // should allow this to produce a boxed int. In practice it
+        // shouldn't ever if the data structure actually contains all
+        // the elements, but...
+        return CPyTagged_FromSsize_t(s);
     }
 }
 
-
-static inline void _CPy_ToNone(PyObject **p) {
-    if (*p == NULL) {
-        Py_INCREF(Py_None);
-        *p = Py_None;
+#ifdef MYPYC_LOG_GETATTR
+static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
+    PyObject *module = PyImport_ImportModule("getattr_hook");
+    if (module) {
+        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
+        Py_XDECREF(res);
+        Py_DECREF(module);
     }
+    PyErr_Clear();
 }
+#else
+#define CPy_LogGetAttr(method, obj, attr) (void)0
+#endif
+
+// Intercept a method call and log it. This needs to be a macro
+// because there is no API that accepts va_args for making a
+// call. Worse, it needs to use the comma operator to return the right
+// value.
+#define CPyObject_CallMethodObjArgs(obj, attr, ...)             \
+    (CPy_LogGetAttr("log_method", (obj), (attr)),               \
+     PyObject_CallMethodObjArgs((obj), (attr), __VA_ARGS__))
+
+// This one is a macro for consistency with the above, I guess.
+#define CPyObject_GetAttr(obj, attr)                       \
+    (CPy_LogGetAttr("log", (obj), (attr)),                 \
+     PyObject_GetAttr((obj), (attr)))
+
+CPyTagged CPyObject_Hash(PyObject *o);
+PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
+PyObject *CPyIter_Next(PyObject *iter);
 
 
 // List operations
@@ -292,25 +315,12 @@ PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
+PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
+PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 
 
 // Dict operations
 
-
-// Check that dictionary didn't change size during iteration.
-static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
-    if (!PyDict_CheckExact(dict)) {
-        // Dict subclasses will be checked by Python runtime.
-        return 1;
-    }
-    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
-    Py_ssize_t dict_size = PyDict_Size(dict);
-    if (py_size != dict_size) {
-        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
-        return 0;
-    }
-    return 1;
-}
 
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
@@ -332,6 +342,21 @@ PyObject *CPyDict_GetValuesIter(PyObject *dict);
 tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
 tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
+
+// Check that dictionary didn't change size during iteration.
+static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
+    if (!PyDict_CheckExact(dict)) {
+        // Dict subclasses will be checked by Python runtime.
+        return 1;
+    }
+    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
+    Py_ssize_t dict_size = PyDict_Size(dict);
+    if (py_size != dict_size) {
+        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
+        return 0;
+    }
+    return 1;
+}
 
 
 // Str operations
@@ -404,54 +429,6 @@ void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceba
 void CPyError_OutOfMemory(void);
 void CPy_TypeError(const char *expected, PyObject *value);
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals);
-
-
-// Generic operations
-
-
-static inline CPyTagged CPyObject_Size(PyObject *obj) {
-    Py_ssize_t s = PyObject_Size(obj);
-    if (s < 0) {
-        return CPY_INT_TAG;
-    } else {
-        // Technically __len__ could return a really big number, so we
-        // should allow this to produce a boxed int. In practice it
-        // shouldn't ever if the data structure actually contains all
-        // the elements, but...
-        return CPyTagged_FromSsize_t(s);
-    }
-}
-
-#ifdef MYPYC_LOG_GETATTR
-static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
-    PyObject *module = PyImport_ImportModule("getattr_hook");
-    if (module) {
-        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
-        Py_XDECREF(res);
-        Py_DECREF(module);
-    }
-    PyErr_Clear();
-}
-#else
-#define CPy_LogGetAttr(method, obj, attr) (void)0
-#endif
-
-// Intercept a method call and log it. This needs to be a macro
-// because there is no API that accepts va_args for making a
-// call. Worse, it needs to use the comma operator to return the right
-// value.
-#define CPyObject_CallMethodObjArgs(obj, attr, ...)             \
-    (CPy_LogGetAttr("log_method", (obj), (attr)),               \
-     PyObject_CallMethodObjArgs((obj), (attr), __VA_ARGS__))
-
-// This one is a macro for consistency with the above, I guess.
-#define CPyObject_GetAttr(obj, attr)                       \
-    (CPy_LogGetAttr("log", (obj), (attr)),                 \
-     PyObject_GetAttr((obj), (attr)))
-
-CPyTagged CPyObject_Hash(PyObject *o);
-PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
-PyObject *CPyIter_Next(PyObject *iter);
 
 
 // Misc operations

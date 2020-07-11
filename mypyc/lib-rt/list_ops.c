@@ -111,3 +111,15 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
     return _PyList_Extend((PyListObject *)o1, o2);
 }
+
+PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
+    Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
+    if (size == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    return PySequence_Repeat(seq, size);
+}
+
+PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
+    return CPySequence_Multiply(seq, t_size);
+}

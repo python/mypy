@@ -71,6 +71,15 @@ int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
     }
 }
 
+static inline int CPy_ObjectToStatus(PyObject *obj) {
+    if (obj) {
+        Py_DECREF(obj);
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
 static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     _Py_IDENTIFIER(update);
     PyObject *res = _PyObject_CallMethodIdObjArgs(dict, &PyId_update, stuff, NULL);
