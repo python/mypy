@@ -56,7 +56,7 @@ from mypyc.build import mypycify
 
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
-                           multi_file={}, opt_level={}),
+                           multi_file={}, opt_level='{}'),
 )
 """
 
