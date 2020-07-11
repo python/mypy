@@ -277,12 +277,6 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 }
 
 
-static void CPyError_OutOfMemory(void) {
-    fprintf(stderr, "fatal: out of memory\n");
-    fflush(stderr);
-    abort();
-}
-
 static PyObject *CPyBool_Str(bool b) {
 	return PyObject_Str(b ? Py_True : Py_False);
 }
@@ -325,86 +319,6 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
 // might be an int also
 static inline bool CPyFloat_Check(PyObject *o) {
     return PyFloat_Check(o) || PyLong_Check(o);
-}
-
-// Construct a nicely formatted type name based on __module__ and __name__.
-static PyObject *CPy_GetTypeName(PyObject *type) {
-    PyObject *module = NULL, *name = NULL;
-    PyObject *full = NULL;
-
-    module = PyObject_GetAttrString(type, "__module__");
-    if (!module || !PyUnicode_Check(module)) {
-        goto out;
-    }
-    name = PyObject_GetAttrString(type, "__qualname__");
-    if (!name || !PyUnicode_Check(name)) {
-        goto out;
-    }
-
-    if (PyUnicode_CompareWithASCIIString(module, "builtins") == 0) {
-        Py_INCREF(name);
-        full = name;
-    } else {
-        full = PyUnicode_FromFormat("%U.%U", module, name);
-    }
-
-out:
-    Py_XDECREF(module);
-    Py_XDECREF(name);
-    return full;
-}
-
-
-// Get the type of a value as a string, expanding tuples to include
-// all the element types.
-static PyObject *CPy_FormatTypeName(PyObject *value) {
-    if (value == Py_None) {
-        return PyUnicode_FromString("None");
-    }
-
-    if (!PyTuple_CheckExact(value)) {
-        return CPy_GetTypeName((PyObject *)Py_TYPE(value));
-    }
-
-    if (PyTuple_GET_SIZE(value) > 10) {
-        return PyUnicode_FromFormat("tuple[<%d items>]", PyTuple_GET_SIZE(value));
-    }
-
-    // Most of the logic is all for tuples, which is the only interesting case
-    PyObject *output = PyUnicode_FromString("tuple[");
-    if (!output) {
-        return NULL;
-    }
-    /* This is quadratic but if that ever matters something is really weird. */
-    int i;
-    for (i = 0; i < PyTuple_GET_SIZE(value); i++) {
-        PyObject *s = CPy_FormatTypeName(PyTuple_GET_ITEM(value, i));
-        if (!s) {
-            Py_DECREF(output);
-            return NULL;
-        }
-        PyObject *next = PyUnicode_FromFormat("%U%U%s", output, s,
-                                              i + 1 == PyTuple_GET_SIZE(value) ? "]" : ", ");
-        Py_DECREF(output);
-        Py_DECREF(s);
-        if (!next) {
-            return NULL;
-        }
-        output = next;
-    }
-    return output;
-}
-
-CPy_NOINLINE
-static void CPy_TypeError(const char *expected, PyObject *value) {
-    PyObject *out = CPy_FormatTypeName(value);
-    if (out) {
-        PyErr_Format(PyExc_TypeError, "%s object expected; got %U", expected, out);
-        Py_DECREF(out);
-    } else {
-        PyErr_Format(PyExc_TypeError, "%s object expected; and errored formatting real type!",
-                     expected);
-    }
 }
 
 
@@ -466,42 +380,6 @@ static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *func
     Py_XDECREF(filename_obj);
     Py_XDECREF(funcname_obj);
     return code_obj;
-}
-
-static void CPy_AddTraceback(const char *filename, const char *funcname, int line,
-                             PyObject *globals) {
-
-    PyObject *exc, *val, *tb;
-    PyThreadState *thread_state = PyThreadState_GET();
-    PyFrameObject *frame_obj;
-
-    // We need to save off the exception state because in 3.8,
-    // PyFrame_New fails if there is an error set and it fails to look
-    // up builtins in the globals. (_PyTraceback_Add documents that it
-    // needs to do it because it decodes the filename according to the
-    // FS encoding, which could have a decoder in Python. We don't do
-    // that so *that* doesn't apply to us.)
-    PyErr_Fetch(&exc, &val, &tb);
-    PyCodeObject *code_obj = CPy_CreateCodeObject(filename, funcname, line);
-    if (code_obj == NULL) {
-        goto error;
-    }
-
-    frame_obj = PyFrame_New(thread_state, code_obj, globals, 0);
-    if (frame_obj == NULL) {
-        Py_DECREF(code_obj);
-        goto error;
-    }
-    frame_obj->f_lineno = line;
-    PyErr_Restore(exc, val, tb);
-    PyTraceBack_Here(frame_obj);
-    Py_DECREF(code_obj);
-    Py_DECREF(frame_obj);
-
-    return;
-
-error:
-    _PyErr_ChainExceptions(exc, val, tb);
 }
 
 // mypyc is not very good at dealing with refcount management of
@@ -600,6 +478,9 @@ bool CPy_ExceptionMatches(PyObject *type);
 PyObject *CPy_GetExcValue(void);
 tuple_T3OOO CPy_GetExcInfo(void);
 void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback);
+void CPyError_OutOfMemory(void);
+void CPy_TypeError(const char *expected, PyObject *value);
+void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals);
 
 // Generic operations
 CPyTagged CPyObject_Hash(PyObject *o);
