@@ -31,6 +31,12 @@ FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
 
 IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
 
+# Runtime C library files
+RUNTIME_C_FILES = [
+    'CPy.c',
+    'getargs.c',
+]  # type: Final
+
 
 def decorator_helper_name(func_name: str) -> str:
     return '__mypyc_{}_decorator_helper__'.format(func_name)
