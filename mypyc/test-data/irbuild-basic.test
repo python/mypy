@@ -1,4 +1,4 @@
-run[case testTrivialFunction]
+[case testTrivialFunction]
 def f() -> int:
     return 1
 [out]
