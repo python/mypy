@@ -41,6 +41,7 @@ RUNTIME_C_FILES = [
     'set_ops.c',
     'tuple_ops.c',
     'exc_ops.c',
+    'generic_ops.c',
 ]  # type: Final
 
 

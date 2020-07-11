@@ -739,21 +739,6 @@ static PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
 }
 
-static CPyTagged CPyObject_Hash(PyObject *o) {
-    Py_hash_t h = PyObject_Hash(o);
-    if (h == -1) {
-        return CPY_INT_TAG;
-    } else {
-        // This is tragically annoying. The range of hash values in
-        // 64-bit python covers 64-bits, and our short integers only
-        // cover 63. This means that half the time we are boxing the
-        // result for basically no good reason. To add insult to
-        // injury it is probably about to be immediately unboxed by a
-        // tp_hash wrapper.
-        return CPyTagged_FromSsize_t(h);
-    }
-}
-
 static inline CPyTagged CPyObject_Size(PyObject *obj) {
     Py_ssize_t s = PyObject_Size(obj);
     if (s < 0) {
@@ -774,55 +759,6 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
     } else {
         return -1;
     }
-}
-
-static PyObject *CPyIter_Next(PyObject *iter)
-{
-    return (*iter->ob_type->tp_iternext)(iter);
-}
-
-static PyObject *CPy_FetchStopIterationValue(void)
-{
-    PyObject *val = NULL;
-    _PyGen_FetchStopIterationValue(&val);
-    return val;
-}
-
-static PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
-{
-    // Do a send, or a next if second arg is None.
-    // (This behavior is to match the PEP 380 spec for yield from.)
-    _Py_IDENTIFIER(send);
-    if (val == Py_None) {
-        return CPyIter_Next(iter);
-    } else {
-        return _PyObject_CallMethodIdObjArgs(iter, &PyId_send, val, NULL);
-    }
-}
-
-static PyObject *CPy_GetCoro(PyObject *obj)
-{
-    // If the type has an __await__ method, call it,
-    // otherwise, fallback to calling __iter__.
-    PyAsyncMethods* async_struct = obj->ob_type->tp_as_async;
-    if (async_struct != NULL && async_struct->am_await != NULL) {
-        return (async_struct->am_await)(obj);
-    } else {
-        // TODO: We should check that the type is a generator decorated with
-        // asyncio.coroutine
-        return PyObject_GetIter(obj);
-    }
-}
-
-static PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl)
-{
-    PyObject *result = PyObject_GetAttr(v, name);
-    if (!result && PyErr_ExceptionMatches(PyExc_AttributeError)) {
-        PyErr_Clear();
-        Py_INCREF(defl);
-        result = defl;
-    }
-    return result;
 }
 
 // mypy lets ints silently coerce to floats, so a mypyc runtime float
@@ -1124,6 +1060,11 @@ PyObject *CPy_GetExcValue(void);
 tuple_T3OOO CPy_GetExcInfo(void);
 void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback);
 
+// Generic operations
+CPyTagged CPyObject_Hash(PyObject *o);
+PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
+PyObject *CPyIter_Next(PyObject *iter);
+
 // Check that dictionary didn't change size during iteration.
 static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
     if (!PyDict_CheckExact(dict)) {
@@ -1140,6 +1081,39 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 }
 
 void CPy_Init(void);
+
+static PyObject *CPy_FetchStopIterationValue(void)
+{
+    PyObject *val = NULL;
+    _PyGen_FetchStopIterationValue(&val);
+    return val;
+}
+
+static PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
+{
+    // Do a send, or a next if second arg is None.
+    // (This behavior is to match the PEP 380 spec for yield from.)
+    _Py_IDENTIFIER(send);
+    if (val == Py_None) {
+        return CPyIter_Next(iter);
+    } else {
+        return _PyObject_CallMethodIdObjArgs(iter, &PyId_send, val, NULL);
+    }
+}
+
+static PyObject *CPy_GetCoro(PyObject *obj)
+{
+    // If the type has an __await__ method, call it,
+    // otherwise, fallback to calling __iter__.
+    PyAsyncMethods* async_struct = obj->ob_type->tp_as_async;
+    if (async_struct != NULL && async_struct->am_await != NULL) {
+        return (async_struct->am_await)(obj);
+    } else {
+        // TODO: We should check that the type is a generator decorated with
+        // asyncio.coroutine
+        return PyObject_GetIter(obj);
+    }
+}
 
 // A somewhat hairy implementation of specifically most of the error handling
 // in `yield from` error handling. The point here is to reduce code size.
