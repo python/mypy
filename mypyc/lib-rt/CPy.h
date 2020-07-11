@@ -1025,78 +1025,8 @@ typedef struct tuple_T3OOO {
 static tuple_T3OOO tuple_undefined_T3OOO = { NULL, NULL, NULL };
 #endif
 
-
-static tuple_T3OOO CPy_CatchError(void) {
-    // We need to return the existing sys.exc_info() information, so
-    // that it can be restored when we finish handling the error we
-    // are catching now. Grab that triple and convert NULL values to
-    // the ExcDummy object in order to simplify refcount handling in
-    // generated code.
-    tuple_T3OOO ret;
-    PyErr_GetExcInfo(&ret.f0, &ret.f1, &ret.f2);
-    _CPy_ToDummy(&ret.f0);
-    _CPy_ToDummy(&ret.f1);
-    _CPy_ToDummy(&ret.f2);
-
-    if (!PyErr_Occurred()) {
-        PyErr_SetString(PyExc_RuntimeError, "CPy_CatchError called with no error!");
-    }
-
-    // Retrieve the error info and normalize it so that it looks like
-    // what python code needs it to be.
-    PyObject *type, *value, *traceback;
-    PyErr_Fetch(&type, &value, &traceback);
-    // Could we avoid always normalizing?
-    PyErr_NormalizeException(&type, &value, &traceback);
-    if (traceback != NULL) {
-        PyException_SetTraceback(value, traceback);
-    }
-    // Indicate that we are now handling this exception by stashing it
-    // in sys.exc_info().  mypyc routines that need access to the
-    // exception will read it out of there.
-    PyErr_SetExcInfo(type, value, traceback);
-    // Clear the error indicator, since the exception isn't
-    // propagating anymore.
-    PyErr_Clear();
-
-    return ret;
-}
-
-static void CPy_RestoreExcInfo(tuple_T3OOO info) {
-    PyErr_SetExcInfo(_CPy_FromDummy(info.f0), _CPy_FromDummy(info.f1), _CPy_FromDummy(info.f2));
-}
-
-static void CPy_Raise(PyObject *exc) {
-    if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
-        PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);
-        if (!obj)
-            return;
-        PyErr_SetObject(exc, obj);
-        Py_DECREF(obj);
-    } else {
-        PyErr_SetObject((PyObject *)Py_TYPE(exc), exc);
-    }
-}
-
-static void CPy_Reraise(void) {
-    PyObject *p_type, *p_value, *p_traceback;
-    PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
-    PyErr_Restore(p_type, p_value, p_traceback);
-}
-
 static int CPy_NoErrOccured(void) {
     return PyErr_Occurred() == NULL;
-}
-
-static void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback) {
-    // Set the value and traceback of an error. Because calling
-    // PyErr_Restore takes away a reference to each object passed in
-    // as an argument, we manually increase the reference count of
-    // each argument before calling it.
-    Py_INCREF(type);
-    Py_INCREF(value);
-    Py_INCREF(traceback);
-    PyErr_Restore(type, value, traceback);
 }
 
 // We want to avoid the public PyErr_GetExcInfo API for these because
@@ -1109,16 +1039,6 @@ static void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObje
 #define CPy_ExcState() PyThreadState_GET()
 #endif
 
-static bool CPy_ExceptionMatches(PyObject *type) {
-    return PyErr_GivenExceptionMatches(CPy_ExcState()->exc_type, type);
-}
-
-static PyObject *CPy_GetExcValue(void) {
-    PyObject *exc = CPy_ExcState()->exc_value;
-    Py_INCREF(exc);
-    return exc;
-}
-
 static inline void _CPy_ToNone(PyObject **p) {
     if (*p == NULL) {
         Py_INCREF(Py_None);
@@ -1126,18 +1046,49 @@ static inline void _CPy_ToNone(PyObject **p) {
     }
 }
 
-static void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback) {
-    PyErr_GetExcInfo(p_type, p_value, p_traceback);
-    _CPy_ToNone(p_type);
-    _CPy_ToNone(p_value);
-    _CPy_ToNone(p_traceback);
-}
 
-static tuple_T3OOO CPy_GetExcInfo(void) {
-    tuple_T3OOO ret;
-    _CPy_GetExcInfo(&ret.f0, &ret.f1, &ret.f2);
-    return ret;
-}
+// List operations
+PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+PyObject *CPyList_PopLast(PyObject *obj);
+PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
+CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
+PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
+
+// Dict operations
+PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
+int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
+PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
+PyObject *CPyDict_Build(Py_ssize_t size, ...);
+int CPyDict_Update(PyObject *dict, PyObject *stuff);
+int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
+int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff);
+PyObject *CPyDict_FromAny(PyObject *obj);
+
+// Str operations
+PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
+
+// Set operations
+bool CPySet_Remove(PyObject *set, PyObject *key);
+
+// Tuple operations
+PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
+
+// Exception operations
+void CPy_Raise(PyObject *exc);
+void CPy_Reraise(void);
+void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback);
+tuple_T3OOO CPy_CatchError(void);
+void CPy_RestoreExcInfo(tuple_T3OOO info);
+bool CPy_ExceptionMatches(PyObject *type);
+PyObject *CPy_GetExcValue(void);
+tuple_T3OOO CPy_GetExcInfo(void);
+void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback);
+
 
 static PyObject *CPyDict_KeysView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
@@ -1604,38 +1555,6 @@ fail:
 
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
-
-
-// List operations
-PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
-bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
-PyObject *CPyList_PopLast(PyObject *obj);
-PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
-CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
-PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
-
-// Dict operations
-PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
-int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
-PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
-PyObject *CPyDict_Build(Py_ssize_t size, ...);
-int CPyDict_Update(PyObject *dict, PyObject *stuff);
-int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
-int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff);
-PyObject *CPyDict_FromAny(PyObject *obj);
-
-// Str operations
-PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
-PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
-PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
-
-// Set operations
-bool CPySet_Remove(PyObject *set, PyObject *key);
-
-// Tuple operations
-PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 
 #ifdef __cplusplus
 }

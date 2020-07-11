@@ -1,6 +1,6 @@
-// Set primitive operations
+// Tuple primitive operations
 //
-// These are registered in mypyc.primitives.set_ops.
+// These are registered in mypyc.primitives.tuple_ops.
 
 #include <Python.h>
 #include "CPy.h"
