@@ -1,3 +1,5 @@
+// Mypyc runtime library
+
 #ifndef CPY_CPY_H
 #define CPY_CPY_H
 
@@ -15,6 +17,16 @@ extern "C" {
 #if 0
 } // why isn't emacs smart enough to not indent this
 #endif
+
+
+// Naming conventions:
+//
+// Tagged: tagged int
+// Long: tagged long int (pointer)
+// Short: tagged short int (unboxed)
+// Ssize_t: A Py_ssize_t, which ought to be the same width as pointers
+// Object: CPython object (PyObject *)
+
 
 #ifndef MYPYC_DECLARED_tuple_T3OOO
 #define MYPYC_DECLARED_tuple_T3OOO
@@ -64,19 +76,6 @@ static void CPy_XDecRef(PyObject *p) {
     CPy_XDECREF(p);
 }
 
-// Naming conventions:
-//
-// Tagged: tagged int
-// Long: tagged long int (pointer)
-// Short: tagged short int (unboxed)
-// Ssize_t: A Py_ssize_t, which ought to be the same width as pointers
-// Object: CPython object (PyObject *)
-
-static void CPyDebug_Print(const char *msg) {
-    printf("%s\n", msg);
-    fflush(stdout);
-}
-
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait
 // implementation. We don't do any bounds checking so we'd better be pretty sure
@@ -98,35 +97,6 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
             return ((size_t *)vtable[i + 2])[index];
         }
     }
-}
-
-static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
-    // mypyc classes can't work with metaclasses in
-    // general. Through some various nasty hacks we *do*
-    // manage to work with TypingMeta and its friends.
-    if (metaclass == &PyType_Type)
-        return true;
-    PyObject *module = PyObject_GetAttrString((PyObject *)metaclass, "__module__");
-    if (!module) {
-        PyErr_Clear();
-        return false;
-    }
-
-    bool matches = false;
-    if (PyUnicode_CompareWithASCIIString(module, "typing") == 0 &&
-            (strcmp(metaclass->tp_name, "TypingMeta") == 0
-             || strcmp(metaclass->tp_name, "GenericMeta") == 0
-             || strcmp(metaclass->tp_name, "_ProtocolMeta") == 0)) {
-        matches = true;
-    } else if (PyUnicode_CompareWithASCIIString(module, "typing_extensions") == 0 &&
-               strcmp(metaclass->tp_name, "_ProtocolMeta") == 0) {
-        matches = true;
-    } else if (PyUnicode_CompareWithASCIIString(module, "abc") == 0 &&
-               strcmp(metaclass->tp_name, "ABCMeta") == 0) {
-        matches = true;
-    }
-    Py_DECREF(module);
-    return matches;
 }
 
 // Get attribute value using vtable (may return an undefined value)
@@ -293,19 +263,6 @@ static PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
 }
 
-static inline CPyTagged CPyObject_Size(PyObject *obj) {
-    Py_ssize_t s = PyObject_Size(obj);
-    if (s < 0) {
-        return CPY_INT_TAG;
-    } else {
-        // Technically __len__ could return a really big number, so we
-        // should allow this to produce a boxed int. In practice it
-        // shouldn't ever if the data structure actually contains all
-        // the elements, but...
-        return CPyTagged_FromSsize_t(s);
-    }
-}
-
 static inline int CPy_ObjectToStatus(PyObject *obj) {
     if (obj) {
         Py_DECREF(obj);
@@ -315,72 +272,90 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
     }
 }
 
-// mypy lets ints silently coerce to floats, so a mypyc runtime float
-// might be an int also
-static inline bool CPyFloat_Check(PyObject *o) {
-    return PyFloat_Check(o) || PyLong_Check(o);
-}
 
-
-#ifdef MYPYC_LOG_GETATTR
-static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
-    PyObject *module = PyImport_ImportModule("getattr_hook");
-    if (module) {
-        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
-        Py_XDECREF(res);
-        Py_DECREF(module);
+static inline void _CPy_ToNone(PyObject **p) {
+    if (*p == NULL) {
+        Py_INCREF(Py_None);
+        *p = Py_None;
     }
-    PyErr_Clear();
 }
-#else
-#define CPy_LogGetAttr(method, obj, attr) (void)0
-#endif
-
-// Intercept a method call and log it. This needs to be a macro
-// because there is no API that accepts va_args for making a
-// call. Worse, it needs to use the comma operator to return the right
-// value.
-#define CPyObject_CallMethodObjArgs(obj, attr, ...)             \
-    (CPy_LogGetAttr("log_method", (obj), (attr)),               \
-     PyObject_CallMethodObjArgs((obj), (attr), __VA_ARGS__))
-
-// This one is a macro for consistency with the above, I guess.
-#define CPyObject_GetAttr(obj, attr)                       \
-    (CPy_LogGetAttr("log", (obj), (attr)),                 \
-     PyObject_GetAttr((obj), (attr)))
 
 
-// These functions are basically exactly PyCode_NewEmpty and
-// _PyTraceback_Add which are available in all the versions we support.
-// We're continuing to use them because we'll probably optimize them later.
-static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
-    PyObject *filename_obj = PyUnicode_FromString(filename);
-    PyObject *funcname_obj = PyUnicode_FromString(funcname);
-    PyObject *empty_bytes = PyBytes_FromStringAndSize("", 0);
-    PyObject *empty_tuple = PyTuple_New(0);
-    PyCodeObject *code_obj = NULL;
-    if (filename_obj == NULL || funcname_obj == NULL || empty_bytes == NULL
-        || empty_tuple == NULL) {
-        goto Error;
+// List operations
+
+
+PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+PyObject *CPyList_PopLast(PyObject *obj);
+PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
+CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
+PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
+
+
+// Dict operations
+
+
+// Check that dictionary didn't change size during iteration.
+static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
+    if (!PyDict_CheckExact(dict)) {
+        // Dict subclasses will be checked by Python runtime.
+        return 1;
     }
-    code_obj = PyCode_New(0, 0, 0, 0, 0,
-                          empty_bytes,
-                          empty_tuple,
-                          empty_tuple,
-                          empty_tuple,
-                          empty_tuple,
-                          empty_tuple,
-                          filename_obj,
-                          funcname_obj,
-                          line,
-                          empty_bytes);
-  Error:
-    Py_XDECREF(empty_bytes);
-    Py_XDECREF(empty_tuple);
-    Py_XDECREF(filename_obj);
-    Py_XDECREF(funcname_obj);
-    return code_obj;
+    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
+    Py_ssize_t dict_size = PyDict_Size(dict);
+    if (py_size != dict_size) {
+        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
+        return 0;
+    }
+    return 1;
 }
+
+PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
+int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
+PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
+PyObject *CPyDict_Build(Py_ssize_t size, ...);
+int CPyDict_Update(PyObject *dict, PyObject *stuff);
+int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
+int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff);
+PyObject *CPyDict_FromAny(PyObject *obj);
+PyObject *CPyDict_KeysView(PyObject *dict);
+PyObject *CPyDict_ValuesView(PyObject *dict);
+PyObject *CPyDict_ItemsView(PyObject *dict);
+PyObject *CPyDict_Keys(PyObject *dict);
+PyObject *CPyDict_Values(PyObject *dict);
+PyObject *CPyDict_Items(PyObject *dict);
+PyObject *CPyDict_GetKeysIter(PyObject *dict);
+PyObject *CPyDict_GetItemsIter(PyObject *dict);
+PyObject *CPyDict_GetValuesIter(PyObject *dict);
+tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset);
+tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
+tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
+
+
+// Str operations
+
+
+PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
+PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
+
+
+// Set operations
+
+
+bool CPySet_Remove(PyObject *set, PyObject *key);
+
+
+// Tuple operations
+
+
+PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
+
+
+// Exception operations
+
 
 // mypyc is not very good at dealing with refcount management of
 // pointers that might be NULL. As a workaround for this, the
@@ -417,58 +392,6 @@ static int CPy_NoErrOccured(void) {
 #define CPy_ExcState() PyThreadState_GET()
 #endif
 
-static inline void _CPy_ToNone(PyObject **p) {
-    if (*p == NULL) {
-        Py_INCREF(Py_None);
-        *p = Py_None;
-    }
-}
-
-
-// List operations
-PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
-bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
-PyObject *CPyList_PopLast(PyObject *obj);
-PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
-CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
-PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
-
-// Dict operations
-PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
-int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
-PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
-PyObject *CPyDict_Build(Py_ssize_t size, ...);
-int CPyDict_Update(PyObject *dict, PyObject *stuff);
-int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
-int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff);
-PyObject *CPyDict_FromAny(PyObject *obj);
-PyObject *CPyDict_KeysView(PyObject *dict);
-PyObject *CPyDict_ValuesView(PyObject *dict);
-PyObject *CPyDict_ItemsView(PyObject *dict);
-PyObject *CPyDict_Keys(PyObject *dict);
-PyObject *CPyDict_Values(PyObject *dict);
-PyObject *CPyDict_Items(PyObject *dict);
-PyObject *CPyDict_GetKeysIter(PyObject *dict);
-PyObject *CPyDict_GetItemsIter(PyObject *dict);
-PyObject *CPyDict_GetValuesIter(PyObject *dict);
-tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset);
-tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
-tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
-
-// Str operations
-PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
-PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
-PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
-
-// Set operations
-bool CPySet_Remove(PyObject *set, PyObject *key);
-
-// Tuple operations
-PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
-
-// Exception operations
 void CPy_Raise(PyObject *exc);
 void CPy_Reraise(void);
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback);
@@ -482,12 +405,64 @@ void CPyError_OutOfMemory(void);
 void CPy_TypeError(const char *expected, PyObject *value);
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals);
 
+
 // Generic operations
+
+
+static inline CPyTagged CPyObject_Size(PyObject *obj) {
+    Py_ssize_t s = PyObject_Size(obj);
+    if (s < 0) {
+        return CPY_INT_TAG;
+    } else {
+        // Technically __len__ could return a really big number, so we
+        // should allow this to produce a boxed int. In practice it
+        // shouldn't ever if the data structure actually contains all
+        // the elements, but...
+        return CPyTagged_FromSsize_t(s);
+    }
+}
+
+#ifdef MYPYC_LOG_GETATTR
+static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
+    PyObject *module = PyImport_ImportModule("getattr_hook");
+    if (module) {
+        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
+        Py_XDECREF(res);
+        Py_DECREF(module);
+    }
+    PyErr_Clear();
+}
+#else
+#define CPy_LogGetAttr(method, obj, attr) (void)0
+#endif
+
+// Intercept a method call and log it. This needs to be a macro
+// because there is no API that accepts va_args for making a
+// call. Worse, it needs to use the comma operator to return the right
+// value.
+#define CPyObject_CallMethodObjArgs(obj, attr, ...)             \
+    (CPy_LogGetAttr("log_method", (obj), (attr)),               \
+     PyObject_CallMethodObjArgs((obj), (attr), __VA_ARGS__))
+
+// This one is a macro for consistency with the above, I guess.
+#define CPyObject_GetAttr(obj, attr)                       \
+    (CPy_LogGetAttr("log", (obj), (attr)),                 \
+     PyObject_GetAttr((obj), (attr)))
+
 CPyTagged CPyObject_Hash(PyObject *o);
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 
+
 // Misc operations
+
+
+// mypy lets ints silently coerce to floats, so a mypyc runtime float
+// might be an int also
+static inline bool CPyFloat_Check(PyObject *o) {
+    return PyFloat_Check(o) || PyLong_Check(o);
+}
+
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
@@ -500,39 +475,11 @@ int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
 PyObject *CPyPickle_SetState(PyObject *obj, PyObject *state);
 PyObject *CPyPickle_GetState(PyObject *obj);
 CPyTagged CPyTagged_Id(PyObject *o);
-
-
-// Check that dictionary didn't change size during iteration.
-static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
-    if (!PyDict_CheckExact(dict)) {
-        // Dict subclasses will be checked by Python runtime.
-        return 1;
-    }
-    Py_ssize_t py_size = CPyTagged_AsSsize_t(size);
-    Py_ssize_t dict_size = PyDict_Size(dict);
-    if (py_size != dict_size) {
-        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
-        return 0;
-    }
-    return 1;
-}
-
+void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
-
-static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
-{
-    Py_ssize_t pos = 0;
-    PyObject *key, *value;
-    while (PyDict_Next(dict, &pos, &key, &value)) {
-        if (PyObject_SetAttr(obj, key, value) != 0) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
+
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,9 @@
 #include <Python.h>
 #include "CPy.h"
 
+struct ExcDummyStruct _CPy_ExcDummyStruct = { PyObject_HEAD_INIT(NULL) };
+PyObject *_CPy_ExcDummy = (PyObject *)&_CPy_ExcDummyStruct;
+
 void CPy_Raise(PyObject *exc) {
     if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
         PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);
@@ -180,6 +183,38 @@ void CPy_TypeError(const char *expected, PyObject *value) {
         PyErr_Format(PyExc_TypeError, "%s object expected; and errored formatting real type!",
                      expected);
     }
+}
+
+// These functions are basically exactly PyCode_NewEmpty and
+// _PyTraceback_Add which are available in all the versions we support.
+// We're continuing to use them because we'll probably optimize them later.
+static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
+    PyObject *filename_obj = PyUnicode_FromString(filename);
+    PyObject *funcname_obj = PyUnicode_FromString(funcname);
+    PyObject *empty_bytes = PyBytes_FromStringAndSize("", 0);
+    PyObject *empty_tuple = PyTuple_New(0);
+    PyCodeObject *code_obj = NULL;
+    if (filename_obj == NULL || funcname_obj == NULL || empty_bytes == NULL
+        || empty_tuple == NULL) {
+        goto Error;
+    }
+    code_obj = PyCode_New(0, 0, 0, 0, 0,
+                          empty_bytes,
+                          empty_tuple,
+                          empty_tuple,
+                          empty_tuple,
+                          empty_tuple,
+                          empty_tuple,
+                          filename_obj,
+                          funcname_obj,
+                          line,
+                          empty_bytes);
+  Error:
+    Py_XDECREF(empty_bytes);
+    Py_XDECREF(empty_tuple);
+    Py_XDECREF(filename_obj);
+    Py_XDECREF(funcname_obj);
+    return code_obj;
 }
 
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals) {

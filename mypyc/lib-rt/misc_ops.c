@@ -101,6 +101,35 @@ PyObject *CPy_FetchStopIterationValue(void)
     return val;
 }
 
+static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
+    // mypyc classes can't work with metaclasses in
+    // general. Through some various nasty hacks we *do*
+    // manage to work with TypingMeta and its friends.
+    if (metaclass == &PyType_Type)
+        return true;
+    PyObject *module = PyObject_GetAttrString((PyObject *)metaclass, "__module__");
+    if (!module) {
+        PyErr_Clear();
+        return false;
+    }
+
+    bool matches = false;
+    if (PyUnicode_CompareWithASCIIString(module, "typing") == 0 &&
+            (strcmp(metaclass->tp_name, "TypingMeta") == 0
+             || strcmp(metaclass->tp_name, "GenericMeta") == 0
+             || strcmp(metaclass->tp_name, "_ProtocolMeta") == 0)) {
+        matches = true;
+    } else if (PyUnicode_CompareWithASCIIString(module, "typing_extensions") == 0 &&
+               strcmp(metaclass->tp_name, "_ProtocolMeta") == 0) {
+        matches = true;
+    } else if (PyUnicode_CompareWithASCIIString(module, "abc") == 0 &&
+               strcmp(metaclass->tp_name, "ABCMeta") == 0) {
+        matches = true;
+    }
+    Py_DECREF(module);
+    return matches;
+}
+
 // Create a heap type based on a template non-heap type.
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
@@ -263,6 +292,18 @@ error:
     Py_XDECREF(dummy_class);
     Py_XDECREF(name);
     return NULL;
+}
+
+static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
+{
+    Py_ssize_t pos = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(dict, &pos, &key, &value)) {
+        if (PyObject_SetAttr(obj, key, value) != 0) {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 /* Support for our partial built-in support for dataclasses.
@@ -447,4 +488,9 @@ PyObject *CPyTagged_Str(CPyTagged n) {
     } else {
         return PyObject_Str(CPyTagged_AsObject(n));
     }
+}
+
+void CPyDebug_Print(const char *msg) {
+    printf("%s\n", msg);
+    fflush(stdout);
 }
