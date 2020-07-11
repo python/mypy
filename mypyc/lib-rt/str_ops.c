@@ -5,7 +5,7 @@
 #include <Python.h>
 #include "CPy.h"
 
-static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
+PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     if (PyUnicode_READY(str) != -1) {
         if (CPyTagged_CheckShort(index)) {
             Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
@@ -43,7 +43,7 @@ static PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
-static PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
+PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
 {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
@@ -54,7 +54,7 @@ static PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
 }
 
 /* This does a dodgy attempt to append in place  */
-static PyObject *CPyStr_Append(PyObject *o1, PyObject *o2) {
+PyObject *CPyStr_Append(PyObject *o1, PyObject *o2) {
     PyUnicode_Append(&o1, o2);
     return o1;
 }

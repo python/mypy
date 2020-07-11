@@ -36,6 +36,7 @@ RUNTIME_C_FILES = [
     'CPy.c',
     'getargs.c',
     'str_ops.c',
+    'dict_ops.c',
 ]  # type: Final
 
 
