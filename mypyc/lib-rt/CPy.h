@@ -16,6 +16,39 @@ extern "C" {
 } // why isn't emacs smart enough to not indent this
 #endif
 
+#ifndef MYPYC_DECLARED_tuple_T3OOO
+#define MYPYC_DECLARED_tuple_T3OOO
+typedef struct tuple_T3OOO {
+    PyObject *f0;
+    PyObject *f1;
+    PyObject *f2;
+} tuple_T3OOO;
+static tuple_T3OOO tuple_undefined_T3OOO = { NULL, NULL, NULL };
+#endif
+
+// Our return tuple wrapper for dictionary iteration helper.
+#ifndef MYPYC_DECLARED_tuple_T3CIO
+#define MYPYC_DECLARED_tuple_T3CIO
+typedef struct tuple_T3CIO {
+    char f0;  // Should continue?
+    CPyTagged f1;  // Last dict offset
+    PyObject *f2;  // Next dictionary key or value
+} tuple_T3CIO;
+static tuple_T3CIO tuple_undefined_T3CIO = { 2, CPY_INT_TAG, NULL };
+#endif
+
+// Same as above but for both key and value.
+#ifndef MYPYC_DECLARED_tuple_T4CIOO
+#define MYPYC_DECLARED_tuple_T4CIOO
+typedef struct tuple_T4CIOO {
+    char f0;  // Should continue?
+    CPyTagged f1;  // Last dict offset
+    PyObject *f2;  // Next dictionary key
+    PyObject *f3;  // Next dictionary value
+} tuple_T4CIOO;
+static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
+#endif
+
 /* We use intentionally non-inlined decrefs since it pretty
  * substantially speeds up compile time while only causing a ~1%
  * performance degradation. We have our own copies both to avoid the
@@ -1015,16 +1048,6 @@ static inline PyObject *_CPy_FromDummy(PyObject *p) {
     return p;
 }
 
-#ifndef MYPYC_DECLARED_tuple_T3OOO
-#define MYPYC_DECLARED_tuple_T3OOO
-typedef struct tuple_T3OOO {
-    PyObject *f0;
-    PyObject *f1;
-    PyObject *f2;
-} tuple_T3OOO;
-static tuple_T3OOO tuple_undefined_T3OOO = { NULL, NULL, NULL };
-#endif
-
 static int CPy_NoErrOccured(void) {
     return PyErr_Occurred() == NULL;
 }
@@ -1066,6 +1089,18 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff);
 PyObject *CPyDict_FromAny(PyObject *obj);
+PyObject *CPyDict_KeysView(PyObject *dict);
+PyObject *CPyDict_ValuesView(PyObject *dict);
+PyObject *CPyDict_ItemsView(PyObject *dict);
+PyObject *CPyDict_Keys(PyObject *dict);
+PyObject *CPyDict_Values(PyObject *dict);
+PyObject *CPyDict_Items(PyObject *dict);
+PyObject *CPyDict_GetKeysIter(PyObject *dict);
+PyObject *CPyDict_GetItemsIter(PyObject *dict);
+PyObject *CPyDict_GetValuesIter(PyObject *dict);
+tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset);
+tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset);
+tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset);
 
 // Str operations
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
@@ -1089,247 +1124,6 @@ PyObject *CPy_GetExcValue(void);
 tuple_T3OOO CPy_GetExcInfo(void);
 void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback);
 
-
-static PyObject *CPyDict_KeysView(PyObject *dict) {
-    if (PyDict_CheckExact(dict)){
-        return _CPyDictView_New(dict, &PyDictKeys_Type);
-    }
-    return PyObject_CallMethod(dict, "keys", NULL);
-}
-
-static PyObject *CPyDict_ValuesView(PyObject *dict) {
-    if (PyDict_CheckExact(dict)){
-        return _CPyDictView_New(dict, &PyDictValues_Type);
-    }
-    return PyObject_CallMethod(dict, "values", NULL);
-}
-
-static PyObject *CPyDict_ItemsView(PyObject *dict) {
-    if (PyDict_CheckExact(dict)){
-        return _CPyDictView_New(dict, &PyDictItems_Type);
-    }
-    return PyObject_CallMethod(dict, "items", NULL);
-}
-
-static PyObject *CPyDict_Keys(PyObject *dict) {
-    if (PyDict_CheckExact(dict)) {
-        return PyDict_Keys(dict);
-    }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethod(dict, "keys", NULL);
-    if (view == NULL) {
-        return NULL;
-    }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
-    Py_DECREF(view);
-    if (res == NULL) {
-        return NULL;
-    }
-    Py_DECREF(res);
-    return list;
-}
-
-static PyObject *CPyDict_Values(PyObject *dict) {
-    if (PyDict_CheckExact(dict)) {
-        return PyDict_Values(dict);
-    }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethod(dict, "values", NULL);
-    if (view == NULL) {
-        return NULL;
-    }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
-    Py_DECREF(view);
-    if (res == NULL) {
-        return NULL;
-    }
-    Py_DECREF(res);
-    return list;
-}
-
-static PyObject *CPyDict_Items(PyObject *dict) {
-    if (PyDict_CheckExact(dict)) {
-        return PyDict_Items(dict);
-    }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethod(dict, "items", NULL);
-    if (view == NULL) {
-        return NULL;
-    }
-    PyObject *res = _PyList_Extend((PyListObject *)list, view);
-    Py_DECREF(view);
-    if (res == NULL) {
-        return NULL;
-    }
-    Py_DECREF(res);
-    return list;
-}
-
-static PyObject *CPyDict_GetKeysIter(PyObject *dict) {
-    if (PyDict_CheckExact(dict)) {
-        // Return dict itself to indicate we can use fast path instead.
-        Py_INCREF(dict);
-        return dict;
-    }
-    return PyObject_GetIter(dict);
-}
-
-static PyObject *CPyDict_GetItemsIter(PyObject *dict) {
-    if (PyDict_CheckExact(dict)) {
-        // Return dict itself to indicate we can use fast path instead.
-        Py_INCREF(dict);
-        return dict;
-    }
-    PyObject *view = PyObject_CallMethod(dict, "items", NULL);
-    if (view == NULL) {
-        return NULL;
-    }
-    PyObject *iter = PyObject_GetIter(view);
-    Py_DECREF(view);
-    return iter;
-}
-
-static PyObject *CPyDict_GetValuesIter(PyObject *dict) {
-    if (PyDict_CheckExact(dict)) {
-        // Return dict itself to indicate we can use fast path instead.
-        Py_INCREF(dict);
-        return dict;
-    }
-    PyObject *view = PyObject_CallMethod(dict, "values", NULL);
-    if (view == NULL) {
-        return NULL;
-    }
-    PyObject *iter = PyObject_GetIter(view);
-    Py_DECREF(view);
-    return iter;
-}
-
-// Our return tuple wrapper for dictionary iteration helper.
-#ifndef MYPYC_DECLARED_tuple_T3CIO
-#define MYPYC_DECLARED_tuple_T3CIO
-typedef struct tuple_T3CIO {
-    char f0;  // Should continue?
-    CPyTagged f1;  // Last dict offset
-    PyObject *f2;  // Next dictionary key or value
-} tuple_T3CIO;
-static tuple_T3CIO tuple_undefined_T3CIO = { 2, CPY_INT_TAG, NULL };
-#endif
-
-// Same as above but for both key and value.
-#ifndef MYPYC_DECLARED_tuple_T4CIOO
-#define MYPYC_DECLARED_tuple_T4CIOO
-typedef struct tuple_T4CIOO {
-    char f0;  // Should continue?
-    CPyTagged f1;  // Last dict offset
-    PyObject *f2;  // Next dictionary key
-    PyObject *f3;  // Next dictionary value
-} tuple_T4CIOO;
-static tuple_T4CIOO tuple_undefined_T4CIOO = { 2, CPY_INT_TAG, NULL, NULL };
-#endif
-
-static void _CPyDict_FromNext(tuple_T3CIO *ret, PyObject *dict_iter) {
-    // Get next item from iterator and set "should continue" flag.
-    ret->f2 = PyIter_Next(dict_iter);
-    if (ret->f2 == NULL) {
-        ret->f0 = 0;
-        Py_INCREF(Py_None);
-        ret->f2 = Py_None;
-    } else {
-        ret->f0 = 1;
-    }
-}
-
-// Helpers for fast dictionary iteration, return a single tuple
-// instead of writing to multiple registers, for exact dicts use
-// the fast path, and fall back to generic iterator logic for subclasses.
-static tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset) {
-    tuple_T3CIO ret;
-    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
-    PyObject *dummy;
-
-    if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &dummy);
-        if (ret.f0) {
-            ret.f1 = CPyTagged_FromSsize_t(py_offset);
-        } else {
-            // Set key to None, so mypyc can manage refcounts.
-            ret.f1 = 0;
-            ret.f2 = Py_None;
-        }
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
-    } else {
-        // offset is dummy in this case, just use the old value.
-        ret.f1 = offset;
-        _CPyDict_FromNext(&ret, dict_or_iter);
-    }
-    return ret;
-}
-
-static tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset) {
-    tuple_T3CIO ret;
-    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
-    PyObject *dummy;
-
-    if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &dummy, &ret.f2);
-        if (ret.f0) {
-            ret.f1 = CPyTagged_FromSsize_t(py_offset);
-        } else {
-            // Set value to None, so mypyc can manage refcounts.
-            ret.f1 = 0;
-            ret.f2 = Py_None;
-        }
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
-    } else {
-        // offset is dummy in this case, just use the old value.
-        ret.f1 = offset;
-        _CPyDict_FromNext(&ret, dict_or_iter);
-    }
-    return ret;
-}
-
-static tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
-    tuple_T4CIOO ret;
-    Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
-
-    if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &ret.f3);
-        if (ret.f0) {
-            ret.f1 = CPyTagged_FromSsize_t(py_offset);
-        } else {
-            // Set key and value to None, so mypyc can manage refcounts.
-            ret.f1 = 0;
-            ret.f2 = Py_None;
-            ret.f3 = Py_None;
-        }
-    } else {
-        ret.f1 = offset;
-        PyObject *item = PyIter_Next(dict_or_iter);
-        if (item == NULL || !PyTuple_Check(item) || PyTuple_GET_SIZE(item) != 2) {
-            if (item != NULL) {
-                PyErr_SetString(PyExc_TypeError, "a tuple of length 2 expected");
-            }
-            ret.f0 = 0;
-            ret.f2 = Py_None;
-            ret.f3 = Py_None;
-        } else {
-            ret.f0 = 1;
-            ret.f2 = PyTuple_GET_ITEM(item, 0);
-            ret.f3 = PyTuple_GET_ITEM(item, 1);
-            Py_DECREF(item);
-        }
-    }
-    // PyDict_Next() returns borrowed references.
-    Py_INCREF(ret.f2);
-    Py_INCREF(ret.f3);
-    return ret;
-}
-
 // Check that dictionary didn't change size during iteration.
 static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
     if (!PyDict_CheckExact(dict)) {
@@ -1346,7 +1140,6 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 }
 
 void CPy_Init(void);
-
 
 // A somewhat hairy implementation of specifically most of the error handling
 // in `yield from` error handling. The point here is to reduce code size.
