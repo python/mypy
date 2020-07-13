@@ -153,7 +153,7 @@ int_equal_ = c_custom_op(
 int_less_than_ = c_custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     return_type=bool_rprimitive,
-    c_function_name='CPyTagged_IsLt',
+    c_function_name='CPyTagged_IsLt_',
     error_kind=ERR_NEVER)
 
 # provide mapping from textual op to short int's op variant and boxed int's description

@@ -22,6 +22,7 @@ from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.test.config import test_data_prefix
+from mypyc.common import IS_32_BIT_PLATFORM
 
 # The builtins stub used during icode generation test cases.
 ICODE_GEN_BUILTINS = os.path.join(test_data_prefix, 'fixtures/ir.py')
@@ -210,3 +211,9 @@ def fudge_dir_mtimes(dir: str, delta: int) -> None:
             path = os.path.join(dirpath, name)
             new_mtime = os.stat(path).st_mtime + delta
             os.utime(path, times=(new_mtime, new_mtime))
+
+
+def replace_native_int(text: List[str]) -> List[str]:
+    """Replace native_int with platform specific ints"""
+    int_format_str = 'int32' if IS_32_BIT_PLATFORM else 'int64'
+    return [s.replace('native_int', int_format_str) for s in text]
