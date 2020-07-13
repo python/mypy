@@ -408,7 +408,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 found_match = False
 
                 for left_index, left_item in enumerate(left.items()):
-                    subtype_match = self._is_subtype(left_item, right_item)\
+                    subtype_match = self._is_subtype(left_item, right_item)
 
                     # Order matters: we need to make sure that the index of
                     # this item is at least the index of the previous one.
