@@ -45,6 +45,9 @@ class int:
     def __ge__(self, n: int) -> bool: pass
 
 class str:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object) -> None: pass
     def __add__(self, x: str) -> str: pass
     def __eq__(self, x: object) -> bool: pass
@@ -53,7 +56,10 @@ class str:
     def __le__(self, x: str) -> bool: ...
     def __gt__(self, x: str) -> bool: ...
     def __ge__(self, x: str) -> bool: ...
+    @overload
     def __getitem__(self, i: int) -> str: pass
+    @overload
+    def __getitem__(self, i: slice) -> str: pass
     def __contains__(self, item: str) -> bool: pass
     def __iter__(self) -> Iterator[str]: ...
     def split(self, sep: Optional[str] = None, max: Optional[int] = None) -> List[str]: pass
