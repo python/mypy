@@ -7,6 +7,7 @@ import subprocess
 import sys
 import hashlib
 import io
+import shutil
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -34,7 +35,6 @@ ENCODING_RE = \
 PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
 
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
-DEFAULT_COLUMNS = 80   # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -424,18 +424,7 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    forced_width = int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0'))
-    if forced_width:
-        return forced_width
-
-    try:
-        cols, _ = os.get_terminal_size()
-    except OSError:
-        return DEFAULT_COLUMNS
-    else:
-        if cols == 0:
-            return DEFAULT_COLUMNS
-        return cols
+    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
