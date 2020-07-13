@@ -150,8 +150,15 @@ int_equal_ = c_custom_op(
     c_function_name='CPyTagged_IsEq_',
     error_kind=ERR_NEVER)
 
+int_less_than_ = c_custom_op(
+    arg_types=[int_rprimitive, int_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPyTagged_IsLt_',
+    error_kind=ERR_NEVER)
+
 # provide mapping from textual op to short int's op variant and boxed int's description
 # note these are not complete implementations
 int_logical_op_mapping = {
-    '==': (BinaryIntOp.EQ, int_equal_)
+    '==': (BinaryIntOp.EQ, int_equal_),
+    '<': (BinaryIntOp.LT, int_less_than_)
 }  # type: Dict[str, Tuple[int, CFunctionDescription]]

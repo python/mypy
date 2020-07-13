@@ -93,14 +93,28 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: short_int
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7 :: short_int
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L1 else goto L2 :: bool
-L1:
     r1 = 1
-    x = r1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = x < y
+    r0 = r5
+    goto L3
 L2:
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
+L3:
+    if r0 goto L4 else goto L5 :: bool
+L4:
+    r7 = 1
+    x = r7
+L5:
     return x
 
 [case testIfElse]
@@ -114,18 +128,32 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2 :: short_int
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7, r8 :: short_int
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L1 else goto L2 :: bool
-L1:
     r1 = 1
-    x = r1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = x < y
+    r0 = r5
     goto L3
 L2:
-    r2 = 2
-    x = r2
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
 L3:
+    if r0 goto L4 else goto L5 :: bool
+L4:
+    r7 = 1
+    x = r7
+    goto L6
+L5:
+    r8 = 2
+    x = r8
+L6:
     return x
 
 [case testAnd1]
@@ -138,22 +166,36 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0, r1 :: bool
-    r2, r3 :: short_int
+    r0 :: bool
+    r1, r2, r3 :: native_int
+    r4, r5, r6, r7 :: bool
+    r8, r9 :: short_int
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L1 else goto L3 :: bool
+    r1 = 1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r1 = CPyTagged_IsGt(x, y)
-    if r1 goto L2 else goto L3 :: bool
+    r5 = x < y
+    r0 = r5
+    goto L3
 L2:
-    r2 = 1
-    x = r2
-    goto L4
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
 L3:
-    r3 = 2
-    x = r3
+    if r0 goto L4 else goto L6 :: bool
 L4:
+    r7 = CPyTagged_IsGt(x, y)
+    if r7 goto L5 else goto L6 :: bool
+L5:
+    r8 = 1
+    x = r8
+    goto L7
+L6:
+    r9 = 2
+    x = r9
+L7:
     return x
 
 [case testAnd2]
@@ -188,22 +230,36 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0, r1 :: bool
-    r2, r3 :: short_int
+    r0 :: bool
+    r1, r2, r3 :: native_int
+    r4, r5, r6, r7 :: bool
+    r8, r9 :: short_int
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L2 else goto L1 :: bool
+    r1 = 1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r1 = CPyTagged_IsGt(x, y)
-    if r1 goto L2 else goto L3 :: bool
+    r5 = x < y
+    r0 = r5
+    goto L3
 L2:
-    r2 = 1
-    x = r2
-    goto L4
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
 L3:
-    r3 = 2
-    x = r3
+    if r0 goto L5 else goto L4 :: bool
 L4:
+    r7 = CPyTagged_IsGt(x, y)
+    if r7 goto L5 else goto L6 :: bool
+L5:
+    r8 = 1
+    x = r8
+    goto L7
+L6:
+    r9 = 2
+    x = r9
+L7:
     return x
 
 [case testOr2]
@@ -237,14 +293,28 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: short_int
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7 :: short_int
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L2 else goto L1 :: bool
-L1:
     r1 = 1
-    x = r1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = x < y
+    r0 = r5
+    goto L3
 L2:
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
+L3:
+    if r0 goto L5 else goto L4 :: bool
+L4:
+    r7 = 1
+    x = r7
+L5:
     return x
 
 [case testNotAnd]
@@ -255,18 +325,32 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0, r1 :: bool
-    r2 :: short_int
+    r0 :: bool
+    r1, r2, r3 :: native_int
+    r4, r5, r6, r7 :: bool
+    r8 :: short_int
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L1 else goto L2 :: bool
+    r1 = 1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r1 = CPyTagged_IsGt(x, y)
-    if r1 goto L3 else goto L2 :: bool
+    r5 = x < y
+    r0 = r5
+    goto L3
 L2:
-    r2 = 1
-    x = r2
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
 L3:
+    if r0 goto L4 else goto L5 :: bool
+L4:
+    r7 = CPyTagged_IsGt(x, y)
+    if r7 goto L6 else goto L5 :: bool
+L5:
+    r8 = 1
+    x = r8
+L6:
     return x
 
 [case testWhile]
@@ -349,21 +433,35 @@ def f(x: int, y: int) -> None:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2 :: short_int
-    r3 :: None
+    r1, r2, r3 :: native_int
+    r4, r5, r6 :: bool
+    r7, r8 :: short_int
+    r9 :: None
 L0:
-    r0 = CPyTagged_IsLt(x, y)
-    if r0 goto L1 else goto L2 :: bool
-L1:
     r1 = 1
-    x = r1
+    r2 = x & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = x < y
+    r0 = r5
     goto L3
 L2:
-    r2 = 2
-    y = r2
+    r6 = CPyTagged_IsLt_(x, y)
+    r0 = r6
 L3:
-    r3 = None
-    return r3
+    if r0 goto L4 else goto L5 :: bool
+L4:
+    r7 = 1
+    x = r7
+    goto L6
+L5:
+    r8 = 2
+    y = r8
+L6:
+    r9 = None
+    return r9
 
 [case testRecursion]
 def f(n: int) -> int:
@@ -1894,7 +1992,7 @@ L0:
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = CPyTagged_IsLt(r9, r10)
+    r11 = r9 < r10
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: unsafe list
@@ -1958,7 +2056,7 @@ L0:
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = CPyTagged_IsLt(r9, r10)
+    r11 = r9 < r10
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: unsafe list
@@ -2019,7 +2117,7 @@ L0:
     r1 = r0
 L1:
     r2 = len l :: list
-    r3 = CPyTagged_IsLt(r1, r2)
+    r3 = r1 < r2
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = l[r1] :: unsafe list
@@ -2041,7 +2139,7 @@ L4:
     r13 = r12
 L5:
     r14 = len l :: list
-    r15 = CPyTagged_IsLt(r13, r14)
+    r15 = r13 < r14
     if r15 goto L6 else goto L8 :: bool
 L6:
     r16 = l[r13] :: unsafe list
@@ -2583,21 +2681,35 @@ L0:
 def f(x, y, z):
     x, y, z, r0, r1 :: int
     r2, r3 :: bool
-    r4 :: int
-    r5 :: bool
+    r4, r5, r6 :: native_int
+    r7, r8, r9 :: bool
+    r10 :: int
+    r11 :: bool
 L0:
     r0 = g(x)
     r1 = g(y)
-    r3 = CPyTagged_IsLt(r0, r1)
-    if r3 goto L2 else goto L1 :: bool
+    r4 = 1
+    r5 = r0 & r4
+    r6 = 0
+    r7 = r5 == r6
+    if r7 goto L1 else goto L2 :: bool
 L1:
-    r2 = r3
+    r8 = r0 < r1
+    r3 = r8
     goto L3
 L2:
-    r4 = g(z)
-    r5 = CPyTagged_IsGt(r1, r4)
-    r2 = r5
+    r9 = CPyTagged_IsLt_(r0, r1)
+    r3 = r9
 L3:
+    if r3 goto L5 else goto L4 :: bool
+L4:
+    r2 = r3
+    goto L6
+L5:
+    r10 = g(z)
+    r11 = CPyTagged_IsGt(r1, r10)
+    r2 = r11
+L6:
     return r2
 
 [case testEq]

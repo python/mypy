@@ -131,47 +131,61 @@ def sum(a, l):
     r1 :: short_int
     i :: int
     r2 :: bool
-    r3 :: object
-    r4, r5 :: int
-    r6 :: short_int
-    r7, r8 :: int
+    r3, r4, r5 :: native_int
+    r6, r7, r8 :: bool
+    r9 :: object
+    r10, r11 :: int
+    r12 :: short_int
+    r13, r14 :: int
 L0:
     r0 = 0
     sum = r0
     r1 = 0
     i = r1
 L1:
-    r2 = CPyTagged_IsLt(i, l)
-    if r2 goto L2 else goto L7 :: bool
+    r3 = 1
+    r4 = i & r3
+    r5 = 0
+    r6 = r4 == r5
+    if r6 goto L2 else goto L3 :: bool
 L2:
-    r3 = CPyList_GetItem(a, i)
-    if is_error(r3) goto L8 (error at sum:6) else goto L3
+    r7 = i < l
+    r2 = r7
+    goto L4
 L3:
-    r4 = unbox(int, r3)
-    dec_ref r3
-    if is_error(r4) goto L8 (error at sum:6) else goto L4
+    r8 = CPyTagged_IsLt_(i, l)
+    r2 = r8
 L4:
-    r5 = CPyTagged_Add(sum, r4)
-    dec_ref sum :: int
-    dec_ref r4 :: int
-    sum = r5
-    r6 = 1
-    r7 = CPyTagged_Add(i, r6)
-    dec_ref i :: int
-    i = r7
-    goto L1
+    if r2 goto L5 else goto L10 :: bool
 L5:
-    return sum
+    r9 = CPyList_GetItem(a, i)
+    if is_error(r9) goto L11 (error at sum:6) else goto L6
 L6:
-    r8 = <error> :: int
-    return r8
+    r10 = unbox(int, r9)
+    dec_ref r9
+    if is_error(r10) goto L11 (error at sum:6) else goto L7
 L7:
+    r11 = CPyTagged_Add(sum, r10)
+    dec_ref sum :: int
+    dec_ref r10 :: int
+    sum = r11
+    r12 = 1
+    r13 = CPyTagged_Add(i, r12)
     dec_ref i :: int
-    goto L5
+    i = r13
+    goto L1
 L8:
+    return sum
+L9:
+    r14 = <error> :: int
+    return r14
+L10:
+    dec_ref i :: int
+    goto L8
+L11:
     dec_ref sum :: int
     dec_ref i :: int
-    goto L6
+    goto L9
 
 [case testTryExcept]
 def g() -> None:

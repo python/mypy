@@ -368,38 +368,86 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a :: int
-    r0, r1 :: bool
+    r0 :: bool
+    r1, r2, r3 :: native_int
+    r4, r5, r6, r7 :: bool
+    r8, r9, r10 :: native_int
+    r11, r12, r13 :: bool
     y, x :: int
-    r2 :: None
+    r14 :: None
 L0:
 L1:
-    r0 = CPyTagged_IsLt(a, a)
-    if r0 goto L2 else goto L6 :: bool
+    r1 = 1
+    r2 = a & r1
+    r3 = 0
+    r4 = r2 == r3
+    if r4 goto L2 else goto L3 :: bool
 L2:
+    r5 = a < a
+    r0 = r5
+    goto L4
 L3:
-    r1 = CPyTagged_IsLt(a, a)
-    if r1 goto L4 else goto L5 :: bool
+    r6 = CPyTagged_IsLt_(a, a)
+    r0 = r6
 L4:
-    y = a
-    goto L3
+    if r0 goto L5 else goto L12 :: bool
 L5:
+L6:
+    r8 = 1
+    r9 = a & r8
+    r10 = 0
+    r11 = r9 == r10
+    if r11 goto L7 else goto L8 :: bool
+L7:
+    r12 = a < a
+    r7 = r12
+    goto L9
+L8:
+    r13 = CPyTagged_IsLt_(a, a)
+    r7 = r13
+L9:
+    if r7 goto L10 else goto L11 :: bool
+L10:
+    y = a
+    goto L6
+L11:
     x = a
     goto L1
-L6:
-    r2 = None
-    return r2
+L12:
+    r14 = None
+    return r14
 (0, 0)   {a}                     {a}
-(1, 0)   {a, x, y}               {a, x, y}
-(1, 1)   {a, x, y}               {a, x, y}
-(2, 0)   {a, x, y}               {a, x, y}
-(3, 0)   {a, x, y}               {a, x, y}
-(3, 1)   {a, x, y}               {a, x, y}
-(4, 0)   {a, x, y}               {a, x, y}
-(4, 1)   {a, x, y}               {a, x, y}
-(5, 0)   {a, x, y}               {a, x, y}
-(5, 1)   {a, x, y}               {a, x, y}
-(6, 0)   {a, x, y}               {a, x, y}
-(6, 1)   {a, x, y}               {a, x, y}
+(1, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(1, 1)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(1, 2)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(1, 3)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(1, 4)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(2, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(2, 1)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(2, 2)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(3, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(3, 1)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(3, 2)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(4, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(5, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(6, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(6, 1)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(6, 2)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(6, 3)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(6, 4)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(7, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(7, 1)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(7, 2)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(8, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(8, 1)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(8, 2)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(9, 0)   {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(10, 0)  {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(10, 1)  {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(11, 0)  {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(11, 1)  {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(12, 0)  {a, r0, r7, x, y}       {a, r0, r7, x, y}
+(12, 1)  {a, r0, r7, x, y}       {a, r0, r7, x, y}
 
 [case testTrivial_BorrowedArgument]
 def f(a: int, b: int) -> int:
