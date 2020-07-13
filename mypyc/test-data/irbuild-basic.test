@@ -107,7 +107,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L4 else goto L5 :: bool
@@ -142,7 +142,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L4 else goto L5 :: bool
@@ -181,7 +181,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L4 else goto L6 :: bool
@@ -245,7 +245,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L5 else goto L4 :: bool
@@ -307,7 +307,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L5 else goto L4 :: bool
@@ -340,7 +340,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L4 else goto L5 :: bool
@@ -448,7 +448,7 @@ L1:
     r0 = r5
     goto L3
 L2:
-    r6 = CPyTagged_IsLt(x, y)
+    r6 = CPyTagged_IsLt_(x, y)
     r0 = r6
 L3:
     if r0 goto L4 else goto L5 :: bool
@@ -2698,7 +2698,7 @@ L1:
     r3 = r8
     goto L3
 L2:
-    r9 = CPyTagged_IsLt(r0, r1)
+    r9 = CPyTagged_IsLt_(r0, r1)
     r3 = r9
 L3:
     if r3 goto L5 else goto L4 :: bool

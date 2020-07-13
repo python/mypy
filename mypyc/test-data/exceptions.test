@@ -153,7 +153,7 @@ L2:
     r2 = r7
     goto L4
 L3:
-    r8 = CPyTagged_IsLt(i, l)
+    r8 = CPyTagged_IsLt_(i, l)
     r2 = r8
 L4:
     if r2 goto L5 else goto L10 :: bool
