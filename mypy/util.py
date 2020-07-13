@@ -619,11 +619,7 @@ class FancyFormatter:
         return new_messages
 
     def colorize(self, error: str) -> str:
-        """Colorize an output line by highlighting the status and error code.
-
-        If fixed_terminal_width is given, use it instead of calling get_terminal_width()
-        (used by the daemon).
-        """
+        """Colorize an output line by highlighting the status and error code."""
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
             if not self.show_error_codes:
