@@ -576,7 +576,14 @@ class LowLevelIRBuilder:
         op_type, c_func_desc = int_logical_op_mapping[op]
         result = self.alloc_temp(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
-        check = self.check_tagged_short_int(lhs, line)
+        check_lhs = self.check_tagged_short_int(lhs, line)
+        if op in ("==", "!="):
+            check = check_lhs
+        else:
+            # for non-equal logical ops(less than, greater than, etc.), need to check both side
+            check_rhs = self.check_tagged_short_int(rhs, line)
+            check = self.binary_int_op(bool_rprimitive, check_lhs,
+                                       check_rhs, BinaryIntOp.AND, line)
         branch = Branch(check, short_int_block, int_block, Branch.BOOL_EXPR)
         branch.negated = False
         self.add(branch)
