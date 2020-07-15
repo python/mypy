@@ -1,4 +1,4 @@
-[case testIntEq]
+[case testIntNeq]
 def f(x: int, y: int) -> bool:
     return x != y
 [out]
