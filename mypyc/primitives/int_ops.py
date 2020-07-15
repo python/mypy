@@ -6,7 +6,7 @@ representation (CPyTagged).
 See also the documentation for mypyc.rtypes.int_rprimitive.
 """
 
-from typing import Dict, Tuple
+from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, BinaryIntOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
@@ -143,6 +143,18 @@ int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
 
 # integer comparsion operation implementation related:
 
+# Description for building int logical ops
+# For each field:
+# binary_op_variant: identify which BinaryIntOp to use when operands are short integers
+# c_func_description: the C function to call when operands are tagged integers
+# c_func_negated: whether to negate the C function call's result
+# c_func_swap_operands: whether to swap lhs and rhs when call the function
+IntLogicalOpDescrption = NamedTuple(
+    'IntLogicalOpDescrption',  [('binary_op_variant', int),
+                                ('c_func_description', CFunctionDescription),
+                                ('c_func_negated', bool),
+                                ('c_func_swap_operands', bool)])
+
 # description for equal operation on two boxed tagged integers
 int_equal_ = c_custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
@@ -159,6 +171,7 @@ int_less_than_ = c_custom_op(
 # provide mapping from textual op to short int's op variant and boxed int's description
 # note these are not complete implementations
 int_logical_op_mapping = {
-    '==': (BinaryIntOp.EQ, int_equal_),
-    '<': (BinaryIntOp.LT, int_less_than_)
-}  # type: Dict[str, Tuple[int, CFunctionDescription]]
+    '==': IntLogicalOpDescrption(BinaryIntOp.EQ, int_equal_, False, False),
+    '!=': IntLogicalOpDescrption(BinaryIntOp.NEQ, int_equal_, True, False),
+    '<': IntLogicalOpDescrption(BinaryIntOp.LT, int_less_than_, False, False)
+}  # type: Dict[str, IntLogicalOpDescrption]

@@ -573,7 +573,7 @@ class LowLevelIRBuilder:
 
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two tagged integers using given op"""
-        op_type, c_func_desc = int_logical_op_mapping[op]
+        op_type, c_func_desc, negate_result, swap_op = int_logical_op_mapping[op]
         result = self.alloc_temp(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line)
@@ -592,8 +592,17 @@ class LowLevelIRBuilder:
         self.add(Assign(result, eq, line))
         self.goto(out)
         self.activate_block(int_block)
-        call = self.call_c(c_func_desc, [lhs, rhs], line)
-        self.add(Assign(result, call, line))
+        if swap_op:
+            args = [rhs, lhs]
+        else:
+            args = [lhs, rhs]
+        call = self.call_c(c_func_desc, args, line)
+        if negate_result:
+            # TODO: introduce UnaryIntOp?
+            call_result = self.unary_op(call, "not", line)
+        else:
+            call_result = call
+        self.add(Assign(result, call_result, line))
         self.goto_and_activate(out)
         return result
 

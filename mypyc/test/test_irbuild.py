@@ -28,6 +28,7 @@ files = [
     'irbuild-try.test',
     'irbuild-set.test',
     'irbuild-strip-asserts.test',
+    'irbuild-int.test',
 ]
 
 
