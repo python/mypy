@@ -604,31 +604,53 @@ def f(a):
     r1 :: short_int
     i :: int
     r2 :: bool
-    r3 :: int
-    r4 :: short_int
-    r5 :: int
+    r3, r4, r5 :: native_int
+    r6 :: bool
+    r7, r8, r9 :: native_int
+    r10, r11, r12, r13, r14 :: bool
+    r15 :: int
+    r16 :: short_int
+    r17 :: int
 L0:
     r0 = 0
     sum = r0
     r1 = 0
     i = r1
 L1:
-    r2 = CPyTagged_IsLe(i, a)
-    if r2 goto L2 else goto L4 :: bool
+    r3 = 1
+    r4 = i & r3
+    r5 = 0
+    r6 = r4 == r5
+    r7 = 1
+    r8 = a & r7
+    r9 = 0
+    r10 = r8 == r9
+    r11 = r6 & r10
+    if r11 goto L2 else goto L3 :: bool
 L2:
-    r3 = CPyTagged_Add(sum, i)
-    dec_ref sum :: int
-    sum = r3
-    r4 = 1
-    r5 = CPyTagged_Add(i, r4)
-    dec_ref i :: int
-    i = r5
-    goto L1
+    r12 = i <= a
+    r2 = r12
+    goto L4
 L3:
-    return sum
+    r13 = CPyTagged_IsLt_(a, i)
+    r14 = !r13
+    r2 = r14
 L4:
+    if r2 goto L5 else goto L7 :: bool
+L5:
+    r15 = CPyTagged_Add(sum, i)
+    dec_ref sum :: int
+    sum = r15
+    r16 = 1
+    r17 = CPyTagged_Add(i, r16)
     dec_ref i :: int
-    goto L3
+    i = r17
+    goto L1
+L6:
+    return sum
+L7:
+    dec_ref i :: int
+    goto L6
 
 [case testCall]
 def f(a: int) -> int:
