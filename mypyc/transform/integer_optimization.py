@@ -26,13 +26,13 @@ def find_constant_integer_registers(blocks: List[BasicBlock],
             if isinstance(op, Assign):
                 dest = op.dest
                 src = op.src
+                # if we already encounter dest before, it means
+                # it's conditionally assigned, so we simply remove it
+                if dest.name in const_int_regs:
+                    del const_int_regs[dest.name]
+                    continue
                 if src.name in const_int_regs:
-                    # if we already encounter dest before, it means
-                    # it's conditionally assigned, so we'd remove it
-                    if dest.name in const_int_regs:
-                        del const_int_regs[dest.name]
-                    else:
-                        const_int_regs[dest.name] = const_int_regs[src.name]
+                    const_int_regs[dest.name] = const_int_regs[src.name]
             # TODO: should we compute BinaryIntOp with two const operands during this pass
             #       and store its value as well?
     return const_int_regs
