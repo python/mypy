@@ -281,6 +281,10 @@ tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
 
+def is_tagged(rtype: RType) -> bool:
+    return rtype is int_rprimitive or rtype is short_int_rprimitive
+
+
 def is_int_rprimitive(rtype: RType) -> bool:
     return rtype is int_rprimitive
 

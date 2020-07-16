@@ -18,7 +18,9 @@ from mypy.types import TupleType, get_proper_type
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive, is_short_int_rprimitive
+)
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops, CFunctionDescription
 from mypyc.primitives.generic_ops import iter_op
@@ -383,8 +385,7 @@ def transform_basic_comparison(builder: IRBuilder,
                                left: Value,
                                right: Value,
                                line: int) -> Value:
-    if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
-            and op in int_logical_op_mapping.keys()):
+    if _has_tagged(left, right) and op in int_logical_op_mapping.keys():
         return builder.compare_tagged(left, right, op, line)
     negate = False
     if op == 'is not':
@@ -397,6 +398,15 @@ def transform_basic_comparison(builder: IRBuilder,
     if negate:
         target = builder.unary_op(target, 'not', line)
     return target
+
+
+def _has_tagged(left: Value, right: Value) -> bool:
+    lhs_is_int = is_int_rprimitive(left.type)
+    rhs_is_int = is_int_rprimitive(right.type)
+    lhs_is_short = is_short_int_rprimitive(left.type)
+    rhs_is_short = is_short_int_rprimitive(right.type)
+    return ((lhs_is_int and rhs_is_int) or (lhs_is_int and rhs_is_short)
+            or (lhs_is_short and rhs_is_int) or (lhs_is_short and rhs_is_short))
 
 
 # Literals
