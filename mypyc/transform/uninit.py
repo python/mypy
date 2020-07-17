@@ -2,7 +2,7 @@
 
 from typing import List
 
-from mypyc.analysis import (
+from mypyc.analysis.dataflow import (
     get_cfg,
     cleanup_cfg,
     analyze_must_defined_regs,

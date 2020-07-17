@@ -18,7 +18,7 @@ into a regular, owned reference that needs to freed before return.
 
 from typing import Dict, Iterable, List, Set, Tuple
 
-from mypyc.analysis import (
+from mypyc.analysis.dataflow import (
     get_cfg,
     analyze_must_defined_regs,
     analyze_live_regs,
