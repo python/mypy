@@ -372,13 +372,17 @@ def f(a):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9, r10, r11, r12 :: bool
-    r13, r14, r15 :: native_int
-    r16 :: bool
-    r17, r18, r19 :: native_int
-    r20, r21, r22, r23 :: bool
+    r8, r9 :: bool
+    r10, r11 :: native_int
+    r12, r13, r14 :: bool
+    r15, r16, r17 :: native_int
+    r18 :: bool
+    r19, r20, r21 :: native_int
+    r22, r23 :: bool
+    r24, r25 :: native_int
+    r26, r27 :: bool
     y, x :: int
-    r24 :: None
+    r28 :: None
 L0:
 L1:
     r1 = 1
@@ -392,35 +396,39 @@ L1:
     r9 = r4 & r8
     if r9 goto L2 else goto L3 :: bool
 L2:
-    r10 = a < a
-    r0 = r10
+    r10 = truncate a: short_int to native_int
+    r11 = truncate a: short_int to native_int
+    r12 = r10 < r11
+    r0 = r12
     goto L4
 L3:
-    r11 = CPyTagged_IsLt_(a, a)
-    r0 = r11
+    r13 = CPyTagged_IsLt_(a, a)
+    r0 = r13
 L4:
     if r0 goto L5 else goto L12 :: bool
 L5:
 L6:
-    r13 = 1
-    r14 = a & r13
-    r15 = 0
-    r16 = r14 == r15
-    r17 = 1
-    r18 = a & r17
-    r19 = 0
-    r20 = r18 == r19
-    r21 = r16 & r20
-    if r21 goto L7 else goto L8 :: bool
+    r15 = 1
+    r16 = a & r15
+    r17 = 0
+    r18 = r16 == r17
+    r19 = 1
+    r20 = a & r19
+    r21 = 0
+    r22 = r20 == r21
+    r23 = r18 & r22
+    if r23 goto L7 else goto L8 :: bool
 L7:
-    r22 = a < a
-    r12 = r22
+    r24 = truncate a: short_int to native_int
+    r25 = truncate a: short_int to native_int
+    r26 = r24 < r25
+    r14 = r26
     goto L9
 L8:
-    r23 = CPyTagged_IsLt_(a, a)
-    r12 = r23
+    r27 = CPyTagged_IsLt_(a, a)
+    r14 = r27
 L9:
-    if r12 goto L10 else goto L11 :: bool
+    if r14 goto L10 else goto L11 :: bool
 L10:
     y = a
     goto L6
@@ -428,50 +436,54 @@ L11:
     x = a
     goto L1
 L12:
-    r24 = None
-    return r24
+    r28 = None
+    return r28
 (0, 0)   {a}                     {a}
-(1, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 1)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 2)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 3)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 4)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 5)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 6)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 7)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 8)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(1, 9)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(2, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(2, 1)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(2, 2)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(3, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(3, 1)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(3, 2)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(4, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(5, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 1)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 2)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 3)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 4)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 5)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 6)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 7)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 8)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(6, 9)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(7, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(7, 1)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(7, 2)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(8, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(8, 1)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(8, 2)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(9, 0)   {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(10, 0)  {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(10, 1)  {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(11, 0)  {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(11, 1)  {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(12, 0)  {a, r0, r12, x, y}      {a, r0, r12, x, y}
-(12, 1)  {a, r0, r12, x, y}      {a, r0, r12, x, y}
+(1, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 1)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 2)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 3)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 4)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 5)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 6)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 7)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 8)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(1, 9)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(2, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(2, 1)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(2, 2)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(2, 3)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(2, 4)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(3, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(3, 1)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(3, 2)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(4, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(5, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 1)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 2)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 3)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 4)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 5)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 6)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 7)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 8)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(6, 9)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(7, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(7, 1)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(7, 2)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(7, 3)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(7, 4)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(8, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(8, 1)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(8, 2)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(9, 0)   {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(10, 0)  {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(10, 1)  {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(11, 0)  {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(11, 1)  {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(12, 0)  {a, r0, r14, x, y}      {a, r0, r14, x, y}
+(12, 1)  {a, r0, r14, x, y}      {a, r0, r14, x, y}
 
 [case testTrivial_BorrowedArgument]
 def f(a: int, b: int) -> int:
