@@ -440,7 +440,7 @@ def g(o):
     r15, z :: object
     r16 :: None
 L0:
-    r0 = 1
+    r0 = 2
     r2 = __main__.A :: type
     r3 = type_is o, r2
     if r3 goto L1 else goto L2 :: bool
