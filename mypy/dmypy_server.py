@@ -141,10 +141,8 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
                  "pass it to check/recheck instead")
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
-    # Our file change tracking can't yet handle changes to files that aren't
-    # specified in the sources list.
     if options.follow_imports not in ('skip', 'error', 'normal'):
-        sys.exit("dmypy: follow-imports must be 'skip' or 'error'")
+        sys.exit("dmypy: follow-imports=silent not supported")
     return options
 
 
