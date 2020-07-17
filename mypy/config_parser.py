@@ -63,6 +63,16 @@ def split_and_match_files(paths: str) -> List[str]:
     return expanded_paths
 
 
+def check_follow_imports(choice: str) -> str:
+    choices = ['normal', 'silent', 'skip', 'error']
+    if choice not in choices:
+        raise argparse.ArgumentTypeError(
+            "invalid choice '{}' (choose from {})".format(
+                choice,
+                ', '.join("'{}'".format(x) for x in choices)))
+    return choice
+
+
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -79,6 +89,7 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'follow_imports': check_follow_imports,
     'no_site_packages': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
