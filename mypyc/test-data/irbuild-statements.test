@@ -17,7 +17,7 @@ L0:
     r0 = 0
     x = r0
     r1 = 0
-    r2 = 5
+    r2 = 10
     r3 = r1
     i = r3
 L1:
@@ -27,7 +27,7 @@ L2:
     r5 = CPyTagged_Add(x, i)
     x = r5
 L3:
-    r6 = 1
+    r6 = 2
     r7 = r3 + r6
     r3 = r7
     i = r7
@@ -48,7 +48,7 @@ def f():
     r4, r5 :: short_int
     r6 :: None
 L0:
-    r0 = 10
+    r0 = 20
     r1 = 0
     r2 = r0
     i = r2
@@ -57,7 +57,7 @@ L1:
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r4 = -1
+    r4 = -2
     r5 = r2 + r4
     r2 = r5
     i = r5
@@ -82,7 +82,7 @@ L0:
     r0 = 0
     n = r0
 L1:
-    r1 = 5
+    r1 = 10
     r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L3 :: bool
 L2:
@@ -103,7 +103,7 @@ def f():
     r6 :: None
 L0:
     r0 = 0
-    r1 = 5
+    r1 = 10
     r2 = r0
     n = r2
 L1:
@@ -112,7 +112,7 @@ L1:
 L2:
     goto L4
 L3:
-    r4 = 1
+    r4 = 2
     r5 = r2 + r4
     r2 = r5
     n = r5
@@ -141,12 +141,12 @@ L0:
     r0 = 0
     n = r0
 L1:
-    r1 = 5
+    r1 = 10
     r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r3 = 4
+    r3 = 8
     r4 = CPyTagged_IsLt(n, r3)
     if r4 goto L4 else goto L5 :: bool
 L4:
@@ -171,7 +171,7 @@ L0:
     r0 = 0
     n = r0
 L1:
-    r1 = 5
+    r1 = 10
     r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L3 :: bool
 L2:
@@ -193,7 +193,7 @@ def f():
     r6 :: None
 L0:
     r0 = 0
-    r1 = 5
+    r1 = 10
     r2 = r0
     n = r2
 L1:
@@ -201,7 +201,7 @@ L1:
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r4 = 1
+    r4 = 2
     r5 = r2 + r4
     r2 = r5
     n = r5
@@ -230,12 +230,12 @@ L0:
     r0 = 0
     n = r0
 L1:
-    r1 = 5
+    r1 = 10
     r2 = CPyTagged_IsLt(n, r1)
     if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r3 = 4
+    r3 = 8
     r4 = CPyTagged_IsLt(n, r3)
     if r4 goto L4 else goto L5 :: bool
 L4:
@@ -280,7 +280,7 @@ L2:
     r7 = CPyTagged_Add(y, x)
     y = r7
 L3:
-    r8 = 1
+    r8 = 2
     r9 = r2 + r8
     r2 = r9
     goto L1
@@ -387,7 +387,7 @@ L2:
     r10 = box(int, key)
     r11 = CPyDict_GetItem(d, r10)
     r12 = unbox(int, r11)
-    r13 = 2
+    r13 = 4
     r14 = CPyTagged_Remainder(r12, r13)
     r15 = 0
     r16 = CPyTagged_IsNe(r14, r15)
@@ -589,7 +589,7 @@ L1:
     raise AssertionError
     unreachable
 L2:
-    r1 = 1
+    r1 = 2
     return r1
 def literal_msg(x):
     x :: object
@@ -602,7 +602,7 @@ L1:
     raise AssertionError('message')
     unreachable
 L2:
-    r2 = 2
+    r2 = 4
     return r2
 def complex_msg(x, s):
     x :: union[str, None]
@@ -651,13 +651,13 @@ def delList():
     r7 :: bool
     r8 :: None
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = box(short_int, r0)
     r3 = box(short_int, r1)
     r4 = [r2, r3]
     l = r4
-    r5 = 1
+    r5 = 2
     r6 = box(short_int, r5)
     r7 = l.__delitem__(r6) :: object
     r8 = None
@@ -675,13 +675,13 @@ def delListMultiple():
     r23 :: bool
     r24 :: None
 L0:
-    r0 = 1
-    r1 = 2
-    r2 = 3
-    r3 = 4
-    r4 = 5
-    r5 = 6
-    r6 = 7
+    r0 = 2
+    r1 = 4
+    r2 = 6
+    r3 = 8
+    r4 = 10
+    r5 = 12
+    r6 = 14
     r7 = box(short_int, r0)
     r8 = box(short_int, r1)
     r9 = box(short_int, r2)
@@ -691,9 +691,9 @@ L0:
     r13 = box(short_int, r6)
     r14 = [r7, r8, r9, r10, r11, r12, r13]
     l = r14
-    r15 = 1
-    r16 = 2
-    r17 = 3
+    r15 = 2
+    r16 = 4
+    r17 = 6
     r18 = box(short_int, r15)
     r19 = l.__delitem__(r18) :: object
     r20 = box(short_int, r16)
@@ -724,9 +724,9 @@ def delDict():
     r10 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
-    r1 = 1
+    r1 = 2
     r2 = unicode_2 :: static  ('two')
-    r3 = 2
+    r3 = 4
     r4 = 2
     r5 = box(short_int, r1)
     r6 = box(short_int, r3)
@@ -753,13 +753,13 @@ def delDictMultiple():
     r18 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
-    r1 = 1
+    r1 = 2
     r2 = unicode_2 :: static  ('two')
-    r3 = 2
+    r3 = 4
     r4 = unicode_3 :: static  ('three')
-    r5 = 3
+    r5 = 6
     r6 = unicode_4 :: static  ('four')
-    r7 = 4
+    r7 = 8
     r8 = 4
     r9 = box(short_int, r1)
     r10 = box(short_int, r3)
@@ -803,8 +803,8 @@ def delAttribute():
     r4 :: bool
     r5 :: None
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = Dummy(r0, r1)
     dummy = r2
     r3 = unicode_3 :: static  ('x')
@@ -820,8 +820,8 @@ def delAttributeMultiple():
     r6 :: bool
     r7 :: None
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = Dummy(r0, r1)
     dummy = r2
     r3 = unicode_3 :: static  ('x')
@@ -867,11 +867,11 @@ L2:
     x = r7
     r8 = CPyTagged_Add(i, x)
 L3:
-    r9 = 1
+    r9 = 2
     r10 = r1 + r9
     r1 = r10
     i = r10
-    r11 = 1
+    r11 = 2
     r12 = r3 + r11
     r3 = r12
     goto L1
@@ -900,7 +900,7 @@ L2:
     r4 = unbox(int, r3)
     n = r4
 L3:
-    r5 = 1
+    r5 = 2
     r6 = r1 + r5
     r1 = r6
     i = r6
@@ -956,11 +956,11 @@ L3:
     r9 = bool b :: object
     if r9 goto L4 else goto L5 :: bool
 L4:
-    r10 = 1
+    r10 = 2
     x = r10
 L5:
 L6:
-    r11 = 1
+    r11 = 2
     r12 = r1 + r11
     r1 = r12
     goto L1
@@ -989,7 +989,7 @@ L0:
     r1 = 0
     r2 = r1
     r3 = 0
-    r4 = 5
+    r4 = 10
     r5 = r3
     z = r5
 L1:
@@ -1011,10 +1011,10 @@ L4:
     r13 = False
     x = r13
 L5:
-    r14 = 1
+    r14 = 2
     r15 = r2 + r14
     r2 = r15
-    r16 = 1
+    r16 = 2
     r17 = r5 + r16
     r5 = r17
     z = r17

@@ -47,7 +47,7 @@ L0:
     r0 = 0
     r1 = CPyList_GetItemShort(x, r0)
     r2 = cast(list, r1)
-    r3 = 1
+    r3 = 2
     r4 = CPyList_GetItemShort(r2, r3)
     r5 = unbox(int, r4)
     return r5
@@ -64,7 +64,7 @@ def f(x):
     r3 :: bool
     r4 :: None
 L0:
-    r0 = 1
+    r0 = 2
     r1 = 0
     r2 = box(short_int, r0)
     r3 = CPyList_SetItem(x, r1, r2)
@@ -96,8 +96,8 @@ def f():
     r4, x :: list
     r5 :: None
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = box(short_int, r0)
     r3 = box(short_int, r1)
     r4 = [r2, r3]
@@ -120,11 +120,11 @@ def f(a):
     r5, r6 :: list
     r7 :: None
 L0:
-    r0 = 2
+    r0 = 4
     r1 = CPySequence_Multiply(a, r0)
     b = r1
-    r2 = 3
-    r3 = 4
+    r2 = 6
+    r3 = 8
     r4 = box(short_int, r3)
     r5 = [r4]
     r6 = CPySequence_RMultiply(r2, r5)
@@ -189,12 +189,12 @@ L1:
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = CPyList_GetItem(l, i)
-    r5 = 1
+    r5 = 2
     r6 = box(short_int, r5)
     r7 = r4 += r6
     r8 = CPyList_SetItem(l, i, r7)
 L3:
-    r9 = 1
+    r9 = 2
     r10 = r2 + r9
     r2 = r10
     i = r10
@@ -215,9 +215,9 @@ def f(x, y):
     r6, r7, r8 :: object
     r9 :: int32
 L0:
-    r0 = 1
-    r1 = 2
-    r2 = 3
+    r0 = 2
+    r1 = 4
+    r2 = 6
     r3 = box(short_int, r0)
     r4 = box(short_int, r1)
     r5 = [r3, r4]

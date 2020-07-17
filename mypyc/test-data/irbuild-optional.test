@@ -20,10 +20,10 @@ L0:
     r2 = x is r1
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = 1
+    r3 = 2
     return r3
 L2:
-    r4 = 2
+    r4 = 4
     return r4
 
 [case testIsNotNone]
@@ -49,10 +49,10 @@ L0:
     r3 = !r2
     if r3 goto L1 else goto L2 :: bool
 L1:
-    r4 = 1
+    r4 = 2
     return r4
 L2:
-    r5 = 2
+    r5 = 4
     return r5
 
 [case testIsTruthy]
@@ -75,10 +75,10 @@ L0:
     r1 = x is not r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 1
+    r2 = 2
     return r2
 L2:
-    r3 = 2
+    r3 = 4
     return r3
 
 [case testIsTruthyOverride]
@@ -118,10 +118,10 @@ L1:
     r3 = bool r2 :: object
     if r3 goto L2 else goto L3 :: bool
 L2:
-    r4 = 1
+    r4 = 2
     return r4
 L3:
-    r5 = 2
+    r5 = 4
     return r5
 
 [case testAssignToOptional]
@@ -162,12 +162,12 @@ L0:
     r2 = A()
     x = r2
     x = y
-    r3 = 1
+    r3 = 2
     r4 = box(short_int, r3)
     z = r4
     r5 = A()
     a = r5
-    r6 = 1
+    r6 = 2
     r7 = box(short_int, r6)
     a.a = r7; r8 = is_error
     r9 = None
@@ -199,7 +199,7 @@ L0:
     r2 = box(short_int, r0)
     r3 = CPyList_SetItem(x, r1, r2)
     r4 = None
-    r5 = 1
+    r5 = 2
     r6 = box(None, r4)
     r7 = CPyList_SetItem(x, r5, r6)
     r8 = None
@@ -265,7 +265,7 @@ L0:
     r0 = None
     r1 = box(None, r0)
     x = r1
-    r2 = 1
+    r2 = 2
     r3 = CPyTagged_IsEq(y, r2)
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -313,7 +313,7 @@ L0:
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = unbox(int, x)
-    r4 = 1
+    r4 = 2
     r5 = CPyTagged_Add(r3, r4)
     return r5
 L2:
@@ -440,7 +440,7 @@ def g(o):
     r15, z :: object
     r16 :: None
 L0:
-    r0 = 1
+    r0 = 2
     r2 = __main__.A :: type
     r3 = type_is o, r2
     if r3 goto L1 else goto L2 :: bool
