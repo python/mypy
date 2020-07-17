@@ -27,7 +27,7 @@ def f():
     r3 :: int
 L0:
     r0 = True
-    r1 = 1
+    r1 = 2
     r2 = (r0, r1)
     t = r2
     r3 = t[1]
@@ -42,7 +42,7 @@ def f(x):
     x :: tuple[bool, bool, int]
     r0 :: short_int
 L0:
-    r0 = 3
+    r0 = 6
     return r0
 
 [case testSequenceTuple]
@@ -58,7 +58,7 @@ def f(x):
     r3 :: bool
 L0:
     r0 = PyList_AsTuple(x)
-    r1 = 1
+    r1 = 2
     r2 = CPySequenceTuple_GetItem(r0, r1)
     r3 = unbox(bool, r2)
     return r3
@@ -90,12 +90,12 @@ def f():
     r5 :: object
     r6 :: int
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = (r0, r1)
     r3 = box(tuple[int, int], r2)
     t = r3
-    r4 = 1
+    r4 = 2
     r5 = CPySequenceTuple_GetItem(t, r4)
     r6 = unbox(int, r5)
     return r6
@@ -114,9 +114,9 @@ def f(x, y):
     r9 :: int32
     r10 :: tuple
 L0:
-    r0 = 1
-    r1 = 2
-    r2 = 3
+    r0 = 2
+    r1 = 4
+    r2 = 6
     r3 = box(short_int, r0)
     r4 = box(short_int, r1)
     r5 = [r3, r4]
@@ -154,7 +154,7 @@ L2:
     r5 = cast(str, r4)
     x = r5
 L3:
-    r6 = 1
+    r6 = 2
     r7 = r1 + r6
     r1 = r7
     goto L1
@@ -189,7 +189,7 @@ L1:
     r2 = unbox(int, r1)
     return r2
 L2:
-    r3 = 1
+    r3 = 2
     r4 = CPySequenceTuple_GetItem(nt, r3)
     r5 = unbox(int, r4)
     return r5

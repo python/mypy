@@ -9,8 +9,8 @@ def g():
     r2 :: int
     r3, x :: object
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = CPyTagged_Add(r0, r1)
     r3 = box(int, r2)
     x = r3

@@ -21,7 +21,7 @@ def f(a):
     z :: int
     r10 :: None
 L0:
-    r0 = 1
+    r0 = 2
     x = r0
     r2 = 1
     r3 = x & r2
@@ -38,11 +38,11 @@ L2:
 L3:
     if r1 goto L4 else goto L5 :: bool
 L4:
-    r8 = 1
+    r8 = 2
     y = r8
     goto L6
 L5:
-    r9 = 1
+    r9 = 2
     z = r9
 L6:
     r10 = None
@@ -85,9 +85,9 @@ def f(a):
     r1 :: short_int
     r2 :: bool
 L0:
-    r0 = 1
+    r0 = 2
     x = r0
-    r1 = 1
+    r1 = 2
     r2 = CPyTagged_IsEq(x, r1)
     if r2 goto L1 else goto L2 :: bool
 L1:
@@ -119,11 +119,11 @@ def f():
     y :: int
     r2 :: short_int
 L0:
-    r0 = 1
+    r0 = 2
     x = r0
-    r1 = 1
+    r1 = 2
     y = r1
-    r2 = 2
+    r2 = 4
     x = r2
     return x
 (0, 0)   {}                      {r0}
@@ -145,11 +145,11 @@ def f(a):
     a :: int
     r0, r1, r2 :: short_int
 L0:
-    r0 = 1
+    r0 = 2
     a = r0
-    r1 = 2
+    r1 = 4
     a = r1
-    r2 = 3
+    r2 = 6
     a = r2
     return a
 (0, 0)   {}                      {r0}
@@ -179,17 +179,17 @@ def f(a):
     r4 :: short_int
     r5 :: None
 L0:
-    r0 = 1
+    r0 = 2
     r1 = CPyTagged_IsEq(a, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 1
+    r2 = 2
     y = r2
-    r3 = 2
+    r3 = 4
     x = r3
     goto L3
 L2:
-    r4 = 2
+    r4 = 4
     x = r4
 L3:
     r5 = None
@@ -233,11 +233,11 @@ def f(n):
     r4 :: None
 L0:
 L1:
-    r0 = 5
+    r0 = 10
     r1 = CPyTagged_IsLt(n, r0)
     if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 1
+    r2 = 2
     r3 = CPyTagged_Add(n, r2)
     n = r3
     m = n
@@ -280,22 +280,22 @@ def f(n):
     r6 :: short_int
     r7 :: None
 L0:
-    r0 = 1
+    r0 = 2
     x = r0
-    r1 = 1
+    r1 = 2
     y = r1
 L1:
-    r2 = 1
+    r2 = 2
     r3 = CPyTagged_IsLt(n, r2)
     if r3 goto L2 else goto L6 :: bool
 L2:
     n = y
 L3:
-    r4 = 2
+    r4 = 4
     r5 = CPyTagged_IsLt(n, r4)
     if r5 goto L4 else goto L5 :: bool
 L4:
-    r6 = 1
+    r6 = 2
     n = r6
     n = x
     goto L3
@@ -335,7 +335,7 @@ def f(x):
     r0 :: short_int
     r1, a, r2, r3, r4 :: int
 L0:
-    r0 = 1
+    r0 = 2
     r1 = f(r0)
     if is_error(r1) goto L3 (error at f:2) else goto L1
 L1:
@@ -494,7 +494,7 @@ def f(a):
     r0 :: short_int
 L0:
     b = a
-    r0 = 1
+    r0 = 2
     a = r0
     return a
 (0, 0)   {a}                     {a}
@@ -535,13 +535,13 @@ L2:
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r7 = 2
+    r7 = 4
     x = r7
-    r8 = 1
+    r8 = 2
     a = r8
     goto L6
 L5:
-    r9 = 1
+    r9 = 2
     x = r9
 L6:
     return x
@@ -597,7 +597,7 @@ L1:
 L2:
     r3 = CPyTagged_Add(sum, i)
     sum = r3
-    r4 = 1
+    r4 = 2
     r5 = CPyTagged_Add(i, r4)
     i = r5
     goto L1
@@ -659,7 +659,7 @@ L3:
     r5 = CPy_ExceptionMatches(r4)
     if r5 goto L4 else goto L5 :: bool
 L4:
-    r6 = 1
+    r6 = 2
     r7 = CPyTagged_Negate(r6)
     CPy_RestoreExcInfo(r1)
     return r7
@@ -679,7 +679,7 @@ L8:
 L9:
     unreachable
 L10:
-    r9 = 1
+    r9 = 2
     r10 = CPyTagged_Add(st, r9)
     return r10
 L11:
