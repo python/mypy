@@ -1270,12 +1270,17 @@ class BinaryIntOp(RegisterOp):
     DIV = 3  # type: Final
     MOD = 4  # type: Final
     # logical
+    # S for signed and U for unsigned
     EQ = 100  # type: Final
     NEQ = 101  # type: Final
-    LT = 102  # type: Final
-    GT = 103  # type: Final
-    LEQ = 104  # type: Final
-    GEQ = 105  # type: Final
+    SLT = 102  # type: Final
+    SGT = 103  # type: Final
+    SLE = 104  # type: Final
+    SGE = 105  # type: Final
+    ULT = 102  # type: Final
+    UGT = 103  # type: Final
+    ULE = 104  # type: Final
+    UGE = 105  # type: Final
     # bitwise
     AND = 200  # type: Final
     OR = 201  # type: Final
@@ -1291,10 +1296,14 @@ class BinaryIntOp(RegisterOp):
         MOD: '%',
         EQ: '==',
         NEQ: '!=',
-        LT: '<',
-        GT: '>',
-        LEQ: '<=',
-        GEQ: '>=',
+        SLT: '<',
+        SGT: '>',
+        SLE: '<=',
+        SGE: '>=',
+        ULT: '<',
+        UGT: '>',
+        ULE: '<=',
+        UGE: '>=',
         AND: '&',
         OR: '|',
         XOR: '^',

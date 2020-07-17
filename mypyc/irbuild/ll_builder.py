@@ -26,7 +26,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
-    c_pyssize_t_rprimitive, is_short_int_rprimitive, short_int_rprimitive
+    c_pyssize_t_rprimitive, is_short_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -588,17 +588,7 @@ class LowLevelIRBuilder:
         branch.negated = False
         self.add(branch)
         self.activate_block(short_int_block)
-        # for now equal op, explicitly convert tagged(unsigned) to signed to include negative
-        # situtations
-        if op not in ("==", "!="):
-            lhs_short = self.add(Truncate(lhs, short_int_rprimitive,
-                                          c_pyssize_t_rprimitive, line))
-            rhs_short = self.add(Truncate(rhs, short_int_rprimitive,
-                                          c_pyssize_t_rprimitive, line))
-        else:
-            lhs_short = lhs
-            rhs_short = rhs
-        eq = self.binary_int_op(bool_rprimitive, lhs_short, rhs_short, op_type, line)
+        eq = self.binary_int_op(bool_rprimitive, lhs, rhs, op_type, line)
         self.add(Assign(result, eq, line))
         self.goto(out)
         self.activate_block(int_block)

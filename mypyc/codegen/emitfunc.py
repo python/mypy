@@ -14,7 +14,7 @@ from mypyc.ir.ops import (
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
     BinaryIntOp
 )
-from mypyc.ir.rtypes import RType, RTuple
+from mypyc.ir.rtypes import RType, RTuple, is_tagged
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
 
@@ -438,7 +438,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+        lhs_cast = ""
+        rhs_cast = ""
+        if (is_tagged(op.lhs.type) and is_tagged(op.rhs.type)
+                and op.op in (BinaryIntOp.SLT, BinaryIntOp.SGT,
+                              BinaryIntOp.SLE, BinaryIntOp.SGE)):
+            lhs_cast = "(Py_ssize_t)"
+            rhs_cast = "(Py_ssize_t)"
+        self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
+                                               op.op_str[op.op], rhs_cast, rhs))
 
     # Helpers
 

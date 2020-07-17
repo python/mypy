@@ -96,10 +96,8 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13 :: bool
-    r14 :: short_int
+    r8, r9, r10, r11 :: bool
+    r12 :: short_int
 L0:
     r1 = 1
     r2 = x & r1
@@ -112,19 +110,17 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r14 = 2
-    x = r14
+    r12 = 2
+    x = r12
 L5:
     return x
 
@@ -142,10 +138,8 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13 :: bool
-    r14, r15 :: short_int
+    r8, r9, r10, r11 :: bool
+    r12, r13 :: short_int
 L0:
     r1 = 1
     r2 = x & r1
@@ -158,23 +152,21 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r14 = 2
-    x = r14
+    r12 = 2
+    x = r12
     goto L6
 L5:
-    r15 = 4
-    x = r15
+    r13 = 4
+    x = r13
 L6:
     return x
 
@@ -192,10 +184,8 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13, r14 :: bool
-    r15, r16 :: short_int
+    r8, r9, r10, r11, r12 :: bool
+    r13, r14 :: short_int
 L0:
     r1 = 1
     r2 = x & r1
@@ -208,26 +198,24 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L4 else goto L6 :: bool
 L4:
-    r14 = CPyTagged_IsGt(x, y)
-    if r14 goto L5 else goto L6 :: bool
+    r12 = CPyTagged_IsGt(x, y)
+    if r12 goto L5 else goto L6 :: bool
 L5:
-    r15 = 2
-    x = r15
+    r13 = 2
+    x = r13
     goto L7
 L6:
-    r16 = 4
-    x = r16
+    r14 = 4
+    x = r14
 L7:
     return x
 
@@ -267,10 +255,8 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13, r14 :: bool
-    r15, r16 :: short_int
+    r8, r9, r10, r11, r12 :: bool
+    r13, r14 :: short_int
 L0:
     r1 = 1
     r2 = x & r1
@@ -283,26 +269,24 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L5 else goto L4 :: bool
 L4:
-    r14 = CPyTagged_IsGt(x, y)
-    if r14 goto L5 else goto L6 :: bool
+    r12 = CPyTagged_IsGt(x, y)
+    if r12 goto L5 else goto L6 :: bool
 L5:
-    r15 = 2
-    x = r15
+    r13 = 2
+    x = r13
     goto L7
 L6:
-    r16 = 4
-    x = r16
+    r14 = 4
+    x = r14
 L7:
     return x
 
@@ -340,10 +324,8 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13 :: bool
-    r14 :: short_int
+    r8, r9, r10, r11 :: bool
+    r12 :: short_int
 L0:
     r1 = 1
     r2 = x & r1
@@ -356,19 +338,17 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L5 else goto L4 :: bool
 L4:
-    r14 = 2
-    x = r14
+    r12 = 2
+    x = r12
 L5:
     return x
 
@@ -384,10 +364,8 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13, r14 :: bool
-    r15 :: short_int
+    r8, r9, r10, r11, r12 :: bool
+    r13 :: short_int
 L0:
     r1 = 1
     r2 = x & r1
@@ -400,22 +378,20 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r14 = CPyTagged_IsGt(x, y)
-    if r14 goto L6 else goto L5 :: bool
+    r12 = CPyTagged_IsGt(x, y)
+    if r12 goto L6 else goto L5 :: bool
 L5:
-    r15 = 2
-    x = r15
+    r13 = 2
+    x = r13
 L6:
     return x
 
@@ -502,11 +478,9 @@ def f(x, y):
     r1, r2, r3 :: native_int
     r4 :: bool
     r5, r6, r7 :: native_int
-    r8, r9 :: bool
-    r10, r11 :: native_int
-    r12, r13 :: bool
-    r14, r15 :: short_int
-    r16 :: None
+    r8, r9, r10, r11 :: bool
+    r12, r13 :: short_int
+    r14 :: None
 L0:
     r1 = 1
     r2 = x & r1
@@ -519,26 +493,24 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = truncate x: short_int to native_int
-    r11 = truncate y: short_int to native_int
-    r12 = r10 < r11
-    r0 = r12
+    r10 = x < y
+    r0 = r10
     goto L3
 L2:
-    r13 = CPyTagged_IsLt_(x, y)
-    r0 = r13
+    r11 = CPyTagged_IsLt_(x, y)
+    r0 = r11
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r14 = 2
-    x = r14
+    r12 = 2
+    x = r12
     goto L6
 L5:
-    r15 = 4
-    y = r15
+    r13 = 4
+    y = r13
 L6:
-    r16 = None
-    return r16
+    r14 = None
+    return r14
 
 [case testRecursion]
 def f(n: int) -> int:
@@ -2761,11 +2733,9 @@ def f(x, y, z):
     r4, r5, r6 :: native_int
     r7 :: bool
     r8, r9, r10 :: native_int
-    r11, r12 :: bool
-    r13, r14 :: native_int
-    r15, r16 :: bool
-    r17 :: int
-    r18 :: bool
+    r11, r12, r13, r14 :: bool
+    r15 :: int
+    r16 :: bool
 L0:
     r0 = g(x)
     r1 = g(y)
@@ -2780,23 +2750,21 @@ L0:
     r12 = r7 & r11
     if r12 goto L1 else goto L2 :: bool
 L1:
-    r13 = truncate r0: short_int to native_int
-    r14 = truncate r1: short_int to native_int
-    r15 = r13 < r14
-    r3 = r15
+    r13 = r0 < r1
+    r3 = r13
     goto L3
 L2:
-    r16 = CPyTagged_IsLt_(r0, r1)
-    r3 = r16
+    r14 = CPyTagged_IsLt_(r0, r1)
+    r3 = r14
 L3:
     if r3 goto L5 else goto L4 :: bool
 L4:
     r2 = r3
     goto L6
 L5:
-    r17 = g(z)
-    r18 = CPyTagged_IsGt(r1, r17)
-    r2 = r18
+    r15 = g(z)
+    r16 = CPyTagged_IsGt(r1, r15)
+    r2 = r16
 L6:
     return r2
 
