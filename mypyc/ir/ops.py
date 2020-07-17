@@ -1322,7 +1322,14 @@ class BinaryIntOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r %s %r', self, self.lhs, self.op_str[self.op], self.rhs)
+        if self.op in (self.SLT, self.SGT, self.SLE, self.SGE):
+            sign_format = " :: signed"
+        elif self.op in (self.ULT, self.UGT, self.ULE, self.UGE):
+            sign_format = " :: unsigned"
+        else:
+            sign_format = ""
+        return env.format('%r = %r %s %r%s', self, self.lhs,
+                          self.op_str[self.op], self.rhs, sign_format)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_binary_int_op(self)

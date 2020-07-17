@@ -156,7 +156,7 @@ L1:
     r11 = r6 & r10
     if r11 goto L2 else goto L3 :: bool
 L2:
-    r12 = i < l
+    r12 = i < l :: signed
     r2 = r12
     goto L4
 L3:

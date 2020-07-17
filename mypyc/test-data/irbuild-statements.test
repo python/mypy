@@ -21,7 +21,7 @@ L0:
     r3 = r1
     i = r3
 L1:
-    r4 = r3 < r2
+    r4 = r3 < r2 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyTagged_Add(x, i)
@@ -107,7 +107,7 @@ L0:
     r2 = r0
     n = r2
 L1:
-    r3 = r2 < r1
+    r3 = r2 < r1 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
     goto L4
@@ -197,7 +197,7 @@ L0:
     r2 = r0
     n = r2
 L1:
-    r3 = r2 < r1
+    r3 = r2 < r1 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -271,7 +271,7 @@ L0:
     r2 = r1
 L1:
     r3 = len ls :: list
-    r4 = r2 < r3
+    r4 = r2 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = ls[r2] :: unsafe list
@@ -859,7 +859,7 @@ L0:
     r3 = r2
 L1:
     r4 = len a :: list
-    r5 = r3 < r4
+    r5 = r3 < r4 :: signed
     if r5 goto L2 else goto L4 :: bool
 L2:
     r6 = a[r3] :: unsafe list
@@ -942,7 +942,7 @@ L0:
     r2 = iter b :: object
 L1:
     r3 = len a :: list
-    r4 = r1 < r3
+    r4 = r1 < r3 :: signed
     if r4 goto L2 else goto L7 :: bool
 L2:
     r5 = next r2 :: object
@@ -997,10 +997,10 @@ L1:
     if is_error(r6) goto L6 else goto L2
 L2:
     r7 = len b :: list
-    r8 = r2 < r7
+    r8 = r2 < r7 :: signed
     if r8 goto L3 else goto L6 :: bool
 L3:
-    r9 = r5 < r4
+    r9 = r5 < r4 :: signed
     if r9 goto L4 else goto L6 :: bool
 L4:
     r10 = unbox(bool, r6)

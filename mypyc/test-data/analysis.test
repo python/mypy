@@ -392,7 +392,7 @@ L1:
     r9 = r4 & r8
     if r9 goto L2 else goto L3 :: bool
 L2:
-    r10 = a < a
+    r10 = a < a :: signed
     r0 = r10
     goto L4
 L3:
@@ -413,7 +413,7 @@ L6:
     r21 = r16 & r20
     if r21 goto L7 else goto L8 :: bool
 L7:
-    r22 = a < a
+    r22 = a < a :: signed
     r12 = r22
     goto L9
 L8:

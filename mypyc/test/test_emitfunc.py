@@ -8,11 +8,11 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC
+    SetAttr, Op, Value, CallC, BinaryIntOp
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
-    dict_rprimitive, object_rprimitive, c_int_rprimitive
+    dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
@@ -44,6 +44,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.o2 = self.env.add_local(Var('o2'), object_rprimitive)
         self.d = self.env.add_local(Var('d'), dict_rprimitive)
         self.b = self.env.add_local(Var('b'), bool_rprimitive)
+        self.s1 = self.env.add_local(Var('s1'), short_int_rprimitive)
+        self.s2 = self.env.add_local(Var('s2'), short_int_rprimitive)
         self.t = self.env.add_local(Var('t'), RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = self.env.add_local(
             Var('tt'),
@@ -244,6 +246,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit_binary_op(
             'in', self.b, self.o, self.d,
             """cpy_r_r0 = PyDict_Contains(cpy_r_d, cpy_r_o);""")
+
+    def test_binary_int_op(self) -> None:
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.s1, self.s2, BinaryIntOp.SLT, 1),
+                         """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 < (Py_ssize_t)cpy_r_s2;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
