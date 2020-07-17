@@ -63,8 +63,8 @@ def f(x):
     r6, d :: dict
     r7 :: None
 L0:
-    r0 = 1
-    r1 = 2
+    r0 = 2
+    r1 = 4
     r2 = unicode_1 :: static
     r3 = 2
     r4 = box(short_int, r0)
@@ -89,7 +89,7 @@ def f(d):
     r2 :: int32
     r3, r4, r5 :: bool
 L0:
-    r0 = 4
+    r0 = 8
     r1 = box(short_int, r0)
     r2 = PyDict_Contains(d, r1)
     r3 = truncate r2: int32 to builtins.bool
@@ -118,7 +118,7 @@ def f(d):
     r2 :: int32
     r3, r4, r5, r6 :: bool
 L0:
-    r0 = 4
+    r0 = 8
     r1 = box(short_int, r0)
     r2 = PyDict_Contains(d, r1)
     r3 = truncate r2: int32 to builtins.bool
@@ -186,7 +186,7 @@ L2:
     r8 = cast(str, r7)
     k = r8
     r9 = CPyDict_GetItem(d, k)
-    r10 = 1
+    r10 = 2
     r11 = box(short_int, r10)
     r12 = r9 += r11
     r13 = CPyDict_SetItem(d, k, r12)
@@ -216,9 +216,9 @@ def f(x, y):
     r7 :: object
     r8 :: int32
 L0:
-    r0 = 2
+    r0 = 4
     r1 = unicode_3 :: static  ('z')
-    r2 = 3
+    r2 = 6
     r3 = 1
     r4 = box(short_int, r0)
     r5 = CPyDict_Build(r3, x, r4)

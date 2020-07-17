@@ -791,7 +791,10 @@ class LoadInt(RegisterOp):
 
     def __init__(self, value: int, line: int = -1, rtype: RType = short_int_rprimitive) -> None:
         super().__init__(line)
-        self.value = value
+        if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
+            self.value = value * 2
+        else:
+            self.value = value
         self.type = rtype
 
     def sources(self) -> List[Value]:
