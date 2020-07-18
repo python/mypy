@@ -1277,10 +1277,10 @@ class BinaryIntOp(RegisterOp):
     SGT = 103  # type: Final
     SLE = 104  # type: Final
     SGE = 105  # type: Final
-    ULT = 102  # type: Final
-    UGT = 103  # type: Final
-    ULE = 104  # type: Final
-    UGE = 105  # type: Final
+    ULT = 106  # type: Final
+    UGT = 107  # type: Final
+    ULE = 108  # type: Final
+    UGE = 109  # type: Final
     # bitwise
     AND = 200  # type: Final
     OR = 201  # type: Final
