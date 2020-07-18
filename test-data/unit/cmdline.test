@@ -452,6 +452,16 @@ main.py:6: note: Revealed type is 'builtins.int'
 main.py:7: note: Revealed type is 'Any'
 main.py:8: note: Revealed type is 'Any'
 
+[case testConfigFollowImportsInvalid]
+# cmd: mypy main.py
+[file mypy.ini]
+\[mypy]
+follow_imports =True
+[file main.py]
+[out]
+mypy.ini: [mypy]: follow_imports: invalid choice 'True' (choose from 'normal', 'silent', 'skip', 'error')
+== Return code: 0
+
 [case testConfigSilentMissingImportsOff]
 # cmd: mypy main.py
 [file main.py]
