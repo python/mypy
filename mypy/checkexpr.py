@@ -3464,6 +3464,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             return AnyType(TypeOfAny.from_error)
 
+        if len(mro) == index + 1:
+            self.chk.fail(message_registry.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
+            return AnyType(TypeOfAny.from_error)
+
         for base in mro[index+1:]:
             if e.name in base.names or base == mro[-1]:
                 if e.info and e.info.fallback_to_any and base == mro[-1]:
