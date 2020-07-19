@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
-from mypyc.transform.integer_optimization import find_constant_integer_registers
+from mypyc.analysis.const_int import find_constant_integer_registers
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
