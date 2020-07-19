@@ -90,7 +90,7 @@ L0:
     r2 = x is r1
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = 1
+    r3 = 2
     return r3
 L2:
     inc_ref x
@@ -104,10 +104,10 @@ L3:
     r8 = !r7
     if r8 goto L4 else goto L5 :: bool
 L4:
-    r9 = 2
+    r9 = 4
     return r9
 L5:
-    r10 = 3
+    r10 = 6
     return r10
 L6:
     r11 = <error> :: int
@@ -176,7 +176,7 @@ L7:
     dec_ref sum :: int
     dec_ref r15 :: int
     sum = r16
-    r17 = 1
+    r17 = 2
     r18 = CPyTagged_Add(i, r17)
     dec_ref i :: int
     i = r18

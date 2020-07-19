@@ -25,7 +25,7 @@ def f(a):
     r1 :: bool
     r2 :: None
 L0:
-    r0 = 1
+    r0 = 2
     a.x = r0; r1 = is_error
     r2 = None
     return r2
@@ -55,7 +55,7 @@ def f():
 L0:
     r0 = C()
     c = r0
-    r1 = 5
+    r1 = 10
     c.x = r1; r2 = is_error
     r3 = [c]
     a = r3
@@ -64,7 +64,7 @@ L0:
     r6 = cast(__main__.C, r5)
     d = r6
     r7 = d.x
-    r8 = 1
+    r8 = 2
     r9 = CPyTagged_Add(r7, r8)
     return r9
 
@@ -83,7 +83,7 @@ def A.f(self, x, y):
     r0 :: short_int
     r1 :: int
 L0:
-    r0 = 10
+    r0 = 20
     r1 = CPyTagged_Add(x, r0)
     return r1
 def g(a):
@@ -93,7 +93,7 @@ def g(a):
     r2 :: int
     r3 :: None
 L0:
-    r0 = 1
+    r0 = 2
     r1 = unicode_4 :: static  ('hi')
     r2 = a.f(r0, r1)
     r3 = None
@@ -142,14 +142,14 @@ L0:
     r4 = !r3
     if r4 goto L1 else goto L2 :: bool
 L1:
-    r5 = 1
+    r5 = 2
     r6 = self.next
     r7 = cast(__main__.Node, r6)
     r8 = r7.length()
     r9 = CPyTagged_Add(r5, r8)
     return r9
 L2:
-    r10 = 1
+    r10 = 2
     return r10
 
 [case testSubclass]
@@ -167,7 +167,7 @@ def A.__init__(self):
     r1 :: bool
     r2 :: None
 L0:
-    r0 = 10
+    r0 = 20
     self.x = r0; r1 = is_error
     r2 = None
     return r2
@@ -179,9 +179,9 @@ def B.__init__(self):
     r3 :: bool
     r4 :: None
 L0:
-    r0 = 20
+    r0 = 40
     self.x = r0; r1 = is_error
-    r2 = 30
+    r2 = 60
     self.y = r2; r3 = is_error
     r4 = None
     return r4
@@ -201,7 +201,7 @@ def O.__init__(self):
     r1 :: bool
     r2 :: None
 L0:
-    r0 = 1
+    r0 = 2
     self.x = r0; r1 = is_error
     r2 = None
     return r2
@@ -213,7 +213,7 @@ def increment(o):
     r3 :: bool
 L0:
     r0 = o.x
-    r1 = 1
+    r1 = 2
     r2 = CPyTagged_Add(r0, r1)
     o.x = r2; r3 = is_error
     return o
@@ -704,7 +704,7 @@ def C.foo(x):
     r0 :: short_int
     r1 :: int
 L0:
-    r0 = 10
+    r0 = 20
     r1 = CPyTagged_Add(r0, x)
     return r1
 def C.bar(cls, x):
@@ -713,7 +713,7 @@ def C.bar(cls, x):
     r0 :: short_int
     r1 :: int
 L0:
-    r0 = 10
+    r0 = 20
     r1 = CPyTagged_Add(r0, x)
     return r1
 def lol():
@@ -723,10 +723,10 @@ def lol():
     r3 :: short_int
     r4, r5 :: int
 L0:
-    r0 = 1
+    r0 = 2
     r1 = C.foo(r0)
     r2 = __main__.C :: type
-    r3 = 2
+    r3 = 4
     r4 = C.bar(r2, r3)
     r5 = CPyTagged_Add(r1, r4)
     return r5
@@ -1017,7 +1017,7 @@ def A.lol(self):
     r1 :: bool
     r2 :: None
 L0:
-    r0 = 100
+    r0 = 200
     self.x = r0; r1 = is_error
     r2 = None
     return r2
@@ -1026,7 +1026,7 @@ def A.__mypyc_defaults_setup(__mypyc_self__):
     r0 :: short_int
     r1, r2 :: bool
 L0:
-    r0 = 10
+    r0 = 20
     __mypyc_self__.x = r0; r1 = is_error
     r2 = True
     return r2
@@ -1043,7 +1043,7 @@ def B.__mypyc_defaults_setup(__mypyc_self__):
     r8 :: object
     r9, r10, r11, r12 :: bool
 L0:
-    r0 = 10
+    r0 = 20
     __mypyc_self__.x = r0; r1 = is_error
     r2 = __main__.globals :: static
     r3 = unicode_9 :: static  ('LOL')
