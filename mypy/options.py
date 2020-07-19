@@ -3,11 +3,14 @@ import re
 import pprint
 import sys
 
-from typing_extensions import Final
+from typing_extensions import Final, TYPE_CHECKING
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, Any
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
+
+if TYPE_CHECKING:
+    from mypy.errors import ErrorCode
 
 
 class BuildType:
@@ -176,6 +179,14 @@ class Options:
 
         # Variable names considered False
         self.always_false = []  # type: List[str]
+
+        # Error codes to disable
+        self.disable_error_code = []  # type: List[str]
+        self.disabled_error_codes = set()  # type: Set[ErrorCode]
+
+        # Error codes to enable
+        self.enable_error_code = []  # type: List[str]
+        self.enabled_error_codes = set()  # type: Set[ErrorCode]
 
         # Use script name instead of __main__
         self.scripts_are_modules = False

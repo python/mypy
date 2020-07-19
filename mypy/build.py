@@ -223,7 +223,9 @@ def _build(sources: List[BuildSource],
                     options.show_error_codes,
                     options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version),
-                    options.show_absolute_path)
+                    options.show_absolute_path,
+                    options.enabled_error_codes,
+                    options.disabled_error_codes)
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Add catch-all .gitignore to cache dir if we created it

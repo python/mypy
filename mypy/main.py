@@ -18,6 +18,7 @@ from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPat
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
+from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
 from mypy.config_parser import parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
@@ -612,6 +613,14 @@ def process_options(args: List[str],
         '--strict', action='store_true', dest='special-opts:strict',
         help=strict_help)
 
+    strictness_group.add_argument(
+        '--disable-error-code', metavar='NAME', action='append', default=[],
+        help="Disable a specific error code")
+    strictness_group.add_argument(
+        '--enable-error-code', metavar='NAME', action='append', default=[],
+        help="Enable a specific error code"
+    )
+
     error_group = parser.add_argument_group(
         title='Configuring error messages',
         description="Adjust the amount of detail shown in error messages.")
@@ -859,6 +868,23 @@ def process_options(args: List[str],
     if overlap:
         parser.error("You can't make a variable always true and always false (%s)" %
                      ', '.join(sorted(overlap)))
+
+    # Process `--enable-error-code` and `--disable-error-code` flags
+    disabled_codes = set(options.disable_error_code)
+    enabled_codes = set(options.enable_error_code)
+
+    valid_error_codes = set(error_codes.keys())
+
+    invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+    if invalid_codes:
+        parser.error("Invalid error code(s): %s" %
+                     ', '.join(sorted(invalid_codes)))
+
+    options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+    options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+    # Enabling an error code always overrides disabling
+    options.disabled_error_codes -= options.enabled_error_codes
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
