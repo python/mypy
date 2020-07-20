@@ -211,7 +211,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                  missing_modules: Set[str],
                  incomplete_namespaces: Set[str],
                  errors: Errors,
-                 plugin: Plugin) -> None:
+                 plugin: Plugin,
+                 options: Options) -> None:
         """Construct semantic analyzer.
 
         We reuse the same semantic analyzer instance across multiple modules.
@@ -240,7 +241,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.loop_depth = 0
         self.errors = errors
         self.modules = modules
-        self.msg = MessageBuilder(errors, modules)
+        self.msg = MessageBuilder(errors, modules, options)
         self.missing_modules = missing_modules
         self.missing_names = [set()]
         # These namespaces are still in process of being populated. If we encounter a

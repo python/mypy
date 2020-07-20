@@ -224,7 +224,7 @@ class Person:
     age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None" \
                                  # N: Possible overload variant: \
                                  # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ...) -> Any \
-                                 # N:     <2 more non-matching overloads not shown>
+                                 # N:     <2 more non-matching overloads not shown (use -v to show)>
 
 [builtins fixtures/list.pyi]
 

@@ -2081,7 +2081,7 @@ class Sub(Base[str]): ...
 Sub.make_some(1)  # E: No overload variant of "make_some" of "Base" matches argument type "int" \
                   # N: Possible overload variant: \
                   # N:     def make_some(cls, item: str) -> Sub \
-                  # N:     <1 more non-matching overload not shown>
+                  # N:     <1 more non-matching overload not shown (use -v to show)>
 [builtins fixtures/classmethod.pyi]
 
 [case testNoGenericAccessOnImplicitAttributes]

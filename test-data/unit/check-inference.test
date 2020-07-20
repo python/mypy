@@ -1549,7 +1549,7 @@ def f(blocks: object):
     to_process = list(blocks) # E: No overload variant of "list" matches argument type "object" \
                               # N: Possible overload variant: \
                               # N:     def [T] __init__(self, x: Iterable[T]) -> List[T] \
-                              # N:     <1 more non-matching overload not shown>
+                              # N:     <1 more non-matching overload not shown (use -v to show)>
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyAndAssigned]

@@ -2041,7 +2041,7 @@ main:18: note:         @overload
 main:18: note:         def f(self, x: int) -> int
 main:18: note:         @overload
 main:18: note:         def f(self, x: str) -> str
-main:18: note:         <2 more overloads not shown>
+main:18: note:         <2 more overloads not shown (use -v to show)>
 main:18: note:     Got:
 main:18: note:         def f(self) -> None
 

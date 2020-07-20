@@ -2792,7 +2792,7 @@ C('', '')
 C('') # E: No overload variant of "C" matches argument type "str" \
       # N: Possible overload variant: \
       # N:     def __new__(cls, foo: int) -> C \
-      # N:     <1 more non-matching overload not shown>
+      # N:     <1 more non-matching overload not shown (use -v to show)>
 [builtins fixtures/__new__.pyi]
 
 
@@ -3220,7 +3220,7 @@ u = new(User)
 tmp/foo.pyi:17: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: note: Possible overload variant:
 tmp/foo.pyi:17: note:     def __init__(self, arg: int) -> U
-tmp/foo.pyi:17: note:     <1 more non-matching overload not shown>
+tmp/foo.pyi:17: note:     <1 more non-matching overload not shown (use -v to show)>
 tmp/foo.pyi:18: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]

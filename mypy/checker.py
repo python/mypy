@@ -217,7 +217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.options = options
         self.tree = tree
         self.path = path
-        self.msg = MessageBuilder(errors, modules)
+        self.msg = MessageBuilder(errors, modules, options)
         self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
         self.tscope = Scope()
