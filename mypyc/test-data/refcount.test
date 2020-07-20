@@ -76,24 +76,38 @@ def f():
     y :: int
     r2 :: short_int
     r3 :: bool
+    r4, r5, r6 :: native_int
+    r7, r8, r9 :: bool
 L0:
     r0 = 2
     x = r0
     r1 = 4
     y = r1
     r2 = 2
-    r3 = CPyTagged_IsEq(x, r2)
-    if r3 goto L3 else goto L4 :: bool
+    r4 = 1
+    r5 = x & r4
+    r6 = 0
+    r7 = r5 == r6
+    if r7 goto L1 else goto L2 :: bool
 L1:
-    return x
+    r8 = x == r2
+    r3 = r8
+    goto L3
 L2:
-    return y
+    r9 = CPyTagged_IsEq_(x, r2)
+    r3 = r9
 L3:
-    dec_ref y :: int
-    goto L1
+    if r3 goto L6 else goto L7 :: bool
 L4:
+    return x
+L5:
+    return y
+L6:
+    dec_ref y :: int
+    goto L4
+L7:
     dec_ref x :: int
-    goto L2
+    goto L5
 
 [case testArgumentsInOps]
 def f(a: int, b: int) -> int:
@@ -604,53 +618,31 @@ def f(a):
     r1 :: short_int
     i :: int
     r2 :: bool
-    r3, r4, r5 :: native_int
-    r6 :: bool
-    r7, r8, r9 :: native_int
-    r10, r11, r12, r13, r14 :: bool
-    r15 :: int
-    r16 :: short_int
-    r17 :: int
+    r3 :: int
+    r4 :: short_int
+    r5 :: int
 L0:
     r0 = 0
     sum = r0
     r1 = 0
     i = r1
 L1:
-    r3 = 1
-    r4 = i & r3
-    r5 = 0
-    r6 = r4 == r5
-    r7 = 1
-    r8 = a & r7
-    r9 = 0
-    r10 = r8 == r9
-    r11 = r6 & r10
-    if r11 goto L2 else goto L3 :: bool
+    r2 = CPyTagged_IsLe(i, a)
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r12 = i <= a
-    r2 = r12
-    goto L4
-L3:
-    r13 = CPyTagged_IsLt_(a, i)
-    r14 = !r13
-    r2 = r14
-L4:
-    if r2 goto L5 else goto L7 :: bool
-L5:
-    r15 = CPyTagged_Add(sum, i)
+    r3 = CPyTagged_Add(sum, i)
     dec_ref sum :: int
     sum = r3
     r4 = 2
     r5 = CPyTagged_Add(i, r4)
     dec_ref i :: int
-    i = r17
+    i = r5
     goto L1
-L6:
+L3:
     return sum
-L7:
+L4:
     dec_ref i :: int
-    goto L6
+    goto L3
 
 [case testCall]
 def f(a: int) -> int:

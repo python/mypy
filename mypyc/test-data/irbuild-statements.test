@@ -53,7 +53,7 @@ L0:
     r2 = r0
     i = r2
 L1:
-    r3 = r2 > r1
+    r3 = r2 > r1 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
@@ -77,18 +77,39 @@ def f():
     n :: int
     r1 :: short_int
     r2 :: bool
-    r3 :: None
+    r3, r4, r5 :: native_int
+    r6 :: bool
+    r7, r8, r9 :: native_int
+    r10, r11, r12, r13 :: bool
+    r14 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
-    if r2 goto L2 else goto L3 :: bool
+    r3 = 1
+    r4 = n & r3
+    r5 = 0
+    r6 = r4 == r5
+    r7 = 1
+    r8 = r1 & r7
+    r9 = 0
+    r10 = r8 == r9
+    r11 = r6 & r10
+    if r11 goto L2 else goto L3 :: bool
 L2:
+    r12 = n < r1 :: signed
+    r2 = r12
+    goto L4
 L3:
-    r3 = None
-    return r3
+    r13 = CPyTagged_IsLt_(n, r1)
+    r2 = r13
+L4:
+    if r2 goto L5 else goto L6 :: bool
+L5:
+L6:
+    r14 = None
+    return r14
 
 [case testBreakFor]
 def f() -> None:
@@ -134,26 +155,68 @@ def f():
     n :: int
     r1 :: short_int
     r2 :: bool
-    r3 :: short_int
-    r4 :: bool
-    r5 :: None
+    r3, r4, r5 :: native_int
+    r6 :: bool
+    r7, r8, r9 :: native_int
+    r10, r11, r12, r13 :: bool
+    r14 :: short_int
+    r15 :: bool
+    r16, r17, r18 :: native_int
+    r19 :: bool
+    r20, r21, r22 :: native_int
+    r23, r24, r25, r26 :: bool
+    r27 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
-    if r2 goto L2 else goto L6 :: bool
+    r3 = 1
+    r4 = n & r3
+    r5 = 0
+    r6 = r4 == r5
+    r7 = 1
+    r8 = r1 & r7
+    r9 = 0
+    r10 = r8 == r9
+    r11 = r6 & r10
+    if r11 goto L2 else goto L3 :: bool
 L2:
+    r12 = n < r1 :: signed
+    r2 = r12
+    goto L4
 L3:
-    r3 = 8
-    r4 = CPyTagged_IsLt(n, r3)
-    if r4 goto L4 else goto L5 :: bool
+    r13 = CPyTagged_IsLt_(n, r1)
+    r2 = r13
 L4:
+    if r2 goto L5 else goto L12 :: bool
 L5:
 L6:
-    r5 = None
-    return r5
+    r14 = 8
+    r16 = 1
+    r17 = n & r16
+    r18 = 0
+    r19 = r17 == r18
+    r20 = 1
+    r21 = r14 & r20
+    r22 = 0
+    r23 = r21 == r22
+    r24 = r19 & r23
+    if r24 goto L7 else goto L8 :: bool
+L7:
+    r25 = n < r14 :: signed
+    r15 = r25
+    goto L9
+L8:
+    r26 = CPyTagged_IsLt_(n, r14)
+    r15 = r26
+L9:
+    if r15 goto L10 else goto L11 :: bool
+L10:
+L11:
+L12:
+    r27 = None
+    return r27
 
 [case testContinue]
 def f() -> None:
@@ -166,19 +229,40 @@ def f():
     n :: int
     r1 :: short_int
     r2 :: bool
-    r3 :: None
+    r3, r4, r5 :: native_int
+    r6 :: bool
+    r7, r8, r9 :: native_int
+    r10, r11, r12, r13 :: bool
+    r14 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
-    if r2 goto L2 else goto L3 :: bool
+    r3 = 1
+    r4 = n & r3
+    r5 = 0
+    r6 = r4 == r5
+    r7 = 1
+    r8 = r1 & r7
+    r9 = 0
+    r10 = r8 == r9
+    r11 = r6 & r10
+    if r11 goto L2 else goto L3 :: bool
 L2:
-    goto L1
+    r12 = n < r1 :: signed
+    r2 = r12
+    goto L4
 L3:
-    r3 = None
-    return r3
+    r13 = CPyTagged_IsLt_(n, r1)
+    r2 = r13
+L4:
+    if r2 goto L5 else goto L6 :: bool
+L5:
+    goto L1
+L6:
+    r14 = None
+    return r14
 
 [case testContinueFor]
 def f() -> None:
@@ -223,28 +307,70 @@ def f():
     n :: int
     r1 :: short_int
     r2 :: bool
-    r3 :: short_int
-    r4 :: bool
-    r5 :: None
+    r3, r4, r5 :: native_int
+    r6 :: bool
+    r7, r8, r9 :: native_int
+    r10, r11, r12, r13 :: bool
+    r14 :: short_int
+    r15 :: bool
+    r16, r17, r18 :: native_int
+    r19 :: bool
+    r20, r21, r22 :: native_int
+    r23, r24, r25, r26 :: bool
+    r27 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
-    if r2 goto L2 else goto L6 :: bool
+    r3 = 1
+    r4 = n & r3
+    r5 = 0
+    r6 = r4 == r5
+    r7 = 1
+    r8 = r1 & r7
+    r9 = 0
+    r10 = r8 == r9
+    r11 = r6 & r10
+    if r11 goto L2 else goto L3 :: bool
 L2:
+    r12 = n < r1 :: signed
+    r2 = r12
+    goto L4
 L3:
-    r3 = 8
-    r4 = CPyTagged_IsLt(n, r3)
-    if r4 goto L4 else goto L5 :: bool
+    r13 = CPyTagged_IsLt_(n, r1)
+    r2 = r13
 L4:
-    goto L3
+    if r2 goto L5 else goto L12 :: bool
 L5:
-    goto L1
 L6:
-    r5 = None
-    return r5
+    r14 = 8
+    r16 = 1
+    r17 = n & r16
+    r18 = 0
+    r19 = r17 == r18
+    r20 = 1
+    r21 = r14 & r20
+    r22 = 0
+    r23 = r21 == r22
+    r24 = r19 & r23
+    if r24 goto L7 else goto L8 :: bool
+L7:
+    r25 = n < r14 :: signed
+    r15 = r25
+    goto L9
+L8:
+    r26 = CPyTagged_IsLt_(n, r14)
+    r15 = r26
+L9:
+    if r15 goto L10 else goto L11 :: bool
+L10:
+    goto L6
+L11:
+    goto L1
+L12:
+    r27 = None
+    return r27
 
 [case testForList]
 from typing import List
@@ -364,9 +490,11 @@ def sum_over_even_values(d):
     r14 :: int
     r15 :: short_int
     r16 :: bool
-    r17, r18 :: object
-    r19, r20 :: int
-    r21, r22 :: bool
+    r17, r18, r19 :: native_int
+    r20, r21, r22, r23 :: bool
+    r24, r25 :: object
+    r26, r27 :: int
+    r28, r29 :: bool
 L0:
     r0 = 0
     s = r0
@@ -379,7 +507,7 @@ L1:
     r6 = r5[1]
     r2 = r6
     r7 = r5[0]
-    if r7 goto L2 else goto L6 :: bool
+    if r7 goto L2 else goto L9 :: bool
 L2:
     r8 = r5[2]
     r9 = unbox(int, r8)
@@ -390,22 +518,35 @@ L2:
     r13 = 4
     r14 = CPyTagged_Remainder(r12, r13)
     r15 = 0
-    r16 = CPyTagged_IsNe(r14, r15)
-    if r16 goto L3 else goto L4 :: bool
+    r17 = 1
+    r18 = r14 & r17
+    r19 = 0
+    r20 = r18 == r19
+    if r20 goto L3 else goto L4 :: bool
 L3:
+    r21 = r14 != r15
+    r16 = r21
     goto L5
 L4:
-    r17 = box(int, key)
-    r18 = CPyDict_GetItem(d, r17)
-    r19 = unbox(int, r18)
-    r20 = CPyTagged_Add(s, r19)
-    s = r20
+    r22 = CPyTagged_IsEq_(r14, r15)
+    r23 = !r22
+    r16 = r23
 L5:
-    r21 = CPyDict_CheckSize(d, r3)
-    goto L1
+    if r16 goto L6 else goto L7 :: bool
 L6:
-    r22 = CPy_NoErrOccured()
+    goto L8
 L7:
+    r24 = box(int, key)
+    r25 = CPyDict_GetItem(d, r24)
+    r26 = unbox(int, r25)
+    r27 = CPyTagged_Add(s, r26)
+    s = r27
+L8:
+    r28 = CPyDict_CheckSize(d, r3)
+    goto L1
+L9:
+    r29 = CPy_NoErrOccured()
+L10:
     return s
 
 [case testMultipleAssignment]

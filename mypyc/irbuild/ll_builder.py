@@ -26,7 +26,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
-    c_pyssize_t_rprimitive, is_short_int_rprimitive
+    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -546,8 +546,8 @@ class LowLevelIRBuilder:
             value = self.translate_eq_cmp(lreg, rreg, expr_op, line)
         if value is not None:
             return value
-
-        if 
+        if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_logical_op_mapping:
+            return self.compare_tagged(lreg, rreg, expr_op, line)
         call_c_ops_candidates = c_binary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
         if target:
