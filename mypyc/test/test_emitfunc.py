@@ -1,5 +1,7 @@
 import unittest
 
+from typing import Dict
+
 from mypy.ordered_dict import OrderedDict
 
 from mypy.nodes import Var
@@ -64,7 +66,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.context = EmitterContext(NameGenerator([['mod']]))
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
-        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog')
+
+        const_int_regs = {}  # type: Dict[str, int]
+        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog',
+                                              const_int_regs)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)),
@@ -325,7 +330,7 @@ class TestGenerateFunction(unittest.TestCase):
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
-        generate_native_function(fn, emitter, 'prog.py', 'prog')
+        generate_native_function(fn, emitter, 'prog.py', 'prog', False)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
@@ -344,7 +349,7 @@ class TestGenerateFunction(unittest.TestCase):
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
-        generate_native_function(fn, emitter, 'prog.py', 'prog')
+        generate_native_function(fn, emitter, 'prog.py', 'prog', False)
         result = emitter.fragments
         assert_string_arrays_equal(
             [

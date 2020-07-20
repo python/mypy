@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union
+from typing import Union, Dict
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -19,6 +19,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
+from mypyc.analysis.const_int import find_constant_integer_registers
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -45,10 +46,15 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
 def generate_native_function(fn: FuncIR,
                              emitter: Emitter,
                              source_path: str,
-                             module_name: str) -> None:
+                             module_name: str,
+                             optimize_int: bool = True) -> None:
+    if optimize_int:
+        const_int_regs = find_constant_integer_registers(fn.blocks)
+    else:
+        const_int_regs = {}
     declarations = Emitter(emitter.context, fn.env)
     body = Emitter(emitter.context, fn.env)
-    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
+    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
     body.indent()
@@ -62,10 +68,11 @@ def generate_native_function(fn: FuncIR,
         init = ''
         if r in fn.env.vars_needing_init:
             init = ' = {}'.format(declarations.c_error_value(r.type))
-        declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
-                                                                     prefix=REG_PREFIX,
-                                                                     name=r.name,
-                                                                     init=init))
+        if r.name not in const_int_regs:
+            declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
+                                                                        prefix=REG_PREFIX,
+                                                                        name=r.name,
+                                                                        init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -87,13 +94,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                  emitter: Emitter,
                  declarations: Emitter,
                  source_path: str,
-                 module_name: str) -> None:
+                 module_name: str,
+                 const_int_regs: Dict[str, int]) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.env = self.emitter.env
         self.source_path = source_path
         self.module_name = module_name
+        self.const_int_regs = const_int_regs
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -176,6 +185,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = %s;' % (dest, src))
 
     def visit_load_int(self, op: LoadInt) -> None:
+        if op.name in self.const_int_regs:
+            return
         dest = self.reg(op)
         self.emit_line('%s = %d;' % (dest, op.value))
 
@@ -459,7 +470,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         return self.emitter.label(label)
 
     def reg(self, reg: Value) -> str:
-        return self.emitter.reg(reg)
+        if reg.name in self.const_int_regs:
+            return str(self.const_int_regs[reg.name])
+        else:
+            return self.emitter.reg(reg)
 
     def ctype(self, rtype: RType) -> str:
         return self.emitter.ctype(rtype)
