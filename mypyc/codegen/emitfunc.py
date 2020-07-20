@@ -49,7 +49,7 @@ def generate_native_function(fn: FuncIR,
                              module_name: str,
                              optimize_int: bool = True) -> None:
     if optimize_int:
-        const_int_regs = find_constant_integer_registers(fn.blocks, convert_tagged=True)
+        const_int_regs = find_constant_integer_registers(fn.blocks)
     else:
         const_int_regs = {}
     declarations = Emitter(emitter.context, fn.env)

@@ -3,8 +3,7 @@ from typing import List, Dict
 from mypyc.ir.ops import BasicBlock, LoadInt
 
 
-def find_constant_integer_registers(blocks: List[BasicBlock],
-                                    convert_tagged: bool = False) -> Dict[str, int]:
+def find_constant_integer_registers(blocks: List[BasicBlock]) -> Dict[str, int]:
     """Find all registers with constant integer values.
 
     Returns a mapping from register names to int values
