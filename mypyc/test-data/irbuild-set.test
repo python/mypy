@@ -13,9 +13,9 @@ def f():
     r8 :: object
     r9 :: int32
 L0:
-    r0 = 1
-    r1 = 2
-    r2 = 3
+    r0 = 2
+    r1 = 4
+    r2 = 6
     r3 = set
     r4 = box(short_int, r0)
     r5 = PySet_Add(r3, r4)
@@ -64,9 +64,9 @@ def f():
     r9 :: int32
     r10 :: int
 L0:
-    r0 = 1
-    r1 = 2
-    r2 = 3
+    r0 = 2
+    r1 = 4
+    r2 = 6
     r3 = set
     r4 = box(short_int, r0)
     r5 = PySet_Add(r3, r4)
@@ -96,15 +96,15 @@ def f():
     r9 :: int32
     r10 :: bool
 L0:
-    r0 = 3
-    r1 = 4
+    r0 = 6
+    r1 = 8
     r2 = set
     r3 = box(short_int, r0)
     r4 = PySet_Add(r2, r3)
     r5 = box(short_int, r1)
     r6 = PySet_Add(r2, r5)
     x = r2
-    r7 = 5
+    r7 = 10
     r8 = box(short_int, r7)
     r9 = PySet_Contains(x, r8)
     r10 = truncate r9: int32 to builtins.bool
@@ -126,7 +126,7 @@ def f():
 L0:
     r0 = set
     x = r0
-    r1 = 1
+    r1 = 2
     r2 = box(short_int, r1)
     r3 = CPySet_Remove(x, r2)
     r4 = None
@@ -148,7 +148,7 @@ def f():
 L0:
     r0 = set
     x = r0
-    r1 = 1
+    r1 = 2
     r2 = box(short_int, r1)
     r3 = PySet_Discard(x, r2)
     r4 = None
@@ -170,7 +170,7 @@ def f():
 L0:
     r0 = set
     x = r0
-    r1 = 1
+    r1 = 2
     r2 = box(short_int, r1)
     r3 = PySet_Add(x, r2)
     r4 = None
@@ -240,9 +240,9 @@ def f(x, y):
     r10 :: object
     r11 :: int32
 L0:
-    r0 = 1
-    r1 = 2
-    r2 = 3
+    r0 = 2
+    r1 = 4
+    r2 = 6
     r3 = set
     r4 = box(short_int, r0)
     r5 = PySet_Add(r3, r4)

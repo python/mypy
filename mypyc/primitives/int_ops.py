@@ -173,8 +173,8 @@ int_less_than_ = c_custom_op(
 int_logical_op_mapping = {
     '==': IntLogicalOpDescrption(BinaryIntOp.EQ, int_equal_, False, False),
     '!=': IntLogicalOpDescrption(BinaryIntOp.NEQ, int_equal_, True, False),
-    '<': IntLogicalOpDescrption(BinaryIntOp.LT, int_less_than_, False, False),
-    '>': IntLogicalOpDescrption(BinaryIntOp.GT, int_less_than_, False, True),
+    '<': IntLogicalOpDescrption(BinaryIntOp.SLT, int_less_than_, False, False),
+    '>': IntLogicalOpDescrption(BinaryIntOp.SGT, int_less_than_, False, True),
     # '<=': IntLogicalOpDescrption(BinaryIntOp.LEQ, int_less_than_, True, True),
     # '>=': IntLogicalOpDescrption(BinaryIntOp.GEQ, int_less_than_, True, False),
 }  # type: Dict[str, IntLogicalOpDescrption]
