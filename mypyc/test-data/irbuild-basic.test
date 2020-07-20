@@ -110,7 +110,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -152,7 +152,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -198,7 +198,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -269,7 +269,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -338,7 +338,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -378,7 +378,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -493,7 +493,7 @@ L0:
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
-    r10 = x < y
+    r10 = x < y :: signed
     r0 = r10
     goto L3
 L2:
@@ -2041,7 +2041,7 @@ L0:
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = r9 < r10
+    r11 = r9 < r10 :: signed
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: unsafe list
@@ -2105,7 +2105,7 @@ L0:
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = r9 < r10
+    r11 = r9 < r10 :: signed
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: unsafe list
@@ -2166,7 +2166,7 @@ L0:
     r1 = r0
 L1:
     r2 = len l :: list
-    r3 = r1 < r2
+    r3 = r1 < r2 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = l[r1] :: unsafe list
@@ -2188,7 +2188,7 @@ L4:
     r13 = r12
 L5:
     r14 = len l :: list
-    r15 = r13 < r14
+    r15 = r13 < r14 :: signed
     if r15 goto L6 else goto L8 :: bool
 L6:
     r16 = l[r13] :: unsafe list
@@ -2750,7 +2750,7 @@ L0:
     r12 = r7 & r11
     if r12 goto L1 else goto L2 :: bool
 L1:
-    r13 = r0 < r1
+    r13 = r0 < r1 :: signed
     r3 = r13
     goto L3
 L2:

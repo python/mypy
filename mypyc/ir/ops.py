@@ -1270,12 +1270,17 @@ class BinaryIntOp(RegisterOp):
     DIV = 3  # type: Final
     MOD = 4  # type: Final
     # logical
+    # S for signed and U for unsigned
     EQ = 100  # type: Final
     NEQ = 101  # type: Final
-    LT = 102  # type: Final
-    GT = 103  # type: Final
-    LEQ = 104  # type: Final
-    GEQ = 105  # type: Final
+    SLT = 102  # type: Final
+    SGT = 103  # type: Final
+    SLE = 104  # type: Final
+    SGE = 105  # type: Final
+    ULT = 106  # type: Final
+    UGT = 107  # type: Final
+    ULE = 108  # type: Final
+    UGE = 109  # type: Final
     # bitwise
     AND = 200  # type: Final
     OR = 201  # type: Final
@@ -1291,10 +1296,14 @@ class BinaryIntOp(RegisterOp):
         MOD: '%',
         EQ: '==',
         NEQ: '!=',
-        LT: '<',
-        GT: '>',
-        LEQ: '<=',
-        GEQ: '>=',
+        SLT: '<',
+        SGT: '>',
+        SLE: '<=',
+        SGE: '>=',
+        ULT: '<',
+        UGT: '>',
+        ULE: '<=',
+        UGE: '>=',
         AND: '&',
         OR: '|',
         XOR: '^',
@@ -1313,7 +1322,14 @@ class BinaryIntOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r %s %r', self, self.lhs, self.op_str[self.op], self.rhs)
+        if self.op in (self.SLT, self.SGT, self.SLE, self.SGE):
+            sign_format = " :: signed"
+        elif self.op in (self.ULT, self.UGT, self.ULE, self.UGE):
+            sign_format = " :: unsigned"
+        else:
+            sign_format = ""
+        return env.format('%r = %r %s %r%s', self, self.lhs,
+                          self.op_str[self.op], self.rhs, sign_format)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_binary_int_op(self)

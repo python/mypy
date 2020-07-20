@@ -14,7 +14,9 @@ from mypyc.ir.ops import (
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
     BinaryIntOp
 )
-from mypyc.ir.rtypes import RType, RTuple
+from mypyc.ir.rtypes import (
+    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive
+)
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
 
@@ -438,7 +440,18 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+        lhs_cast = ""
+        rhs_cast = ""
+        signed_op = {BinaryIntOp.SLT, BinaryIntOp.SGT, BinaryIntOp.SLE, BinaryIntOp.SGE}
+        unsigned_op = {BinaryIntOp.ULT, BinaryIntOp.UGT, BinaryIntOp.ULE, BinaryIntOp.UGE}
+        if op.op in signed_op:
+            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
+            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+        elif op.op in unsigned_op:
+            lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
+            rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
+        self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
+                                               op.op_str[op.op], rhs_cast, rhs))
 
     # Helpers
 
@@ -482,3 +495,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 globals_static))
             if DEBUG_ERRORS:
                 self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_signed_int_cast(self, type: RType) -> str:
+        if is_tagged(type):
+            return '(Py_ssize_t)'
+        else:
+            return ''
+
+    def emit_unsigned_int_cast(self, type: RType) -> str:
+        if is_int32_rprimitive(type):
+            return '(uint32_t)'
+        elif is_int64_rprimitive(type):
+            return '(uint64_t)'
+        else:
+            return ''
