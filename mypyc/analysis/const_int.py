@@ -1,7 +1,6 @@
 from typing import List, Dict
 
-from mypyc.ir.ops import BasicBlock, LoadInt, Assign
-from mypyc.ir.rtypes import is_short_int_rprimitive, is_int_rprimitive
+from mypyc.ir.ops import BasicBlock, LoadInt
 
 
 def find_constant_integer_registers(blocks: List[BasicBlock],
