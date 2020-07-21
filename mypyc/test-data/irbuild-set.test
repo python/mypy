@@ -76,26 +76,26 @@ def f() -> bool:
     return (5 in x)
 [out]
 def f():
-    r2 :: set
+    r0 :: set
+    r1 :: object
+    r2 :: int32
     r3 :: object
     r4 :: int32
+    x :: set
     r5 :: object
     r6 :: int32
-    x :: set
-    r8 :: object
-    r9 :: int32
-    r10 :: bool
+    r7 :: bool
 L0:
-    r2 = set
-    r3 = box(short_int, 6)
-    r4 = PySet_Add(r2, r3)
-    r5 = box(short_int, 8)
-    r6 = PySet_Add(r2, r5)
-    x = r2
-    r8 = box(short_int, 10)
-    r9 = PySet_Contains(x, r8)
-    r10 = truncate r9: int32 to builtins.bool
-    return r10
+    r0 = set
+    r1 = box(short_int, 6)
+    r2 = PySet_Add(r0, r1)
+    r3 = box(short_int, 8)
+    r4 = PySet_Add(r0, r3)
+    x = r0
+    r5 = box(short_int, 10)
+    r6 = PySet_Contains(x, r5)
+    r7 = truncate r6: int32 to builtins.bool
+    return r7
 
 [case testSetRemove]
 from typing import Set

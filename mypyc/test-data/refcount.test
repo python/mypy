@@ -191,21 +191,21 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r2 :: native_int
-    r4, r5, r6 :: bool
+    r1 :: native_int
+    r2, r3, r4 :: bool
     x :: int
-    r10, y :: int
+    r5, y :: int
 L0:
-    r2 = a & 1
-    r4 = r2 == 0
-    if r4 goto L1 else goto L2 :: bool
+    r1 = a & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r5 = a == a
-    r0 = r5
+    r3 = a == a
+    r0 = r3
     goto L3
 L2:
-    r6 = CPyTagged_IsEq_(a, a)
-    r0 = r6
+    r4 = CPyTagged_IsEq_(a, a)
+    r0 = r4
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
@@ -216,9 +216,9 @@ L5:
     dec_ref x :: int
     goto L7
 L6:
-    r10 = CPyTagged_Add(a, 2)
+    r5 = CPyTagged_Add(a, 2)
     dec_ref a :: int
-    y = r10
+    y = r5
     return y
 L7:
     inc_ref a :: int
