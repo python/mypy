@@ -232,11 +232,12 @@ class Environment:
                 i = n
         return ''.join(result)
 
-    def to_lines(self, const_regs: Dict[str, int] = {}) -> List[str]:
+    def to_lines(self, const_regs: Optional[Dict[str, int]] = None) -> List[str]:
         result = []
         i = 0
         regs = list(self.regs())
-
+        if const_regs is None:
+            const_regs = {}
         while i < len(regs):
             i0 = i
             if regs[i0].name not in const_regs:
