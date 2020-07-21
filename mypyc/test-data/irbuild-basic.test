@@ -3,11 +3,8 @@ def f() -> int:
     return 1
 [out]
 def f():
-    r0 :: short_int
 L0:
-    r0 = 2
-    return r0
-
+    return 2
 [case testFunctionArgument]
 def f(x: int) -> int:
     return x
@@ -16,6 +13,7 @@ def f(x):
     x :: int
 L0:
     return x
+
 
 [case testExplicitNoneReturn]
 def f() -> None:
@@ -44,11 +42,9 @@ def f() -> int:
     return y
 [out]
 def f():
-    r0 :: short_int
     x, y :: int
 L0:
-    r0 = 2
-    x = r0
+    x = 2
     y = x
     return y
 
@@ -60,12 +56,10 @@ def f(x: int) -> None:
 [out]
 def f(x):
     x :: int
-    r0 :: short_int
     y :: int
     r1 :: None
 L0:
-    r0 = 2
-    y = r0
+    y = 2
     y = x
     r1 = None
     return r1
@@ -76,11 +70,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: short_int
     r1, r2 :: int
 L0:
-    r0 = 2
-    r1 = CPyTagged_Add(y, r0)
+    r1 = CPyTagged_Add(y, 2)
     r2 = CPyTagged_Multiply(x, r1)
     return r2
 
@@ -93,20 +85,15 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11 :: bool
-    r12 :: short_int
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -119,8 +106,7 @@ L2:
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r12 = 2
-    x = r12
+    x = 2
 L5:
     return x
 
@@ -135,20 +121,15 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11 :: bool
-    r12, r13 :: short_int
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -161,12 +142,10 @@ L2:
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r12 = 2
-    x = r12
+    x = 2
     goto L6
 L5:
-    r13 = 4
-    x = r13
+    x = 4
 L6:
     return x
 
@@ -181,20 +160,15 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11, r12 :: bool
-    r13, r14 :: short_int
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -210,12 +184,10 @@ L4:
     r12 = CPyTagged_IsGt(x, y)
     if r12 goto L5 else goto L6 :: bool
 L5:
-    r13 = 2
-    x = r13
+    x = 2
     goto L7
 L6:
-    r14 = 4
-    x = r14
+    x = 4
 L7:
     return x
 
@@ -252,20 +224,15 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11, r12 :: bool
-    r13, r14 :: short_int
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -281,12 +248,10 @@ L4:
     r12 = CPyTagged_IsGt(x, y)
     if r12 goto L5 else goto L6 :: bool
 L5:
-    r13 = 2
-    x = r13
+    x = 2
     goto L7
 L6:
-    r14 = 4
-    x = r14
+    x = 4
 L7:
     return x
 
@@ -321,20 +286,15 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11 :: bool
-    r12 :: short_int
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -347,8 +307,7 @@ L2:
 L3:
     if r0 goto L5 else goto L4 :: bool
 L4:
-    r12 = 2
-    x = r12
+    x = 2
 L5:
     return x
 
@@ -361,20 +320,15 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11, r12 :: bool
-    r13 :: short_int
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -390,8 +344,7 @@ L4:
     r12 = CPyTagged_IsGt(x, y)
     if r12 goto L6 else goto L5 :: bool
 L5:
-    r13 = 2
-    x = r13
+    x = 2
 L6:
     return x
 
@@ -425,12 +378,10 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: short_int
     r1 :: bool
     r2 :: int
 L0:
-    r0 = 2
-    x = r0
+    x = 2
 L1:
     r1 = CPyTagged_IsGt(x, y)
     if r1 goto L2 else goto L3 :: bool
@@ -456,12 +407,10 @@ def f() -> None:
     x = 1
 [out]
 def f():
-    r0 :: short_int
     x :: int
     r1 :: None
 L0:
-    r0 = 2
-    x = r0
+    x = 2
     r1 = None
     return r1
 
@@ -475,21 +424,16 @@ def f(x: int, y: int) -> None:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4 :: bool
-    r5, r6, r7 :: native_int
+    r6 :: native_int
     r8, r9, r10, r11 :: bool
-    r12, r13 :: short_int
     r14 :: None
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
-    r5 = 1
-    r6 = y & r5
-    r7 = 0
-    r8 = r6 == r7
+    r2 = x & 1
+    r4 = r2 == 0
+    r6 = y & 1
+    r8 = r6 == 0
     r9 = r4 & r8
     if r9 goto L1 else goto L2 :: bool
 L1:
@@ -502,12 +446,10 @@ L2:
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r12 = 2
-    x = r12
+    x = 2
     goto L6
 L5:
-    r13 = 4
-    y = r13
+    y = 4
 L6:
     r14 = None
     return r14
@@ -521,25 +463,18 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: short_int
     r1 :: bool
-    r2, r3 :: short_int
     r4, r5 :: int
-    r6 :: short_int
     r7, r8, r9 :: int
 L0:
-    r0 = 2
-    r1 = CPyTagged_IsLe(n, r0)
+    r1 = CPyTagged_IsLe(n, 2)
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 2
-    return r2
+    return 2
 L2:
-    r3 = 2
-    r4 = CPyTagged_Subtract(n, r3)
+    r4 = CPyTagged_Subtract(n, 2)
     r5 = f(r4)
-    r6 = 4
-    r7 = CPyTagged_Subtract(n, r6)
+    r7 = CPyTagged_Subtract(n, 4)
     r8 = f(r7)
     r9 = CPyTagged_Add(r5, r8)
     return r9
@@ -570,32 +505,23 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: short_int
     r1 :: bool
-    r2 :: short_int
     x :: int
-    r3 :: short_int
     r4 :: bool
-    r5, r6 :: short_int
 L0:
-    r0 = 0
-    r1 = CPyTagged_IsLt(n, r0)
+    r1 = CPyTagged_IsLt(n, 0)
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 2
-    x = r2
+    x = 2
     goto L6
 L2:
-    r3 = 0
-    r4 = CPyTagged_IsEq(n, r3)
+    r4 = CPyTagged_IsEq(n, 0)
     if r4 goto L3 else goto L4 :: bool
 L3:
-    r5 = 2
-    x = r5
+    x = 2
     goto L5
 L4:
-    r6 = 4
-    x = r6
+    x = 4
 L5:
 L6:
     return x
@@ -606,11 +532,9 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: short_int
     r1 :: int
 L0:
-    r0 = 2
-    r1 = CPyTagged_Negate(r0)
+    r1 = CPyTagged_Negate(2)
     return r1
 
 [case testConditionalExpr]
@@ -619,21 +543,16 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: short_int
     r1 :: bool
     r2 :: int
-    r3, r4 :: short_int
 L0:
-    r0 = 0
-    r1 = CPyTagged_IsEq(n, r0)
+    r1 = CPyTagged_IsEq(n, 0)
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = 0
-    r2 = r3
+    r2 = 0
     goto L3
 L2:
-    r4 = 2
-    r2 = r4
+    r2 = 2
 L3:
     return r2
 
@@ -644,15 +563,11 @@ def f() -> int:
     return x
 [out]
 def f():
-    r0 :: short_int
     x :: int
-    r1 :: short_int
     r2 :: int
 L0:
-    r0 = 0
-    x = r0
-    r1 = 2
-    r2 = CPyTagged_Add(x, r1)
+    x = 0
+    r2 = CPyTagged_Add(x, 2)
     x = r2
     return x
 
@@ -757,15 +672,13 @@ def f(x):
     r0 :: object
     r1 :: str
     r2 :: object
-    r3 :: short_int
     r4, r5 :: object
     r6 :: None
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
-    r3 = 10
-    r4 = box(short_int, r3)
+    r4 = box(short_int, 10)
     r5 = py_call(r2, r4)
     r6 = None
     return r6
@@ -777,17 +690,15 @@ def f(x: int) -> None:
 [out]
 def f(x):
     x :: int
-    r0 :: short_int
     r1 :: object
     r2 :: str
     r3, r4, r5 :: object
     r6 :: None
 L0:
-    r0 = 10
     r1 = builtins :: module
     r2 = unicode_1 :: static  ('print')
     r3 = getattr r1, r2
-    r4 = box(short_int, r0)
+    r4 = box(short_int, 10)
     r5 = py_call(r3, r4)
     r6 = None
     return r6
@@ -851,7 +762,6 @@ def g(y: object) -> None:
 def g(y):
     y :: object
     r0 :: None
-    r1 :: short_int
     r2 :: object
     r3 :: list
     r4, r5 :: None
@@ -859,8 +769,7 @@ def g(y):
     r7, r8 :: None
 L0:
     r0 = g(y)
-    r1 = 2
-    r2 = box(short_int, r1)
+    r2 = box(short_int, 2)
     r3 = [r2]
     r4 = g(r3)
     r5 = None
@@ -879,34 +788,25 @@ def g(y: object) -> object:
 [out]
 def g(y):
     y :: object
-    r0 :: short_int
     r1, r2 :: object
     r3, a :: list
-    r4, r5 :: short_int
     r6 :: tuple[int, int]
-    r7 :: short_int
     r8 :: object
     r9, r10 :: bool
     r11 :: object
-    r12 :: short_int
     r13 :: object
 L0:
-    r0 = 2
-    r1 = box(short_int, r0)
+    r1 = box(short_int, 2)
     r2 = g(r1)
     r3 = [y]
     a = r3
-    r4 = 2
-    r5 = 4
-    r6 = (r4, r5)
-    r7 = 0
+    r6 = (2, 4)
     r8 = box(tuple[int, int], r6)
-    r9 = CPyList_SetItem(a, r7, r8)
+    r9 = CPyList_SetItem(a, 0, r8)
     r10 = True
     r11 = box(bool, r10)
     y = r11
-    r12 = 6
-    r13 = box(short_int, r12)
+    r13 = box(short_int, 6)
     return r13
 
 [case testCoerceToObject2]
@@ -920,15 +820,13 @@ def f(a: A, o: object) -> None:
 def f(a, o):
     a :: __main__.A
     o :: object
-    r0 :: short_int
     r1 :: object
     r2 :: bool
     r3 :: int
     r4 :: object
     r5 :: None
 L0:
-    r0 = 2
-    r1 = box(short_int, r0)
+    r1 = box(short_int, 2)
     a.x = r1; r2 = is_error
     r3 = a.n
     r4 = box(int, r3)
@@ -1117,7 +1015,6 @@ def big_int() -> None:
 [out]
 def big_int():
     r0, a_62_bit, r1, max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit, r6, max_32_bit :: int
-    r7 :: short_int
     max_31_bit :: int
     r8 :: None
 L0:
@@ -1135,8 +1032,7 @@ L0:
     d_64_bit = r5
     r6 = int_7 :: static  (2147483647)
     max_32_bit = r6
-    r7 = 2147483646
-    max_31_bit = r7
+    max_31_bit = 2147483646
     r8 = None
     return r8
 
@@ -1163,12 +1059,10 @@ def call_callable_type() -> float:
 [out]
 def absolute_value(x):
     x :: int
-    r0 :: short_int
     r1 :: bool
     r2, r3 :: int
 L0:
-    r0 = 0
-    r1 = CPyTagged_IsGt(x, r0)
+    r1 = CPyTagged_IsGt(x, 0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = x
@@ -1231,69 +1125,57 @@ def call_python_method_with_keyword_args(xs: List[int], first: int, second: int)
 [out]
 def call_python_function_with_keyword_arg(x):
     x :: str
-    r0 :: short_int
     r1 :: object
     r2 :: str
     r3 :: tuple
-    r4 :: native_int
     r5 :: object
     r6 :: dict
     r7 :: object
     r8 :: int
 L0:
-    r0 = 4
     r1 = int
     r2 = unicode_3 :: static  ('base')
     r3 = (x) :: tuple
-    r4 = 1
-    r5 = box(short_int, r0)
-    r6 = CPyDict_Build(r4, r2, r5)
+    r5 = box(short_int, 4)
+    r6 = CPyDict_Build(1, r2, r5)
     r7 = py_call_with_kwargs(r1, r3, r6)
     r8 = unbox(int, r7)
     return r8
 def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
     first, second :: int
-    r0 :: short_int
     r1 :: str
     r2 :: object
     r3 :: str
     r4 :: object
     r5 :: tuple
-    r6 :: native_int
     r7 :: object
     r8 :: dict
     r9 :: object
-    r10 :: short_int
     r11 :: str
     r12 :: object
     r13, r14 :: str
     r15 :: tuple
-    r16 :: native_int
     r17, r18 :: object
     r19 :: dict
     r20 :: object
 L0:
-    r0 = 0
     r1 = unicode_4 :: static  ('insert')
     r2 = getattr xs, r1
     r3 = unicode_5 :: static  ('x')
-    r4 = box(short_int, r0)
+    r4 = box(short_int, 0)
     r5 = (r4) :: tuple
-    r6 = 1
     r7 = box(int, first)
-    r8 = CPyDict_Build(r6, r3, r7)
+    r8 = CPyDict_Build(1, r3, r7)
     r9 = py_call_with_kwargs(r2, r5, r8)
-    r10 = 2
     r11 = unicode_4 :: static  ('insert')
     r12 = getattr xs, r11
     r13 = unicode_5 :: static  ('x')
     r14 = unicode_6 :: static  ('i')
     r15 = () :: tuple
-    r16 = 2
     r17 = box(int, second)
-    r18 = box(short_int, r10)
-    r19 = CPyDict_Build(r16, r13, r17, r14, r18)
+    r18 = box(short_int, 2)
+    r19 = CPyDict_Build(2, r13, r17, r14, r18)
     r20 = py_call_with_kwargs(r12, r15, r19)
     return xs
 
@@ -1321,51 +1203,39 @@ def lst(x: List[int]) -> int:
 def obj(x):
     x :: object
     r0 :: bool
-    r1, r2 :: short_int
 L0:
     r0 = bool x :: object
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = 2
-    return r1
+    return 2
 L2:
-    r2 = 0
-    return r2
+    return 0
 L3:
     unreachable
 def num(x):
     x :: int
-    r0 :: short_int
     r1 :: bool
-    r2, r3 :: short_int
 L0:
-    r0 = 0
-    r1 = CPyTagged_IsNe(x, r0)
+    r1 = CPyTagged_IsNe(x, 0)
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 2
-    return r2
+    return 2
 L2:
-    r3 = 0
-    return r3
+    return 0
 L3:
     unreachable
 def lst(x):
     x :: list
-    r0, r1 :: short_int
+    r0 :: short_int
     r2 :: bool
-    r3, r4 :: short_int
 L0:
     r0 = len x :: list
-    r1 = 0
-    r2 = r0 != r1
+    r2 = r0 != 0
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = 2
-    return r3
+    return 2
 L2:
-    r4 = 0
-    return r4
+    return 0
 L3:
     unreachable
 
@@ -1397,41 +1267,33 @@ def opt_int(x):
     r0 :: object
     r1 :: bool
     r2 :: int
-    r3 :: short_int
     r4 :: bool
-    r5, r6 :: short_int
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
     if r1 goto L1 else goto L3 :: bool
 L1:
     r2 = unbox(int, x)
-    r3 = 0
-    r4 = CPyTagged_IsNe(r2, r3)
+    r4 = CPyTagged_IsNe(r2, 0)
     if r4 goto L2 else goto L3 :: bool
 L2:
-    r5 = 2
-    return r5
+    return 2
 L3:
-    r6 = 0
-    return r6
+    return 0
 L4:
     unreachable
 def opt_a(x):
     x :: union[__main__.A, None]
     r0 :: object
     r1 :: bool
-    r2, r3 :: short_int
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 2
-    return r2
+    return 2
 L2:
-    r3 = 0
-    return r3
+    return 0
 L3:
     unreachable
 def opt_o(x):
@@ -1440,7 +1302,6 @@ def opt_o(x):
     r1 :: bool
     r2 :: object
     r3 :: bool
-    r4, r5 :: short_int
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
@@ -1450,11 +1311,9 @@ L1:
     r3 = bool r2 :: object
     if r3 goto L2 else goto L3 :: bool
 L2:
-    r4 = 2
-    return r4
+    return 2
 L3:
-    r5 = 0
-    return r5
+    return 0
 L4:
     unreachable
 
@@ -1520,7 +1379,6 @@ def __top_level__():
     r2 :: bool
     r3 :: str
     r4 :: object
-    r5 :: short_int
     r6 :: dict
     r7 :: str
     r8 :: object
@@ -1543,10 +1401,9 @@ L1:
     r4 = import r3 :: str
     builtins = r4 :: module
 L2:
-    r5 = 2
     r6 = __main__.globals :: static
     r7 = unicode_1 :: static  ('x')
-    r8 = box(short_int, r5)
+    r8 = box(short_int, 2)
     r9 = CPyDict_SetItem(r6, r7, r8)
     r10 = __main__.globals :: static
     r11 = unicode_1 :: static  ('x')
@@ -1575,15 +1432,13 @@ def f():
     r0 :: object
     r1 :: str
     r2 :: object
-    r3 :: short_int
     r4, r5 :: object
     r6 :: str
 L0:
     r0 = m :: module
     r1 = unicode_2 :: static  ('f')
     r2 = getattr r0, r1
-    r3 = 2
-    r4 = box(short_int, r3)
+    r4 = box(short_int, 2)
     r5 = py_call(r2, r4)
     r6 = cast(str, r5)
     return r6
@@ -1608,14 +1463,12 @@ def foo(x):
 L0:
     return x
 def main():
-    r0 :: short_int
     r1 :: object
     r2 :: union[int, str]
     r3, x :: int
     r4 :: None
 L0:
-    r0 = 0
-    r1 = box(short_int, r0)
+    r1 = box(short_int, 0)
     r2 = foo(r1)
     r3 = unbox(int, r2)
     x = r3
@@ -1663,14 +1516,12 @@ L2:
     r4 = A()
     return r4
 def main():
-    r0 :: short_int
     r1 :: object
     r2 :: __main__.A
     r3, x :: __main__.B
     r4 :: None
 L0:
-    r0 = 0
-    r1 = box(short_int, r0)
+    r1 = box(short_int, 0)
     r2 = foo(r1)
     r3 = cast(__main__.B, r2)
     x = r3
@@ -1693,18 +1544,14 @@ L0:
     return r0
 def g():
     r0 :: str
-    r1 :: short_int
     r2 :: None
-    r3 :: short_int
     r4 :: str
     r5, r6 :: None
 L0:
     r0 = unicode_1 :: static  ('a')
-    r1 = 0
-    r2 = f(r1, r0)
-    r3 = 2
+    r2 = f(0, r0)
     r4 = unicode_2 :: static  ('b')
-    r5 = f(r3, r4)
+    r5 = f(2, r4)
     r6 = None
     return r6
 
@@ -1727,18 +1574,14 @@ L0:
 def g(a):
     a :: __main__.A
     r0 :: str
-    r1 :: short_int
     r2 :: None
-    r3 :: short_int
     r4 :: str
     r5, r6 :: None
 L0:
     r0 = unicode_4 :: static  ('a')
-    r1 = 0
-    r2 = a.f(r1, r0)
-    r3 = 2
+    r2 = a.f(0, r0)
     r4 = unicode_5 :: static  ('b')
-    r5 = a.f(r3, r4)
+    r5 = a.f(2, r4)
     r6 = None
     return r6
 
@@ -1758,7 +1601,6 @@ L0:
     r0 = (a, b, c)
     return r0
 def g():
-    r0, r1, r2 :: short_int
     r3 :: tuple[int, int, int]
     r4 :: dict
     r5 :: str
@@ -1770,10 +1612,7 @@ def g():
     r12 :: object
     r13 :: tuple[int, int, int]
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = (r0, r1, r2)
+    r3 = (2, 4, 6)
     r4 = __main__.globals :: static
     r5 = unicode_3 :: static  ('f')
     r6 = CPyDict_GetItem(r4, r5)
@@ -1786,7 +1625,6 @@ L0:
     r13 = unbox(tuple[int, int, int], r12)
     return r13
 def h():
-    r0, r1, r2 :: short_int
     r3 :: tuple[int, int]
     r4 :: dict
     r5 :: str
@@ -1798,14 +1636,11 @@ def h():
     r13 :: object
     r14 :: tuple[int, int, int]
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = (r1, r2)
+    r3 = (4, 6)
     r4 = __main__.globals :: static
     r5 = unicode_3 :: static  ('f')
     r6 = CPyDict_GetItem(r4, r5)
-    r7 = box(short_int, r0)
+    r7 = box(short_int, 2)
     r8 = [r7]
     r9 = box(tuple[int, int], r3)
     r10 = CPyList_Extend(r8, r9)
@@ -1832,12 +1667,8 @@ L0:
     return r0
 def g():
     r0 :: str
-    r1 :: short_int
     r2 :: str
-    r3 :: short_int
     r4 :: str
-    r5 :: short_int
-    r6 :: native_int
     r7, r8, r9 :: object
     r10, r11 :: dict
     r12 :: str
@@ -1849,16 +1680,12 @@ def g():
     r18 :: tuple[int, int, int]
 L0:
     r0 = unicode_3 :: static  ('a')
-    r1 = 2
     r2 = unicode_4 :: static  ('b')
-    r3 = 4
     r4 = unicode_5 :: static  ('c')
-    r5 = 6
-    r6 = 3
-    r7 = box(short_int, r1)
-    r8 = box(short_int, r3)
-    r9 = box(short_int, r5)
-    r10 = CPyDict_Build(r6, r0, r7, r2, r8, r4, r9)
+    r7 = box(short_int, 2)
+    r8 = box(short_int, 4)
+    r9 = box(short_int, 6)
+    r10 = CPyDict_Build(3, r0, r7, r2, r8, r4, r9)
     r11 = __main__.globals :: static
     r12 = unicode_6 :: static  ('f')
     r13 = CPyDict_GetItem(r11, r12)
@@ -1869,12 +1696,8 @@ L0:
     r18 = unbox(tuple[int, int, int], r17)
     return r18
 def h():
-    r0 :: short_int
     r1 :: str
-    r2 :: short_int
     r3 :: str
-    r4 :: short_int
-    r5 :: native_int
     r6, r7 :: object
     r8, r9 :: dict
     r10 :: str
@@ -1885,19 +1708,15 @@ def h():
     r16 :: object
     r17 :: tuple[int, int, int]
 L0:
-    r0 = 2
     r1 = unicode_4 :: static  ('b')
-    r2 = 4
     r3 = unicode_5 :: static  ('c')
-    r4 = 6
-    r5 = 2
-    r6 = box(short_int, r2)
-    r7 = box(short_int, r4)
-    r8 = CPyDict_Build(r5, r1, r6, r3, r7)
+    r6 = box(short_int, 4)
+    r7 = box(short_int, 6)
+    r8 = CPyDict_Build(2, r1, r6, r3, r7)
     r9 = __main__.globals :: static
     r10 = unicode_6 :: static  ('f')
     r11 = CPyDict_GetItem(r9, r10)
-    r12 = box(short_int, r0)
+    r12 = box(short_int, 2)
     r13 = (r12) :: tuple
     r14 = PyDict_New()
     r15 = CPyDict_UpdateInDisplay(r14, r8)
@@ -1916,14 +1735,12 @@ def g() -> None:
 def f(x, y, z):
     x, y :: int
     z :: str
-    r0 :: short_int
     r1 :: str
     r2 :: None
 L0:
     if is_error(y) goto L1 else goto L2
 L1:
-    r0 = 6
-    y = r0
+    y = 6
 L2:
     if is_error(z) goto L3 else goto L4
 L3:
@@ -1933,22 +1750,17 @@ L4:
     r2 = None
     return r2
 def g():
-    r0 :: short_int
     r1 :: int
     r2 :: str
     r3 :: None
-    r4, r5 :: short_int
     r6 :: str
     r7, r8 :: None
 L0:
-    r0 = 4
     r1 = <error> :: int
     r2 = <error> :: str
-    r3 = f(r0, r1, r2)
-    r4 = 6
-    r5 = 12
+    r3 = f(4, r1, r2)
     r6 = <error> :: str
-    r7 = f(r5, r4, r6)
+    r7 = f(12, 6, r6)
     r8 = None
     return r8
 
@@ -1966,14 +1778,12 @@ def A.f(self, x, y, z):
     self :: __main__.A
     x, y :: int
     z :: str
-    r0 :: short_int
     r1 :: str
     r2 :: None
 L0:
     if is_error(y) goto L1 else goto L2
 L1:
-    r0 = 6
-    y = r0
+    y = 6
 L2:
     if is_error(z) goto L3 else goto L4
 L3:
@@ -1984,24 +1794,19 @@ L4:
     return r2
 def g():
     r0, a :: __main__.A
-    r1 :: short_int
     r2 :: int
     r3 :: str
     r4 :: None
-    r5, r6 :: short_int
     r7 :: str
     r8, r9 :: None
 L0:
     r0 = A()
     a = r0
-    r1 = 4
     r2 = <error> :: int
     r3 = <error> :: str
-    r4 = a.f(r1, r2, r3)
-    r5 = 6
-    r6 = 12
+    r4 = a.f(4, r2, r3)
     r7 = <error> :: str
-    r8 = a.f(r6, r5, r7)
+    r8 = a.f(12, 6, r7)
     r9 = None
     return r9
 
@@ -2013,32 +1818,25 @@ def f() -> List[int]:
 [out]
 def f():
     r0 :: list
-    r1, r2, r3 :: short_int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10 :: short_int
+    r9, r10 :: short_int
     r11 :: bool
     r12 :: object
     x, r13 :: int
-    r14 :: short_int
     r15 :: bool
-    r16 :: short_int
     r17 :: bool
     r18 :: int
     r19 :: object
     r20 :: int32
-    r21, r22 :: short_int
+    r22 :: short_int
 L0:
     r0 = []
-    r1 = 2
-    r2 = 4
-    r3 = 6
-    r4 = box(short_int, r1)
-    r5 = box(short_int, r2)
-    r6 = box(short_int, r3)
+    r4 = box(short_int, 2)
+    r5 = box(short_int, 4)
+    r6 = box(short_int, 6)
     r7 = [r4, r5, r6]
-    r8 = 0
-    r9 = r8
+    r9 = 0
 L1:
     r10 = len r7 :: list
     r11 = r9 < r10 :: signed
@@ -2047,14 +1845,12 @@ L2:
     r12 = r7[r9] :: unsafe list
     r13 = unbox(int, r12)
     x = r13
-    r14 = 4
-    r15 = CPyTagged_IsNe(x, r14)
+    r15 = CPyTagged_IsNe(x, 4)
     if r15 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r16 = 6
-    r17 = CPyTagged_IsNe(x, r16)
+    r17 = CPyTagged_IsNe(x, 6)
     if r17 goto L6 else goto L5 :: bool
 L5:
     goto L7
@@ -2063,8 +1859,7 @@ L6:
     r19 = box(int, r18)
     r20 = PyList_Append(r0, r19)
 L7:
-    r21 = 2
-    r22 = r9 + r21
+    r22 = r9 + 2
     r9 = r22
     goto L1
 L8:
@@ -2077,32 +1872,25 @@ def f() -> Dict[int, int]:
 [out]
 def f():
     r0 :: dict
-    r1, r2, r3 :: short_int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10 :: short_int
+    r9, r10 :: short_int
     r11 :: bool
     r12 :: object
     x, r13 :: int
-    r14 :: short_int
     r15 :: bool
-    r16 :: short_int
     r17 :: bool
     r18 :: int
     r19, r20 :: object
     r21 :: int32
-    r22, r23 :: short_int
+    r23 :: short_int
 L0:
     r0 = PyDict_New()
-    r1 = 2
-    r2 = 4
-    r3 = 6
-    r4 = box(short_int, r1)
-    r5 = box(short_int, r2)
-    r6 = box(short_int, r3)
+    r4 = box(short_int, 2)
+    r5 = box(short_int, 4)
+    r6 = box(short_int, 6)
     r7 = [r4, r5, r6]
-    r8 = 0
-    r9 = r8
+    r9 = 0
 L1:
     r10 = len r7 :: list
     r11 = r9 < r10 :: signed
@@ -2111,14 +1899,12 @@ L2:
     r12 = r7[r9] :: unsafe list
     r13 = unbox(int, r12)
     x = r13
-    r14 = 4
-    r15 = CPyTagged_IsNe(x, r14)
+    r15 = CPyTagged_IsNe(x, 4)
     if r15 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r16 = 6
-    r17 = CPyTagged_IsNe(x, r16)
+    r17 = CPyTagged_IsNe(x, 6)
     if r17 goto L6 else goto L5 :: bool
 L5:
     goto L7
@@ -2128,8 +1914,7 @@ L6:
     r20 = box(int, r18)
     r21 = CPyDict_SetItem(r0, r19, r20)
 L7:
-    r22 = 2
-    r23 = r9 + r22
+    r23 = r9 + 2
     r9 = r23
     goto L1
 L8:
@@ -2144,15 +1929,15 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 [out]
 def f(l):
     l :: list
-    r0, r1, r2 :: short_int
+    r1, r2 :: short_int
     r3 :: bool
     r4 :: object
     x, y, z :: int
     r5 :: tuple[int, int, int]
     r6, r7, r8 :: int
-    r9, r10 :: short_int
+    r10 :: short_int
     r11 :: list
-    r12, r13, r14 :: short_int
+    r13, r14 :: short_int
     r15 :: bool
     r16 :: object
     x0, y0, z0 :: int
@@ -2160,10 +1945,9 @@ def f(l):
     r18, r19, r20, r21, r22 :: int
     r23 :: object
     r24 :: int32
-    r25, r26 :: short_int
+    r26 :: short_int
 L0:
-    r0 = 0
-    r1 = r0
+    r1 = 0
 L1:
     r2 = len l :: list
     r3 = r1 < r2 :: signed
@@ -2178,14 +1962,12 @@ L2:
     r8 = r5[2]
     z = r8
 L3:
-    r9 = 2
-    r10 = r1 + r9
+    r10 = r1 + 2
     r1 = r10
     goto L1
 L4:
     r11 = []
-    r12 = 0
-    r13 = r12
+    r13 = 0
 L5:
     r14 = len l :: list
     r15 = r13 < r14 :: signed
@@ -2204,8 +1986,7 @@ L6:
     r23 = box(int, r22)
     r24 = PyList_Append(r11, r23)
 L7:
-    r25 = 2
-    r26 = r13 + r25
+    r26 = r13 + 2
     r13 = r26
     goto L5
 L8:
@@ -2256,12 +2037,10 @@ L0:
     return r3
 def PropertyHolder.twice_value(self):
     self :: __main__.PropertyHolder
-    r0 :: short_int
     r1, r2 :: int
 L0:
-    r0 = 4
     r1 = self.value
-    r2 = CPyTagged_Multiply(r0, r1)
+    r2 = CPyTagged_Multiply(4, r1)
     return r2
 
 [case testPropertyDerivedGen]
@@ -2328,13 +2107,11 @@ L0:
 def BaseProperty.next(self):
     self :: __main__.BaseProperty
     r0 :: int
-    r1 :: short_int
     r2 :: int
     r3 :: __main__.BaseProperty
 L0:
     r0 = self._incrementer
-    r1 = 2
-    r2 = CPyTagged_Add(r0, r1)
+    r2 = CPyTagged_Add(r0, 2)
     r3 = BaseProperty(r2)
     return r3
 def BaseProperty.__init__(self, value):
@@ -2483,11 +2260,9 @@ L0:
     return self
 def SubclassedTrait.boxed(self):
     self :: __main__.SubclassedTrait
-    r0 :: short_int
     r1 :: object
 L0:
-    r0 = 6
-    r1 = box(short_int, r0)
+    r1 = box(short_int, 6)
     return r1
 def DerivingObject.this(self):
     self :: __main__.DerivingObject
@@ -2500,10 +2275,8 @@ L0:
     return r0
 def DerivingObject.boxed(self):
     self :: __main__.DerivingObject
-    r0 :: short_int
 L0:
-    r0 = 10
-    return r0
+    return 10
 def DerivingObject.boxed__SubclassedTrait_glue(__mypyc_self__):
     __mypyc_self__ :: __main__.DerivingObject
     r0 :: int
@@ -2584,7 +2357,6 @@ def __top_level__():
     r39 :: dict
     r40 :: str
     r41 :: int32
-    r42 :: short_int
     r43 :: str
     r44 :: dict
     r45 :: str
@@ -2609,7 +2381,6 @@ def __top_level__():
     r69 :: dict
     r70 :: str
     r71 :: int32
-    r72, r73, r74 :: short_int
     r75, r76, r77 :: object
     r78 :: list
     r79 :: dict
@@ -2670,12 +2441,11 @@ L4:
     r39 = __main__.globals :: static
     r40 = unicode_5 :: static  ('Lol')
     r41 = CPyDict_SetItem(r39, r40, r38)
-    r42 = 2
     r43 = unicode_8 :: static
     r44 = __main__.globals :: static
     r45 = unicode_5 :: static  ('Lol')
     r46 = CPyDict_GetItem(r44, r45)
-    r47 = box(short_int, r42)
+    r47 = box(short_int, 2)
     r48 = py_call(r46, r47, r43)
     r49 = cast(tuple, r48)
     r50 = __main__.globals :: static
@@ -2700,12 +2470,9 @@ L4:
     r69 = __main__.globals :: static
     r70 = unicode_11 :: static  ('Bar')
     r71 = CPyDict_SetItem(r69, r70, r68)
-    r72 = 2
-    r73 = 4
-    r74 = 6
-    r75 = box(short_int, r72)
-    r76 = box(short_int, r73)
-    r77 = box(short_int, r74)
+    r75 = box(short_int, 2)
+    r76 = box(short_int, 4)
+    r77 = box(short_int, 6)
     r78 = [r75, r76, r77]
     r79 = __main__.globals :: static
     r80 = unicode_11 :: static  ('Bar')
@@ -2730,23 +2497,19 @@ L0:
 def f(x, y, z):
     x, y, z, r0, r1 :: int
     r2, r3 :: bool
-    r4, r5, r6 :: native_int
+    r5 :: native_int
     r7 :: bool
-    r8, r9, r10 :: native_int
+    r9 :: native_int
     r11, r12, r13, r14 :: bool
     r15 :: int
     r16 :: bool
 L0:
     r0 = g(x)
     r1 = g(y)
-    r4 = 1
-    r5 = r0 & r4
-    r6 = 0
-    r7 = r5 == r6
-    r8 = 1
-    r9 = r1 & r8
-    r10 = 0
-    r11 = r9 == r10
+    r5 = r0 & 1
+    r7 = r5 == 0
+    r9 = r1 & 1
+    r11 = r9 == 0
     r12 = r7 & r11
     if r12 goto L1 else goto L2 :: bool
 L1:
@@ -3208,7 +2971,6 @@ def call_any(l):
     r0, r1 :: bool
     r2, r3 :: object
     r4, i :: int
-    r5 :: short_int
     r6, r7, r8 :: bool
 L0:
     r1 = False
@@ -3220,8 +2982,7 @@ L1:
 L2:
     r4 = unbox(int, r3)
     i = r4
-    r5 = 0
-    r6 = CPyTagged_IsEq(i, r5)
+    r6 = CPyTagged_IsEq(i, 0)
     if r6 goto L3 else goto L4 :: bool
 L3:
     r7 = True
@@ -3240,7 +3001,6 @@ def call_all(l):
     r0, r1 :: bool
     r2, r3 :: object
     r4, i :: int
-    r5 :: short_int
     r6, r7, r8, r9 :: bool
 L0:
     r1 = True
@@ -3252,8 +3012,7 @@ L1:
 L2:
     r4 = unbox(int, r3)
     i = r4
-    r5 = 0
-    r6 = CPyTagged_IsEq(i, r5)
+    r6 = CPyTagged_IsEq(i, 0)
     r7 = !r6
     if r7 goto L3 else goto L4 :: bool
 L3:
@@ -3304,15 +3063,12 @@ def f(a: bool) -> int:
 [out]
 def f(a):
     a :: bool
-    r0, r1 :: short_int
 L0:
     if a goto L1 else goto L2 :: bool
 L1:
-    r0 = 2
-    return r0
+    return 2
 L2:
-    r1 = 4
-    return r1
+    return 4
 L3:
     unreachable
 
@@ -3382,28 +3138,21 @@ def f(a: bool) -> int:
 [out]
 def C.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.C
-    r0 :: short_int
     r1 :: bool
-    r2 :: short_int
     r3, r4 :: bool
 L0:
-    r0 = 2
-    __mypyc_self__.x = r0; r1 = is_error
-    r2 = 4
-    __mypyc_self__.y = r2; r3 = is_error
+    __mypyc_self__.x = 2; r1 = is_error
+    __mypyc_self__.y = 4; r3 = is_error
     r4 = True
     return r4
 def f(a):
     a :: bool
-    r0, r1 :: short_int
 L0:
     if a goto L1 else goto L2 :: bool
 L1:
-    r0 = 2
-    return r0
+    return 2
 L2:
-    r1 = 4
-    return r1
+    return 4
 L3:
     unreachable
 
@@ -3418,7 +3167,6 @@ def f() -> int:
 def f():
     r0 :: list
     r1 :: bool
-    r2 :: short_int
     r3 :: object
     r4 :: int
 L0:
@@ -3428,8 +3176,7 @@ L1:
     raise NameError('value for final name "x" was not set')
     unreachable
 L2:
-    r2 = 0
-    r3 = CPyList_GetItemShort(r0, r2)
+    r3 = CPyList_GetItemShort(r0, 0)
     r4 = unbox(int, r3)
     return r4
 
@@ -3466,7 +3213,6 @@ def f() -> int:
 def f():
     r0 :: int
     r1 :: bool
-    r2 :: short_int
     r3 :: int
 L0:
     r0 = __main__.x :: static
@@ -3475,8 +3221,7 @@ L1:
     raise NameError('value for final name "x" was not set')
     unreachable
 L2:
-    r2 = 2
-    r3 = CPyTagged_Subtract(r0, r2)
+    r3 = CPyTagged_Subtract(r0, 2)
     return r3
 
 [case testFinalRestrictedTypeVar]
@@ -3492,10 +3237,8 @@ def foo(z: Targ) -> None:
 [out]
 def foo(z):
     z :: object
-    r0 :: short_int
     r1 :: None
 L0:
-    r0 = 20
     r1 = None
     return r1
 
@@ -3529,16 +3272,13 @@ L0:
 def lol(x):
     x :: __main__.A
     r0 :: bool
-    r1, r2 :: short_int
 L0:
     r0 = x.__bool__()
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = 2
-    return r1
+    return 2
 L2:
-    r2 = 0
-    return r2
+    return 0
 L3:
     unreachable
 

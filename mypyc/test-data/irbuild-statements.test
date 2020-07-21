@@ -5,30 +5,25 @@ def f() -> None:
         x = x + i
 [out]
 def f():
-    r0 :: short_int
     x :: int
-    r1, r2, r3 :: short_int
+    r3 :: short_int
     i :: int
     r4 :: bool
     r5 :: int
-    r6, r7 :: short_int
+    r7 :: short_int
     r8 :: None
 L0:
-    r0 = 0
-    x = r0
-    r1 = 0
-    r2 = 10
-    r3 = r1
+    x = 0
+    r3 = 0
     i = r3
 L1:
-    r4 = r3 < r2 :: signed
+    r4 = r3 < 10 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyTagged_Add(x, i)
     x = r5
 L3:
-    r6 = 2
-    r7 = r3 + r6
+    r7 = r3 + 2
     r3 = r7
     i = r7
     goto L1
@@ -42,23 +37,20 @@ def f() -> None:
         pass
 [out]
 def f():
-    r0, r1, r2 :: short_int
+    r2 :: short_int
     i :: int
     r3 :: bool
-    r4, r5 :: short_int
+    r5 :: short_int
     r6 :: None
 L0:
-    r0 = 20
-    r1 = 0
-    r2 = r0
+    r2 = 20
     i = r2
 L1:
-    r3 = CPyTagged_IsGt(r2, r1)
+    r3 = CPyTagged_IsGt(r2, 0)
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r4 = -2
-    r5 = r2 + r4
+    r5 = r2 + -2
     r2 = r5
     i = r5
     goto L1
@@ -73,17 +65,13 @@ def f() -> None:
       break
 [out]
 def f():
-    r0 :: short_int
     n :: int
-    r1 :: short_int
     r2 :: bool
     r3 :: None
 L0:
-    r0 = 0
-    n = r0
+    n = 0
 L1:
-    r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
+    r2 = CPyTagged_IsLt(n, 10)
     if r2 goto L2 else goto L3 :: bool
 L2:
 L3:
@@ -96,24 +84,21 @@ def f() -> None:
         break
 [out]
 def f():
-    r0, r1, r2 :: short_int
+    r2 :: short_int
     n :: int
     r3 :: bool
-    r4, r5 :: short_int
+    r5 :: short_int
     r6 :: None
 L0:
-    r0 = 0
-    r1 = 10
-    r2 = r0
+    r2 = 0
     n = r2
 L1:
-    r3 = r2 < r1 :: signed
+    r3 = r2 < 10 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
     goto L4
 L3:
-    r4 = 2
-    r5 = r2 + r4
+    r5 = r2 + 2
     r2 = r5
     n = r5
     goto L1
@@ -130,24 +115,18 @@ def f() -> None:
         break
 [out]
 def f():
-    r0 :: short_int
     n :: int
-    r1 :: short_int
     r2 :: bool
-    r3 :: short_int
     r4 :: bool
     r5 :: None
 L0:
-    r0 = 0
-    n = r0
+    n = 0
 L1:
-    r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
+    r2 = CPyTagged_IsLt(n, 10)
     if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r3 = 8
-    r4 = CPyTagged_IsLt(n, r3)
+    r4 = CPyTagged_IsLt(n, 8)
     if r4 goto L4 else goto L5 :: bool
 L4:
 L5:
@@ -162,17 +141,13 @@ def f() -> None:
       continue
 [out]
 def f():
-    r0 :: short_int
     n :: int
-    r1 :: short_int
     r2 :: bool
     r3 :: None
 L0:
-    r0 = 0
-    n = r0
+    n = 0
 L1:
-    r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
+    r2 = CPyTagged_IsLt(n, 10)
     if r2 goto L2 else goto L3 :: bool
 L2:
     goto L1
@@ -186,23 +161,20 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0, r1, r2 :: short_int
+    r2 :: short_int
     n :: int
     r3 :: bool
-    r4, r5 :: short_int
+    r5 :: short_int
     r6 :: None
 L0:
-    r0 = 0
-    r1 = 10
-    r2 = r0
+    r2 = 0
     n = r2
 L1:
-    r3 = r2 < r1 :: signed
+    r3 = r2 < 10 :: signed
     if r3 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r4 = 2
-    r5 = r2 + r4
+    r5 = r2 + 2
     r2 = r5
     n = r5
     goto L1
@@ -219,24 +191,18 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0 :: short_int
     n :: int
-    r1 :: short_int
     r2 :: bool
-    r3 :: short_int
     r4 :: bool
     r5 :: None
 L0:
-    r0 = 0
-    n = r0
+    n = 0
 L1:
-    r1 = 10
-    r2 = CPyTagged_IsLt(n, r1)
+    r2 = CPyTagged_IsLt(n, 10)
     if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r3 = 8
-    r4 = CPyTagged_IsLt(n, r3)
+    r4 = CPyTagged_IsLt(n, 8)
     if r4 goto L4 else goto L5 :: bool
 L4:
     goto L3
@@ -257,18 +223,15 @@ def f(ls: List[int]) -> int:
 [out]
 def f(ls):
     ls :: list
-    r0 :: short_int
     y :: int
-    r1, r2, r3 :: short_int
+    r2, r3 :: short_int
     r4 :: bool
     r5 :: object
     x, r6, r7 :: int
-    r8, r9 :: short_int
+    r9 :: short_int
 L0:
-    r0 = 0
-    y = r0
-    r1 = 0
-    r2 = r1
+    y = 0
+    r2 = 0
 L1:
     r3 = len ls :: list
     r4 = r2 < r3 :: signed
@@ -280,8 +243,7 @@ L2:
     r7 = CPyTagged_Add(y, x)
     y = r7
 L3:
-    r8 = 2
-    r9 = r2 + r8
+    r9 = r2 + 2
     r2 = r9
     goto L1
 L4:
@@ -296,7 +258,7 @@ def f(d: Dict[int, int]) -> None:
 [out]
 def f(d):
     d :: dict
-    r0, r1 :: short_int
+    r1 :: short_int
     r2 :: int
     r3 :: object
     r4 :: tuple[bool, int, object]
@@ -309,8 +271,7 @@ def f(d):
     r12, r13 :: bool
     r14 :: None
 L0:
-    r0 = 0
-    r1 = r0
+    r1 = 0
     r2 = len d :: dict
     r3 = CPyDict_GetKeysIter(d)
 L1:
@@ -348,9 +309,8 @@ def sum_over_even_values(d: Dict[int, int]) -> int:
 [out]
 def sum_over_even_values(d):
     d :: dict
-    r0 :: short_int
     s :: int
-    r1, r2 :: short_int
+    r2 :: short_int
     r3 :: int
     r4 :: object
     r5 :: tuple[bool, int, object]
@@ -360,18 +320,14 @@ def sum_over_even_values(d):
     key, r9 :: int
     r10, r11 :: object
     r12 :: int
-    r13 :: short_int
     r14 :: int
-    r15 :: short_int
     r16 :: bool
     r17, r18 :: object
     r19, r20 :: int
     r21, r22 :: bool
 L0:
-    r0 = 0
-    s = r0
-    r1 = 0
-    r2 = r1
+    s = 0
+    r2 = 0
     r3 = len d :: dict
     r4 = CPyDict_GetKeysIter(d)
 L1:
@@ -387,10 +343,8 @@ L2:
     r10 = box(int, key)
     r11 = CPyDict_GetItem(d, r10)
     r12 = unbox(int, r11)
-    r13 = 4
-    r14 = CPyTagged_Remainder(r12, r13)
-    r15 = 0
-    r16 = CPyTagged_IsNe(r14, r15)
+    r14 = CPyTagged_Remainder(r12, 4)
+    r16 = CPyTagged_IsNe(r14, 0)
     if r16 goto L3 else goto L4 :: bool
 L3:
     goto L5
@@ -544,7 +498,6 @@ def multi_assign(t, a, l):
     a :: __main__.A
     l :: list
     z :: int
-    r0 :: short_int
     r1 :: int
     r2 :: bool
     r3 :: tuple[str, object]
@@ -554,12 +507,11 @@ def multi_assign(t, a, l):
     r7 :: int
     r8 :: None
 L0:
-    r0 = 0
     r1 = t[0]
     a.x = r1; r2 = is_error
     r3 = t[1]
     r4 = r3[0]
-    r5 = CPyList_SetItem(l, r0, r4)
+    r5 = CPyList_SetItem(l, 0, r4)
     r6 = r3[1]
     r7 = unbox(int, r6)
     z = r7
@@ -582,19 +534,16 @@ def complex_msg(x: Optional[str], s: str) -> None:
 [out]
 def no_msg(x):
     x, r0 :: bool
-    r1 :: short_int
 L0:
     if x goto L2 else goto L1 :: bool
 L1:
     raise AssertionError
     unreachable
 L2:
-    r1 = 2
-    return r1
+    return 2
 def literal_msg(x):
     x :: object
     r0, r1 :: bool
-    r2 :: short_int
 L0:
     r0 = bool x :: object
     if r0 goto L2 else goto L1 :: bool
@@ -602,8 +551,7 @@ L1:
     raise AssertionError('message')
     unreachable
 L2:
-    r2 = 4
-    return r2
+    return 4
 def complex_msg(x, s):
     x :: union[str, None]
     s :: str
@@ -643,30 +591,23 @@ def delListMultiple() -> None:
     del l[1], l[2], l[3]
 [out]
 def delList():
-    r0, r1 :: short_int
     r2, r3 :: object
     r4, l :: list
-    r5 :: short_int
     r6 :: object
     r7 :: bool
     r8 :: None
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = box(short_int, r0)
-    r3 = box(short_int, r1)
+    r2 = box(short_int, 2)
+    r3 = box(short_int, 4)
     r4 = [r2, r3]
     l = r4
-    r5 = 2
-    r6 = box(short_int, r5)
+    r6 = box(short_int, 2)
     r7 = l.__delitem__(r6) :: object
     r8 = None
     return r8
 def delListMultiple():
-    r0, r1, r2, r3, r4, r5, r6 :: short_int
     r7, r8, r9, r10, r11, r12, r13 :: object
     r14, l :: list
-    r15, r16, r17 :: short_int
     r18 :: object
     r19 :: bool
     r20 :: object
@@ -675,30 +616,20 @@ def delListMultiple():
     r23 :: bool
     r24 :: None
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = 8
-    r4 = 10
-    r5 = 12
-    r6 = 14
-    r7 = box(short_int, r0)
-    r8 = box(short_int, r1)
-    r9 = box(short_int, r2)
-    r10 = box(short_int, r3)
-    r11 = box(short_int, r4)
-    r12 = box(short_int, r5)
-    r13 = box(short_int, r6)
+    r7 = box(short_int, 2)
+    r8 = box(short_int, 4)
+    r9 = box(short_int, 6)
+    r10 = box(short_int, 8)
+    r11 = box(short_int, 10)
+    r12 = box(short_int, 12)
+    r13 = box(short_int, 14)
     r14 = [r7, r8, r9, r10, r11, r12, r13]
     l = r14
-    r15 = 2
-    r16 = 4
-    r17 = 6
-    r18 = box(short_int, r15)
+    r18 = box(short_int, 2)
     r19 = l.__delitem__(r18) :: object
-    r20 = box(short_int, r16)
+    r20 = box(short_int, 4)
     r21 = l.__delitem__(r20) :: object
-    r22 = box(short_int, r17)
+    r22 = box(short_int, 6)
     r23 = l.__delitem__(r22) :: object
     r24 = None
     return r24
@@ -713,10 +644,7 @@ def delDictMultiple() -> None:
 [out]
 def delDict():
     r0 :: str
-    r1 :: short_int
     r2 :: str
-    r3 :: short_int
-    r4 :: native_int
     r5, r6 :: object
     r7, d :: dict
     r8 :: str
@@ -724,13 +652,10 @@ def delDict():
     r10 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
-    r1 = 2
     r2 = unicode_2 :: static  ('two')
-    r3 = 4
-    r4 = 2
-    r5 = box(short_int, r1)
-    r6 = box(short_int, r3)
-    r7 = CPyDict_Build(r4, r0, r5, r2, r6)
+    r5 = box(short_int, 2)
+    r6 = box(short_int, 4)
+    r7 = CPyDict_Build(2, r0, r5, r2, r6)
     d = r7
     r8 = unicode_1 :: static  ('one')
     r9 = d.__delitem__(r8) :: object
@@ -738,14 +663,9 @@ L0:
     return r10
 def delDictMultiple():
     r0 :: str
-    r1 :: short_int
     r2 :: str
-    r3 :: short_int
     r4 :: str
-    r5 :: short_int
     r6 :: str
-    r7 :: short_int
-    r8 :: native_int
     r9, r10, r11, r12 :: object
     r13, d :: dict
     r14, r15 :: str
@@ -753,19 +673,14 @@ def delDictMultiple():
     r18 :: None
 L0:
     r0 = unicode_1 :: static  ('one')
-    r1 = 2
     r2 = unicode_2 :: static  ('two')
-    r3 = 4
     r4 = unicode_3 :: static  ('three')
-    r5 = 6
     r6 = unicode_4 :: static  ('four')
-    r7 = 8
-    r8 = 4
-    r9 = box(short_int, r1)
-    r10 = box(short_int, r3)
-    r11 = box(short_int, r5)
-    r12 = box(short_int, r7)
-    r13 = CPyDict_Build(r8, r0, r9, r2, r10, r4, r11, r6, r12)
+    r9 = box(short_int, 2)
+    r10 = box(short_int, 4)
+    r11 = box(short_int, 6)
+    r12 = box(short_int, 8)
+    r13 = CPyDict_Build(4, r0, r9, r2, r10, r4, r11, r6, r12)
     d = r13
     r14 = unicode_1 :: static  ('one')
     r15 = unicode_4 :: static  ('four')
@@ -797,22 +712,18 @@ L0:
     r2 = None
     return r2
 def delAttribute():
-    r0, r1 :: short_int
     r2, dummy :: __main__.Dummy
     r3 :: str
     r4 :: bool
     r5 :: None
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = Dummy(r0, r1)
+    r2 = Dummy(2, 4)
     dummy = r2
     r3 = unicode_3 :: static  ('x')
     r4 = delattr dummy, r3
     r5 = None
     return r5
 def delAttributeMultiple():
-    r0, r1 :: short_int
     r2, dummy :: __main__.Dummy
     r3 :: str
     r4 :: bool
@@ -820,9 +731,7 @@ def delAttributeMultiple():
     r6 :: bool
     r7 :: None
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = Dummy(r0, r1)
+    r2 = Dummy(2, 4)
     dummy = r2
     r3 = unicode_3 :: static  ('x')
     r4 = delattr dummy, r3
@@ -843,20 +752,18 @@ def g(x: Iterable[int]) -> None:
 [out]
 def f(a):
     a :: list
-    r0, r1 :: short_int
+    r1 :: short_int
     i :: int
-    r2, r3, r4 :: short_int
+    r3, r4 :: short_int
     r5 :: bool
     r6 :: object
     x, r7, r8 :: int
-    r9, r10, r11, r12 :: short_int
+    r10, r12 :: short_int
     r13 :: None
 L0:
-    r0 = 0
-    r1 = r0
-    i = r0
-    r2 = 0
-    r3 = r2
+    r1 = 0
+    i = 0
+    r3 = 0
 L1:
     r4 = len a :: list
     r5 = r3 < r4 :: signed
@@ -867,12 +774,10 @@ L2:
     x = r7
     r8 = CPyTagged_Add(i, x)
 L3:
-    r9 = 2
-    r10 = r1 + r9
+    r10 = r1 + 2
     r1 = r10
     i = r10
-    r11 = 2
-    r12 = r3 + r11
+    r12 = r3 + 2
     r3 = r12
     goto L1
 L4:
@@ -881,17 +786,16 @@ L5:
     return r13
 def g(x):
     x :: object
-    r0, r1 :: short_int
+    r1 :: short_int
     i :: int
     r2, r3 :: object
     r4, n :: int
-    r5, r6 :: short_int
+    r6 :: short_int
     r7 :: bool
     r8 :: None
 L0:
-    r0 = 0
-    r1 = r0
-    i = r0
+    r1 = 0
+    i = 0
     r2 = iter x :: object
 L1:
     r3 = next r2 :: object
@@ -900,8 +804,7 @@ L2:
     r4 = unbox(int, r3)
     n = r4
 L3:
-    r5 = 2
-    r6 = r1 + r5
+    r6 = r1 + 2
     r1 = r6
     i = r6
     goto L1
@@ -926,19 +829,18 @@ def g(a: Iterable[bool], b: List[int]) -> None:
 def f(a, b):
     a :: list
     b :: object
-    r0, r1 :: short_int
+    r1 :: short_int
     r2 :: object
     r3 :: short_int
     r4 :: bool
     r5, r6 :: object
     x, r7 :: int
     r8, y, r9 :: bool
-    r10, r11, r12 :: short_int
+    r12 :: short_int
     r13 :: bool
     r14 :: None
 L0:
-    r0 = 0
-    r1 = r0
+    r1 = 0
     r2 = iter b :: object
 L1:
     r3 = len a :: list
@@ -956,12 +858,10 @@ L3:
     r9 = bool b :: object
     if r9 goto L4 else goto L5 :: bool
 L4:
-    r10 = 2
-    x = r10
+    x = 2
 L5:
 L6:
-    r11 = 2
-    r12 = r1 + r11
+    r12 = r1 + 2
     r1 = r12
     goto L1
 L7:
@@ -973,7 +873,7 @@ def g(a, b):
     a :: object
     b :: list
     r0 :: object
-    r1, r2, r3, r4, r5 :: short_int
+    r2, r5 :: short_int
     z :: int
     r6 :: object
     r7 :: short_int
@@ -981,16 +881,13 @@ def g(a, b):
     r11 :: object
     y, r12 :: int
     r13 :: bool
-    r14, r15, r16, r17 :: short_int
+    r15, r17 :: short_int
     r18 :: bool
     r19 :: None
 L0:
     r0 = iter a :: object
-    r1 = 0
-    r2 = r1
-    r3 = 0
-    r4 = 10
-    r5 = r3
+    r2 = 0
+    r5 = 0
     z = r5
 L1:
     r6 = next r0 :: object
@@ -1000,7 +897,7 @@ L2:
     r8 = r2 < r7 :: signed
     if r8 goto L3 else goto L6 :: bool
 L3:
-    r9 = r5 < r4 :: signed
+    r9 = r5 < 10 :: signed
     if r9 goto L4 else goto L6 :: bool
 L4:
     r10 = unbox(bool, r6)
@@ -1011,11 +908,9 @@ L4:
     r13 = False
     x = r13
 L5:
-    r14 = 2
-    r15 = r2 + r14
+    r15 = r2 + 2
     r2 = r15
-    r16 = 2
-    r17 = r5 + r16
+    r17 = r5 + 2
     r5 = r17
     z = r17
     goto L1

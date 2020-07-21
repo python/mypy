@@ -5,13 +5,10 @@ def g():
   return x
 [out]
 def g():
-    r0, r1 :: short_int
     r2 :: int
     r3, x :: object
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = CPyTagged_Add(r0, r1)
+    r2 = CPyTagged_Add(2, 4)
     r3 = box(int, r2)
     x = r3
     return x

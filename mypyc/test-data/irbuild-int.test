@@ -5,13 +5,11 @@ def f(x: int, y: int) -> bool:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4, r5, r6, r7 :: bool
 L0:
-    r1 = 1
-    r2 = x & r1
-    r3 = 0
-    r4 = r2 == r3
+    r2 = x & 1
+    r4 = r2 == 0
     if r4 goto L1 else goto L2 :: bool
 L1:
     r5 = x != y

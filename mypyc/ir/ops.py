@@ -232,17 +232,23 @@ class Environment:
                 i = n
         return ''.join(result)
 
-    def to_lines(self) -> List[str]:
+    def to_lines(self, const_regs: Dict[str, int] = {}) -> List[str]:
         result = []
         i = 0
         regs = list(self.regs())
 
         while i < len(regs):
             i0 = i
-            group = [regs[i0].name]
+            if regs[i0].name not in const_regs:
+                group = [regs[i0].name]
+            else:
+                group = []
+                i += 1
+                continue
             while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
                 i += 1
-                group.append(regs[i].name)
+                if regs[i].name not in const_regs:
+                    group.append(regs[i].name)
             i += 1
             result.append('%s :: %s' % (', '.join(group), regs[i0].type))
         return result
