@@ -248,7 +248,8 @@ def format_blocks(blocks: List[BasicBlock],
                 and ops[-1].label == blocks[i + 1]):
             # Hide the last goto if it just goes to the next basic block.
             ops = ops[:-1]
-        regex = re.compile(r'\br[0-9]+\b')
+        # load int registers start with 'i'
+        regex = re.compile(r'\bi[0-9]+\b')
         for op in ops:
             if op.name not in const_regs:
                 line = '    ' + op.to_str(env)

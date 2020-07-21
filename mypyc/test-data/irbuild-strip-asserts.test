@@ -5,11 +5,11 @@ def g():
   return x
 [out]
 def g():
-    r2 :: int
-    r3, x :: object
+    r0 :: int
+    r1, x :: object
 L0:
-    r2 = CPyTagged_Add(2, 4)
-    r3 = box(int, r2)
-    x = r3
+    r0 = CPyTagged_Add(2, 4)
+    r1 = box(int, r0)
+    x = r1
     return x
 

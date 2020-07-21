@@ -138,6 +138,7 @@ class Environment:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
+        self.temp_load_int_idx = 0
         # All names genereted; value is the number of duplicates seen.
         self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]
@@ -197,6 +198,10 @@ class Environment:
     def add_op(self, reg: 'RegisterOp') -> None:
         """Record the value of an operation."""
         if reg.is_void:
+            return
+        if isinstance(reg, LoadInt):
+            self.add(reg, "i%d" % self.temp_load_int_idx)
+            self.temp_load_int_idx += 1
             return
         self.add(reg, 'r%d' % self.temp_index)
         self.temp_index += 1
