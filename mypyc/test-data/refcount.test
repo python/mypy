@@ -14,11 +14,9 @@ def f() -> int:
     return x
 [out]
 def f():
-    r0 :: short_int
     x :: int
 L0:
-    r0 = 2
-    x = r0
+    x = 2
     return x
 
 [case testLocalVars]
@@ -193,17 +191,13 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1, r2, r3 :: native_int
+    r2 :: native_int
     r4, r5, r6 :: bool
-    r7, r8 :: short_int
     x :: int
-    r9 :: short_int
     r10, y :: int
 L0:
-    r1 = 1
-    r2 = a & r1
-    r3 = 0
-    r4 = r2 == r3
+    r2 = a & 1
+    r4 = r2 == 0
     if r4 goto L1 else goto L2 :: bool
 L1:
     r5 = a == a
@@ -215,17 +209,14 @@ L2:
 L3:
     if r0 goto L4 else goto L5 :: bool
 L4:
-    r7 = 2
-    a = r7
+    a = 2
     goto L6
 L5:
-    r8 = 4
-    x = r8
+    x = 4
     dec_ref x :: int
     goto L7
 L6:
-    r9 = 2
-    r10 = CPyTagged_Add(a, r9)
+    r10 = CPyTagged_Add(a, 2)
     dec_ref a :: int
     y = r10
     return y
