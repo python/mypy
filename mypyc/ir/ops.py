@@ -138,6 +138,7 @@ class Environment:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
+        self.temp_load_int_idx = 0
         # All names genereted; value is the number of duplicates seen.
         self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]
@@ -198,6 +199,10 @@ class Environment:
         """Record the value of an operation."""
         if reg.is_void:
             return
+        if isinstance(reg, LoadInt):
+            self.add(reg, "i%d" % self.temp_load_int_idx)
+            self.temp_load_int_idx += 1
+            return
         self.add(reg, 'r%d' % self.temp_index)
         self.temp_index += 1
 
@@ -232,17 +237,24 @@ class Environment:
                 i = n
         return ''.join(result)
 
-    def to_lines(self) -> List[str]:
+    def to_lines(self, const_regs: Optional[Dict[str, int]] = None) -> List[str]:
         result = []
         i = 0
         regs = list(self.regs())
-
+        if const_regs is None:
+            const_regs = {}
         while i < len(regs):
             i0 = i
-            group = [regs[i0].name]
+            if regs[i0].name not in const_regs:
+                group = [regs[i0].name]
+            else:
+                group = []
+                i += 1
+                continue
             while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
                 i += 1
-                group.append(regs[i].name)
+                if regs[i].name not in const_regs:
+                    group.append(regs[i].name)
             i += 1
             result.append('%s :: %s' % (', '.join(group), regs[i0].type))
         return result
