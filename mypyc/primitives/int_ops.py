@@ -114,10 +114,6 @@ int_binary_op('*=', 'CPyTagged_Multiply')
 int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 
-int_compare_op('<=', 'CPyTagged_IsLe')
-int_compare_op('>', 'CPyTagged_IsGt')
-int_compare_op('>=', 'CPyTagged_IsGe')
-
 # Add short integers and assume that it doesn't overflow or underflow.
 # Assume that the operands are not big integers.
 unsafe_short_add = custom_op(
