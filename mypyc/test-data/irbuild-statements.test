@@ -46,7 +46,7 @@ L0:
     r0 = 20
     i = r0
 L1:
-    r1 = CPyTagged_IsGt(r0, 0)
+    r1 = r0 > 0 :: signed
     if r1 goto L2 else goto L4 :: bool
 L2:
 L3:
