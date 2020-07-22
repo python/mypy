@@ -65,21 +65,33 @@ def f():
     x :: int
     y :: int
     r0 :: bool
+    r1 :: native_int
+    r2, r3, r4 :: bool
 L0:
     x = 2
     y = 4
-    r0 = CPyTagged_IsEq(x, 2)
-    if r0 goto L3 else goto L4 :: bool
+    r1 = x & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    return x
+    r3 = x == 2
+    r0 = r3
+    goto L3
 L2:
-    return y
+    r4 = CPyTagged_IsEq_(x, 2)
+    r0 = r4
 L3:
-    dec_ref y :: int
-    goto L1
+    if r0 goto L6 else goto L7 :: bool
 L4:
+    return x
+L5:
+    return y
+L6:
+    dec_ref y :: int
+    goto L4
+L7:
     dec_ref x :: int
-    goto L2
+    goto L5
 
 [case testArgumentsInOps]
 def f(a: int, b: int) -> int:

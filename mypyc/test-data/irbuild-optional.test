@@ -233,33 +233,45 @@ def f(y):
     x :: union[int, None]
     r1 :: object
     r2 :: bool
-    r3 :: object
-    r4 :: None
-    r5 :: object
-    r6, r7 :: bool
-    r8 :: int
-    r9 :: None
+    r3 :: native_int
+    r4, r5, r6 :: bool
+    r7 :: object
+    r8 :: None
+    r9 :: object
+    r10, r11 :: bool
+    r12 :: int
+    r13 :: None
 L0:
     r0 = None
     r1 = box(None, r0)
     x = r1
-    r2 = CPyTagged_IsEq(y, 2)
-    if r2 goto L1 else goto L2 :: bool
+    r3 = y & 1
+    r4 = r3 == 0
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r3 = box(int, y)
-    x = r3
+    r5 = y == 2
+    r2 = r5
+    goto L3
 L2:
-    r4 = None
-    r5 = box(None, r4)
-    r6 = x is r5
-    r7 = !r6
-    if r7 goto L3 else goto L4 :: bool
+    r6 = CPyTagged_IsEq_(y, 2)
+    r2 = r6
 L3:
-    r8 = unbox(int, x)
-    y = r8
+    if r2 goto L4 else goto L5 :: bool
 L4:
-    r9 = None
-    return r9
+    r7 = box(int, y)
+    x = r7
+L5:
+    r8 = None
+    r9 = box(None, r8)
+    r10 = x is r9
+    r11 = !r10
+    if r11 goto L6 else goto L7 :: bool
+L6:
+    r12 = unbox(int, x)
+    y = r12
+L7:
+    r13 = None
+    return r13
 
 [case testUnionType]
 from typing import Union
