@@ -26,7 +26,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
-    c_pyssize_t_rprimitive, is_short_int_rprimitive
+    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -547,11 +547,8 @@ class LowLevelIRBuilder:
         if value is not None:
             return value
 
-        # generate fast binary logic ops on short ints
-        if (is_short_int_rprimitive(lreg.type) and is_short_int_rprimitive(rreg.type)
-                and expr_op in int_logical_op_mapping.keys()):
-            return self.binary_int_op(bool_rprimitive, lreg, rreg,
-                                      int_logical_op_mapping[expr_op][0], line)
+        if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_logical_op_mapping:
+            return self.compare_tagged(lreg, rreg, expr_op, line)
 
         call_c_ops_candidates = c_binary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -573,6 +570,10 @@ class LowLevelIRBuilder:
 
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two tagged integers using given op"""
+        # generate fast binary logic ops on short ints
+        if is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type):
+            return self.binary_int_op(bool_rprimitive, lhs, rhs,
+                                      int_logical_op_mapping[op][0], line)
         op_type, c_func_desc, negate_result, swap_op = int_logical_op_mapping[op]
         result = self.alloc_temp(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
