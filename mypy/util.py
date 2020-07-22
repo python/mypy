@@ -7,6 +7,7 @@ import subprocess
 import sys
 import hashlib
 import io
+import shutil
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -34,7 +35,6 @@ ENCODING_RE = \
 PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
 
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
-DEFAULT_COLUMNS = 80   # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -424,14 +424,7 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    try:
-        cols, _ = os.get_terminal_size()
-    except OSError:
-        return DEFAULT_COLUMNS
-    else:
-        if cols == 0:
-            return DEFAULT_COLUMNS
-        return cols
+    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
@@ -594,8 +587,7 @@ class FancyFormatter:
     def fit_in_terminal(self, messages: List[str],
                         fixed_terminal_width: Optional[int] = None) -> List[str]:
         """Improve readability by wrapping error messages and trimming source code."""
-        width = (fixed_terminal_width or int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
-                 get_terminal_width())
+        width = fixed_terminal_width or get_terminal_width()
         new_messages = messages.copy()
         for i, error in enumerate(messages):
             if ': error:' in error:
@@ -619,11 +611,7 @@ class FancyFormatter:
         return new_messages
 
     def colorize(self, error: str) -> str:
-        """Colorize an output line by highlighting the status and error code.
-
-        If fixed_terminal_width is given, use it instead of calling get_terminal_width()
-        (used by the daemon).
-        """
+        """Colorize an output line by highlighting the status and error code."""
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
             if not self.show_error_codes:
