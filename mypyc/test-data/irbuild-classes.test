@@ -21,14 +21,12 @@ def f(a: A) -> None:
 [out]
 def f(a):
     a :: __main__.A
-    r0 :: short_int
-    r1 :: bool
-    r2 :: None
+    r0 :: bool
+    r1 :: None
 L0:
-    r0 = 2
-    a.x = r0; r1 = is_error
-    r2 = None
-    return r2
+    a.x = 2; r0 = is_error
+    r1 = None
+    return r1
 
 [case testUserClassInList]
 class C:
@@ -43,30 +41,24 @@ def f() -> int:
 [out]
 def f():
     r0, c :: __main__.C
-    r1 :: short_int
-    r2 :: bool
-    r3, a :: list
-    r4 :: short_int
-    r5 :: object
-    r6, d :: __main__.C
-    r7 :: int
-    r8 :: short_int
-    r9 :: int
+    r1 :: bool
+    r2, a :: list
+    r3 :: object
+    r4, d :: __main__.C
+    r5 :: int
+    r6 :: int
 L0:
     r0 = C()
     c = r0
-    r1 = 10
-    c.x = r1; r2 = is_error
-    r3 = [c]
-    a = r3
-    r4 = 0
-    r5 = CPyList_GetItemShort(a, r4)
-    r6 = cast(__main__.C, r5)
-    d = r6
-    r7 = d.x
-    r8 = 2
-    r9 = CPyTagged_Add(r7, r8)
-    return r9
+    c.x = 10; r1 = is_error
+    r2 = [c]
+    a = r2
+    r3 = CPyList_GetItemShort(a, 0)
+    r4 = cast(__main__.C, r3)
+    d = r4
+    r5 = d.x
+    r6 = CPyTagged_Add(r5, 2)
+    return r6
 
 [case testMethodCall]
 class A:
@@ -80,24 +72,20 @@ def A.f(self, x, y):
     self :: __main__.A
     x :: int
     y :: str
-    r0 :: short_int
-    r1 :: int
+    r0 :: int
 L0:
-    r0 = 20
-    r1 = CPyTagged_Add(x, r0)
-    return r1
+    r0 = CPyTagged_Add(x, 20)
+    return r0
 def g(a):
     a :: __main__.A
-    r0 :: short_int
-    r1 :: str
-    r2 :: int
-    r3 :: None
+    r0 :: str
+    r1 :: int
+    r2 :: None
 L0:
-    r0 = 2
-    r1 = unicode_4 :: static  ('hi')
-    r2 = a.f(r0, r1)
-    r3 = None
-    return r3
+    r0 = unicode_4 :: static  ('hi')
+    r1 = a.f(2, r0)
+    r2 = None
+    return r2
 
 [case testForwardUse]
 def g(a: A) -> int:
@@ -129,11 +117,9 @@ def Node.length(self):
     r1 :: None
     r2 :: object
     r3, r4 :: bool
-    r5 :: short_int
-    r6 :: union[__main__.Node, None]
-    r7 :: __main__.Node
-    r8, r9 :: int
-    r10 :: short_int
+    r5 :: union[__main__.Node, None]
+    r6 :: __main__.Node
+    r7, r8 :: int
 L0:
     r0 = self.next
     r1 = None
@@ -142,15 +128,13 @@ L0:
     r4 = !r3
     if r4 goto L1 else goto L2 :: bool
 L1:
-    r5 = 2
-    r6 = self.next
-    r7 = cast(__main__.Node, r6)
-    r8 = r7.length()
-    r9 = CPyTagged_Add(r5, r8)
-    return r9
+    r5 = self.next
+    r6 = cast(__main__.Node, r5)
+    r7 = r6.length()
+    r8 = CPyTagged_Add(2, r7)
+    return r8
 L2:
-    r10 = 2
-    return r10
+    return 2
 
 [case testSubclass]
 class A:
@@ -163,28 +147,22 @@ class B(A):
 [out]
 def A.__init__(self):
     self :: __main__.A
-    r0 :: short_int
+    r0 :: bool
+    r1 :: None
+L0:
+    self.x = 20; r0 = is_error
+    r1 = None
+    return r1
+def B.__init__(self):
+    self :: __main__.B
+    r0 :: bool
     r1 :: bool
     r2 :: None
 L0:
-    r0 = 20
-    self.x = r0; r1 = is_error
+    self.x = 40; r0 = is_error
+    self.y = 60; r1 = is_error
     r2 = None
     return r2
-def B.__init__(self):
-    self :: __main__.B
-    r0 :: short_int
-    r1 :: bool
-    r2 :: short_int
-    r3 :: bool
-    r4 :: None
-L0:
-    r0 = 40
-    self.x = r0; r1 = is_error
-    r2 = 60
-    self.y = r2; r3 = is_error
-    r4 = None
-    return r4
 
 [case testAttrLvalue]
 class O(object):
@@ -197,25 +175,21 @@ def increment(o: O) -> O:
 [out]
 def O.__init__(self):
     self :: __main__.O
-    r0 :: short_int
-    r1 :: bool
-    r2 :: None
+    r0 :: bool
+    r1 :: None
 L0:
-    r0 = 2
-    self.x = r0; r1 = is_error
-    r2 = None
-    return r2
+    self.x = 2; r0 = is_error
+    r1 = None
+    return r1
 def increment(o):
     o :: __main__.O
     r0 :: int
-    r1 :: short_int
-    r2 :: int
-    r3 :: bool
+    r1 :: int
+    r2 :: bool
 L0:
     r0 = o.x
-    r1 = 2
-    r2 = CPyTagged_Add(r0, r1)
-    o.x = r2; r3 = is_error
+    r1 = CPyTagged_Add(r0, 2)
+    o.x = r1; r2 = is_error
     return o
 
 [case testSubclassSpecialize2]
@@ -701,35 +675,27 @@ def lol() -> int:
 [out]
 def C.foo(x):
     x :: int
-    r0 :: short_int
-    r1 :: int
+    r0 :: int
 L0:
-    r0 = 20
-    r1 = CPyTagged_Add(r0, x)
-    return r1
+    r0 = CPyTagged_Add(20, x)
+    return r0
 def C.bar(cls, x):
     cls :: object
     x :: int
-    r0 :: short_int
-    r1 :: int
+    r0 :: int
 L0:
-    r0 = 20
-    r1 = CPyTagged_Add(r0, x)
-    return r1
+    r0 = CPyTagged_Add(20, x)
+    return r0
 def lol():
-    r0 :: short_int
-    r1 :: int
-    r2 :: object
-    r3 :: short_int
-    r4, r5 :: int
+    r0 :: int
+    r1 :: object
+    r2, r3 :: int
 L0:
-    r0 = 2
-    r1 = C.foo(r0)
-    r2 = __main__.C :: type
-    r3 = 4
-    r4 = C.bar(r2, r3)
-    r5 = CPyTagged_Add(r1, r4)
-    return r5
+    r0 = C.foo(2)
+    r1 = __main__.C :: type
+    r2 = C.bar(r1, 4)
+    r3 = CPyTagged_Add(r0, r2)
+    return r3
 
 [case testSuper1]
 class A:
@@ -1013,50 +979,44 @@ class B(A):
 [out]
 def A.lol(self):
     self :: __main__.A
-    r0 :: short_int
-    r1 :: bool
-    r2 :: None
+    r0 :: bool
+    r1 :: None
 L0:
-    r0 = 200
-    self.x = r0; r1 = is_error
-    r2 = None
-    return r2
+    self.x = 200; r0 = is_error
+    r1 = None
+    return r1
 def A.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.A
-    r0 :: short_int
-    r1, r2 :: bool
+    r0, r1 :: bool
 L0:
-    r0 = 20
-    __mypyc_self__.x = r0; r1 = is_error
-    r2 = True
-    return r2
+    __mypyc_self__.x = 20; r0 = is_error
+    r1 = True
+    return r1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
-    r0 :: short_int
-    r1 :: bool
-    r2 :: dict
-    r3 :: str
-    r4 :: object
-    r5 :: str
-    r6 :: bool
-    r7 :: None
-    r8 :: object
-    r9, r10, r11, r12 :: bool
+    r0 :: bool
+    r1 :: dict
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: bool
+    r6 :: None
+    r7 :: object
+    r8, r9, r10, r11 :: bool
 L0:
-    r0 = 20
-    __mypyc_self__.x = r0; r1 = is_error
-    r2 = __main__.globals :: static
-    r3 = unicode_9 :: static  ('LOL')
-    r4 = CPyDict_GetItem(r2, r3)
-    r5 = cast(str, r4)
-    __mypyc_self__.y = r5; r6 = is_error
-    r7 = None
-    r8 = box(None, r7)
-    __mypyc_self__.z = r8; r9 = is_error
-    r10 = True
-    __mypyc_self__.b = r10; r11 = is_error
-    r12 = True
-    return r12
+    __mypyc_self__.x = 20; r0 = is_error
+    r1 = __main__.globals :: static
+    r2 = unicode_9 :: static  ('LOL')
+    r3 = CPyDict_GetItem(r1, r2)
+    r4 = cast(str, r3)
+    __mypyc_self__.y = r4; r5 = is_error
+    r6 = None
+    r7 = box(None, r6)
+    __mypyc_self__.z = r7; r8 = is_error
+    r9 = True
+    __mypyc_self__.b = r9; r10 = is_error
+    r11 = True
+    return r11
 
 [case testSubclassDictSpecalized]
 from typing import Dict

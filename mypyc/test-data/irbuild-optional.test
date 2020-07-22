@@ -13,18 +13,15 @@ def f(x):
     r0 :: None
     r1 :: object
     r2 :: bool
-    r3, r4 :: short_int
 L0:
     r0 = None
     r1 = box(None, r0)
     r2 = x is r1
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = 2
-    return r3
+    return 2
 L2:
-    r4 = 4
-    return r4
+    return 4
 
 [case testIsNotNone]
 from typing import Optional
@@ -41,7 +38,6 @@ def f(x):
     r0 :: None
     r1 :: object
     r2, r3 :: bool
-    r4, r5 :: short_int
 L0:
     r0 = None
     r1 = box(None, r0)
@@ -49,11 +45,9 @@ L0:
     r3 = !r2
     if r3 goto L1 else goto L2 :: bool
 L1:
-    r4 = 2
-    return r4
+    return 2
 L2:
-    r5 = 4
-    return r5
+    return 4
 
 [case testIsTruthy]
 from typing import Optional
@@ -69,17 +63,14 @@ def f(x):
     x :: union[__main__.A, None]
     r0 :: object
     r1 :: bool
-    r2, r3 :: short_int
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 2
-    return r2
+    return 2
 L2:
-    r3 = 4
-    return r3
+    return 4
 
 [case testIsTruthyOverride]
 from typing import Optional
@@ -108,7 +99,6 @@ def f(x):
     r1 :: bool
     r2 :: __main__.A
     r3 :: bool
-    r4, r5 :: short_int
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
@@ -118,11 +108,9 @@ L1:
     r3 = bool r2 :: object
     if r3 goto L2 else goto L3 :: bool
 L2:
-    r4 = 2
-    return r4
+    return 2
 L3:
-    r5 = 4
-    return r5
+    return 4
 
 [case testAssignToOptional]
 from typing import Optional
@@ -145,16 +133,14 @@ def f(x, y, z):
     r0 :: None
     r1 :: object
     r2 :: __main__.A
-    r3 :: short_int
-    r4 :: object
-    r5, a :: __main__.A
-    r6 :: short_int
-    r7 :: object
-    r8 :: bool
-    r9 :: None
-    r10 :: object
-    r11 :: bool
-    r12 :: None
+    r3 :: object
+    r4, a :: __main__.A
+    r5 :: object
+    r6 :: bool
+    r7 :: None
+    r8 :: object
+    r9 :: bool
+    r10 :: None
 L0:
     r0 = None
     r1 = box(None, r0)
@@ -162,19 +148,17 @@ L0:
     r2 = A()
     x = r2
     x = y
-    r3 = 2
-    r4 = box(short_int, r3)
-    z = r4
-    r5 = A()
-    a = r5
-    r6 = 2
-    r7 = box(short_int, r6)
-    a.a = r7; r8 = is_error
-    r9 = None
-    r10 = box(None, r9)
-    a.a = r10; r11 = is_error
-    r12 = None
-    return r12
+    r3 = box(short_int, 2)
+    z = r3
+    r4 = A()
+    a = r4
+    r5 = box(short_int, 2)
+    a.a = r5; r6 = is_error
+    r7 = None
+    r8 = box(None, r7)
+    a.a = r8; r9 = is_error
+    r10 = None
+    return r10
 
 [case testBoxOptionalListItem]
 from typing import List, Optional
@@ -185,25 +169,20 @@ def f(x: List[Optional[int]]) -> None:
 [out]
 def f(x):
     x :: list
-    r0, r1 :: short_int
-    r2 :: object
-    r3 :: bool
-    r4 :: None
-    r5 :: short_int
-    r6 :: object
-    r7 :: bool
-    r8 :: None
+    r0 :: object
+    r1 :: bool
+    r2 :: None
+    r3 :: object
+    r4 :: bool
+    r5 :: None
 L0:
-    r0 = 0
-    r1 = 0
-    r2 = box(short_int, r0)
-    r3 = CPyList_SetItem(x, r1, r2)
-    r4 = None
-    r5 = 2
-    r6 = box(None, r4)
-    r7 = CPyList_SetItem(x, r5, r6)
-    r8 = None
-    return r8
+    r0 = box(short_int, 0)
+    r1 = CPyList_SetItem(x, 0, r0)
+    r2 = None
+    r3 = box(None, r2)
+    r4 = CPyList_SetItem(x, 2, r3)
+    r5 = None
+    return r5
 
 [case testNarrowDownFromOptional]
 from typing import Optional
@@ -253,36 +232,34 @@ def f(y):
     r0 :: None
     x :: union[int, None]
     r1 :: object
-    r2 :: short_int
-    r3 :: bool
-    r4 :: object
-    r5 :: None
-    r6 :: object
-    r7, r8 :: bool
-    r9 :: int
-    r10 :: None
+    r2 :: bool
+    r3 :: object
+    r4 :: None
+    r5 :: object
+    r6, r7 :: bool
+    r8 :: int
+    r9 :: None
 L0:
     r0 = None
     r1 = box(None, r0)
     x = r1
-    r2 = 2
-    r3 = CPyTagged_IsEq(y, r2)
-    if r3 goto L1 else goto L2 :: bool
+    r2 = CPyTagged_IsEq(y, 2)
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r4 = box(int, y)
-    x = r4
+    r3 = box(int, y)
+    x = r3
 L2:
-    r5 = None
-    r6 = box(None, r5)
-    r7 = x is r6
-    r8 = !r7
-    if r8 goto L3 else goto L4 :: bool
+    r4 = None
+    r5 = box(None, r4)
+    r6 = x is r5
+    r7 = !r6
+    if r7 goto L3 else goto L4 :: bool
 L3:
-    r9 = unbox(int, x)
-    y = r9
+    r8 = unbox(int, x)
+    y = r8
 L4:
-    r10 = None
-    return r10
+    r9 = None
+    return r9
 
 [case testUnionType]
 from typing import Union
@@ -302,10 +279,9 @@ def f(x):
     r1 :: int32
     r2 :: bool
     r3 :: int
-    r4 :: short_int
-    r5 :: int
-    r6 :: __main__.A
-    r7 :: int
+    r4 :: int
+    r5 :: __main__.A
+    r6 :: int
 L0:
     r0 = int
     r1 = PyObject_IsInstance(x, r0)
@@ -313,13 +289,12 @@ L0:
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = unbox(int, x)
-    r4 = 2
-    r5 = CPyTagged_Add(r3, r4)
-    return r5
+    r4 = CPyTagged_Add(r3, 2)
+    return r4
 L2:
-    r6 = cast(__main__.A, x)
-    r7 = r6.a
-    return r7
+    r5 = cast(__main__.A, x)
+    r6 = r5.a
+    return r6
 L3:
     unreachable
 
@@ -331,14 +306,12 @@ def f(x: List[Union[int, str]]) -> object:
 [out]
 def f(x):
     x :: list
-    r0 :: short_int
-    r1 :: object
-    r2 :: union[int, str]
+    r0 :: object
+    r1 :: union[int, str]
 L0:
-    r0 = 0
-    r1 = CPyList_GetItemShort(x, r0)
-    r2 = cast(union[int, str], r1)
-    return r2
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = cast(union[int, str], r0)
+    return r1
 
 [case testUnionAttributeAccess]
 from typing import Union
@@ -419,57 +392,53 @@ L0:
 def C.f(self, x):
     self :: __main__.C
     x :: object
-    r0 :: short_int
 L0:
-    r0 = 0
-    return r0
+    return 0
 def g(o):
     o :: union[__main__.A, __main__.B, __main__.C]
-    r0 :: short_int
-    r1, r2 :: object
-    r3 :: bool
-    r4 :: __main__.A
-    r5 :: int
-    r6, r7 :: object
-    r8 :: bool
-    r9 :: __main__.B
-    r10, r11 :: object
-    r12 :: __main__.C
-    r13 :: object
-    r14 :: int
-    r15, z :: object
-    r16 :: None
+    r0, r1 :: object
+    r2 :: bool
+    r3 :: __main__.A
+    r4 :: int
+    r5, r6 :: object
+    r7 :: bool
+    r8 :: __main__.B
+    r9, r10 :: object
+    r11 :: __main__.C
+    r12 :: object
+    r13 :: int
+    r14, z :: object
+    r15 :: None
 L0:
-    r0 = 2
-    r2 = __main__.A :: type
-    r3 = type_is o, r2
-    if r3 goto L1 else goto L2 :: bool
+    r1 = __main__.A :: type
+    r2 = type_is o, r1
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r4 = cast(__main__.A, o)
-    r5 = r4.f(r0)
-    r6 = box(int, r5)
-    r1 = r6
+    r3 = cast(__main__.A, o)
+    r4 = r3.f(2)
+    r5 = box(int, r4)
+    r0 = r5
     goto L5
 L2:
-    r7 = __main__.B :: type
-    r8 = type_is o, r7
-    if r8 goto L3 else goto L4 :: bool
+    r6 = __main__.B :: type
+    r7 = type_is o, r6
+    if r7 goto L3 else goto L4 :: bool
 L3:
-    r9 = cast(__main__.B, o)
-    r10 = box(short_int, r0)
-    r11 = r9.f(r10)
-    r1 = r11
+    r8 = cast(__main__.B, o)
+    r9 = box(short_int, 2)
+    r10 = r8.f(r9)
+    r0 = r10
     goto L5
 L4:
-    r12 = cast(__main__.C, o)
-    r13 = box(short_int, r0)
-    r14 = r12.f(r13)
-    r15 = box(int, r14)
-    r1 = r15
+    r11 = cast(__main__.C, o)
+    r12 = box(short_int, 2)
+    r13 = r11.f(r12)
+    r14 = box(int, r13)
+    r0 = r14
 L5:
-    z = r1
-    r16 = None
-    return r16
+    z = r0
+    r15 = None
+    return r15
 
 [case testUnionWithNonNativeItem]
 from typing import Union

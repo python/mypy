@@ -15,14 +15,12 @@ L0:
     return x
 def g(x):
     x :: list
-    r0 :: short_int
-    r1 :: object
-    r2 :: list
+    r0 :: object
+    r1 :: list
 L0:
-    r0 = 0
-    r1 = CPyList_GetItemShort(x, r0)
-    r2 = [r1]
-    return r2
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = [r0]
+    return r1
 def h(x, y):
     x :: int
     y :: list
@@ -52,25 +50,21 @@ def f() -> None:
 [out]
 def f():
     r0, c :: __main__.C
-    r1 :: short_int
-    r2 :: object
-    r3 :: bool
-    r4 :: short_int
-    r5 :: object
-    r6, r7 :: int
-    r8 :: None
+    r1 :: object
+    r2 :: bool
+    r3 :: object
+    r4, r5 :: int
+    r6 :: None
 L0:
     r0 = C()
     c = r0
-    r1 = 2
-    r2 = box(short_int, r1)
-    c.x = r2; r3 = is_error
-    r4 = 4
-    r5 = c.x
-    r6 = unbox(int, r5)
-    r7 = CPyTagged_Add(r4, r6)
-    r8 = None
-    return r8
+    r1 = box(short_int, 2)
+    c.x = r1; r2 = is_error
+    r3 = c.x
+    r4 = unbox(int, r3)
+    r5 = CPyTagged_Add(4, r4)
+    r6 = None
+    return r6
 
 [case testGenericMethod]
 from typing import TypeVar, Generic
@@ -116,26 +110,22 @@ def f(x):
     x :: __main__.C
     r0 :: object
     r1, y :: int
-    r2 :: short_int
-    r3 :: int
-    r4 :: object
-    r5 :: None
-    r6 :: short_int
-    r7 :: object
-    r8 :: __main__.C
-    r9 :: None
+    r2 :: int
+    r3 :: object
+    r4 :: None
+    r5 :: object
+    r6 :: __main__.C
+    r7 :: None
 L0:
     r0 = x.get()
     r1 = unbox(int, r0)
     y = r1
-    r2 = 2
-    r3 = CPyTagged_Add(y, r2)
-    r4 = box(int, r3)
-    r5 = x.set(r4)
-    r6 = 4
-    r7 = box(short_int, r6)
-    r8 = C(r7)
-    x = r8
-    r9 = None
-    return r9
+    r2 = CPyTagged_Add(y, 2)
+    r3 = box(int, r2)
+    r4 = x.set(r3)
+    r5 = box(short_int, 4)
+    r6 = C(r5)
+    x = r6
+    r7 = None
+    return r7
 

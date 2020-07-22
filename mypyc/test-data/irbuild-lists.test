@@ -5,14 +5,12 @@ def f(x: List[int]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: short_int
-    r1 :: object
-    r2 :: int
+    r0 :: object
+    r1 :: int
 L0:
-    r0 = 0
-    r1 = CPyList_GetItemShort(x, r0)
-    r2 = unbox(int, r1)
-    return r2
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = unbox(int, r0)
+    return r1
 
 [case testListOfListGet]
 from typing import List
@@ -21,14 +19,12 @@ def f(x: List[List[int]]) -> List[int]:
 [out]
 def f(x):
     x :: list
-    r0 :: short_int
-    r1 :: object
-    r2 :: list
+    r0 :: object
+    r1 :: list
 L0:
-    r0 = 0
-    r1 = CPyList_GetItemShort(x, r0)
-    r2 = cast(list, r1)
-    return r2
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = cast(list, r0)
+    return r1
 
 [case testListOfListGet2]
 from typing import List
@@ -37,20 +33,16 @@ def f(x: List[List[int]]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: short_int
-    r1 :: object
-    r2 :: list
-    r3 :: short_int
-    r4 :: object
-    r5 :: int
+    r0 :: object
+    r1 :: list
+    r2 :: object
+    r3 :: int
 L0:
-    r0 = 0
-    r1 = CPyList_GetItemShort(x, r0)
-    r2 = cast(list, r1)
-    r3 = 2
-    r4 = CPyList_GetItemShort(r2, r3)
-    r5 = unbox(int, r4)
-    return r5
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = cast(list, r0)
+    r2 = CPyList_GetItemShort(r1, 2)
+    r3 = unbox(int, r2)
+    return r3
 
 [case testListSet]
 from typing import List
@@ -59,17 +51,14 @@ def f(x: List[int]) -> None:
 [out]
 def f(x):
     x :: list
-    r0, r1 :: short_int
-    r2 :: object
-    r3 :: bool
-    r4 :: None
+    r0 :: object
+    r1 :: bool
+    r2 :: None
 L0:
-    r0 = 2
-    r1 = 0
-    r2 = box(short_int, r0)
-    r3 = CPyList_SetItem(x, r1, r2)
-    r4 = None
-    return r4
+    r0 = box(short_int, 2)
+    r1 = CPyList_SetItem(x, 0, r0)
+    r2 = None
+    return r2
 
 [case testNewListEmpty]
 from typing import List
@@ -91,19 +80,16 @@ def f() -> None:
     x: List[int] = [1, 2]
 [out]
 def f():
-    r0, r1 :: short_int
-    r2, r3 :: object
-    r4, x :: list
-    r5 :: None
+    r0, r1 :: object
+    r2, x :: list
+    r3 :: None
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = box(short_int, r0)
-    r3 = box(short_int, r1)
-    r4 = [r2, r3]
-    x = r4
-    r5 = None
-    return r5
+    r0 = box(short_int, 2)
+    r1 = box(short_int, 4)
+    r2 = [r0, r1]
+    x = r2
+    r3 = None
+    return r3
 
 [case testListMultiply]
 from typing import List
@@ -113,24 +99,19 @@ def f(a: List[int]) -> None:
 [out]
 def f(a):
     a :: list
-    r0 :: short_int
-    r1, b :: list
-    r2, r3 :: short_int
-    r4 :: object
-    r5, r6 :: list
-    r7 :: None
+    r0, b :: list
+    r1 :: object
+    r2, r3 :: list
+    r4 :: None
 L0:
-    r0 = 4
-    r1 = CPySequence_Multiply(a, r0)
-    b = r1
-    r2 = 6
-    r3 = 8
-    r4 = box(short_int, r3)
-    r5 = [r4]
-    r6 = CPySequence_RMultiply(r2, r5)
-    b = r6
-    r7 = None
-    return r7
+    r0 = CPySequence_Multiply(a, 4)
+    b = r0
+    r1 = box(short_int, 8)
+    r2 = [r1]
+    r3 = CPySequence_RMultiply(6, r2)
+    b = r3
+    r4 = None
+    return r4
 
 [case testListLen]
 from typing import List
@@ -171,33 +152,29 @@ def increment(l: List[int]) -> List[int]:
 [out]
 def increment(l):
     l :: list
-    r0, r1, r2 :: short_int
+    r0, r1 :: short_int
     i :: int
-    r3 :: bool
-    r4 :: object
-    r5 :: short_int
-    r6, r7 :: object
-    r8 :: bool
-    r9, r10 :: short_int
+    r2 :: bool
+    r3 :: object
+    r4, r5 :: object
+    r6 :: bool
+    r7 :: short_int
 L0:
-    r0 = 0
-    r1 = len l :: list
-    r2 = r0
-    i = r2
+    r0 = len l :: list
+    r1 = 0
+    i = r1
 L1:
-    r3 = r2 < r1 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r2 = r1 < r0 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r4 = CPyList_GetItem(l, i)
-    r5 = 2
-    r6 = box(short_int, r5)
-    r7 = r4 += r6
-    r8 = CPyList_SetItem(l, i, r7)
+    r3 = CPyList_GetItem(l, i)
+    r4 = box(short_int, 2)
+    r5 = r3 += r4
+    r6 = CPyList_SetItem(l, i, r5)
 L3:
-    r9 = 2
-    r10 = r2 + r9
-    r2 = r10
-    i = r10
+    r7 = r1 + 2
+    r1 = r7
+    i = r7
     goto L1
 L4:
     return l
@@ -209,21 +186,17 @@ def f(x: List[int], y: List[int]) -> List[int]:
 [out]
 def f(x, y):
     x, y :: list
-    r0, r1, r2 :: short_int
-    r3, r4 :: object
-    r5 :: list
-    r6, r7, r8 :: object
-    r9 :: int32
+    r0, r1 :: object
+    r2 :: list
+    r3, r4, r5 :: object
+    r6 :: int32
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = box(short_int, r0)
-    r4 = box(short_int, r1)
-    r5 = [r3, r4]
-    r6 = CPyList_Extend(r5, x)
-    r7 = CPyList_Extend(r5, y)
-    r8 = box(short_int, r2)
-    r9 = PyList_Append(r5, r8)
-    return r5
+    r0 = box(short_int, 2)
+    r1 = box(short_int, 4)
+    r2 = [r0, r1]
+    r3 = CPyList_Extend(r2, x)
+    r4 = CPyList_Extend(r2, y)
+    r5 = box(short_int, 6)
+    r6 = PyList_Append(r2, r5)
+    return r2
 
