@@ -350,7 +350,9 @@ def make_simplified_union(items: Sequence[Type],
             item.fallback.type.fullname == 'builtins.str')
            for item in items):
         seen = set()    # type: Set[str]
-        for index, item in enumerate(cast(Iterable[LiteralType], items)):
+        for index, item in enumerate(items):
+            assert isinstance(item, LiteralType)
+            assert isinstance(item.value, str)
             if item.value in seen:
                 removed.add(index)
             seen.add(item.value)
