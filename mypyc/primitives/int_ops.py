@@ -114,10 +114,6 @@ int_binary_op('*=', 'CPyTagged_Multiply')
 int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 
-int_compare_op('<=', 'CPyTagged_IsLe')
-int_compare_op('>', 'CPyTagged_IsGt')
-int_compare_op('>=', 'CPyTagged_IsGe')
-
 # Add short integers and assume that it doesn't overflow or underflow.
 # Assume that the operands are not big integers.
 unsafe_short_add = custom_op(
@@ -170,5 +166,8 @@ int_less_than_ = c_custom_op(
 int_logical_op_mapping = {
     '==': IntLogicalOpDescrption(BinaryIntOp.EQ, int_equal_, False, False),
     '!=': IntLogicalOpDescrption(BinaryIntOp.NEQ, int_equal_, True, False),
-    '<': IntLogicalOpDescrption(BinaryIntOp.SLT, int_less_than_, False, False)
+    '<': IntLogicalOpDescrption(BinaryIntOp.SLT, int_less_than_, False, False),
+    '<=': IntLogicalOpDescrption(BinaryIntOp.SLE, int_less_than_, True, True),
+    '>': IntLogicalOpDescrption(BinaryIntOp.SGT, int_less_than_, False, True),
+    '>=': IntLogicalOpDescrption(BinaryIntOp.SGE, int_less_than_, True, False),
 }  # type: Dict[str, IntLogicalOpDescrption]
