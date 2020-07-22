@@ -15,14 +15,15 @@ They is no runtime enforcement by the Python runtime.
 
 .. note::
 
-   These are experimental features. They might change in later
-   versions of mypy. The *final* qualifiers are available through the
-   ``typing_extensions`` package on PyPI.
+    The examples in this page import ``Final`` and ``final`` from the
+    ``typing`` module. These types were added to ``typing`` in Python 3.8,
+    but are also available for use in Python 2.7 and 3.4 - 3.7 via the
+    ``typing_extensions`` package.
 
 Final names
 -----------
 
-You can use the ``typing_extensions.Final`` qualifier to indicate that
+You can use the ``typing.Final`` qualifier to indicate that
 a name or attribute should not be reassigned, redefined, or
 overridden.  This is often useful for module and class level constants
 as a way to prevent unintended modification.  Mypy will prevent
@@ -30,7 +31,7 @@ further assignments to final names in type-checked code:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    RATE: Final = 3000
 
@@ -45,7 +46,7 @@ from being overridden in a subclass:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    class Window:
        BORDER_WIDTH: Final = 2.5
@@ -155,12 +156,11 @@ Final methods
 -------------
 
 Like with attributes, sometimes it is useful to protect a method from
-overriding. You can use the ``typing_extensions.final``
-decorator for this purpose:
+overriding. You can use the ``typing.final`` decorator for this purpose:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    class Base:
        @final
@@ -193,12 +193,12 @@ to make it final (or on the first overload in stubs):
 Final classes
 -------------
 
-You can apply the ``typing_extensions.final`` decorator to a class to indicate
+You can apply the ``typing.final`` decorator to a class to indicate
 to mypy that it should not be subclassed:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    @final
    class Leaf:
@@ -227,7 +227,7 @@ mypy, since those attributes could never be implemented.
 .. code-block:: python
 
     from abc import ABCMeta, abstractmethod
-    from typing_extensions import final
+    from typing import final
 
     @final
     class A(metaclass=ABCMeta):  # error: Final class A has abstract attributes "f"
