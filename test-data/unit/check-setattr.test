@@ -1,0 +1,12 @@
+[case testSetAttrWithProperty]
+from typing import Any
+class Foo:
+    _a = 1
+    def __setattr__(self, name: str, value: Any) -> None:
+        self._a = value
+    @property
+    def a(self) -> int:
+        return self._a
+f = Foo()
+f.a = 2
+[builtins fixtures/property.pyi]
