@@ -15,7 +15,10 @@ import types
 import warnings
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import (
+    Any, Dict, Generic, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union,
+    cast,
+)
 
 from typing_extensions import Type
 
@@ -27,7 +30,7 @@ from mypy.config_parser import parse_config_file
 from mypy.errors import Errors
 from mypy.options import Options
 from mypy.plugin import Plugin
-from mypy.util import FancyFormatter
+from mypy.util import read_py_file, FancyFormatter
 
 
 class Missing:
@@ -923,7 +926,12 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
 _all_stubs = {}  # type: Dict[str, nodes.MypyFile]
 
 
-def build_stubs(modules: List[str], options: Options, find_submodules: bool = False, extra_plugins: Optional[Sequence[Plugin]] = None) -> List[str]:
+def build_stubs(
+    modules: List[str],
+    options: Options,
+    find_submodules: bool = False,
+    extra_plugins: Optional[Sequence[Plugin]] = None,
+) -> List[str]:
     """Uses mypy to construct stub objects for the given modules.
 
     This sets global state that ``get_stub`` can access.
@@ -1045,9 +1053,9 @@ def test_stubs(args: argparse.Namespace) -> int:
     options.custom_typeshed_dir = args.custom_typeshed_dir
     options.config_file = args.config_file
 
-    plugins = []
+    plugins = None # type: Optional[Sequence[Plugin]]
     if options.config_file:
-        def set_strict_flags() -> None: # not needed yet
+        def set_strict_flags() -> None:  # not needed yet
             return
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
         errors = Errors(options.show_error_context,
@@ -1059,7 +1067,12 @@ def test_stubs(args: argparse.Namespace) -> int:
         plugins, _ = mypy.build.load_plugins_from_config(options, errors, sys.stdout)
 
     try:
-        modules = build_stubs(modules, options, find_submodules=not args.check_typeshed, extra_plugins=plugins)
+        modules = build_stubs(
+            modules,
+            options,
+            find_submodules=not args.check_typeshed,
+            extra_plugins=plugins,
+        )
     except RuntimeError:
         return 1
 
@@ -1151,10 +1164,11 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         help="Ignore unused whitelist entries",
     )
     config_group = parser.add_argument_group(
-    title='Config file',
-    description="Use a config file instead of command line arguments. "
-                "Plugins are the only supported configurations as of right "
-                "now.")
+        title='Config file',
+        description="Use a config file instead of command line arguments. "
+                    "Plugins are the only supported configurations as of right "
+                    "now.",
+    )
     config_group.add_argument(
         '--config-file',
         help="Configuration file, must have a [mypy] section "
