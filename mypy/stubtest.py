@@ -1153,8 +1153,8 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     config_group = parser.add_argument_group(
     title='Config file',
     description="Use a config file instead of command line arguments. "
-                "This is useful if you are using many flags or want "
-                "to set different options per each module.")
+                "Plugins are the only supported configurations as of right "
+                "now.")
     config_group.add_argument(
         '--config-file',
         help="Configuration file, must have a [mypy] section "
