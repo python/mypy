@@ -239,7 +239,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
     return [sig for sig in sigs if is_unique_args(sig)]
 
 
-def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
+def infer_arg_sig_from_anon_docstring(docstr: str) -> List[ArgSig]:
     """Convert signature in form of "(self: TestClass, arg0: str='ada')" to List[TypedArgList]."""
     ret = infer_sig_from_docstring("stub" + docstr, "stub")
     if ret:
@@ -247,7 +247,7 @@ def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
     return []
 
 
-def infer_ret_type_sig_from_docstring(docstr: str) -> Optional[str]:
+def infer_ret_type_sig_from_anon_docstring(docstr: str) -> Optional[str]:
     """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
     ret = infer_sig_from_docstring("stub" + docstr.strip(), "stub")
     if ret:

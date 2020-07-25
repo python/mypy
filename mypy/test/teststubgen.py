@@ -25,7 +25,7 @@ from mypy.stubgenc import (
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring, FunctionSig, ArgSig,
-    infer_arg_sig_from_docstring, is_valid_type
+    infer_arg_sig_from_anon_docstring, is_valid_type
 )
 from mypy.moduleinspect import ModuleInspect, InspectError
 
@@ -272,12 +272,12 @@ class StubgenUtilSuite(unittest.TestCase):
              x
             """, 'func'), None)
 
-    def test_infer_arg_sig_from_docstring(self) -> None:
-        assert_equal(infer_arg_sig_from_docstring("(*args, **kwargs)"),
+    def test_infer_arg_sig_from_anon_docstring(self) -> None:
+        assert_equal(infer_arg_sig_from_anon_docstring("(*args, **kwargs)"),
                      [ArgSig(name='*args'), ArgSig(name='**kwargs')])
 
         assert_equal(
-            infer_arg_sig_from_docstring(
+            infer_arg_sig_from_anon_docstring(
                 "(x: Tuple[int, Tuple[str, int], str]=(1, ('a', 2), 'y'), y: int=4)"),
             [ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=True),
              ArgSig(name='y', type='int', default=True)])
