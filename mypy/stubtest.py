@@ -28,6 +28,7 @@ import mypy.types
 from mypy import defaults, nodes
 from mypy.config_parser import parse_config_file
 from mypy.errors import Errors
+from mypy.fscache import FileSystemCache
 from mypy.options import Options
 from mypy.plugin import Plugin
 from mypy.util import read_py_file, FancyFormatter
@@ -1053,16 +1054,17 @@ def test_stubs(args: argparse.Namespace) -> int:
     options.custom_typeshed_dir = args.custom_typeshed_dir
     options.config_file = args.config_file
 
-    plugins = None # type: Optional[Sequence[Plugin]]
+    plugins = None  # type: Optional[Sequence[Plugin]]
     if options.config_file:
         def set_strict_flags() -> None:  # not needed yet
             return
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+        fscache = FileSystemCache()
         errors = Errors(options.show_error_context,
                         options.show_column_numbers,
                         options.show_error_codes,
                         options.pretty,
-                        lambda path: read_py_file(path, cached_read, options.python_version),
+                        lambda path: read_py_file(path, fscache.read, options.python_version),
                         options.show_absolute_path)
         plugins, _ = mypy.build.load_plugins_from_config(options, errors, sys.stdout)
 
