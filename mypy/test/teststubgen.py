@@ -783,7 +783,7 @@ class StubgencSuite(unittest.TestCase):
     def test_generate_c_property_with_pybind11(self) -> None:
         """Signatures included by PyBind11 inside property.fget are read."""
         class TestClass:
-            def get_attribute(self) -> str:
+            def get_attribute(self) -> None:
                 """
                 (self: TestClass) -> str
                 """
