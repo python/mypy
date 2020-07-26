@@ -120,6 +120,10 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_rstruct(self, typ: 'RStruct') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_rvoid(self, typ: 'RVoid') -> T:
         raise NotImplementedError
 
@@ -364,6 +368,9 @@ class TupleNameVisitor(RTypeVisitor[str]):
         parts = [elem.accept(self) for elem in t.types]
         return 'T{}{}'.format(len(parts), ''.join(parts))
 
+    def visit_rstruct(self, t: 'RStruct') -> str:
+        return "S"
+
     def visit_rvoid(self, t: 'RVoid') -> str:
         assert False, "rvoid in tuple?"
 
@@ -434,6 +441,41 @@ dict_next_rtuple_pair = RTuple(
 dict_next_rtuple_single = RTuple(
     [bool_rprimitive, int_rprimitive, object_rprimitive]
 )
+
+
+class RStruct(RType):
+    """
+    """
+    def __init__(self, name: str, names: List[str], types: List[RType]) -> None:
+        self.name = name
+        self.names = names
+        self.types = types
+        self._ctype = self.name
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_rstruct(self)
+
+    def __str__(self) -> str:
+        return '%s{%s}' % (self.name, ', '.join(str(typ) for typ in self.types))
+
+    def __repr__(self) -> str:
+        return '<RStruct %s{%s}>' % (self.name, ', '.join(repr(typ) for typ in self.types))
+
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, RStruct) and self.name == other.name
+                and self.names == other.names and self.types == other.types)
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.names, self.types))
+
+    def serialize(self) -> JsonDict:
+        types = [x.serialize() for x in self.types]
+        return {'.class': 'RStruct', 'name': self.name, 'names': self.names, 'types': types}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RStruct':
+        types = [deserialize_type(t, ctx) for t in data['types']]
+        return RStruct(data['name'], data['names'], types)
 
 
 class RInstance(RType):
