@@ -35,6 +35,7 @@ from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
 from mypyc.common import IS_32_BIT_PLATFORM
 
+
 class TestFunctionEmitterVisitor(unittest.TestCase):
     def setUp(self) -> None:
         self.env = Environment()
