@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, PtrDeref
+    BinaryIntOp, LoadMem
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive
@@ -464,12 +464,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
                                                op.op_str[op.op], rhs_cast, rhs))
 
-    def visit_ptr_deref(self, op: PtrDeref) -> None:
+    def visit_load_mem(self, op: LoadMem) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
-        self.emit_line('%s = *(%s*)(%s)' % (dest, type, src))
+        self.emit_line('%s = *(%s*)%s' % (dest, type, src))
 
     # Helpers
 

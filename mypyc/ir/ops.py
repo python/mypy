@@ -1347,10 +1347,10 @@ class BinaryIntOp(RegisterOp):
         return visitor.visit_binary_int_op(self)
 
 
-class PtrDeref(RegisterOp):
-    """Pointer Dereference
+class LoadMem(RegisterOp):
+    """Reading a memory location
 
-    type ret = *(type*)(src)
+    type ret = *(type*)src
     """
     error_kind = ERR_NEVER
 
@@ -1363,10 +1363,10 @@ class PtrDeref(RegisterOp):
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = ptr_deref %r :: %r*", self, self.src, self.type)
+        return env.format("%r = load_mem %r :: %r*", self, self.src, self.type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_ptr_deref(self)
+        return visitor.visit_load_mem(self)
 
 
 @trait
@@ -1476,7 +1476,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_ptr_deref(self, op: PtrDeref) -> T:
+    def visit_load_mem(self, op: LoadMem) -> T:
         raise NotImplementedError
 
 
