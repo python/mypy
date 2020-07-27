@@ -301,6 +301,10 @@ def is_int64_rprimitive(rtype: RType) -> bool:
     return rtype is int64_rprimitive
 
 
+def is_c_py_ssize_t_rprimitive(rtype: RType) -> bool:
+    return rtype is c_pyssize_t_rprimitive
+
+
 def is_float_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.float'
 

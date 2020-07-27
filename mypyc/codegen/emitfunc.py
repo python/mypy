@@ -469,7 +469,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         src = self.reg(op.src)
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
-        self.emit_line('%s = *(%s*)%s' % (dest, type, src))
+        self.emit_line('%s = *(%s*)%s;' % (dest, type, src))
 
     # Helpers
 
