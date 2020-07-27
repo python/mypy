@@ -25,7 +25,7 @@ from typing_extensions import Type
 import mypy.build
 import mypy.modulefinder
 import mypy.types
-from mypy import defaults, nodes
+from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
@@ -1052,7 +1052,7 @@ def test_stubs(args: argparse.Namespace) -> int:
     options = Options()
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
-    options.config_file = args.config_file
+    options.config_file = args.mypy_config_file
 
     plugins = None  # type: Optional[Sequence[Plugin]]
     if options.config_file:
