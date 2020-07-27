@@ -1166,15 +1166,15 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         help="Ignore unused whitelist entries",
     )
     config_group = parser.add_argument_group(
-        title='Config file',
+        title='mypy config file',
         description="Use a config file instead of command line arguments. "
-                    "Plugins are the only supported configurations as of right "
-                    "now.",
+                    "Plugins and mypy path are the only supported "
+                    "configurations.",
     )
     config_group.add_argument(
-        '--config-file',
-        help="Configuration file, must have a [mypy] section "
-             "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
+        '--mypy-config-file',
+        help="Configuration file, must have a [mypy] section",
+    )
 
     return parser.parse_args(args)
 
