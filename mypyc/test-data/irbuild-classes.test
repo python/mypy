@@ -372,7 +372,7 @@ L0:
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
-    r4 = import r3 :: str
+    r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
     r5 = typing :: module
@@ -381,7 +381,7 @@ L2:
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
-    r9 = import r8 :: str
+    r9 = PyImport_Import(r8)
     typing = r9 :: module
 L4:
     r10 = typing :: module
@@ -400,7 +400,7 @@ L4:
     if r22 goto L6 else goto L5 :: bool
 L5:
     r23 = unicode_4 :: static  ('mypy_extensions')
-    r24 = import r23 :: str
+    r24 = PyImport_Import(r23)
     mypy_extensions = r24 :: module
 L6:
     r25 = mypy_extensions :: module

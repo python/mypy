@@ -128,7 +128,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     builder.add(Return(vself))
 
     builder.activate_block(instance_block)
-    builder.add(Return(builder.primitive_op(method_new_op, [vself, builder.read(instance)], line)))
+    builder.add(Return(builder.call_c(method_new_op, [vself, builder.read(instance)], line)))
 
     blocks, env, _, fn_info = builder.leave()
 

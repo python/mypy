@@ -279,7 +279,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     if decl.kind != FUNC_STATICMETHOD:
         vself = next(iter(builder.environment.indexes))  # grab first argument
         if decl.kind == FUNC_CLASSMETHOD:
-            vself = builder.primitive_op(type_op, [vself], expr.line)
+            vself = builder.call_c(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
             # For generator classes, the self target is the 6th value
             # in the symbol table (which is an ordered dict). This is sort
@@ -570,7 +570,7 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
     args = [get_arg(expr.begin_index),
             get_arg(expr.end_index),
             get_arg(expr.stride)]
-    return builder.primitive_op(new_slice_op, args, expr.line)
+    return builder.call_c(new_slice_op, args, expr.line)
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:

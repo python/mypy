@@ -1585,7 +1585,7 @@ L0:
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
-    r4 = import r3 :: str
+    r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
     r5 = __main__.globals :: static
@@ -2636,7 +2636,7 @@ L0:
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
-    r4 = import r3 :: str
+    r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
     r5 = typing :: module
@@ -2645,7 +2645,7 @@ L2:
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
-    r9 = import r8 :: str
+    r9 = PyImport_Import(r8)
     typing = r9 :: module
 L4:
     r10 = typing :: module
@@ -2854,7 +2854,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.g_a_obj
@@ -2913,7 +2913,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def g_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.g_b_obj
@@ -2972,7 +2972,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
@@ -3065,7 +3065,7 @@ L0:
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
-    r4 = import r3 :: str
+    r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
     r5 = typing :: module
@@ -3074,7 +3074,7 @@ L2:
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
-    r9 = import r8 :: str
+    r9 = PyImport_Import(r8)
     typing = r9 :: module
 L4:
     r10 = typing :: module
@@ -3122,7 +3122,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.g_a_obj
@@ -3191,7 +3191,7 @@ L0:
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
-    r4 = import r3 :: str
+    r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
     r5 = typing :: module
@@ -3200,7 +3200,7 @@ L2:
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
-    r9 = import r8 :: str
+    r9 = PyImport_Import(r8)
     typing = r9 :: module
 L4:
     r10 = typing :: module

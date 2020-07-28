@@ -259,7 +259,7 @@ class IRBuilder:
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)
-        value = self.primitive_op(import_op, [self.load_static_unicode(id)], line)
+        value = self.call_c(import_op, [self.load_static_unicode(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
