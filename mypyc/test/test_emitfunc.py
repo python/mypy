@@ -277,10 +277,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_load_mem(self) -> None:
         if IS_32_BIT_PLATFORM:
             self.assert_emit(LoadMem(bool_rprimitive, self.i32),
-                             """cpy_r_r0 = *(char*)cpy_r_i32;""")
+                             """cpy_r_r0 = *(char *)cpy_r_i32;""")
         else:
             self.assert_emit(LoadMem(bool_rprimitive, self.i64),
-                             """cpy_r_r0 = *(char*)cpy_r_i64;""")
+                             """cpy_r_r0 = *(char *)cpy_r_i64;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
