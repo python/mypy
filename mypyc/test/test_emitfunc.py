@@ -10,7 +10,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -33,6 +33,7 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
+from mypyc.common import IS_32_BIT_PLATFORM
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
@@ -272,6 +273,14 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r03 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
         self.assert_emit(BinaryIntOp(bool_rprimitive, self.i64, self.i64_1, BinaryIntOp.ULT, 1),
                          """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
+
+    def test_load_mem(self) -> None:
+        if IS_32_BIT_PLATFORM:
+            self.assert_emit(LoadMem(bool_rprimitive, self.i32),
+                             """cpy_r_r0 = *(char *)cpy_r_i32;""")
+        else:
+            self.assert_emit(LoadMem(bool_rprimitive, self.i64),
+                             """cpy_r_r0 = *(char *)cpy_r_i64;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
