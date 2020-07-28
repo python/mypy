@@ -52,7 +52,7 @@ jobs:
       - EXTRA_ARGS="-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
   - name: "run mypyc runtime tests with python 3.6 on OS X"
     os: osx
-    osx_image: xcode8.3
+    osx_image: xcode10.3
     language: generic
     env:
       - PYTHONVERSION=3.6.3
