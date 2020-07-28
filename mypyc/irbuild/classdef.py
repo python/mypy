@@ -505,7 +505,7 @@ def dataclass_finalize(
     """
     finish_non_ext_dict(builder, non_ext, cdef.line)
     dec = builder.accept(next(d for d in cdef.decorators if is_dataclass_decorator(d)))
-    builder.primitive_op(
+    builder.call_c(
         dataclass_sleight_of_hand, [dec, type_obj, non_ext.dict, non_ext.anns], cdef.line)
 
 

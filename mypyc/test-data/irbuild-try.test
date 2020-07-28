@@ -356,7 +356,7 @@ def foo(x):
     r29 :: None
 L0:
     r0 = py_call(x)
-    r1 = type r0 :: object
+    r1 = PyObject_Type(r0)
     r2 = unicode_3 :: static  ('__exit__')
     r3 = getattr r1, r2
     r4 = unicode_4 :: static  ('__enter__')

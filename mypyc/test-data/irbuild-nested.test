@@ -45,7 +45,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_a_obj
@@ -83,7 +83,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def second_b_first_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.second_b_first_obj
@@ -109,7 +109,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def first_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.first_b_obj
@@ -154,7 +154,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_c_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: __main__.inner_c_obj
@@ -193,7 +193,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_d_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: __main__.inner_d_obj
@@ -288,7 +288,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_a_obj
@@ -330,7 +330,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_b_obj
@@ -376,7 +376,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_c_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_c_obj
@@ -400,7 +400,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_c_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_c_obj_0
@@ -462,7 +462,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def c_a_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.c_a_b_obj
@@ -488,7 +488,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def b_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.b_a_obj
@@ -558,7 +558,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_f_obj
@@ -582,7 +582,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def inner_f_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_f_obj_0
@@ -651,7 +651,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def foo_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.foo_f_obj
@@ -677,7 +677,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def bar_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.bar_f_obj
@@ -703,7 +703,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def baz_f_obj.__call__(__mypyc_self__, n):
     __mypyc_self__ :: __main__.baz_f_obj
@@ -796,7 +796,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def __mypyc_lambda__0_f_obj.__call__(__mypyc_self__, a, b):
     __mypyc_self__ :: __main__.__mypyc_lambda__0_f_obj
@@ -818,7 +818,7 @@ L0:
 L1:
     return __mypyc_self__
 L2:
-    r2 = method_new __mypyc_self__, instance
+    r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
 def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
     __mypyc_self__ :: __main__.__mypyc_lambda__1_f_obj

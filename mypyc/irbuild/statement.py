@@ -534,7 +534,7 @@ def transform_with(builder: IRBuilder,
     # We could probably optimize the case where the manager is compiled by us,
     # but that is not our common case at all, so.
     mgr_v = builder.accept(expr)
-    typ = builder.primitive_op(type_op, [mgr_v], line)
+    typ = builder.call_c(type_op, [mgr_v], line)
     exit_ = builder.maybe_spill(builder.py_get_attr(typ, '__exit__', line))
     value = builder.py_call(
         builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
