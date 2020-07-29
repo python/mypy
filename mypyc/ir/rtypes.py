@@ -446,10 +446,15 @@ dict_next_rtuple_single = RTuple(
 class RStruct(RType):
     """
     """
-    def __init__(self, name: str, names: List[str], types: List[RType]) -> None:
+    def __init__(self,
+                 name: str,
+                 names: List[str],
+                 types: List[RType],
+                 offsets: List[int]) -> None:
         self.name = name
         self.names = names
         self.types = types
+        self.offsets = offsets
         self._ctype = self.name
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
