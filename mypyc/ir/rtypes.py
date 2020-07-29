@@ -21,7 +21,7 @@ RTypes.
 """
 
 from abc import abstractmethod
-from typing import Optional, Union, List, Dict, Generic, TypeVar
+from typing import Optional, Union, List, Dict, Generic, TypeVar, Tuple
 
 from typing_extensions import Final, ClassVar, TYPE_CHECKING
 
@@ -443,28 +443,88 @@ dict_next_rtuple_single = RTuple(
 )
 
 
+def compute_rtype_size(typ: RType) -> int:
+    """Compute unaligned size of rtype"""
+    platform_size = 4 if IS_32_BIT_PLATFORM else 8
+    if isinstance(typ, RPrimitive):
+        if is_int32_rprimitive(typ):
+            return 4
+        elif is_int64_rprimitive(typ):
+            return 8
+        elif is_none_rprimitive(typ):
+            return 1
+        elif is_bool_rprimitive(typ):
+            return 1
+        else:
+            return platform_size
+    elif isinstance(typ, RTuple):
+        return compute_aligned_offsets_and_size(list(typ.types))[1]
+    elif isinstance(typ, RUnion):
+        return compute_aligned_offsets_and_size(typ.items)[1]
+    elif isinstance(typ, RStruct):
+        return compute_aligned_offsets_and_size(typ.types)[1]
+    elif isinstance(typ, RInstance):
+        return platform_size
+    else:
+        assert False, "invalid rtype for computing size"
+
+
+def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int]:
+    """Compute offsets and total size of a list types after alignment"""
+    platform_alignment = 4 if IS_32_BIT_PLATFORM else 8
+    unaligned_sizes = [compute_rtype_size(typ) for typ in types]
+
+    current_offset = 0
+    offsets = []
+    final_size = 0
+    for i in range(len(unaligned_sizes)):
+        offsets.append(current_offset)
+        if i + 1 < len(unaligned_sizes):
+            cur_size = unaligned_sizes[i]
+            next_size = unaligned_sizes[i + 1]
+            if next_size > cur_size:
+                current_offset += cur_size
+                padding = (next_size - (current_offset % next_size)) % next_size
+                current_offset += padding
+            else:
+                current_offset += cur_size
+        else:
+            final_size = current_offset + unaligned_sizes[i]
+            final_padding = ((platform_alignment - (final_size % platform_alignment))
+                             % platform_alignment)
+            final_size += final_padding
+    return offsets, final_size
+
+
 class RStruct(RType):
-    """
-    """
+    """Represent CPython structs"""
     def __init__(self,
                  name: str,
                  names: List[str],
-                 types: List[RType],
-                 offsets: List[int]) -> None:
+                 types: List[RType]) -> None:
         self.name = name
         self.names = names
         self.types = types
-        self.offsets = offsets
+        self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = self.name
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rstruct(self)
 
     def __str__(self) -> str:
-        return '%s{%s}' % (self.name, ', '.join(str(typ) for typ in self.types))
+        # if not tuple(unamed structs)
+        if len(self.names) > 0:
+            return '%s{%s}' % (self.name, ', '.join(name + ":" + str(typ)
+                                                    for name, typ in zip(self.names, self.types)))
+        else:
+            return '%s{%s}' % (self.name, ', '.join(str(typ) for typ in self.types))
 
     def __repr__(self) -> str:
-        return '<RStruct %s{%s}>' % (self.name, ', '.join(repr(typ) for typ in self.types))
+        if len(self.names) > 0:
+            return '<RStruct %s{%s}>' % (self.name, ', '.join(name + ":" + repr(typ) for name, typ
+                                                              in zip(self.names, self.types)))
+        else:
+            return '<RStruct %s{%s}>' % (self.name, ', '.join(repr(typ) for typ in self.types))
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, RStruct) and self.name == other.name
@@ -480,7 +540,7 @@ class RStruct(RType):
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RStruct':
         types = [deserialize_type(t, ctx) for t in data['types']]
-        return RStruct(data['name'], data['names'], types, data['offsets'])
+        return RStruct(data['name'], data['names'], types)
 
 
 class RInstance(RType):
