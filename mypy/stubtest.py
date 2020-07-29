@@ -16,7 +16,7 @@ import warnings
 from functools import singledispatch
 from pathlib import Path
 from typing import (
-    Any, Dict, Generic, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union,
+    Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union,
     cast,
 )
 
@@ -27,11 +27,8 @@ import mypy.modulefinder
 import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
-from mypy.errors import Errors
-from mypy.fscache import FileSystemCache
 from mypy.options import Options
-from mypy.plugin import Plugin
-from mypy.util import read_py_file, FancyFormatter
+from mypy.util import FancyFormatter
 
 
 class Missing:
@@ -931,7 +928,6 @@ def build_stubs(
     modules: List[str],
     options: Options,
     find_submodules: bool = False,
-    extra_plugins: Optional[Sequence[Plugin]] = None,
 ) -> List[str]:
     """Uses mypy to construct stub objects for the given modules.
 
@@ -965,7 +961,7 @@ def build_stubs(
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
 
     try:
-        res = mypy.build.build(sources=sources, options=options, extra_plugins=extra_plugins)
+        res = mypy.build.build(sources=sources, options=options)
     except mypy.errors.CompileError as e:
         output = [_style("error: ", color="red", bold=True), "failed mypy compile.\n", str(e)]
         print("".join(output))
@@ -1054,26 +1050,16 @@ def test_stubs(args: argparse.Namespace) -> int:
     options.custom_typeshed_dir = args.custom_typeshed_dir
     options.config_file = args.mypy_config_file
 
-    plugins = None  # type: Optional[Sequence[Plugin]]
     if options.config_file:
         def set_strict_flags() -> None:  # not needed yet
             return
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
-        fscache = FileSystemCache()
-        errors = Errors(options.show_error_context,
-                        options.show_column_numbers,
-                        options.show_error_codes,
-                        options.pretty,
-                        lambda path: read_py_file(path, fscache.read, options.python_version),
-                        options.show_absolute_path)
-        plugins, _ = mypy.build.load_plugins_from_config(options, errors, sys.stdout)
 
     try:
         modules = build_stubs(
             modules,
             options,
             find_submodules=not args.check_typeshed,
-            extra_plugins=plugins,
         )
     except RuntimeError:
         return 1
