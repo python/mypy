@@ -480,7 +480,7 @@ class RStruct(RType):
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RStruct':
         types = [deserialize_type(t, ctx) for t in data['types']]
-        return RStruct(data['name'], data['names'], types)
+        return RStruct(data['name'], data['names'], types, data['offsets'])
 
 
 class RInstance(RType):

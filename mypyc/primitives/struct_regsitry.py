@@ -4,7 +4,7 @@ from typing import List, NamedTuple
 from mypyc.ir.rtypes import RType
 
 CStructDescription = NamedTuple(
-    'CStructDescription', [('name', str)],
+    'CStructDescription', [('name', str),
                            ('names', List[str]),
                            ('types', List[RType]),
                            ('offsets', List[int])])
@@ -13,7 +13,7 @@ CStructDescription = NamedTuple(
 def c_struct(name: str,
              names: List[str],
              types: List[RType],
-             offsets: List[str]) -> CStructDescription:
+             offsets: List[int]) -> CStructDescription:
     """Define a known C struct for generating IR to manipulate it
 
     name: The name of the C struct
@@ -23,6 +23,6 @@ def c_struct(name: str,
     offsets: offset of each field
            TODO: can we infer this information?
     """
-    return CStructDescription(name, names, type, offsets)
+    return CStructDescription(name, names, types, offsets)
 
 # TODO: create PyVarObject, to do which we probably need PyObject
