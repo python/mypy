@@ -85,7 +85,7 @@ class StatisticsVisitor(TraverserVisitor):
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.cur_mod_node = o
-        self.cur_mod_id = o.fullname()
+        self.cur_mod_id = o.fullname
         super().visit_mypy_file(o)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
@@ -227,7 +227,7 @@ class StatisticsVisitor(TraverserVisitor):
     def record_call_target_precision(self, o: CallExpr) -> None:
         """Record precision of formal argument types used in a call."""
         if not self.typemap or o.callee not in self.typemap:
-            # Type not availabe.
+            # Type not available.
             return
         callee_type = get_proper_type(self.typemap[o.callee])
         if isinstance(callee_type, CallableType):
@@ -395,7 +395,7 @@ def dump_type_stats(tree: MypyFile,
         return
     print(path)
     visitor = StatisticsVisitor(inferred,
-                                filename=tree.fullname(),
+                                filename=tree.fullname,
                                 modules=modules,
                                 typemap=typemap)
     tree.accept(visitor)

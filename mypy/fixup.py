@@ -1,6 +1,7 @@
 """Fix up various things after deserialization."""
 
 from typing import Any, Dict, Optional
+from typing_extensions import Final
 
 from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
@@ -10,8 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
-    TypeType, NOT_READY
-)
+    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny)
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
 
@@ -22,7 +22,7 @@ from mypy.lookup import lookup_fully_qualified
 def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
                  allow_missing: bool) -> None:
     node_fixer = NodeFixer(modules, allow_missing)
-    node_fixer.visit_symbol_table(tree.names)
+    node_fixer.visit_symbol_table(tree.names, tree.fullname)
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
@@ -42,7 +42,7 @@ class NodeFixer(NodeVisitor[None]):
             if info.defn:
                 info.defn.accept(self)
             if info.names:
-                self.visit_symbol_table(info.names)
+                self.visit_symbol_table(info.names, info.fullname)
             if info.bases:
                 for base in info.bases:
                     base.accept(self.type_fixer)
@@ -64,7 +64,7 @@ class NodeFixer(NodeVisitor[None]):
             self.current_info = save_info
 
     # NOTE: This method *definitely* isn't part of the NodeVisitor API.
-    def visit_symbol_table(self, symtab: SymbolTable) -> None:
+    def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -> None:
         # Copy the items because we may mutate symtab.
         for key, value in list(symtab.items()):
             cross_ref = value.cross_ref
@@ -76,7 +76,7 @@ class NodeFixer(NodeVisitor[None]):
                     stnode = lookup_qualified_stnode(self.modules, cross_ref,
                                                      self.allow_missing)
                     if stnode is not None:
-                        assert stnode.node is not None
+                        assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
                         value.node = stnode.node
                     elif not self.allow_missing:
                         assert False, "Could not find cross-ref %s" % (cross_ref,)
@@ -160,6 +160,15 @@ class TypeFixer(TypeVisitor[None]):
             a.accept(self)
         if inst.last_known_value is not None:
             inst.last_known_value.accept(self)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        type_ref = t.type_ref
+        if type_ref is None:
+            return  # We've already been here.
+        t.type_ref = None
+        t.alias = lookup_qualified_alias(self.modules, type_ref, self.allow_missing)
+        for a in t.args:
+            a.accept(self)
 
     def visit_any(self, o: Any) -> None:
         pass  # Nothing to descend into.
@@ -257,9 +266,23 @@ def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
         # Looks like a missing TypeInfo during an initial daemon load, put something there
         assert allow_missing, "Should never get here in normal mode," \
                               " got {}:{} instead of TypeInfo".format(type(node).__name__,
-                                                                      node.fullname() if node
+                                                                      node.fullname if node
                                                                       else '')
         return missing_info(modules)
+
+
+def lookup_qualified_alias(modules: Dict[str, MypyFile], name: str,
+                           allow_missing: bool) -> TypeAlias:
+    node = lookup_qualified(modules, name, allow_missing)
+    if isinstance(node, TypeAlias):
+        return node
+    else:
+        # Looks like a missing TypeAlias during an initial daemon load, put something there
+        assert allow_missing, "Should never get here in normal mode," \
+                              " got {}:{} instead of TypeAlias".format(type(node).__name__,
+                                                                       node.fullname if node
+                                                                       else '')
+        return missing_alias()
 
 
 def lookup_qualified(modules: Dict[str, MypyFile], name: str,
@@ -276,8 +299,11 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
     return lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
 
 
+_SUGGESTION = "<missing {}: *should* have gone away during fine-grained update>"  # type: Final
+
+
 def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
-    suggestion = "<missing info: *should* have gone away during fine-grained update>"
+    suggestion = _SUGGESTION.format('info')
     dummy_def = ClassDef(suggestion, Block([]))
     dummy_def.fullname = suggestion
 
@@ -287,3 +313,9 @@ def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
     info.bases = [Instance(obj_type, [])]
     info.mro = [info, obj_type]
     return info
+
+
+def missing_alias() -> TypeAlias:
+    suggestion = _SUGGESTION.format('alias')
+    return TypeAlias(AnyType(TypeOfAny.special_form), suggestion,
+                     line=-1, column=-1)

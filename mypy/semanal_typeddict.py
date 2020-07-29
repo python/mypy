@@ -1,6 +1,6 @@
 """Semantic analysis of TypedDict definitions."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 
@@ -72,7 +72,9 @@ class TypedDictAnalyzer:
             keys = []  # type: List[str]
             types = []
             required_keys = set()
-            for base in typeddict_bases:
+
+            # Iterate over bases in reverse order so that leftmost base class' keys take precedence
+            for base in reversed(typeddict_bases):
                 assert isinstance(base, RefExpr)
                 assert isinstance(base.node, TypeInfo)
                 assert isinstance(base.node.typeddict_type, TypedDictType)
@@ -81,9 +83,8 @@ class TypedDictAnalyzer:
                 valid_items = base_items.copy()
                 for key in base_items:
                     if key in keys:
-                        self.fail('Cannot overwrite TypedDict field "{}" while merging'
+                        self.fail('Overwriting TypedDict field "{}" while merging'
                                   .format(key), defn)
-                        valid_items.pop(key)
                 keys.extend(valid_items.keys())
                 types.extend(valid_items.values())
                 required_keys.update(base_typed_dict.required_keys)
@@ -132,11 +133,10 @@ class TypedDictAnalyzer:
             else:
                 name = stmt.lvalues[0].name
                 if name in (oldfields or []):
-                    self.fail('Cannot overwrite TypedDict field "{}" while extending'
+                    self.fail('Overwriting TypedDict field "{}" while extending'
                               .format(name), stmt)
-                    continue
                 if name in fields:
-                    self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
+                    self.fail('Duplicate TypedDict key "{}"'.format(name), stmt)
                     continue
                 # Append name and type in this case...
                 fields.append(name)
@@ -215,8 +215,8 @@ class TypedDictAnalyzer:
         call.analyzed.set_line(call.line, call.column)
         return True, info
 
-    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[str, List[str], List[Type],
-                                                                     bool, bool]]:
+    def parse_typeddict_args(
+            self, call: CallExpr) -> Optional[Tuple[str, List[str], List[Type], bool, bool]]:
         """Parse typed dict call expression.
 
         Return names, types, totality, was there an error during parsing.
@@ -271,11 +271,16 @@ class TypedDictAnalyzer:
 
         Return names, types, was there an error. If some type is not ready, return None.
         """
+        seen_keys = set()
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for (field_name_expr, field_type_expr) in dict_items:
             if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
-                items.append(field_name_expr.value)
+                key = field_name_expr.value
+                items.append(key)
+                if key in seen_keys:
+                    self.fail('Duplicate TypedDict key "{}"'.format(key), field_name_expr)
+                seen_keys.add(key)
             else:
                 name_context = field_name_expr or field_type_expr
                 self.fail_typeddict_arg("Invalid TypedDict() field name", name_context)

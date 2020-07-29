@@ -1,0 +1,24 @@
+[case testIntNeq]
+def f(x: int, y: int) -> bool:
+    return x != y
+[out]
+def f(x, y):
+    x, y :: int
+    r0 :: bool
+    r1 :: native_int
+    r2, r3, r4, r5 :: bool
+L0:
+    r1 = x & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = x != y
+    r0 = r3
+    goto L3
+L2:
+    r4 = CPyTagged_IsEq_(x, y)
+    r5 = !r4
+    r0 = r5
+L3:
+    return r0
+

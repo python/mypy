@@ -462,6 +462,7 @@ def foo() -> None:
     pass
 
 foo(*())
+[builtins fixtures/tuple.pyi]
 
 -- Overloads + varargs
 -- -------------------
@@ -639,8 +640,8 @@ from typing import TypeVar
 T = TypeVar('T')
 
 def f(*args: T) -> T: ...
-reveal_type(f(*(1, None)))  # N: Revealed type is 'Union[builtins.int, None]'
-reveal_type(f(1, *(None, 1)))  # N: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(*(1, None)))  # N: Revealed type is 'Union[Literal[1]?, None]'
+reveal_type(f(1, *(None, 1)))  # N: Revealed type is 'Union[Literal[1]?, None]'
 reveal_type(f(1, *(1, None)))  # N: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/tuple.pyi]
 
@@ -707,7 +708,7 @@ g(d) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "Di
 h(c) # E: Argument 1 to "h" has incompatible type "Dict[str, float]"; expected "Dict[str, int]"
 h(d)
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testInvariantListArgNote]
 from typing import List, Union

@@ -233,6 +233,8 @@ def clean_up(a: List[str]) -> List[str]:
     remove trailing carriage returns.
     """
     res = []
+    pwd = os.getcwd()
+    driver = pwd + '/driver.py'
     for s in a:
         prefix = os.sep
         ss = s
@@ -241,6 +243,8 @@ def clean_up(a: List[str]) -> List[str]:
                 ss = ss.replace(p, '')
         # Ignore spaces at end of line.
         ss = re.sub(' +$', '', ss)
+        # Remove pwd from driver.py's path
+        ss = ss.replace(driver, 'driver.py')
         res.append(re.sub('\\r$', '', ss))
     return res
 
@@ -375,7 +379,6 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         if flags2:
             flags = flags2
 
-    flag_list = None
     if flags:
         flag_list = flags.group(1).split()
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
@@ -384,14 +387,14 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
+        flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
         options.error_summary = False
 
-    # Allow custom python version to override testcase_pyversion
-    if (not flag_list or
-            all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
+    # Allow custom python version to override testcase_pyversion.
+    if all(flag.split('=')[0] not in ['--python-version', '-2', '--py2'] for flag in flag_list):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     if testcase.config.getoption('--mypy-verbose'):
@@ -413,7 +416,7 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
     # In some systems, mtime has a resolution of 1 second which can
     # cause annoying-to-debug issues when a file has the same size
     # after a change. We manually set the mtime to circumvent this.
-    # Note that we increment the old file's mtime, which guarentees a
+    # Note that we increment the old file's mtime, which guarantees a
     # different value, rather than incrementing the mtime after the
     # copy, which could leave the mtime unchanged if the old file had
     # a similarly fudged mtime.

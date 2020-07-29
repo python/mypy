@@ -11,6 +11,7 @@ class type:
 class function: pass
 
 class int: pass
+class float: pass
 class str:
     def format(self, *args, **kwars) -> str: ...
 class unicode:

@@ -15,6 +15,7 @@ class A(Generic[T]):
 
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 
 [case testGenericMethodArgument]
 from typing import TypeVar, Generic
@@ -47,6 +48,7 @@ a.v = b
 
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
@@ -61,6 +63,7 @@ class A(Generic[T]):
     v = None # type: T
 class B: pass
 class C: pass
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
@@ -80,6 +83,7 @@ if int():
 class A(Generic[T]): pass
 class B: pass
 class C(B): pass
+[builtins fixtures/tuple.pyi]
 
 [case testGenericTypeCompatibilityWithAny]
 from typing import Any, TypeVar, Generic
@@ -94,6 +98,7 @@ d = c
 class A(Generic[T]): pass
 class B: pass
 class C(B): pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testTypeVariableAsTypeArgument]
@@ -824,6 +829,7 @@ use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "
 my_cb = None # type: C2[int]
 use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
 reveal_type(use_cb(1, my_cb)) # N: Revealed type is '__main__.Node[builtins.int]'
+[builtins fixtures/tuple.pyi]
 
 [out]
 
@@ -899,6 +905,7 @@ T = TypeVar('T')
 R = TypeVar('R')
 
 Transform = Callable[[T, int], Tuple[T, R]]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testGenericTypeAliasesImportingWithoutTypeVarError]
@@ -978,9 +985,11 @@ class C:
         b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
     if int():
         c = int
-    def f(self, x: a) -> None: pass  # E: Variable "__main__.C.a" is not valid as a type
+    def f(self, x: a) -> None: pass  # E: Variable "__main__.C.a" is not valid as a type \
+                                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
     def g(self, x: b) -> None: pass
-    def h(self, x: c) -> None: pass  # E: Variable "__main__.C.c" is not valid as a type
+    def h(self, x: c) -> None: pass  # E: Variable "__main__.C.c" is not valid as a type \
+                                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
     x: b
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [out]
@@ -1016,18 +1025,19 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA + 1 # E: The type alias to Callable is invalid in runtime context
+cs = CA + 1 # E: Unsupported left operand type for + ("object")
 reveal_type(cs) # N: Revealed type is 'Any'
 
-ts = TA() # E: The type alias to Tuple is invalid in runtime context
+ts = TA() # E: "object" not callable
 reveal_type(ts) # N: Revealed type is 'Any'
 
-us = UA.x # E: The type alias to Union is invalid in runtime context
+us = UA.x # E: "object" has no attribute "x"
 reveal_type(us) # N: Revealed type is 'Any'
 
 xx = CA[str] + 1  # E: Type application is only supported for generic classes
 yy = TA[str]()  # E: Type application is only supported for generic classes
 zz = UA[str].x  # E: Type application is only supported for generic classes
+[builtins fixtures/tuple.pyi]
 
 [out]
 
@@ -1349,7 +1359,7 @@ Z = TypeVar('Z')
 class OO: pass
 a = None # type: A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]
 
-f(a) # E: Argument 1 to "f" has incompatible type "A[...]"; expected "OO"
+f(a) # E: Argument 1 to "f" has incompatible type "A[object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object, object]"; expected "OO"
 
 def f(a: OO) -> None:
     pass
@@ -1608,7 +1618,7 @@ def g3(f: Callable[[object], object]) -> None: pass
 g3(f) # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; \
            expected "Callable[[object], object]"
 
-[case testSubtypingWithGenericFunctionUsingTypevarWithValues2-skip]
+[case testSubtypingWithGenericFunctionUsingTypevarWithValues2]
 from typing import TypeVar, Callable
 T = TypeVar('T', int, str)
 def f(x: T) -> T: pass
@@ -1740,6 +1750,7 @@ T = TypeVar('T')
 def f(x: Container[T]) -> T: ...
 reveal_type(f((1, 2))) # N: Revealed type is 'builtins.int*'
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testClassMethodInGenericClassWithGenericConstructorArg]
 from typing import TypeVar, Generic
@@ -1928,6 +1939,165 @@ reveal_type(E.make_one)  # N: Revealed type is 'def [S] (x: Tuple[S`1, builtins.
 reveal_type(E[int].make_one)  # N: Revealed type is 'def (x: Tuple[builtins.int*, builtins.str*]) -> __main__.C[Tuple[builtins.int*, builtins.str*]]'
 [builtins fixtures/classmethod.pyi]
 
+[case testGenericClassClsNonGeneric]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+    @classmethod
+    def other(cls) -> None:
+        reveal_type(C)  # N: Revealed type is 'def [T] () -> __main__.C[T`1]'
+        reveal_type(C[T])  # N: Revealed type is 'def () -> __main__.C[T`1]'
+        reveal_type(C.f)  # N: Revealed type is 'def [T] (x: T`1) -> T`1'
+        reveal_type(C[T].f)  # N: Revealed type is 'def (x: T`1) -> T`1'
+        reveal_type(cls.f)  # N: Revealed type is 'def (x: T`1) -> T`1'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassUnrelatedVars]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+T2 = TypeVar('T2')
+
+class C(Generic[T]):
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+    @classmethod
+    def g(cls, x: T2) -> T2:
+        cls.f(x)  # E: Argument 1 to "f" of "C" has incompatible type "T2"; expected "T"
+        return x
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassInGenericFunction]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, item: T) -> None: ...
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+def foo(x: T, y: int) -> T:
+    C(y)  # OK
+    C[T](y)  # E: Argument 1 to "C" has incompatible type "int"; expected "T"
+    C[T].f(y)  # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "T"
+    C[T].f(x)  # OK
+    return x
+[builtins fixtures/classmethod.pyi]
+
+# TODO: enable this when #7935 is fixed.
+[case testGenericClassInGenericFunctionOverloadedConstructor-skip]
+from typing import TypeVar, Generic, overload
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    @overload
+    def __new__(cls) -> C[None]: ...
+    @overload
+    def __new__(cls, item: T) -> C[T]: ...
+    def __new__(cls, item=None):
+        ...
+    @classmethod
+    def f(cls, x: T) -> T:
+        return x
+
+def foo(x: T, y: int) -> T:
+    C.f(y)
+    C(y)  # OK
+    C[T](y)  # E: Argument 1 to "C" has incompatible type "int"; expected "T"
+    C[T].f(y)  # E: Argument 1 to "f" of "C" has incompatible type "int"; expected "T"
+    C[T].f(x)  # OK
+    return x
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassDirectCall]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, item: T) -> None: ...
+    @classmethod
+    def f(cls) -> None:
+        cls(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "T"
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAlternativeConstructorPrecise]
+from typing import Generic, TypeVar, Type, Tuple
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    Q = TypeVar('Q', bound=Base[T])
+
+    def __init__(self, item: T) -> None: ...
+
+    @classmethod
+    def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]:
+        if bool():
+            return cls(0), cls(0)  # E: Argument 1 to "Base" has incompatible type "int"; expected "T"
+        return cls(item), cls(item)
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAlternativeConstructorPreciseOverloaded]
+from typing import Generic, TypeVar, Type, Tuple, overload, Union
+
+T = TypeVar('T')
+
+class Base(Generic[T]):
+    Q = TypeVar('Q', bound=Base[T])
+
+    def __init__(self, item: T) -> None: ...
+
+    @overload
+    @classmethod
+    def make_some(cls: Type[Q], item: T) -> Q: ...
+
+    @overload
+    @classmethod
+    def make_some(cls: Type[Q], item: T, n: int) -> Tuple[Q, ...]: ...
+
+    @classmethod
+    def make_some(cls: Type[Q], item: T, n: int = 0) -> Union[Q, Tuple[Q, ...]]:
+        if n:
+            return (cls(item),)
+        return cls(item)
+
+reveal_type(Base.make_some)  # N: Revealed type is 'Overload(def [T] (item: T`1) -> __main__.Base[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base[T`1]])'
+reveal_type(Base.make_some(1))  # N: Revealed type is '__main__.Base[builtins.int*]'
+reveal_type(Base.make_some(1, 1))  # N: Revealed type is 'builtins.tuple[__main__.Base[builtins.int*]]'
+
+class Sub(Base[str]): ...
+Sub.make_some(1)  # E: No overload variant of "make_some" of "Base" matches argument type "int" \
+                  # N: Possible overload variant: \
+                  # N:     def make_some(cls, item: str) -> Sub \
+                  # N:     <1 more non-matching overload not shown>
+[builtins fixtures/classmethod.pyi]
+
+[case testNoGenericAccessOnImplicitAttributes]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    @classmethod
+    def meth(cls) -> None:
+        cls.x  # E: Access to generic instance variables via class is ambiguous
+[builtins fixtures/classmethod.pyi]
+
 [case testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric]
 from typing import Generic, TypeVar, Any, Tuple, Type
 
@@ -1941,11 +2111,28 @@ class A(Generic[T]):
 
 class B(A[T], Generic[T, S]):
     def meth(self) -> None:
-        reveal_type(A[T].foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.A*[T`1]]'
+        reveal_type(A[T].foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.A[T`1]]'
     @classmethod
     def other(cls) -> None:
-        reveal_type(cls.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
-reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B*[T`1, S`2]]'
+        reveal_type(cls.foo)  # N: Revealed type is 'def () -> Tuple[T`1, __main__.B[T`1, S`2]]'
+reveal_type(B.foo)  # N: Revealed type is 'def [T, S] () -> Tuple[T`1, __main__.B[T`1, S`2]]'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassAlternativeConstructorPrecise]
+from typing import Generic, TypeVar, Type, Tuple, Any
+
+T = TypeVar('T')
+Q = TypeVar('Q')
+
+class Base(Generic[T]):
+    def __init__(self, item: T) -> None: ...
+    @classmethod
+    def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]: ...
+class Sub(Base[T]):
+    ...
+
+reveal_type(Sub.make_pair('yes'))  # N: Revealed type is 'Tuple[__main__.Sub[builtins.str*], __main__.Sub[builtins.str*]]'
+Sub[int].make_pair('no')  # E: Argument 1 to "make_pair" of "Base" has incompatible type "str"; expected "int"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAttrUnboundOnClass]
@@ -1995,8 +2182,8 @@ class C(Generic[T]):
 
 class D(C[str]): ...
 
-reveal_type(D.get())  # N: Revealed type is 'builtins.str'
-reveal_type(D.get(42))  # N: Revealed type is 'builtins.tuple[builtins.str]'
+reveal_type(D.get())  # N: Revealed type is 'builtins.str*'
+reveal_type(D.get(42))  # N: Revealed type is 'builtins.tuple[builtins.str*]'
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodAnnotation]
@@ -2111,3 +2298,107 @@ class B(A):
     def from_config(cls) -> B:
         return B()
 [builtins fixtures/classmethod.pyi]
+
+[case testAbstractGenericMethodInference]
+from abc import ABC, abstractmethod
+from typing import Callable, Generic, TypeVar
+
+A = TypeVar('A')
+B = TypeVar('B')
+C = TypeVar('C')
+
+class TwoTypes(Generic[A, B]):
+
+  def __call__(self) -> B: pass
+
+class MakeTwoAbstract(ABC, Generic[A]):
+
+  def __init__(self) -> None: pass
+
+  @abstractmethod
+  def __call__(self, b: B) -> TwoTypes[A, B]: pass
+
+class MakeTwoConcrete(Generic[A]):
+
+  def __call__(self, b: B) -> TwoTypes[A, B]: pass
+
+
+class MakeTwoGenericSubAbstract(Generic[C], MakeTwoAbstract[C]):
+
+  def __call__(self, b: B) -> TwoTypes[C, B]: pass
+
+class MakeTwoAppliedSubAbstract(MakeTwoAbstract[str]):
+
+  def __call__(self, b: B) -> TwoTypes[str, B]: pass
+
+class Test():
+
+  def make_two(self,
+                mts: MakeTwoAbstract[A],
+                mte: MakeTwoConcrete[A],
+                mtgsa: MakeTwoGenericSubAbstract[A],
+                mtasa: MakeTwoAppliedSubAbstract) -> None:
+    reveal_type(mts(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mte(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mtgsa(2)) # N: Revealed type is '__main__.TwoTypes[A`-1, builtins.int*]'
+    reveal_type(mtasa(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(MakeTwoConcrete[int]()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.int, builtins.str*]'
+    reveal_type(MakeTwoConcrete[str]()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(MakeTwoAppliedSubAbstract()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.str*]'
+    reveal_type(MakeTwoAppliedSubAbstract()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+    reveal_type(MakeTwoGenericSubAbstract[str]()('foo')) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.str*]'
+    reveal_type(MakeTwoGenericSubAbstract[str]()(2)) # N: Revealed type is '__main__.TwoTypes[builtins.str, builtins.int*]'
+
+[case testGenericClassPropertyBound]
+from typing import Generic, TypeVar, Callable, Type, List, Dict
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def classproperty(f: Callable[..., U]) -> U: ...
+
+class C(Generic[T]):
+    @classproperty
+    def test(self) -> T: ...
+
+class D(C[str]): ...
+class E1(C[T], Generic[T, U]): ...
+class E2(C[U], Generic[T, U]): ...
+class G(C[List[T]]): ...
+
+x: C[int]
+y: Type[C[int]]
+reveal_type(x.test)  # N: Revealed type is 'builtins.int*'
+reveal_type(y.test)  # N: Revealed type is 'builtins.int*'
+
+xd: D
+yd: Type[D]
+reveal_type(xd.test)  # N: Revealed type is 'builtins.str*'
+reveal_type(yd.test)  # N: Revealed type is 'builtins.str*'
+
+ye1: Type[E1[int, str]]
+ye2: Type[E2[int, str]]
+reveal_type(ye1.test)  # N: Revealed type is 'builtins.int*'
+reveal_type(ye2.test)  # N: Revealed type is 'builtins.str*'
+
+xg: G[int]
+yg: Type[G[int]]
+reveal_type(xg.test)  # N: Revealed type is 'builtins.list*[builtins.int*]'
+reveal_type(yg.test)  # N: Revealed type is 'builtins.list*[builtins.int*]'
+
+class Sup:
+    attr: int
+S = TypeVar('S', bound=Sup)
+
+def func(tp: Type[C[S]]) -> S:
+    reveal_type(tp.test.attr)  # N: Revealed type is 'builtins.int'
+
+    reg: Dict[S, G[S]]
+    reveal_type(reg[tp.test])  # N: Revealed type is '__main__.G*[S`-1]'
+    reveal_type(reg[tp.test].test)  # N: Revealed type is 'builtins.list*[S`-1]'
+
+    if bool():
+        return tp.test
+    else:
+        return reg[tp.test].test[0]
+[builtins fixtures/dict.pyi]

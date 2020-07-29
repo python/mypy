@@ -1,6 +1,6 @@
 """Shared definitions used by different parts of semantic analysis."""
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 
 from typing import Optional, List, Callable
 from typing_extensions import Final
@@ -67,7 +67,8 @@ class SemanticAnalyzerCoreInterface:
         """Is a module or class namespace potentially missing some definitions?"""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def final_iteration(self) -> bool:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
@@ -156,8 +157,13 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def qualified_name(self, n: str) -> str:
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_func_scope(self) -> bool:
         raise NotImplementedError
 
 
@@ -170,7 +176,7 @@ def create_indirect_imported_name(file_node: MypyFile,
     These entries act as indirect references.
     """
     target_module, ok = correct_relative_import(
-        file_node.fullname(),
+        file_node.fullname,
         relative,
         module,
         file_node.is_package_init_file())
@@ -186,15 +192,15 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
     sig = get_proper_type(sig)
     if isinstance(sig, FunctionLike):
         if fdef.info:
-            if fdef.info.fullname() in TPDICT_FB_NAMES:
+            if fdef.info.fullname in TPDICT_FB_NAMES:
                 # Avoid exposing the internal _TypedDict name.
                 class_name = 'TypedDict'
             else:
-                class_name = fdef.info.name()
+                class_name = fdef.info.name
             return sig.with_name(
-                '{} of {}'.format(fdef.name(), class_name))
+                '{} of {}'.format(fdef.name, class_name))
         else:
-            return sig.with_name(fdef.name())
+            return sig.with_name(fdef.name)
     else:
         return sig
 
@@ -208,11 +214,11 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     Note that there is an apparent chicken and egg problem with respect
     to verifying type arguments against bounds. Verifying bounds might
     require fallbacks, but we might use the bounds to calculate the
-    fallbacks. In partice this is not a problem, since the worst that
+    fallbacks. In practice this is not a problem, since the worst that
     can happen is that we have invalid type argument values, and these
     can happen in later stages as well (they will generate errors, but
     we don't prevent their existence).
     """
     fallback = typ.partial_fallback
-    assert fallback.type.fullname() == 'builtins.tuple'
-    fallback.args[0] = join.join_type_list(list(typ.items))
+    assert fallback.type.fullname == 'builtins.tuple'
+    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]

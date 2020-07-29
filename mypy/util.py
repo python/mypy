@@ -1,10 +1,13 @@
 """Utility functions with no non-trivial dependencies."""
+
 import os
 import pathlib
 import re
 import subprocess
 import sys
-import os
+import hashlib
+import io
+import shutil
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -32,7 +35,6 @@ ENCODING_RE = \
 PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
 
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
-DEFAULT_COLUMNS = 80   # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -130,7 +132,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     try:
         source_text = source.decode(encoding)
     except LookupError as lookuperr:
-        raise DecodeError(str(lookuperr))
+        raise DecodeError(str(lookuperr)) from lookuperr
     return source_text
 
 
@@ -142,7 +144,7 @@ def read_py_file(path: str, read: Callable[[str], bytes],
     """
     try:
         source = read(path)
-    except (IOError, OSError):
+    except OSError:
         return None
     else:
         try:
@@ -422,11 +424,7 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    try:
-        cols, _ = os.get_terminal_size()
-        return cols
-    except OSError:
-        return DEFAULT_COLUMNS
+    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
@@ -464,6 +462,18 @@ def soft_wrap(msg: str, max_len: int, first_offset: int,
     lines.append(next_line)
     padding = '\n' + ' ' * num_indent
     return padding.join(lines)
+
+
+def hash_digest(data: bytes) -> str:
+    """Compute a hash digest of some data.
+
+    We use a cryptographic hash because we want a low probability of
+    accidental collision, but we don't really care about any of the
+    cryptographic properties.
+    """
+    # Once we drop Python 3.5 support, we should consider using
+    # blake2b, which is faster.
+    return hashlib.sha256(data).hexdigest()
 
 
 class FancyFormatter:
@@ -527,7 +537,16 @@ class FancyFormatter:
         if not CURSES_ENABLED:
             return False
         try:
-            curses.setupterm()
+            # setupterm wants a fd to potentially write an "initialization sequence".
+            # We override sys.stdout for the daemon API so if stdout doesn't have an fd,
+            # just give it /dev/null.
+            try:
+                fd = sys.stdout.fileno()
+            except io.UnsupportedOperation:
+                with open("/dev/null", "rb") as f:
+                    curses.setupterm(fd=f.fileno())
+            else:
+                curses.setupterm(fd=fd)
         except curses.error:
             # Most likely terminfo not found.
             return False
@@ -568,8 +587,7 @@ class FancyFormatter:
     def fit_in_terminal(self, messages: List[str],
                         fixed_terminal_width: Optional[int] = None) -> List[str]:
         """Improve readability by wrapping error messages and trimming source code."""
-        width = (fixed_terminal_width or int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
-                 get_terminal_width())
+        width = fixed_terminal_width or get_terminal_width()
         new_messages = messages.copy()
         for i, error in enumerate(messages):
             if ': error:' in error:
@@ -593,19 +611,18 @@ class FancyFormatter:
         return new_messages
 
     def colorize(self, error: str) -> str:
-        """Colorize an output line by highlighting the status and error code.
-
-        If fixed_terminal_width is given, use it instead of calling get_terminal_width()
-        (used by the daemon).
-        """
+        """Colorize an output line by highlighting the status and error code."""
         if ': error:' in error:
             loc, msg = error.split('error:', maxsplit=1)
             if not self.show_error_codes:
                 return (loc + self.style('error:', 'red', bold=True) +
                         self.highlight_quote_groups(msg))
             codepos = msg.rfind('[')
-            code = msg[codepos:]
-            msg = msg[:codepos]
+            if codepos != -1:
+                code = msg[codepos:]
+                msg = msg[:codepos]
+            else:
+                code = ""  # no error code specified
             return (loc + self.style('error:', 'red', bold=True) +
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:
@@ -672,3 +689,8 @@ class FancyFormatter:
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
+
+
+def is_typeshed_file(file: str) -> bool:
+    # gross, but no other clear way to tell
+    return 'typeshed' in os.path.abspath(file).split(os.sep)

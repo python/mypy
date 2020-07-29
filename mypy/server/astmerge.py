@@ -51,7 +51,7 @@ from mypy.nodes import (
     MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    CastExpr,
+    CastExpr, TypeAlias,
     MDEF
 )
 from mypy.traverser import TraverserVisitor
@@ -59,7 +59,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType,
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -77,11 +77,11 @@ def merge_asts(old: MypyFile, old_symbols: SymbolTable,
     will be the new symbol table. 'new' and 'old_symbols' will no longer be
     valid.
     """
-    assert new.fullname() == old.fullname()
+    assert new.fullname == old.fullname
     # Find the mapping from new to old node identities for all nodes
     # whose identities should be preserved.
     replacement_map = replacement_map_from_symbol_table(
-        old_symbols, new_symbols, prefix=old.fullname())
+        old_symbols, new_symbols, prefix=old.fullname)
     # Also replace references to the new MypyFile node.
     replacement_map[new] = old
     # Perform replacements to everywhere within the new AST (not including symbol
@@ -106,11 +106,11 @@ def replacement_map_from_symbol_table(
     replacements = {}  # type: Dict[SymbolNode, SymbolNode]
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
-                             or node.node and get_prefix(node.node.fullname()) == prefix)):
+                             or node.node and get_prefix(node.node.fullname) == prefix)):
             new_node = new[name]
             if (type(new_node.node) == type(node.node)  # noqa
                     and new_node.node and node.node and
-                    new_node.node.fullname() == node.node.fullname() and
+                    new_node.node.fullname == node.node.fullname and
                     new_node.kind == node.kind):
                 replacements[new_node.node] = node.node
                 if isinstance(node.node, TypeInfo) and isinstance(new_node.node, TypeInfo):
@@ -213,7 +213,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             node.node = self.fixup(node.node)
             if isinstance(node.node, Var):
                 # The Var node may be an orphan and won't otherwise be processed.
-                fixup_var(node.node, self.replacements)
+                node.node.accept(self)
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
@@ -265,6 +265,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.info = self.fixup(node.info)
         self.fixup_type(node.type)
         super().visit_var(node)
+
+    def visit_type_alias(self, node: TypeAlias) -> None:
+        self.fixup_type(node.target)
+        super().visit_type_alias(node)
 
     # Helpers
 
@@ -342,6 +346,12 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
             arg.accept(self)
         if typ.last_known_value:
             typ.last_known_value.accept(self)
+
+    def visit_type_alias_type(self, typ: TypeAliasType) -> None:
+        assert typ.alias is not None
+        typ.alias = self.fixup(typ.alias)
+        for arg in typ.args:
+            arg.accept(self)
 
     def visit_any(self, typ: AnyType) -> None:
         pass
@@ -453,13 +463,6 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 old = node.node
                 replace_object_state(new, old)
                 node.node = new
-            if isinstance(node.node, Var):
+            if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.
-                # TODO: Is this necessary?
-                fixup_var(node.node, replacements)
-
-
-def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:
-    if node.type:
-        node.type.accept(TypeReplaceVisitor(replacements))
-    node.info = cast(TypeInfo, replacements.get(node.info, node.info))
+                node.node.accept(NodeReplaceVisitor(replacements))

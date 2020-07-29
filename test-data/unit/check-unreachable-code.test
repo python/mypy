@@ -96,6 +96,7 @@ if typing.TYPE_CHECKING:
     import pow123 # E
 else:
     import xyz753
+[typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Cannot find implementation or library stub for module named 'pow123'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -106,6 +107,7 @@ if TYPE_CHECKING:
     import pow123 # E
 else:
     import xyz753
+[typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Cannot find implementation or library stub for module named 'pow123'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -117,6 +119,7 @@ if not typing.TYPE_CHECKING:
 else:
     import xyz753
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 main:5: error: Cannot find implementation or library stub for module named 'xyz753'
 main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
@@ -618,6 +621,7 @@ if typing.TYPE_CHECKING:
 reveal_type(x)  # N: Revealed type is '__main__.B'
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableWhenSuperclassIsAny]
 # flags: --strict-optional
@@ -662,20 +666,20 @@ class Child(Parent):
 
 [case testUnreachableAfterToplevelAssert]
 import sys
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 assert sys.platform == 'lol'
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert2]
 import sys
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 assert sys.version_info[0] == 1
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert3]
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 MYPY = False
 assert not MYPY
 reveal_type('')  # No error here :-)
@@ -683,7 +687,7 @@ reveal_type('')  # No error here :-)
 
 [case testUnreachableAfterToplevelAssert4]
 # flags: --always-false NOPE
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 NOPE = False
 assert NOPE
 reveal_type('')  # No error here :-)
@@ -712,8 +716,8 @@ def bar() -> None: pass
 import sys
 if sys.version_info[0] >= 2:
     assert sys.platform == 'lol'
-    reveal_type('')  # N: Revealed type is 'builtins.str'
-reveal_type('')  # N: Revealed type is 'builtins.str'
+    reveal_type('')  # N: Revealed type is 'Literal['']?'
+reveal_type('')  # N: Revealed type is 'Literal['']?'
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagWithBadControlFlow]
@@ -834,6 +838,7 @@ if FOOBAR:
 else:
     reveal_type(x)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/ops.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisExprUnreachable]
 # flags: --warn-unreachable --always-false FOOBAR
@@ -851,6 +856,7 @@ b = (not FOOBAR) or foo()
 c = 1 if FOOBAR else 2
 d = [x for x in lst if FOOBAR]
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagOkWithDeadStatements]
 # flags: --warn-unreachable
@@ -1026,7 +1032,8 @@ def f_no_suppress_5() -> int:
         return 3
     noop()                  # E: Statement is unreachable
 
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextManagersSuppressed]
 # flags: --warn-unreachable
@@ -1072,7 +1079,8 @@ def f_mix() -> int:         # E: Missing return statement
     with DoesNotSuppress(), Suppresses1(), DoesNotSuppress():
         return 3
     noop()
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextManagersSuppressedNoStrictOptional]
 # flags: --warn-unreachable --no-strict-optional
@@ -1113,7 +1121,8 @@ def f_suppress() -> int:  # E: Missing return statement
     with Suppresses():
         return 3
     noop()
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersNoSuppress]
 # flags: --warn-unreachable --python-version 3.7
@@ -1179,6 +1188,7 @@ async def f_no_suppress_5() -> int:
     noop()                  # E: Statement is unreachable
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersSuppressed]
 # flags: --warn-unreachable --python-version 3.7
@@ -1225,6 +1235,7 @@ async def f_mix() -> int:         # E: Missing return statement
         return 3
     noop()
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testUnreachableFlagContextAsyncManagersAbnormal]
 # flags: --warn-unreachable --python-version 3.7
@@ -1276,4 +1287,4 @@ async def f_malformed_2() -> int:
     noop()                  # E: Statement is unreachable
 
 [typing fixtures/typing-full.pyi]
-
+[builtins fixtures/tuple.pyi]

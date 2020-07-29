@@ -23,17 +23,17 @@ Other things:
 """
 
 from typing import (
-    List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator,
+    List, Optional, Tuple, Dict, Callable, Union, NamedTuple, TypeVar, Iterator, cast,
 )
 from typing_extensions import TypedDict
 
 from mypy.state import strict_optional_set
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
-    TypeVarType, FunctionLike,
+    TypeVarType, FunctionLike, UninhabitedType,
     TypeStrVisitor, TypeTranslator,
     is_optional, remove_optional, ProperType, get_proper_type,
-    TypedDictType
+    TypedDictType, TypeAliasType
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
@@ -213,7 +213,9 @@ class SuggestionEngine:
                  no_any: bool = False,
                  try_text: bool = False,
                  flex_any: Optional[float] = None,
-                 use_fixme: Optional[str] = None) -> None:
+                 use_fixme: Optional[str] = None,
+                 max_guesses: Optional[int] = None
+                 ) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
@@ -227,7 +229,7 @@ class SuggestionEngine:
         if no_any:
             self.flex_any = 1.0
 
-        self.max_guesses = 64
+        self.max_guesses = max_guesses or 64
         self.use_fixme = use_fixme
 
     def suggest(self, function: str) -> str:
@@ -280,17 +282,19 @@ class SuggestionEngine:
 
     def get_trivial_type(self, fdef: FuncDef) -> CallableType:
         """Generate a trivial callable type from a func def, with all Anys"""
+        # The Anys are marked as being from the suggestion engine
+        # since they need some special treatment (specifically,
+        # constraint generation ignores them.)
         return CallableType(
-            [AnyType(TypeOfAny.unannotated) for a in fdef.arg_kinds],
+            [AnyType(TypeOfAny.suggestion_engine) for a in fdef.arg_kinds],
             fdef.arg_kinds,
             fdef.arg_names,
-            # We call this a special form so that has_any_type doesn't consider it to be a real any
-            AnyType(TypeOfAny.special_form),
+            AnyType(TypeOfAny.suggestion_engine),
             self.builtin_type('builtins.function'))
 
     def get_starting_type(self, fdef: FuncDef) -> CallableType:
         if isinstance(fdef.type, CallableType):
-            return fdef.type
+            return make_suggestion_anys(fdef.type)
         else:
             return self.get_trivial_type(fdef)
 
@@ -301,10 +305,9 @@ class SuggestionEngine:
         """Produce a list of type suggestions for each argument type."""
         types = []  # type: List[List[Type]]
         for i in range(len(base.arg_kinds)):
-            # Make self args Any but this will get overriden somewhere in the checker
-            # We call this a special form so that has_any_type doesn't consider it to be a real any
+            # Make self args Any but this will get overridden somewhere in the checker
             if i == 0 and is_method:
-                types.append([AnyType(TypeOfAny.special_form)])
+                types.append([AnyType(TypeOfAny.suggestion_engine)])
                 continue
 
             all_arg_types = []
@@ -362,14 +365,16 @@ class SuggestionEngine:
         """
         options = self.get_args(is_method, base, defaults, callsites, uses)
         options = [self.add_adjustments(tps) for tps in options]
-        return [refine_callable(base, base.copy_modified(arg_types=list(x)))
-                for x in itertools.product(*options)]
+
+        # Take the first `max_guesses` guesses.
+        product = itertools.islice(itertools.product(*options), 0, self.max_guesses)
+        return [refine_callable(base, base.copy_modified(arg_types=list(x))) for x in product]
 
     def get_callsites(self, func: FuncDef) -> Tuple[List[Callsite], List[str]]:
         """Find all call sites of a function."""
         new_type = self.get_starting_type(func)
 
-        collector_plugin = SuggestionPlugin(func.fullname())
+        collector_plugin = SuggestionPlugin(func.fullname)
 
         self.plugin._plugins.insert(0, collector_plugin)
         try:
@@ -379,13 +384,16 @@ class SuggestionEngine:
 
         return collector_plugin.mystery_hits, errors
 
-    def filter_options(self, guesses: List[CallableType], is_method: bool) -> List[CallableType]:
+    def filter_options(
+        self, guesses: List[CallableType], is_method: bool, ignore_return: bool
+    ) -> List[CallableType]:
         """Apply any configured filters to the possible guesses.
 
         Currently the only option is filtering based on Any prevalance."""
         return [
             t for t in guesses
-            if self.flex_any is None or any_score_callable(t, is_method) >= self.flex_any
+            if self.flex_any is None
+            or any_score_callable(t, is_method, ignore_return) >= self.flex_any
         ]
 
     def find_best(self, func: FuncDef, guesses: List[CallableType]) -> Tuple[CallableType, int]:
@@ -399,6 +407,23 @@ class SuggestionEngine:
         best = min(guesses,
                    key=lambda s: (count_errors(errors[s]), self.score_callable(s)))
         return best, count_errors(errors[best])
+
+    def get_guesses_from_parent(self, node: FuncDef) -> List[CallableType]:
+        """Try to get a guess of a method type from a parent class."""
+        if not node.info:
+            return []
+
+        for parent in node.info.mro[1:]:
+            pnode = parent.names.get(node.name)
+            if pnode and isinstance(pnode.node, (FuncDef, Decorator)):
+                typ = get_proper_type(pnode.node.type)
+                # FIXME: Doesn't work right with generic tyeps
+                if isinstance(typ, CallableType) and len(typ.arg_types) == len(node.arguments):
+                    # Return the first thing we find, since it probably doesn't make sense
+                    # to grab things further up in the chain if an earlier parent has it.
+                    return [typ]
+
+        return []
 
     def get_suggestion(self, mod: str, node: FuncDef) -> PyAnnotateSignature:
         """Compute a suggestion for a function.
@@ -414,9 +439,6 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        if len(node.arg_names) >= 10:
-            raise SuggestionFailure("Too many arguments")
-
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
@@ -425,9 +447,8 @@ class SuggestionEngine:
                 callsites,
                 uses,
             )
-        guesses = self.filter_options(guesses, is_method)
-        if len(guesses) > self.max_guesses:
-            raise SuggestionFailure("Too many possibilities!")
+        guesses += self.get_guesses_from_parent(node)
+        guesses = self.filter_options(guesses, is_method, ignore_return=True)
         best, _ = self.find_best(node, guesses)
 
         # Now try to find the return type!
@@ -440,7 +461,7 @@ class SuggestionEngine:
                 ret_types = [NoneType()]
 
         guesses = [best.copy_modified(ret_type=refine_type(best.ret_type, t)) for t in ret_types]
-        guesses = self.filter_options(guesses, is_method)
+        guesses = self.filter_options(guesses, is_method, ignore_return=False)
         best, errors = self.find_best(node, guesses)
 
         if self.no_errors and errors:
@@ -486,7 +507,7 @@ class SuggestionEngine:
                 raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
             line_number = int(line)
             modname, node = self.find_node_by_file_and_line(file, line_number)
-            tail = node.fullname()[len(modname) + 1:]  # add one to account for '.'
+            tail = node.fullname[len(modname) + 1:]  # add one to account for '.'
         else:
             target = split_target(self.fgmanager.graph, key)
             if not target:
@@ -547,8 +568,8 @@ class SuggestionEngine:
             raise SuggestionFailure('Source file is not a Python file')
         try:
             modname, _ = self.finder.crawl_up(os.path.normpath(file))
-        except InvalidSourceList:
-            raise SuggestionFailure('Invalid source file name: ' + file)
+        except InvalidSourceList as e:
+            raise SuggestionFailure('Invalid source file name: ' + file) from e
         if modname not in self.graph:
             raise SuggestionFailure('Unknown module: ' + modname)
         # We must be sure about any edits in this file as this might affect the line numbers.
@@ -605,7 +626,7 @@ class SuggestionEngine:
         func.type = None
         func.unanalyzed_type = typ
         try:
-            res = self.fgmanager.trigger(func.fullname())
+            res = self.fgmanager.trigger(func.fullname)
             # if res:
             #     print('===', typ)
             #     print('\n'.join(res))
@@ -688,7 +709,7 @@ class SuggestionEngine:
         if arg_pos and isinstance(t, NoneType):
             return 20
         if isinstance(t, UnionType):
-            if any(isinstance(x, AnyType) for x in t.items):
+            if any(isinstance(get_proper_type(x), AnyType) for x in t.items):
                 return 20
             if any(has_any_type(x) for x in t.items):
                 return 15
@@ -696,7 +717,7 @@ class SuggestionEngine:
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
-        if self.try_text and isinstance(t, Instance) and t.type.fullname() == 'builtins.str':
+        if self.try_text and isinstance(t, Instance) and t.type.fullname == 'builtins.str':
             return 1
         return 0
 
@@ -711,12 +732,12 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
     Higher is better, 1.0 is max
     """
     t = get_proper_type(ut)
-    if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.special_form:
+    if isinstance(t, AnyType) and t.type_of_any != TypeOfAny.suggestion_engine:
         return 0
     if isinstance(t, NoneType) and arg_pos:
         return 0.5
     if isinstance(t, UnionType):
-        if any(isinstance(x, AnyType) for x in t.items):
+        if any(isinstance(get_proper_type(x), AnyType) for x in t.items):
             return 0.5
         if any(has_any_type(x) for x in t.items):
             return 0.25
@@ -728,14 +749,14 @@ def any_score_type(ut: Type, arg_pos: bool) -> float:
     return 1.0
 
 
-def any_score_callable(t: CallableType, is_method: bool) -> float:
+def any_score_callable(t: CallableType, is_method: bool, ignore_return: bool) -> float:
     # Ignore the first argument of methods
     scores = [any_score_type(x, arg_pos=True) for x in t.arg_types[int(is_method):]]
     # Return type counts twice (since it spreads type information), unless it is
     # None in which case it does not count at all. (Though it *does* still count
     # if there are no arguments.)
     if not isinstance(get_proper_type(t.ret_type), NoneType) or not scores:
-        ret = any_score_type(t.ret_type, arg_pos=False)
+        ret = 1.0 if ignore_return else any_score_type(t.ret_type, arg_pos=False)
         scores += [ret, ret]
 
     return sum(scores) / len(scores)
@@ -756,8 +777,14 @@ class TypeFormatter(TypeStrVisitor):
         self.module = module
         self.graph = graph
 
+    def visit_any(self, t: AnyType) -> str:
+        if t.missing_import_name:
+            return t.missing_import_name
+        else:
+            return "Any"
+
     def visit_instance(self, t: Instance) -> str:
-        s = t.type.fullname() or t.type.name() or None
+        s = t.type.fullname or t.type.name or None
         if s is None:
             return '<???>'
         if s in reverse_builtin_aliases:
@@ -778,7 +805,7 @@ class TypeFormatter(TypeStrVisitor):
 
         if (mod, obj) == ('builtins', 'tuple'):
             mod, obj = 'typing', 'Tuple[' + t.args[0].accept(self) + ', ...]'
-        elif t.args != []:
+        elif t.args:
             obj += '[{}]'.format(self.list_str(t.args))
 
         if mod_obj == ('builtins', 'unicode'):
@@ -791,11 +818,14 @@ class TypeFormatter(TypeStrVisitor):
 
     def visit_tuple_type(self, t: TupleType) -> str:
         if t.partial_fallback and t.partial_fallback.type:
-            fallback_name = t.partial_fallback.type.fullname()
+            fallback_name = t.partial_fallback.type.fullname
             if fallback_name != 'builtins.tuple':
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
         return 'Tuple[{}]'.format(s)
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> str:
+        return "Any"
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         return t.fallback.accept(self)
@@ -825,11 +855,40 @@ class StrToText(TypeTranslator):
     def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
         self.text_type = builtin_type('builtins.unicode')
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        exp_t = get_proper_type(t)
+        if isinstance(exp_t, Instance) and exp_t.type.fullname == 'builtins.str':
+            return self.text_type
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
     def visit_instance(self, t: Instance) -> Type:
-        if t.type.fullname() == 'builtins.str':
+        if t.type.fullname == 'builtins.str':
             return self.text_type
         else:
             return super().visit_instance(t)
+
+
+TType = TypeVar('TType', bound=Type)
+
+
+def make_suggestion_anys(t: TType) -> TType:
+    """Make all anys in the type as coming from the suggestion engine.
+
+    This keeps those Anys from influencing constraint generation,
+    which allows us to do better when refining types.
+    """
+    return cast(TType, t.accept(MakeSuggestionAny()))
+
+
+class MakeSuggestionAny(TypeTranslator):
+    def visit_any(self, t: AnyType) -> Type:
+        if not t.missing_import_name:
+            return t.copy_modified(type_of_any=TypeOfAny.suggestion_engine)
+        else:
+            return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
 def generate_type_combinations(types: List[Type]) -> List[Type]:
@@ -878,7 +937,8 @@ def refine_type(ti: Type, si: Type) -> Type:
     s = get_proper_type(si)
 
     if isinstance(t, AnyType):
-        return s
+        # If s is also an Any, we return if it is a missing_import Any
+        return t if isinstance(s, AnyType) and t.missing_import_name else s
 
     if isinstance(t, Instance) and isinstance(s, Instance) and t.type == s.type:
         return t.copy_modified(args=[refine_type(ta, sa) for ta, sa in zip(t.args, s.args)])
@@ -907,9 +967,15 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
 
     This is done by refining every component of the union against the
     right hand side type (or every component of its union if it is
-    one). If an element of the union is succesfully refined, we drop it
+    one). If an element of the union is successfully refined, we drop it
     from the union in favor of the refined versions.
     """
+    # Don't try to do any union refining if the types are already the
+    # same.  This prevents things like refining Optional[Any] against
+    # itself and producing None.
+    if t == s:
+        return t
+
     rhs_items = s.items if isinstance(s, UnionType) else [s]
 
     new_items = []

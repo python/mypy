@@ -91,9 +91,6 @@ if USE_MYPYC:
         'sitepkgs.py',
         os.path.join('dmypy', '__main__.py'),
 
-        # Needs to be interpreted to provide a hook to interpreted plugins
-        'interpreted_plugin.py',
-
         # Uses __getattr__/__setattr__
         'split_namespace.py',
 
@@ -103,6 +100,9 @@ if USE_MYPYC:
         # We don't populate __file__ properly at the top level or something?
         # Also I think there would be problems with how we generate version.py.
         'version.py',
+
+        # Can be removed once we drop support for Python 3.5.2 and lower.
+        'stubtest.py',
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
@@ -120,6 +120,7 @@ if USE_MYPYC:
     mypyc_targets = [x for x in mypyc_targets
                      if not x.startswith((os.path.join('mypy', 'test') + os.sep,
                                           os.path.join('mypyc', 'test') + os.sep,
+                                          os.path.join('mypyc', 'doc') + os.sep,
                                           os.path.join('mypyc', 'test-data') + os.sep,
                                           ))]
     # ... and add back in the one test module we need
@@ -140,18 +141,16 @@ if USE_MYPYC:
         del sys.modules['mypy.git']
         sys.path.insert(0, use_other_mypyc)
 
-    from mypyc.build import mypycify, MypycifyBuildExt
+    from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
-        mypyc_targets,
-        ['--config-file=mypy_bootstrap.ini'],
+        mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
         # Use multi-file compliation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
     )
-    cmdclass['build_ext'] = MypycifyBuildExt
 else:
     ext_modules = []
 
@@ -165,6 +164,7 @@ classifiers = [
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
     'Topic :: Software Development',
 ]
 
@@ -180,12 +180,14 @@ setup(name='mypy',
       ext_modules=ext_modules,
       packages=[
           'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
-          'mypyc', 'mypyc.test',
+          'mypyc', 'mypyc.test', 'mypyc.codegen', 'mypyc.ir', 'mypyc.irbuild',
+          'mypyc.primitives', 'mypyc.transform'
       ],
       package_data={'mypy': package_data},
       scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
+                                        'stubtest=mypy.stubtest:main',
                                         'dmypy=mypy.dmypy.client:console_entry',
                                         ]},
       classifiers=classifiers,
@@ -193,7 +195,7 @@ setup(name='mypy',
       # When changing this, also update mypy-requirements.txt.
       install_requires=['typed_ast >= 1.4.0, < 1.5.0',
                         'typing_extensions>=3.7.4',
-                        'mypy_extensions >= 0.4.0, < 0.5.0',
+                        'mypy_extensions >= 0.4.3, < 0.5.0',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},

@@ -5,10 +5,12 @@ types until the end of semantic analysis, and these break various type
 operations, including subtype checks.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block
-from mypy.types import Type, Instance, TypeVarType, AnyType, get_proper_types
+from mypy.types import (
+    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
+)
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
@@ -27,10 +29,13 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.scope = Scope()
         # Should we also analyze function definitions, or only module top-levels?
         self.recurse_into_functions = True
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]].
+        self.seen_aliases = set()  # type: Set[TypeAliasType]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.errors.set_file(o.path, o.fullname(), scope=self.scope)
-        self.scope.enter_file(o.fullname())
+        self.errors.set_file(o.path, o.fullname, scope=self.scope)
+        self.scope.enter_file(o.fullname)
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -48,6 +53,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if not o.is_unreachable:
             super().visit_block(o)
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        super().visit_type_alias_type(t)
+        if t in self.seen_aliases:
+            # Avoid infinite recursion on recursive type aliases.
+            # Note: it is fine to skip the aliases we have already seen in non-recursive types,
+            # since errors there have already already reported.
+            return
+        self.seen_aliases.add(t)
+        get_proper_type(t).accept(self)
+
     def visit_instance(self, t: Instance) -> None:
         # Type argument counts were checked in the main semantic analyzer pass. We assume
         # that the counts are correct here.
@@ -59,7 +74,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     if not arg_values:
                         self.fail('Type variable "{}" not valid as type '
                                   'argument value for "{}"'.format(
-                                      arg.name, info.name()), t, code=codes.TYPE_VAR)
+                                      arg.name, info.name), t, code=codes.TYPE_VAR)
                         continue
                 else:
                     arg_values = [arg]
@@ -67,7 +82,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             if not is_subtype(arg, tvar.upper_bound):
                 self.fail('Type argument "{}" of "{}" must be '
                           'a subtype of "{}"'.format(
-                              arg, info.name(), tvar.upper_bound), t, code=codes.TYPE_VAR)
+                              arg, info.name, tvar.upper_bound), t, code=codes.TYPE_VAR)
         super().visit_instance(t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
@@ -78,10 +93,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail('Invalid type argument value for "{}"'.format(
-                        type.name()), context, code=codes.TYPE_VAR)
+                        type.name), context, code=codes.TYPE_VAR)
                 else:
-                    class_name = '"{}"'.format(type.name())
-                    actual_type_name = '"{}"'.format(actual.type.name())
+                    class_name = '"{}"'.format(type.name)
+                    actual_type_name = '"{}"'.format(actual.type.name)
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                             arg_name, class_name, actual_type_name),

@@ -6,6 +6,7 @@ __pycache__
 /build
 /env*/
 docs/build/
+docs/source/_build
 *.iml
 /out/
 .venv*/
@@ -22,8 +23,11 @@ dmypy.json
 
 # IDEs
 .idea
-*.swp
 .vscode
+
+# vim temporary files
+.*.sw?
+*.sw?
 
 # Operating Systems
 .DS_Store

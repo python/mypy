@@ -4,8 +4,8 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with fallback to ``setup.cfg`` in the current
-directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
+the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
 ``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
 if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
 to read a different file instead (see :ref:`config-file-flag`).
@@ -15,7 +15,7 @@ files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config
 has the highest precedence and must be correct; otherwise mypy will report
 an error and exit.  Without command line option, mypy will look for defaults,
 but will use only one of them.  The first one to read is ``mypy.ini``,
-and then ``setup.cfg``.
+then ``.mypy.ini``, and finally ``setup.cfg``.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -256,14 +256,25 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: no_site_packages
+
+    :type: bool
+    :default: False
+
+    Disables using type information in installed packages (see :pep:`561`).
+    This will also disable searching for a usable Python executable. This acts
+    the same as :option:`--no-site-packages <mypy --no-site-packages>` command
+    line flag.
+
 .. confval:: no_silence_site_packages
 
     :type: boolean
     :default: False
 
-    Enables reporting error messages generated within :pep:`561` compliant packages.
-    Those error messages are suppressed by default, since you are usually
-    not able to control errors in 3rd party code.
+    Enables reporting error messages generated within installed packages (see
+    :pep:`561` for more details on distributing type information). Those error
+    messages are suppressed by default, since you are usually not able to
+    control errors in 3rd party code.
 
     This option may only be set in the global section (``[mypy]``).
 

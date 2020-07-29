@@ -8,11 +8,7 @@ import sys
 import time
 
 from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
-try:
-    from typing import NoReturn
-except ImportError:  # Python 3.5.1
-    NoReturn = None  # type: ignore
-from typing_extensions import Final
+from typing_extensions import Final, NoReturn
 
 from mypy import build
 from mypy import defaults
@@ -101,16 +97,11 @@ def main(script_path: Optional[str],
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
                          if glob in options.unused_configs)),
               file=stderr)
-    if options.junit_xml:
-        t1 = time.time()
-        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
-                             py_version, options.platform)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
-    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -132,6 +123,9 @@ def main(script_path: Optional[str],
         util.hard_exit(code)
     elif code:
         sys.exit(code)
+
+    # HACK: keep res alive so that mypyc won't free it before the hard_exit
+    list([res])
 
 
 # Make the help output a little less jarring.
@@ -198,10 +192,11 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
                                           ['-c', 'import sys; print(sys.executable)'],
                                           stderr=subprocess.STDOUT).decode().strip()
         return sys_exe
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         raise PythonExecutableInferenceError(
             'failed to find a Python executable matching version {},'
-            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version)
+        ) from e
 
 
 def infer_python_executable(options: Options,
@@ -220,7 +215,7 @@ def infer_python_executable(options: Options,
     python_executable = special_opts.python_executable or options.python_executable
 
     if python_executable is None:
-        if not special_opts.no_executable:
+        if not special_opts.no_executable and not options.no_site_packages:
             python_executable = _python_executable_from_version(options.python_version)
     options.python_executable = python_executable
 
@@ -606,7 +601,7 @@ def process_options(args: List[str],
                         help="Treat imports as private unless aliased",
                         group=strictness_group)
 
-    add_invertible_flag('--strict-equality', default=False, strict_flag=False,
+    add_invertible_flag('--strict-equality', default=False, strict_flag=True,
                         help="Prohibit equality, identity, and container checks for"
                              " non-overlapping types",
                         group=strictness_group)
@@ -742,6 +737,9 @@ def process_options(args: List[str],
     parser.add_argument(
         '--inferstats', action='store_true', dest='dump_inference_stats',
         help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--dump-build-stats', action='store_true',
+        help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -807,15 +805,19 @@ def process_options(args: List[str],
     if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
 
-    # Parse config file first, so command line can override.
     options = Options()
-    parse_config_file(options, config_file, stdout, stderr)
+
+    def set_strict_flags() -> None:
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
+
+    # Parse config file first, so command line can override.
+    parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
     if getattr(dummy, 'special-opts:strict'):  # noqa
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
+        set_strict_flags()
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
@@ -834,7 +836,7 @@ def process_options(args: List[str],
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
-    if special_opts.no_executable:
+    if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
     # Paths listed in the config file will be ignored if any paths are passed on
@@ -902,10 +904,10 @@ def process_options(args: List[str],
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),
-                     stderr)
+                     stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p), stderr)
+                fail("Can't find package '{}'".format(p), stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -921,7 +923,7 @@ def process_options(args: List[str],
         # which causes issues when using the same variable to catch
         # exceptions of different types.
         except InvalidSourceList as e2:
-            fail(str(e2), stderr)
+            fail(str(e2), stderr, options)
         return targets, options
 
 
@@ -982,6 +984,15 @@ def process_cache_map(parser: argparse.ArgumentParser,
         options.cache_map[source] = (meta_file, data_file)
 
 
-def fail(msg: str, stderr: TextIO) -> None:
+def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
+    if options.junit_xml:
+        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
+        util.write_junit_xml(
+            td, serious, messages, options.junit_xml, py_version, options.platform)
+
+
+def fail(msg: str, stderr: TextIO, options: Options) -> None:
+    """Fail with a serious error."""
     stderr.write('%s\n' % msg)
+    maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)

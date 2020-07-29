@@ -1,0 +1,128 @@
+# Test cases for lists (compile and run)
+
+[case testListPlusEquals]
+from typing import Any
+def append(x: Any) -> None:
+    x += [1]
+
+[file driver.py]
+from native import append
+x = []
+append(x)
+assert x == [1]
+
+[case testListSum]
+from typing import List
+def sum(a: List[int], l: int) -> int:
+    sum = 0
+    i = 0
+    while i < l:
+        sum = sum + a[i]
+        i = i + 1
+    return sum
+[file driver.py]
+from native import sum
+print(sum([], 0))
+print(sum([3], 1))
+print(sum([5, 6, -4], 3))
+print(sum([2**128 + 5, -2**127 - 8], 2))
+[out]
+0
+3
+7
+170141183460469231731687303715884105725
+
+[case testListSet]
+from typing import List
+def copy(a: List[int], b: List[int], l: int) -> int:
+    i = 0
+    while i < l:
+        a[i] = b[i]
+        i = i + 1
+    return 0
+[file driver.py]
+from native import copy
+a = [0, '']
+copy(a, [-1, 5], 2)
+print(1, a)
+copy(a, [2**128 + 5, -2**127 - 8], 2)
+print(2, a)
+[out]
+1 [-1, 5]
+2 [340282366920938463463374607431768211461, -170141183460469231731687303715884105736]
+
+[case testSieve]
+from typing import List
+
+def primes(n: int) -> List[int]:
+    a = [1] * (n + 1)
+    a[0] = 0
+    a[1] = 0
+    i = 0
+    while i < n:
+        if a[i] == 1:
+            j = i * i
+            while j < n:
+                a[j] = 0
+                j = j + i
+        i = i + 1
+    return a
+[file driver.py]
+from native import primes
+print(primes(3))
+print(primes(13))
+[out]
+\[0, 0, 1, 1]
+\[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
+
+[case testListPrims]
+from typing import List
+def append(x: List[int], n: int) -> None:
+    x.append(n)
+def pop_last(x: List[int]) -> int:
+    return x.pop()
+def pop(x: List[int], i: int) -> int:
+    return x.pop(i)
+def count(x: List[int], i: int) -> int:
+    return x.count(i)
+[file driver.py]
+from native import append, pop_last, pop, count
+l = [1, 2]
+append(l, 10)
+assert l == [1, 2, 10]
+append(l, 3)
+append(l, 4)
+append(l, 5)
+assert l == [1, 2, 10, 3, 4, 5]
+pop_last(l)
+pop_last(l)
+assert l == [1, 2, 10, 3]
+pop(l, 2)
+assert l == [1, 2, 3]
+pop(l, -2)
+assert l == [1, 3]
+assert count(l, 1) == 1
+assert count(l, 2) == 0
+
+[case testListOfUserDefinedClass]
+class C:
+    x: int
+
+def f() -> int:
+    c = C()
+    c.x = 5
+    a = [c]
+    d = a[0]
+    return d.x + 1
+
+def g() -> int:
+    a = [C()]
+    a[0].x = 3
+    return a[0].x + 4
+[file driver.py]
+from native import f, g
+print(f())
+print(g())
+[out]
+6
+7

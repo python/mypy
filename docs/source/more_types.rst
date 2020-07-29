@@ -561,6 +561,144 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
    to returning ``Any`` only if the input arguments also contain ``Any``.
 
 
+.. _advanced_self:
+
+Advanced uses of self-types
+***************************
+
+Normally, mypy doesn't require annotations for the first arguments of instance and
+class methods. However, they may be needed to have more precise static typing
+for certain programming patterns.
+
+Restricted methods in generic classes
+-------------------------------------
+
+In generic classes some methods may be allowed to be called only
+for certain values of type arguments:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Tag(Generic[T]):
+       item: T
+       def uppercase_item(self: Tag[str]) -> str:
+           return self.item.upper()
+
+   def label(ti: Tag[int], ts: Tag[str]) -> None:
+       ti.uppercase_item()  # E: Invalid self argument "Tag[int]" to attribute function
+                            # "uppercase_item" with type "Callable[[Tag[str]], str]"
+       ts.uppercase_item()  # This is OK
+
+This pattern also allows matching on nested types in situations where the type
+argument is itself generic:
+
+.. code-block:: python
+
+  T = TypeVar('T')
+  S = TypeVar('S')
+
+   class Storage(Generic[T]):
+       def __init__(self, content: T) -> None:
+           self.content = content
+       def first_chunk(self: Storage[Sequence[S]]) -> S:
+           return self.content[0]
+
+   page: Storage[List[str]]
+   page.first_chunk()  # OK, type is "str"
+
+   Storage(0).first_chunk()  # Error: Invalid self argument "Storage[int]" to attribute function
+                             # "first_chunk" with type "Callable[[Storage[Sequence[S]]], S]"
+
+Finally, one can use overloads on self-type to express precise types of
+some tricky methods:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Tag(Generic[T]):
+       @overload
+       def export(self: Tag[str]) -> str: ...
+       @overload
+       def export(self, converter: Callable[[T], str]) -> str: ...
+
+       def export(self, converter=None):
+           if isinstance(self.item, str):
+               return self.item
+           return converter(self.item)
+
+In particular, an :py:meth:`~object.__init__` method overloaded on self-type
+may be useful to annotate generic class constructors where type arguments
+depend on constructor parameters in a non-trivial way, see e.g. :py:class:`~subprocess.Popen`.
+
+Mixin classes
+-------------
+
+Using host class protocol as a self-type in mixin methods allows
+more code re-usability for static typing of mixin classes. For example,
+one can define a protocol that defines common functionality for
+host classes instead of adding required abstract methods to every mixin:
+
+.. code-block:: python
+
+   class Lockable(Protocol):
+       @property
+       def lock(self) -> Lock: ...
+
+   class AtomicCloseMixin:
+       def atomic_close(self: Lockable) -> int:
+           with self.lock:
+               # perform actions
+
+   class AtomicOpenMixin:
+       def atomic_open(self: Lockable) -> int:
+           with self.lock:
+               # perform actions
+
+   class File(AtomicCloseMixin, AtomicOpenMixin):
+       def __init__(self) -> None:
+           self.lock = Lock()
+
+   class Bad(AtomicCloseMixin):
+       pass
+
+   f = File()
+   b: Bad
+   f.atomic_close()  # OK
+   b.atomic_close()  # Error: Invalid self type for "atomic_close"
+
+Note that the explicit self-type is *required* to be a protocol whenever it
+is not a supertype of the current class. In this case mypy will check the validity
+of the self-type only at the call site.
+
+Precise typing of alternative constructors
+------------------------------------------
+
+Some classes may define alternative constructors. If these
+classes are generic, self-type allows giving them precise signatures:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Base(Generic[T]):
+       Q = TypeVar('Q', bound='Base[T]')
+
+       def __init__(self, item: T) -> None:
+           self.item = item
+
+       @classmethod
+       def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]:
+           return cls(item), cls(item)
+
+   class Sub(Base[T]):
+       ...
+
+   pair = Sub.make_pair('yes')  # Type is "Tuple[Sub[str], Sub[str]]"
+   bad = Sub[int].make_pair('no')  # Error: Argument 1 to "make_pair" of "Base"
+                                   # has incompatible type "str"; expected "int"
+
 .. _async-and-await:
 
 Typing async/await
@@ -758,7 +896,7 @@ dictionary value depends on the key:
 
 .. code-block:: python
 
-   from mypy_extensions import TypedDict
+   from typing_extensions import TypedDict
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
@@ -834,17 +972,19 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
 .. note::
 
-   You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
+   Unless you are on Python 3.8 or newer (where ``TypedDict`` is available in
+   standard library :py:mod:`typing` module) you need to install ``typing_extensions``
+   using pip to use ``TypedDict``:
 
    .. code-block:: text
 
-       python3 -m pip install --upgrade mypy-extensions
+      python3 -m pip install --upgrade typing-extensions
 
    Or, if you are using Python 2:
 
    .. code-block:: text
 
-       pip install --upgrade mypy-extensions
+      pip install --upgrade typing-extensions
 
 Totality
 --------
@@ -933,7 +1073,7 @@ in Python 3.6 and later:
 
 .. code-block:: python
 
-   from mypy_extensions import TypedDict
+   from typing_extensions import TypedDict
 
    class Movie(TypedDict):
        name: str
@@ -979,3 +1119,16 @@ and non-required keys, such as ``Movie`` above, will only be compatible with
 another ``TypedDict`` if all required keys in the other ``TypedDict`` are required keys in the
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
+
+Unions of TypedDicts
+--------------------
+
+Since TypedDicts are really just regular dicts at runtime, it is not possible to
+use ``isinstance`` checks to distinguish between different variants of a Union of
+TypedDict in the same way you can with regular objects.
+
+Instead, you can use the :ref:`tagged union pattern <tagged_unions>`. The referenced
+section of the docs has a full description with an example, but in short, you will
+need to give each TypedDict the same key where each value has a unique
+unique :ref:`Literal type <literal_types>`. Then, check that key to distinguish
+between your TypedDicts.

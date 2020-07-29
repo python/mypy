@@ -42,23 +42,27 @@ class NewTypeAnalyzer:
         The logic in this function mostly copies the logic for visit_class_def()
         with a single (non-Generic) base.
         """
-        name, call = self.analyze_newtype_declaration(s)
-        if name is None or call is None:
+        var_name, call = self.analyze_newtype_declaration(s)
+        if var_name is None or call is None:
             return False
+        name = var_name
         # OK, now we know this is a NewType. But the base type may be not ready yet,
         # add placeholder as we do for ClassDef.
 
+        if self.api.is_func_scope():
+            name += '@' + str(s.line)
         fullname = self.api.qualified_name(name)
+
         if (not call.analyzed or
                 isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info):
             # Start from labeling this as a future class, as we do for normal ClassDefs.
             placeholder = PlaceholderNode(fullname, s, s.line, becomes_typeinfo=True)
-            self.api.add_symbol(name, placeholder, s, can_defer=False)
+            self.api.add_symbol(var_name, placeholder, s, can_defer=False)
 
-        old_type, should_defer = self.check_newtype_args(name, call, s)
+        old_type, should_defer = self.check_newtype_args(var_name, call, s)
         old_type = get_proper_type(old_type)
         if not call.analyzed:
-            call.analyzed = NewTypeExpr(name, old_type, line=call.line, column=call.column)
+            call.analyzed = NewTypeExpr(var_name, old_type, line=call.line, column=call.column)
         if old_type is None:
             if should_defer:
                 # Base type is not ready.
@@ -98,7 +102,9 @@ class NewTypeAnalyzer:
             call.analyzed.info = newtype_class_info
         else:
             call.analyzed.info.bases = newtype_class_info.bases
-        self.api.add_symbol(name, call.analyzed.info, s)
+        self.api.add_symbol(var_name, call.analyzed.info, s)
+        if self.api.is_func_scope():
+            self.api.add_symbol_skip_local(name, call.analyzed.info)
         newtype_class_info.line = s.line
         return True
 
@@ -191,7 +197,7 @@ class NewTypeAnalyzer:
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
-        init_func._fullname = self.api.qualified_name(name) + '.__init__'
+        init_func._fullname = info.fullname + '.__init__'
         info.names['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info

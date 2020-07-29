@@ -72,14 +72,14 @@ check_parser = p = subparsers.add_parser('check', formatter_class=AugmentedHelpF
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
-p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
+p.add_argument('--perf-stats-file', help='write performance information to the given file')
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
 run_parser = p = subparsers.add_parser('run', formatter_class=AugmentedHelpFormatter,
                                        help="Check some files, [re]starting daemon if necessary")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
-p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
+p.add_argument('--perf-stats-file', help='write performance information to the given file')
 p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('--log-file', metavar='FILE', type=str,
@@ -88,13 +88,13 @@ p.add_argument('flags', metavar='ARG', nargs='*', type=str,
                help="Regular mypy flags and files (precede with --)")
 
 recheck_parser = p = subparsers.add_parser('recheck', formatter_class=AugmentedHelpFormatter,
-    help="Re-check the previous list of files, with optional modifications (requires daemon).")
+    help="Re-check the previous list of files, with optional modifications (requires daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
-p.add_argument('--perf-stats-file', help='write telemetry information to the given file')
+p.add_argument('--perf-stats-file', help='write performance information to the given file')
 p.add_argument('--update', metavar='FILE', nargs='*',
-               help="Files in the run to add or check again (default: all from previous run)..")
+               help="Files in the run to add or check again (default: all from previous run)")
 p.add_argument('--remove', metavar='FILE', nargs='*',
                help="Files to remove from the run")
 
@@ -116,6 +116,8 @@ p.add_argument('--callsites', action='store_true',
                help="Find callsites instead of suggesting a type")
 p.add_argument('--use-fixme', metavar='NAME', type=str,
                help="A dummy name to use instead of Any for types that can't be inferred")
+p.add_argument('--max-guesses', type=int,
+               help="Set the maximum number of types to try for a function (default 64)")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -370,7 +372,7 @@ def do_suggest(args: argparse.Namespace) -> None:
     response = request(args.status_file, 'suggest', function=args.function,
                        json=args.json, callsites=args.callsites, no_errors=args.no_errors,
                        no_any=args.no_any, flex_any=args.flex_any, try_text=args.try_text,
-                       use_fixme=args.use_fixme)
+                       use_fixme=args.use_fixme, max_guesses=args.max_guesses)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
@@ -388,6 +390,7 @@ def check_output(response: Dict[str, Any], verbose: bool,
     except KeyError:
         fail("Response: %s" % str(response))
     sys.stdout.write(out)
+    sys.stdout.flush()
     sys.stderr.write(err)
     if verbose:
         show_stats(response)
@@ -411,7 +414,7 @@ def show_stats(response: Mapping[str, object]) -> None:
         if key not in ('out', 'err'):
             print("%-24s: %10s" % (key, "%.3f" % value if isinstance(value, float) else value))
         else:
-            value = str(value).replace('\n', '\\n')
+            value = repr(value)[1:-1]
             if len(value) > 50:
                 value = value[:40] + ' ...'
             print("%-24s: %s" % (key, value))
@@ -472,8 +475,7 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.
     args['is_tty'] = sys.stdout.isatty() or int(os.getenv('MYPY_FORCE_COLOR', '0')) > 0
-    args['terminal_width'] = (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
-                              get_terminal_width())
+    args['terminal_width'] = get_terminal_width()
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:
@@ -531,8 +533,8 @@ def read_status(status_file: str) -> Dict[str, object]:
     with open(status_file) as f:
         try:
             data = json.load(f)
-        except Exception:
-            raise BadStatus("Malformed status file (not JSON)")
+        except Exception as e:
+            raise BadStatus("Malformed status file (not JSON)") from e
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
     return data

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Stub generator for C modules.
 
 The public interface is via the mypy.stubgen module.
@@ -10,7 +11,7 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import write_header, is_c_module
+from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
     infer_arg_sig_from_docstring, FunctionSig
@@ -19,7 +20,6 @@ from mypy.stubdoc import (
 
 def generate_stub_for_c_module(module_name: str,
                                target: str,
-                               add_header: bool = True,
                                sigs: Optional[Dict[str, str]] = None,
                                class_sigs: Optional[Dict[str, str]] = None) -> None:
     """Generate stub for C module.
@@ -75,8 +75,6 @@ def generate_stub_for_c_module(module_name: str,
         output.append(line)
     output = add_typing_import(output)
     with open(target, 'w') as file:
-        if add_header:
-            write_header(file, module_name)
         for line in output:
             file.write('%s\n' % line)
 
@@ -171,6 +169,8 @@ def generate_c_function_stub(module: ModuleType,
                     arg_def = self_var
                 else:
                     arg_def = arg.name
+                    if arg_def == 'None':
+                        arg_def = '_none'  # None is not a valid argument name
 
                     if arg.type:
                         arg_def += ": " + strip_or_import(arg.type, module, imports)
@@ -200,16 +200,16 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         module: in which this type is used
         imports: list of import statements (may be modified during the call)
     """
-    arg_type = typ
-    if module and typ.startswith(module.__name__):
-        arg_type = typ[len(module.__name__) + 1:]
+    stripped_type = typ
+    if module and typ.startswith(module.__name__ + '.'):
+        stripped_type = typ[len(module.__name__) + 1:]
     elif '.' in typ:
-        arg_module = arg_type[:arg_type.rindex('.')]
+        arg_module = typ[:typ.rindex('.')]
         if arg_module == 'builtins':
-            arg_type = arg_type[len('builtins') + 1:]
+            stripped_type = typ[len('builtins') + 1:]
         else:
             imports.append('import %s' % (arg_module,))
-    return arg_type
+    return stripped_type
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
@@ -252,11 +252,6 @@ def generate_c_type_stub(module: ModuleType,
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
             if not is_skipped_attribute(attr):
-                if is_c_classmethod(value):
-                    methods.append('@classmethod')
-                    self_var = 'cls'
-                else:
-                    self_var = 'self'
                 if attr == '__new__':
                     # TODO: We should support __new__.
                     if '__init__' in obj_dict:
@@ -265,6 +260,11 @@ def generate_c_type_stub(module: ModuleType,
                         # better signature than __init__() ?
                         continue
                     attr = '__init__'
+                if is_c_classmethod(value):
+                    methods.append('@classmethod')
+                    self_var = 'cls'
+                else:
+                    self_var = 'self'
                 generate_c_function_stub(module, attr, value, methods, imports=imports,
                                          self_var=self_var, sigs=sigs, class_name=class_name,
                                          class_sigs=class_sigs)
@@ -296,7 +296,7 @@ def generate_c_type_stub(module: ModuleType,
     if bases:
         bases_str = '(%s)' % ', '.join(
             strip_or_import(
-                '%s.%s' % (base.__module__, base.__name__),
+                get_type_fullname(base),
                 module,
                 imports
             ) for base in bases
@@ -313,6 +313,10 @@ def generate_c_type_stub(module: ModuleType,
             output.append('    %s' % method)
         for prop in properties:
             output.append('    %s' % prop)
+
+
+def get_type_fullname(typ: type) -> str:
+    return '%s.%s' % (typ.__module__, typ.__name__)
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:
@@ -338,33 +342,52 @@ def is_skipped_attribute(attr: str) -> bool:
 
 
 def infer_method_sig(name: str) -> List[ArgSig]:
+    args = None  # type: Optional[List[ArgSig]]
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
         if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',
-                    'int', 'float', 'trunc', 'complex', 'bool'):
-            return []
-        if name == 'getitem':
-            return [ArgSig(name='index')]
-        if name == 'setitem':
-            return [ArgSig(name='index'),
+                    'int', 'float', 'trunc', 'complex', 'bool', 'abs', 'bytes', 'dir', 'len',
+                    'reversed', 'round', 'index', 'enter'):
+            args = []
+        elif name == 'getitem':
+            args = [ArgSig(name='index')]
+        elif name == 'setitem':
+            args = [ArgSig(name='index'),
                     ArgSig(name='object')]
-        if name in ('delattr', 'getattr'):
-            return [ArgSig(name='name')]
-        if name == 'setattr':
-            return [ArgSig(name='name'),
+        elif name in ('delattr', 'getattr'):
+            args = [ArgSig(name='name')]
+        elif name == 'setattr':
+            args = [ArgSig(name='name'),
                     ArgSig(name='value')]
-        if name == 'getstate':
-            return []
-        if name == 'setstate':
-            return [ArgSig(name='state')]
-        if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
-                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
-                    'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
-                    'divmod', 'rdivmod', 'pow', 'rpow'):
-            return [ArgSig(name='other')]
-        if name in ('neg', 'pos'):
-            return []
-    return [
-        ArgSig(name='*args'),
-        ArgSig(name='**kwargs')
-    ]
+        elif name == 'getstate':
+            args = []
+        elif name == 'setstate':
+            args = [ArgSig(name='state')]
+        elif name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
+                      'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
+                      'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
+                      'divmod', 'rdivmod', 'pow', 'rpow',
+                      'xor', 'rxor', 'or', 'ror', 'and', 'rand', 'lshift', 'rlshift',
+                      'rshift', 'rrshift',
+                      'contains', 'delitem',
+                      'iadd', 'iand', 'ifloordiv', 'ilshift', 'imod', 'imul', 'ior',
+                      'ipow', 'irshift', 'isub', 'itruediv', 'ixor'):
+            args = [ArgSig(name='other')]
+        elif name in ('neg', 'pos', 'invert'):
+            args = []
+        elif name == 'get':
+            args = [ArgSig(name='instance'),
+                    ArgSig(name='owner')]
+        elif name == 'set':
+            args = [ArgSig(name='instance'),
+                    ArgSig(name='value')]
+        elif name == 'reduce_ex':
+            args = [ArgSig(name='protocol')]
+        elif name == 'exit':
+            args = [ArgSig(name='type'),
+                    ArgSig(name='value'),
+                    ArgSig(name='traceback')]
+    if args is None:
+        args = [ArgSig(name='*args'),
+                ArgSig(name='**kwargs')]
+    return [ArgSig(name='self')] + args

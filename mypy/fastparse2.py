@@ -119,7 +119,8 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True, code=codes.SYNTAX)
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+                      code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
@@ -187,7 +188,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt, ast27.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         return node
@@ -303,7 +304,7 @@ class ASTConverter:
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
-                    and stmt.name() == current_overload_name):
+                    and stmt.name == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -313,7 +314,7 @@ class ASTConverter:
 
                 if isinstance(stmt, Decorator):
                     current_overload = [stmt]
-                    current_overload_name = stmt.name()
+                    current_overload_name = stmt.name
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -369,7 +370,7 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [arg.variable.name for arg in args]  # type: List[Optional[str]]
         arg_names = [None if argument_elide_name(name) else name for name in arg_names]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
@@ -449,7 +450,7 @@ class ASTConverter:
             func_type.line = lineno
 
         if n.decorator_list:
-            var = Var(func_def.name())
+            var = Var(func_def.name)
             var.is_ready = False
             var.set_line(n.decorator_list[0].lineno)
 
@@ -694,7 +695,7 @@ class ASTConverter:
             if item.name is None:
                 vs.append(None)
             elif isinstance(item.name, Name):
-                vs.append(NameExpr(item.name.id))
+                vs.append(self.set_line(NameExpr(item.name.id), item))
             else:
                 self.fail("Sorry, `except <expr>, <anything but a name>` is not supported",
                           item.lineno, item.col_offset)

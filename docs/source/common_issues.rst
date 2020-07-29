@@ -72,6 +72,32 @@ flagged as an error.
   e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
   <https://github.com/python/typeshed/issues/285>`_ for the reason).
 
+- :py:meth:`__init__ <object.__init__>` **method has no annotated
+  arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
+  is considered fully-annotated **if at least one argument is annotated**,
+  while mypy will infer the return type as ``None``.
+  The implication is that, for a :py:meth:`__init__ <object.__init__>` method
+  that has no argument, you'll have to explicitly annotate the return type
+  as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
+
+  .. code-block:: python
+
+      def foo(s: str) -> str:
+          return s
+
+      class A():
+          def __init__(self, value: str): # Return type inferred as None, considered as typed method
+              self.value = value
+              foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
+      class B():
+          def __init__(self):  # No argument is annotated, considered as untyped method
+              foo(1)  # No error!
+
+      class C():
+          def __init__(self) -> None:  # Must specify return type to type-check
+              foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
 - **Some imports may be silently ignored**.  Another source of
   unexpected ``Any`` values are the :option:`--ignore-missing-imports
   <mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
@@ -684,3 +710,156 @@ You can install the latest development version of mypy from source. Clone the
     git clone --recurse-submodules https://github.com/python/mypy.git
     cd mypy
     sudo python3 -m pip install --upgrade .
+
+Variables vs type aliases
+-----------------------------------
+
+Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
+
+1. Variables with type ``Type[...]`` should be created by assignments with an explicit type annotations:
+
+.. code-block:: python
+
+    class A: ...
+    tp: Type[A] = A
+
+2. Aliases are created by assignments without an explicit type:
+
+.. code-block:: python
+
+    class A: ...
+    Alias = A
+
+3. The difference is that aliases are completely known statically and can be used in type context (annotations):
+
+.. code-block:: python
+
+    class A: ...
+    class B: ...
+
+    if random() > 0.5:
+        Alias = A
+    else:
+        Alias = B  # error: Cannot assign multiple types to name "Alias" without an explicit "Type[...]" annotation \
+                   # error: Incompatible types in assignment (expression has type "Type[B]", variable has type "Type[A]")
+
+    tp: Type[object]  # tp is a type variable
+    if random() > 0.5:
+        tp = A
+    else:
+        tp = B  # This is OK
+
+    def fun1(x: Alias) -> None: ...  # This is OK
+    def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
+
+Incompatible overrides
+------------------------------
+
+It's unsafe to override a method with a more specific argument type,
+as it violates the `Liskov substitution principle
+<https://stackoverflow.com/questions/56860/what-is-an-example-of-the-liskov-substitution-principle>`_.
+For return types, it's unsafe to override a method with a more general
+return type.
+
+Other incompatible signature changes in method overrides, such as
+adding an extra required parameter, or removing an optional parameter,
+will also generate errors. The signature of a method in a subclass
+should accept all valid calls to the base class method. Mypy
+treats a subclass as a subtype of the base class. An instance of a
+subclass is valid everywhere where an instance of the base class is
+valid.
+
+This example demonstrates both safe and unsafe overrides:
+
+.. code-block:: python
+
+    from typing import Sequence, List, Iterable
+
+    class A:
+        def test(self, t: Sequence[int]) -> Sequence[str]:
+            ...
+
+    class GeneralizedArgument(A):
+        # A more general argument type is okay
+        def test(self, t: Iterable[int]) -> Sequence[str]:  # OK
+            ...
+
+    class NarrowerArgument(A):
+        # A more specific argument type isn't accepted
+        def test(self, t: List[int]) -> Sequence[str]:  # Error
+            ...
+
+    class NarrowerReturn(A):
+        # A more specific return type is fine
+        def test(self, t: Sequence[int]) -> List[str]:  # OK
+            ...
+
+    class GeneralizedReturn(A):
+        # A more general return type is an error
+        def test(self, t: Sequence[int]) -> Iterable[str]:  # Error
+            ...
+
+You can use ``# type: ignore[override]`` to silence the error. Add it
+to the line that generates the error, if you decide that type safety is
+not necessary:
+
+.. code-block:: python
+
+    class NarrowerArgument(A):
+        def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
+            ...
+
+Unreachable code
+----------------
+
+Mypy may consider some code as *unreachable*, even if it might not be
+immediately obvious why.  It's important to note that mypy will *not*
+type check such code. Consider this example:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        return
+        x: int = 'abc'  # Unreachable -- no error
+
+It's easy to see that any statement after ``return`` is unreachable,
+and hence mypy will not complain about the mis-typed code below
+it. For a more subtle example, consider this code:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        assert foo.bar is None
+        x: int = 'abc'  # Unreachable -- no error
+
+Again, mypy will not report any errors. The type of ``foo.bar`` is
+``str``, and mypy reasons that it can never be ``None``.  Hence the
+``assert`` statement will always fail and the statement below will
+never be executed.  (Note that in Python, ``None`` is not an empty
+reference but an object of type ``None``.)
+
+In this example mypy will go on to check the last line and report an
+error, since mypy thinks that the condition could be either True or
+False:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        if not foo.bar:
+            return
+        x: int = 'abc'  # Reachable -- error
+
+If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
+an error about each unreachable code block.

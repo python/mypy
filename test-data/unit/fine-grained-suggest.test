@@ -44,6 +44,23 @@ bar.py:4: (arg=str)
 bar.py:6: (*typing.List[str])
 bar.py:8: (**typing.Dict[str, str])
 
+[case testMaxGuesses]
+# suggest: foo.foo
+# suggest: --max-guesses=2 foo.foo
+[file foo.py]
+# The idea here is that we can only find the union type with more guesses.
+def foo(x, y):
+    if not isinstance(x, int):
+        x+'1'
+
+foo(1, 2)
+foo('3', '4')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[int, str], object) -> None
+(object, object) -> None
+==
+
 [case testSuggestInferFunc1]
 # flags: --strict-optional
 # suggest: foo.foo
@@ -124,6 +141,7 @@ No guesses that match criteria!
 [file foo.py]
 def foo():
     return 1, "1"
+[builtins fixtures/tuple.pyi]
 [out]
 () -> Tuple[int, str]
 ==
@@ -135,6 +153,7 @@ from typing import NamedTuple
 N = NamedTuple('N', [('x', int)])
 def foo():
     return N(1)
+[builtins fixtures/tuple.pyi]
 [out]
 () -> foo.N
 ==
@@ -183,6 +202,7 @@ class B: ...
 from foo import foo
 from baz import B
 foo(B())
+[builtins fixtures/tuple.pyi]
 
 [out]
 (baz.B) -> Tuple[foo.A, foo:A.C]
@@ -466,6 +486,7 @@ def test() -> None:
     bar(starargs)
     baz(named)
     quux(default)
+[builtins fixtures/primitives.pyi]
 [out]
 (Callable[[int, str], int]) -> int
 (Callable[..., int]) -> int
@@ -684,10 +705,11 @@ No guesses that match criteria!
 () -> None
 ==
 
-[case testSuggestInferClassMethod]
+[case testSuggestClassMethod]
 # flags: --strict-optional
 # suggest: foo.F.bar
 # suggest: foo.F.baz
+# suggest: foo.F.eggs
 [file foo.py]
 class F:
     @classmethod
@@ -697,6 +719,15 @@ class F:
     @staticmethod
     def baz(x, y):
         return x
+
+    @classmethod
+    def spam(cls):
+        # type: () -> None
+        cls.eggs(4)
+
+    @classmethod
+    def eggs(cls, x):
+        pass
 
 [file bar.py]
 from foo import F
@@ -709,6 +740,7 @@ def bar(iany) -> None:
 [out]
 (int, int) -> int
 (str, int) -> str
+(int) -> None
 ==
 
 [case testSuggestColonBasic]
@@ -760,6 +792,42 @@ def baz():
 () -> float
 () -> str
 () -> str
+==
+
+[case testSuggestParent]
+# suggest: foo.B.foo
+# suggest: foo.B.bar
+# suggest: foo.C.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+def deco(f: F) -> F: ...
+
+class A:
+    def foo(self, x: int) -> float:
+        return 0.0
+
+    @deco
+    def bar(self, x: int) -> float:
+        return 0.0
+
+
+class B(A):
+    def foo(self, x):
+        return 0.0
+
+    @deco
+    def bar(self, x):
+        return 0.0
+
+class C(B):
+    def foo(self, x):
+        return 0.0
+
+[out]
+(int) -> float
+(int) -> float
+(int) -> float
 ==
 
 [case testSuggestColonBadLocation]
@@ -880,6 +948,52 @@ z = foo(f(), g())
 (foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
 ==
 
+[case testSuggestBadImport]
+# suggest: foo.foo
+[file foo.py]
+from nothing import Foo  # type: ignore
+
+def foo(x: Foo):
+    return 10
+[out]
+(foo.Foo) -> int
+==
+
+[case testSuggestDict]
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+# suggest: foo.spam
+[file foo.py]
+from typing import List, Any
+
+def foo():
+    return {'x': 5}
+
+def bar():
+    return {}
+
+def baz() -> List[Any]:
+    return [{'x': 5}]
+
+def quux() -> List[Any]:
+    return [1]
+
+def spam(x):
+    pass
+
+spam({'x': 5})
+
+[builtins fixtures/dict.pyi]
+[out]
+() -> typing.Dict[str, int]
+() -> typing.Dict[Any, Any]
+() -> foo:List[typing.Dict[str, int]]
+() -> foo.List[int]
+(typing.Dict[str, int]) -> None
+==
+
 [case testSuggestWithErrors]
 # suggest: foo.foo
 [file foo.py]
@@ -920,6 +1034,7 @@ foo.py:4: error: unexpected EOF while parsing
 # suggest: foo.optional3
 # suggest: foo.optional4
 # suggest: foo.optional5
+# suggest: foo.optional_any
 # suggest: foo.dict1
 # suggest: foo.tuple1
 [file foo.py]
@@ -1002,6 +1117,9 @@ def optional5(x: Optional[Any]):
 optional5(10)
 optional5(None)
 
+def optional_any(x: Optional[Any] = None):
+    pass
+
 def dict1(d: Dict[int, Any]):
     pass
 
@@ -1028,6 +1146,7 @@ tuple1(t)
 (Optional[foo.List[int]]) -> int
 (Union[foo.Set[int], foo.List[int]]) -> None
 (Optional[int]) -> None
+(Optional[Any]) -> None
 (foo.Dict[int, int]) -> None
 (Tuple[int, int]) -> None
 ==

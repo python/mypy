@@ -1,3 +1,5 @@
+from typing import List
+
 import mypy.errors
 
 
@@ -15,6 +17,9 @@ class Errors:
         self._errors.report(line, None, msg, severity='warning', file=path)
         self.num_warnings += 1
 
+    def new_messages(self) -> List[str]:
+        return self._errors.new_messages()
+
     def flush_errors(self) -> None:
-        for error in self._errors.new_messages():
+        for error in self.new_messages():
             print(error)

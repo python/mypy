@@ -49,6 +49,8 @@ try:
         import ast as ast3
         assert 'kind' in ast3.Constant._fields, \
                "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+        # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
+        # TODO: Index, ExtSlice are deprecated in 3.9.
         from ast import (
             AST,
             Call,
@@ -167,7 +169,13 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True, code=codes.SYNTAX)
+        if sys.version_info < (3, 9) and e.filename == "<fstring>":
+            # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
+            # start of the f-string. This would be misleading, as mypy will report the error as the
+            # lineno within the file.
+            e.lineno = None
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+                      code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
@@ -315,18 +323,21 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
         return node
 
-    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
-        res = []  # type: List[Expression]
+    def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:
+        res = []  # type: List[Optional[Expression]]
         for e in l:
             exp = self.visit(e)
             res.append(exp)
         return res
+
+    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
+        return cast(List[Expression], self.translate_opt_expr_list(l))
 
     def get_lineno(self, node: Union[ast3.expr, ast3.stmt]) -> int:
         if (isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
@@ -431,7 +442,7 @@ class ASTConverter:
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
-                    and stmt.name() == current_overload_name):
+                    and stmt.name == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -441,7 +452,7 @@ class ASTConverter:
 
                 if isinstance(stmt, Decorator):
                     current_overload = [stmt]
-                    current_overload_name = stmt.name()
+                    current_overload_name = stmt.name
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -509,7 +520,7 @@ class ASTConverter:
 
         posonlyargs = [arg.arg for arg in getattr(n.args, "posonlyargs", [])]
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [arg.variable.name for arg in args]  # type: List[Optional[str]]
         arg_names = [None if argument_elide_name(name) or name in posonlyargs else name
                      for name in arg_names]
         if special_function_elide_names(n.name):
@@ -610,7 +621,7 @@ class ASTConverter:
                 # existing "# type: ignore" comments working:
                 end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
 
-            var = Var(func_def.name())
+            var = Var(func_def.name)
             var.is_ready = False
             var.set_line(lineno)
 
@@ -676,7 +687,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([arg.variable.name() for arg in new_args], names, self.fail_arg)
+        check_arg_names([arg.variable.name for arg in new_args], names, self.fail_arg)
 
         return new_args
 
@@ -835,7 +846,9 @@ class ASTConverter:
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     def visit_Try(self, n: ast3.Try) -> TryStmt:
-        vs = [NameExpr(h.name) if h.name is not None else None for h in n.handlers]
+        vs = [
+            self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
+        ]
         types = [self.visit(h.type) for h in n.handlers]
         handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
 
@@ -988,7 +1001,7 @@ class ASTConverter:
 
     # Dict(expr* keys, expr* values)
     def visit_Dict(self, n: ast3.Dict) -> DictExpr:
-        e = DictExpr(list(zip(self.translate_expr_list(n.keys),
+        e = DictExpr(list(zip(self.translate_opt_expr_list(n.keys),
                               self.translate_expr_list(n.values))))
         return self.set_line(e, n)
 
@@ -1134,7 +1147,7 @@ class ASTConverter:
         empty_string.set_line(n.lineno, n.col_offset)
         strs_to_join = ListExpr(self.translate_expr_list(n.values))
         strs_to_join.set_line(empty_string)
-        # Don't make unecessary join call if there is only one str to join
+        # Don't make unnecessary join call if there is only one str to join
         if len(strs_to_join.items) == 1:
             return self.set_line(strs_to_join.items[0], n)
         join_method = MemberExpr(empty_string, 'join')
@@ -1197,8 +1210,14 @@ class ASTConverter:
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
         self.set_line(e, n)
-        if isinstance(e.index, SliceExpr):
-            # Slice has no line/column in the raw ast.
+        if (
+            isinstance(n.slice, ast3.Slice) or
+            (sys.version_info < (3, 9) and isinstance(n.slice, ast3.ExtSlice))
+        ):
+            # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
+            # visit_Slice doesn't set_line, even in Python 3.9 on.
+            # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
+            # e.index when visiting n.slice.
             e.index.line = e.line
             e.index.column = e.column
         return e
@@ -1225,7 +1244,7 @@ class ASTConverter:
 
     # Tuple(expr* elts, expr_context ctx)
     def visit_Tuple(self, n: ast3.Tuple) -> TupleExpr:
-        e = TupleExpr([self.visit(e) for e in n.elts])
+        e = TupleExpr(self.translate_expr_list(n.elts))
         return self.set_line(e, n)
 
     # --- slice ---
@@ -1497,19 +1516,30 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
-    # Subscript(expr value, slice slice, expr_context ctx)
+    # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
+    # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if not isinstance(n.slice, Index):
-            self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+        if sys.version_info >= (3, 9):  # Really 3.9a5 or later
+            sliceval = n.slice  # type: Any
+            if (isinstance(sliceval, ast3.Slice) or
+                (isinstance(sliceval, ast3.Tuple) and
+                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                return AnyType(TypeOfAny.from_error)
+        else:
+            # Python 3.8 or earlier use a different AST structure for subscripts
+            if not isinstance(n.slice, Index):
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                return AnyType(TypeOfAny.from_error)
+            sliceval = n.slice.value
 
         empty_tuple_index = False
-        if isinstance(n.slice.value, ast3.Tuple):
-            params = self.translate_expr_list(n.slice.value.elts)
-            if len(n.slice.value.elts) == 0:
+        if isinstance(sliceval, ast3.Tuple):
+            params = self.translate_expr_list(sliceval.elts)
+            if len(sliceval.elts) == 0:
                 empty_tuple_index = True
         else:
-            params = [self.visit(n.slice.value)]
+            params = [self.visit(sliceval)]
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:

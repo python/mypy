@@ -1,29 +1,39 @@
 import unittest
 
-from collections import OrderedDict
+from typing import Dict
+
+from mypy.ordered_dict import OrderedDict
 
 from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc.ops import (
-    Environment, BasicBlock, FuncIR, RuntimeArg, Goto, Return, LoadInt, Assign,
-    IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
-    RegisterOp, FuncDecl,
-    ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
-    list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
+from mypyc.ir.ops import (
+    Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
+    Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem
 )
-from mypyc.genops import compute_vtable
-from mypyc.emit import Emitter, EmitterContext
-from mypyc.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.ops_primitive import binary_ops
-from mypyc.ops_misc import none_object_op, true_op, false_op
-from mypyc.ops_list import (
+from mypyc.ir.rtypes import (
+    RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
+    dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive, int32_rprimitive,
+    int64_rprimitive
+)
+from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
+from mypyc.ir.class_ir import ClassIR
+from mypyc.irbuild.vtable import compute_vtable
+from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
+from mypyc.primitives.registry import binary_ops, c_binary_ops
+from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
+from mypyc.primitives.list_ops import (
     list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
-from mypyc.ops_dict import new_dict_op, dict_update_op, dict_get_item_op, dict_set_item_op
-from mypyc.ops_int import int_neg_op
+from mypyc.primitives.dict_ops import (
+    dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
+)
+from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
+from mypyc.common import IS_32_BIT_PLATFORM
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
@@ -38,6 +48,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.o2 = self.env.add_local(Var('o2'), object_rprimitive)
         self.d = self.env.add_local(Var('d'), dict_rprimitive)
         self.b = self.env.add_local(Var('b'), bool_rprimitive)
+        self.s1 = self.env.add_local(Var('s1'), short_int_rprimitive)
+        self.s2 = self.env.add_local(Var('s2'), short_int_rprimitive)
+        self.i32 = self.env.add_local(Var('i32'), int32_rprimitive)
+        self.i32_1 = self.env.add_local(Var('i32_1'), int32_rprimitive)
+        self.i64 = self.env.add_local(Var('i64'), int64_rprimitive)
+        self.i64_1 = self.env.add_local(Var('i64_1'), int64_rprimitive)
         self.t = self.env.add_local(Var('t'), RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = self.env.add_local(
             Var('tt'),
@@ -51,7 +67,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.context = EmitterContext(NameGenerator([['mod']]))
         self.emitter = Emitter(self.context, self.env)
         self.declarations = Emitter(self.context, self.env)
-        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog')
+
+        const_int_regs = {}  # type: Dict[str, int]
+        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog',
+                                              const_int_regs)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)),
@@ -63,7 +82,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_load_int(self) -> None:
         self.assert_emit(LoadInt(5),
-                         "cpy_r_r0 = 10;")
+                         "cpy_r_i0 = 10;")
+        self.assert_emit(LoadInt(5, -1, c_int_rprimitive),
+                         "cpy_r_i1 = 5;")
 
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), 'cpy_r_r0 = cpy_r_t.f1;')
@@ -91,18 +112,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             '-', self.n, self.m, self.k,
             "cpy_r_r0 = CPyTagged_Subtract(cpy_r_m, cpy_r_k);")
 
-    def test_list_repeat(self) -> None:
-        self.assert_emit_binary_op(
-            '*', self.ll, self.l, self.n,
-            """Py_ssize_t __tmp1;
-               __tmp1 = CPyTagged_AsSsize_t(cpy_r_n);
-               if (__tmp1 == -1 && PyErr_Occurred())
-                   CPyError_OutOfMemory();
-               cpy_r_r0 = PySequence_Repeat(cpy_r_l, __tmp1);
-            """)
-
     def test_int_neg(self) -> None:
-        self.assert_emit(PrimitiveOp([self.m], int_neg_op, 55),
+        self.assert_emit(CallC(int_neg_op.c_function_name, [self.m], int_neg_op.return_type,
+                               int_neg_op.steals, int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
     def test_list_len(self) -> None:
@@ -157,11 +169,15 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(DecRef(self.tt), 'CPyTagged_DecRef(cpy_r_tt.f0.f0);')
 
     def test_list_get_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.m, self.k], list_get_item_op, 55),
+        self.assert_emit(CallC(list_get_item_op.c_function_name, [self.m, self.k],
+                               list_get_item_op.return_type, list_get_item_op.steals,
+                               list_get_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.l, self.n, self.o], list_set_item_op, 55),
+        self.assert_emit(CallC(list_set_item_op.c_function_name, [self.l, self.n, self.o],
+                               list_set_item_op.return_type, list_set_item_op.steals,
+                               list_set_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
     def test_box(self) -> None:
@@ -188,44 +204,83 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """)
 
     def test_list_append(self) -> None:
-        self.assert_emit(PrimitiveOp([self.l, self.o], list_append_op, 1),
-                         """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o) >= 0;""")
+        self.assert_emit(CallC(list_append_op.c_function_name, [self.l, self.o],
+                               list_append_op.return_type, list_append_op.steals,
+                               list_append_op.error_kind, 1),
+                         """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o);""")
 
     def test_get_attr(self) -> None:
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
-            """cpy_r_r0 = native_A_gety((mod___AObject *)cpy_r_r); /* y */""")
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
+               } else {
+                   CPyTagged_IncRef(((mod___AObject *)cpy_r_r)->_y);
+               }
+            """)
 
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
-            "cpy_r_r0 = native_A_sety((mod___AObject *)cpy_r_r, cpy_r_m); /* y */")
+            """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
+                   CPyTagged_DecRef(((mod___AObject *)cpy_r_r)->_y);
+               }
+               ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
+               cpy_r_r0 = 1;
+            """)
 
     def test_dict_get_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),
+        self.assert_emit(CallC(dict_get_item_op.c_function_name, [self.d, self.o2],
+                               dict_get_item_op.return_type, dict_get_item_op.steals,
+                               dict_get_item_op.error_kind, 1),
                          """cpy_r_r0 = CPyDict_GetItem(cpy_r_d, cpy_r_o2);""")
 
     def test_dict_set_item(self) -> None:
-        self.assert_emit(PrimitiveOp([self.d, self.o, self.o2], dict_set_item_op, 1),
-                         """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2) >= 0;""")
+        self.assert_emit(CallC(dict_set_item_op.c_function_name, [self.d, self.o, self.o2],
+                               dict_set_item_op.return_type, dict_set_item_op.steals,
+                               dict_set_item_op.error_kind, 1),
+                        """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2);""")
 
     def test_dict_update(self) -> None:
-        self.assert_emit(PrimitiveOp([self.d, self.o], dict_update_op, 1),
-                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o) >= 0;""")
+        self.assert_emit(CallC(dict_update_op.c_function_name, [self.d, self.o],
+                               dict_update_op.return_type, dict_update_op.steals,
+                               dict_update_op.error_kind, 1),
+                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o);""")
 
     def test_new_dict(self) -> None:
-        self.assert_emit(PrimitiveOp([], new_dict_op, 1),
+        self.assert_emit(CallC(dict_new_op.c_function_name, [], dict_new_op.return_type,
+                               dict_new_op.steals, dict_new_op.error_kind, 1),
                          """cpy_r_r0 = PyDict_New();""")
 
     def test_dict_contains(self) -> None:
         self.assert_emit_binary_op(
             'in', self.b, self.o, self.d,
-            """int __tmp1 = PyDict_Contains(cpy_r_d, cpy_r_o);
-               if (__tmp1 < 0)
-                   cpy_r_r0 = 2;
-               else
-                   cpy_r_r0 = __tmp1;
-            """)
+            """cpy_r_r0 = PyDict_Contains(cpy_r_d, cpy_r_o);""")
+
+    def test_binary_int_op(self) -> None:
+        # signed
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.s1, self.s2, BinaryIntOp.SLT, 1),
+                         """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 < (Py_ssize_t)cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i32, self.i32_1, BinaryIntOp.SLT, 1),
+                         """cpy_r_r00 = cpy_r_i32 < cpy_r_i32_1;""")
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i64, self.i64_1, BinaryIntOp.SLT, 1),
+                         """cpy_r_r01 = cpy_r_i64 < cpy_r_i64_1;""")
+        # unsigned
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.s1, self.s2, BinaryIntOp.ULT, 1),
+                         """cpy_r_r02 = cpy_r_s1 < cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i32, self.i32_1, BinaryIntOp.ULT, 1),
+                         """cpy_r_r03 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
+        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i64, self.i64_1, BinaryIntOp.ULT, 1),
+                         """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
+
+    def test_load_mem(self) -> None:
+        if IS_32_BIT_PLATFORM:
+            self.assert_emit(LoadMem(bool_rprimitive, self.i32),
+                             """cpy_r_r0 = *(char *)cpy_r_i32;""")
+        else:
+            self.assert_emit(LoadMem(bool_rprimitive, self.i64),
+                             """cpy_r_r0 = *(char *)cpy_r_i64;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
@@ -249,6 +304,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                               left: Value,
                               right: Value,
                               expected: str) -> None:
+        # TODO: merge this
+        if op in c_binary_ops:
+            c_ops = c_binary_ops[op]
+            for c_desc in c_ops:
+                if (is_subtype(left.type, c_desc.arg_types[0])
+                        and is_subtype(right.type, c_desc.arg_types[1])):
+                    args = [left, right]
+                    if c_desc.ordering is not None:
+                        args = [args[i] for i in c_desc.ordering]
+                    self.assert_emit(CallC(c_desc.c_function_name, args, c_desc.return_type,
+                                           c_desc.steals, c_desc.error_kind, 55), expected)
+                    return
         ops = binary_ops[op]
         for desc in ops:
             if (is_subtype(left.type, desc.arg_types[0])
@@ -272,7 +339,7 @@ class TestGenerateFunction(unittest.TestCase):
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
-        generate_native_function(fn, emitter, 'prog.py', 'prog')
+        generate_native_function(fn, emitter, 'prog.py', 'prog', False)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
@@ -291,14 +358,14 @@ class TestGenerateFunction(unittest.TestCase):
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
-        generate_native_function(fn, emitter, 'prog.py', 'prog')
+        generate_native_function(fn, emitter, 'prog.py', 'prog', False)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
                 'PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
-                '    CPyTagged cpy_r_r0;\n',
+                '    CPyTagged cpy_r_i0;\n',
                 'CPyL0: ;\n',
-                '    cpy_r_r0 = 10;\n',
+                '    cpy_r_i0 = 10;\n',
                 '}\n',
             ],
             result, msg='Generated code invalid')

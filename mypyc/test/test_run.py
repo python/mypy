@@ -1,8 +1,10 @@
 """Test cases for building an C extension and running it."""
 
+import ast
 import glob
 import os.path
 import platform
+import re
 import subprocess
 import contextlib
 import shutil
@@ -10,39 +12,51 @@ import sys
 from typing import Any, Iterator, List, cast
 
 from mypy import build
-from mypy.test.data import DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase, UpdateFile
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.test.helpers import copy_and_fudge_mtime, assert_module_equivalence
 
-from mypyc import emitmodule
+from mypyc.codegen import emitmodule
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.build import construct_groups
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, TESTUTIL_PATH,
     use_custom_builtins, MypycDataSuite, assert_test_output,
-    show_c
+    show_c, fudge_dir_mtimes,
 )
 from mypyc.test.test_serialization import check_serialization_roundtrip
 
 files = [
+    'run-misc.test',
     'run-functions.test',
-    'run.test',
+    'run-integers.test',
+    'run-strings.test',
+    'run-tuples.test',
+    'run-lists.test',
+    'run-dicts.test',
+    'run-sets.test',
+    'run-primitives.test',
+    'run-loops.test',
+    'run-exceptions.test',
+    'run-imports.test',
     'run-classes.test',
     'run-traits.test',
+    'run-generators.test',
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
 ]
 
 setup_format = """\
-from distutils.core import setup
+from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='test_run_output',
       ext_modules=mypycify({}, separate={}, skip_cgen_input={!r}, strip_asserts=False,
-                           multi_file={}),
+                           multi_file={}, opt_level='{}'),
 )
 """
 
@@ -79,7 +93,7 @@ def run_setup(script_name: str, script_args: List[str]) -> bool:
         # "interrupted" as the argument. Convert it back so that
         # pytest will exit instead of just failing the test.
         if code == "interrupted":
-            raise KeyboardInterrupt
+            raise KeyboardInterrupt from e
 
         return code == 0 or code is None
 
@@ -109,13 +123,49 @@ class TestRun(MypycDataSuite):
         # by chdiring into tmp/
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
                 chdir_manager('tmp')):
-            os.mkdir(WORKDIR)
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
+        os.mkdir(WORKDIR)
 
         text = '\n'.join(testcase.input)
+
+        with open('native.py', 'w', encoding='utf-8') as f:
+            f.write(text)
+        with open('interpreted.py', 'w', encoding='utf-8') as f:
+            f.write(text)
+
+        shutil.copyfile(TESTUTIL_PATH, 'testutil.py')
+
+        step = 1
+        self.run_case_step(testcase, step)
+
+        steps = testcase.find_steps()
+        if steps == [[]]:
+            steps = []
+
+        for operations in steps:
+            # To make sure that any new changes get picked up as being
+            # new by distutils, shift the mtime of all of the
+            # generated artifacts back by a second.
+            fudge_dir_mtimes(WORKDIR, -1)
+
+            step += 1
+            with chdir_manager('..'):
+                for op in operations:
+                    if isinstance(op, UpdateFile):
+                        # Modify/create file
+                        copy_and_fudge_mtime(op.source_path, op.target_path)
+                    else:
+                        # Delete file
+                        try:
+                            os.remove(op.path)
+                        except FileNotFoundError:
+                            pass
+            self.run_case_step(testcase, step)
+
+    def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
+        bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
 
         options = Options()
         options.use_builtins_fixtures = True
@@ -128,35 +178,28 @@ class TestRun(MypycDataSuite):
         options.python_version = max(sys.version_info[:2], (3, 6))
         options.export_types = True
         options.preserve_asts = True
+        options.incremental = self.separate
 
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
         options.per_module_options['unchecked.*'] = {'follow_imports': 'error'}
 
-        source_path = 'native.py'
-        with open(source_path, 'w', encoding='utf-8') as f:
-            f.write(text)
-        with open('interpreted.py', 'w', encoding='utf-8') as f:
-            f.write(text)
-
-        shutil.copyfile(TESTUTIL_PATH, 'testutil.py')
-
-        source = build.BuildSource(source_path, 'native', text)
+        source = build.BuildSource('native.py', 'native', None)
         sources = [source]
         module_names = ['native']
-        module_paths = [os.path.abspath('native.py')]
+        module_paths = ['native.py']
 
         # Hard code another module name to compile in the same compilation unit.
         to_delete = []
         for fn, text in testcase.files:
             fn = os.path.relpath(fn, test_temp_dir)
 
-            if os.path.basename(fn).startswith('other'):
-                name = os.path.basename(fn).split('.')[0]
+            if os.path.basename(fn).startswith('other') and fn.endswith('.py'):
+                name = fn.split('.')[0].replace(os.sep, '.')
                 module_names.append(name)
-                sources.append(build.BuildSource(fn, name, text))
+                sources.append(build.BuildSource(fn, name, None))
                 to_delete.append(fn)
-                module_paths.append(os.path.abspath(fn))
+                module_paths.append(fn)
 
                 shutil.copyfile(fn,
                                 os.path.join(os.path.dirname(fn), name + '_interpreted.py'))
@@ -164,15 +207,20 @@ class TestRun(MypycDataSuite):
         for source in sources:
             options.per_module_options.setdefault(source.module, {})['mypyc'] = True
 
-        groups = construct_groups(sources, self.separate, len(module_names) > 1)
+        separate = (self.get_separate('\n'.join(testcase.input), incremental_step) if self.separate
+                    else False)
+
+        groups = construct_groups(sources, separate, len(module_names) > 1)
 
         try:
+            compiler_options = CompilerOptions(multi_file=self.multi_file, separate=self.separate)
             result = emitmodule.parse_and_typecheck(
                 sources=sources,
                 options=options,
+                compiler_options=compiler_options,
+                groups=groups,
                 alt_lib_path='.')
             errors = Errors()
-            compiler_options = CompilerOptions(multi_file=self.multi_file)
             ir, cfiles = emitmodule.compile_modules_to_c(
                 result,
                 compiler_options=compiler_options,
@@ -184,16 +232,24 @@ class TestRun(MypycDataSuite):
                 assert False, "Compile error"
         except CompileError as e:
             for line in e.messages:
-                print(line)
+                print(fix_native_line_number(line, testcase.file, testcase.line))
             assert False, 'Compile error'
 
-        # Check that serialization works on this IR
-        check_serialization_roundtrip(ir)
+        # Check that serialization works on this IR. (Only on the first
+        # step because the the returned ir only includes updated code.)
+        if incremental_step == 1:
+            check_serialization_roundtrip(ir)
+
+        opt_level = int(os.environ.get('MYPYC_OPT_LEVEL', 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
         with open(setup_file, 'w', encoding='utf-8') as f:
-            f.write(setup_format.format(module_paths, self.separate, cfiles, self.multi_file))
+            f.write(setup_format.format(module_paths,
+                                        separate,
+                                        cfiles,
+                                        self.multi_file,
+                                        opt_level))
 
         if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):
@@ -204,10 +260,14 @@ class TestRun(MypycDataSuite):
         suffix = 'pyd' if sys.platform == 'win32' else 'so'
         assert glob.glob('native.*.{}'.format(suffix))
 
-        for p in to_delete:
-            os.remove(p)
-
         driver_path = 'driver.py'
+        if not os.path.isfile(driver_path):
+            # No driver.py provided by test case. Use the default one
+            # (mypyc/test-data/driver/driver.py) that calls each
+            # function named test_*.
+            default_driver = os.path.join(
+                os.path.dirname(__file__), '..', 'test-data', 'driver', 'driver.py')
+            shutil.copy(default_driver, driver_path)
         env = os.environ.copy()
         env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
 
@@ -240,13 +300,50 @@ class TestRun(MypycDataSuite):
             print('Test output:')
             print(output)
         else:
-            assert_test_output(testcase, outlines, 'Invalid output')
+            if incremental_step == 1:
+                msg = 'Invalid output'
+                expected = testcase.output
+            else:
+                msg = 'Invalid output (step {})'.format(incremental_step)
+                expected = testcase.output2.get(incremental_step, [])
+
+            if not expected:
+                # Tweak some line numbers, but only if the expected output is empty,
+                # as tweaked output might not match expected output.
+                outlines = [fix_native_line_number(line, testcase.file, testcase.line)
+                            for line in outlines]
+            assert_test_output(testcase, outlines, msg, expected)
+
+        if incremental_step > 1 and options.incremental:
+            suffix = '' if incremental_step == 2 else str(incremental_step - 1)
+            expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)
+            if expected_rechecked is not None:
+                assert_module_equivalence(
+                    'rechecked' + suffix,
+                    expected_rechecked, result.manager.rechecked_modules)
+            expected_stale = testcase.expected_stale_modules.get(incremental_step - 1)
+            if expected_stale is not None:
+                assert_module_equivalence(
+                    'stale' + suffix,
+                    expected_stale, result.manager.stale_modules)
 
         assert proc.returncode == 0
 
+    def get_separate(self, program_text: str,
+                     incremental_step: int) -> Any:
+        template = r'# separate{}: (\[.*\])$'
+        m = re.search(template.format(incremental_step), program_text, flags=re.MULTILINE)
+        if not m:
+            m = re.search(template.format(''), program_text, flags=re.MULTILINE)
+        if m:
+            return ast.literal_eval(m.group(1))
+        else:
+            return True
 
-# Run the main multi-module tests in multi-file compliation mode
+
 class TestRunMultiFile(TestRun):
+    """Run the main multi-module tests in multi-file compilation mode."""
+
     multi_file = True
     test_name_suffix = '_multi'
     files = [
@@ -255,11 +352,37 @@ class TestRunMultiFile(TestRun):
     ]
 
 
-# Run the main multi-module tests in separate compliation mode
 class TestRunSeparate(TestRun):
+    """Run the main multi-module tests in separate compilation mode."""
+
     separate = True
     test_name_suffix = '_separate'
     files = [
         'run-multimodule.test',
         'run-mypy-sim.test',
     ]
+
+
+def fix_native_line_number(message: str, fnam: str, delta: int) -> str:
+    """Update code locations in test case output to point to the .test file.
+
+    The description of the test case is written to native.py, and line numbers
+    in test case output often are relative to native.py. This translates the
+    line numbers to be relative to the .test file that contains the test case
+    description, and also updates the file name to the .test file name.
+
+    Args:
+        message: message to update
+        fnam: path of the .test file
+        delta: line number of the beginning of the test case in the .test file
+
+    Returns updated message (or original message if we couldn't find anything).
+    """
+    fnam = os.path.basename(fnam)
+    message = re.sub(r'native\.py:([0-9]+):',
+                     lambda m: '%s:%d:' % (fnam, int(m.group(1)) + delta),
+                     message)
+    message = re.sub(r'"native.py", line ([0-9]+),',
+                     lambda m: '"%s", line %d,' % (fnam, int(m.group(1)) + delta),
+                     message)
+    return message

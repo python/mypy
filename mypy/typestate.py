@@ -3,11 +3,11 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, Set, Tuple, Optional
+from typing import Dict, Set, Tuple, Optional, List
 from typing_extensions import ClassVar, Final
 
 from mypy.nodes import TypeInfo
-from mypy.types import Instance
+from mypy.types import Instance, TypeAliasType, get_proper_type, Type
 from mypy.server.trigger import make_trigger
 from mypy import state
 
@@ -75,10 +75,35 @@ class TypeState:
     # a re-checked target) during the update.
     _rechecked_types = set()  # type: Final[Set[TypeInfo]]
 
+    # The two attributes below are assumption stacks for subtyping relationships between
+    # recursive type aliases. Normally, one would pass type assumptions as an additional
+    # arguments to is_subtype(), but this would mean updating dozens of related functions
+    # threading this through all callsites (see also comment for TypeInfo.assuming).
+    _assuming = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    _assuming_proper = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    # Ditto for inference of generic constraints against recursive type aliases.
+    _inferring = []  # type: Final[List[TypeAliasType]]
+
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
     # via the cls parameter, since mypyc can optimize accesses to
     # Final attributes of a directly referenced type.
+
+    @staticmethod
+    def is_assumed_subtype(left: Type, right: Type) -> bool:
+        for (l, r) in reversed(TypeState._assuming):
+            if (get_proper_type(l) == get_proper_type(left)
+                    and get_proper_type(r) == get_proper_type(right)):
+                return True
+        return False
+
+    @staticmethod
+    def is_assumed_proper_subtype(left: Type, right: Type) -> bool:
+        for (l, r) in reversed(TypeState._assuming_proper):
+            if (get_proper_type(l) == get_proper_type(left)
+                    and get_proper_type(r) == get_proper_type(right)):
+                return True
+        return False
 
     @staticmethod
     def reset_all_subtype_caches() -> None:
@@ -127,9 +152,9 @@ class TypeState:
         assert right_type.is_protocol
         TypeState._rechecked_types.add(left_type)
         TypeState._attempted_protocols.setdefault(
-            left_type.fullname(), set()).add(right_type.fullname())
+            left_type.fullname, set()).add(right_type.fullname)
         TypeState._checked_against_members.setdefault(
-            left_type.fullname(),
+            left_type.fullname,
             set()).update(right_type.protocol_members)
 
     @staticmethod
@@ -164,18 +189,18 @@ class TypeState:
         """
         deps = {}  # type: Dict[str, Set[str]]
         for info in TypeState._rechecked_types:
-            for attr in TypeState._checked_against_members[info.fullname()]:
+            for attr in TypeState._checked_against_members[info.fullname]:
                 # The need for full MRO here is subtle, during an update, base classes of
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
                 for base_info in info.mro[:-1]:
-                    trigger = make_trigger('%s.%s' % (base_info.fullname(), attr))
+                    trigger = make_trigger('%s.%s' % (base_info.fullname, attr))
                     if 'typing' in trigger or 'builtins' in trigger:
                         # TODO: avoid everything from typeshed
                         continue
-                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            for proto in TypeState._attempted_protocols[info.fullname()]:
-                trigger = make_trigger(info.fullname())
+                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname))
+            for proto in TypeState._attempted_protocols[info.fullname]:
+                trigger = make_trigger(info.fullname)
                 if 'typing' in trigger or 'builtins' in trigger:
                     continue
                 # If any class that was checked against a protocol changes,

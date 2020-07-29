@@ -8,7 +8,8 @@ from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType
+    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType,
+    UnboundType,
 )
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -178,14 +179,20 @@ class NamedTupleAnalyzer:
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
             self.store_namedtuple_info(info, name, call, is_typed)
             return True, info
-        name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
-        if name != var_name or is_func_scope:
-            # There are three special cases where need to give it a unique name derived
+
+        # We use the variable name as the class name if it exists. If
+        # it doesn't, we use the name passed as an argument. We prefer
+        # the variable name because it should be unique inside a
+        # module, and so we don't need to disambiguate it with a line
+        # number.
+        if var_name:
+            name = var_name
+        else:
+            name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
+
+        if var_name is None or is_func_scope:
+            # There are two special cases where need to give it a unique name derived
             # from the line number:
-            #   * There is a name mismatch with l.h.s., therefore we need to disambiguate
-            #     situations like:
-            #         A = NamedTuple('Same', [('x', int)])
-            #         B = NamedTuple('Same', [('y', str)])
             #   * This is a base class expression, since it often matches the class name:
             #         class NT(NamedTuple('NT', [...])):
             #             ...
@@ -314,7 +321,7 @@ class NamedTupleAnalyzer:
                                                          bool]]:
         """Parse typed named tuple fields.
 
-        Return (names, types, defaults, error ocurred), or None if at least one of
+        Return (names, types, defaults, error occurred), or None if at least one of
         the types is not ready.
         """
         items = []  # type: List[str]
@@ -334,6 +341,9 @@ class NamedTupleAnalyzer:
                 except TypeTranslationError:
                     return self.fail_namedtuple_arg('Invalid field type', type_node)
                 analyzed = self.api.anal_type(type)
+                # Workaround #4987 and avoid introducing a bogus UnboundType
+                if isinstance(analyzed, UnboundType):
+                    analyzed = AnyType(TypeOfAny.from_error)
                 # These should be all known, otherwise we would defer in visit_assignment_stmt().
                 if analyzed is None:
                     return None
@@ -372,6 +382,8 @@ class NamedTupleAnalyzer:
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base
         info.line = line
+        # For use by mypyc.
+        info.metadata['namedtuple'] = {'fields': items.copy()}
 
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a
@@ -384,8 +396,8 @@ class NamedTupleAnalyzer:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            var._fullname = '%s.%s' % (info.fullname(), var.name())
-            info.names[var.name()] = SymbolTableNode(MDEF, var)
+            var._fullname = '%s.%s' % (info.fullname, var.name)
+            info.names[var.name] = SymbolTableNode(MDEF, var)
 
         fields = [Var(item, typ) for item, typ in zip(items, types)]
         for var in fields:
@@ -404,7 +416,7 @@ class NamedTupleAnalyzer:
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
-        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
@@ -421,7 +433,7 @@ class NamedTupleAnalyzer:
             args = first + args
 
             types = [arg.type_annotation for arg in args]
-            items = [arg.variable.name() for arg in args]
+            items = [arg.variable.name for arg in args]
             arg_kinds = [arg.kind for arg in args]
             assert None not in types
             signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
@@ -431,7 +443,7 @@ class NamedTupleAnalyzer:
             func.info = info
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
-            func._fullname = info.fullname() + '.' + funcname
+            func._fullname = info.fullname + '.' + funcname
             func.line = line
             if is_classmethod:
                 v = Var(funcname, func.type)
@@ -451,7 +463,7 @@ class NamedTupleAnalyzer:
                    args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
 
         def make_init_arg(var: Var) -> Argument:
-            default = default_items.get(var.name(), None)
+            default = default_items.get(var.name, None)
             kind = ARG_POS if default is None else ARG_OPT
             return Argument(var, var.type, default, kind)
 
@@ -465,7 +477,7 @@ class NamedTupleAnalyzer:
                          Argument(Var('new'), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
                          Argument(Var('len'), special_form_any, EllipsisExpr(), ARG_NAMED_OPT)])
 
-        self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname() + '.' + SELF_TVAR_NAME,
+        self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                      [], info.tuple_type)
         info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
         return info

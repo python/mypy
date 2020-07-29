@@ -4,12 +4,14 @@
 # contain its own tests so that pytest will rewrite the asserts...
 
 from typing import Any, Dict, Tuple
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from collections.abc import Iterable
 
-from mypyc.ops import (
-    deserialize_modules, DeserMaps, ModuleIR, FuncDecl, FuncIR, ClassIR, FuncSignature, RType
-)
+from mypyc.ir.ops import DeserMaps
+from mypyc.ir.rtypes import RType
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.module_ir import ModuleIR, deserialize_modules
 from mypyc.sametype import is_same_type, is_same_signature
 
 
@@ -33,7 +35,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
 
     FuncDecls, FuncIRs, and ClassIRs are compared by fullname to avoid
     infinite recursion.
-    (More detailed comparisions should be done manually.)
+    (More detailed comparisons should be done manually.)
 
     Types and signatures are compared using mypyc.sametype.
 
@@ -46,7 +48,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
 
     assert type(x) is type(y), ("Type mismatch at {}".format(trail), type(x), type(y))
     if isinstance(x, (FuncDecl, FuncIR, ClassIR)):
-        assert x.fullname == y.fullname
+        assert x.fullname == y.fullname, "Name mismatch at {}".format(trail)
     elif isinstance(x, OrderedDict):
         assert len(x.keys()) == len(y.keys()), "Keys mismatch at {}".format(trail)
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):

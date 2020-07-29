@@ -10,13 +10,13 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
-from mypyc.ops import format_func
-from mypyc.uninit import insert_uninit_checks
-from mypyc.exceptions import insert_exception_handling
-from mypyc.refcount import insert_ref_count_opcodes
+from mypyc.ir.func_ir import format_func
+from mypyc.transform.uninit import insert_uninit_checks
+from mypyc.transform.exceptions import insert_exception_handling
+from mypyc.transform.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
-    assert_test_output, remove_comment_lines
+    assert_test_output, remove_comment_lines, replace_native_int
 )
 
 files = [
@@ -32,7 +32,7 @@ class TestExceptionTransform(MypycDataSuite):
         """Perform a runtime checking transformation test case."""
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
-
+            expected_output = replace_native_int(expected_output)
             try:
                 ir = build_ir_for_single_file(testcase.input)
             except CompileError as e:

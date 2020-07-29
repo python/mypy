@@ -1,6 +1,7 @@
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+import sys
+from typing import Dict, Any
+
+from typing_extensions import Final
 
 PREFIX = 'CPyPy_'  # type: Final # Python wrappers
 NATIVE_PREFIX = 'CPyDef_'  # type: Final # Native functions etc.
@@ -28,6 +29,23 @@ TOP_LEVEL_NAME = '__top_level__'  # type: Final # Special function representing 
 # Maximal number of subclasses for a class to trigger fast path in isinstance() checks.
 FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
 
+IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
+
+# Runtime C library files
+RUNTIME_C_FILES = [
+    'init.c',
+    'getargs.c',
+    'int_ops.c',
+    'list_ops.c',
+    'dict_ops.c',
+    'str_ops.c',
+    'set_ops.c',
+    'tuple_ops.c',
+    'exc_ops.c',
+    'misc_ops.c',
+    'generic_ops.c',
+]  # type: Final
+
 
 def decorator_helper_name(func_name: str) -> str:
     return '__mypyc_{}_decorator_helper__'.format(func_name)
@@ -36,6 +54,15 @@ def decorator_helper_name(func_name: str) -> str:
 def shared_lib_name(group_name: str) -> str:
     """Given a group name, return the actual name of its extension module.
 
-    (This just adds a prefix.)
+    (This just adds a suffix to the final component.)
     """
-    return 'mypyc_{}'.format(group_name)
+    return '{}__mypyc'.format(group_name)
+
+
+def short_name(name: str) -> str:
+    if name.startswith('builtins.'):
+        return name[9:]
+    return name
+
+
+JsonDict = Dict[str, Any]

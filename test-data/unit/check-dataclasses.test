@@ -15,6 +15,7 @@ Person('John', 32)
 Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDataclassesCustomInit]
 # flags: --python-version 3.6
@@ -52,6 +53,7 @@ Person(32, 'John')
 Person(21, 'Jonh', None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testDataclassesDeepInheritance]
 # flags: --python-version 3.6
@@ -79,6 +81,56 @@ reveal_type(C)  # N: Revealed type is 'def (a: builtins.int, b: builtins.int, c:
 reveal_type(D)  # N: Revealed type is 'def (a: builtins.int, b: builtins.int, c: builtins.int, d: builtins.int) -> __main__.D'
 
 [builtins fixtures/list.pyi]
+
+[case testDataclassesMultipleInheritance]
+from dataclasses import dataclass, field, InitVar
+@dataclass
+class A:
+    a: bool
+
+@dataclass
+class B:
+    b: InitVar[bool]
+    _b: bool = field(init=False)
+
+    def __post_init__(self, b: bool):
+        self._b = b
+
+@dataclass
+class C(A, B):
+    pass
+
+reveal_type(C)  # N: Revealed type is 'def (b: builtins.bool, a: builtins.bool) -> __main__.C'
+
+[builtins fixtures/bool.pyi]
+
+[case testDataclassesDeepInitVarInheritance]
+from dataclasses import dataclass, field, InitVar
+@dataclass
+class A:
+    a: bool
+
+@dataclass
+class B:
+    b: InitVar[bool]
+    _b: bool = field(init=False)
+
+    def __post_init__(self, b: bool):
+        self._b = b
+
+@dataclass(init=False)
+class C(B):
+    def __init__(self):
+        super().__init__(True)
+
+@dataclass
+class D(C):
+    pass
+
+reveal_type(C)  # N: Revealed type is 'def () -> __main__.C'
+reveal_type(D)  # N: Revealed type is 'def (b: builtins.bool) -> __main__.D'
+
+[builtins fixtures/bool.pyi]
 
 [case testDataclassesOverriding]
 # flags: --python-version 3.6
@@ -325,48 +377,6 @@ Application.COUNTER = 1
 
 [builtins fixtures/list.pyi]
 
-[case testDataclassEquality]
-# flags: --python-version 3.6
-from dataclasses import dataclass
-
-@dataclass
-class Application:
-  name: str
-  rating: int
-
-app1 = Application("example-1", 5)
-app2 = Application("example-2", 5)
-app1 == app2
-app1 != app2
-app1 == None  # E: Unsupported operand types for == ("Application" and "None")
-
-[builtins fixtures/list.pyi]
-
-[case testDataclassCustomEquality]
-# flags: --python-version 3.6
-from dataclasses import dataclass
-
-@dataclass
-class Application:
-  name: str
-  rating: int
-
-  def __eq__(self, other: 'Application') -> bool:
-     ...
-
-app1 = Application("example-1", 5)
-app2 = Application("example-2", 5)
-app1 == app2
-app1 != app2  # E: Unsupported left operand type for != ("Application")
-app1 == None  # E: Unsupported operand types for == ("Application" and "None")
-
-class SpecializedApplication(Application):
-  ...
-
-app1 == SpecializedApplication("example-3", 5)
-
-[builtins fixtures/list.pyi]
-
 [case testDataclassOrdering]
 # flags: --python-version 3.6
 from dataclasses import dataclass
@@ -484,9 +494,12 @@ class A(Generic[T]):
   @classmethod
   def foo(cls) -> None:
       reveal_type(cls)  # N: Revealed type is 'Type[__main__.A[T`1]]'
-      reveal_type(cls(1))  # N: Revealed type is '__main__.A[builtins.int*]'
-      reveal_type(cls('wooooo'))  # N: Revealed type is '__main__.A[builtins.str*]'
+      cls.x  # E: Access to generic instance variables via class is ambiguous
 
+  @classmethod
+  def other(cls, x: T) -> A[T]: ...
+
+reveal_type(A(0).other)  # N: Revealed type is 'def (x: builtins.int*) -> __main__.A[builtins.int*]'
 [builtins fixtures/classmethod.pyi]
 
 [case testDataclassesForwardRefs]
@@ -585,6 +598,133 @@ class A:
         reveal_type(cls())  # N: Revealed type is 'T`-1'
         return cls()
 [builtins fixtures/classmethod.pyi]
+
+[case testDataclassesInitVarOverride]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a):
+        self._a = a
+
+@dataclasses.dataclass(init=False)
+class B(A):
+    b: dataclasses.InitVar[int]
+    _b: int = dataclasses.field(init=False)
+
+    def __init__(self, b):
+        super().__init__(b+1)
+        self._b = b
+
+[builtins fixtures/bool.pyi]
+
+[case testDataclassesInitVarNoOverride]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a):
+        self._a = a
+
+@dataclasses.dataclass(init=True)
+class B(A):
+    b: dataclasses.InitVar[int]
+    _b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a, b):
+        self._a = a
+        self._b = b
+
+B(1, 2)
+B(1, 'a') # E: Argument 2 to "B" has incompatible type "str"; expected "int"
+
+[builtins fixtures/bool.pyi]
+
+[case testDataclassesInitVarPostInitOverride]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        self._a = a
+
+@dataclasses.dataclass
+class B(A):
+    b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        super().__post_init__(a)
+        self.b = a + 1
+
+@dataclasses.dataclass(init=False)
+class C(B):
+    c: int
+
+    def __init__(self, a: int, c: int) -> None:
+        super().__init__(a)
+        self.c = c + self.b
+
+A(1)
+B(1)
+B(1, 2)  # E: Too many arguments for "B"
+C(1, 2)
+C(1, 'a')  # E: Argument 2 to "C" has incompatible type "str"; expected "int"
+
+[builtins fixtures/primitives.pyi]
+
+[case testDataclassesInitVarIncremental]
+import a
+
+[file a.py]
+import dataclasses
+from b import A
+
+@dataclasses.dataclass
+class B(A):
+    b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        super().__post_init__(a)
+        self.b = a + 1
+
+[file a.py.2]
+import dataclasses
+from b import A
+
+@dataclasses.dataclass
+class B(A):
+    b: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        super().__post_init__(a)
+        self.b = a + 2
+
+reveal_type(B)
+
+[file b.py]
+import dataclasses
+
+@dataclasses.dataclass
+class A:
+    a: dataclasses.InitVar[int]
+    _a: int = dataclasses.field(init=False)
+
+    def __post_init__(self, a: int) -> None:
+        self._a = a
+[out2]
+tmp/a.py:12: note: Revealed type is 'def (a: builtins.int) -> a.B'
+
+[builtins fixtures/primitives.pyi]
+
 
 [case testNoComplainFieldNone]
 # flags: --python-version 3.6
@@ -820,3 +960,33 @@ class A:  # E: Name 'x' already defined (possibly by an import)
 @dataclass
 class B(A):
     pass
+
+[case testDataclassInheritanceNoAnnotation]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    foo: int
+
+x = 0
+@dataclass
+class B(A):
+    foo = x
+
+reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
+
+[case testDataclassInheritanceNoAnnotation2]
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class A:
+    foo: int
+
+@dataclass
+class B(A):
+    @property
+    def foo(self) -> int: pass  # E: Signature of "foo" incompatible with supertype "A"
+
+reveal_type(B)  # N: Revealed type is 'def (foo: builtins.int) -> __main__.B'
+
+[builtins fixtures/property.pyi]

@@ -19,12 +19,12 @@ from typing_extensions import Final, TYPE_CHECKING
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
-    CallableType, LiteralType
+    LiteralType, get_proper_types
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
     IndexExpr, MemberExpr, TempNode, ARG_POS, ARG_STAR, ARG_NAMED, ARG_STAR2,
-    SYMBOL_FUNCBASE_TYPES, Decorator, Var, Node, MypyFile, ExpressionStmt, NameExpr, IntExpr
+    Node, MypyFile, ExpressionStmt, NameExpr, IntExpr
 )
 import mypy.errorcodes as codes
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 from mypy import message_registry
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
-from mypy.typeops import tuple_fallback
+from mypy.typeops import custom_special_method
 from mypy.subtypes import is_subtype
 from mypy.parse import parse
 
@@ -359,7 +359,8 @@ class StringFormatterChecker:
                 continue
 
             a_type = get_proper_type(actual_type)
-            actual_items = a_type.items if isinstance(a_type, UnionType) else [a_type]
+            actual_items = (get_proper_types(a_type.items) if isinstance(a_type, UnionType)
+                            else [a_type])
             for a_type in actual_items:
                 if custom_special_method(a_type, '__format__'):
                     continue
@@ -381,7 +382,8 @@ class StringFormatterChecker:
                     self.msg.requires_int_or_char(call, format_call=True)
         if (not spec.type or spec.type == 's') and not spec.conversion:
             if self.chk.options.python_version >= (3, 0):
-                if has_type_component(actual_type, 'builtins.bytes'):
+                if (has_type_component(actual_type, 'builtins.bytes') and
+                        not custom_special_method(actual_type, '__str__')):
                     self.msg.fail("On Python 3 '{}'.format(b'abc') produces \"b'abc'\";"
                                   " use !r if this is a desired behavior", call,
                                   code=codes.STR_BYTES_PY3)
@@ -655,7 +657,7 @@ class StringFormatterChecker:
             rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
             return
-        elif isinstance(rhs_type, Instance) and rhs_type.type.fullname() == 'builtins.tuple':
+        elif isinstance(rhs_type, Instance) and rhs_type.type.fullname == 'builtins.tuple':
             # Assume that an arbitrary-length tuple has the right number of items.
             rep_types = [rhs_type.args[0]] * len(checkers)
         elif isinstance(rhs_type, UnionType):
@@ -959,33 +961,4 @@ def has_type_component(typ: Type, fullname: str) -> bool:
                 any(has_type_component(v, fullname) for v in typ.values))
     elif isinstance(typ, UnionType):
         return any(has_type_component(t, fullname) for t in typ.relevant_items())
-    return False
-
-
-def custom_special_method(typ: Type, name: str,
-                          check_all: bool = False) -> bool:
-    """Does this type have a custom special method such as __format__() or __eq__()?
-
-    If check_all is True ensure all items of a union have a custom method, not just some.
-    """
-    typ = get_proper_type(typ)
-    if isinstance(typ, Instance):
-        method = typ.type.get(name)
-        if method and isinstance(method.node, (SYMBOL_FUNCBASE_TYPES, Decorator, Var)):
-            if method.node.info:
-                return not method.node.info.fullname().startswith('builtins.')
-        return False
-    if isinstance(typ, UnionType):
-        if check_all:
-            return all(custom_special_method(t, name, check_all) for t in typ.items)
-        return any(custom_special_method(t, name) for t in typ.items)
-    if isinstance(typ, TupleType):
-        return custom_special_method(tuple_fallback(typ), name)
-    if isinstance(typ, CallableType) and typ.is_type_obj():
-        # Look up __method__ on the metaclass for class objects.
-        return custom_special_method(typ.fallback, name)
-    if isinstance(typ, AnyType):
-        # Avoid false positives in uncertain cases.
-        return True
-    # TODO: support other types (see ExpressionChecker.has_member())?
     return False

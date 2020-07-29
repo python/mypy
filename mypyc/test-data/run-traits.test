@@ -255,3 +255,131 @@ b.show_message()
 I am a Base
 I am a Trait
 
+[case testTraitAttrsSubTrait]
+from mypy_extensions import trait
+
+class A:
+    a: int
+
+@trait
+class T1:
+    x: int
+
+@trait
+class T2(T1):
+    y: int
+
+class C(A, T2):
+    c: int
+
+def f(t1: T1, t2: T2) -> None:
+    t1.x, t2.x = t2.x, t1.x
+
+def g(t1: T1, t2: T2) -> None:
+    t2.y = t1.x
+
+def get_x(c: C) -> int:
+    return c.x
+
+def get_y(c: C) -> int:
+    return c.y
+
+[file driver.py]
+from native import C, f, g, get_x, get_y
+
+c1 = C()
+c2 = C()
+
+c1.x = 1
+c1.y = 0
+c2.x = 2
+c2.y = 0
+
+f(c1, c2)
+assert c1.x == 2
+assert c2.x == 1
+assert get_x(c1) == 2
+assert get_x(c2) == 1
+
+assert get_y(c2) == 0
+g(c1, c2)
+assert get_y(c2) == 2
+[out]
+
+[case testTraitAttrsTriangle]
+from mypy_extensions import trait
+
+class A:
+    a: int
+
+@trait
+class T(A):
+    x: int
+    def meth(self) -> int:
+        return self.a
+
+class B(A):
+    b: int
+
+class C(B, T):
+    pass
+
+def take_t(t: T) -> int:
+    return t.x + t.meth()
+
+def take_c(c: C) -> int:
+    return c.x + c.meth()
+
+[file driver.py]
+from native import C, take_t, take_c
+
+c = C()
+c.a = 1
+c.x = 10
+
+assert take_t(c) == take_c(c) == 11
+[out]
+
+[case testTraitAttrsTree]
+from mypy_extensions import trait
+
+class A:
+    a: int
+
+@trait
+class T1:
+    x: int
+
+class B(A, T1):
+    b: int
+
+@trait
+class T2:
+    x: int
+
+class C(B, T2):
+    pass
+
+def f(t1: T1, t2: T2) -> None:
+    t1.x, t2.x = t2.x, t1.x
+
+def g(c1: C, c2: C) -> None:
+    c1.x, c2.x = c2.x, c1.x
+
+[file driver.py]
+from native import C, f, g
+
+c1 = C()
+c2 = C()
+
+c1.x = 1
+c2.x = 2
+
+f(c1, c2)
+assert c1.x == 2
+assert c2.x == 1
+
+g(c1, c2)
+assert c1.x == 1
+assert c2.x == 2
+[out]

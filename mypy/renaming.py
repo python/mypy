@@ -92,11 +92,11 @@ class VariableRenameVisitor(TraverserVisitor):
         self.enter_block()
 
         for arg in fdef.arguments:
-            name = arg.variable.name()
+            name = arg.variable.name
             # 'self' can't be redefined since it's special as it allows definition of
             # attributes. 'cls' can't be used to define attributes so we can ignore it.
             can_be_redefined = name != 'self'  # TODO: Proper check
-            self.record_assignment(arg.variable.name(), can_be_redefined)
+            self.record_assignment(arg.variable.name, can_be_redefined)
             self.handle_arg(name)
 
         for stmt in fdef.body.body:
@@ -156,7 +156,7 @@ class VariableRenameVisitor(TraverserVisitor):
         # convenience.  This is unsafe since with statements can affect control
         # flow by catching exceptions, but this is rare except for
         # assertRaises() and other similar functions, where the exception is
-        # raised by the last statement in the body, which usuaully isn't a
+        # raised by the last statement in the body, which usually isn't a
         # problem.
         stmt.body.accept(self)
 

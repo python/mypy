@@ -194,7 +194,7 @@ def func() -> None:
     A = NewType('A', str)
     B = NewType('B', str)
 
-    a = A(3)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+    a = A(3)  # E: Argument 1 to "A@6" has incompatible type "int"; expected "str"
     a = A('xyz')
     b = B('xyz')
 

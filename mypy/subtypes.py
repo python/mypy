@@ -1,13 +1,13 @@
 from contextlib import contextmanager
 
-from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast
+from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast, TypeVar
 from typing_extensions import Final
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, ProperType, get_proper_type
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
 )
 import mypy.applytype
 import mypy.constraints
@@ -63,6 +63,48 @@ def is_subtype(left: Type, right: Type,
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    if TypeState.is_assumed_subtype(left, right):
+        return True
+    if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
+            left.is_recursive and right.is_recursive):
+        # This case requires special care because it may cause infinite recursion.
+        # Our view on recursive types is known under a fancy name of equirecursive mu-types.
+        # Roughly this means that a recursive type is defined as an alias where right hand side
+        # can refer to the type as a whole, for example:
+        #     A = Union[int, Tuple[A, ...]]
+        # and an alias unrolled once represents the *same type*, in our case all these represent
+        # the same type:
+        #    A
+        #    Union[int, Tuple[A, ...]]
+        #    Union[int, Tuple[Union[int, Tuple[A, ...]], ...]]
+        # The algorithm for subtyping is then essentially under the assumption that left <: right,
+        # check that get_proper_type(left) <: get_proper_type(right). On the example above,
+        # If we start with:
+        #     A = Union[int, Tuple[A, ...]]
+        #     B = Union[int, Tuple[B, ...]]
+        # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
+        # steps we come back to initial call is_subtype(A, B) and immediately return True.
+        with pop_on_exit(TypeState._assuming, left, right):
+            return _is_subtype(left, right,
+                               ignore_type_params=ignore_type_params,
+                               ignore_pos_arg_names=ignore_pos_arg_names,
+                               ignore_declared_variance=ignore_declared_variance,
+                               ignore_promotions=ignore_promotions)
+    return _is_subtype(left, right,
+                       ignore_type_params=ignore_type_params,
+                       ignore_pos_arg_names=ignore_pos_arg_names,
+                       ignore_declared_variance=ignore_declared_variance,
+                       ignore_promotions=ignore_promotions)
+
+
+def _is_subtype(left: Type, right: Type,
+                *,
+                ignore_type_params: bool = False,
+                ignore_pos_arg_names: bool = False,
+                ignore_declared_variance: bool = False,
+                ignore_promotions: bool = False) -> bool:
+    orig_right = right
+    orig_left = left
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -73,7 +115,7 @@ def is_subtype(left: Type, right: Type,
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
-        is_subtype_of_item = any(is_subtype(left, item,
+        is_subtype_of_item = any(is_subtype(orig_left, item,
                                             ignore_type_params=ignore_type_params,
                                             ignore_pos_arg_names=ignore_pos_arg_names,
                                             ignore_declared_variance=ignore_declared_variance,
@@ -90,7 +132,7 @@ def is_subtype(left: Type, right: Type,
         elif is_subtype_of_item:
             return True
         # otherwise, fall through
-    return left.accept(SubtypeVisitor(right,
+    return left.accept(SubtypeVisitor(orig_right,
                                       ignore_type_params=ignore_type_params,
                                       ignore_pos_arg_names=ignore_pos_arg_names,
                                       ignore_declared_variance=ignore_declared_variance,
@@ -115,13 +157,14 @@ def is_equivalent(a: Type, b: Type,
 
 class SubtypeVisitor(TypeVisitor[bool]):
 
-    def __init__(self, right: ProperType,
+    def __init__(self, right: Type,
                  *,
                  ignore_type_params: bool,
                  ignore_pos_arg_names: bool = False,
                  ignore_declared_variance: bool = False,
                  ignore_promotions: bool = False) -> None:
-        self.right = right
+        self.right = get_proper_type(right)
+        self.orig_right = right
         self.ignore_type_params = ignore_type_params
         self.ignore_pos_arg_names = ignore_pos_arg_names
         self.ignore_declared_variance = ignore_declared_variance
@@ -200,7 +243,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if base._promote and self._is_subtype(base._promote, self.right):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
-            rname = right.type.fullname()
+            rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
             if ((left.type.has_base(rname) or rname == 'builtins.object') and
@@ -365,7 +408,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 found_match = False
 
                 for left_index, left_item in enumerate(left.items()):
-                    subtype_match = self._is_subtype(left_item, right_item)\
+                    subtype_match = self._is_subtype(left_item, right_item)
 
                     # Order matters: we need to make sure that the index of
                     # this item is at least the index of the previous one.
@@ -409,7 +452,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all(self._is_subtype(item, self.right) for item in left.items)
+        return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
@@ -423,7 +466,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # This is unsound, we don't check the __init__ signature.
             return self._is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
-            if right.type.fullname() in ['builtins.object', 'builtins.type']:
+            if right.type.fullname in ['builtins.object', 'builtins.type']:
                 return True
             item = left.item
             if isinstance(item, TypeVarType):
@@ -433,10 +476,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return metaclass is not None and self._is_subtype(metaclass, right)
         return False
 
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        assert False, "This should be never called, got {}".format(left)
+
+
+T = TypeVar('T', Instance, TypeAliasType)
+
 
 @contextmanager
-def pop_on_exit(stack: List[Tuple[Instance, Instance]],
-                left: Instance, right: Instance) -> Iterator[None]:
+def pop_on_exit(stack: List[Tuple[T, T]],
+                left: T, right: T) -> Iterator[None]:
     stack.append((left, right))
     yield
     stack.pop()
@@ -560,7 +609,7 @@ def find_member(name: str,
                 # many false negatives, then this could be prohibited for
                 # structural subtyping.
                 method = info.get_method(method_name)
-                if method and method.info.fullname() != 'builtins.object':
+                if method and method.info.fullname != 'builtins.object':
                     getattr_type = get_proper_type(find_node_type(method, itype, subtype))
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
@@ -1037,8 +1086,9 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     s = get_proper_type(s)
 
     if isinstance(t, UnionType):
-        new_items = [item for item in t.relevant_items()
-                     if (isinstance(item, AnyType) or
+        new_items = [restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
+                     for item in t.relevant_items()
+                     if (isinstance(get_proper_type(item), AnyType) or
                          not covers_at_runtime(item, s, ignore_promotions))]
         return UnionType.make_union(new_items)
     else:
@@ -1060,54 +1110,91 @@ def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> b
             return True
     if isinstance(item, TypedDictType) and isinstance(supertype, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if supertype.type.fullname() == 'builtins.dict':
+        if supertype.type.fullname == 'builtins.dict':
             return True
     # TODO: Add more special cases.
     return False
 
 
-def is_proper_subtype(left: Type, right: Type, *, ignore_promotions: bool = False,
-                      erase_instances: bool = False) -> bool:
+def is_proper_subtype(left: Type, right: Type, *,
+                      ignore_promotions: bool = False,
+                      erase_instances: bool = False,
+                      keep_erased_types: bool = False) -> bool:
     """Is left a proper subtype of right?
 
     For proper subtypes, there's no need to rely on compatibility due to
     Any types. Every usable type is a proper subtype of itself.
 
     If erase_instances is True, erase left instance *after* mapping it to supertype
-    (this is useful for runtime isinstance() checks).
+    (this is useful for runtime isinstance() checks). If keep_erased_types is True,
+    do not consider ErasedType a subtype of all types (used by type inference against unions).
     """
+    if TypeState.is_assumed_proper_subtype(left, right):
+        return True
+    if (isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType) and
+            left.is_recursive and right.is_recursive):
+        # This case requires special care because it may cause infinite recursion.
+        # See is_subtype() for more info.
+        with pop_on_exit(TypeState._assuming_proper, left, right):
+            return _is_proper_subtype(left, right,
+                                      ignore_promotions=ignore_promotions,
+                                      erase_instances=erase_instances,
+                                      keep_erased_types=keep_erased_types)
+    return _is_proper_subtype(left, right,
+                              ignore_promotions=ignore_promotions,
+                              erase_instances=erase_instances,
+                              keep_erased_types=keep_erased_types)
+
+
+def _is_proper_subtype(left: Type, right: Type, *,
+                       ignore_promotions: bool = False,
+                       erase_instances: bool = False,
+                       keep_erased_types: bool = False) -> bool:
+    orig_left = left
+    orig_right = right
     left = get_proper_type(left)
     right = get_proper_type(right)
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any([is_proper_subtype(left, item, ignore_promotions=ignore_promotions,
-                                      erase_instances=erase_instances)
+        return any([is_proper_subtype(orig_left, item,
+                                      ignore_promotions=ignore_promotions,
+                                      erase_instances=erase_instances,
+                                      keep_erased_types=keep_erased_types)
                     for item in right.items])
-    return left.accept(ProperSubtypeVisitor(right, ignore_promotions=ignore_promotions,
-                                            erase_instances=erase_instances))
+    return left.accept(ProperSubtypeVisitor(orig_right,
+                                            ignore_promotions=ignore_promotions,
+                                            erase_instances=erase_instances,
+                                            keep_erased_types=keep_erased_types))
 
 
 class ProperSubtypeVisitor(TypeVisitor[bool]):
-    def __init__(self, right: ProperType, *,
+    def __init__(self, right: Type, *,
                  ignore_promotions: bool = False,
-                 erase_instances: bool = False) -> None:
-        self.right = right
+                 erase_instances: bool = False,
+                 keep_erased_types: bool = False) -> None:
+        self.right = get_proper_type(right)
+        self.orig_right = right
         self.ignore_promotions = ignore_promotions
         self.erase_instances = erase_instances
+        self.keep_erased_types = keep_erased_types
         self._subtype_kind = ProperSubtypeVisitor.build_subtype_kind(
             ignore_promotions=ignore_promotions,
             erase_instances=erase_instances,
+            keep_erased_types=keep_erased_types
         )
 
     @staticmethod
-    def build_subtype_kind(*, ignore_promotions: bool = False,
-                           erase_instances: bool = False) -> SubtypeKind:
-        return True, ignore_promotions, erase_instances
+    def build_subtype_kind(*,
+                           ignore_promotions: bool = False,
+                           erase_instances: bool = False,
+                           keep_erased_types: bool = False) -> SubtypeKind:
+        return True, ignore_promotions, erase_instances, keep_erased_types
 
     def _is_proper_subtype(self, left: Type, right: Type) -> bool:
         return is_proper_subtype(left, right,
                                  ignore_promotions=self.ignore_promotions,
-                                 erase_instances=self.erase_instances)
+                                 erase_instances=self.erase_instances,
+                                 keep_erased_types=self.keep_erased_types)
 
     def visit_unbound_type(self, left: UnboundType) -> bool:
         # This can be called if there is a bad type annotation. The result probably
@@ -1130,6 +1217,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_erased_type(self, left: ErasedType) -> bool:
         # This may be encountered during type inference. The result probably doesn't
         # matter much.
+        # TODO: it actually does matter, figure out more principled logic about this.
+        if self.keep_erased_types:
+            return False
         return True
 
     def visit_deleted_type(self, left: DeletedType) -> bool:
@@ -1146,7 +1236,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
 
-            if left.type.has_base(right.type.fullname()):
+            if left.type.has_base(right.type.fullname):
                 def check_argument(leftarg: Type, rightarg: Type, variance: int) -> bool:
                     if variance == COVARIANT:
                         return self._is_proper_subtype(leftarg, rightarg)
@@ -1250,7 +1340,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all([self._is_proper_subtype(item, self.right) for item in left.items])
+        return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?
@@ -1265,13 +1355,13 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             # This is also unsound because of __init__.
             return right.is_type_obj() and self._is_proper_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
-            if right.type.fullname() == 'builtins.type':
+            if right.type.fullname == 'builtins.type':
                 # TODO: Strictly speaking, the type builtins.type is considered equivalent to
                 #       Type[Any]. However, this would break the is_proper_subtype check in
                 #       conditional_type_map for cases like isinstance(x, type) when the type
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
-            if right.type.fullname() == 'builtins.object':
+            if right.type.fullname == 'builtins.object':
                 return True
             item = left.item
             if isinstance(item, TypeVarType):
@@ -1280,6 +1370,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_proper_subtype(metaclass, right)
         return False
+
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        assert False, "This should be never called, got {}".format(left)
 
 
 def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False) -> bool:
