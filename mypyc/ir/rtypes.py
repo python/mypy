@@ -445,6 +445,26 @@ dict_next_rtuple_single = RTuple(
 )
 
 
+def compute_rtype_alignment(typ: RType) -> int:
+    """Compute alignment of a given type based on platform alignment rule"""
+    platform_alignment = 4 if IS_32_BIT_PLATFORM else 8
+    if isinstance(typ, RPrimitive):
+        return typ.size
+    elif isinstance(typ, RInstance):
+        return platform_alignment
+    else:
+        if isinstance(typ, RTuple):
+            items = list(typ.types)
+        elif isinstance(typ, RStruct):
+            items = typ.types
+        elif isinstance(typ, RUnion):
+            items = typ.items
+        else:
+            assert False, "invalid rtype for computing alignment"
+        max_alignment = max([compute_rtype_alignment(item) for item in items])
+        return max_alignment
+
+
 def compute_rtype_size(typ: RType) -> int:
     """Compute unaligned size of rtype"""
     platform_size = 4 if IS_32_BIT_PLATFORM else 8
@@ -470,6 +490,7 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
     """
     platform_alignment = 4 if IS_32_BIT_PLATFORM else 8
     unaligned_sizes = [compute_rtype_size(typ) for typ in types]
+    alignment = [compute_rtype_alignment(typ) for typ in types]
 
     current_offset = 0
     offsets = []
@@ -481,7 +502,8 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
             next_size = unaligned_sizes[i + 1]
             if next_size > cur_size:
                 current_offset += cur_size
-                padding = (next_size - (current_offset % next_size)) % next_size
+                next_alignment = alignment[i + 1]
+                padding = (next_alignment - (current_offset % next_alignment)) % next_alignment
                 current_offset += padding
             else:
                 current_offset += cur_size

@@ -30,6 +30,14 @@ class TestStruct(unittest.TestCase):
         assert r4.size == 8
         assert r4.offsets == [0, 1, 2, 4]
 
+        # test nested struct
+        r5 = RStruct("", [], [bool_rprimitive, r1])
+        assert r5.offsets == [0, 8]
+        assert r5.size == 24
+        r6 = RStruct("", [], [int32_rprimitive, r5])
+        assert r6.offsets == [0, 8]
+        assert r6.size == 32
+
     def test_struct_str(self) -> None:
         r = RStruct("Foo", ["a", "b"],
                     [bool_rprimitive, object_rprimitive])
