@@ -171,13 +171,15 @@ class RPrimitive(RType):
                  name: str,
                  is_unboxed: bool,
                  is_refcounted: bool,
-                 ctype: str = 'PyObject *') -> None:
+                 ctype: str = 'PyObject *',
+                 size: int = 4 if IS_32_BIT_PLATFORM else 8) -> None:
         RPrimitive.primitive_map[name] = self
 
         self.name = name
         self.is_unboxed = is_unboxed
         self._ctype = ctype
         self.is_refcounted = is_refcounted
+        self.size = size
         # TODO: For low-level integers, they actually don't have undefined values
         #       we need to figure out some way to represent here.
         if ctype in ('CPyTagged', 'int32_t', 'int64_t'):
@@ -242,9 +244,9 @@ short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=Fa
 
 # low level integer (corresponds to C's 'int's).
 int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t')  # type: Final
+                              ctype='int32_t', size=4)  # type: Final
 int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t')  # type: Final
+                              ctype='int64_t', size=8)  # type: Final
 # integer alias
 c_int_rprimitive = int32_rprimitive
 if IS_32_BIT_PLATFORM:
@@ -260,11 +262,11 @@ float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
 # An unboxed boolean value. This actually has three possible values
 # (0 -> False, 1 -> True, 2 -> error).
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
-                             ctype='char')  # type: Final
+                             ctype='char', size=1)  # type: Final
 
 # The 'None' value. The possible values are 0 -> None and 2 -> error.
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
-                             ctype='char')  # type: Final
+                             ctype='char', size=1)  # type: Final
 
 # Python list object (or an instance of a subclass of list).
 list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)  # type: Final
@@ -447,16 +449,7 @@ def compute_rtype_size(typ: RType) -> int:
     """Compute unaligned size of rtype"""
     platform_size = 4 if IS_32_BIT_PLATFORM else 8
     if isinstance(typ, RPrimitive):
-        if is_int32_rprimitive(typ):
-            return 4
-        elif is_int64_rprimitive(typ):
-            return 8
-        elif is_none_rprimitive(typ):
-            return 1
-        elif is_bool_rprimitive(typ):
-            return 1
-        else:
-            return platform_size
+        return typ.size
     elif isinstance(typ, RTuple):
         return compute_aligned_offsets_and_size(list(typ.types))[1]
     elif isinstance(typ, RUnion):
@@ -470,7 +463,11 @@ def compute_rtype_size(typ: RType) -> int:
 
 
 def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int]:
-    """Compute offsets and total size of a list types after alignment"""
+    """Compute offsets and total size of a list of types after alignment
+
+    Note that the types argument are types of values that are stored
+    sequentially with platform default alignment.
+    """
     platform_alignment = 4 if IS_32_BIT_PLATFORM else 8
     unaligned_sizes = [compute_rtype_size(typ) for typ in types]
 
