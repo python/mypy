@@ -25,9 +25,20 @@ class TestStruct(unittest.TestCase):
             assert r2.size == 8
             assert r3.size == 16
 
+        r4 = RStruct("", [], [bool_rprimitive, bool_rprimitive,
+                              bool_rprimitive, int32_rprimitive])
+        assert r4.size == 8
+        assert r4.offsets == [0, 1, 2, 4]
+
     def test_struct_str(self) -> None:
         r = RStruct("Foo", ["a", "b"],
                     [bool_rprimitive, object_rprimitive])
         assert str(r) == "Foo{a:bool, b:object}"
         assert repr(r) == "<RStruct Foo{a:<RPrimitive builtins.bool>, " \
                           "b:<RPrimitive builtins.object>}>"
+        r1 = RStruct("Bar", ["c"], [int32_rprimitive])
+        assert str(r1) == "Bar{c:int32}"
+        assert repr(r1) =="<RStruct Bar{c:<RPrimitive int32>}>"
+        r2 = RStruct("Baz", [], [])
+        assert str(r2) == "Baz{}"
+        assert repr(r2) =="<RStruct Baz{}>"
