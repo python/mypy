@@ -25,7 +25,7 @@ from typing import Optional, Union, List, Dict, Generic, TypeVar, Tuple
 
 from typing_extensions import Final, ClassVar, TYPE_CHECKING
 
-from mypyc.common import JsonDict, short_name, PLATFORM_SIZE
+from mypyc.common import JsonDict, short_name, IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -524,6 +524,10 @@ class RStruct(RType):
         self.name = name
         self.names = names
         self.types = types
+        # generate dummy names
+        if len(self.names) < len(self.types):
+            for i in range(len(self.types) - len(self.names)):
+                self.names.append('_item' + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = self.name
 
@@ -532,18 +536,12 @@ class RStruct(RType):
 
     def __str__(self) -> str:
         # if not tuple(unamed structs)
-        if len(self.names) > 0:
-            return '%s{%s}' % (self.name, ', '.join(name + ":" + str(typ)
-                                                    for name, typ in zip(self.names, self.types)))
-        else:
-            return '%s{%s}' % (self.name, ', '.join(str(typ) for typ in self.types))
+        return '%s{%s}' % (self.name, ', '.join(name + ":" + str(typ)
+                                                for name, typ in zip(self.names, self.types)))
 
     def __repr__(self) -> str:
-        if len(self.names) > 0:
-            return '<RStruct %s{%s}>' % (self.name, ', '.join(name + ":" + repr(typ) for name, typ
-                                                              in zip(self.names, self.types)))
-        else:
-            return '<RStruct %s{%s}>' % (self.name, ', '.join(repr(typ) for typ in self.types))
+        return '<RStruct %s{%s}>' % (self.name, ', '.join(name + ":" + repr(typ) for name, typ
+                                                          in zip(self.names, self.types)))
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, RStruct) and self.name == other.name
