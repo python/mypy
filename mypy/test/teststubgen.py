@@ -19,11 +19,13 @@ from mypy.stubgen import (
     mypy_options, is_blacklisted_path, is_non_library_module
 )
 from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
-from mypy.stubgenc import generate_c_type_stub, infer_method_sig, generate_c_function_stub
+from mypy.stubgenc import (
+    generate_c_type_stub, infer_method_sig, generate_c_function_stub, generate_c_property_stub
+)
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring, infer_prop_type_from_docstring, FunctionSig, ArgSig,
-    infer_arg_sig_from_docstring, is_valid_type
+    infer_arg_sig_from_anon_docstring, is_valid_type
 )
 from mypy.moduleinspect import ModuleInspect, InspectError
 
@@ -270,12 +272,12 @@ class StubgenUtilSuite(unittest.TestCase):
              x
             """, 'func'), None)
 
-    def test_infer_arg_sig_from_docstring(self) -> None:
-        assert_equal(infer_arg_sig_from_docstring("(*args, **kwargs)"),
+    def test_infer_arg_sig_from_anon_docstring(self) -> None:
+        assert_equal(infer_arg_sig_from_anon_docstring("(*args, **kwargs)"),
                      [ArgSig(name='*args'), ArgSig(name='**kwargs')])
 
         assert_equal(
-            infer_arg_sig_from_docstring(
+            infer_arg_sig_from_anon_docstring(
                 "(x: Tuple[int, Tuple[str, int], str]=(1, ('a', 2), 'y'), y: int=4)"),
             [ArgSig(name='x', type='Tuple[int,Tuple[str,int],str]', default=True),
              ArgSig(name='y', type='int', default=True)])
@@ -777,6 +779,20 @@ class StubgencSuite(unittest.TestCase):
         generate_c_function_stub(mod, 'test', test, output, imports)
         assert_equal(output, ['def test(arg0: str) -> Action: ...'])
         assert_equal(imports, [])
+
+    def test_generate_c_property_with_pybind11(self) -> None:
+        """Signatures included by PyBind11 inside property.fget are read."""
+        class TestClass:
+            def get_attribute(self) -> None:
+                """
+                (self: TestClass) -> str
+                """
+                pass
+            attribute = property(get_attribute, doc="")
+
+        output = []  # type: List[str]
+        generate_c_property_stub('attribute', TestClass.attribute, output, readonly=True)
+        assert_equal(output, ['@property', 'def attribute(self) -> str: ...'])
 
     def test_generate_c_type_with_overload_pybind11(self) -> None:
         class TestClass:
