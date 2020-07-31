@@ -4,7 +4,6 @@ from mypyc.ir.rtypes import (
     RStruct, bool_rprimitive, int64_rprimitive, int32_rprimitive, object_rprimitive, StructInfo,
     int_rprimitive, short_int_rprimitive
 )
-from mypyc.common import IS_32_BIT_PLATFORM
 from mypyc.rt_subtype import is_runtime_subtype
 
 
