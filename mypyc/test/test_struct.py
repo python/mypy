@@ -9,12 +9,16 @@ from mypyc.common import IS_32_BIT_PLATFORM
 class TestStruct(unittest.TestCase):
     def test_struct_offsets(self) -> None:
         # test per-member alignment
-        info1 = StructInfo("", [], [bool_rprimitive, int32_rprimitive, int64_rprimitive])
-        r1 = RStruct(info1)
-        assert r1.size == 16
-        assert r1.offsets == [0, 4, 8]
+        info = StructInfo("", [], [bool_rprimitive, int32_rprimitive, int64_rprimitive])
+        r = RStruct(info)
+        assert r.size == 16
+        assert r.offsets == [0, 4, 8]
 
         # test final alignment
+        info1 = StructInfo("", [], [bool_rprimitive, bool_rprimitive])
+        r1 = RStruct(info1)
+        assert r1.size == 2
+        assert r1.offsets == [0, 1]
         info2 = StructInfo("", [], [int32_rprimitive, bool_rprimitive])
         r2 = RStruct(info2)
         info3 = StructInfo("", [], [int64_rprimitive, bool_rprimitive])
@@ -35,7 +39,7 @@ class TestStruct(unittest.TestCase):
         assert r4.offsets == [0, 1, 2, 4]
 
         # test nested struct
-        info5 = StructInfo("", [], [bool_rprimitive, r1])
+        info5 = StructInfo("", [], [bool_rprimitive, r])
         r5 = RStruct(info5)
         assert r5.offsets == [0, 8]
         assert r5.size == 24
