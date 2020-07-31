@@ -44,6 +44,11 @@ class TestStruct(unittest.TestCase):
         r6 = RStruct(info6)
         assert r6.offsets == [0, 8]
         assert r6.size == 32
+        # test nested struct with alignment less than 8
+        info7 = StructInfo("", [], [bool_rprimitive, r4])
+        r7 = RStruct(info7)
+        assert r7.offsets == [0, 4]
+        assert r7.size == 12
 
     def test_struct_str(self) -> None:
         info = StructInfo("Foo", ["a", "b"],
