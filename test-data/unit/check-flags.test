@@ -1250,6 +1250,18 @@ __all__ = ('b',)
 [out]
 main:2: error: Module 'other_module_2' has no attribute 'a'
 
+[case textNoImplicitReexportSuggestions]
+# flags: --no-implicit-reexport
+from other_module_2 import attr_1
+
+[file other_module_1.py]
+attr_1 = 5
+attr_2 = 6
+[file other_module_2.py]
+from other_module_1 import attr_1, attr_2
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'attr_1'
+
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
 from other_module_2 import a
