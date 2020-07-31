@@ -339,7 +339,7 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
     return sorted(result)
 
 
-def infer_prop_type_from_docstring(docstr: str) -> Optional[str]:
+def infer_prop_type_from_docstring(docstr: Optional[str]) -> Optional[str]:
     """Check for Google/Numpy style docstring type annotation for a property.
 
     The docstring has the format "<type>: <descriptions>".
