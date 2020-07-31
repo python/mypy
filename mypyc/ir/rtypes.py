@@ -21,11 +21,11 @@ RTypes.
 """
 
 from abc import abstractmethod
-from typing import Optional, Union, List, Dict, Generic, TypeVar
+from typing import Optional, Union, List, Dict, Generic, TypeVar, Tuple
 
 from typing_extensions import Final, ClassVar, TYPE_CHECKING
 
-from mypyc.common import JsonDict, short_name, IS_32_BIT_PLATFORM
+from mypyc.common import JsonDict, short_name, IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -120,6 +120,10 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_rstruct(self, typ: 'RStruct') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_rvoid(self, typ: 'RVoid') -> T:
         raise NotImplementedError
 
@@ -167,13 +171,15 @@ class RPrimitive(RType):
                  name: str,
                  is_unboxed: bool,
                  is_refcounted: bool,
-                 ctype: str = 'PyObject *') -> None:
+                 ctype: str = 'PyObject *',
+                 size: int = PLATFORM_SIZE) -> None:
         RPrimitive.primitive_map[name] = self
 
         self.name = name
         self.is_unboxed = is_unboxed
         self._ctype = ctype
         self.is_refcounted = is_refcounted
+        self.size = size
         # TODO: For low-level integers, they actually don't have undefined values
         #       we need to figure out some way to represent here.
         if ctype in ('CPyTagged', 'int32_t', 'int64_t'):
@@ -238,9 +244,9 @@ short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=Fa
 
 # low level integer (corresponds to C's 'int's).
 int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t')  # type: Final
+                              ctype='int32_t', size=4)  # type: Final
 int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t')  # type: Final
+                              ctype='int64_t', size=8)  # type: Final
 # integer alias
 c_int_rprimitive = int32_rprimitive
 if IS_32_BIT_PLATFORM:
@@ -256,11 +262,11 @@ float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
 # An unboxed boolean value. This actually has three possible values
 # (0 -> False, 1 -> True, 2 -> error).
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
-                             ctype='char')  # type: Final
+                             ctype='char', size=1)  # type: Final
 
 # The 'None' value. The possible values are 0 -> None and 2 -> error.
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
-                             ctype='char')  # type: Final
+                             ctype='char', size=1)  # type: Final
 
 # Python list object (or an instance of a subclass of list).
 list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)  # type: Final
@@ -368,6 +374,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
         parts = [elem.accept(self) for elem in t.types]
         return 'T{}{}'.format(len(parts), ''.join(parts))
 
+    def visit_rstruct(self, t: 'RStruct') -> str:
+        assert False
+        return ""
+
     def visit_rvoid(self, t: 'RVoid') -> str:
         assert False, "rvoid in tuple?"
 
@@ -438,6 +448,140 @@ dict_next_rtuple_pair = RTuple(
 dict_next_rtuple_single = RTuple(
     [bool_rprimitive, int_rprimitive, object_rprimitive]
 )
+
+
+def compute_rtype_alignment(typ: RType) -> int:
+    """Compute alignment of a given type based on platform alignment rule"""
+    platform_alignment = PLATFORM_SIZE
+    if isinstance(typ, RPrimitive):
+        return typ.size
+    elif isinstance(typ, RInstance):
+        return platform_alignment
+    elif isinstance(typ, RUnion):
+        return platform_alignment
+    else:
+        if isinstance(typ, RTuple):
+            items = list(typ.types)
+        elif isinstance(typ, RStruct):
+            items = typ.types
+        else:
+            assert False, "invalid rtype for computing alignment"
+        max_alignment = max([compute_rtype_alignment(item) for item in items])
+        return max_alignment
+
+
+def compute_rtype_size(typ: RType) -> int:
+    """Compute unaligned size of rtype"""
+    if isinstance(typ, RPrimitive):
+        return typ.size
+    elif isinstance(typ, RTuple):
+        return compute_aligned_offsets_and_size(list(typ.types))[1]
+    elif isinstance(typ, RUnion):
+        return PLATFORM_SIZE
+    elif isinstance(typ, RStruct):
+        return compute_aligned_offsets_and_size(typ.types)[1]
+    elif isinstance(typ, RInstance):
+        return PLATFORM_SIZE
+    else:
+        assert False, "invalid rtype for computing size"
+
+
+def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int]:
+    """Compute offsets and total size of a list of types after alignment
+
+    Note that the types argument are types of values that are stored
+    sequentially with platform default alignment.
+    """
+    unaligned_sizes = [compute_rtype_size(typ) for typ in types]
+    alignments = [compute_rtype_alignment(typ) for typ in types]
+
+    current_offset = 0
+    offsets = []
+    final_size = 0
+    for i in range(len(unaligned_sizes)):
+        offsets.append(current_offset)
+        if i + 1 < len(unaligned_sizes):
+            cur_size = unaligned_sizes[i]
+            current_offset += cur_size
+            next_alignment = alignments[i + 1]
+            # compute aligned offset,
+            # check https://en.wikipedia.org/wiki/Data_structure_alignment for more infomation
+            current_offset = (current_offset + (next_alignment - 1)) & -next_alignment
+        else:
+            struct_alignment = max(alignments)
+            final_size = current_offset + unaligned_sizes[i]
+            final_size = (final_size + (struct_alignment - 1)) & -struct_alignment
+    return offsets, final_size
+
+
+class StructInfo:
+    """Struct-like type Infomation
+
+    StructInfo should work with registry to ensure constraints like the unique naming
+    constraint for struct type
+    """
+    def __init__(self,
+                 name: str,
+                 names: List[str],
+                 types: List[RType]) -> None:
+        self.name = name
+        self.names = names
+        self.types = types
+        # generate dummy names
+        if len(self.names) < len(self.types):
+            for i in range(len(self.types) - len(self.names)):
+                self.names.append('_item' + str(i))
+        self.offsets, self.size = compute_aligned_offsets_and_size(types)
+
+
+class RStruct(RType):
+    """Represent CPython structs"""
+    def __init__(self,
+                 info: StructInfo) -> None:
+        self.info = info
+        self.name = self.info.name
+        self._ctype = self.info.name
+
+    @property
+    def names(self) -> List[str]:
+        return self.info.names
+
+    @property
+    def types(self) -> List[RType]:
+        return self.info.types
+
+    @property
+    def offsets(self) -> List[int]:
+        return self.info.offsets
+
+    @property
+    def size(self) -> int:
+        return self.info.size
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_rstruct(self)
+
+    def __str__(self) -> str:
+        # if not tuple(unamed structs)
+        return '%s{%s}' % (self.name, ', '.join(name + ":" + str(typ)
+                                                for name, typ in zip(self.names, self.types)))
+
+    def __repr__(self) -> str:
+        return '<RStruct %s{%s}>' % (self.name, ', '.join(name + ":" + repr(typ) for name, typ
+                                                          in zip(self.names, self.types)))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RStruct) and self.info == other.info
+
+    def __hash__(self) -> int:
+        return hash(self.info)
+
+    def serialize(self) -> JsonDict:
+        assert False
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RStruct':
+        assert False
 
 
 class RInstance(RType):
