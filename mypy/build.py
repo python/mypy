@@ -607,8 +607,7 @@ class BuildManager:
             self.missing_modules,
             self.incomplete_namespaces,
             self.errors,
-            self.plugin,
-            options)
+            self.plugin)
         self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
