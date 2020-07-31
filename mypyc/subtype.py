@@ -57,10 +57,7 @@ class SubtypeVisitor(RTypeVisitor[bool]):
         return False
 
     def visit_rstruct(self, left: RStruct) -> bool:
-        if isinstance(self.right, RStruct):
-            return len(self.right.types) == len(left.types) and all(
-                is_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types))
-        return False
+        return isinstance(self.right, RStruct) and self.right.name == left.name
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)

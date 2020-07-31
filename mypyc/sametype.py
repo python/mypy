@@ -53,10 +53,7 @@ class SameTypeVisitor(RTypeVisitor[bool]):
             and all(is_same_type(t1, t2) for t1, t2 in zip(left.types, self.right.types)))
 
     def visit_rstruct(self, left: RStruct) -> bool:
-        return (isinstance(self.right, RStruct)
-            and self.right.names == left.names
-            and len(self.right.types) == len(left.types)
-            and all(is_same_type(t1, t2) for t1, t2 in zip(left.types, self.right.types)))
+        return isinstance(self.right, RStruct) and self.right.name == left.name
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)
