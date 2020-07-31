@@ -5757,7 +5757,10 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
     elif isinstance(typ, Instance):
         method = typ.type.get_method('__call__')
         if method:
-            return not is_typed_callable(method.type)
+            if isinstance(method.type, Overloaded):
+                return any(is_untyped_decorator(item) for item in method.type.items())
+            else:
+                return not is_typed_callable(method.type)
         else:
             return False
     elif isinstance(typ, Overloaded):
