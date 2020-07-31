@@ -550,7 +550,7 @@ def analyze_var(name: str,
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
         if mx.is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
-            if info.names.get('__setattr__') is None:
+            if info.get('__setattr__') is None:
                 mx.msg.read_only_property(name, itype.type, mx.context)
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
@@ -561,7 +561,7 @@ def analyze_var(name: str,
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
-                        if info.names.get('__setattr__') is None:
+                        if info.get('__setattr__') is None:
                             mx.msg.read_only_property(name, itype.type, mx.context)
                 else:
                     mx.msg.cant_assign_to_method(mx.context)
