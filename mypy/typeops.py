@@ -344,21 +344,35 @@ def make_simplified_union(items: Sequence[Type],
     from mypy.subtypes import is_proper_subtype
 
     removed = set()  # type: Set[int]
-    for i, ti in enumerate(items):
-        if i in removed: continue
-        # Keep track of the truishness info for deleted subtypes which can be relevant
-        cbt = cbf = False
-        for j, tj in enumerate(items):
-            if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
-                # We found a redundant item in the union.
-                removed.add(j)
-                cbt = cbt or tj.can_be_true
-                cbf = cbf or tj.can_be_false
-        # if deleted subtypes had more general truthiness, use that
-        if not ti.can_be_true and cbt:
-            items[i] = true_or_false(ti)
-        elif not ti.can_be_false and cbf:
-            items[i] = true_or_false(ti)
+
+    # Avoid slow nested for loop for Union of Literal of strings (issue #9169)
+    if all((isinstance(item, LiteralType) and
+            item.fallback.type.fullname == 'builtins.str')
+           for item in items):
+        seen = set()    # type: Set[str]
+        for index, item in enumerate(items):
+            assert isinstance(item, LiteralType)
+            assert isinstance(item.value, str)
+            if item.value in seen:
+                removed.add(index)
+            seen.add(item.value)
+
+    else:
+        for i, ti in enumerate(items):
+            if i in removed: continue
+            # Keep track of the truishness info for deleted subtypes which can be relevant
+            cbt = cbf = False
+            for j, tj in enumerate(items):
+                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
+                    # We found a redundant item in the union.
+                    removed.add(j)
+                    cbt = cbt or tj.can_be_true
+                    cbf = cbf or tj.can_be_false
+            # if deleted subtypes had more general truthiness, use that
+            if not ti.can_be_true and cbt:
+                items[i] = true_or_false(ti)
+            elif not ti.can_be_false and cbf:
+                items[i] = true_or_false(ti)
 
     simplified_set = [items[i] for i in range(len(items)) if i not in removed]
     return UnionType.make_union(simplified_set, line, column)
