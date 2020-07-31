@@ -27,12 +27,8 @@ class TestStruct(unittest.TestCase):
         r3 = RStruct(info3)
         assert r2.offsets == [0, 4]
         assert r3.offsets == [0, 8]
-        if IS_32_BIT_PLATFORM:
-            assert r2.size == 8
-            assert r3.size == 12
-        else:
-            assert r2.size == 8
-            assert r3.size == 16
+        assert r2.size == 8
+        assert r3.size == 16
 
         info4 = StructInfo("", [], [bool_rprimitive, bool_rprimitive,
                               bool_rprimitive, int32_rprimitive])
