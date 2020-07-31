@@ -7,6 +7,7 @@ from mypyc.ir.rtypes import (
 from mypyc.common import IS_32_BIT_PLATFORM
 from mypyc.rt_subtype import is_runtime_subtype
 
+
 class TestStruct(unittest.TestCase):
     def test_struct_offsets(self) -> None:
         # test per-member alignment
@@ -86,7 +87,6 @@ class TestStruct(unittest.TestCase):
                     [bool_rprimitive, int_rprimitive])
         r3 = RStruct(info3)
 
-
         # type different
         info4 = StructInfo("Foo", ["a", "b"],
                     [bool_rprimitive, int32_rprimitive])
@@ -97,8 +97,8 @@ class TestStruct(unittest.TestCase):
                     [bool_rprimitive, int_rprimitive, bool_rprimitive])
         r5 = RStruct(info5)
 
-        assert is_runtime_subtype(r1, r) == True
-        assert is_runtime_subtype(r2, r) == False
-        assert is_runtime_subtype(r3, r) == False
-        assert is_runtime_subtype(r4, r) == False
-        assert is_runtime_subtype(r5, r) == False
+        assert is_runtime_subtype(r1, r) is True
+        assert is_runtime_subtype(r2, r) is False
+        assert is_runtime_subtype(r3, r) is False
+        assert is_runtime_subtype(r4, r) is False
+        assert is_runtime_subtype(r5, r) is False
