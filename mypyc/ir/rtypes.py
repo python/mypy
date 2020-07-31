@@ -371,7 +371,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return 'T{}{}'.format(len(parts), ''.join(parts))
 
     def visit_rstruct(self, t: 'RStruct') -> str:
-        return "S"
+        assert False
+        return ""
 
     def visit_rvoid(self, t: 'RVoid') -> str:
         assert False, "rvoid in tuple?"
