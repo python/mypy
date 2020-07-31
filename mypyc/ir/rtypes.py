@@ -529,17 +529,34 @@ class StructInfo:
                 self.names.append('_item' + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
 
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, StructInfo) and self.name == other.name
+                and self.names == other.names and self.types == other.types)
+
 
 class RStruct(RType):
     """Represent CPython structs"""
     def __init__(self,
                  info: StructInfo) -> None:
-        self.name = info.name
-        self.names = info.names
-        self.types = info.types
-        self.offsets = info.offsets
-        self.size = info.size
-        self._ctype = info.name
+        self.info = info
+        self.name = self.info.name
+        self._ctype = self.info.name
+
+    @property
+    def names(self) -> List[str]:
+        return self.info.names
+
+    @property
+    def types(self) -> List[RType]:
+        return self.info.types
+
+    @property
+    def offsets(self) -> List[int]:
+        return self.info.offsets
+
+    @property
+    def size(self) -> int:
+        return self.info.size
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rstruct(self)
@@ -554,21 +571,17 @@ class RStruct(RType):
                                                           in zip(self.names, self.types)))
 
     def __eq__(self, other: object) -> bool:
-        return (isinstance(other, RStruct) and self.name == other.name
-                and self.names == other.names and self.types == other.types)
+        return isinstance(other, RStruct) and self.info == other.info
 
     def __hash__(self) -> int:
-        return hash((self.name, self.names, self.types))
+        return hash(self.info)
 
     def serialize(self) -> JsonDict:
-        types = [x.serialize() for x in self.types]
-        return {'.class': 'RStruct', 'name': self.name, 'names': self.names, 'types': types}
+        assert False
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RStruct':
-        types = [deserialize_type(t, ctx) for t in data['types']]
-        info = StructInfo(data['name'], data['names'], types)
-        return RStruct(info)
+        assert False
 
 
 class RInstance(RType):

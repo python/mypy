@@ -72,28 +72,26 @@ class TestStruct(unittest.TestCase):
                     [bool_rprimitive, int_rprimitive])
         r = RStruct(info)
 
-        # second type is subtype of r's second type
-        info1 = StructInfo("Foo", ["a", "b"],
-                    [bool_rprimitive, short_int_rprimitive])
-        r1 = RStruct(info1)
+        # using the same StructInfo
+        r1 = RStruct(info)
 
         # names different
-        info2 = StructInfo("Foo", ["c", "b"],
+        info2 = StructInfo("Bar", ["c", "b"],
                     [bool_rprimitive, int_rprimitive])
         r2 = RStruct(info2)
 
         # name different
-        info3 = StructInfo("Bar", ["a", "b"],
+        info3 = StructInfo("Baz", ["a", "b"],
                     [bool_rprimitive, int_rprimitive])
         r3 = RStruct(info3)
 
         # type different
-        info4 = StructInfo("Foo", ["a", "b"],
+        info4 = StructInfo("FooBar", ["a", "b"],
                     [bool_rprimitive, int32_rprimitive])
         r4 = RStruct(info4)
 
         # number of types different
-        info5 = StructInfo("Foo", ["a", "b", "c"],
+        info5 = StructInfo("FooBarBaz", ["a", "b", "c"],
                     [bool_rprimitive, int_rprimitive, bool_rprimitive])
         r5 = RStruct(info5)
 
