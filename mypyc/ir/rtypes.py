@@ -515,8 +515,12 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
     return offsets, final_size
 
 
-class RStruct(RType):
-    """Represent CPython structs"""
+class StructInfo:
+    """Struct-like type Infomation
+
+    StructInfo should work with registry to ensure constraints like the unique naming
+    constraint for struct type
+    """
     def __init__(self,
                  name: str,
                  names: List[str],
@@ -529,7 +533,18 @@ class RStruct(RType):
             for i in range(len(self.types) - len(self.names)):
                 self.names.append('_item' + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
-        self._ctype = self.name
+
+
+class RStruct(RType):
+    """Represent CPython structs"""
+    def __init__(self,
+                 info: StructInfo) -> None:
+        self.name = info.name
+        self.names = info.names
+        self.types = info.types
+        self.offsets = info.offsets
+        self.size = info.size
+        self._ctype = info.name
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rstruct(self)
@@ -557,7 +572,8 @@ class RStruct(RType):
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RStruct':
         types = [deserialize_type(t, ctx) for t in data['types']]
-        return RStruct(data['name'], data['names'], types)
+        info = StructInfo(data['name'], data['names'], types)
+        return RStruct(info)
 
 
 class RInstance(RType):
