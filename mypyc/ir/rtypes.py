@@ -25,7 +25,7 @@ from typing import Optional, Union, List, Dict, Generic, TypeVar, Tuple
 
 from typing_extensions import Final, ClassVar, TYPE_CHECKING
 
-from mypyc.common import JsonDict, short_name, IS_32_BIT_PLATFORM
+from mypyc.common import JsonDict, short_name, PLATFORM_SIZE
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -172,7 +172,7 @@ class RPrimitive(RType):
                  is_unboxed: bool,
                  is_refcounted: bool,
                  ctype: str = 'PyObject *',
-                 size: int = 4 if IS_32_BIT_PLATFORM else 8) -> None:
+                 size: int = PLATFORM_SIZE) -> None:
         RPrimitive.primitive_map[name] = self
 
         self.name = name
@@ -448,7 +448,7 @@ dict_next_rtuple_single = RTuple(
 
 def compute_rtype_alignment(typ: RType) -> int:
     """Compute alignment of a given type based on platform alignment rule"""
-    platform_alignment = 4 if IS_32_BIT_PLATFORM else 8
+    platform_alignment = PLATFORM_SIZE
     if isinstance(typ, RPrimitive):
         return typ.size
     elif isinstance(typ, RInstance):
@@ -468,7 +468,7 @@ def compute_rtype_alignment(typ: RType) -> int:
 
 def compute_rtype_size(typ: RType) -> int:
     """Compute unaligned size of rtype"""
-    platform_size = 4 if IS_32_BIT_PLATFORM else 8
+    platform_size = PLATFORM_SIZE
     if isinstance(typ, RPrimitive):
         return typ.size
     elif isinstance(typ, RTuple):
@@ -489,7 +489,7 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
     Note that the types argument are types of values that are stored
     sequentially with platform default alignment.
     """
-    platform_alignment = 4 if IS_32_BIT_PLATFORM else 8
+    platform_alignment = PLATFORM_SIZE
     unaligned_sizes = [compute_rtype_size(typ) for typ in types]
     alignment = [compute_rtype_alignment(typ) for typ in types]
 
