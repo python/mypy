@@ -453,13 +453,13 @@ def compute_rtype_alignment(typ: RType) -> int:
         return typ.size
     elif isinstance(typ, RInstance):
         return platform_alignment
+    elif isinstance(typ, RUnion):
+        return platform_alignment
     else:
         if isinstance(typ, RTuple):
             items = list(typ.types)
         elif isinstance(typ, RStruct):
             items = typ.types
-        elif isinstance(typ, RUnion):
-            items = typ.items
         else:
             assert False, "invalid rtype for computing alignment"
         max_alignment = max([compute_rtype_alignment(item) for item in items])
@@ -468,17 +468,16 @@ def compute_rtype_alignment(typ: RType) -> int:
 
 def compute_rtype_size(typ: RType) -> int:
     """Compute unaligned size of rtype"""
-    platform_size = PLATFORM_SIZE
     if isinstance(typ, RPrimitive):
         return typ.size
     elif isinstance(typ, RTuple):
         return compute_aligned_offsets_and_size(list(typ.types))[1]
     elif isinstance(typ, RUnion):
-        return compute_aligned_offsets_and_size(typ.items)[1]
+        return PLATFORM_SIZE
     elif isinstance(typ, RStruct):
         return compute_aligned_offsets_and_size(typ.types)[1]
     elif isinstance(typ, RInstance):
-        return platform_size
+        return PLATFORM_SIZE
     else:
         assert False, "invalid rtype for computing size"
 
