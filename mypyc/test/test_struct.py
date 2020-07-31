@@ -1,10 +1,11 @@
 import unittest
 
 from mypyc.ir.rtypes import (
-    RStruct, bool_rprimitive, int64_rprimitive, int32_rprimitive, object_rprimitive, StructInfo
+    RStruct, bool_rprimitive, int64_rprimitive, int32_rprimitive, object_rprimitive, StructInfo,
+    int_rprimitive, short_int_rprimitive
 )
 from mypyc.common import IS_32_BIT_PLATFORM
-
+from mypyc.rt_subtype import is_runtime_subtype
 
 class TestStruct(unittest.TestCase):
     def test_struct_offsets(self) -> None:
@@ -63,3 +64,41 @@ class TestStruct(unittest.TestCase):
         r2 = RStruct(info2)
         assert str(r2) == "Baz{}"
         assert repr(r2) == "<RStruct Baz{}>"
+
+    def test_runtime_subtype(self) -> None:
+        # right type to check with
+        info = StructInfo("Foo", ["a", "b"],
+                    [bool_rprimitive, int_rprimitive])
+        r = RStruct(info)
+
+        # second type is subtype of r's second type
+        info1 = StructInfo("Foo", ["a", "b"],
+                    [bool_rprimitive, short_int_rprimitive])
+        r1 = RStruct(info1)
+
+        # names different
+        info2 = StructInfo("Foo", ["c", "b"],
+                    [bool_rprimitive, int_rprimitive])
+        r2 = RStruct(info2)
+
+        # name different
+        info3 = StructInfo("Bar", ["a", "b"],
+                    [bool_rprimitive, int_rprimitive])
+        r3 = RStruct(info3)
+
+
+        # type different
+        info4 = StructInfo("Foo", ["a", "b"],
+                    [bool_rprimitive, int32_rprimitive])
+        r4 = RStruct(info4)
+
+        # number of types different
+        info5 = StructInfo("Foo", ["a", "b", "c"],
+                    [bool_rprimitive, int_rprimitive, bool_rprimitive])
+        r5 = RStruct(info5)
+
+        assert is_runtime_subtype(r1, r) == True
+        assert is_runtime_subtype(r2, r) == False
+        assert is_runtime_subtype(r3, r) == False
+        assert is_runtime_subtype(r4, r) == False
+        assert is_runtime_subtype(r5, r) == False
