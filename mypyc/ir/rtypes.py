@@ -529,10 +529,6 @@ class StructInfo:
                 self.names.append('_item' + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
 
-    def __eq__(self, other: object) -> bool:
-        return (isinstance(other, StructInfo) and self.name == other.name
-                and self.names == other.names and self.types == other.types)
-
 
 class RStruct(RType):
     """Represent CPython structs"""
