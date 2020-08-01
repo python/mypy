@@ -437,8 +437,8 @@ this example -- it's not recommended if you can avoid it:
 However, making code "optional clean" can take some work! You can also use
 :ref:`the mypy configuration file <config-file>` to migrate your code
 to strict optional checking one file at a time, since there exists
-the :ref:`per-module flag <config-file-none-and-optional-handling>`
-``strict_optional`` to control strict optional mode.
+the per-module flag
+:confval:`strict_optional` to control strict optional mode.
 
 Often it's still useful to document whether a variable can be
 ``None``. For example, this function accepts a ``None`` argument,
