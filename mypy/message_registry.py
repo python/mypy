@@ -109,6 +109,7 @@ SUPER_VARARGS_NOT_SUPPORTED = 'Varargs not supported with "super"'  # type: Fina
 SUPER_POSITIONAL_ARGS_REQUIRED = '"super" only accepts positional arguments'  # type: Final
 SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1 = \
     'Argument 2 for "super" not an instance of argument 1'  # type: Final
+TARGET_CLASS_HAS_NO_BASE_CLASS = 'Target class has no base class'  # type: Final
 SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED = \
     'super() outside of a method is not supported'  # type: Final
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED = \

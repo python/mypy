@@ -3465,7 +3465,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.from_error)
 
         if len(mro) == index + 1:
-            self.chk.fail(message_registry.SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED, e)
+            self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
             return AnyType(TypeOfAny.from_error)
 
         for base in mro[index+1:]:
