@@ -725,7 +725,10 @@ class MessageBuilder:
                       .format(name_str, arg_types_str), context, code=code)
 
         variants = overload.items()
-        self.note('Possible overload variant{}:'.format(plural_s(len(variants))), context, code=code)
+        self.note(
+            'Possible overload variant{}:'.format(plural_s(len(variants))),
+            context, code=code,
+        )
         for item in variants:
             self.note(pretty_callable(item), context, offset=4, code=code)
 
