@@ -346,6 +346,9 @@ class TypeVarLikeDef(mypy.nodes.Context):
     def __repr__(self) -> str:
         return self.name
 
+    def new_unification_variable(self) -> 'TypeVarLikeDef':
+        raise NotImplementedError
+
     def serialize(self) -> JsonDict:
         raise NotImplementedError
 
@@ -369,11 +372,10 @@ class TypeVarDef(TypeVarLikeDef):
         self.upper_bound = upper_bound
         self.variance = variance
 
-    @staticmethod
-    def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
+    def new_unification_variable(self) -> 'TypeVarDef':
         new_id = TypeVarId.new(meta_level=1)
-        return TypeVarDef(old.name, old.fullname, new_id, old.values,
-                          old.upper_bound, old.variance, old.line, old.column)
+        return TypeVarDef(self.name, self.fullname, new_id, self.values,
+                          self.upper_bound, self.variance, self.line, self.column)
 
     def __repr__(self) -> str:
         if self.values:
@@ -408,6 +410,10 @@ class TypeVarDef(TypeVarLikeDef):
 
 class ParamSpecDef(TypeVarLikeDef):
     """Definition of a single ParamSpec variable."""
+
+    def new_unification_variable(self) -> 'ParamSpecDef':
+        new_id = TypeVarId.new(meta_level=1)
+        return ParamSpecDef(self.name, self.fullname, new_id, line=self.line, column=self.column)
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
