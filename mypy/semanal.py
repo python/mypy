@@ -97,7 +97,7 @@ from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
+    TypeVarLikeQuery, TypeVarLikeList, remove_dups, has_any_from_unimported_type,
     check_for_explicit_any, type_constructors, fix_instance_types
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -1212,7 +1212,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         Returns (remaining base expressions, inferred type variables, is protocol).
         """
         removed = []  # type: List[int]
-        declared_tvars = []  # type: TypeVarList
+        declared_tvars = []  # type: TypeVarLikeList
         is_protocol = False
         for i, base_expr in enumerate(base_type_exprs):
             self.analyze_type_expr(base_expr)
@@ -1266,7 +1266,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
-    def analyze_class_typevar_declaration(self, base: Type) -> Optional[Tuple[TypeVarList, bool]]:
+    def analyze_class_typevar_declaration(
+        self,
+        base: Type
+    ) -> Optional[Tuple[TypeVarLikeList, bool]]:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -1285,7 +1288,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 sym.node.fullname == 'typing.Protocol' and base.args or
                 sym.node.fullname == 'typing_extensions.Protocol' and base.args):
             is_proto = sym.node.fullname != 'typing.Generic'
-            tvars = []  # type: TypeVarList
+            tvars = []  # type: TypeVarLikeList
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
@@ -1315,9 +1318,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def get_all_bases_tvars(self,
                             base_type_exprs: List[Expression],
-                            removed: List[int]) -> TypeVarList:
+                            removed: List[int]) -> TypeVarLikeList:
         """Return all type variable references in bases."""
-        tvars = []  # type: TypeVarList
+        tvars = []  # type: TypeVarLikeList
         for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
@@ -1325,7 +1328,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                base_tvars = base.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
+                base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
@@ -2419,7 +2422,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         typ = None  # type: Optional[Type]
         if res:
             typ, depends_on = res
-            found_type_vars = typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
+            found_type_vars = typ.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
             alias_tvars = [name for (name, node) in found_type_vars]
             qualified_tvars = [node.fullname for (name, node) in found_type_vars]
         else:

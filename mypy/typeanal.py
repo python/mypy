@@ -22,7 +22,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
-    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr,
+    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr,
     TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
 from mypy.typetraverser import TypeTraverserVisitor
@@ -792,13 +792,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.tvar_scope = old_scope
 
     def infer_type_variables(self,
-                             type: CallableType) -> List[Tuple[str, TypeVarExpr]]:
+                             type: CallableType) -> List[Tuple[str, TypeVarLikeExpr]]:
         """Return list of unique type variables referred to in a callable."""
         names = []  # type: List[str]
-        tvars = []  # type: List[TypeVarExpr]
+        tvars = []  # type: List[TypeVarLikeExpr]
         for arg in type.arg_types:
-            for name, tvar_expr in arg.accept(TypeVariableQuery(self.lookup_qualified,
-                                                                self.tvar_scope)):
+            for name, tvar_expr in arg.accept(
+                TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope)
+            ):
                 if name not in names:
                     names.append(name)
                     tvars.append(tvar_expr)
@@ -807,8 +808,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # functions in the return type belong to those functions, not the
         # function we're currently analyzing.
         for name, tvar_expr in type.ret_type.accept(
-                TypeVariableQuery(self.lookup_qualified, self.tvar_scope,
-                                  include_callables=False)):
+            TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope, include_callables=False)
+        ):
             if name not in names:
                 names.append(name)
                 tvars.append(tvar_expr)
@@ -905,7 +906,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(items, fallback=self.named_type('builtins.tuple', [any_type]))
 
 
-TypeVarList = List[Tuple[str, TypeVarExpr]]
+TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
 
 # Mypyc doesn't support callback protocols yet.
 MsgCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
@@ -1066,7 +1067,7 @@ def flatten_tvars(ll: Iterable[List[T]]) -> List[T]:
     return remove_dups(chain.from_iterable(ll))
 
 
-class TypeVariableQuery(TypeQuery[TypeVarList]):
+class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
 
     def __init__(self,
                  lookup: Callable[[str, Context], Optional[SymbolTableNode]],
@@ -1087,12 +1088,12 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
             return True
         return False
 
-    def visit_unbound_type(self, t: UnboundType) -> TypeVarList:
+    def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
         name = t.name
         node = self.lookup(name, t)
-        if node and isinstance(node.node, TypeVarExpr) and (
+        if node and isinstance(node.node, TypeVarLikeExpr) and (
                 self.include_bound_tvars or self.scope.get_binding(node) is None):
-            assert isinstance(node.node, TypeVarExpr)
+            assert isinstance(node.node, TypeVarLikeExpr)
             return [(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
             return []
@@ -1101,7 +1102,7 @@ class TypeVariableQuery(TypeQuery[TypeVarList]):
         else:
             return super().visit_unbound_type(t)
 
-    def visit_callable_type(self, t: CallableType) -> TypeVarList:
+    def visit_callable_type(self, t: CallableType) -> TypeVarLikeList:
         if self.include_callables:
             return super().visit_callable_type(t)
         else:
