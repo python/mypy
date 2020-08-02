@@ -204,6 +204,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     self.fail('ParamSpec "{}" is unbound'.format(t.name), t)
                     return AnyType(TypeOfAny.from_error)
+                self.fail('Invalid location for ParamSpec "{}"'.format(t.name), t)
+                return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
@@ -624,10 +626,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                fallback=fallback,
                                is_ellipsis_args=True)
         elif len(t.args) == 2:
+            callable_args = t.args[0]
             ret_type = t.args[1]
-            if isinstance(t.args[0], TypeList):
+            if isinstance(callable_args, TypeList):
                 # Callable[[ARG, ...], RET] (ordinary callable type)
-                analyzed_args = self.analyze_callable_args(t.args[0])
+                analyzed_args = self.analyze_callable_args(callable_args)
                 if analyzed_args is None:
                     return AnyType(TypeOfAny.from_error)
                 args, kinds, names = analyzed_args
@@ -636,7 +639,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                    names,
                                    ret_type=ret_type,
                                    fallback=fallback)
-            elif isinstance(t.args[0], EllipsisType):
+            elif isinstance(callable_args, EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
                 ret = CallableType([AnyType(TypeOfAny.explicit),
                                     AnyType(TypeOfAny.explicit)],
@@ -646,8 +649,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                    fallback=fallback,
                                    is_ellipsis_args=True)
             else:
-                self.fail('The first argument to Callable must be a list of types or "..."', t)
-                return AnyType(TypeOfAny.from_error)
+                try:
+                    if not isinstance(callable_args, UnboundType):
+                        raise ValueError
+                    sym = self.lookup_qualified(callable_args.name, callable_args)
+                    if sym is None:
+                        raise ValueError
+                    tvar_def = self.tvar_scope.get_binding(sym)
+                    if not isinstance(tvar_def, ParamSpecDef):
+                        raise ValueError
+
+                    # TODO(shantanu): construct correct type for paramspec
+                    return AnyType(TypeOfAny.from_error)
+                except ValueError:
+                    # TODO(shantanu): change error to mention paramspec, once we actually have some
+                    # support for it
+                    self.fail('The first argument to Callable must be a list of types or "..."', t)
+                    return AnyType(TypeOfAny.from_error)
         else:
             self.fail('Please use "Callable[[<parameters>], <return type>]" or "Callable"', t)
             return AnyType(TypeOfAny.from_error)
@@ -828,7 +846,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
-                assert isinstance(var_expr, TypeVarExpr)
+                assert isinstance(var_expr, TypeVarLikeExpr)
                 self.tvar_scope.bind_new(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
