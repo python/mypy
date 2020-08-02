@@ -16,13 +16,13 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
-    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef, ParamSpecDef
 )
 
 from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
-    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr,
+    ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr, ParamSpecExpr,
     TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
 from mypy.typetraverser import TypeTraverserVisitor
@@ -200,6 +200,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
             tvar_def = self.tvar_scope.get_binding(sym)
+            if isinstance(sym.node, ParamSpecExpr):
+                if tvar_def is None:
+                    self.fail('ParamSpec "{}" is unbound'.format(t.name), t)
+                    return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
