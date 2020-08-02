@@ -762,13 +762,14 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module_simple(id, self) is not None
 
-    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool,
+                   options: Options) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
-        tree = parse(source, path, id, self.errors, options=self.options)
+        tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
@@ -2001,7 +2002,8 @@ class State:
 
             self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors)
+                                           self.ignore_all or self.options.ignore_errors,
+                                           self.options)
 
         modules[self.id] = self.tree
 

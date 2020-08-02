@@ -1501,3 +1501,32 @@ class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
 disallow_subclassing_any = True
 \[mypy-m]
 disallow_subclassing_any = False
+
+[case testNoImplicitOptionalPerModule]
+# flags: --config-file tmp/mypy.ini
+import m
+
+[file m.py]
+def f(a: str = None) -> int:
+    return 0
+
+[file mypy.ini]
+\[mypy]
+no_implicit_optional = True
+\[mypy-m]
+no_implicit_optional = False
+
+[case testNoImplicitOptionalPerModulePython2]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+import m
+
+[file m.py]
+def f(a = None):
+    # type: (str) -> int
+    return 0
+
+[file mypy.ini]
+\[mypy]
+no_implicit_optional = True
+\[mypy-m]
+no_implicit_optional = False
