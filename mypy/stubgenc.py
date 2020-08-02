@@ -18,6 +18,19 @@ from mypy.stubdoc import (
 )
 
 
+# Members of the typing module to consider for importing by default.
+_DEFAULT_TYPING_IMPORTS = (
+    'Any'
+    'Dict',
+    'Iterable',
+    'Iterator',
+    'List',
+    'Optional',
+    'Tuple',
+    'Union',
+)
+
+
 def generate_stub_for_c_module(module_name: str,
                                target: str,
                                sigs: Optional[Dict[str, str]] = None,
@@ -82,7 +95,7 @@ def generate_stub_for_c_module(module_name: str,
 def add_typing_import(output: List[str]) -> List[str]:
     """Add typing imports for collections/types that occur in the generated stub."""
     names = []
-    for name in ['Any', 'Union', 'Tuple', 'Optional', 'List', 'Dict']:
+    for name in _DEFAULT_TYPING_IMPORTS:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
