@@ -945,6 +945,44 @@ class TypeVarType(ProperType):
         return TypeVarType(tvdef)
 
 
+class ParamSpecType(ProperType):
+    """A parameter specification type."""
+
+    __slots__ = ('name', 'fullname', 'id')
+
+    def __init__(self, binder: ParamSpecDef, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.name = binder.name  # Name of the ParamSpec (for messages and debugging)
+        self.fullname = binder.fullname  # type: str
+        self.id = binder.id  # type: TypeVarId
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_param_spec(self)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ParamSpecType):
+            return NotImplemented
+        return self.id == other.id
+
+    def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
+        return {
+            '.class': 'ParamSpecType',
+            'name': self.name,
+            'fullname': self.fullname,
+            'id': self.id.raw_id,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecType':
+        assert data['.class'] == 'ParamSpecType'
+        tvdef = ParamSpecDef(data['name'], data['fullname'], data['id'])
+        return ParamSpecType(tvdef)
+
+
 class FunctionLike(ProperType):
     """Abstract base class for function types."""
 
@@ -2067,6 +2105,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = '{}`{}'.format(t.name, t.id)
         if self.id_mapper and t.upper_bound:
             s += '(upper_bound={})'.format(t.upper_bound.accept(self))
+        return s
+
+    def visit_param_spec(self, t: ParamSpecType) -> str:
+        if t.name is None:
+            # Anonymous param spec type (only numeric id).
+            s = '`{}'.format(t.id)
+        else:
+            # Named param spec type.
+            s = '{}`{}'.format(t.name, t.id)
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:

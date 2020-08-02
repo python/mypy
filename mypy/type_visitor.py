@@ -23,7 +23,7 @@ from mypy.types import (
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef, TypeVarLikeDef,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, get_proper_type
+    PlaceholderType, TypeAliasType, ParamSpecType, get_proper_type
 )
 
 
@@ -60,6 +60,10 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_var(self, t: TypeVarType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_param_spec(self, t: ParamSpecType) -> T:
         pass
 
     @abstractmethod

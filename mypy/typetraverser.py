@@ -6,7 +6,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
     TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
     Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    PlaceholderType, PartialType, RawExpressionType, TypeAliasType
+    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, ParamSpecType
 )
 
 
@@ -35,6 +35,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         # Note that type variable values and upper bound aren't treated as
         # components, since they are components of the type variable
         # definition. We want to traverse everything just once.
+        pass
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
         pass
 
     def visit_literal_type(self, t: LiteralType) -> None:
