@@ -243,7 +243,7 @@ def make_for_loop_generator(builder: IRBuilder,
         if (expr.callee.fullname == 'builtins.reversed'
                 and len(expr.args) == 1
                 and expr.arg_kinds == [ARG_POS]
-                and is_sequence_rprimitive(rtyp)):
+                and is_sequence_rprimitive(builder.node_type(expr.args[0]))):
             # Special case "for x in reversed(<list>)".
             expr_reg = builder.accept(expr.args[0])
             target_type = builder.get_sequence_type(expr)
