@@ -8,6 +8,7 @@ from typing import Callable, List
 from typing_extensions import ParamSpec, Concatenate
 P = ParamSpec('P')
 
+x: P  # E: ParamSpec "P" is unbound
 def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
 def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P"
 # TODO(shantanu): uncomment once we have support for Concatenate
