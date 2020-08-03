@@ -486,6 +486,37 @@ ignore_missing_imports = True
 [out]
 main.py:2: note: Revealed type is 'Any'
 
+
+[case testFailedImportOnWrongCWD]
+# cmd: mypy main.py
+# cwd: main/subdir1/subdir2
+[file main/subdir1/subdir2/main.py]
+import parent
+import grandparent
+import missing
+[file main/subdir1/subdir2/__init__.py]
+[file main/subdir1/parent.py]
+[file main/subdir1/__init__.py]
+[file main/grandparent.py]
+[file main/__init__.py]
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'parent'
+main.py:1: note: You may be running mypy in a subpackage, mypy should be run on the package root
+main.py:2: error: Cannot find implementation or library stub for module named 'grandparent'
+main.py:3: error: Cannot find implementation or library stub for module named 'missing'
+main.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+
+[case testImportInParentButNoInit]
+# cmd: mypy main.py
+# cwd: main/not_a_package
+[file main/not_a_package/main.py]
+import needs_init
+[file main/needs_init.py]
+[file main/__init__.py]
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'needs_init'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+
 [case testConfigNoErrorForUnknownXFlagInSubsection]
 # cmd: mypy -c pass
 [file mypy.ini]
