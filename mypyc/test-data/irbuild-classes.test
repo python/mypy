@@ -855,7 +855,7 @@ def f(a, b):
     r0 :: object
     r1 :: bool
 L0:
-    r0 = a == b
+    r0 = PyObject_RichCompare(a, b, 2)
     r1 = unbox(bool, r0)
     return r1
 def f2(a, b):
@@ -863,7 +863,7 @@ def f2(a, b):
     r0 :: object
     r1 :: bool
 L0:
-    r0 = a != b
+    r0 = PyObject_RichCompare(a, b, 3)
     r1 = unbox(bool, r0)
     return r1
 def fOpt(a, b):
@@ -908,7 +908,7 @@ def f(a, b):
     r0 :: object
     r1 :: bool
 L0:
-    r0 = a == b
+    r0 = PyObject_RichCompare(a, b, 2)
     r1 = unbox(bool, r0)
     return r1
 def f2(a, b):
@@ -916,7 +916,7 @@ def f2(a, b):
     r0 :: object
     r1 :: bool
 L0:
-    r0 = a != b
+    r0 = PyObject_RichCompare(a, b, 3)
     r1 = unbox(bool, r0)
     return r1
 def fOpt(a, b):

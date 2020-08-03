@@ -117,6 +117,20 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                int_neg_op.steals, int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
+    def test_rich_compare(self) -> None:
+        self.assert_emit_binary_op('<', self.n, self.o, self.o2,
+             "cpy_r_r0 = PyObject_RichCompare(cpy_r_o, cpy_r_o2, 0);")
+        self.assert_emit_binary_op('<=', self.n, self.o, self.o2,
+             "cpy_r_r00 = PyObject_RichCompare(cpy_r_o, cpy_r_o2, 1);")
+        self.assert_emit_binary_op('==', self.n, self.o, self.o2,
+             "cpy_r_r01 = PyObject_RichCompare(cpy_r_o, cpy_r_o2, 2);")
+        self.assert_emit_binary_op('!=', self.n, self.o, self.o2,
+             "cpy_r_r02 = PyObject_RichCompare(cpy_r_o, cpy_r_o2, 3);")
+        self.assert_emit_binary_op('>', self.n, self.o, self.o2,
+             "cpy_r_r03 = PyObject_RichCompare(cpy_r_o, cpy_r_o2, 4);")
+        self.assert_emit_binary_op('>=', self.n, self.o, self.o2,
+             "cpy_r_r04 = PyObject_RichCompare(cpy_r_o, cpy_r_o2, 5);")
+
     def test_list_len(self) -> None:
         self.assert_emit(PrimitiveOp([self.l], list_len_op, 55),
                          """Py_ssize_t __tmp1;
@@ -314,7 +328,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                     if c_desc.ordering is not None:
                         args = [args[i] for i in c_desc.ordering]
                     self.assert_emit(CallC(c_desc.c_function_name, args, c_desc.return_type,
-                                           c_desc.steals, c_desc.error_kind, 55), expected)
+                                           c_desc.steals, c_desc.error_kind, 55, -1,
+                                           c_desc.extra_int_constant), expected)
                     return
         ops = binary_ops[op]
         for desc in ops:

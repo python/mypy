@@ -762,7 +762,7 @@ class LowLevelIRBuilder:
                 arg = self.coerce(arg, desc.var_arg_type, line)
                 coerced.append(arg)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.error_kind, line, var_arg_idx))
+                                desc.error_kind, line, var_arg_idx, desc.extra_int_constant))
         if desc.truncated_type is None:
             result = target
         else:
