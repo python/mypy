@@ -10,28 +10,30 @@ check that the priorities are configured properly.
 """
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
-from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive
+from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
-    call_negative_bool_emit, call_negative_magic_emit, negative_int_emit
+    call_negative_bool_emit, call_negative_magic_emit, negative_int_emit,
+    c_binary_op
 )
 
 
 # Binary operations
 
-for op, opid in [('==', 'Py_EQ'),
-                 ('!=', 'Py_NE'),
-                 ('<', 'Py_LT'),
-                 ('<=', 'Py_LE'),
-                 ('>', 'Py_GT'),
-                 ('>=', 'Py_GE')]:
+for op, opid in [('==', 2),   # PY_EQ
+                 ('!=', 3),   # PY_NE
+                 ('<',  0),   # PY_LT
+                 ('<=', 1),   # PY_LE
+                 ('>',  4),   # PY_GT
+                 ('>=', 5)]:  # PY_GE
     # The result type is 'object' since that's what PyObject_RichCompare returns.
-    binary_op(op=op,
-              arg_types=[object_rprimitive, object_rprimitive],
-              result_type=object_rprimitive,
-              error_kind=ERR_MAGIC,
-              emit=simple_emit('{dest} = PyObject_RichCompare({args[0]}, {args[1]}, %s);' % opid),
-              priority=0)
+    c_binary_op(name=op,
+                arg_types=[object_rprimitive, object_rprimitive],
+                return_type=object_rprimitive,
+                c_function_name='PyObject_RichCompare',
+                error_kind=ERR_MAGIC,
+                extra_int_constant=(opid, c_int_rprimitive),
+                priority=0)
 
 for op, funcname in [('+', 'PyNumber_Add'),
                      ('-', 'PyNumber_Subtract'),

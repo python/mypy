@@ -339,7 +339,7 @@ class TestGenerateFunction(unittest.TestCase):
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
-        generate_native_function(fn, emitter, 'prog.py', 'prog', False)
+        generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
@@ -358,7 +358,7 @@ class TestGenerateFunction(unittest.TestCase):
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
-        generate_native_function(fn, emitter, 'prog.py', 'prog', False)
+        generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
         assert_string_arrays_equal(
             [
