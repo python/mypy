@@ -1173,8 +1173,7 @@ class CallC(RegisterOp):
                  steals: StealsDescription,
                  error_kind: int,
                  line: int,
-                 var_arg_idx: int = -1,
-                 extra_int_constant: Optional[int] = None) -> None:
+                 var_arg_idx: int = -1) -> None:
         self.error_kind = error_kind
         super().__init__(line)
         self.function_name = function_name
@@ -1182,12 +1181,9 @@ class CallC(RegisterOp):
         self.type = ret_type
         self.steals = steals
         self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
-        self.extra_int_constant = extra_int_constant  # extra integer constant as the last argument
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)
-        if self.extra_int_constant is not None:
-            args_str += env.format(', %s', self.extra_int_constant)
         if self.is_void:
             return env.format('%s(%s)', self.function_name, args_str)
         else:

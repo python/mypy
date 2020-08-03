@@ -10,7 +10,7 @@ check that the priorities are configured properly.
 """
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
-from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive
+from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
     call_negative_bool_emit, call_negative_magic_emit, negative_int_emit,
@@ -32,7 +32,7 @@ for op, opid in [('==', 2),   # PY_EQ
                 return_type=object_rprimitive,
                 c_function_name='PyObject_RichCompare',
                 error_kind=ERR_MAGIC,
-                extra_int_constant=opid,
+                extra_int_constant=(opid, c_int_rprimitive),
                 priority=0)
 
 for op, funcname in [('+', 'PyNumber_Add'),

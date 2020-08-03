@@ -35,7 +35,7 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
-from typing import Dict, List, Optional, NamedTuple
+from typing import Dict, List, Optional, NamedTuple, Tuple
 
 from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
@@ -52,7 +52,7 @@ CFunctionDescription = NamedTuple(
                               ('error_kind', int),
                               ('steals', StealsDescription),
                               ('ordering', Optional[List[int]]),
-                              ('extra_int_constant', Optional[int]),
+                              ('extra_int_constant', Optional[Tuple[int, RType]]),
                               ('priority', int)])
 
 # A description for C load operations including LoadGlobal and LoadAddress
@@ -355,7 +355,7 @@ def c_method_op(name: str,
                 var_arg_type: Optional[RType] = None,
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
-                extra_int_constant: Optional[int] = None,
+                extra_int_constant: Optional[Tuple[int, RType]] = None,
                 steals: StealsDescription = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a method call.
@@ -377,6 +377,7 @@ def c_method_op(name: str,
                   should never be used together with var_arg_type.
                   all the other arguments(such as arg_types) are in the order
                   accepted by the python syntax(before reordering)
+        extra_int_constant: optional extra integer constant as the last argument to a C call
         steals: description of arguments that this steals (ref count wise)
         priority: if multiple ops match, the one with the highest priority is picked
     """
@@ -396,7 +397,7 @@ def c_function_op(name: str,
                   var_arg_type: Optional[RType] = None,
                   truncated_type: Optional[RType] = None,
                   ordering: Optional[List[int]] = None,
-                  extra_int_constant: Optional[int] = None,
+                  extra_int_constant: Optional[Tuple[int, RType]] = None,
                   steals: StealsDescription = False,
                   priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a function call.
@@ -425,7 +426,7 @@ def c_binary_op(name: str,
                 var_arg_type: Optional[RType] = None,
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
-                extra_int_constant: Optional[int] = None,
+                extra_int_constant: Optional[Tuple[int, RType]] = None,
                 steals: StealsDescription = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for a binary operation.
@@ -450,7 +451,7 @@ def c_custom_op(arg_types: List[RType],
                 var_arg_type: Optional[RType] = None,
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
-                extra_int_constant: Optional[int] = None,
+                extra_int_constant: Optional[Tuple[int, RType]] = None,
                 steals: StealsDescription = False) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
@@ -468,7 +469,7 @@ def c_unary_op(name: str,
                error_kind: int,
                truncated_type: Optional[RType] = None,
                ordering: Optional[List[int]] = None,
-               extra_int_constant: Optional[int] = None,
+               extra_int_constant: Optional[Tuple[int, RType]] = None,
                steals: StealsDescription = False,
                priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for an unary operation.

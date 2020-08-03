@@ -430,8 +430,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         else:
             dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
-        if op.extra_int_constant is not None:
-            args += (', ' + str(op.extra_int_constant))
         self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
 
     def visit_truncate(self, op: Truncate) -> None:
