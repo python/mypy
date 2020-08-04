@@ -283,7 +283,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                              """cpy_r_r0 = *(char *)cpy_r_i64;""")
 
     def test_get_element_ptr(self) -> None:
-        info = StructInfo("Foo", ["b", "i32", "i64"], [bool_rprimitive, int32_rprimitive, int64_rprimitive])
+        info = StructInfo("Foo", ["b", "i32", "i64"], [bool_rprimitive,
+                                                       int32_rprimitive, int64_rprimitive])
         r = RStruct(info)
         self.assert_emit(GetElementPtr(self.o, r, "b"),
                         """cpy_r_r0 = &cpy_r_o.b;""")
