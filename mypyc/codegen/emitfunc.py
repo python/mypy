@@ -476,9 +476,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         src = self.reg(op.src)
         # TODO: support tuple type
         assert isinstance(op.src_type, RStruct)
-        assert op.index < len(op.src_type.offsets), "Invalid element index."
-        offset = op.src_type.offsets[op.index]
-        self.emit_line('%s = (char *)%s + %s;' % (dest, src, offset))
+        assert op.field in op.src_type.names, "Invalid field name."
+        self.emit_line('%s = &%s.%s;' % (dest, src, op.field))
 
     # Helpers
 

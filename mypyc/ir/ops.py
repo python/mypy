@@ -1377,19 +1377,19 @@ class GetElementPtr(RegisterOp):
     """Get the address of a struct element"""
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, src_type: RType, index: int, line: int = -1) -> None:
+    def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
         super().__init__(line)
         self.type = c_pyssize_t_rprimitive
         self.src = src
         self.src_type = src_type
-        self.index = index
+        self.field = field
 
     def sources(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
         return env.format("%r = get_element_ptr %r %r :: %r", self, self.src,
-                          self.index, self.src_type)
+                          self.field, self.src_type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_get_element_ptr(self)
