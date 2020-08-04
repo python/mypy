@@ -25,7 +25,8 @@ from mypy.nodes import SymbolNode
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype, is_c_py_ssize_t_rprimitive
+    short_int_rprimitive, int_rprimitive, void_rtype, is_c_py_ssize_t_rprimitive,
+    c_pyssize_t_rprimitive
 )
 from mypyc.common import short_name
 
@@ -1372,6 +1373,28 @@ class LoadMem(RegisterOp):
         return visitor.visit_load_mem(self)
 
 
+class GetElementPtr(RegisterOp):
+    """Get the address of a struct element"""
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = c_pyssize_t_rprimitive
+        self.src = src
+        self.src_type = src_type
+        self.field = field
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = get_element_ptr %r %r :: %r", self, self.src,
+                          self.field, self.src_type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_get_element_ptr(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1480,6 +1503,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_mem(self, op: LoadMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_get_element_ptr(self, op: GetElementPtr) -> T:
         raise NotImplementedError
 
 

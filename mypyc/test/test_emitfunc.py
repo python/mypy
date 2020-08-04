@@ -10,12 +10,12 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive, int32_rprimitive,
-    int64_rprimitive
+    int64_rprimitive, StructInfo, RStruct
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
@@ -281,6 +281,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         else:
             self.assert_emit(LoadMem(bool_rprimitive, self.i64),
                              """cpy_r_r0 = *(char *)cpy_r_i64;""")
+
+    def test_get_element_ptr(self) -> None:
+        info = StructInfo("Foo", ["b", "i32", "i64"], [bool_rprimitive,
+                                                       int32_rprimitive, int64_rprimitive])
+        r = RStruct(info)
+        self.assert_emit(GetElementPtr(self.o, r, "b"),
+                        """cpy_r_r0 = &cpy_r_o.b;""")
+        self.assert_emit(GetElementPtr(self.o, r, "i32"),
+                        """cpy_r_r00 = &cpy_r_o.i32;""")
+        self.assert_emit(GetElementPtr(self.o, r, "i64"),
+                        """cpy_r_r01 = &cpy_r_o.i64;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []

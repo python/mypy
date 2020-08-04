@@ -12,10 +12,10 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem
+    BinaryIntOp, LoadMem, GetElementPtr
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive
+    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
@@ -470,6 +470,14 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line('%s = *(%s *)%s;' % (dest, type, src))
+
+    def visit_get_element_ptr(self, op: GetElementPtr) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        # TODO: support tuple type
+        assert isinstance(op.src_type, RStruct)
+        assert op.field in op.src_type.names, "Invalid field name."
+        self.emit_line('%s = &%s.%s;' % (dest, src, op.field))
 
     # Helpers
 
