@@ -10,7 +10,18 @@ from abc import abstractmethod
 import sys
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
@@ -510,7 +521,10 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector(name, parent=collector)
+            if hasattr(DataSuiteCollector, 'from_parent'):
+                return DataSuiteCollector.from_parent(parent=collector, name=name)
+            else:
+                return DataSuiteCollector(name=name, parent=collector)
     return None
 
 
@@ -535,14 +549,22 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     for i in range(1, len(cases), 6):
         name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
         platform = platform_flag[1:] if platform_flag else None
-        yield DataDrivenTestCase(parent, suite, file,
-                                 name=add_test_name_suffix(name, suite.test_name_suffix),
-                                 writescache=bool(writescache),
-                                 only_when=only_when,
-                                 platform=platform,
-                                 skip=bool(skip),
-                                 data=data,
-                                 line=line_no)
+        if hasattr(DataDrivenTestCase, 'from_parent'):
+            creator = DataDrivenTestCase.from_parent  # type: Callable[..., DataDrivenTestCase]
+        else:
+            creator = DataDrivenTestCase
+        yield creator(
+            parent=parent,
+            suite=suite,
+            file=file,
+            name=add_test_name_suffix(name, suite.test_name_suffix),
+            writescache=bool(writescache),
+            only_when=only_when,
+            platform=platform,
+            skip=bool(skip),
+            data=data,
+            line=line_no,
+        )
         line_no += data.count('\n') + 1
 
 
