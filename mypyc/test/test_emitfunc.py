@@ -292,7 +292,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(GetElementPtr(self.o, r, 2),
                         """cpy_r_r01 = (char *)cpy_r_o + 8;""")
 
-
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
         self.declarations.fragments = []
