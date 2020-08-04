@@ -513,7 +513,9 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector.from_parent(parent=collector, name=name)  # type: ignore[no-untyped-call]
+            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
+                parent=collector, name=name
+            )
     return None
 
 
