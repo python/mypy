@@ -334,7 +334,7 @@ def __top_level__():
     r43 :: bool
     r44 :: str
     r45 :: tuple
-    r46 :: bool
+    r46 :: int32
     r47 :: dict
     r48 :: str
     r49 :: int32
@@ -343,7 +343,7 @@ def __top_level__():
     r52, r53 :: object
     r54 :: str
     r55 :: tuple
-    r56 :: bool
+    r56 :: int32
     r57 :: dict
     r58 :: str
     r59 :: int32
@@ -360,7 +360,7 @@ def __top_level__():
     r73 :: bool
     r74, r75 :: str
     r76 :: tuple
-    r77 :: bool
+    r77 :: int32
     r78 :: dict
     r79 :: str
     r80 :: int32
@@ -424,7 +424,7 @@ L6:
     r43 = C_trait_vtable_setup()
     r44 = unicode_8 :: static  ('__mypyc_attrs__')
     r45 = () :: tuple
-    r46 = setattr r42, r44, r45
+    r46 = PyObject_SetAttr(r42, r44, r45)
     __main__.C = r42 :: type
     r47 = __main__.globals :: static
     r48 = unicode_9 :: static  ('C')
@@ -435,7 +435,7 @@ L6:
     r53 = pytype_from_template(r52, r50, r51)
     r54 = unicode_8 :: static  ('__mypyc_attrs__')
     r55 = () :: tuple
-    r56 = setattr r53, r54, r55
+    r56 = PyObject_SetAttr(r53, r54, r55)
     __main__.S = r53 :: type
     r57 = __main__.globals :: static
     r58 = unicode_10 :: static  ('S')
@@ -457,7 +457,7 @@ L6:
     r74 = unicode_8 :: static  ('__mypyc_attrs__')
     r75 = unicode_11 :: static  ('__dict__')
     r76 = (r75) :: tuple
-    r77 = setattr r72, r74, r76
+    r77 = PyObject_SetAttr(r72, r74, r76)
     __main__.D = r72 :: type
     r78 = __main__.globals :: static
     r79 = unicode_12 :: static  ('D')

@@ -368,11 +368,11 @@ L3:
 def set(o, s):
     o :: union[__main__.A, __main__.B]
     s, r0 :: str
-    r1 :: bool
+    r1 :: int32
     r2 :: None
 L0:
     r0 = unicode_5 :: static  ('a')
-    r1 = setattr o, r0, s
+    r1 = PyObject_SetAttr(o, r0, s)
     r2 = None
     return r2
 

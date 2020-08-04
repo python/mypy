@@ -51,7 +51,7 @@ def f(a, n, c):
     r5 :: int
     r6 :: str
     r7 :: object
-    r8 :: bool
+    r8 :: int32
     r9 :: None
 L0:
     r0 = box(int, n)
@@ -64,7 +64,7 @@ L0:
     n = r5
     r6 = unicode_6 :: static  ('a')
     r7 = box(int, n)
-    r8 = setattr a, r6, r7
+    r8 = PyObject_SetAttr(a, r6, r7)
     r9 = None
     return r9
 

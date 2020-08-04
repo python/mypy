@@ -171,13 +171,12 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # setattr(obj, attr, value)
-py_setattr_op = func_op(
+py_setattr_op = c_function_op(
     name='builtins.setattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PyObject_SetAttr')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_SetAttr',
+    error_kind=ERR_NEG_INT)
 
 # hasattr(obj, attr)
 py_hasattr_op = c_function_op(

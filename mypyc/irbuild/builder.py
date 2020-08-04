@@ -34,7 +34,7 @@ from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
+    InitStatic, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
@@ -448,7 +448,7 @@ class IRBuilder:
             else:
                 key = self.load_static_unicode(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
-                self.add(PrimitiveOp([target.obj, key, boxed_reg], py_setattr_op, line))
+                self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
                 target.base, '__setitem__', [target.index, rvalue_reg], None, line)

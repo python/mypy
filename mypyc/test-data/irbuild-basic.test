@@ -3317,13 +3317,13 @@ def lol(x: Any):
 def lol(x):
     x :: object
     r0, r1 :: str
-    r2 :: bool
+    r2 :: int32
     r3, r4 :: None
     r5 :: object
 L0:
     r0 = unicode_5 :: static  ('x')
     r1 = unicode_6 :: static  ('5')
-    r2 = setattr x, r0, r1
+    r2 = PyObject_SetAttr(x, r0, r1)
     r3 = None
     r4 = None
     r5 = box(None, r4)
