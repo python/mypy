@@ -1126,9 +1126,9 @@ L0:
     f2 = r1
     r2 = float_3 :: static  (3.0)
     f3 = r2
-    r3 = f1 * f2
+    r3 = PyNumber_Multiply(f1, f2)
     r4 = cast(float, r3)
-    r5 = r4 + f3
+    r5 = PyNumber_Add(r4, f3)
     r6 = cast(float, r5)
     return r6
 
@@ -1143,7 +1143,7 @@ def load():
 L0:
     r0 = complex_1 :: static  (5j)
     r1 = float_2 :: static  (1.0)
-    r2 = r0 + r1
+    r2 = PyNumber_Add(r0, r1)
     return r2
 
 [case testBigIntLiteral]

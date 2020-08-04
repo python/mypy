@@ -91,9 +91,9 @@ def f1(a, n):
     r4 :: None
 L0:
     r0 = box(int, n)
-    r1 = a + r0
+    r1 = PyNumber_Add(a, r0)
     r2 = box(int, n)
-    r3 = r2 + a
+    r3 = PyNumber_Add(r2, a)
     r4 = None
     return r4
 def f2(a, n, l):

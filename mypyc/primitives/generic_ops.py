@@ -46,12 +46,12 @@ for op, funcname in [('+', 'PyNumber_Add'),
                      ('&', 'PyNumber_And'),
                      ('^', 'PyNumber_Xor'),
                      ('|', 'PyNumber_Or')]:
-    binary_op(op=op,
-              arg_types=[object_rprimitive, object_rprimitive],
-              result_type=object_rprimitive,
-              error_kind=ERR_MAGIC,
-              emit=call_emit(funcname),
-              priority=0)
+    c_binary_op(name=op,
+                arg_types=[object_rprimitive, object_rprimitive],
+                return_type=object_rprimitive,
+                c_function_name=funcname,
+                error_kind=ERR_MAGIC,
+                priority=0)
 
 for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
                      ('-=', 'PyNumber_InPlaceSubtract'),

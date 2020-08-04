@@ -441,7 +441,7 @@ L10:
 L11:
     unreachable
 L12:
-    r6 = a + b
+    r6 = PyNumber_Add(a, b)
     xdec_ref a
     xdec_ref b
     if is_error(r6) goto L14 (error at lol:9) else goto L13
