@@ -9,7 +9,7 @@ will take precedence. If your specialized op doesn't seem to be used,
 check that the priorities are configured properly.
 """
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
@@ -188,13 +188,12 @@ py_hasattr_op = c_function_op(
     error_kind=ERR_NEVER)
 
 # del obj.attr
-py_delattr_op = func_op(
+py_delattr_op = c_function_op(
     name='builtins.delattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PyObject_DelAttr')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_DelAttr',
+    error_kind=ERR_NEG_INT)
 
 # Call callable object with N positional arguments: func(arg1, ..., argN)
 # Arguments are (func, arg1, ..., argN).
