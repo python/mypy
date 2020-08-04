@@ -1148,7 +1148,10 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     )
     config_group.add_argument(
         '--mypy-config-file',
-        help="Configuration file, must have a [mypy] section",
+        help=(
+            "An existing mypy configuration file, currently used by stubtest to help "
+            "determine mypy path and plugins"
+        ),
     )
 
     return parser.parse_args(args)
