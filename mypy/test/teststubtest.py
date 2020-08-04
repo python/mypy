@@ -761,30 +761,16 @@ class StubtestIntegration(unittest.TestCase):
         test_stubs(parse_options(["--check-typeshed"]))
 
     def test_config_file(self) -> None:
-        runtime = (
-            "temp = 5\n"
-        )
-        stub = (
-            "from decimal import Decimal\n"
-            "temp: Decimal\n"
-        )
+        runtime = "temp = 5\n"
+        stub = "from decimal import Decimal\ntemp: Decimal\n"
         config_file = (
             "[mypy]\n"
             "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
         )
-        output = run_stubtest(
-            stub=stub,
-            runtime=runtime,
-            options=[],
-        )
+        output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert output == (
             "error: test_module.temp variable differs from runtime type Literal[5]\n"
             "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
         )
-        output = run_stubtest(
-            stub=stub,
-            runtime=runtime,
-            options=[],
-            config_file=config_file,
-        )
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""
