@@ -2,7 +2,7 @@
 
 import sys
 
-from pytest import skip  # type: ignore[import]
+from pytest import skip
 
 from mypy import defaults
 from mypy.test.helpers import assert_string_arrays_equal, parse_options

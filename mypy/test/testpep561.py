@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 import os
-import pytest  # type: ignore
+import pytest
 import re
 import subprocess
 from subprocess import PIPE
