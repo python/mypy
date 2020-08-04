@@ -387,11 +387,11 @@ L4:
     r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('TypeVar')
-    r13 = getattr r10, r12
+    r13 = CPyObject_GetAttr(r10, r12)
     r14 = unicode_2 :: static  ('TypeVar')
     r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = unicode_3 :: static  ('Generic')
-    r17 = getattr r10, r16
+    r17 = CPyObject_GetAttr(r10, r16)
     r18 = unicode_3 :: static  ('Generic')
     r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = mypy_extensions :: module
@@ -406,7 +406,7 @@ L6:
     r25 = mypy_extensions :: module
     r26 = __main__.globals :: static
     r27 = unicode_5 :: static  ('trait')
-    r28 = getattr r25, r27
+    r28 = CPyObject_GetAttr(r25, r27)
     r29 = unicode_5 :: static  ('trait')
     r30 = CPyDict_SetItem(r26, r29, r28)
     r31 = unicode_6 :: static  ('T')
@@ -767,7 +767,7 @@ def f():
 L0:
     r0 = __main__.A :: type
     r1 = unicode_6 :: static  ('x')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = unbox(int, r2)
     return r3
 

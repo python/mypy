@@ -241,9 +241,9 @@ def setup_non_ext_dict(builder: IRBuilder,
     This class dictionary is passed to the metaclass constructor.
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
-    has_prepare = builder.primitive_op(py_hasattr_op,
-                                    [metaclass,
-                                    builder.load_static_unicode('__prepare__')], cdef.line)
+    has_prepare = builder.call_c(py_hasattr_op,
+                                [metaclass,
+                                builder.load_static_unicode('__prepare__')], cdef.line)
 
     non_ext_dict = builder.alloc_temp(dict_rprimitive)
 

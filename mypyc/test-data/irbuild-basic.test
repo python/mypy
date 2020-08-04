@@ -776,7 +776,7 @@ def f(x):
 L0:
     r0 = testmodule :: module
     r1 = unicode_2 :: static  ('factorial')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(int, x)
     r4 = py_call(r2, r3)
     r5 = unbox(int, r4)
@@ -821,7 +821,7 @@ def f(x):
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(short_int, 10)
     r4 = py_call(r2, r3)
     r5 = None
@@ -841,7 +841,7 @@ def f(x):
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(short_int, 10)
     r4 = py_call(r2, r3)
     r5 = None
@@ -1322,7 +1322,7 @@ def call_python_method_with_keyword_args(xs, first, second):
     r16 :: object
 L0:
     r0 = unicode_4 :: static  ('insert')
-    r1 = getattr xs, r0
+    r1 = CPyObject_GetAttr(xs, r0)
     r2 = unicode_5 :: static  ('x')
     r3 = box(short_int, 0)
     r4 = (r3) :: tuple
@@ -1330,7 +1330,7 @@ L0:
     r6 = CPyDict_Build(1, r2, r5)
     r7 = py_call_with_kwargs(r1, r4, r6)
     r8 = unicode_4 :: static  ('insert')
-    r9 = getattr xs, r8
+    r9 = CPyObject_GetAttr(xs, r8)
     r10 = unicode_5 :: static  ('x')
     r11 = unicode_6 :: static  ('i')
     r12 = () :: tuple
@@ -1518,7 +1518,7 @@ def foo():
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('Exception')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = py_call(r2)
     CPy_Raise(r3)
     unreachable
@@ -1529,7 +1529,7 @@ def bar():
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('Exception')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     CPy_Raise(r2)
     unreachable
 
@@ -1556,7 +1556,7 @@ L0:
     r3 = unbox(int, r2)
     r4 = builtins :: module
     r5 = unicode_2 :: static  ('print')
-    r6 = getattr r4, r5
+    r6 = CPyObject_GetAttr(r4, r5)
     r7 = box(int, r3)
     r8 = py_call(r6, r7)
     r9 = None
@@ -1598,7 +1598,7 @@ L2:
     r12 = unbox(int, r11)
     r13 = builtins :: module
     r14 = unicode_2 :: static  ('print')
-    r15 = getattr r13, r14
+    r15 = CPyObject_GetAttr(r13, r14)
     r16 = box(int, r12)
     r17 = py_call(r15, r16)
     r18 = None
@@ -1624,7 +1624,7 @@ def f():
 L0:
     r0 = m :: module
     r1 = unicode_2 :: static  ('f')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(short_int, 2)
     r4 = py_call(r2, r3)
     r5 = cast(str, r4)
@@ -2651,15 +2651,15 @@ L4:
     r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('List')
-    r13 = getattr r10, r12
+    r13 = CPyObject_GetAttr(r10, r12)
     r14 = unicode_2 :: static  ('List')
     r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = unicode_3 :: static  ('NewType')
-    r17 = getattr r10, r16
+    r17 = CPyObject_GetAttr(r10, r16)
     r18 = unicode_3 :: static  ('NewType')
     r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = unicode_4 :: static  ('NamedTuple')
-    r21 = getattr r10, r20
+    r21 = CPyObject_GetAttr(r10, r20)
     r22 = unicode_4 :: static  ('NamedTuple')
     r23 = CPyDict_SetItem(r11, r22, r21)
     r24 = unicode_5 :: static  ('Lol')
@@ -2876,14 +2876,14 @@ L0:
     r2 = unicode_3 :: static  ('Entering')
     r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
-    r5 = getattr r3, r4
+    r5 = CPyObject_GetAttr(r3, r4)
     r6 = py_call(r5, r2)
     r7 = r0.f
     r8 = py_call(r7)
     r9 = unicode_5 :: static  ('Exited')
     r10 = builtins :: module
     r11 = unicode_4 :: static  ('print')
-    r12 = getattr r10, r11
+    r12 = CPyObject_GetAttr(r10, r11)
     r13 = py_call(r12, r9)
     r14 = None
     return r14
@@ -2935,14 +2935,14 @@ L0:
     r2 = unicode_6 :: static  ('---')
     r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
-    r5 = getattr r3, r4
+    r5 = CPyObject_GetAttr(r3, r4)
     r6 = py_call(r5, r2)
     r7 = r0.f
     r8 = py_call(r7)
     r9 = unicode_6 :: static  ('---')
     r10 = builtins :: module
     r11 = unicode_4 :: static  ('print')
-    r12 = getattr r10, r11
+    r12 = CPyObject_GetAttr(r10, r11)
     r13 = py_call(r12, r9)
     r14 = None
     return r14
@@ -2990,7 +2990,7 @@ L0:
     r2 = unicode_7 :: static  ('d')
     r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
-    r5 = getattr r3, r4
+    r5 = CPyObject_GetAttr(r3, r4)
     r6 = py_call(r5, r2)
     r7 = None
     return r7
@@ -3026,7 +3026,7 @@ L0:
     r12 = unicode_10 :: static  ('c')
     r13 = builtins :: module
     r14 = unicode_4 :: static  ('print')
-    r15 = getattr r13, r14
+    r15 = CPyObject_GetAttr(r13, r14)
     r16 = py_call(r15, r12)
     r17 = r0.d
     r18 = py_call(r17)
@@ -3080,7 +3080,7 @@ L4:
     r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('Callable')
-    r13 = getattr r10, r12
+    r13 = CPyObject_GetAttr(r10, r12)
     r14 = unicode_2 :: static  ('Callable')
     r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = __main__.globals :: static
@@ -3144,14 +3144,14 @@ L0:
     r2 = unicode_3 :: static  ('Entering')
     r3 = builtins :: module
     r4 = unicode_4 :: static  ('print')
-    r5 = getattr r3, r4
+    r5 = CPyObject_GetAttr(r3, r4)
     r6 = py_call(r5, r2)
     r7 = r0.f
     r8 = py_call(r7)
     r9 = unicode_5 :: static  ('Exited')
     r10 = builtins :: module
     r11 = unicode_4 :: static  ('print')
-    r12 = getattr r10, r11
+    r12 = CPyObject_GetAttr(r10, r11)
     r13 = py_call(r12, r9)
     r14 = None
     return r14
@@ -3206,7 +3206,7 @@ L4:
     r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('Callable')
-    r13 = getattr r10, r12
+    r13 = CPyObject_GetAttr(r10, r12)
     r14 = unicode_2 :: static  ('Callable')
     r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = None
@@ -3575,7 +3575,7 @@ def f(x):
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('reveal_type')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = box(int, x)
     r4 = py_call(r2, r3)
     r5 = None

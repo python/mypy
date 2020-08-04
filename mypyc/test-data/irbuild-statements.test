@@ -689,7 +689,7 @@ L1:
 L2:
     r4 = builtins :: module
     r5 = unicode_3 :: static  ('AssertionError')
-    r6 = getattr r4, r5
+    r6 = CPyObject_GetAttr(r4, r5)
     r7 = py_call(r6, s)
     CPy_Raise(r7)
     unreachable

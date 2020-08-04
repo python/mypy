@@ -20,7 +20,7 @@ L0:
 L1:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('object')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = py_call(r2)
     goto L5
 L2: (handler for L1)
@@ -28,7 +28,7 @@ L2: (handler for L1)
     r5 = unicode_2 :: static  ('weeee')
     r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
-    r8 = getattr r6, r7
+    r8 = CPyObject_GetAttr(r6, r7)
     r9 = py_call(r8, r5)
 L3:
     CPy_RestoreExcInfo(r4)
@@ -70,7 +70,7 @@ L1:
 L2:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('object')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = py_call(r2)
     goto L4
 L3:
@@ -83,7 +83,7 @@ L5: (handler for L1, L2, L3, L4)
     r7 = unicode_3 :: static  ('weeee')
     r8 = builtins :: module
     r9 = unicode_4 :: static  ('print')
-    r10 = getattr r8, r9
+    r10 = CPyObject_GetAttr(r8, r9)
     r11 = py_call(r10, r7)
 L6:
     CPy_RestoreExcInfo(r6)
@@ -137,19 +137,19 @@ L1:
     r0 = unicode_1 :: static  ('a')
     r1 = builtins :: module
     r2 = unicode_2 :: static  ('print')
-    r3 = getattr r1, r2
+    r3 = CPyObject_GetAttr(r1, r2)
     r4 = py_call(r3, r0)
 L2:
     r5 = builtins :: module
     r6 = unicode_3 :: static  ('object')
-    r7 = getattr r5, r6
+    r7 = CPyObject_GetAttr(r5, r6)
     r8 = py_call(r7)
     goto L8
 L3: (handler for L2)
     r9 = CPy_CatchError()
     r10 = builtins :: module
     r11 = unicode_4 :: static  ('AttributeError')
-    r12 = getattr r10, r11
+    r12 = CPyObject_GetAttr(r10, r11)
     r13 = CPy_ExceptionMatches(r12)
     if r13 goto L4 else goto L5 :: bool
 L4:
@@ -158,7 +158,7 @@ L4:
     r15 = unicode_5 :: static  ('b')
     r16 = builtins :: module
     r17 = unicode_2 :: static  ('print')
-    r18 = getattr r16, r17
+    r18 = CPyObject_GetAttr(r16, r17)
     r19 = py_call(r18, r15, e)
     goto L6
 L5:
@@ -178,7 +178,7 @@ L9: (handler for L1, L6, L7, L8)
     r22 = unicode_6 :: static  ('weeee')
     r23 = builtins :: module
     r24 = unicode_2 :: static  ('print')
-    r25 = getattr r23, r24
+    r25 = CPyObject_GetAttr(r23, r24)
     r26 = py_call(r25, r22)
 L10:
     CPy_RestoreExcInfo(r21)
@@ -226,27 +226,27 @@ L2: (handler for L1)
     r0 = CPy_CatchError()
     r1 = builtins :: module
     r2 = unicode_1 :: static  ('KeyError')
-    r3 = getattr r1, r2
+    r3 = CPyObject_GetAttr(r1, r2)
     r4 = CPy_ExceptionMatches(r3)
     if r4 goto L3 else goto L4 :: bool
 L3:
     r5 = unicode_2 :: static  ('weeee')
     r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
-    r8 = getattr r6, r7
+    r8 = CPyObject_GetAttr(r6, r7)
     r9 = py_call(r8, r5)
     goto L7
 L4:
     r10 = builtins :: module
     r11 = unicode_4 :: static  ('IndexError')
-    r12 = getattr r10, r11
+    r12 = CPyObject_GetAttr(r10, r11)
     r13 = CPy_ExceptionMatches(r12)
     if r13 goto L5 else goto L6 :: bool
 L5:
     r14 = unicode_5 :: static  ('yo')
     r15 = builtins :: module
     r16 = unicode_3 :: static  ('print')
-    r17 = getattr r15, r16
+    r17 = CPyObject_GetAttr(r15, r16)
     r18 = py_call(r17, r14)
     goto L7
 L6:
@@ -291,7 +291,7 @@ L2:
     r0 = unicode_1 :: static  ('hi')
     r1 = builtins :: module
     r2 = unicode_2 :: static  ('Exception')
-    r3 = getattr r1, r2
+    r3 = CPyObject_GetAttr(r1, r2)
     r4 = py_call(r3, r0)
     CPy_Raise(r4)
     unreachable
@@ -308,7 +308,7 @@ L7:
     r8 = unicode_3 :: static  ('finally')
     r9 = builtins :: module
     r10 = unicode_4 :: static  ('print')
-    r11 = getattr r9, r10
+    r11 = CPyObject_GetAttr(r9, r10)
     r12 = py_call(r11, r8)
     if is_error(r5) goto L9 else goto L8
 L8:
@@ -358,9 +358,9 @@ L0:
     r0 = py_call(x)
     r1 = PyObject_Type(r0)
     r2 = unicode_3 :: static  ('__exit__')
-    r3 = getattr r1, r2
+    r3 = CPyObject_GetAttr(r1, r2)
     r4 = unicode_4 :: static  ('__enter__')
-    r5 = getattr r1, r4
+    r5 = CPyObject_GetAttr(r1, r4)
     r6 = py_call(r5, r0)
     r7 = True
     r8 = r7
@@ -370,7 +370,7 @@ L2:
     r9 = unicode_5 :: static  ('hello')
     r10 = builtins :: module
     r11 = unicode_6 :: static  ('print')
-    r12 = getattr r10, r11
+    r12 = CPyObject_GetAttr(r10, r11)
     r13 = py_call(r12, r9)
     goto L8
 L3: (handler for L2)

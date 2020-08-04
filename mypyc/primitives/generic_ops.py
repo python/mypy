@@ -155,22 +155,20 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # getattr(obj, attr)
-py_getattr_op = func_op(
+py_getattr_op = c_function_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyObject_GetAttr')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyObject_GetAttr',
+    error_kind=ERR_MAGIC)
 
 # getattr(obj, attr, default)
-func_op(
+c_function_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyObject_GetAttr3')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyObject_GetAttr3',
+    error_kind=ERR_MAGIC)
 
 # setattr(obj, attr, value)
 py_setattr_op = func_op(
@@ -182,13 +180,12 @@ py_setattr_op = func_op(
 )
 
 # hasattr(obj, attr)
-py_hasattr_op = func_op(
+py_hasattr_op = c_function_op(
     name='builtins.hasattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=call_emit('PyObject_HasAttr')
-)
+    return_type=bool_rprimitive,
+    c_function_name='PyObject_HasAttr',
+    error_kind=ERR_NEVER)
 
 # del obj.attr
 py_delattr_op = func_op(
