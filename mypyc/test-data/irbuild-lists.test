@@ -169,7 +169,7 @@ L1:
 L2:
     r3 = CPyList_GetItem(l, i)
     r4 = box(short_int, 2)
-    r5 = r3 += r4
+    r5 = PyNumber_InPlaceAdd(r3, r4)
     r6 = CPyList_SetItem(l, i, r5)
 L3:
     r7 = r1 + 2

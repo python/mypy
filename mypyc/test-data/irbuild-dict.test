@@ -172,7 +172,7 @@ L2:
     k = r7
     r8 = CPyDict_GetItem(d, k)
     r9 = box(short_int, 2)
-    r10 = r8 += r9
+    r10 = PyNumber_InPlaceAdd(r8, r9)
     r11 = CPyDict_SetItem(d, k, r10)
 L3:
     r12 = CPyDict_CheckSize(d, r1)
@@ -288,7 +288,7 @@ L9:
     r24 = box(int, k)
     r25 = CPyDict_GetItem(d2, r24)
     r26 = box(int, v)
-    r27 = r25 += r26
+    r27 = PyNumber_InPlaceAdd(r25, r26)
     r28 = box(int, k)
     r29 = CPyDict_SetItem(d2, r28, r27)
 L10:
