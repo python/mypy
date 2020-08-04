@@ -3,7 +3,7 @@ from multiprocessing import Process, Queue
 
 from mypy.ipc import IPCClient, IPCServer
 
-import pytest  # type: ignore
+import pytest
 import sys
 import time
 

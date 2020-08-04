@@ -7,7 +7,7 @@ import re
 import shutil
 from typing import List, Callable, Iterator, Optional, Tuple
 
-import pytest  # type: ignore[import]
+import pytest
 
 from mypy import build
 from mypy.errors import CompileError

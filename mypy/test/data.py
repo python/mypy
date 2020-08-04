@@ -9,7 +9,7 @@ import shutil
 from abc import abstractmethod
 import sys
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
@@ -160,8 +160,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.expected_fine_grained_targets = targets
 
 
-class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
+class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
+
+    # Override parent member type
+    parent = None  # type: DataSuiteCollector
 
     input = None  # type: List[str]
     output = None  # type: List[str]  # Output for the first pass
@@ -266,7 +269,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
             # call exit() and they already print out a stack trace.
             excrepr = excinfo.exconly()
         else:
-            self.parent._prunetraceback(excinfo)
+            self.parent._prunetraceback(excinfo)  # type: ignore[no-untyped-call]
             excrepr = excinfo.getrepr(style='short')
 
         return "data: {}:{}:\n{}".format(self.file, self.line, excrepr)
@@ -510,7 +513,7 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector.from_parent(parent=collector, name=name)
+            return DataSuiteCollector.from_parent(parent=collector, name=name)  # type: ignore[no-untyped-call]
     return None
 
 
@@ -550,8 +553,8 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
         line_no += data.count('\n') + 1
 
 
-class DataSuiteCollector(pytest.Class):  # type: ignore  # inheriting from Any
-    def collect(self) -> Iterator[pytest.Item]:  # type: ignore
+class DataSuiteCollector(pytest.Class):
+    def collect(self) -> Iterator[pytest.Item]:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
