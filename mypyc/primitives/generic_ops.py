@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, 
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
     call_negative_bool_emit, call_negative_magic_emit, negative_int_emit,
-    c_binary_op
+    c_binary_op, c_unary_op
 )
 
 
@@ -106,12 +106,12 @@ binary_op('is not',
 for op, funcname in [('-', 'PyNumber_Negative'),
                      ('+', 'PyNumber_Positive'),
                      ('~', 'PyNumber_Invert')]:
-    unary_op(op=op,
-             arg_type=object_rprimitive,
-             result_type=object_rprimitive,
-             error_kind=ERR_MAGIC,
-             emit=call_emit(funcname),
-             priority=0)
+    c_unary_op(name=op,
+               arg_type=object_rprimitive,
+               return_type=object_rprimitive,
+               c_function_name=funcname,
+               error_kind=ERR_MAGIC,
+               priority=0)
 
 unary_op(op='not',
          arg_type=object_rprimitive,
