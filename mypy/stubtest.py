@@ -23,6 +23,7 @@ import mypy.build
 import mypy.modulefinder
 import mypy.types
 from mypy import nodes
+from mypy.config_parser import parse_config_file
 from mypy.options import Options
 from mypy.util import FancyFormatter
 
@@ -1040,6 +1041,12 @@ def test_stubs(args: argparse.Namespace) -> int:
     options = Options()
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
+    options.config_file = args.mypy_config_file
+
+    if options.config_file:
+        def set_strict_flags() -> None:  # not needed yet
+            return
+        parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -1132,6 +1139,19 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         "--ignore-unused-whitelist",
         action="store_true",
         help="Ignore unused whitelist entries",
+    )
+    config_group = parser.add_argument_group(
+        title='mypy config file',
+        description="Use a config file instead of command line arguments. "
+                    "Plugins and mypy path are the only supported "
+                    "configurations.",
+    )
+    config_group.add_argument(
+        '--mypy-config-file',
+        help=(
+            "An existing mypy configuration file, currently used by stubtest to help "
+            "determine mypy path and plugins"
+        ),
     )
 
     return parser.parse_args(args)
