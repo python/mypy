@@ -448,7 +448,7 @@ L6:
     r65 = __main__.globals :: static
     r66 = unicode_6 :: static  ('T')
     r67 = CPyDict_GetItem(r65, r66)
-    r68 = r64[r67] :: object
+    r68 = PyObject_GetItem(r64, r67)
     r69 = (r60, r61, r68) :: tuple
     r70 = unicode_7 :: static  ('__main__')
     r71 = __main__.D_template :: type

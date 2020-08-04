@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, 
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
     call_negative_bool_emit, call_negative_magic_emit, negative_int_emit,
-    c_binary_op, c_unary_op
+    c_binary_op, c_unary_op, c_method_op, c_function_op
 )
 
 
@@ -123,12 +123,12 @@ unary_op(op='not',
 
 
 # obj1[obj2]
-method_op('__getitem__',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=object_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=call_emit('PyObject_GetItem'),
-          priority=0)
+c_method_op(name='__getitem__',
+            arg_types=[object_rprimitive, object_rprimitive],
+            return_type=object_rprimitive,
+            c_function_name='PyObject_GetItem',
+            error_kind=ERR_MAGIC,
+            priority=0)
 
 # obj1[obj2] = obj3
 method_op('__setitem__',
@@ -147,12 +147,12 @@ method_op('__delitem__',
           priority=0)
 
 # hash(obj)
-func_op(
+c_function_op(
     name='builtins.hash',
     arg_types=[object_rprimitive],
-    result_type=int_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyObject_Hash'))
+    return_type=int_rprimitive,
+    c_function_name='CPyObject_Hash',
+    error_kind=ERR_MAGIC)
 
 # getattr(obj, attr)
 py_getattr_op = func_op(

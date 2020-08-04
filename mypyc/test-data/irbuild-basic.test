@@ -2694,7 +2694,7 @@ L4:
     r53 = unicode_2 :: static  ('List')
     r54 = CPyDict_GetItem(r52, r53)
     r55 = int
-    r56 = r54[r55] :: object
+    r56 = PyObject_GetItem(r54, r55)
     r57 = __main__.globals :: static
     r58 = unicode_10 :: static  ('Foo')
     r59 = CPyDict_SetItem(r57, r58, r56)

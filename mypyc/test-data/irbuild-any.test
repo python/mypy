@@ -109,8 +109,8 @@ def f2(a, n, l):
     r11 :: None
 L0:
     r0 = box(int, n)
-    r1 = a[r0] :: object
-    r2 = l[a] :: object
+    r1 = PyObject_GetItem(a, r0)
+    r2 = PyObject_GetItem(l, a)
     r3 = box(int, n)
     r4 = box(int, n)
     r5 = a.__setitem__(r3, r4) :: object
