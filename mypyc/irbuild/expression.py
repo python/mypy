@@ -575,6 +575,6 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     builder.warning('Treating generator comprehension as list', o.line)
-    return builder.primitive_op(
+    return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line
     )

@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, 
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
     call_negative_bool_emit, call_negative_magic_emit, negative_int_emit,
-    c_binary_op, c_unary_op, c_method_op, c_function_op
+    c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
 )
 
 
@@ -237,22 +237,19 @@ func_op(name='builtins.len',
         priority=0)
 
 # iter(obj)
-iter_op = func_op(name='builtins.iter',
-                  arg_types=[object_rprimitive],
-                  result_type=object_rprimitive,
-                  error_kind=ERR_MAGIC,
-                  emit=call_emit('PyObject_GetIter'))
-
+iter_op = c_function_op(name='builtins.iter',
+                        arg_types=[object_rprimitive],
+                        return_type=object_rprimitive,
+                        c_function_name='PyObject_GetIter',
+                        error_kind=ERR_MAGIC)
 # next(iterator)
 #
 # Although the error_kind is set to be ERR_NEVER, this can actually
 # return NULL, and thus it must be checked using Branch.IS_ERROR.
-next_op = custom_op(name='next',
-                    arg_types=[object_rprimitive],
-                    result_type=object_rprimitive,
-                    error_kind=ERR_NEVER,
-                    emit=call_emit('PyIter_Next'))
-
+next_op = c_custom_op(arg_types=[object_rprimitive],
+                      return_type=object_rprimitive,
+                      c_function_name='PyIter_Next',
+                      error_kind=ERR_NEVER)
 # next(iterator)
 #
 # Do a next, don't swallow StopIteration, but also don't propagate an
@@ -260,8 +257,7 @@ next_op = custom_op(name='next',
 # represent an implicit StopIteration, but if StopIteration is
 # *explicitly* raised this will not swallow it.)
 # Can return NULL: see next_op.
-next_raw_op = custom_op(name='next',
-                        arg_types=[object_rprimitive],
-                        result_type=object_rprimitive,
-                        error_kind=ERR_NEVER,
-                        emit=call_emit('CPyIter_Next'))
+next_raw_op = c_custom_op(arg_types=[object_rprimitive],
+                          return_type=object_rprimitive,
+                          c_function_name='CPyIter_Next',
+                          error_kind=ERR_NEVER)

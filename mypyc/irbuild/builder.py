@@ -484,14 +484,14 @@ class IRBuilder:
                                           rvalue_reg: Value,
                                           line: int) -> None:
 
-        iterator = self.primitive_op(iter_op, [rvalue_reg], line)
+        iterator = self.call_c(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
 
         # Assign values before the first starred value
         for litem in target.items[:split_idx]:
-            ritem = self.primitive_op(next_op, [iterator], line)
+            ritem = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
 
@@ -532,7 +532,7 @@ class IRBuilder:
         # There is no starred value, so check if there are extra values in rhs that
         # have not been assigned.
         else:
-            extra = self.primitive_op(next_op, [iterator], line)
+            extra = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
 

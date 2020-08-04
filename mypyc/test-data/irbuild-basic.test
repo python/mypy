@@ -3233,9 +3233,9 @@ def call_any(l):
 L0:
     r1 = False
     r0 = r1
-    r2 = iter l :: object
+    r2 = PyObject_GetIter(l)
 L1:
-    r3 = next r2 :: object
+    r3 = PyIter_Next(r2)
     if is_error(r3) goto L9 else goto L2
 L2:
     r4 = unbox(int, r3)
@@ -3275,9 +3275,9 @@ def call_all(l):
 L0:
     r1 = True
     r0 = r1
-    r2 = iter l :: object
+    r2 = PyObject_GetIter(l)
 L1:
-    r3 = next r2 :: object
+    r3 = PyIter_Next(r2)
     if is_error(r3) goto L9 else goto L2
 L2:
     r4 = unbox(int, r3)

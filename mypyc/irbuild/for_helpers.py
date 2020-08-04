@@ -352,7 +352,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
+        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type
@@ -364,7 +364,7 @@ class ForIterable(ForGenerator):
         # for NULL (an exception does not necessarily have to be raised).
         builder = self.builder
         line = self.line
-        self.next_reg = builder.primitive_op(next_op, [builder.read(self.iter_target, line)], line)
+        self.next_reg = builder.call_c(next_op, [builder.read(self.iter_target, line)], line)
         builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
 
     def begin_body(self) -> None:

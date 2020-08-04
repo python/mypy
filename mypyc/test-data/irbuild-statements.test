@@ -509,22 +509,22 @@ def from_any(a):
     r6 :: bool
     r7 :: None
 L0:
-    r0 = iter a :: object
-    r1 = next r0 :: object
+    r0 = PyObject_GetIter(a)
+    r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
     raise ValueError('not enough values to unpack')
     unreachable
 L2:
     x = r1
-    r3 = next r0 :: object
+    r3 = PyIter_Next(r0)
     if is_error(r3) goto L3 else goto L4
 L3:
     raise ValueError('not enough values to unpack')
     unreachable
 L4:
     y = r3
-    r5 = next r0 :: object
+    r5 = PyIter_Next(r0)
     if is_error(r5) goto L6 else goto L5
 L5:
     raise ValueError('too many values to unpack')
@@ -573,8 +573,8 @@ def from_any(a):
     r7 :: bool
     r8 :: None
 L0:
-    r0 = iter a :: object
-    r1 = next r0 :: object
+    r0 = PyObject_GetIter(a)
+    r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
     raise ValueError('not enough values to unpack')
@@ -582,14 +582,14 @@ L1:
 L2:
     r3 = unbox(int, r1)
     x = r3
-    r4 = next r0 :: object
+    r4 = PyIter_Next(r0)
     if is_error(r4) goto L3 else goto L4
 L3:
     raise ValueError('not enough values to unpack')
     unreachable
 L4:
     y = r4
-    r6 = next r0 :: object
+    r6 = PyIter_Next(r0)
     if is_error(r6) goto L6 else goto L5
 L5:
     raise ValueError('too many values to unpack')
@@ -911,9 +911,9 @@ def g(x):
 L0:
     r0 = 0
     i = 0
-    r1 = iter x :: object
+    r1 = PyObject_GetIter(x)
 L1:
-    r2 = next r1 :: object
+    r2 = PyIter_Next(r1)
     if is_error(r2) goto L4 else goto L2
 L2:
     r3 = unbox(int, r2)
@@ -956,13 +956,13 @@ def f(a, b):
     r11 :: None
 L0:
     r0 = 0
-    r1 = iter b :: object
+    r1 = PyObject_GetIter(b)
 L1:
     r2 = len a :: list
     r3 = r0 < r2 :: signed
     if r3 goto L2 else goto L7 :: bool
 L2:
-    r4 = next r1 :: object
+    r4 = PyIter_Next(r1)
     if is_error(r4) goto L7 else goto L3
 L3:
     r5 = a[r0] :: unsafe list
@@ -1000,12 +1000,12 @@ def g(a, b):
     r13 :: bool
     r14 :: None
 L0:
-    r0 = iter a :: object
+    r0 = PyObject_GetIter(a)
     r1 = 0
     r2 = 0
     z = r2
 L1:
-    r3 = next r0 :: object
+    r3 = PyIter_Next(r0)
     if is_error(r3) goto L6 else goto L2
 L2:
     r4 = len b :: list
