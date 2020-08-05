@@ -12,8 +12,8 @@ check that the priorities are configured properly.
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
-    binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
-    call_negative_bool_emit, call_negative_magic_emit, negative_int_emit,
+    binary_op, unary_op, func_op, custom_op, call_emit, simple_emit,
+    call_negative_magic_emit, negative_int_emit,
     c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
 )
 
@@ -131,20 +131,22 @@ c_method_op(name='__getitem__',
             priority=0)
 
 # obj1[obj2] = obj3
-method_op('__setitem__',
-          arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_FALSE,
-          emit=call_negative_bool_emit('PyObject_SetItem'),
-          priority=0)
+c_method_op(
+    name='__setitem__',
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='PyObject_SetItem',
+    error_kind=ERR_FALSE,
+    priority=0)
 
 # del obj1[obj2]
-method_op('__delitem__',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_FALSE,
-          emit=call_negative_bool_emit('PyObject_DelItem'),
-          priority=0)
+c_method_op(
+    name='__delitem__',
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_DelItem',
+    error_kind=ERR_NEG_INT,
+    priority=0)
 
 # hash(obj)
 c_function_op(

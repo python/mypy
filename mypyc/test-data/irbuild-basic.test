@@ -1102,7 +1102,7 @@ def f(x, y, z):
     r0 :: bool
     r1 :: None
 L0:
-    r0 = x.__setitem__(y, z) :: object
+    r0 = PyObject_SetItem(x, y, z)
     r1 = None
     return r1
 
