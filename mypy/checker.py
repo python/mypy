@@ -3317,6 +3317,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = get_proper_type(self.expr_checker.accept(e))
+        if isinstance(typ, DeletedType):
+            self.msg.deleted_as_rvalue(typ, e)
+            return
         exc_type = self.named_type('builtins.BaseException')
         expected_type = UnionType([exc_type, TypeType(exc_type)])
         if optional:
