@@ -1099,7 +1099,7 @@ def f(x: Any, y: Any, z: Any) -> None:
 [out]
 def f(x, y, z):
     x, y, z :: object
-    r0 :: bool
+    r0 :: int32
     r1 :: None
 L0:
     r0 = PyObject_SetItem(x, y, z)

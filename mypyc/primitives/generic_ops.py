@@ -9,7 +9,7 @@ will take precedence. If your specialized op doesn't seem to be used,
 check that the priorities are configured properly.
 """
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_NEG_INT
 from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
     binary_op, unary_op, func_op, custom_op, call_emit, simple_emit,
@@ -134,9 +134,9 @@ c_method_op(name='__getitem__',
 c_method_op(
     name='__setitem__',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=c_int_rprimitive,
     c_function_name='PyObject_SetItem',
-    error_kind=ERR_FALSE,
+    error_kind=ERR_NEG_INT,
     priority=0)
 
 # del obj1[obj2]
