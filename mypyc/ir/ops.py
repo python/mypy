@@ -1388,7 +1388,7 @@ class GetElementPtr(RegisterOp):
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = get_element_ptr %r %r :: %r", self, self.src,
+        return env.format("%r = get_element_ptr %r %s :: %r", self, self.src,
                           self.field, self.src_type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:

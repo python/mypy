@@ -254,6 +254,14 @@ if IS_32_BIT_PLATFORM:
 else:
     c_pyssize_t_rprimitive = int64_rprimitive
 
+# low level pointer, represented as integer in C backends
+if IS_32_BIT_PLATFORM:
+    pointer_rprimitive = RPrimitive('pointer', is_unboxed=True, is_refcounted=False,
+                              ctype='int32_t', size=4)  # type: Final
+else:
+    pointer_rprimitive = RPrimitive('pointer', is_unboxed=True, is_refcounted=False,
+                              ctype='int64_t', size=8)  # type: Final
+
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
 float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,

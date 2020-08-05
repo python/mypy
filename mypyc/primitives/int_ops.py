@@ -10,7 +10,7 @@ from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, BinaryIntOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
-    str_rprimitive, RType
+    str_rprimitive, RType, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     name_ref_op, binary_op, custom_op, simple_emit, name_emit,
@@ -70,6 +70,11 @@ c_function_op(
     error_kind=ERR_MAGIC,
     priority=3)
 
+size_t_to_short_int = c_custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=short_int_rprimitive,
+    c_function_name='CPyTagged_ShortFromSsize_t',
+    error_kind=ERR_NEVER)
 
 def int_binary_op(name: str, c_function_name: str,
                   return_type: RType = int_rprimitive,
