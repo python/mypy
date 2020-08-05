@@ -1,6 +1,6 @@
 """Struct registries for C backend"""
 
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from mypyc.ir.rtypes import RType, StructInfo, RStruct, c_pyssize_t_rprimitive, pointer_rprimitive
 
 struct_infos = {}  # type: Dict[str, StructInfo]
@@ -21,6 +21,7 @@ def c_struct(name: str,
     struct_infos[name] = info
     typ = RStruct(info)
     struct_types[name] = typ
+    return info
 
 
 c_struct(

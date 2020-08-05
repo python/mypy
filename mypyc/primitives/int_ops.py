@@ -76,6 +76,7 @@ size_t_to_short_int = c_custom_op(
     c_function_name='CPyTagged_ShortFromSsize_t',
     error_kind=ERR_NEVER)
 
+
 def int_binary_op(name: str, c_function_name: str,
                   return_type: RType = int_rprimitive,
                   error_kind: int = ERR_NEVER) -> None:

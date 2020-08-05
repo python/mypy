@@ -18,7 +18,8 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable, OpDescription, LoadMem, GetElementPtr
+    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable, OpDescription, LoadMem,
+    GetElementPtr
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
