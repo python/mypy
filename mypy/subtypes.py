@@ -401,8 +401,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             if left == self.right:
                 # When it is the same overload, then the types are equal.
-                # This was originally introduced as a fix / hack for:
-                # https://github.com/python/mypy/issues/9147
                 return True
 
             # Ensure each overload in the right side (the supertype) is accounted for.
