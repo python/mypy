@@ -34,7 +34,7 @@ from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
+    InitStatic, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
@@ -448,7 +448,7 @@ class IRBuilder:
             else:
                 key = self.load_static_unicode(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
-                self.add(PrimitiveOp([target.obj, key, boxed_reg], py_setattr_op, line))
+                self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
                 target.base, '__setitem__', [target.index, rvalue_reg], None, line)
@@ -484,14 +484,14 @@ class IRBuilder:
                                           rvalue_reg: Value,
                                           line: int) -> None:
 
-        iterator = self.primitive_op(iter_op, [rvalue_reg], line)
+        iterator = self.call_c(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
 
         # Assign values before the first starred value
         for litem in target.items[:split_idx]:
-            ritem = self.primitive_op(next_op, [iterator], line)
+            ritem = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
 
@@ -532,7 +532,7 @@ class IRBuilder:
         # There is no starred value, so check if there are extra values in rhs that
         # have not been assigned.
         else:
-            extra = self.primitive_op(next_op, [iterator], line)
+            extra = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
 

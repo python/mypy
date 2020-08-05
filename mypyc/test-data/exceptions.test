@@ -199,7 +199,7 @@ L0:
 L1:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('object')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
     r3 = py_call(r2)
@@ -210,7 +210,7 @@ L3:
     r5 = unicode_2 :: static  ('weeee')
     r6 = builtins :: module
     r7 = unicode_3 :: static  ('print')
-    r8 = getattr r6, r7
+    r8 = CPyObject_GetAttr(r6, r7)
     if is_error(r8) goto L6 (error at g:5) else goto L4
 L4:
     r9 = py_call(r8, r5)
@@ -268,7 +268,7 @@ L0:
 L1:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
     r3 = py_call(r2)
@@ -291,7 +291,7 @@ L6:
     r11 = unicode_3 :: static  ('goodbye!')
     r12 = builtins :: module
     r13 = unicode_1 :: static  ('print')
-    r14 = getattr r12, r13
+    r14 = CPyObject_GetAttr(r12, r13)
     if is_error(r14) goto L13 (error at a:6) else goto L7
 L7:
     r15 = py_call(r14, r11)
@@ -371,7 +371,7 @@ def lol(x):
 L0:
 L1:
     r0 = unicode_3 :: static  ('foo')
-    r1 = getattr x, r0
+    r1 = CPyObject_GetAttr(x, r0)
     if is_error(r1) goto L3 (error at lol:4) else goto L2
 L2:
     st = r1
@@ -411,12 +411,12 @@ def lol(x):
 L0:
 L1:
     r0 = unicode_3 :: static  ('foo')
-    r1 = getattr x, r0
+    r1 = CPyObject_GetAttr(x, r0)
     if is_error(r1) goto L4 (error at lol:4) else goto L15
 L2:
     a = r1
     r2 = unicode_4 :: static  ('bar')
-    r3 = getattr x, r2
+    r3 = CPyObject_GetAttr(x, r2)
     if is_error(r3) goto L4 (error at lol:5) else goto L16
 L3:
     b = r3
@@ -441,7 +441,7 @@ L10:
 L11:
     unreachable
 L12:
-    r6 = a + b
+    r6 = PyNumber_Add(a, b)
     xdec_ref a
     xdec_ref b
     if is_error(r6) goto L14 (error at lol:9) else goto L13
@@ -498,7 +498,7 @@ L2:
 L3:
     r4 = builtins :: module
     r5 = unicode_3 :: static  ('print')
-    r6 = getattr r4, r5
+    r6 = CPyObject_GetAttr(r4, r5)
     if is_error(r6) goto L12 (error at f:7) else goto L4
 L4:
     if is_error(v) goto L13 else goto L7

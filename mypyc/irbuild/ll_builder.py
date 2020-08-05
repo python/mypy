@@ -186,7 +186,7 @@ class LowLevelIRBuilder:
         Prefer get_attr() which generates optimized code for native classes.
         """
         key = self.load_static_unicode(attr)
-        return self.add(PrimitiveOp([obj, key], py_getattr_op, line))
+        return self.call_c(py_getattr_op, [obj, key], line)
 
     # isinstance() checks
 

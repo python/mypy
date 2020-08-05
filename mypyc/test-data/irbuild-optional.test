@@ -368,11 +368,11 @@ L3:
 def set(o, s):
     o :: union[__main__.A, __main__.B]
     s, r0 :: str
-    r1 :: bool
+    r1 :: int32
     r2 :: None
 L0:
     r0 = unicode_5 :: static  ('a')
-    r1 = setattr o, r0, s
+    r1 = PyObject_SetAttr(o, r0, s)
     r2 = None
     return r2
 
@@ -494,7 +494,7 @@ L1:
 L2:
     r5 = o
     r6 = unicode_7 :: static  ('x')
-    r7 = getattr r5, r6
+    r7 = CPyObject_GetAttr(r5, r6)
     r8 = unbox(int, r7)
     r0 = r8
 L3:
@@ -524,7 +524,7 @@ L1:
 L2:
     r5 = o
     r6 = unicode_7 :: static  ('x')
-    r7 = getattr r5, r6
+    r7 = CPyObject_GetAttr(r5, r6)
     r8 = unbox(int, r7)
     r0 = r8
 L3:
@@ -554,7 +554,7 @@ def f(o):
 L0:
     r1 = o
     r2 = unicode_6 :: static  ('x')
-    r3 = getattr r1, r2
+    r3 = CPyObject_GetAttr(r1, r2)
     r0 = r3
 L1:
     r4 = None

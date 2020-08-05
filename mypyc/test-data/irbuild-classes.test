@@ -334,7 +334,7 @@ def __top_level__():
     r43 :: bool
     r44 :: str
     r45 :: tuple
-    r46 :: bool
+    r46 :: int32
     r47 :: dict
     r48 :: str
     r49 :: int32
@@ -343,7 +343,7 @@ def __top_level__():
     r52, r53 :: object
     r54 :: str
     r55 :: tuple
-    r56 :: bool
+    r56 :: int32
     r57 :: dict
     r58 :: str
     r59 :: int32
@@ -360,7 +360,7 @@ def __top_level__():
     r73 :: bool
     r74, r75 :: str
     r76 :: tuple
-    r77 :: bool
+    r77 :: int32
     r78 :: dict
     r79 :: str
     r80 :: int32
@@ -387,11 +387,11 @@ L4:
     r10 = typing :: module
     r11 = __main__.globals :: static
     r12 = unicode_2 :: static  ('TypeVar')
-    r13 = getattr r10, r12
+    r13 = CPyObject_GetAttr(r10, r12)
     r14 = unicode_2 :: static  ('TypeVar')
     r15 = CPyDict_SetItem(r11, r14, r13)
     r16 = unicode_3 :: static  ('Generic')
-    r17 = getattr r10, r16
+    r17 = CPyObject_GetAttr(r10, r16)
     r18 = unicode_3 :: static  ('Generic')
     r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = mypy_extensions :: module
@@ -406,7 +406,7 @@ L6:
     r25 = mypy_extensions :: module
     r26 = __main__.globals :: static
     r27 = unicode_5 :: static  ('trait')
-    r28 = getattr r25, r27
+    r28 = CPyObject_GetAttr(r25, r27)
     r29 = unicode_5 :: static  ('trait')
     r30 = CPyDict_SetItem(r26, r29, r28)
     r31 = unicode_6 :: static  ('T')
@@ -424,7 +424,7 @@ L6:
     r43 = C_trait_vtable_setup()
     r44 = unicode_8 :: static  ('__mypyc_attrs__')
     r45 = () :: tuple
-    r46 = setattr r42, r44, r45
+    r46 = PyObject_SetAttr(r42, r44, r45)
     __main__.C = r42 :: type
     r47 = __main__.globals :: static
     r48 = unicode_9 :: static  ('C')
@@ -435,7 +435,7 @@ L6:
     r53 = pytype_from_template(r52, r50, r51)
     r54 = unicode_8 :: static  ('__mypyc_attrs__')
     r55 = () :: tuple
-    r56 = setattr r53, r54, r55
+    r56 = PyObject_SetAttr(r53, r54, r55)
     __main__.S = r53 :: type
     r57 = __main__.globals :: static
     r58 = unicode_10 :: static  ('S')
@@ -448,7 +448,7 @@ L6:
     r65 = __main__.globals :: static
     r66 = unicode_6 :: static  ('T')
     r67 = CPyDict_GetItem(r65, r66)
-    r68 = r64[r67] :: object
+    r68 = PyObject_GetItem(r64, r67)
     r69 = (r60, r61, r68) :: tuple
     r70 = unicode_7 :: static  ('__main__')
     r71 = __main__.D_template :: type
@@ -457,7 +457,7 @@ L6:
     r74 = unicode_8 :: static  ('__mypyc_attrs__')
     r75 = unicode_11 :: static  ('__dict__')
     r76 = (r75) :: tuple
-    r77 = setattr r72, r74, r76
+    r77 = PyObject_SetAttr(r72, r74, r76)
     __main__.D = r72 :: type
     r78 = __main__.globals :: static
     r79 = unicode_12 :: static  ('D')
@@ -767,7 +767,7 @@ def f():
 L0:
     r0 = __main__.A :: type
     r1 = unicode_6 :: static  ('x')
-    r2 = getattr r0, r1
+    r2 = CPyObject_GetAttr(r0, r1)
     r3 = unbox(int, r2)
     return r3
 

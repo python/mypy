@@ -805,7 +805,7 @@ def __mypyc_lambda__0_f_obj.__call__(__mypyc_self__, a, b):
     r1 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
-    r1 = a + b
+    r1 = PyNumber_Add(a, b)
     return r1
 def __mypyc_lambda__1_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object

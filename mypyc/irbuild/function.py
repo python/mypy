@@ -350,13 +350,13 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
-        builder.primitive_op(py_setattr_op,
-                          [
-                              typ,
-                              builder.load_static_unicode(name),
-                              decorated_func
-                          ],
-                          fdef.line)
+        builder.call_c(py_setattr_op,
+                    [
+                        typ,
+                        builder.load_static_unicode(name),
+                        decorated_func
+                    ],
+                    fdef.line)
 
     if fdef.is_property:
         # If there is a property setter, it will be processed after the getter,
@@ -491,14 +491,14 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
     received_reg = builder.alloc_temp(object_rprimitive)
 
     if isinstance(o, YieldFromExpr):
-        iter_val = builder.primitive_op(iter_op, [builder.accept(o.expr)], o.line)
+        iter_val = builder.call_c(iter_op, [builder.accept(o.expr)], o.line)
     else:
         iter_val = builder.call_c(coro_op, [builder.accept(o.expr)], o.line)
 
     iter_reg = builder.maybe_spill_assignable(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
-    _y_init = builder.primitive_op(next_raw_op, [builder.read(iter_reg)], o.line)
+    _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], o.line)
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
     # Try extracting a return value from a StopIteration and return it.

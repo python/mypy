@@ -17,7 +17,7 @@ from mypy.nodes import (
 
 from mypyc.ir.ops import (
     Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, PrimitiveOp, RaiseStandardError, LoadErrorValue,
+    AssignmentTargetAttr, AssignmentTargetTuple, RaiseStandardError, LoadErrorValue,
     BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
@@ -634,7 +634,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         )
     elif isinstance(target, AssignmentTargetAttr):
         key = builder.load_static_unicode(target.attr)
-        builder.add(PrimitiveOp([target.obj, key], py_delattr_op, line))
+        builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.

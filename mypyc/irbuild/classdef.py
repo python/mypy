@@ -124,7 +124,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             typ = builder.load_native_type_object(cdef.fullname)
             value = builder.accept(stmt.rvalue)
-            builder.primitive_op(
+            builder.call_c(
                 py_setattr_op, [typ, builder.load_static_unicode(lvalue.name), value], stmt.line)
             if builder.non_function_scope() and stmt.is_final_def:
                 builder.init_final_static(lvalue, value, cdef.name)
@@ -182,7 +182,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                      None, builder.module_name,
                      FuncSignature([], bool_rprimitive)), [], -1))
     # Populate a '__mypyc_attrs__' field containing the list of attrs
-    builder.primitive_op(py_setattr_op, [
+    builder.call_c(py_setattr_op, [
         tp, builder.load_static_unicode('__mypyc_attrs__'),
         create_mypyc_attrs_tuple(builder, builder.mapper.type_to_ir[cdef.info], cdef.line)],
         cdef.line)
@@ -241,9 +241,9 @@ def setup_non_ext_dict(builder: IRBuilder,
     This class dictionary is passed to the metaclass constructor.
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
-    has_prepare = builder.primitive_op(py_hasattr_op,
-                                    [metaclass,
-                                    builder.load_static_unicode('__prepare__')], cdef.line)
+    has_prepare = builder.call_c(py_hasattr_op,
+                                [metaclass,
+                                builder.load_static_unicode('__prepare__')], cdef.line)
 
     non_ext_dict = builder.alloc_temp(dict_rprimitive)
 
