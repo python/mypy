@@ -1,6 +1,6 @@
 """Struct registries for C backend"""
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from mypyc.ir.rtypes import RType, StructInfo, RStruct, c_pyssize_t_rprimitive, pointer_rprimitive
 
 struct_infos = {}  # type: Dict[str, StructInfo]
@@ -9,7 +9,7 @@ struct_types = {}  # type: Dict[str, RStruct]
 
 def c_struct(name: str,
              names: List[str],
-             types: List[RType]) -> StructInfo:
+             types: List[RType]) -> Tuple[StructInfo, RType]:
     """Define a known C struct for generating IR to manipulate it
 
     name: The name of the C struct
@@ -21,10 +21,15 @@ def c_struct(name: str,
     struct_infos[name] = info
     typ = RStruct(info)
     struct_types[name] = typ
-    return info
+    return info, typ
 
+
+py_object_info, PyObject = c_struct(
+    name='PyObject',
+    names=['ob_refcnt', 'ob_type'],
+    types=[c_pyssize_t_rprimitive, pointer_rprimitive])
 
 c_struct(
     name='PyVarObject',
-    names=['ob_refcnt', 'ob_type', 'ob_size'],
-    types=[c_pyssize_t_rprimitive, pointer_rprimitive, c_pyssize_t_rprimitive])
+    names=['ob_base', 'ob_size'],
+    types=[PyObject, c_pyssize_t_rprimitive])
