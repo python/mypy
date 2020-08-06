@@ -27,7 +27,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.misc_ops import true_op, false_op
-from mypyc.primitives.struct_regsitry import struct_types
+from mypyc.primitives.struct_registry import struct_types
 from mypyc.primitives.int_ops import size_t_to_short_int
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
