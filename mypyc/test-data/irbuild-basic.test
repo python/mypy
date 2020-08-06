@@ -2104,10 +2104,10 @@ def f():
     r10 :: object
     x, r11 :: int
     r12 :: bool
-    r13 :: int64
+    r13 :: native_int
     r14, r15, r16, r17 :: bool
     r18 :: bool
-    r19 :: int64
+    r19 :: native_int
     r20, r21, r22, r23 :: bool
     r24 :: int
     r25, r26 :: object
