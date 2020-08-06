@@ -947,6 +947,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             if ctx.line < 0:
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
+                    elif is_named_instance(arg_type, 'builtins.list'):
+                        arg_typ = get_proper_type(arg_type)
+                        if isinstance(arg_typ, Instance):
+                            item_type = self.iterable_item_type(arg_typ)
+                            if (isinstance(item_type, TypeVarType)
+                                    and item_type.variance == COVARIANT):
+                                message = "Cannot use a covariant type variable as a parameter"
+                                self.fail(message, arg_type)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
                         # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = self.named_generic_type('builtins.tuple',

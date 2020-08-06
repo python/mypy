@@ -2066,6 +2066,18 @@ class A(Generic[t]):
 [out]
 main:5: error: Cannot use a covariant type variable as a parameter
 
+[case testRejectListCovariantArgument]
+from typing import TypeVar, List, Generic
+
+t = TypeVar('t', covariant=True)
+class A(Generic[t]):
+    def foo(self, x: List[t]) -> None:
+        return None
+[builtins fixtures/bool.pyi]
+[builtins fixtures/list.pyi]
+[out]
+main:5: error: Cannot use a covariant type variable as a parameter
+
 [case testRejectCovariantArgumentSplitLine]
 from typing import TypeVar, Generic
 
