@@ -182,9 +182,9 @@ class RPrimitive(RType):
         self.size = size
         # TODO: For low-level integers, they actually don't have undefined values
         #       we need to figure out some way to represent here.
-        if ctype in ('CPyTagged', 'int32_t', 'int64_t'):
+        if ctype in ('CPyTagged', 'int32_t', 'int64_t', 'CPyPtr'):
             self.c_undefined = 'CPY_INT_TAG'
-        elif ctype in ('PyObject *', 'int32_t *', 'int64_t *'):
+        elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
         elif ctype == 'char':
@@ -255,14 +255,8 @@ else:
     c_pyssize_t_rprimitive = int64_rprimitive
 
 # low level pointer, represented as integer in C backends
-int32_ptr_rprimitive = RPrimitive('int32 *', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t *', size=4)  # type: Final
-int64_ptr_rprimitive = RPrimitive('int64 *', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t *', size=8)  # type: Final
-if IS_32_BIT_PLATFORM:
-    pointer_rprimitive = int32_ptr_rprimitive
-else:
-    pointer_rprimitive = int64_ptr_rprimitive
+pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
+                              ctype='CPyPtr')  # type: Final
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
