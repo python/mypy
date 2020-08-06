@@ -23,11 +23,11 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, c_pyssize_t_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, c_pyssize_t_rprimitive,
+    PyVarObject
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.misc_ops import true_op, false_op
-from mypyc.primitives.struct_registry import struct_types
 from mypyc.primitives.int_ops import size_t_to_short_int
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
@@ -80,8 +80,7 @@ def translate_len(
             return builder.add(LoadInt(len(expr_rtype.types)))
         elif is_list_rprimitive(expr_rtype):
             obj = builder.accept(expr.args[0])
-            py_var_object_struct = struct_types['PyVarObject']
-            elem_address = builder.add(GetElementPtr(obj, py_var_object_struct, 'ob_size'))
+            elem_address = builder.add(GetElementPtr(obj, PyVarObject, 'ob_size'))
             size_value = builder.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             return builder.call_c(size_t_to_short_int, [size_value], -1)
     return None

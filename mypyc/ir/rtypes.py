@@ -522,12 +522,8 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
     return offsets, final_size
 
 
-class StructInfo:
-    """Struct-like type Infomation
-
-    StructInfo should work with registry to ensure constraints like the unique naming
-    constraint for struct type
-    """
+class RStruct(RType):
+    """Represent CPython structs"""
     def __init__(self,
                  name: str,
                  names: List[str],
@@ -540,31 +536,7 @@ class StructInfo:
             for i in range(len(self.types) - len(self.names)):
                 self.names.append('_item' + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
-
-
-class RStruct(RType):
-    """Represent CPython structs"""
-    def __init__(self,
-                 info: StructInfo) -> None:
-        self.info = info
-        self.name = self.info.name
-        self._ctype = self.info.name
-
-    @property
-    def names(self) -> List[str]:
-        return self.info.names
-
-    @property
-    def types(self) -> List[RType]:
-        return self.info.types
-
-    @property
-    def offsets(self) -> List[int]:
-        return self.info.offsets
-
-    @property
-    def size(self) -> int:
-        return self.info.size
+        self._ctype = name
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rstruct(self)
@@ -579,10 +551,11 @@ class RStruct(RType):
                                                           in zip(self.names, self.types)))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, RStruct) and self.info == other.info
+        return (isinstance(other, RStruct) and self.name == other.name
+                and self.names == other.names and self.types == other.types)
 
     def __hash__(self) -> int:
-        return hash(self.info)
+        return hash((self.name, self.names, self.types))
 
     def serialize(self) -> JsonDict:
         assert False
@@ -695,3 +668,14 @@ def optional_value_type(rtype: RType) -> Optional[RType]:
 def is_optional_type(rtype: RType) -> bool:
     """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None
+
+
+PyObject = RStruct(
+    name='PyObject',
+    names=['ob_refcnt', 'ob_type'],
+    types=[c_pyssize_t_rprimitive, pointer_rprimitive])
+
+PyVarObject = RStruct(
+    name='PyVarObject',
+    names=['ob_base', 'ob_size'],
+    types=[PyObject, c_pyssize_t_rprimitive])
