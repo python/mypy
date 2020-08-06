@@ -25,7 +25,7 @@ from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisi
 from mypyc.primitives.registry import binary_ops, c_binary_ops
 from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
 from mypyc.primitives.list_ops import (
-    list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
+    list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
 from mypyc.primitives.dict_ops import (
     dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
@@ -116,13 +116,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(CallC(int_neg_op.c_function_name, [self.m], int_neg_op.return_type,
                                int_neg_op.steals, int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
-
-    def test_list_len(self) -> None:
-        self.assert_emit(PrimitiveOp([self.l], list_len_op, 55),
-                         """Py_ssize_t __tmp1;
-                            __tmp1 = PyList_GET_SIZE(cpy_r_l);
-                            cpy_r_r0 = CPyTagged_ShortFromSsize_t(__tmp1);
-                         """)
 
     def test_branch(self) -> None:
         self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR),

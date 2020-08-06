@@ -29,7 +29,6 @@ from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
 
-
 GenFunc = Callable[[], None]
 
 
@@ -333,6 +332,9 @@ class ForGenerator:
 
     def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
         """A helper to get collection length, used by several subclasses."""
+        val = self.builder.read(expr, self.line)
+        if is_list_rprimitive(val.type):
+            return self.builder.builder.list_len(self.builder.read(expr, self.line), self.line)
         return self.builder.builder.builtin_call(
             [self.builder.read(expr, self.line)],
             'builtins.len',

@@ -21,12 +21,13 @@ from mypyc.ir.ops import (
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp
+    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
+    LoadMem
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
-    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged
+    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -40,7 +41,7 @@ from mypyc.primitives.registry import (
     c_binary_ops, c_unary_ops
 )
 from mypyc.primitives.list_ops import (
-    list_extend_op, list_len_op, new_list_op
+    list_extend_op, new_list_op
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import (
@@ -703,7 +704,7 @@ class LowLevelIRBuilder:
             zero = self.add(LoadInt(0))
             value = self.binary_op(value, zero, '!=', value.line)
         elif is_same_type(value.type, list_rprimitive):
-            length = self.primitive_op(list_len_op, [value], value.line)
+            length = self.list_len(value, value.line)
             zero = self.add(LoadInt(0))
             value = self.binary_op(length, zero, '!=', value.line)
         elif (isinstance(value.type, RInstance) and value.type.class_ir.is_ext_class
@@ -810,6 +811,12 @@ class LowLevelIRBuilder:
     def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(BinaryIntOp(type, lhs, rhs, op, line))
 
+    def list_len(self, val: Value, line: int) -> Value:
+        elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
+        size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+        offset = self.add(LoadInt(1, -1, rtype=c_pyssize_t_rprimitive))
+        return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                  BinaryIntOp.LEFT_SHIFT, -1)
     # Internal helpers
 
     def decompose_union_helper(self,

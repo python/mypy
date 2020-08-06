@@ -85,3 +85,31 @@ class TestStruct(unittest.TestCase):
         assert is_runtime_subtype(r3, r) is False
         assert is_runtime_subtype(r4, r) is False
         assert is_runtime_subtype(r5, r) is False
+
+    def test_eq_and_hash(self) -> None:
+        r = RStruct("Foo", ["a", "b"],
+                    [bool_rprimitive, int_rprimitive])
+
+        # using the exact same fields
+        r1 = RStruct("Foo", ["a", "b"],
+                    [bool_rprimitive, int_rprimitive])
+        assert hash(r) == hash(r1)
+        assert r == r1
+
+        # different name
+        r2 = RStruct("Foq", ["a", "b"],
+                    [bool_rprimitive, int_rprimitive])
+        assert hash(r) != hash(r2)
+        assert r != r2
+
+        # different names
+        r3 = RStruct("Foo", ["a", "c"],
+                    [bool_rprimitive, int_rprimitive])
+        assert hash(r) != hash(r3)
+        assert r != r3
+
+        # different type
+        r4 = RStruct("Foo", ["a", "b"],
+                    [bool_rprimitive, int_rprimitive, bool_rprimitive])
+        assert hash(r) != hash(r4)
+        assert r != r4

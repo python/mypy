@@ -182,8 +182,10 @@ class RPrimitive(RType):
         self.size = size
         # TODO: For low-level integers, they actually don't have undefined values
         #       we need to figure out some way to represent here.
-        if ctype in ('CPyTagged', 'int32_t', 'int64_t', 'CPyPtr'):
+        if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
+        elif ctype in ('int32_t', 'int64_t', 'CPyPtr'):
+            self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
@@ -555,7 +557,7 @@ class RStruct(RType):
                 and self.names == other.names and self.types == other.types)
 
     def __hash__(self) -> int:
-        return hash((self.name, self.names, self.types))
+        return hash((self.name, tuple(self.names), tuple(self.types)))
 
     def serialize(self) -> JsonDict:
         assert False

@@ -44,7 +44,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function_ops
-from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
+from mypyc.primitives.list_ops import to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
 from mypyc.primitives.misc_ops import true_op, false_op, import_op
@@ -237,6 +237,9 @@ class IRBuilder:
 
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tagged(lhs, rhs, op, line)
+
+    def list_len(self, val: Value, line: int) -> Value:
+        return self.builder.list_len(val, line)
 
     @property
     def environment(self) -> Environment:
@@ -508,7 +511,7 @@ class IRBuilder:
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1:]
             iter_list = self.call_c(to_list, [iterator], line)
-            iter_list_len = self.primitive_op(list_len_op, [iter_list], line)
+            iter_list_len = self.list_len(iter_list, line)
             post_star_len = self.add(LoadInt(len(post_star_vals)))
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 

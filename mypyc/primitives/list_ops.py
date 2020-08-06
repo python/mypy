@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, func_op, custom_op, name_emit,
+    name_ref_op, custom_op, name_emit,
     call_emit, c_function_op, c_binary_op, c_method_op
 )
 
@@ -146,11 +146,3 @@ def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     emitter.emit_declaration('Py_ssize_t %s;' % temp)
     emitter.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, args[0]))
     emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
-
-
-# len(list)
-list_len_op = func_op(name='builtins.len',
-                      arg_types=[list_rprimitive],
-                      result_type=short_int_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=emit_len)

@@ -126,7 +126,7 @@ def f(a):
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
     r1 = load_mem r0 :: native_int*
-    r2 = CPyTagged_ShortFromSsize_t(r1)
+    r2 = r1 << 1
     return r2
 
 [case testListAppend]
@@ -168,7 +168,7 @@ def increment(l):
 L0:
     r0 = get_element_ptr l ob_size :: PyVarObject
     r1 = load_mem r0 :: native_int*
-    r2 = CPyTagged_ShortFromSsize_t(r1)
+    r2 = r1 << 1
     r3 = 0
     i = r3
 L1:
