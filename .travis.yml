@@ -55,6 +55,7 @@ jobs:
     osx_image: xcode10.3
     language: generic
     env:
+      - TOXENV=py
       - PYTHONVERSION=3.6.3
       - EXTRA_ARGS="-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
   - name: "type check our own code"
