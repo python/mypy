@@ -81,10 +81,6 @@ def int_binary_op(name: str, c_function_name: str,
                 error_kind=error_kind)
 
 
-def int_compare_op(name: str, c_function_name: str) -> None:
-    int_binary_op(name, c_function_name, bool_rprimitive)
-
-
 # Binary, unary and augmented assignment operations that operate on CPyTagged ints.
 
 int_binary_op('+', 'CPyTagged_Add')
