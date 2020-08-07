@@ -9,11 +9,11 @@ See also the documentation for mypyc.rtypes.int_rprimitive.
 from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, BinaryIntOp
 from mypyc.ir.rtypes import (
-    int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
+    int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
     str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    name_ref_op, binary_op, custom_op, simple_emit, name_emit,
+    name_ref_op, name_emit,
     c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
 )
 
@@ -81,20 +81,6 @@ def int_binary_op(name: str, c_function_name: str,
                 error_kind=error_kind)
 
 
-def int_compare_op(name: str, c_function_name: str) -> None:
-    int_binary_op(name, c_function_name, bool_rprimitive)
-    # Generate a straight compare if we know both sides are short
-    op = name
-    binary_op(op=op,
-              arg_types=[short_int_rprimitive, short_int_rprimitive],
-              result_type=bool_rprimitive,
-              error_kind=ERR_NEVER,
-              format_str='{dest} = {args[0]} %s {args[1]} :: short_int' % op,
-              emit=simple_emit(
-                  '{dest} = (Py_ssize_t){args[0]} %s (Py_ssize_t){args[1]};' % op),
-              priority=2)
-
-
 # Binary, unary and augmented assignment operations that operate on CPyTagged ints.
 
 int_binary_op('+', 'CPyTagged_Add')
@@ -113,15 +99,6 @@ int_binary_op('-=', 'CPyTagged_Subtract')
 int_binary_op('*=', 'CPyTagged_Multiply')
 int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
-
-# Add short integers and assume that it doesn't overflow or underflow.
-# Assume that the operands are not big integers.
-unsafe_short_add = custom_op(
-    arg_types=[int_rprimitive, int_rprimitive],
-    result_type=short_int_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = {args[0]} + {args[1]} :: short_int',
-    emit=simple_emit('{dest} = {args[0]} + {args[1]};'))
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
