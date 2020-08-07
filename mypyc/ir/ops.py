@@ -25,8 +25,7 @@ from mypy.nodes import SymbolNode
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype, is_c_py_ssize_t_rprimitive,
-    c_pyssize_t_rprimitive
+    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive
 )
 from mypyc.common import short_name
 
@@ -1360,7 +1359,7 @@ class LoadMem(RegisterOp):
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
-        assert is_c_py_ssize_t_rprimitive(src.type)
+        assert is_pointer_rprimitive(src.type)
         self.src = src
 
     def sources(self) -> List[Value]:
@@ -1379,7 +1378,7 @@ class GetElementPtr(RegisterOp):
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
         super().__init__(line)
-        self.type = c_pyssize_t_rprimitive
+        self.type = pointer_rprimitive
         self.src = src
         self.src_type = src_type
         self.field = field
@@ -1388,7 +1387,7 @@ class GetElementPtr(RegisterOp):
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = get_element_ptr %r %r :: %r", self, self.src,
+        return env.format("%r = get_element_ptr %r %s :: %r", self, self.src,
                           self.field, self.src_type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:

@@ -15,7 +15,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive, int32_rprimitive,
-    int64_rprimitive, StructInfo, RStruct
+    int64_rprimitive, RStruct, pointer_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
@@ -25,7 +25,7 @@ from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisi
 from mypyc.primitives.registry import binary_ops, c_binary_ops
 from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
 from mypyc.primitives.list_ops import (
-    list_len_op, list_get_item_op, list_set_item_op, new_list_op, list_append_op
+    list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
 from mypyc.primitives.dict_ops import (
     dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
@@ -33,7 +33,6 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
-from mypyc.common import IS_32_BIT_PLATFORM
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
@@ -54,6 +53,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.i32_1 = self.env.add_local(Var('i32_1'), int32_rprimitive)
         self.i64 = self.env.add_local(Var('i64'), int64_rprimitive)
         self.i64_1 = self.env.add_local(Var('i64_1'), int64_rprimitive)
+        self.ptr = self.env.add_local(Var('ptr'), pointer_rprimitive)
         self.t = self.env.add_local(Var('t'), RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = self.env.add_local(
             Var('tt'),
@@ -116,13 +116,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(CallC(int_neg_op.c_function_name, [self.m], int_neg_op.return_type,
                                int_neg_op.steals, int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
-
-    def test_list_len(self) -> None:
-        self.assert_emit(PrimitiveOp([self.l], list_len_op, 55),
-                         """Py_ssize_t __tmp1;
-                            __tmp1 = PyList_GET_SIZE(cpy_r_l);
-                            cpy_r_r0 = CPyTagged_ShortFromSsize_t(__tmp1);
-                         """)
 
     def test_branch(self) -> None:
         self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR),
@@ -275,23 +268,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
 
     def test_load_mem(self) -> None:
-        if IS_32_BIT_PLATFORM:
-            self.assert_emit(LoadMem(bool_rprimitive, self.i32),
-                             """cpy_r_r0 = *(char *)cpy_r_i32;""")
-        else:
-            self.assert_emit(LoadMem(bool_rprimitive, self.i64),
-                             """cpy_r_r0 = *(char *)cpy_r_i64;""")
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr),
+                         """cpy_r_r0 = *(char *)cpy_r_ptr;""")
 
     def test_get_element_ptr(self) -> None:
-        info = StructInfo("Foo", ["b", "i32", "i64"], [bool_rprimitive,
-                                                       int32_rprimitive, int64_rprimitive])
-        r = RStruct(info)
+        r = RStruct("Foo", ["b", "i32", "i64"], [bool_rprimitive,
+                                                 int32_rprimitive, int64_rprimitive])
         self.assert_emit(GetElementPtr(self.o, r, "b"),
-                        """cpy_r_r0 = &cpy_r_o.b;""")
+                        """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->b;""")
         self.assert_emit(GetElementPtr(self.o, r, "i32"),
-                        """cpy_r_r00 = &cpy_r_o.i32;""")
+                        """cpy_r_r00 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
         self.assert_emit(GetElementPtr(self.o, r, "i64"),
-                        """cpy_r_r01 = &cpy_r_o.i64;""")
+                        """cpy_r_r01 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []

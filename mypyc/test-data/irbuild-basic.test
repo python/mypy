@@ -1400,12 +1400,16 @@ L6:
     unreachable
 def lst(x):
     x :: list
-    r0 :: short_int
-    r1 :: bool
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: bool
 L0:
-    r0 = len x :: list
-    r1 = r0 != 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = get_element_ptr x ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    r2 = r1 << 1
+    r3 = r2 != 0
+    if r3 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
@@ -2007,20 +2011,23 @@ def f():
     r0 :: list
     r1, r2, r3 :: object
     r4 :: list
-    r5, r6 :: short_int
-    r7 :: bool
-    r8 :: object
-    x, r9 :: int
-    r10 :: bool
-    r11 :: native_int
-    r12, r13, r14, r15 :: bool
-    r16 :: bool
-    r17 :: native_int
-    r18, r19, r20, r21 :: bool
-    r22 :: int
-    r23 :: object
-    r24 :: int32
-    r25 :: short_int
+    r5 :: short_int
+    r6 :: ptr
+    r7 :: native_int
+    r8 :: short_int
+    r9 :: bool
+    r10 :: object
+    x, r11 :: int
+    r12 :: bool
+    r13 :: native_int
+    r14, r15, r16, r17 :: bool
+    r18 :: bool
+    r19 :: native_int
+    r20, r21, r22, r23 :: bool
+    r24 :: int
+    r25 :: object
+    r26 :: int32
+    r27 :: short_int
 L0:
     r0 = []
     r1 = box(short_int, 2)
@@ -2029,51 +2036,53 @@ L0:
     r4 = [r1, r2, r3]
     r5 = 0
 L1:
-    r6 = len r4 :: list
-    r7 = r5 < r6 :: signed
-    if r7 goto L2 else goto L14 :: bool
+    r6 = get_element_ptr r4 ob_size :: PyVarObject
+    r7 = load_mem r6 :: native_int*
+    r8 = r7 << 1
+    r9 = r5 < r8 :: signed
+    if r9 goto L2 else goto L14 :: bool
 L2:
-    r8 = r4[r5] :: unsafe list
-    r9 = unbox(int, r8)
-    x = r9
-    r11 = x & 1
-    r12 = r11 == 0
-    if r12 goto L3 else goto L4 :: bool
+    r10 = r4[r5] :: unsafe list
+    r11 = unbox(int, r10)
+    x = r11
+    r13 = x & 1
+    r14 = r13 == 0
+    if r14 goto L3 else goto L4 :: bool
 L3:
-    r13 = x != 4
-    r10 = r13
+    r15 = x != 4
+    r12 = r15
     goto L5
 L4:
-    r14 = CPyTagged_IsEq_(x, 4)
-    r15 = !r14
-    r10 = r15
+    r16 = CPyTagged_IsEq_(x, 4)
+    r17 = !r16
+    r12 = r17
 L5:
-    if r10 goto L7 else goto L6 :: bool
+    if r12 goto L7 else goto L6 :: bool
 L6:
     goto L13
 L7:
-    r17 = x & 1
-    r18 = r17 == 0
-    if r18 goto L8 else goto L9 :: bool
+    r19 = x & 1
+    r20 = r19 == 0
+    if r20 goto L8 else goto L9 :: bool
 L8:
-    r19 = x != 6
-    r16 = r19
+    r21 = x != 6
+    r18 = r21
     goto L10
 L9:
-    r20 = CPyTagged_IsEq_(x, 6)
-    r21 = !r20
-    r16 = r21
+    r22 = CPyTagged_IsEq_(x, 6)
+    r23 = !r22
+    r18 = r23
 L10:
-    if r16 goto L12 else goto L11 :: bool
+    if r18 goto L12 else goto L11 :: bool
 L11:
     goto L13
 L12:
-    r22 = CPyTagged_Multiply(x, x)
-    r23 = box(int, r22)
-    r24 = PyList_Append(r0, r23)
+    r24 = CPyTagged_Multiply(x, x)
+    r25 = box(int, r24)
+    r26 = PyList_Append(r0, r25)
 L13:
-    r25 = r5 + 2
-    r5 = r25
+    r27 = r5 + 2
+    r5 = r27
     goto L1
 L14:
     return r0
@@ -2087,20 +2096,23 @@ def f():
     r0 :: dict
     r1, r2, r3 :: object
     r4 :: list
-    r5, r6 :: short_int
-    r7 :: bool
-    r8 :: object
-    x, r9 :: int
-    r10 :: bool
-    r11 :: native_int
-    r12, r13, r14, r15 :: bool
-    r16 :: bool
-    r17 :: native_int
-    r18, r19, r20, r21 :: bool
-    r22 :: int
-    r23, r24 :: object
-    r25 :: int32
-    r26 :: short_int
+    r5 :: short_int
+    r6 :: ptr
+    r7 :: native_int
+    r8 :: short_int
+    r9 :: bool
+    r10 :: object
+    x, r11 :: int
+    r12 :: bool
+    r13 :: native_int
+    r14, r15, r16, r17 :: bool
+    r18 :: bool
+    r19 :: native_int
+    r20, r21, r22, r23 :: bool
+    r24 :: int
+    r25, r26 :: object
+    r27 :: int32
+    r28 :: short_int
 L0:
     r0 = PyDict_New()
     r1 = box(short_int, 2)
@@ -2109,52 +2121,54 @@ L0:
     r4 = [r1, r2, r3]
     r5 = 0
 L1:
-    r6 = len r4 :: list
-    r7 = r5 < r6 :: signed
-    if r7 goto L2 else goto L14 :: bool
+    r6 = get_element_ptr r4 ob_size :: PyVarObject
+    r7 = load_mem r6 :: native_int*
+    r8 = r7 << 1
+    r9 = r5 < r8 :: signed
+    if r9 goto L2 else goto L14 :: bool
 L2:
-    r8 = r4[r5] :: unsafe list
-    r9 = unbox(int, r8)
-    x = r9
-    r11 = x & 1
-    r12 = r11 == 0
-    if r12 goto L3 else goto L4 :: bool
+    r10 = r4[r5] :: unsafe list
+    r11 = unbox(int, r10)
+    x = r11
+    r13 = x & 1
+    r14 = r13 == 0
+    if r14 goto L3 else goto L4 :: bool
 L3:
-    r13 = x != 4
-    r10 = r13
+    r15 = x != 4
+    r12 = r15
     goto L5
 L4:
-    r14 = CPyTagged_IsEq_(x, 4)
-    r15 = !r14
-    r10 = r15
+    r16 = CPyTagged_IsEq_(x, 4)
+    r17 = !r16
+    r12 = r17
 L5:
-    if r10 goto L7 else goto L6 :: bool
+    if r12 goto L7 else goto L6 :: bool
 L6:
     goto L13
 L7:
-    r17 = x & 1
-    r18 = r17 == 0
-    if r18 goto L8 else goto L9 :: bool
+    r19 = x & 1
+    r20 = r19 == 0
+    if r20 goto L8 else goto L9 :: bool
 L8:
-    r19 = x != 6
-    r16 = r19
+    r21 = x != 6
+    r18 = r21
     goto L10
 L9:
-    r20 = CPyTagged_IsEq_(x, 6)
-    r21 = !r20
-    r16 = r21
+    r22 = CPyTagged_IsEq_(x, 6)
+    r23 = !r22
+    r18 = r23
 L10:
-    if r16 goto L12 else goto L11 :: bool
+    if r18 goto L12 else goto L11 :: bool
 L11:
     goto L13
 L12:
-    r22 = CPyTagged_Multiply(x, x)
-    r23 = box(int, x)
-    r24 = box(int, r22)
-    r25 = CPyDict_SetItem(r0, r23, r24)
+    r24 = CPyTagged_Multiply(x, x)
+    r25 = box(int, x)
+    r26 = box(int, r24)
+    r27 = CPyDict_SetItem(r0, r25, r26)
 L13:
-    r26 = r5 + 2
-    r5 = r26
+    r28 = r5 + 2
+    r5 = r28
     goto L1
 L14:
     return r0
@@ -2168,68 +2182,78 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 [out]
 def f(l):
     l :: list
-    r0, r1 :: short_int
-    r2 :: bool
-    r3 :: object
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bool
+    r5 :: object
     x, y, z :: int
-    r4 :: tuple[int, int, int]
-    r5, r6, r7 :: int
-    r8 :: short_int
-    r9 :: list
-    r10, r11 :: short_int
-    r12 :: bool
-    r13 :: object
+    r6 :: tuple[int, int, int]
+    r7, r8, r9 :: int
+    r10 :: short_int
+    r11 :: list
+    r12 :: short_int
+    r13 :: ptr
+    r14 :: native_int
+    r15 :: short_int
+    r16 :: bool
+    r17 :: object
     x0, y0, z0 :: int
-    r14 :: tuple[int, int, int]
-    r15, r16, r17, r18, r19 :: int
-    r20 :: object
-    r21 :: int32
-    r22 :: short_int
+    r18 :: tuple[int, int, int]
+    r19, r20, r21, r22, r23 :: int
+    r24 :: object
+    r25 :: int32
+    r26 :: short_int
 L0:
     r0 = 0
 L1:
-    r1 = len l :: list
-    r2 = r0 < r1 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r1 = get_element_ptr l ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r3 = l[r0] :: unsafe list
-    r4 = unbox(tuple[int, int, int], r3)
-    r5 = r4[0]
-    x = r5
-    r6 = r4[1]
-    y = r6
-    r7 = r4[2]
-    z = r7
+    r5 = l[r0] :: unsafe list
+    r6 = unbox(tuple[int, int, int], r5)
+    r7 = r6[0]
+    x = r7
+    r8 = r6[1]
+    y = r8
+    r9 = r6[2]
+    z = r9
 L3:
-    r8 = r0 + 2
-    r0 = r8
+    r10 = r0 + 2
+    r0 = r10
     goto L1
 L4:
-    r9 = []
-    r10 = 0
+    r11 = []
+    r12 = 0
 L5:
-    r11 = len l :: list
-    r12 = r10 < r11 :: signed
-    if r12 goto L6 else goto L8 :: bool
+    r13 = get_element_ptr l ob_size :: PyVarObject
+    r14 = load_mem r13 :: native_int*
+    r15 = r14 << 1
+    r16 = r12 < r15 :: signed
+    if r16 goto L6 else goto L8 :: bool
 L6:
-    r13 = l[r10] :: unsafe list
-    r14 = unbox(tuple[int, int, int], r13)
-    r15 = r14[0]
-    x0 = r15
-    r16 = r14[1]
-    y0 = r16
-    r17 = r14[2]
-    z0 = r17
-    r18 = CPyTagged_Add(x0, y0)
-    r19 = CPyTagged_Add(r18, z0)
-    r20 = box(int, r19)
-    r21 = PyList_Append(r9, r20)
+    r17 = l[r12] :: unsafe list
+    r18 = unbox(tuple[int, int, int], r17)
+    r19 = r18[0]
+    x0 = r19
+    r20 = r18[1]
+    y0 = r20
+    r21 = r18[2]
+    z0 = r21
+    r22 = CPyTagged_Add(x0, y0)
+    r23 = CPyTagged_Add(r22, z0)
+    r24 = box(int, r23)
+    r25 = PyList_Append(r11, r24)
 L7:
-    r22 = r10 + 2
-    r10 = r22
+    r26 = r12 + 2
+    r12 = r26
     goto L5
 L8:
-    return r9
+    return r11
 
 [case testProperty]
 class PropertyHolder:

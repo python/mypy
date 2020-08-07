@@ -182,8 +182,10 @@ class RPrimitive(RType):
         self.size = size
         # TODO: For low-level integers, they actually don't have undefined values
         #       we need to figure out some way to represent here.
-        if ctype in ('CPyTagged', 'int32_t', 'int64_t'):
+        if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
+        elif ctype in ('int32_t', 'int64_t', 'CPyPtr'):
+            self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
@@ -254,6 +256,10 @@ if IS_32_BIT_PLATFORM:
 else:
     c_pyssize_t_rprimitive = int64_rprimitive
 
+# low level pointer, represented as integer in C backends
+pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
+                              ctype='CPyPtr')  # type: Final
+
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
 float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
@@ -309,6 +315,10 @@ def is_int64_rprimitive(rtype: RType) -> bool:
 
 def is_c_py_ssize_t_rprimitive(rtype: RType) -> bool:
     return rtype is c_pyssize_t_rprimitive
+
+
+def is_pointer_rprimitive(rtype: RType) -> bool:
+    return rtype is pointer_rprimitive
 
 
 def is_float_rprimitive(rtype: RType) -> bool:
@@ -514,12 +524,8 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
     return offsets, final_size
 
 
-class StructInfo:
-    """Struct-like type Infomation
-
-    StructInfo should work with registry to ensure constraints like the unique naming
-    constraint for struct type
-    """
+class RStruct(RType):
+    """Represent CPython structs"""
     def __init__(self,
                  name: str,
                  names: List[str],
@@ -532,31 +538,7 @@ class StructInfo:
             for i in range(len(self.types) - len(self.names)):
                 self.names.append('_item' + str(i))
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
-
-
-class RStruct(RType):
-    """Represent CPython structs"""
-    def __init__(self,
-                 info: StructInfo) -> None:
-        self.info = info
-        self.name = self.info.name
-        self._ctype = self.info.name
-
-    @property
-    def names(self) -> List[str]:
-        return self.info.names
-
-    @property
-    def types(self) -> List[RType]:
-        return self.info.types
-
-    @property
-    def offsets(self) -> List[int]:
-        return self.info.offsets
-
-    @property
-    def size(self) -> int:
-        return self.info.size
+        self._ctype = name
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rstruct(self)
@@ -571,10 +553,11 @@ class RStruct(RType):
                                                           in zip(self.names, self.types)))
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, RStruct) and self.info == other.info
+        return (isinstance(other, RStruct) and self.name == other.name
+                and self.names == other.names and self.types == other.types)
 
     def __hash__(self) -> int:
-        return hash(self.info)
+        return hash((self.name, tuple(self.names), tuple(self.types)))
 
     def serialize(self) -> JsonDict:
         assert False
@@ -687,3 +670,14 @@ def optional_value_type(rtype: RType) -> Optional[RType]:
 def is_optional_type(rtype: RType) -> bool:
     """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None
+
+
+PyObject = RStruct(
+    name='PyObject',
+    names=['ob_refcnt', 'ob_type'],
+    types=[c_pyssize_t_rprimitive, pointer_rprimitive])
+
+PyVarObject = RStruct(
+    name='PyVarObject',
+    names=['ob_base', 'ob_size'],
+    types=[PyObject, c_pyssize_t_rprimitive])

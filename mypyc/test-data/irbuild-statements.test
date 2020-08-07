@@ -326,27 +326,32 @@ def f(ls: List[int]) -> int:
 def f(ls):
     ls :: list
     y :: int
-    r0, r1 :: short_int
-    r2 :: bool
-    r3 :: object
-    x, r4, r5 :: int
-    r6 :: short_int
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bool
+    r5 :: object
+    x, r6, r7 :: int
+    r8 :: short_int
 L0:
     y = 0
     r0 = 0
 L1:
-    r1 = len ls :: list
-    r2 = r0 < r1 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r1 = get_element_ptr ls ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r3 = ls[r0] :: unsafe list
-    r4 = unbox(int, r3)
-    x = r4
-    r5 = CPyTagged_Add(y, x)
-    y = r5
+    r5 = ls[r0] :: unsafe list
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = CPyTagged_Add(y, x)
+    y = r7
 L3:
-    r6 = r0 + 2
-    r0 = r6
+    r8 = r0 + 2
+    r0 = r8
     goto L1
 L4:
     return y
@@ -869,36 +874,41 @@ def f(a):
     a :: list
     r0 :: short_int
     i :: int
-    r1, r2 :: short_int
-    r3 :: bool
-    r4 :: object
-    x, r5, r6 :: int
-    r7, r8 :: short_int
-    r9 :: None
+    r1 :: short_int
+    r2 :: ptr
+    r3 :: native_int
+    r4 :: short_int
+    r5 :: bool
+    r6 :: object
+    x, r7, r8 :: int
+    r9, r10 :: short_int
+    r11 :: None
 L0:
     r0 = 0
     i = 0
     r1 = 0
 L1:
-    r2 = len a :: list
-    r3 = r1 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r2 = get_element_ptr a ob_size :: PyVarObject
+    r3 = load_mem r2 :: native_int*
+    r4 = r3 << 1
+    r5 = r1 < r4 :: signed
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r4 = a[r1] :: unsafe list
-    r5 = unbox(int, r4)
-    x = r5
-    r6 = CPyTagged_Add(i, x)
+    r6 = a[r1] :: unsafe list
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = CPyTagged_Add(i, x)
 L3:
-    r7 = r0 + 2
-    r0 = r7
-    i = r7
-    r8 = r1 + 2
-    r1 = r8
+    r9 = r0 + 2
+    r0 = r9
+    i = r9
+    r10 = r1 + 2
+    r1 = r10
     goto L1
 L4:
 L5:
-    r9 = None
-    return r9
+    r11 = None
+    return r11
 def g(x):
     x :: object
     r0 :: short_int
@@ -946,44 +956,48 @@ def f(a, b):
     b :: object
     r0 :: short_int
     r1 :: object
-    r2 :: short_int
-    r3 :: bool
-    r4, r5 :: object
-    x, r6 :: int
-    r7, y, r8 :: bool
-    r9 :: short_int
-    r10 :: bool
-    r11 :: None
+    r2 :: ptr
+    r3 :: native_int
+    r4 :: short_int
+    r5 :: bool
+    r6, r7 :: object
+    x, r8 :: int
+    r9, y, r10 :: bool
+    r11 :: short_int
+    r12 :: bool
+    r13 :: None
 L0:
     r0 = 0
     r1 = PyObject_GetIter(b)
 L1:
-    r2 = len a :: list
-    r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L7 :: bool
+    r2 = get_element_ptr a ob_size :: PyVarObject
+    r3 = load_mem r2 :: native_int*
+    r4 = r3 << 1
+    r5 = r0 < r4 :: signed
+    if r5 goto L2 else goto L7 :: bool
 L2:
-    r4 = PyIter_Next(r1)
-    if is_error(r4) goto L7 else goto L3
+    r6 = PyIter_Next(r1)
+    if is_error(r6) goto L7 else goto L3
 L3:
-    r5 = a[r0] :: unsafe list
-    r6 = unbox(int, r5)
-    x = r6
-    r7 = unbox(bool, r4)
-    y = r7
-    r8 = bool b :: object
-    if r8 goto L4 else goto L5 :: bool
+    r7 = a[r0] :: unsafe list
+    r8 = unbox(int, r7)
+    x = r8
+    r9 = unbox(bool, r6)
+    y = r9
+    r10 = bool b :: object
+    if r10 goto L4 else goto L5 :: bool
 L4:
     x = 2
 L5:
 L6:
-    r9 = r0 + 2
-    r0 = r9
+    r11 = r0 + 2
+    r0 = r11
     goto L1
 L7:
-    r10 = CPy_NoErrOccured()
+    r12 = CPy_NoErrOccured()
 L8:
-    r11 = None
-    return r11
+    r13 = None
+    return r13
 def g(a, b):
     a :: object
     b :: list
@@ -991,14 +1005,16 @@ def g(a, b):
     r1, r2 :: short_int
     z :: int
     r3 :: object
-    r4 :: short_int
-    r5, r6, r7, x :: bool
-    r8 :: object
-    y, r9 :: int
-    r10 :: bool
-    r11, r12 :: short_int
-    r13 :: bool
-    r14 :: None
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: short_int
+    r7, r8, r9, x :: bool
+    r10 :: object
+    y, r11 :: int
+    r12 :: bool
+    r13, r14 :: short_int
+    r15 :: bool
+    r16 :: None
 L0:
     r0 = PyObject_GetIter(a)
     r1 = 0
@@ -1008,30 +1024,32 @@ L1:
     r3 = PyIter_Next(r0)
     if is_error(r3) goto L6 else goto L2
 L2:
-    r4 = len b :: list
-    r5 = r1 < r4 :: signed
-    if r5 goto L3 else goto L6 :: bool
+    r4 = get_element_ptr b ob_size :: PyVarObject
+    r5 = load_mem r4 :: native_int*
+    r6 = r5 << 1
+    r7 = r1 < r6 :: signed
+    if r7 goto L3 else goto L6 :: bool
 L3:
-    r6 = r2 < 10 :: signed
-    if r6 goto L4 else goto L6 :: bool
+    r8 = r2 < 10 :: signed
+    if r8 goto L4 else goto L6 :: bool
 L4:
-    r7 = unbox(bool, r3)
-    x = r7
-    r8 = b[r1] :: unsafe list
-    r9 = unbox(int, r8)
-    y = r9
-    r10 = False
-    x = r10
+    r9 = unbox(bool, r3)
+    x = r9
+    r10 = b[r1] :: unsafe list
+    r11 = unbox(int, r10)
+    y = r11
+    r12 = False
+    x = r12
 L5:
-    r11 = r1 + 2
-    r1 = r11
-    r12 = r2 + 2
-    r2 = r12
-    z = r12
+    r13 = r1 + 2
+    r1 = r13
+    r14 = r2 + 2
+    r2 = r14
+    z = r14
     goto L1
 L6:
-    r13 = CPy_NoErrOccured()
+    r15 = CPy_NoErrOccured()
 L7:
-    r14 = None
-    return r14
+    r16 = None
+    return r16
 

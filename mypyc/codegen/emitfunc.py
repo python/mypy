@@ -477,7 +477,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         # TODO: support tuple type
         assert isinstance(op.src_type, RStruct)
         assert op.field in op.src_type.names, "Invalid field name."
-        self.emit_line('%s = &%s.%s;' % (dest, src, op.field))
+        self.emit_line('%s = (%s)&((%s *)%s)->%s;' % (dest, op.type._ctype, op.src_type.name,
+                                                      src, op.field))
 
     # Helpers
 

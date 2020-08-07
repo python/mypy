@@ -120,10 +120,14 @@ def f(a: List[int]) -> int:
 [out]
 def f(a):
     a :: list
-    r0 :: short_int
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
 L0:
-    r0 = len a :: list
-    return r0
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    r2 = r1 << 1
+    return r2
 
 [case testListAppend]
 from typing import List
@@ -152,29 +156,33 @@ def increment(l: List[int]) -> List[int]:
 [out]
 def increment(l):
     l :: list
-    r0, r1 :: short_int
+    r0 :: ptr
+    r1 :: native_int
+    r2, r3 :: short_int
     i :: int
-    r2 :: bool
-    r3 :: object
-    r4, r5 :: object
-    r6 :: bool
-    r7 :: short_int
+    r4 :: bool
+    r5 :: object
+    r6, r7 :: object
+    r8 :: bool
+    r9 :: short_int
 L0:
-    r0 = len l :: list
-    r1 = 0
-    i = r1
+    r0 = get_element_ptr l ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    r2 = r1 << 1
+    r3 = 0
+    i = r3
 L1:
-    r2 = r1 < r0 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r4 = r3 < r2 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r3 = CPyList_GetItem(l, i)
-    r4 = box(short_int, 2)
-    r5 = PyNumber_InPlaceAdd(r3, r4)
-    r6 = CPyList_SetItem(l, i, r5)
+    r5 = CPyList_GetItem(l, i)
+    r6 = box(short_int, 2)
+    r7 = PyNumber_InPlaceAdd(r5, r6)
+    r8 = CPyList_SetItem(l, i, r7)
 L3:
-    r7 = r1 + 2
-    r1 = r7
-    i = r7
+    r9 = r3 + 2
+    r3 = r9
+    i = r9
     goto L1
 L4:
     return l
