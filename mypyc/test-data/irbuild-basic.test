@@ -1158,33 +1158,26 @@ def big_int() -> None:
     max_31_bit = 1073741823
 [out]
 def big_int():
-    r0 :: short_int
     a_62_bit :: int
-    r1 :: short_int
-    max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit :: int
-    r6 :: short_int
+    max_62_bit, r0, b_63_bit, r1, c_63_bit, r2, max_63_bit, r3, d_64_bit :: int
     max_32_bit :: int
-    r7 :: short_int
     max_31_bit :: int
-    r7 :: None
+    r4 :: None
 L0:
-    r0 = 4611686018427387902
-    a_62_bit = r0
-    r1 = 4611686018427387903
-    max_62_bit = r1
-    r2 = int_1 :: static  (4611686018427387904)
-    b_63_bit = r2
-    r3 = int_2 :: static  (9223372036854775806)
-    c_63_bit = r3
-    r4 = int_3 :: static  (9223372036854775807)
-    max_63_bit = r4
-    r5 = int_4 :: static  (9223372036854775808)
-    d_64_bit = r5
-    r6 = 2147483647
-    max_32_bit = r6
+    a_62_bit = 9223372036854775804
+    max_62_bit = 9223372036854775806
+    r0 = int_1 :: static  (4611686018427387904)
+    b_63_bit = r0
+    r1 = int_2 :: static  (9223372036854775806)
+    c_63_bit = r1
+    r2 = int_3 :: static  (9223372036854775807)
+    max_63_bit = r2
+    r3 = int_4 :: static  (9223372036854775808)
+    d_64_bit = r3
+    max_32_bit = 4294967294
     max_31_bit = 2147483646
-    r7 = None
-    return r7
+    r4 = None
+    return r4
 
 [case testCallableTypes]
 from typing import Callable
