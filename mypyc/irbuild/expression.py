@@ -24,7 +24,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops, CFunctionDescription
-from mypyc.primitives.generic_ops import iter_op, slice_op
+from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op

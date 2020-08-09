@@ -135,3 +135,7 @@ def test_slicing() -> None:
     assert s[333:two] == ""
     assert s[two:-333] == ""
     assert s[-333:two] == "fo"
+    big_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert s[1:big_int] == "oobar"
+    assert s[big_int:] == ""
+    assert s[-big_int:-1] == "fooba"

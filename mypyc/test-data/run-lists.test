@@ -145,3 +145,7 @@ def test_slicing() -> None:
     assert s[333:two] == []
     assert s[two:-333] == []
     assert s[-333:two] == ["f", "o"]
+    long_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert s[1:long_int] == ["o", "o", "b", "a", "r"]
+    assert s[long_int:] == []
+    assert s[-long_int:-1] == ["f", "o", "o", "b", "a"]
