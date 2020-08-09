@@ -454,8 +454,8 @@ whose name is passed to :option:`--always-true <mypy --always-true>` or :option:
    check to a variable. This may change in future versions of mypy.
 
 By default, mypy will use your current version of Python and your current
-operating system as default values for ``sys.version_info`` and
-``sys.platform``.
+operating system as default values for :py:data:`sys.version_info` and
+:py:data:`sys.platform`.
 
 To target a different Python version, use the :option:`--python-version X.Y <mypy --python-version>` flag.
 For example, to verify your code typechecks if were run using Python 2, pass

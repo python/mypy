@@ -198,6 +198,27 @@ if a := 2:
 while b := "x":
     reveal_type(b)  # N: Revealed type is 'builtins.str'
 
+l = [y2 := 1, y2 + 2, y2 + 3]
+reveal_type(y2)  # N: Revealed type is 'builtins.int'
+reveal_type(l)  # N: Revealed type is 'builtins.list[builtins.int*]'
+ 
+filtered_data = [y3 for x in l if (y3 := a) is not None]
+reveal_type(filtered_data)  # N: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(y3)  # N: Revealed type is 'builtins.int'
+
+d = {'a': (a2 := 1), 'b': a2 + 1, 'c': a2 + 2}
+reveal_type(d)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+reveal_type(a2)  # N: Revealed type is 'builtins.int'
+
+d2 = {(prefix := 'key_') + 'a': (start_val := 1), prefix + 'b': start_val + 1, prefix + 'c': start_val + 2}
+reveal_type(d2)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+reveal_type(prefix)  # N: Revealed type is 'builtins.str'
+reveal_type(start_val)  # N: Revealed type is 'builtins.int'
+
+filtered_dict = {k: new_v for k, v in [('a', 1), ('b', 2), ('c', 3)] if (new_v := v + 1) == 2}
+reveal_type(filtered_dict)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+reveal_type(new_v)  # N: Revealed type is 'builtins.int'
+
 def f(x: int = (c := 4)) -> int:
     if a := 2:
         reveal_type(a)  # N: Revealed type is 'builtins.int'
@@ -217,6 +238,19 @@ def f(x: int = (c := 4)) -> int:
     filtered_data = [y3 for x in l if (y3 := a) is not None]
     reveal_type(filtered_data)  # N: Revealed type is 'builtins.list[builtins.int*]'
     reveal_type(y3)  # N: Revealed type is 'builtins.int'
+
+    d = {'a': (a2 := 1), 'b': a2 + 1, 'c': a2 + 2}
+    reveal_type(d)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+    reveal_type(a2)  # N: Revealed type is 'builtins.int'
+
+    d2 = {(prefix := 'key_') + 'a': (start_val := 1), prefix + 'b': start_val + 1, prefix + 'c': start_val + 2}
+    reveal_type(d2)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+    reveal_type(prefix)  # N: Revealed type is 'builtins.str'
+    reveal_type(start_val)  # N: Revealed type is 'builtins.int'
+
+    filtered_dict = {k: new_v for k, v in [('a', 1), ('b', 2), ('c', 3)] if (new_v := v + 1) == 2}
+    reveal_type(filtered_dict)  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int*]'
+    reveal_type(new_v)  # N: Revealed type is 'builtins.int'
 
     # https://www.python.org/dev/peps/pep-0572/#exceptional-cases
     (y4 := 3)
@@ -303,6 +337,28 @@ def check_narrow(x: Optional[int], s: List[int]) -> None:
 
     if isinstance((y := x), int):
         reveal_type(y)  # N: Revealed type is 'builtins.int'
+
+class AssignmentExpressionsClass:
+    x = (y := 1) + (z := 2)
+    reveal_type(z)  # N: Revealed type is 'builtins.int'
+
+    l = [x2 := 1, 2, 3]
+    reveal_type(x2)  # N: Revealed type is 'builtins.int'
+
+    def __init__(self) -> None:
+        reveal_type(self.z)  # N: Revealed type is 'builtins.int'
+
+        l = [z2 := 1, z2 + 2, z2 + 3]
+        reveal_type(z2)  # N: Revealed type is 'builtins.int'
+        reveal_type(l)  # N: Revealed type is 'builtins.list[builtins.int*]'
+
+        filtered_data = [z3 for x in l if (z3 := 1) is not None]
+        reveal_type(filtered_data)  # N: Revealed type is 'builtins.list[builtins.int*]'
+        reveal_type(z3)  # N: Revealed type is 'builtins.int'
+
+# Assignment expressions from inside the class should not escape the class scope.
+reveal_type(x2)  # E: Name 'x2' is not defined  # N: Revealed type is 'Any'
+reveal_type(z2)  # E: Name 'z2' is not defined  # N: Revealed type is 'Any'
 
 [builtins fixtures/isinstancelist.pyi]
 

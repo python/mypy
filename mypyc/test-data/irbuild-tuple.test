@@ -22,16 +22,14 @@ def f() -> int:
 [out]
 def f():
     r0 :: bool
-    r1 :: short_int
-    r2, t :: tuple[bool, int]
-    r3 :: int
+    r1, t :: tuple[bool, int]
+    r2 :: int
 L0:
     r0 = True
-    r1 = 2
-    r2 = (r0, r1)
-    t = r2
-    r3 = t[1]
-    return r3
+    r1 = (r0, 2)
+    t = r1
+    r2 = t[1]
+    return r2
 
 [case testTupleLen]
 from typing import Tuple
@@ -40,10 +38,8 @@ def f(x: Tuple[bool, bool, int]) -> int:
 [out]
 def f(x):
     x :: tuple[bool, bool, int]
-    r0 :: short_int
 L0:
-    r0 = 6
-    return r0
+    return 6
 
 [case testSequenceTuple]
 from typing import List
@@ -53,15 +49,13 @@ def f(x: List[bool]) -> bool:
 def f(x):
     x :: list
     r0 :: tuple
-    r1 :: short_int
-    r2 :: object
-    r3 :: bool
+    r1 :: object
+    r2 :: bool
 L0:
     r0 = PyList_AsTuple(x)
-    r1 = 2
-    r2 = CPySequenceTuple_GetItem(r0, r1)
-    r3 = unbox(bool, r2)
-    return r3
+    r1 = CPySequenceTuple_GetItem(r0, 2)
+    r2 = unbox(bool, r1)
+    return r2
 
 [case testSequenceTupleLen]
 from typing import Tuple
@@ -82,23 +76,18 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    r0, r1 :: short_int
-    r2 :: tuple[int, int]
+    r0 :: tuple[int, int]
     t :: tuple
-    r3 :: object
-    r4 :: short_int
-    r5 :: object
-    r6 :: int
+    r1 :: object
+    r2 :: object
+    r3 :: int
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = (r0, r1)
-    r3 = box(tuple[int, int], r2)
-    t = r3
-    r4 = 2
-    r5 = CPySequenceTuple_GetItem(t, r4)
-    r6 = unbox(int, r5)
-    return r6
+    r0 = (2, 4)
+    r1 = box(tuple[int, int], r0)
+    t = r1
+    r2 = CPySequenceTuple_GetItem(t, 2)
+    r3 = unbox(int, r2)
+    return r3
 
 [case testTupleDisplay]
 from typing import Sequence, Tuple
@@ -107,25 +96,21 @@ def f(x: Sequence[int], y: Sequence[int]) -> Tuple[int, ...]:
 [out]
 def f(x, y):
     x, y :: object
-    r0, r1, r2 :: short_int
-    r3, r4 :: object
-    r5 :: list
-    r6, r7, r8 :: object
-    r9 :: int32
-    r10 :: tuple
+    r0, r1 :: object
+    r2 :: list
+    r3, r4, r5 :: object
+    r6 :: int32
+    r7 :: tuple
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = box(short_int, r0)
-    r4 = box(short_int, r1)
-    r5 = [r3, r4]
-    r6 = CPyList_Extend(r5, x)
-    r7 = CPyList_Extend(r5, y)
-    r8 = box(short_int, r2)
-    r9 = PyList_Append(r5, r8)
-    r10 = PyList_AsTuple(r5)
-    return r10
+    r0 = box(short_int, 2)
+    r1 = box(short_int, 4)
+    r2 = [r0, r1]
+    r3 = CPyList_Extend(r2, x)
+    r4 = CPyList_Extend(r2, y)
+    r5 = box(short_int, 6)
+    r6 = PyList_Append(r2, r5)
+    r7 = PyList_AsTuple(r2)
+    return r7
 
 [case testTupleFor]
 from typing import Tuple, List
@@ -135,32 +120,47 @@ def f(xs: Tuple[str, ...]) -> None:
 [out]
 def f(xs):
     xs :: tuple
-    r0, r1 :: short_int
-    r2 :: int
-    r3 :: bool
-    r4 :: object
-    x, r5 :: str
-    r6, r7 :: short_int
-    r8 :: None
+    r0 :: short_int
+    r1 :: int
+    r2 :: bool
+    r3 :: native_int
+    r4 :: bool
+    r5 :: native_int
+    r6, r7, r8, r9 :: bool
+    r10 :: object
+    x, r11 :: str
+    r12 :: short_int
+    r13 :: None
 L0:
     r0 = 0
-    r1 = r0
 L1:
-    r2 = len xs :: tuple
-    r3 = CPyTagged_IsLt(r1, r2)
-    if r3 goto L2 else goto L4 :: bool
+    r1 = len xs :: tuple
+    r3 = r0 & 1
+    r4 = r3 == 0
+    r5 = r1 & 1
+    r6 = r5 == 0
+    r7 = r4 & r6
+    if r7 goto L2 else goto L3 :: bool
 L2:
-    r4 = CPySequenceTuple_GetItem(xs, r1)
-    r5 = cast(str, r4)
-    x = r5
+    r8 = r0 < r1 :: signed
+    r2 = r8
+    goto L4
 L3:
-    r6 = 2
-    r7 = r1 + r6
-    r1 = r7
-    goto L1
+    r9 = CPyTagged_IsLt_(r0, r1)
+    r2 = r9
 L4:
-    r8 = None
-    return r8
+    if r2 goto L5 else goto L7 :: bool
+L5:
+    r10 = CPySequenceTuple_GetItem(xs, r0)
+    r11 = cast(str, r10)
+    x = r11
+L6:
+    r12 = r0 + 2
+    r0 = r12
+    goto L1
+L7:
+    r13 = None
+    return r13
 
 [case testNamedTupleAttribute]
 from typing import NamedTuple
@@ -175,21 +175,18 @@ def f(nt: NT, b: bool) -> int:
 def f(nt, b):
     nt :: tuple
     b :: bool
-    r0 :: short_int
-    r1 :: object
-    r2 :: int
-    r3 :: short_int
-    r4 :: object
-    r5 :: int
+    r0 :: object
+    r1 :: int
+    r2 :: object
+    r3 :: int
 L0:
     if b goto L1 else goto L2 :: bool
 L1:
-    r0 = 0
-    r1 = CPySequenceTuple_GetItem(nt, r0)
-    r2 = unbox(int, r1)
-    return r2
+    r0 = CPySequenceTuple_GetItem(nt, 0)
+    r1 = unbox(int, r0)
+    return r1
 L2:
-    r3 = 2
-    r4 = CPySequenceTuple_GetItem(nt, r3)
-    r5 = unbox(int, r4)
-    return r5
+    r2 = CPySequenceTuple_GetItem(nt, 2)
+    r3 = unbox(int, r2)
+    return r3
+

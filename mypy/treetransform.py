@@ -250,6 +250,7 @@ class TransformVisitor(NodeVisitor[Node]):
                       self.block(node.body),
                       self.optional_block(node.else_body),
                       self.optional_type(node.unanalyzed_index_type))
+        new.is_async = node.is_async
         new.index_type = self.optional_type(node.index_type)
         return new
 
@@ -293,6 +294,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.optional_expressions(node.target),
                        self.block(node.body),
                        self.optional_type(node.unanalyzed_type))
+        new.is_async = node.is_async
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
 

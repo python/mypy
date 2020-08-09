@@ -49,10 +49,18 @@ class ModuleNotFoundReason(Enum):
     # corresponding *-stubs package.
     FOUND_WITHOUT_TYPE_HINTS = 1
 
+    # The module was not found in the current working directory, but
+    # was able to be found in the parent directory.
+    WRONG_WORKING_DIRECTORY = 2
+
     def error_message_templates(self) -> Tuple[str, str]:
         if self is ModuleNotFoundReason.NOT_FOUND:
             msg = "Cannot find implementation or library stub for module named '{}'"
             note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+        elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
+            msg = "Cannot find implementation or library stub for module named '{}'"
+            note = ("You may be running mypy in a subpackage, "
+                    "mypy should be run on the package root")
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
             msg = "Skipping analyzing '{}': found module but no type hints or library stubs"
             note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
@@ -166,6 +174,9 @@ class FindModuleCache:
         """Return the path of the module source file or why it wasn't found."""
         if id not in self.results:
             self.results[id] = self._find_module(id)
+            if (self.results[id] is ModuleNotFoundReason.NOT_FOUND
+                    and self._can_find_module_in_parent_dir(id)):
+                self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
         return self.results[id]
 
     def _find_module_non_stub_helper(self, components: List[str],
@@ -191,6 +202,20 @@ class FindModuleCache:
             if pkg_id not in self.ns_ancestors and self.fscache.isdir(path):
                 self.ns_ancestors[pkg_id] = path
             path = os.path.dirname(path)
+
+    def _can_find_module_in_parent_dir(self, id: str) -> bool:
+        """Test if a module can be found by checking the parent directories
+        of the current working directory.
+        """
+        working_dir = os.getcwd()
+        parent_search = FindModuleCache(SearchPaths((), (), (), ()))
+        while any(file.endswith(("__init__.py", "__init__.pyi"))
+                  for file in os.listdir(working_dir)):
+            working_dir = os.path.dirname(working_dir)
+            parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
+            if not isinstance(parent_search._find_module(id), ModuleNotFoundReason):
+                return True
+        return False
 
     def _find_module(self, id: str) -> ModuleSearchResult:
         fscache = self.fscache

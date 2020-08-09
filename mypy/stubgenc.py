@@ -14,7 +14,20 @@ from types import ModuleType
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
-    infer_arg_sig_from_docstring, FunctionSig
+    infer_arg_sig_from_anon_docstring, infer_ret_type_sig_from_anon_docstring, FunctionSig
+)
+
+
+# Members of the typing module to consider for importing by default.
+_DEFAULT_TYPING_IMPORTS = (
+    'Any'
+    'Dict',
+    'Iterable',
+    'Iterator',
+    'List',
+    'Optional',
+    'Tuple',
+    'Union',
 )
 
 
@@ -82,7 +95,7 @@ def generate_stub_for_c_module(module_name: str,
 def add_typing_import(output: List[str]) -> List[str]:
     """Add typing imports for collections/types that occur in the generated stub."""
     names = []
-    for name in ['Any', 'Union', 'Tuple', 'Optional', 'List', 'Dict']:
+    for name in _DEFAULT_TYPING_IMPORTS:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
@@ -144,7 +157,7 @@ def generate_c_function_stub(module: ModuleType,
     if (name in ('__new__', '__init__') and name not in sigs and class_name and
             class_name in class_sigs):
         inferred = [FunctionSig(name=name,
-                                args=infer_arg_sig_from_docstring(class_sigs[class_name]),
+                                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
                                 ret_type=ret_type)]  # type: Optional[List[FunctionSig]]
     else:
         docstr = getattr(obj, '__doc__', None)
@@ -154,7 +167,7 @@ def generate_c_function_stub(module: ModuleType,
                 inferred = [FunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
             else:
                 inferred = [FunctionSig(name=name,
-                                        args=infer_arg_sig_from_docstring(
+                                        args=infer_arg_sig_from_anon_docstring(
                                             sigs.get(name, '(*args, **kwargs)')),
                                         ret_type=ret_type)]
 
@@ -217,8 +230,20 @@ def generate_c_property_stub(name: str, obj: object, output: List[str], readonly
 
     Try to infer type from docstring, append resulting lines to 'output'.
     """
-    docstr = getattr(obj, '__doc__', None)
-    inferred = infer_prop_type_from_docstring(docstr)
+    def infer_prop_type(docstr: Optional[str]) -> Optional[str]:
+        """Infer property type from docstring or docstring signature."""
+        if docstr is not None:
+            inferred = infer_ret_type_sig_from_anon_docstring(docstr)
+            if not inferred:
+                inferred = infer_prop_type_from_docstring(docstr)
+            return inferred
+        else:
+            return None
+
+    inferred = infer_prop_type(getattr(obj, '__doc__', None))
+    if not inferred:
+        fget = getattr(obj, 'fget', None)
+        inferred = infer_prop_type(getattr(fget, '__doc__', None))
     if not inferred:
         inferred = 'Any'
 

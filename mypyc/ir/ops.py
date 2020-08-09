@@ -25,7 +25,7 @@ from mypy.nodes import SymbolNode
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype
+    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive
 )
 from mypyc.common import short_name
 
@@ -138,6 +138,7 @@ class Environment:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
+        self.temp_load_int_idx = 0
         # All names genereted; value is the number of duplicates seen.
         self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]
@@ -198,6 +199,10 @@ class Environment:
         """Record the value of an operation."""
         if reg.is_void:
             return
+        if isinstance(reg, LoadInt):
+            self.add(reg, "i%d" % self.temp_load_int_idx)
+            self.temp_load_int_idx += 1
+            return
         self.add(reg, 'r%d' % self.temp_index)
         self.temp_index += 1
 
@@ -232,17 +237,24 @@ class Environment:
                 i = n
         return ''.join(result)
 
-    def to_lines(self) -> List[str]:
+    def to_lines(self, const_regs: Optional[Dict[str, int]] = None) -> List[str]:
         result = []
         i = 0
         regs = list(self.regs())
-
+        if const_regs is None:
+            const_regs = {}
         while i < len(regs):
             i0 = i
-            group = [regs[i0].name]
+            if regs[i0].name not in const_regs:
+                group = [regs[i0].name]
+            else:
+                group = []
+                i += 1
+                continue
             while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
                 i += 1
-                group.append(regs[i].name)
+                if regs[i].name not in const_regs:
+                    group.append(regs[i].name)
             i += 1
             result.append('%s :: %s' % (', '.join(group), regs[i0].type))
         return result
@@ -1335,6 +1347,53 @@ class BinaryIntOp(RegisterOp):
         return visitor.visit_binary_int_op(self)
 
 
+class LoadMem(RegisterOp):
+    """Reading a memory location
+
+    type ret = *(type*)src
+    """
+    error_kind = ERR_NEVER
+
+    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        # TODO: for now we enforce that the src memory address should be Py_ssize_t
+        #       later we should also support same width unsigned int
+        assert is_pointer_rprimitive(src.type)
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = load_mem %r :: %r*", self, self.src, self.type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_mem(self)
+
+
+class GetElementPtr(RegisterOp):
+    """Get the address of a struct element"""
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = pointer_rprimitive
+        self.src = src
+        self.src_type = src_type
+        self.field = field
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = get_element_ptr %r %s :: %r", self, self.src,
+                          self.field, self.src_type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_get_element_ptr(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1439,6 +1498,14 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_binary_int_op(self, op: BinaryIntOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_mem(self, op: LoadMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_get_element_ptr(self, op: GetElementPtr) -> T:
         raise NotImplementedError
 
 

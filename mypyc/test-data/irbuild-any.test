@@ -51,7 +51,7 @@ def f(a, n, c):
     r5 :: int
     r6 :: str
     r7 :: object
-    r8 :: bool
+    r8 :: int32
     r9 :: None
 L0:
     r0 = box(int, n)
@@ -64,7 +64,7 @@ L0:
     n = r5
     r6 = unicode_6 :: static  ('a')
     r7 = box(int, n)
-    r8 = setattr a, r6, r7
+    r8 = PyObject_SetAttr(a, r6, r7)
     r9 = None
     return r9
 
@@ -91,9 +91,9 @@ def f1(a, n):
     r4 :: None
 L0:
     r0 = box(int, n)
-    r1 = a + r0
+    r1 = PyNumber_Add(a, r0)
     r2 = box(int, n)
-    r3 = r2 + a
+    r3 = PyNumber_Add(r2, a)
     r4 = None
     return r4
 def f2(a, n, l):
@@ -101,21 +101,22 @@ def f2(a, n, l):
     n :: int
     l :: list
     r0, r1, r2, r3, r4 :: object
-    r5 :: bool
+    r5 :: int32
     r6 :: object
-    r7, r8 :: bool
+    r7 :: int32
+    r8 :: bool
     r9 :: object
     r10 :: list
     r11 :: None
 L0:
     r0 = box(int, n)
-    r1 = a[r0] :: object
-    r2 = l[a] :: object
+    r1 = PyObject_GetItem(a, r0)
+    r2 = PyObject_GetItem(l, a)
     r3 = box(int, n)
     r4 = box(int, n)
-    r5 = a.__setitem__(r3, r4) :: object
+    r5 = PyObject_SetItem(a, r3, r4)
     r6 = box(int, n)
-    r7 = l.__setitem__(a, r6) :: object
+    r7 = PyObject_SetItem(l, a, r6)
     r8 = CPyList_SetItem(l, n, a)
     r9 = box(int, n)
     r10 = [a, r9]
@@ -129,10 +130,10 @@ def f3(a, n):
     r5 :: None
 L0:
     r0 = box(int, n)
-    r1 = a += r0
+    r1 = PyNumber_InPlaceAdd(a, r0)
     a = r1
     r2 = box(int, n)
-    r3 = r2 += a
+    r3 = PyNumber_InPlaceAdd(r2, a)
     r4 = unbox(int, r3)
     n = r4
     r5 = None

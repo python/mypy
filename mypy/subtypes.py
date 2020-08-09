@@ -399,6 +399,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return False
         elif isinstance(right, Overloaded):
+            if left == self.right:
+                # When it is the same overload, then the types are equal.
+                return True
+
             # Ensure each overload in the right side (the supertype) is accounted for.
             previous_match_left_index = -1
             matched_overloads = set()

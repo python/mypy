@@ -17,7 +17,7 @@ from mypy.nodes import (
 
 from mypyc.ir.ops import (
     Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, PrimitiveOp, RaiseStandardError, LoadErrorValue,
+    AssignmentTargetAttr, AssignmentTargetTuple, RaiseStandardError, LoadErrorValue,
     BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
@@ -534,7 +534,7 @@ def transform_with(builder: IRBuilder,
     # We could probably optimize the case where the manager is compiled by us,
     # but that is not our common case at all, so.
     mgr_v = builder.accept(expr)
-    typ = builder.primitive_op(type_op, [mgr_v], line)
+    typ = builder.call_c(type_op, [mgr_v], line)
     exit_ = builder.maybe_spill(builder.py_get_attr(typ, '__exit__', line))
     value = builder.py_call(
         builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
@@ -634,7 +634,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         )
     elif isinstance(target, AssignmentTargetAttr):
         key = builder.load_static_unicode(target.attr)
-        builder.add(PrimitiveOp([target.obj, key], py_delattr_op, line))
+        builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.

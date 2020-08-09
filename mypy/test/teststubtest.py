@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
+from mypy.test.data import root_dir
 
 
 @contextlib.contextmanager
@@ -27,13 +28,18 @@ def use_tmp_dir() -> Iterator[None]:
 TEST_MODULE_NAME = "test_module"
 
 
-def run_stubtest(stub: str, runtime: str, options: List[str]) -> str:
+def run_stubtest(
+    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
+) -> str:
     with use_tmp_dir():
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
             f.write(runtime)
-
+        if config_file:
+            with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
+                f.write(config_file)
+            options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
         if sys.path[0] != ".":
             sys.path.insert(0, ".")
         if TEST_MODULE_NAME in sys.modules:
@@ -753,3 +759,18 @@ class StubtestIntegration(unittest.TestCase):
     def test_typeshed(self) -> None:
         # check we don't crash while checking typeshed
         test_stubs(parse_options(["--check-typeshed"]))
+
+    def test_config_file(self) -> None:
+        runtime = "temp = 5\n"
+        stub = "from decimal import Decimal\ntemp: Decimal\n"
+        config_file = (
+            "[mypy]\n"
+            "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
+        )
+        output = run_stubtest(stub=stub, runtime=runtime, options=[])
+        assert output == (
+            "error: test_module.temp variable differs from runtime type Literal[5]\n"
+            "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
+        )
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+        assert output == ""

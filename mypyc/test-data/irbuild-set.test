@@ -4,26 +4,22 @@ def f() -> Set[int]:
     return {1, 2, 3}
 [out]
 def f():
-    r0, r1, r2 :: short_int
-    r3 :: set
-    r4 :: object
-    r5 :: int32
-    r6 :: object
-    r7 :: int32
-    r8 :: object
-    r9 :: int32
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: object
+    r4 :: int32
+    r5 :: object
+    r6 :: int32
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = set
-    r4 = box(short_int, r0)
-    r5 = PySet_Add(r3, r4)
-    r6 = box(short_int, r1)
-    r7 = PySet_Add(r3, r6)
-    r8 = box(short_int, r2)
-    r9 = PySet_Add(r3, r8)
-    return r3
+    r0 = set
+    r1 = box(short_int, 2)
+    r2 = PySet_Add(r0, r1)
+    r3 = box(short_int, 4)
+    r4 = PySet_Add(r0, r3)
+    r5 = box(short_int, 6)
+    r6 = PySet_Add(r0, r5)
+    return r0
 
 [case testNewEmptySet]
 from typing import Set
@@ -54,28 +50,24 @@ def f() -> int:
     return len({1, 2, 3})
 [out]
 def f():
-    r0, r1, r2 :: short_int
-    r3 :: set
-    r4 :: object
-    r5 :: int32
-    r6 :: object
-    r7 :: int32
-    r8 :: object
-    r9 :: int32
-    r10 :: int
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: object
+    r4 :: int32
+    r5 :: object
+    r6 :: int32
+    r7 :: int
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = set
-    r4 = box(short_int, r0)
-    r5 = PySet_Add(r3, r4)
-    r6 = box(short_int, r1)
-    r7 = PySet_Add(r3, r6)
-    r8 = box(short_int, r2)
-    r9 = PySet_Add(r3, r8)
-    r10 = len r3 :: set
-    return r10
+    r0 = set
+    r1 = box(short_int, 2)
+    r2 = PySet_Add(r0, r1)
+    r3 = box(short_int, 4)
+    r4 = PySet_Add(r0, r3)
+    r5 = box(short_int, 6)
+    r6 = PySet_Add(r0, r5)
+    r7 = len r0 :: set
+    return r7
 
 [case testSetContains]
 from typing import Set
@@ -84,31 +76,26 @@ def f() -> bool:
     return (5 in x)
 [out]
 def f():
-    r0, r1 :: short_int
-    r2 :: set
+    r0 :: set
+    r1 :: object
+    r2 :: int32
     r3 :: object
     r4 :: int32
+    x :: set
     r5 :: object
     r6 :: int32
-    x :: set
-    r7 :: short_int
-    r8 :: object
-    r9 :: int32
-    r10 :: bool
+    r7 :: bool
 L0:
-    r0 = 6
-    r1 = 8
-    r2 = set
-    r3 = box(short_int, r0)
-    r4 = PySet_Add(r2, r3)
-    r5 = box(short_int, r1)
-    r6 = PySet_Add(r2, r5)
-    x = r2
-    r7 = 10
-    r8 = box(short_int, r7)
-    r9 = PySet_Contains(x, r8)
-    r10 = truncate r9: int32 to builtins.bool
-    return r10
+    r0 = set
+    r1 = box(short_int, 6)
+    r2 = PySet_Add(r0, r1)
+    r3 = box(short_int, 8)
+    r4 = PySet_Add(r0, r3)
+    x = r0
+    r5 = box(short_int, 10)
+    r6 = PySet_Contains(x, r5)
+    r7 = truncate r6: int32 to builtins.bool
+    return r7
 
 [case testSetRemove]
 from typing import Set
@@ -119,17 +106,15 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: short_int
-    r2 :: object
-    r3 :: bool
-    r4 :: None
+    r1 :: object
+    r2 :: bool
+    r3 :: None
 L0:
     r0 = set
     x = r0
-    r1 = 2
-    r2 = box(short_int, r1)
-    r3 = CPySet_Remove(x, r2)
-    r4 = None
+    r1 = box(short_int, 2)
+    r2 = CPySet_Remove(x, r1)
+    r3 = None
     return x
 
 [case testSetDiscard]
@@ -141,17 +126,15 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: short_int
-    r2 :: object
-    r3 :: int32
-    r4 :: None
+    r1 :: object
+    r2 :: int32
+    r3 :: None
 L0:
     r0 = set
     x = r0
-    r1 = 2
-    r2 = box(short_int, r1)
-    r3 = PySet_Discard(x, r2)
-    r4 = None
+    r1 = box(short_int, 2)
+    r2 = PySet_Discard(x, r1)
+    r3 = None
     return x
 
 [case testSetAdd]
@@ -163,17 +146,15 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: short_int
-    r2 :: object
-    r3 :: int32
-    r4 :: None
+    r1 :: object
+    r2 :: int32
+    r3 :: None
 L0:
     r0 = set
     x = r0
-    r1 = 2
-    r2 = box(short_int, r1)
-    r3 = PySet_Add(x, r2)
-    r4 = None
+    r1 = box(short_int, 2)
+    r2 = PySet_Add(x, r1)
+    r3 = None
     return x
 
 [case testSetClear]
@@ -231,26 +212,22 @@ def f(x: Set[int], y: Set[int]) -> Set[int]:
 [out]
 def f(x, y):
     x, y :: set
-    r0, r1, r2 :: short_int
-    r3 :: set
-    r4 :: object
-    r5 :: int32
-    r6 :: object
-    r7, r8, r9 :: int32
-    r10 :: object
-    r11 :: int32
+    r0 :: set
+    r1 :: object
+    r2 :: int32
+    r3 :: object
+    r4, r5, r6 :: int32
+    r7 :: object
+    r8 :: int32
 L0:
-    r0 = 2
-    r1 = 4
-    r2 = 6
-    r3 = set
-    r4 = box(short_int, r0)
-    r5 = PySet_Add(r3, r4)
-    r6 = box(short_int, r1)
-    r7 = PySet_Add(r3, r6)
-    r8 = _PySet_Update(r3, x)
-    r9 = _PySet_Update(r3, y)
-    r10 = box(short_int, r2)
-    r11 = PySet_Add(r3, r10)
-    return r3
+    r0 = set
+    r1 = box(short_int, 2)
+    r2 = PySet_Add(r0, r1)
+    r3 = box(short_int, 4)
+    r4 = PySet_Add(r0, r3)
+    r5 = _PySet_Update(r0, x)
+    r6 = _PySet_Update(r0, y)
+    r7 = box(short_int, 6)
+    r8 = PySet_Add(r0, r7)
+    return r0
 

@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
-    call_negative_magic_emit, c_function_op
+    call_negative_magic_emit, c_function_op, c_custom_op
 )
 
 
@@ -61,22 +61,22 @@ c_function_op(
     error_kind=ERR_NEVER)
 
 # Return the result of obj.__await()__ or obj.__iter__() (if no __await__ exists)
-coro_op = custom_op(name='get_coroutine_obj',
-                    arg_types=[object_rprimitive],
-                    result_type=object_rprimitive,
-                    error_kind=ERR_MAGIC,
-                    emit=call_emit('CPy_GetCoro'))
+coro_op = c_custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPy_GetCoro',
+    error_kind=ERR_MAGIC)
 
 # Do obj.send(value), or a next(obj) if second arg is None.
 # (This behavior is to match the PEP 380 spec for yield from.)
 # Like next_raw_op, don't swallow StopIteration,
 # but also don't propagate an error.
 # Can return NULL: see next_op.
-send_op = custom_op(name='send',
-                    arg_types=[object_rprimitive, object_rprimitive],
-                    result_type=object_rprimitive,
-                    error_kind=ERR_NEVER,
-                    emit=call_emit('CPyIter_Send'))
+send_op = c_custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyIter_Send',
+    error_kind=ERR_NEVER)
 
 # This is sort of unfortunate but oh well: yield_from_except performs most of the
 # error handling logic in `yield from` operations. It returns a bool and a value.
@@ -96,20 +96,20 @@ yield_from_except_op = custom_op(
     emit=simple_emit('{dest}.f0 = CPy_YieldFromErrorHandle({args[0]}, &{dest}.f1);'))
 
 # Create method object from a callable object and self.
-method_new_op = custom_op(name='method_new',
-                          arg_types=[object_rprimitive, object_rprimitive],
-                          result_type=object_rprimitive,
-                          error_kind=ERR_MAGIC,
-                          emit=call_emit('PyMethod_New'))
+method_new_op = c_custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='PyMethod_New',
+    error_kind=ERR_MAGIC)
 
 # Check if the current exception is a StopIteration and return its value if so.
 # Treats "no exception" as StopIteration with a None value.
 # If it is a different exception, re-reraise it.
-check_stop_op = custom_op(name='check_stop_iteration',
-                          arg_types=[],
-                          result_type=object_rprimitive,
-                          error_kind=ERR_MAGIC,
-                          emit=call_emit('CPy_FetchStopIterationValue'))
+check_stop_op = c_custom_op(
+    arg_types=[],
+    return_type=object_rprimitive,
+    c_function_name='CPy_FetchStopIterationValue',
+    error_kind=ERR_MAGIC)
 
 # Negate a primitive bool
 unary_op(op='not',
@@ -133,12 +133,11 @@ py_calc_meta_op = custom_op(
 )
 
 # Import a module
-import_op = custom_op(
-    name='import',
+import_op = c_custom_op(
     arg_types=[str_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PyImport_Import'))
+    return_type=object_rprimitive,
+    c_function_name='PyImport_Import',
+    error_kind=ERR_MAGIC)
 
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(
@@ -186,20 +185,20 @@ bool_op = func_op(
     emit=call_negative_magic_emit('PyObject_IsTrue'))
 
 # slice(start, stop, step)
-new_slice_op = func_op(
-    'builtins.slice',
+new_slice_op = c_function_op(
+    name='builtins.slice',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySlice_New'))
+    c_function_name='PySlice_New',
+    return_type=object_rprimitive,
+    error_kind=ERR_MAGIC)
 
 # type(obj)
-type_op = func_op(
-    'builtins.type',
+type_op = c_function_op(
+    name='builtins.type',
     arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=call_emit('PyObject_Type'))
+    c_function_name='PyObject_Type',
+    return_type=object_rprimitive,
+    error_kind=ERR_NEVER)
 
 # Get 'builtins.type' (base class of all classes)
 type_object_op = name_ref_op(
@@ -221,9 +220,8 @@ pytype_from_template_op = custom_op(
 
 # Create a dataclass from an extension class. See
 # CPyDataclass_SleightOfHand for more docs.
-dataclass_sleight_of_hand = custom_op(
+dataclass_sleight_of_hand = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='{dest} = dataclass_sleight_of_hand({comma_args})',
-    emit=call_emit('CPyDataclass_SleightOfHand'))
+    return_type=bool_rprimitive,
+    c_function_name='CPyDataclass_SleightOfHand',
+    error_kind=ERR_FALSE)

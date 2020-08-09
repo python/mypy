@@ -200,8 +200,8 @@ If you are getting this error, try:
 
 3.  :ref:`Writing your own stub files <stub-files>` containing type hints for
     the library. You can point mypy at your type hints either by passing
-    them in via the command line, by using the  ``files`` or ``mypy_path``
-    :ref:`config file options <config-file-import-discovery>`, or by
+    them in via the command line, by using the  :confval:`files` or :confval:`mypy_path`
+    config file options, or by
     adding the location to the ``MYPYPATH`` environment variable.
 
     These stub files do not need to be complete! A good strategy is to use
@@ -223,7 +223,7 @@ will continue to be of type ``Any``.
 
 2.  To suppress *all* missing import imports errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
-    ``ignore_missing_imports`` to True. For example, suppose your codebase
+    :confval:`ignore_missing_imports` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
     all import errors associated with that library and that library alone by
     adding the following section to your config file::
@@ -240,8 +240,8 @@ will continue to be of type ``Any``.
 
 3.  To suppress *all* missing import errors for *all* libraries in your codebase,
     invoke mypy with the :option:`--ignore-missing-imports <mypy --ignore-missing-imports>` command line flag or set
-    the ``ignore_missing_imports``
-    :ref:`config file option <config-file-import-discovery>` to True
+    the :confval:`ignore_missing_imports`
+    config file option to True
     in the *global* section of your mypy config file::
 
         [mypy]
@@ -275,8 +275,8 @@ this error, try:
     how you're invoking mypy accordingly.
 
 3.  Directly specifying the directory containing the module you want to
-    type check from the command line, by using the ``files`` or
-    ``mypy_path`` :ref:`config file options <config-file-import-discovery>`,
+    type check from the command line, by using the :confval:`files` or
+    :confval:`mypy_path` config file options,
     or by using the ``MYPYPATH`` environment variable.
 
     Note: if the module you are trying to import is actually a *submodule* of
@@ -309,7 +309,7 @@ even if the imported module is not a file you explicitly wanted mypy to check.
 
 For example, suppose we have two modules ``mycode.foo`` and ``mycode.bar``:
 the former has type hints and the latter does not. We run
-``mypy -m mycode.foo`` and mypy discovers that ``mycode.foo`` imports
+:option:`mypy -m mycode.foo <mypy -m>` and mypy discovers that ``mycode.foo`` imports
 ``mycode.bar``.
 
 How do we want mypy to type check ``mycode.bar``? We can configure the
@@ -426,7 +426,7 @@ This is computed from the following items:
 
 - The ``MYPYPATH`` environment variable
   (a colon-separated list of directories).
-- The ``mypy_path`` :ref:`config file option <config-file-import-discovery>`.
+- The :confval:`mypy_path` config file option.
 - The directories containing the sources given on the command line
   (see below).
 - The installed packages marked as safe for type checking (see
@@ -470,15 +470,15 @@ Other advice and best practices
 *******************************
 
 There are multiple ways of telling mypy what files to type check, ranging
-from passing in command line arguments to using the ``files`` or ``mypy_path``
-:ref:`config file options <config-file-import-discovery>` to setting the
+from passing in command line arguments to using the :confval:`files` or :confval:`mypy_path`
+config file options to setting the
 ``MYPYPATH`` environment variable.
 
 However, in practice, it is usually sufficient to just use either
-command line arguments or the ``files`` config file option (the two
+command line arguments or the :confval:`files` config file option (the two
 are largely interchangeable).
 
-Setting ``mypy_path``/``MYPYPATH`` is mostly useful in the case
+Setting :confval:`mypy_path`/``MYPYPATH`` is mostly useful in the case
 where you want to try running mypy against multiple distinct
 sets of files that happen to share some common dependencies.
 

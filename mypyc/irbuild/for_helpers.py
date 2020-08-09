@@ -29,7 +29,6 @@ from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
 
-
 GenFunc = Callable[[], None]
 
 
@@ -243,7 +242,7 @@ def make_for_loop_generator(builder: IRBuilder,
         if (expr.callee.fullname == 'builtins.reversed'
                 and len(expr.args) == 1
                 and expr.arg_kinds == [ARG_POS]
-                and is_sequence_rprimitive(rtyp)):
+                and is_sequence_rprimitive(builder.node_type(expr.args[0]))):
             # Special case "for x in reversed(<list>)".
             expr_reg = builder.accept(expr.args[0])
             target_type = builder.get_sequence_type(expr)
@@ -333,6 +332,9 @@ class ForGenerator:
 
     def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
         """A helper to get collection length, used by several subclasses."""
+        val = self.builder.read(expr, self.line)
+        if is_list_rprimitive(val.type):
+            return self.builder.builder.list_len(self.builder.read(expr, self.line), self.line)
         return self.builder.builder.builtin_call(
             [self.builder.read(expr, self.line)],
             'builtins.len',
@@ -352,7 +354,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
+        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type
@@ -364,7 +366,7 @@ class ForIterable(ForGenerator):
         # for NULL (an exception does not necessarily have to be raised).
         builder = self.builder
         line = self.line
-        self.next_reg = builder.primitive_op(next_op, [builder.read(self.iter_target, line)], line)
+        self.next_reg = builder.call_c(next_op, [builder.read(self.iter_target, line)], line)
         builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
 
     def begin_body(self) -> None:

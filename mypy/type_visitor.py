@@ -134,7 +134,6 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
 
-@trait
 class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
@@ -242,7 +241,6 @@ class TypeTranslator(TypeVisitor[Type]):
         pass
 
 
-@trait
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 
