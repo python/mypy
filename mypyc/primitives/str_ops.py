@@ -7,8 +7,8 @@ from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )
 from mypyc.primitives.registry import (
-    func_op, binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
-    c_method_op, c_binary_op, c_function_op, custom_op
+    binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit, c_method_op,
+    c_binary_op, c_function_op, custom_op
 )
 
 
