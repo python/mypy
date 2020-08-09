@@ -95,7 +95,10 @@ class bool:
 
 class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __init__(self, i: Iterable[T_co]) -> None: pass
+    @overload
     def __getitem__(self, i: int) -> T_co: pass
+    @overload
+    def __getitem__(self, i: slice) -> Tuple[T_co, ...]: pass
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[T_co]: ...
     def __contains__(self, item: object) -> int: ...
