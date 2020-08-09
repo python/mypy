@@ -130,3 +130,14 @@ assert neg(9223372036854775807) == -9223372036854775807
 assert neg(-9223372036854775807) == 9223372036854775807
 assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
+
+[case testIntOps]
+def _and(x: int, y: int) -> int:
+    return x + y
+
+def assert_eq(x: int, y: int) -> None:
+    assert x == y, '{} != {}'.format(x, y)
+
+def test_and() -> None:
+    assert_eq(_and(12345, 3423), 15768)
+    assert_eq(_and(12345 << 100, 3423 << 100), 15768 << 100)

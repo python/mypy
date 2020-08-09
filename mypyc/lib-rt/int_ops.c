@@ -273,3 +273,84 @@ PyObject *CPyLong_FromFloat(PyObject *o) {
 PyObject *CPyBool_Str(bool b) {
     return PyObject_Str(b ? Py_True : Py_False);
 }
+
+static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
+    Py_ssize_t i = v->ob_base.ob_size;
+    while (i > 0 && v->ob_digit[i - 1] == 0)
+        i--;
+    v->ob_base.ob_size = i;
+}
+
+static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
+    // Directly access the digits, as there is no fast C API function for this.
+    PyLongObject *aobj = (PyLongObject *)CPyTagged_AsObject(a);
+    PyLongObject *bobj = (PyLongObject *)CPyTagged_AsObject(b);
+    Py_ssize_t asize = aobj->ob_base.ob_size;
+    Py_ssize_t bsize = bobj->ob_base.ob_size;
+    PyLongObject *r;
+    if (unlikely(asize < 0 || bsize < 0)) {
+        // Negative numbers are slow, as bitwise ops on them are rare.
+        switch (op) {
+        case '&':
+            r = (PyLongObject *)PyNumber_And((PyObject *)aobj, (PyObject *)bobj);
+            break;
+        case '|':
+            r = (PyLongObject *)PyNumber_Or((PyObject *)aobj, (PyObject *)bobj);
+            break;
+        default:
+            r = (PyLongObject *)PyNumber_Xor((PyObject *)aobj, (PyObject *)bobj);
+        }
+        if (unlikely(r == NULL)) {
+            CPyError_OutOfMemory();
+        }
+    } else {
+        // Optimized for two non-negative integers.
+        Py_ssize_t size = asize < bsize ? asize : bsize;
+        r = _PyLong_New(size);
+        if (unlikely(r == NULL)) {
+            CPyError_OutOfMemory();
+        }
+        Py_ssize_t i;
+        switch (op) {
+        case '&':
+            for (i = 0; i < size; i++) {
+                r->ob_digit[i] = aobj->ob_digit[i] & bobj->ob_digit[i];
+            }
+            break;
+        case '|':
+            for (i = 0; i < size; i++) {
+                r->ob_digit[i] = aobj->ob_digit[i] | bobj->ob_digit[i];
+            }
+            break;
+        default:
+            for (i = 0; i < size; i++) {
+                r->ob_digit[i] = aobj->ob_digit[i] ^ bobj->ob_digit[i];
+            }
+        }
+        CPyLong_NormalizeUnsigned(r);
+    }
+    Py_DECREF(aobj);
+    Py_DECREF(bobj);
+    return CPyTagged_StealFromObject((PyObject *)r);
+}
+
+CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left & right;
+    }
+    return CPyTagged_BitwiseLong(left, right, '&');
+}
+
+CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left | right;
+    }
+    return CPyTagged_BitwiseLong(left, right, '|');
+}
+
+CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left ^ right;
+    }
+    return CPyTagged_BitwiseLong(left, right, '^');
+}
