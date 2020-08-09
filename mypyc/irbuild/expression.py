@@ -369,7 +369,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
             # Replace missing end index with the largest short integer
             # (a sequence can't be longer).
             end = builder.load_static_int(MAX_LITERAL_SHORT_INT)
-        candidates = [slice_op, list_slice_op, tuple_slice_op, str_slice_op]
+        candidates = [list_slice_op, tuple_slice_op, str_slice_op]
         return builder.builder.matching_primitive_op(candidates, [base, begin, end], index.line)
 
     return None

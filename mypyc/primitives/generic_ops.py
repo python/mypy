@@ -258,11 +258,3 @@ next_raw_op = c_custom_op(arg_types=[object_rprimitive],
                           return_type=object_rprimitive,
                           c_function_name='CPyIter_Next',
                           error_kind=ERR_NEVER)
-
-# obj[begin:end]
-slice_op = custom_op(name='get_slice',
-                     arg_types=[object_rprimitive, int_rprimitive, int_rprimitive],
-                     result_type=object_rprimitive,
-                     error_kind=ERR_MAGIC,
-                     emit=call_emit('CPyObject_GetSlice'),
-                     priority=0)
