@@ -66,9 +66,15 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
         if (startn < 0) {
             startn += PyUnicode_GET_LENGTH(obj);
+            if (startn < 0) {
+                startn = 0;
+            }
         }
         if (endn < 0) {
             endn += PyUnicode_GET_LENGTH(obj);
+            if (endn < 0) {
+                endn = 0;
+            }
         }
         return PyUnicode_Substring(obj, startn, endn);
     }
