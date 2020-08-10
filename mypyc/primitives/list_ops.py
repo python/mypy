@@ -9,7 +9,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, custom_op, name_emit,
-    call_emit, c_function_op, c_binary_op, c_method_op
+    call_emit, c_function_op, c_binary_op, c_method_op, c_custom_op
 )
 
 
@@ -149,8 +149,8 @@ def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
 
 
 # list[begin:end]
-list_slice_op = custom_op(name='list_slice',
-                     arg_types=[list_rprimitive, int_rprimitive, int_rprimitive],
-                     result_type=object_rprimitive,
-                     error_kind=ERR_MAGIC,
-                     emit=call_emit('CPyList_GetSlice'))
+list_slice_op = c_custom_op(
+    arg_types=[list_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetSlice',
+    error_kind=ERR_MAGIC,)

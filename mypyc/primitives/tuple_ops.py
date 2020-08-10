@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
 from mypyc.primitives.registry import (
-    func_op, c_method_op, custom_op, simple_emit, c_function_op, call_emit
+    func_op, c_method_op, custom_op, simple_emit, c_function_op, c_custom_op
 )
 
 
@@ -67,8 +67,8 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # tuple[begin:end]
-tuple_slice_op = custom_op(name='tuple_slice',
-                           arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
-                           result_type=object_rprimitive,
-                           error_kind=ERR_MAGIC,
-                           emit=call_emit('CPySequenceTuple_GetSlice'))
+tuple_slice_op = c_custom_op(
+    arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPySequenceTuple_GetSlice',
+    error_kind=ERR_MAGIC)
