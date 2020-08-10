@@ -12,7 +12,7 @@ check that the priorities are configured properly.
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_NEG_INT
 from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
-    binary_op, unary_op, func_op, custom_op, call_emit, simple_emit,
+    binary_op, unary_op, custom_op, call_emit, simple_emit,
     call_negative_magic_emit, negative_int_emit,
     c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
 )
@@ -226,12 +226,11 @@ py_method_call_op = custom_op(
     emit=simple_emit('{dest} = CPyObject_CallMethodObjArgs({comma_args}, NULL);'))
 
 # len(obj)
-func_op(name='builtins.len',
-        arg_types=[object_rprimitive],
-        result_type=int_rprimitive,
-        error_kind=ERR_NEVER,
-        emit=call_emit('CPyObject_Size'),
-        priority=0)
+generic_len_op = c_custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyObject_Size',
+    error_kind=ERR_NEVER)
 
 # iter(obj)
 iter_op = c_function_op(name='builtins.iter',

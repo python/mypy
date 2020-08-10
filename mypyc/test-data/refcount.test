@@ -777,51 +777,52 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0 :: short_int
-    r1 :: int
-    r2 :: object
-    r3 :: tuple[bool, int, object]
-    r4 :: int
-    r5 :: bool
-    r6 :: object
-    key, r7 :: int
-    r8, r9 :: object
-    r10 :: int
-    r11, r12 :: bool
-    r13 :: None
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11 :: int
+    r12, r13 :: bool
+    r14 :: None
 L0:
     r0 = 0
-    r1 = len d :: dict
-    r2 = CPyDict_GetKeysIter(d)
+    r1 = PyDict_Size(d)
+    r2 = r1 << 1
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r3 = CPyDict_NextKey(r2, r0)
-    r4 = r3[1]
-    r0 = r4
-    r5 = r3[0]
-    if r5 goto L2 else goto L6 :: bool
+    r4 = CPyDict_NextKey(r3, r0)
+    r5 = r4[1]
+    r0 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L6 :: bool
 L2:
-    r6 = r3[2]
-    dec_ref r3
-    r7 = unbox(int, r6)
-    dec_ref r6
-    key = r7
-    r8 = box(int, key)
-    r9 = CPyDict_GetItem(d, r8)
-    dec_ref r8
-    r10 = unbox(int, r9)
+    r7 = r4[2]
+    dec_ref r4
+    r8 = unbox(int, r7)
+    dec_ref r7
+    key = r8
+    r9 = box(int, key)
+    r10 = CPyDict_GetItem(d, r9)
     dec_ref r9
-    dec_ref r10 :: int
+    r11 = unbox(int, r10)
+    dec_ref r10
+    dec_ref r11 :: int
 L3:
-    r11 = CPyDict_CheckSize(d, r1)
+    r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r12 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccured()
 L5:
-    r13 = None
-    return r13
+    r14 = None
+    return r14
 L6:
-    dec_ref r1 :: int
-    dec_ref r2
     dec_ref r3
+    dec_ref r4
     goto L4
 
 [case testBorrowRefs]

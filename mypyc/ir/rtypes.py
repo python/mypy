@@ -681,3 +681,21 @@ PyVarObject = RStruct(
     name='PyVarObject',
     names=['ob_base', 'ob_size'],
     types=[PyObject, c_pyssize_t_rprimitive])
+
+setentry = RStruct(
+    name='setentry',
+    names=['key', 'hash'],
+    types=[pointer_rprimitive, c_pyssize_t_rprimitive])
+
+smalltable = RStruct(
+    name='smalltable',
+    names=[],
+    types=[setentry] * 8)
+
+PySetObject = RStruct(
+    name='PySetObject',
+    names=['ob_base', 'fill', 'used', 'mask', 'table', 'hash', 'finger',
+           'smalltable', 'weakreflist'],
+    types=[PyObject, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive,
+           pointer_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, smalltable,
+           pointer_rprimitive])

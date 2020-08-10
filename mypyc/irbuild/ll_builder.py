@@ -27,7 +27,8 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
-    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive
+    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
+    is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -45,10 +46,10 @@ from mypyc.primitives.list_ops import (
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import (
-    dict_update_in_display_op, dict_new_op, dict_build_op
+    dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
 )
 from mypyc.primitives.misc_ops import (
     none_op, none_object_op, false_op, fast_isinstance_op, bool_op, type_is_op
@@ -704,7 +705,7 @@ class LowLevelIRBuilder:
             zero = self.add(LoadInt(0))
             value = self.binary_op(value, zero, '!=', value.line)
         elif is_same_type(value.type, list_rprimitive):
-            length = self.list_len(value, value.line)
+            length = self.builtin_len(value, value.line)
             zero = self.add(LoadInt(0))
             value = self.binary_op(length, zero, '!=', value.line)
         elif (isinstance(value.type, RInstance) and value.type.class_ir.is_ext_class
@@ -811,12 +812,29 @@ class LowLevelIRBuilder:
     def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(BinaryIntOp(type, lhs, rhs, op, line))
 
-    def list_len(self, val: Value, line: int) -> Value:
-        elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
-        size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
-        offset = self.add(LoadInt(1, -1, rtype=c_pyssize_t_rprimitive))
-        return self.binary_int_op(short_int_rprimitive, size_value, offset,
-                                  BinaryIntOp.LEFT_SHIFT, -1)
+    def builtin_len(self, val: Value, line: int) -> Value:
+        typ = val.type
+        if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
+            elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                      BinaryIntOp.LEFT_SHIFT, line)
+        elif is_dict_rprimitive(typ):
+            size_value = self.call_c(dict_size_op, [val], line)
+            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                      BinaryIntOp.LEFT_SHIFT, line)
+        elif is_set_rprimitive(typ):
+            elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                      BinaryIntOp.LEFT_SHIFT, line)
+        # generic case
+        else:
+            return self.call_c(generic_len_op, [val], line)
+
     # Internal helpers
 
     def decompose_union_helper(self,
