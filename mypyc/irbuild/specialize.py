@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive,
+    bool_rprimitive, is_dict_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.misc_ops import true_op, false_op
@@ -75,9 +75,9 @@ def translate_len(
             # though we still need to evaluate it.
             builder.accept(expr.args[0])
             return builder.add(LoadInt(len(expr_rtype.types)))
-        elif is_list_rprimitive(expr_rtype):
+        else:
             obj = builder.accept(expr.args[0])
-            return builder.list_len(obj, -1)
+            return builder.builtin_len(obj, -1)
     return None
 
 
