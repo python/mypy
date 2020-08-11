@@ -265,7 +265,7 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def rename_refs(self, names: List[NameExpr], index: int) -> None:
         name = names[0].name
-        new_name = name + "'" * (index + 1)
+        new_name = name + str(index)
         for expr in names:
             expr.name = new_name
 

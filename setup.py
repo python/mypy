@@ -181,7 +181,7 @@ setup(name='mypy',
       packages=[
           'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
           'mypyc', 'mypyc.test', 'mypyc.codegen', 'mypyc.ir', 'mypyc.irbuild',
-          'mypyc.primitives', 'mypyc.transform'
+          'mypyc.primitives', 'mypyc.transform', 'mypyc.analysis'
       ],
       package_data={'mypy': package_data},
       scripts=['scripts/mypyc'],
