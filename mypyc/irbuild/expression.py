@@ -4,7 +4,7 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Tuple
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -16,9 +16,9 @@ from mypy.nodes import (
 from mypy.types import TupleType, get_proper_type
 
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
+    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign, LoadAddress
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
+from mypyc.ir.rtypes import RType, RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops, CFunctionDescription
 from mypyc.primitives.generic_ops import iter_op
@@ -34,11 +34,17 @@ from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehensio
 
 
 # Name and attribute references
+builtin_names = {
+    'builtins.dict': (object_rprimitive, 'PyDict_Type')
+}  # type: Dict[str, Tuple[RType, str]]
 
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
     fullname = expr.node.fullname
+    if fullname in builtin_names:
+        typ, src = builtin_names[fullname]
+        return builder.add(LoadAddress(typ, src, expr.line))
     if fullname in name_ref_ops:
         # Use special access op for this particular name.
         desc = name_ref_ops[fullname]

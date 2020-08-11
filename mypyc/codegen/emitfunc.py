@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct
@@ -479,6 +479,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         assert op.field in op.src_type.names, "Invalid field name."
         self.emit_line('%s = (%s)&((%s *)%s)->%s;' % (dest, op.type._ctype, op.src_type.name,
                                                       src, op.field))
+
+    def visit_load_address(self, op: LoadAddress) -> None:
+        typ = op.type
+        dest = self.reg(op)
+        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, op.src))
 
     # Helpers
 

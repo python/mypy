@@ -1394,6 +1394,25 @@ class GetElementPtr(RegisterOp):
         return visitor.visit_get_element_ptr(self)
 
 
+class LoadAddress(RegisterOp):
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self, type: RType, src: str, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = load_address %s", self, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_address(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1506,6 +1525,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_element_ptr(self, op: GetElementPtr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_address(self, op: LoadAddress) -> T:
         raise NotImplementedError
 
 
