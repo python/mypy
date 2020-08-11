@@ -39,6 +39,7 @@ builtin_names = {
 
 
 # Name and attribute references
+
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
     fullname = expr.node.fullname
