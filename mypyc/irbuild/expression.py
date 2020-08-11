@@ -4,7 +4,7 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union, Dict, Tuple
+from typing import List, Optional, Union
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -18,7 +18,7 @@ from mypy.types import TupleType, get_proper_type
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign, LoadAddress
 )
-from mypyc.ir.rtypes import RType, RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
+from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import name_ref_ops, CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op

@@ -95,6 +95,7 @@ c_name_ref_ops = {}  # type: Dict[str, CLoadDescription]
 
 builtin_names = {}  # type: Dict[str, Tuple[RType, str]]
 
+
 def simple_emit(template: str) -> EmitCallback:
     """Construct a simple PrimitiveOp emit callback function.
 
