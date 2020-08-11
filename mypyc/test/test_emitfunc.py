@@ -10,7 +10,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -280,6 +280,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                         """cpy_r_r00 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
         self.assert_emit(GetElementPtr(self.o, r, "i64"),
                         """cpy_r_r01 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
+
+    def test_load_address(self) -> None:
+        self.assert_emit(LoadAddress(object_rprimitive, "PyDict_Type"),
+                         """cpy_r_r0 = (PyObject *)&PyDict_Type;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []

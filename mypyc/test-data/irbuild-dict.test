@@ -306,3 +306,15 @@ L12:
     r34 = None
     return r34
 
+[case testDictLoadAddress]
+def f() -> None:
+    x = dict
+[out]
+def f():
+    r0, x :: object
+    r1 :: None
+L0:
+    r0 = load_address PyDict_Type
+    x = r0
+    r1 = None
+    return r1

@@ -93,6 +93,8 @@ c_unary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 # LoadGlobal/LoadAddress op for reading global names
 c_name_ref_ops = {}  # type: Dict[str, CLoadDescription]
 
+builtin_names = {}  # type: Dict[str, Tuple[RType, str]]
+
 
 def simple_emit(template: str) -> EmitCallback:
     """Construct a simple PrimitiveOp emit callback function.
@@ -497,6 +499,14 @@ def c_name_ref_op(name: str,
     desc = CLoadDescription(name, return_type, identifier, cast_str, load_address)
     c_name_ref_ops[name] = desc
     return desc
+
+
+def load_address_op(name: str,
+                    type: RType,
+                    src: str) -> None:
+    assert name not in builtin_names, 'already defined: %s' % name
+    builtin_names[name] = (type, src)
+
 
 # Import various modules that set up global state.
 import mypyc.primitives.int_ops  # noqa
