@@ -33,12 +33,12 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
 
 
-# Name and attribute references
 builtin_names = {
     'builtins.dict': (object_rprimitive, 'PyDict_Type')
 }  # type: Dict[str, Tuple[RType, str]]
 
 
+# Name and attribute references
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
     fullname = expr.node.fullname
