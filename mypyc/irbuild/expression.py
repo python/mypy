@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import name_ref_ops, CFunctionDescription
+from mypyc.primitives.registry import name_ref_ops, CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
@@ -33,12 +33,8 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
 
 
-builtin_names = {
-    'builtins.dict': (object_rprimitive, 'PyDict_Type')
-}  # type: Dict[str, Tuple[RType, str]]
-
-
 # Name and attribute references
+
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
