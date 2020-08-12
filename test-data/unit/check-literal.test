@@ -3243,3 +3243,66 @@ assert c.a is True
 c.update()
 assert c.a is False
 [builtins fixtures/bool.pyi]
+
+[case testConditionalBoolLiteralUnionNarrowing]
+# flags: --warn-unreachable
+
+from typing import Union
+from typing_extensions import Literal
+
+class Truth:
+    def __bool__(self) -> Literal[True]: ...
+
+class AlsoTruth:
+    def __bool__(self) -> Literal[True]: ...
+
+class Lie:
+    def __bool__(self) -> Literal[False]: ...
+
+class AnyAnswer:
+    def __bool__(self) -> bool: ...
+
+class NoAnswerSpecified:
+    pass
+
+x: Union[Truth, Lie]
+
+if x:
+    reveal_type(x)  # N: Revealed type is '__main__.Truth'
+else:
+    reveal_type(x)  # N: Revealed type is '__main__.Lie'
+
+if not x:
+    reveal_type(x)  # N: Revealed type is '__main__.Lie'
+else:
+    reveal_type(x)  # N: Revealed type is '__main__.Truth'
+
+y: Union[Truth, AlsoTruth, Lie]
+
+if y:
+    reveal_type(y)  # N: Revealed type is 'Union[__main__.Truth, __main__.AlsoTruth]'
+else:
+    reveal_type(y)  # N: Revealed type is '__main__.Lie'
+
+z: Union[Truth, AnyAnswer]
+
+if z:
+    reveal_type(z)  # N: Revealed type is 'Union[__main__.Truth, __main__.AnyAnswer]'
+else:
+    reveal_type(z)  # N: Revealed type is '__main__.AnyAnswer'
+
+q: Union[Truth, NoAnswerSpecified]
+
+if q:
+    reveal_type(q)  # N: Revealed type is 'Union[__main__.Truth, __main__.NoAnswerSpecified]'
+else:
+    reveal_type(q)  # N: Revealed type is '__main__.NoAnswerSpecified'
+
+w: Union[Truth, AlsoTruth]
+
+if w:
+    reveal_type(w)  # N: Revealed type is 'Union[__main__.Truth, __main__.AlsoTruth]'
+else:
+    reveal_type(w)  # E: Statement is unreachable
+
+[builtins fixtures/bool.pyi]
