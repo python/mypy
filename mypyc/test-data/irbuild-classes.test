@@ -25,7 +25,7 @@ def f(a):
     r1 :: None
 L0:
     a.x = 2; r0 = is_error
-    r1 = None
+    r1 = 1
     return r1
 
 [case testUserClassInList]
@@ -84,7 +84,7 @@ def g(a):
 L0:
     r0 = unicode_4 :: static  ('hi')
     r1 = a.f(2, r0)
-    r2 = None
+    r2 = 1
     return r2
 
 [case testForwardUse]
@@ -122,7 +122,7 @@ def Node.length(self):
     r7, r8 :: int
 L0:
     r0 = self.next
-    r1 = None
+    r1 = 1
     r2 = box(None, r1)
     r3 = r0 is r2
     r4 = !r3
@@ -151,7 +151,7 @@ def A.__init__(self):
     r1 :: None
 L0:
     self.x = 20; r0 = is_error
-    r1 = None
+    r1 = 1
     return r1
 def B.__init__(self):
     self :: __main__.B
@@ -161,7 +161,7 @@ def B.__init__(self):
 L0:
     self.x = 40; r0 = is_error
     self.y = 60; r1 = is_error
-    r2 = None
+    r2 = 1
     return r2
 
 [case testAttrLvalue]
@@ -179,7 +179,7 @@ def O.__init__(self):
     r1 :: None
 L0:
     self.x = 2; r0 = is_error
-    r1 = None
+    r1 = 1
     return r1
 def increment(o):
     o :: __main__.O
@@ -462,7 +462,7 @@ L6:
     r78 = __main__.globals :: static
     r79 = unicode_12 :: static  ('D')
     r80 = CPyDict_SetItem(r78, r79, r72)
-    r81 = None
+    r81 = 1
     return r81
 
 [case testIsInstance]
@@ -649,7 +649,7 @@ def A.__init__(self, x):
     r1 :: None
 L0:
     self.x = x; r0 = is_error
-    r1 = None
+    r1 = 1
     return r1
 def B.__init__(self, x, y):
     self :: __main__.B
@@ -660,7 +660,7 @@ def B.__init__(self, x, y):
 L0:
     r0 = A.__init__(self, x)
     self.y = y; r1 = is_error
-    r2 = None
+    r2 = 1
     return r2
 
 [case testClassMethod]
@@ -713,7 +713,7 @@ def A.__init__(self, x):
     r1 :: None
 L0:
     self.x = x; r0 = is_error
-    r1 = None
+    r1 = 1
     return r1
 def B.__init__(self, x, y):
     self :: __main__.B
@@ -724,7 +724,7 @@ def B.__init__(self, x, y):
 L0:
     r0 = A.__init__(self, x)
     self.y = y; r1 = is_error
-    r2 = None
+    r2 = 1
     return r2
 
 [case testSuper2]
@@ -741,14 +741,14 @@ def T.foo(self):
     self :: __main__.T
     r0 :: None
 L0:
-    r0 = None
+    r0 = 1
     return r0
 def X.foo(self):
     self :: __main__.X
     r0, r1 :: None
 L0:
     r0 = T.foo(self)
-    r1 = None
+    r1 = 1
     return r1
 
 [case testClassVariable]
@@ -943,7 +943,7 @@ def Derived.__eq__(self, other):
     r0 :: bool
     r1 :: object
 L0:
-    r0 = True
+    r0 = 1
     r1 = box(bool, r0)
     return r1
 def Derived.__ne__(self, rhs):
@@ -983,14 +983,14 @@ def A.lol(self):
     r1 :: None
 L0:
     self.x = 200; r0 = is_error
-    r1 = None
+    r1 = 1
     return r1
 def A.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.A
     r0, r1 :: bool
 L0:
     __mypyc_self__.x = 20; r0 = is_error
-    r1 = True
+    r1 = 1
     return r1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
@@ -1010,12 +1010,12 @@ L0:
     r3 = CPyDict_GetItem(r1, r2)
     r4 = cast(str, r3)
     __mypyc_self__.y = r4; r5 = is_error
-    r6 = None
+    r6 = 1
     r7 = box(None, r6)
     __mypyc_self__.z = r7; r8 = is_error
-    r9 = True
+    r9 = 1
     __mypyc_self__.b = r9; r10 = is_error
-    r11 = True
+    r11 = 1
     return r11
 
 [case testSubclassDictSpecalized]
@@ -1029,11 +1029,12 @@ def foo(x: WelpDict) -> None:
 def foo(x):
     x :: dict
     r0 :: int32
-    r1, r2 :: None
+    r1 :: None
+    r2 :: None
 L0:
     r0 = CPyDict_Update(x, x)
-    r1 = None
-    r2 = None
+    r1 = 1
+    r2 = 1
     return r2
 
 [case testNoSpuriousLinearity]

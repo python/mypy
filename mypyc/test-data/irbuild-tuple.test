@@ -25,7 +25,7 @@ def f():
     r1, t :: tuple[bool, int]
     r2 :: int
 L0:
-    r0 = True
+    r0 = 1
     r1 = (r0, 2)
     t = r1
     r2 = t[1]
@@ -150,7 +150,7 @@ L3:
     r0 = r7
     goto L1
 L4:
-    r8 = None
+    r8 = 1
     return r8
 
 [case testNamedTupleAttribute]

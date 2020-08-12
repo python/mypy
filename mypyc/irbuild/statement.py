@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import true_op, false_op, type_op, get_module_dict_op
+from mypyc.primitives.misc_ops import type_op, get_module_dict_op
 from mypyc.primitives.dict_ops import dict_get_item_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
@@ -540,7 +540,7 @@ def transform_with(builder: IRBuilder,
         builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
     )
     mgr = builder.maybe_spill(mgr_v)
-    exc = builder.maybe_spill_assignable(builder.primitive_op(true_op, [], -1))
+    exc = builder.maybe_spill_assignable(builder.true())
 
     def try_body() -> None:
         if target:
@@ -548,7 +548,7 @@ def transform_with(builder: IRBuilder,
         body()
 
     def except_body() -> None:
-        builder.assign(exc, builder.primitive_op(false_op, [], -1), line)
+        builder.assign(exc, builder.false(), line)
         out_block, reraise_block = BasicBlock(), BasicBlock()
         builder.add_bool_branch(
             builder.py_call(builder.read(exit_),

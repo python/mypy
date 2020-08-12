@@ -38,7 +38,7 @@ L4: (handler for L2)
     r10 = keep_propagating
     unreachable
 L5:
-    r11 = None
+    r11 = 1
     return r11
 
 [case testTryExcept2]
@@ -93,7 +93,7 @@ L7: (handler for L5)
     r12 = keep_propagating
     unreachable
 L8:
-    r13 = None
+    r13 = 1
     return r13
 
 [case testTryExcept3]
@@ -188,7 +188,7 @@ L11: (handler for L9)
     r27 = keep_propagating
     unreachable
 L12:
-    r28 = None
+    r28 = 1
     return r28
 
 [case testTryExcept4]
@@ -260,7 +260,7 @@ L8: (handler for L2, L3, L4, L5, L6)
     r19 = keep_propagating
     unreachable
 L9:
-    r20 = None
+    r20 = 1
     return r20
 
 [case testTryFinally]
@@ -324,7 +324,7 @@ L12:
     r13 = keep_propagating
     unreachable
 L13:
-    r14 = None
+    r14 = 1
     return r14
 
 [case testWith]

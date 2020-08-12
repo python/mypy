@@ -37,7 +37,7 @@ L4:
 L5:
     z = 2
 L6:
-    r5 = None
+    r5 = 1
     return r5
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a, x}
@@ -60,7 +60,8 @@ L6:
 (5, 1)   {a, r0, x}              {a, r0, x, z}
 (5, 2)   {a, r0, x, z}           {a, r0, x, z}
 (6, 0)   {a, r0, x, y, z}        {a, r0, x, y, z}
-(6, 1)   {a, r0, x, y, z}        {a, r0, x, y, z}
+(6, 1)   {a, r0, x, y, z}        {a, r0, r5, x, y, z}
+(6, 2)   {a, r0, r5, x, y, z}    {a, r0, r5, x, y, z}
 
 [case testSimple_Liveness]
 def f(a: int) -> int:
@@ -196,7 +197,7 @@ L4:
 L5:
     x = 4
 L6:
-    r5 = None
+    r5 = 1
     return r5
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
@@ -220,7 +221,8 @@ L6:
 (5, 1)   {a, r0}                 {a, r0, x}
 (5, 2)   {a, r0, x}              {a, r0, x}
 (6, 0)   {a, r0, x}              {a, r0, x}
-(6, 1)   {a, r0, x}              {a, r0, x}
+(6, 1)   {a, r0, x}              {a, r0, r5, x}
+(6, 2)   {a, r0, r5, x}          {a, r0, r5, x}
 
 [case testTwoArgs_MustDefined]
 def f(x: int, y: int) -> int:
@@ -270,7 +272,7 @@ L5:
     m = n
     goto L1
 L6:
-    r9 = None
+    r9 = 1
     return r9
 (0, 0)   {n}                     {n}
 (1, 0)   {n}                     {n}
@@ -297,7 +299,8 @@ L6:
 (5, 3)   {n, r0}                 {m, n, r0}
 (5, 4)   {m, n, r0}              {m, n, r0}
 (6, 0)   {n, r0}                 {n, r0}
-(6, 1)   {n, r0}                 {n, r0}
+(6, 1)   {n, r0}                 {n, r0, r9}
+(6, 2)   {n, r0, r9}             {n, r0, r9}
 
 [case testMultiPass_Liveness]
 def f(n: int) -> None:
@@ -368,7 +371,7 @@ L10:
 L11:
     goto L1
 L12:
-    r16 = None
+    r16 = 1
     return r16
 (0, 0)   {n}                     {i0, n}
 (0, 1)   {i0, n}                 {n, x}
@@ -418,8 +421,9 @@ L12:
 (10, 2)  {x, y}                  {n, x, y}
 (10, 3)  {n, x, y}               {n, x, y}
 (11, 0)  {n, x, y}               {n, x, y}
-(12, 0)  {}                      {r16}
-(12, 1)  {r16}                   {}
+(12, 0)  {}                      {i13}
+(12, 1)  {i13}                   {r16}
+(12, 2)  {r16}                   {}
 
 [case testCall_Liveness]
 def f(x: int) -> int:
@@ -514,7 +518,7 @@ L11:
     x = a
     goto L1
 L12:
-    r16 = None
+    r16 = 1
     return r16
 (0, 0)   {a}                     {a}
 (1, 0)   {a, r0, r8, x, y}       {a, r0, r8, x, y}
@@ -557,7 +561,8 @@ L12:
 (11, 0)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
 (11, 1)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
 (12, 0)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
-(12, 1)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
+(12, 1)  {a, r0, r8, x, y}       {a, r0, r16, r8, x, y}
+(12, 2)  {a, r0, r16, r8, x, y}  {a, r0, r16, r8, x, y}
 
 [case testTrivial_BorrowedArgument]
 def f(a: int, b: int) -> int:

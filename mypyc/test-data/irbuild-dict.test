@@ -43,7 +43,7 @@ def f():
 L0:
     r0 = PyDict_New()
     d = r0
-    r1 = None
+    r1 = 1
     return r1
 
 [case testNewDictWithValues]
@@ -62,7 +62,7 @@ L0:
     r2 = box(short_int, 4)
     r3 = CPyDict_Build(2, r1, r2, r0, x)
     d = r3
-    r4 = None
+    r4 = 1
     return r4
 
 [case testInDict]
@@ -128,11 +128,12 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
 def f(a, b):
     a, b :: dict
     r0 :: int32
-    r1, r2 :: None
+    r1 :: None
+    r2 :: None
 L0:
     r0 = CPyDict_Update(a, b)
-    r1 = None
-    r2 = None
+    r1 = 1
+    r2 = 1
     return r2
 
 [case testDictKeyLvalue]
@@ -265,7 +266,7 @@ L2:
     r11 = truncate r10: int32 to builtins.bool
     if r11 goto L3 else goto L4 :: bool
 L3:
-    r12 = None
+    r12 = 1
     return r12
 L4:
 L5:
@@ -303,7 +304,7 @@ L10:
 L11:
     r33 = CPy_NoErrOccured()
 L12:
-    r34 = None
+    r34 = 1
     return r34
 
 [case testDictLoadAddress]
@@ -316,5 +317,5 @@ def f():
 L0:
     r0 = load_address PyDict_Type
     x = r0
-    r1 = None
+    r1 = 1
     return r1

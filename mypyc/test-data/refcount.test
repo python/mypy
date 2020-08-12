@@ -374,7 +374,7 @@ L0:
     dec_ref x :: int
     x = r0
     dec_ref x :: int
-    r1 = None
+    r1 = 1
     return r1
 
 [case testAdd1]
@@ -392,7 +392,7 @@ L0:
     dec_ref y :: int
     x = r0
     dec_ref x :: int
-    r1 = None
+    r1 = 1
     return r1
 
 [case testAdd2]
@@ -448,7 +448,7 @@ L0:
     dec_ref y :: int
     z = r1
     dec_ref z :: int
-    r2 = None
+    r2 = 1
     return r2
 
 [case testAdd5]
@@ -470,7 +470,7 @@ L0:
     dec_ref x :: int
     x = r1
     dec_ref x :: int
-    r2 = None
+    r2 = 1
     return r2
 
 [case testReturnInMiddleOfFunction]
@@ -631,7 +631,7 @@ L0:
     dec_ref r0
     r2 = box(int, r1)
     r3 = CPyList_SetItem(a, 0, r2)
-    r4 = None
+    r4 = 1
     return r4
 
 [case testTupleRefcount]
@@ -666,7 +666,7 @@ L0:
     r1 = C()
     c.x = r1; r2 = is_error
     dec_ref c
-    r3 = None
+    r3 = 1
     return r3
 
 [case testCastRefCount]
@@ -691,7 +691,7 @@ L0:
     r3 = cast(__main__.C, r2)
     d = r3
     dec_ref d
-    r4 = None
+    r4 = 1
     return r4
 
 [case testUnaryBranchSpecialCase]
@@ -757,14 +757,15 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
-    r2, r3 :: None
+    r2 :: None
+    r3 :: None
 L0:
     inc_ref x :: int
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
     dec_ref r0
-    r2 = None
-    r3 = None
+    r2 = 1
+    r3 = 1
     return r3
 
 [case testForDict]
@@ -818,7 +819,7 @@ L3:
 L4:
     r13 = CPy_NoErrOccured()
 L5:
-    r14 = None
+    r14 = 1
     return r14
 L6:
     dec_ref r3

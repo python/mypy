@@ -38,7 +38,8 @@ def f(x, y, z):
     r2 :: None
     r3 :: object
     r4 :: bool
-    r5, r6 :: None
+    r5 :: None
+    r6 :: None
 L0:
     inc_ref y :: int
     r0 = box(int, y)
@@ -46,13 +47,13 @@ L0:
     dec_ref r0
     if r1 < 0 goto L3 (error at f:3) else goto L1
 L1:
-    r2 = None
+    r2 = 1
     inc_ref z :: int
     r3 = box(int, z)
     r4 = CPyList_SetItem(x, y, r3)
     if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
-    r5 = None
+    r5 = 1
     return r5
 L3:
     r6 = <error> :: None
@@ -81,7 +82,7 @@ def f(x):
     r6, r7 :: bool
     r8 :: int
 L0:
-    r0 = None
+    r0 = 1
     r1 = box(None, r0)
     r2 = x is r1
     if r2 goto L1 else goto L2 :: bool
@@ -92,7 +93,7 @@ L2:
     r3 = cast(__main__.A, x)
     if is_error(r3) goto L6 (error at f:8) else goto L3
 L3:
-    r4 = None
+    r4 = 1
     r5 = box(None, r4)
     r6 = r3 is r5
     dec_ref r3
@@ -194,7 +195,8 @@ def g():
     r7 :: str
     r8, r9 :: object
     r10 :: bool
-    r11, r12 :: None
+    r11 :: None
+    r12 :: None
 L0:
 L1:
     r0 = builtins :: module
@@ -228,7 +230,7 @@ L6:
 L7:
     unreachable
 L8:
-    r11 = None
+    r11 = 1
     return r11
 L9:
     r12 = <error> :: None
@@ -347,7 +349,7 @@ def lol() -> None:
 def lol():
     r0 :: None
 L0:
-    r0 = None
+    r0 = 1
     return r0
 
 [case testExceptUndefined1]
@@ -513,7 +515,7 @@ L7:
     xdec_ref v
     if is_error(r7) goto L9 (error at f:7) else goto L14
 L8:
-    r8 = None
+    r8 = 1
     return r8
 L9:
     r10 = <error> :: None

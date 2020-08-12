@@ -19,7 +19,7 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, py_hasattr_op
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand, pytype_from_template_op, py_calc_meta_op, type_object_op,
-    not_implemented_op, true_op
+    not_implemented_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.primitives.tuple_ops import new_tuple_op
@@ -350,7 +350,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
         val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
         builder.add(SetAttr(self_var, lvalue.name, val, -1))
 
-    builder.add(Return(builder.primitive_op(true_op, [], -1)))
+    builder.add(Return(builder.true()))
 
     blocks, env, ret_type, _ = builder.leave()
     ir = FuncIR(

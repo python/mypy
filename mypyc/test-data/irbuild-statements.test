@@ -28,7 +28,7 @@ L3:
     i = r3
     goto L1
 L4:
-    r4 = None
+    r4 = 1
     return r4
 
 [case testForInNegativeRange]
@@ -55,7 +55,7 @@ L3:
     i = r2
     goto L1
 L4:
-    r3 = None
+    r3 = 1
     return r3
 
 [case testBreak]
@@ -92,7 +92,7 @@ L4:
     if r0 goto L5 else goto L6 :: bool
 L5:
 L6:
-    r8 = None
+    r8 = 1
     return r8
 
 [case testBreakFor]
@@ -120,7 +120,7 @@ L3:
     n = r2
     goto L1
 L4:
-    r3 = None
+    r3 = 1
     return r3
 
 [case testBreakNested]
@@ -182,7 +182,7 @@ L9:
 L10:
 L11:
 L12:
-    r16 = None
+    r16 = 1
     return r16
 
 [case testContinue]
@@ -220,7 +220,7 @@ L4:
 L5:
     goto L1
 L6:
-    r8 = None
+    r8 = 1
     return r8
 
 [case testContinueFor]
@@ -247,7 +247,7 @@ L3:
     n = r2
     goto L1
 L4:
-    r3 = None
+    r3 = 1
     return r3
 
 [case testContinueNested]
@@ -311,7 +311,7 @@ L10:
 L11:
     goto L1
 L12:
-    r16 = None
+    r16 = 1
     return r16
 
 [case testForList]
@@ -402,7 +402,7 @@ L3:
 L4:
     r13 = CPy_NoErrOccured()
 L5:
-    r14 = None
+    r14 = 1
     return r14
 
 [case testForDictContinue]
@@ -507,7 +507,7 @@ L0:
     x = r0
     r1 = t[1]
     y = r1
-    r2 = None
+    r2 = 1
     return r2
 def from_any(a):
     a, x, y, r0, r1 :: object
@@ -539,7 +539,7 @@ L5:
     raise ValueError('too many values to unpack')
     unreachable
 L6:
-    r7 = None
+    r7 = 1
     return r7
 
 [case testMultiAssignmentCoercions]
@@ -568,7 +568,7 @@ L0:
     r2 = t[1]
     r3 = unbox(int, r2)
     y = r3
-    r4 = None
+    r4 = 1
     return r4
 def from_any(a):
     a :: object
@@ -604,7 +604,7 @@ L5:
     raise ValueError('too many values to unpack')
     unreachable
 L6:
-    r8 = None
+    r8 = 1
     return r8
 
 [case testMultiAssignmentNested]
@@ -639,7 +639,7 @@ L0:
     r5 = r2[1]
     r6 = unbox(int, r5)
     z = r6
-    r7 = None
+    r7 = 1
     return r7
 
 [case testAssert]
@@ -703,7 +703,7 @@ L2:
     CPy_Raise(r7)
     unreachable
 L3:
-    r8 = None
+    r8 = 1
     return r8
 
 [case testDelList]
@@ -727,7 +727,7 @@ L0:
     l = r2
     r3 = box(short_int, 2)
     r4 = PyObject_DelItem(l, r3)
-    r5 = None
+    r5 = 1
     return r5
 def delListMultiple():
     r0, r1, r2, r3, r4, r5, r6 :: object
@@ -755,7 +755,7 @@ L0:
     r11 = PyObject_DelItem(l, r10)
     r12 = box(short_int, 6)
     r13 = PyObject_DelItem(l, r12)
-    r14 = None
+    r14 = 1
     return r14
 
 [case testDelDict]
@@ -783,7 +783,7 @@ L0:
     d = r4
     r5 = unicode_1 :: static  ('one')
     r6 = PyObject_DelItem(d, r5)
-    r7 = None
+    r7 = 1
     return r7
 def delDictMultiple():
     r0 :: str
@@ -810,7 +810,7 @@ L0:
     r10 = unicode_4 :: static  ('four')
     r11 = PyObject_DelItem(d, r9)
     r12 = PyObject_DelItem(d, r10)
-    r13 = None
+    r13 = 1
     return r13
 
 [case testDelAttribute]
@@ -833,7 +833,7 @@ def Dummy.__init__(self, x, y):
 L0:
     self.x = x; r0 = is_error
     self.y = y; r1 = is_error
-    r2 = None
+    r2 = 1
     return r2
 def delAttribute():
     r0, dummy :: __main__.Dummy
@@ -845,7 +845,7 @@ L0:
     dummy = r0
     r1 = unicode_3 :: static  ('x')
     r2 = PyObject_DelAttr(dummy, r1)
-    r3 = None
+    r3 = 1
     return r3
 def delAttributeMultiple():
     r0, dummy :: __main__.Dummy
@@ -861,7 +861,7 @@ L0:
     r2 = PyObject_DelAttr(dummy, r1)
     r3 = unicode_4 :: static  ('y')
     r4 = PyObject_DelAttr(dummy, r3)
-    r5 = None
+    r5 = 1
     return r5
 
 [case testForEnumerate]
@@ -911,7 +911,7 @@ L3:
     goto L1
 L4:
 L5:
-    r11 = None
+    r11 = 1
     return r11
 def g(x):
     x :: object
@@ -940,7 +940,7 @@ L3:
 L4:
     r5 = CPy_NoErrOccured()
 L5:
-    r6 = None
+    r6 = 1
     return r6
 
 [case testForZip]

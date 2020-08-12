@@ -57,7 +57,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = None
+    r2 = 1
     r3 = box(None, r2)
     return r3
 def a():

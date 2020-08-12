@@ -65,7 +65,7 @@ L0:
     r6 = unicode_6 :: static  ('a')
     r7 = box(int, n)
     r8 = PyObject_SetAttr(a, r6, r7)
-    r9 = None
+    r9 = 1
     return r9
 
 [case testCoerceAnyInOps]
@@ -94,7 +94,7 @@ L0:
     r1 = PyNumber_Add(a, r0)
     r2 = box(int, n)
     r3 = PyNumber_Add(r2, a)
-    r4 = None
+    r4 = 1
     return r4
 def f2(a, n, l):
     a :: object
@@ -120,7 +120,7 @@ L0:
     r8 = CPyList_SetItem(l, n, a)
     r9 = box(int, n)
     r10 = [a, r9]
-    r11 = None
+    r11 = 1
     return r11
 def f3(a, n):
     a :: object
@@ -136,7 +136,7 @@ L0:
     r3 = PyNumber_InPlaceAdd(r2, a)
     r4 = unbox(int, r3)
     n = r4
-    r5 = None
+    r5 = 1
     return r5
 
 [case testCoerceAnyInConditionalExpr]
@@ -172,5 +172,5 @@ L5:
 L6:
     r4 = unbox(int, r2)
     n = r4
-    r5 = None
+    r5 = 1
     return r5
