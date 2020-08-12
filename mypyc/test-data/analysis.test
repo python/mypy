@@ -16,7 +16,6 @@ def f(a):
     r2, r3, r4 :: bool
     y :: int
     z :: int
-    r5 :: None
 L0:
     x = 2
     r1 = x & 1
@@ -37,8 +36,7 @@ L4:
 L5:
     z = 2
 L6:
-    r5 = 1
-    return r5
+    return 1
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a, x}
 (0, 2)   {a, x}                  {a, x}
@@ -60,8 +58,7 @@ L6:
 (5, 1)   {a, r0, x}              {a, r0, x, z}
 (5, 2)   {a, r0, x, z}           {a, r0, x, z}
 (6, 0)   {a, r0, x, y, z}        {a, r0, x, y, z}
-(6, 1)   {a, r0, x, y, z}        {a, r0, r5, x, y, z}
-(6, 2)   {a, r0, r5, x, y, z}    {a, r0, r5, x, y, z}
+(6, 1)   {a, r0, x, y, z}        {a, r0, x, y, z}
 
 [case testSimple_Liveness]
 def f(a: int) -> int:
@@ -176,7 +173,6 @@ def f(a):
     r2, r3, r4 :: bool
     y :: int
     x :: int
-    r5 :: None
 L0:
     r1 = a & 1
     r2 = r1 == 0
@@ -197,8 +193,7 @@ L4:
 L5:
     x = 4
 L6:
-    r5 = 1
-    return r5
+    return 1
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
 (0, 2)   {a}                     {a}
@@ -221,8 +216,7 @@ L6:
 (5, 1)   {a, r0}                 {a, r0, x}
 (5, 2)   {a, r0, x}              {a, r0, x}
 (6, 0)   {a, r0, x}              {a, r0, x}
-(6, 1)   {a, r0, x}              {a, r0, r5, x}
-(6, 2)   {a, r0, r5, x}          {a, r0, r5, x}
+(6, 1)   {a, r0, x}              {a, r0, x}
 
 [case testTwoArgs_MustDefined]
 def f(x: int, y: int) -> int:
@@ -248,7 +242,6 @@ def f(n):
     r3 :: native_int
     r4, r5, r6, r7 :: bool
     r8, m :: int
-    r9 :: None
 L0:
 L1:
     r1 = n & 1
@@ -272,8 +265,7 @@ L5:
     m = n
     goto L1
 L6:
-    r9 = 1
-    return r9
+    return 1
 (0, 0)   {n}                     {n}
 (1, 0)   {n}                     {n}
 (1, 1)   {n}                     {n}
@@ -299,8 +291,7 @@ L6:
 (5, 3)   {n, r0}                 {m, n, r0}
 (5, 4)   {m, n, r0}              {m, n, r0}
 (6, 0)   {n, r0}                 {n, r0}
-(6, 1)   {n, r0}                 {n, r0, r9}
-(6, 2)   {n, r0, r9}             {n, r0, r9}
+(6, 1)   {n, r0}                 {n, r0}
 
 [case testMultiPass_Liveness]
 def f(n: int) -> None:
@@ -326,7 +317,6 @@ def f(n):
     r10 :: bool
     r11 :: native_int
     r12, r13, r14, r15 :: bool
-    r16 :: None
 L0:
     x = 2
     y = 2
@@ -371,8 +361,7 @@ L10:
 L11:
     goto L1
 L12:
-    r16 = 1
-    return r16
+    return 1
 (0, 0)   {n}                     {i0, n}
 (0, 1)   {i0, n}                 {n, x}
 (0, 2)   {n, x}                  {i1, n, x}
@@ -422,8 +411,7 @@ L12:
 (10, 3)  {n, x, y}               {n, x, y}
 (11, 0)  {n, x, y}               {n, x, y}
 (12, 0)  {}                      {i13}
-(12, 1)  {i13}                   {r16}
-(12, 2)  {r16}                   {}
+(12, 1)  {i13}                   {}
 
 [case testCall_Liveness]
 def f(x: int) -> int:
@@ -476,7 +464,6 @@ def f(a):
     r11 :: native_int
     r12, r13, r14, r15 :: bool
     y, x :: int
-    r16 :: None
 L0:
 L1:
     r1 = a & 1
@@ -518,8 +505,7 @@ L11:
     x = a
     goto L1
 L12:
-    r16 = 1
-    return r16
+    return 1
 (0, 0)   {a}                     {a}
 (1, 0)   {a, r0, r8, x, y}       {a, r0, r8, x, y}
 (1, 1)   {a, r0, r8, x, y}       {a, r0, r8, x, y}
@@ -561,8 +547,7 @@ L12:
 (11, 0)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
 (11, 1)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
 (12, 0)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
-(12, 1)  {a, r0, r8, x, y}       {a, r0, r16, r8, x, y}
-(12, 2)  {a, r0, r16, r8, x, y}  {a, r0, r16, r8, x, y}
+(12, 1)  {a, r0, r8, x, y}       {a, r0, r8, x, y}
 
 [case testTrivial_BorrowedArgument]
 def f(a: int, b: int) -> int:

@@ -425,24 +425,15 @@ class LowLevelIRBuilder:
 
     def none(self) -> Value:
         """Load unboxed None value (type: none_rprimitive)."""
-        res = self.alloc_temp(none_rprimitive)
-        value = self.add(LoadInt(1, -1, bool_rprimitive))
-        self.add(Assign(res, value, line=-1))
-        return res
+        return self.add(LoadInt(1, -1, none_rprimitive))
 
     def true(self) -> Value:
         """Load unboxed True value (type: bool_rprimitive)."""
-        res = self.alloc_temp(bool_rprimitive)
-        value = self.add(LoadInt(1, -1, bool_rprimitive))
-        self.add(Assign(res, value, line=-1))
-        return res
+        return self.add(LoadInt(1, -1, bool_rprimitive))
 
     def false(self) -> Value:
         """Load unboxed False value (type: bool_rprimitive)."""
-        res = self.alloc_temp(bool_rprimitive)
-        value = self.add(LoadInt(0, -1, bool_rprimitive))
-        self.add(Assign(res, value, line=-1))
-        return res
+        return self.add(LoadInt(0, -1, bool_rprimitive))
 
     def none_object(self) -> Value:
         """Load Python None value (type: object_rprimitive)."""
