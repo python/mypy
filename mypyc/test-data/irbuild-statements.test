@@ -921,7 +921,6 @@ def f(a, b):
     r9, y, r10 :: bool
     r11 :: short_int
     r12 :: bool
-    r13 :: None
 L0:
     r0 = 0
     r1 = PyObject_GetIter(b)
@@ -952,8 +951,7 @@ L6:
 L7:
     r12 = CPy_NoErrOccured()
 L8:
-    r13 = 1
-    return r13
+    return 1
 def g(a, b):
     a :: object
     b :: list
@@ -967,10 +965,8 @@ def g(a, b):
     r7, r8, r9, x :: bool
     r10 :: object
     y, r11 :: int
-    r12 :: bool
-    r13, r14 :: short_int
-    r15 :: bool
-    r16 :: None
+    r12, r13 :: short_int
+    r14 :: bool
 L0:
     r0 = PyObject_GetIter(a)
     r1 = 0
@@ -994,18 +990,16 @@ L4:
     r10 = b[r1] :: unsafe list
     r11 = unbox(int, r10)
     y = r11
-    r12 = 0
-    x = r12
+    x = 0
 L5:
-    r13 = r1 + 2
-    r1 = r13
-    r14 = r2 + 2
-    r2 = r14
-    z = r14
+    r12 = r1 + 2
+    r1 = r12
+    r13 = r2 + 2
+    r2 = r13
+    z = r13
     goto L1
 L6:
-    r15 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccured()
 L7:
-    r16 = 1
-    return r16
+    return 1
 
