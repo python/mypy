@@ -207,7 +207,7 @@ class IRBuilder:
         return self.builder.true()
 
     def false(self) -> Value:
-        return self.false()
+        return self.builder.false()
 
     def py_call(self,
                 function: Value,
