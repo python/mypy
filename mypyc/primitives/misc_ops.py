@@ -19,23 +19,6 @@ none_object_op = custom_op(result_type=object_rprimitive,
                            emit=name_emit('Py_None'),
                            is_borrowed=True)
 
-# # Get an unboxed None value
-# none_op = name_ref_op('builtins.None',
-#                       result_type=none_rprimitive,
-#                       error_kind=ERR_NEVER,
-#                       emit=simple_emit('{dest} = 1; /* None */'))
-
-# # Get an unboxed True value
-# true_op = name_ref_op('builtins.True',
-#                       result_type=bool_rprimitive,
-#                       error_kind=ERR_NEVER,
-#                       emit=simple_emit('{dest} = 1;'))
-
-# # Get an unboxed False value
-# false_op = name_ref_op('builtins.False',
-#                        result_type=bool_rprimitive,
-#                        error_kind=ERR_NEVER,
-#                        emit=simple_emit('{dest} = 0;'))
 
 # Get the boxed object '...'
 ellipsis_op = custom_op(name='...',
