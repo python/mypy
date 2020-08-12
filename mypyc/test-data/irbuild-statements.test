@@ -1000,7 +1000,7 @@ L6:
 L7:
     r12 = CPy_NoErrOccured()
 L8:
-    r13 = None
+    r13 = 1
     return r13
 def g(a, b):
     a :: object
@@ -1042,7 +1042,7 @@ L4:
     r10 = b[r1] :: unsafe list
     r11 = unbox(int, r10)
     y = r11
-    r12 = False
+    r12 = 0
     x = r12
 L5:
     r13 = r1 + 2
@@ -1054,6 +1054,6 @@ L5:
 L6:
     r15 = CPy_NoErrOccured()
 L7:
-    r16 = None
+    r16 = 1
     return r16
 

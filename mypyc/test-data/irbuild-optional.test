@@ -91,7 +91,7 @@ def B.__bool__(self):
     self :: __main__.B
     r0 :: bool
 L0:
-    r0 = False
+    r0 = 0
     return r0
 def f(x):
     x :: union[__main__.A, None]

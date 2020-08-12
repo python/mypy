@@ -747,10 +747,10 @@ def f(x):
 L0:
     if x goto L1 else goto L2 :: bool
 L1:
-    r0 = False
+    r0 = 0
     return r0
 L2:
-    r1 = True
+    r1 = 1
     return r1
 L3:
     unreachable
@@ -1663,7 +1663,7 @@ L0:
     r1 = foo(r0)
     r2 = unbox(int, r1)
     x = r2
-    r3 = None
+    r3 = 1
     return r3
 
 [case testCallOverloadedNativeSubclass]
@@ -3255,7 +3255,7 @@ def call_any(l):
     r6 :: native_int
     r7, r8, r9, r10, r11 :: bool
 L0:
-    r1 = False
+    r1 = 0
     r0 = r1
     r2 = PyObject_GetIter(l)
 L1:
@@ -3277,7 +3277,7 @@ L4:
 L5:
     if r5 goto L6 else goto L7 :: bool
 L6:
-    r10 = True
+    r10 = 1
     r0 = r10
     goto L11
 L7:
@@ -3297,7 +3297,7 @@ def call_all(l):
     r6 :: native_int
     r7, r8, r9, r10, r11, r12 :: bool
 L0:
-    r1 = True
+    r1 = 1
     r0 = r1
     r2 = PyObject_GetIter(l)
 L1:
@@ -3320,7 +3320,7 @@ L5:
     r10 = !r5
     if r10 goto L6 else goto L7 :: bool
 L6:
-    r11 = False
+    r11 = 0
     r0 = r11
     goto L11
 L7:
@@ -3420,10 +3420,10 @@ def f(a):
 L0:
     if a goto L1 else goto L2 :: bool
 L1:
-    r0 = True
+    r0 = 1
     return r0
 L2:
-    r1 = False
+    r1 = 0
     return r1
 L3:
     unreachable
@@ -3544,7 +3544,7 @@ def foo(z):
     z :: object
     r0 :: None
 L0:
-    r0 = None
+    r0 = 1
     return r0
 
 [case testDirectlyCall__bool__]
@@ -3566,13 +3566,13 @@ def A.__bool__(self):
     self :: __main__.A
     r0 :: bool
 L0:
-    r0 = True
+    r0 = 1
     return r0
 def B.__bool__(self):
     self :: __main__.B
     r0 :: bool
 L0:
-    r0 = False
+    r0 = 0
     return r0
 def lol(x):
     x :: __main__.A

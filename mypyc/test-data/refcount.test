@@ -841,19 +841,19 @@ def make_garbage(arg):
     r3 :: bool
     r4 :: None
 L0:
-    r0 = True
+    r0 = 1
     b = r0
 L1:
     if b goto L2 else goto L3 :: bool
 L2:
-    r1 = None
+    r1 = 1
     r2 = box(None, r1)
     inc_ref r2
     arg = r2
     dec_ref arg
-    r3 = False
+    r3 = 0
     b = r3
     goto L1
 L3:
-    r4 = None
+    r4 = 1
     return r4

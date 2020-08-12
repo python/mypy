@@ -822,7 +822,7 @@ def Base.__eq__(self, other):
     r0 :: bool
     r1 :: object
 L0:
-    r0 = False
+    r0 = 0
     r1 = box(bool, r0)
     return r1
 def Base.__ne__(self, rhs):
@@ -847,7 +847,7 @@ def Derived.__eq__(self, other):
     r0 :: bool
     r1 :: object
 L0:
-    r0 = True
+    r0 = 1
     r1 = box(bool, r0)
     return r1
 def f(a, b):
