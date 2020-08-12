@@ -2,7 +2,7 @@
 -- expressions classified as redundant.
 
 [case testRedundantExpressions]
-# flags: --warn-redundant-expr
+# flags: --enable-error-code redundant-expr
 def foo() -> bool: ...
 
 lst = [1, 2, 3, 4]

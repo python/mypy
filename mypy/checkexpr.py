@@ -2747,7 +2747,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # the analysis from the semanal phase below. We assume that nodes
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
-        if self.chk.options.warn_redundant_expr:
+        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
             if left_map is None:
                 self.msg.redundant_left_operand(e.op, e.left)
 
@@ -3682,7 +3682,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     for var, type in true_map.items():
                         self.chk.binder.put(var, type)
 
-                if self.chk.options.warn_redundant_expr:
+                if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
                     if true_map is None:
                         self.msg.redundant_condition_in_comprehension(False, condition)
                     elif false_map is None:
@@ -3695,7 +3695,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Gain type information from isinstance if it is there
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
-        if self.chk.options.warn_redundant_expr:
+        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
             if if_map is None:
                 self.msg.redundant_condition_in_if(False, e.cond)
             elif else_map is None:

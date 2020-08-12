@@ -51,7 +51,6 @@ PER_MODULE_OPTIONS = {
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
-    "warn_redundant_expr",
     "warn_unreachable",
     "warn_unused_ignores",
 }  # type: Final
@@ -174,10 +173,6 @@ class Options:
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
         self.warn_unreachable = False
-
-        # Report an error for any expressions inferred to be redundant as a result of
-        # type analysis.
-        self.warn_redundant_expr = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]
