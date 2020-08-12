@@ -295,7 +295,7 @@ def f(x):
     r5 :: __main__.A
     r6 :: int
 L0:
-    r0 = int
+    r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = truncate r1: int32 to builtins.bool
     if r2 goto L1 else goto L2 :: bool

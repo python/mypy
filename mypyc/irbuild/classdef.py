@@ -8,7 +8,7 @@ from mypy.nodes import (
 )
 from mypyc.ir.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
-    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE
+    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
@@ -227,7 +227,8 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
     if cdef.metaclass:
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
-        declared_metaclass = builder.primitive_op(type_object_op, [], cdef.line)
+        declared_metaclass = builder.add(LoadAddress(type_object_op.type,
+                                                     type_object_op.src, cdef.line))
 
     return builder.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
 
@@ -279,7 +280,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
     # which attributes to compute on.
     # TODO: Maybe generate more precise types for annotations
     key = builder.load_static_unicode(lvalue.name)
-    typ = builder.primitive_op(type_object_op, [], stmt.line)
+    typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
     builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
     # Only add the attribute to the __dict__ if the assignment is of the form:
@@ -393,7 +394,8 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     # If __eq__ returns NotImplemented, then __ne__ should also
     not_implemented_block, regular_block = BasicBlock(), BasicBlock()
     eqval = builder.add(MethodCall(args[0], '__eq__', [args[1]], line))
-    not_implemented = builder.primitive_op(not_implemented_op, [], line)
+    not_implemented = builder.add(LoadAddress(not_implemented_op.type,
+                                              not_implemented_op.src, line))
     builder.add(Branch(
         builder.binary_op(eqval, not_implemented, 'is', line),
         not_implemented_block,
@@ -521,7 +523,7 @@ def dataclass_non_ext_info(builder: IRBuilder, cdef: ClassDef) -> Optional[NonEx
             builder.call_c(dict_new_op, [], cdef.line),
             builder.add(TupleSet([], cdef.line)),
             builder.call_c(dict_new_op, [], cdef.line),
-            builder.primitive_op(type_object_op, [], cdef.line),
+            builder.add(LoadAddress(type_object_op.type, type_object_op.src, cdef.line))
         )
     else:
         return None

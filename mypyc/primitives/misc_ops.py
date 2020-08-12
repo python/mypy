@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
-    call_negative_magic_emit, c_function_op, c_custom_op
+    call_negative_magic_emit, c_function_op, c_custom_op, load_address_op
 )
 
 
@@ -46,11 +46,10 @@ ellipsis_op = custom_op(name='...',
                         is_borrowed=True)
 
 # Get the boxed NotImplemented object
-not_implemented_op = name_ref_op(name='builtins.NotImplemented',
-                                 result_type=object_rprimitive,
-                                 error_kind=ERR_NEVER,
-                                 emit=name_emit('Py_NotImplemented'),
-                                 is_borrowed=True)
+not_implemented_op = load_address_op(
+    name='builtins.NotImplemented',
+    type=object_rprimitive,
+    src='_Py_NotImplementedStruct')
 
 # id(obj)
 c_function_op(
@@ -201,12 +200,10 @@ type_op = c_function_op(
     error_kind=ERR_NEVER)
 
 # Get 'builtins.type' (base class of all classes)
-type_object_op = name_ref_op(
-    'builtins.type',
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=name_emit('&PyType_Type', target_type='PyObject *'),
-    is_borrowed=True)
+type_object_op = load_address_op(
+    name='builtins.type',
+    type=object_rprimitive,
+    src='PyType_Type')
 
 # Create a heap type based on a template non-heap type.
 # See CPyType_FromTemplate for more docs.

@@ -1243,7 +1243,7 @@ def call_python_function(x):
     r0, r1, r2 :: object
     r3 :: int
 L0:
-    r0 = int
+    r0 = load_address PyLong_Type
     r1 = box(int, x)
     r2 = py_call(r0, r1)
     r3 = unbox(int, r2)
@@ -1294,7 +1294,7 @@ def call_python_function_with_keyword_arg(x):
     r5 :: object
     r6 :: int
 L0:
-    r0 = int
+    r0 = load_address PyLong_Type
     r1 = unicode_3 :: static  ('base')
     r2 = (x) :: tuple
     r3 = box(short_int, 4)
@@ -1696,7 +1696,7 @@ def foo(x):
     r3 :: __main__.B
     r4 :: __main__.A
 L0:
-    r0 = int
+    r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
     r2 = truncate r1: int32 to builtins.bool
     if r2 goto L1 else goto L2 :: bool
@@ -2688,11 +2688,11 @@ L4:
     r23 = CPyDict_SetItem(r11, r22, r21)
     r24 = unicode_5 :: static  ('Lol')
     r25 = unicode_6 :: static  ('a')
-    r26 = int
+    r26 = load_address PyLong_Type
     r27 = (r25, r26)
     r28 = box(tuple[str, object], r27)
     r29 = unicode_7 :: static  ('b')
-    r30 = str
+    r30 = load_address PyUnicode_Type
     r31 = (r29, r30)
     r32 = box(tuple[str, object], r31)
     r33 = (r28, r32)
@@ -2717,7 +2717,7 @@ L4:
     r52 = __main__.globals :: static
     r53 = unicode_2 :: static  ('List')
     r54 = CPyDict_GetItem(r52, r53)
-    r55 = int
+    r55 = load_address PyLong_Type
     r56 = PyObject_GetItem(r54, r55)
     r57 = __main__.globals :: static
     r58 = unicode_10 :: static  ('Foo')
@@ -2820,7 +2820,7 @@ def A.__eq__(self, x):
     self :: __main__.A
     x, r0 :: object
 L0:
-    r0 = NotImplemented
+    r0 = load_address _Py_NotImplementedStruct
     return r0
 def A.__ne__(self, rhs):
     self :: __main__.A
@@ -2829,7 +2829,7 @@ def A.__ne__(self, rhs):
     r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = NotImplemented
+    r1 = load_address _Py_NotImplementedStruct
     r2 = r0 is r1
     if r2 goto L2 else goto L1 :: bool
 L1:

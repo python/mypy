@@ -8,17 +8,15 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, custom_op, name_emit,
-    call_emit, c_function_op, c_binary_op, c_method_op
+    custom_op, load_address_op, call_emit, c_function_op, c_binary_op, c_method_op
 )
 
 
 # Get the 'builtins.list' type object.
-name_ref_op('builtins.list',
-            result_type=object_rprimitive,
-            error_kind=ERR_NEVER,
-            emit=name_emit('&PyList_Type', target_type='PyObject *'),
-            is_borrowed=True)
+load_address_op(
+    name='builtins.list',
+    type=object_rprimitive,
+    src='PyList_Type')
 
 # list(obj)
 to_list = c_function_op(
