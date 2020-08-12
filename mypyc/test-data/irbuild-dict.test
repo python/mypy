@@ -20,17 +20,13 @@ def f(d: Dict[int, bool]) -> None:
 [out]
 def f(d):
     d :: dict
-    r0 :: bool
-    r1, r2 :: object
-    r3 :: int32
-    r4 :: None
+    r0, r1 :: object
+    r2 :: int32
 L0:
-    r0 = False
-    r1 = box(short_int, 0)
-    r2 = box(bool, r0)
-    r3 = CPyDict_SetItem(d, r1, r2)
-    r4 = None
-    return r4
+    r0 = box(short_int, 0)
+    r1 = box(bool, 0)
+    r2 = CPyDict_SetItem(d, r0, r1)
+    return 1
 
 [case testNewEmptyDict]
 from typing import Dict
@@ -39,12 +35,10 @@ def f() -> None:
 [out]
 def f():
     r0, d :: dict
-    r1 :: None
 L0:
     r0 = PyDict_New()
     d = r0
-    r1 = None
-    return r1
+    return 1
 
 [case testNewDictWithValues]
 def f(x: object) -> None:
@@ -55,15 +49,13 @@ def f(x):
     r0 :: str
     r1, r2 :: object
     r3, d :: dict
-    r4 :: None
 L0:
     r0 = unicode_1 :: static
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = CPyDict_Build(2, r1, r2, r0, x)
     d = r3
-    r4 = None
-    return r4
+    return 1
 
 [case testInDict]
 from typing import Dict
@@ -77,18 +69,16 @@ def f(d):
     d :: dict
     r0 :: object
     r1 :: int32
-    r2, r3, r4 :: bool
+    r2 :: bool
 L0:
     r0 = box(short_int, 8)
     r1 = PyDict_Contains(d, r0)
     r2 = truncate r1: int32 to builtins.bool
     if r2 goto L1 else goto L2 :: bool
 L1:
-    r3 = True
-    return r3
+    return 1
 L2:
-    r4 = False
-    return r4
+    return 0
 L3:
     unreachable
 
@@ -104,7 +94,7 @@ def f(d):
     d :: dict
     r0 :: object
     r1 :: int32
-    r2, r3, r4, r5 :: bool
+    r2, r3 :: bool
 L0:
     r0 = box(short_int, 8)
     r1 = PyDict_Contains(d, r0)
@@ -112,11 +102,9 @@ L0:
     r3 = !r2
     if r3 goto L1 else goto L2 :: bool
 L1:
-    r4 = True
-    return r4
+    return 1
 L2:
-    r5 = False
-    return r5
+    return 0
 L3:
     unreachable
 
@@ -128,12 +116,9 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
 def f(a, b):
     a, b :: dict
     r0 :: int32
-    r1, r2 :: None
 L0:
     r0 = CPyDict_Update(a, b)
-    r1 = None
-    r2 = None
-    return r2
+    return 1
 
 [case testDictKeyLvalue]
 from typing import Dict
@@ -230,21 +215,19 @@ def print_dict_methods(d1, d2):
     r9 :: object
     r10 :: int32
     r11 :: bool
-    r12 :: None
-    r13, r14 :: bool
-    r15 :: short_int
-    r16 :: native_int
-    r17 :: short_int
-    r18 :: object
-    r19 :: tuple[bool, int, object, object]
-    r20 :: int
-    r21 :: bool
-    r22, r23 :: object
-    r24, r25, k :: int
-    r26, r27, r28, r29, r30 :: object
-    r31 :: int32
-    r32, r33 :: bool
-    r34 :: None
+    r12, r13 :: bool
+    r14 :: short_int
+    r15 :: native_int
+    r16 :: short_int
+    r17 :: object
+    r18 :: tuple[bool, int, object, object]
+    r19 :: int
+    r20 :: bool
+    r21, r22 :: object
+    r23, r24, k :: int
+    r25, r26, r27, r28, r29 :: object
+    r30 :: int32
+    r31, r32 :: bool
 L0:
     r0 = 0
     r1 = PyDict_Size(d1)
@@ -265,46 +248,44 @@ L2:
     r11 = truncate r10: int32 to builtins.bool
     if r11 goto L3 else goto L4 :: bool
 L3:
-    r12 = None
-    return r12
+    return 1
 L4:
 L5:
-    r13 = CPyDict_CheckSize(d1, r2)
+    r12 = CPyDict_CheckSize(d1, r2)
     goto L1
 L6:
-    r14 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccured()
 L7:
-    r15 = 0
-    r16 = PyDict_Size(d2)
-    r17 = r16 << 1
-    r18 = CPyDict_GetItemsIter(d2)
+    r14 = 0
+    r15 = PyDict_Size(d2)
+    r16 = r15 << 1
+    r17 = CPyDict_GetItemsIter(d2)
 L8:
-    r19 = CPyDict_NextItem(r18, r15)
-    r20 = r19[1]
-    r15 = r20
-    r21 = r19[0]
-    if r21 goto L9 else goto L11 :: bool
+    r18 = CPyDict_NextItem(r17, r14)
+    r19 = r18[1]
+    r14 = r19
+    r20 = r18[0]
+    if r20 goto L9 else goto L11 :: bool
 L9:
-    r22 = r19[2]
-    r23 = r19[3]
+    r21 = r18[2]
+    r22 = r18[3]
+    r23 = unbox(int, r21)
     r24 = unbox(int, r22)
-    r25 = unbox(int, r23)
-    k = r24
-    v = r25
-    r26 = box(int, k)
-    r27 = CPyDict_GetItem(d2, r26)
-    r28 = box(int, v)
-    r29 = PyNumber_InPlaceAdd(r27, r28)
-    r30 = box(int, k)
-    r31 = CPyDict_SetItem(d2, r30, r29)
+    k = r23
+    v = r24
+    r25 = box(int, k)
+    r26 = CPyDict_GetItem(d2, r25)
+    r27 = box(int, v)
+    r28 = PyNumber_InPlaceAdd(r26, r27)
+    r29 = box(int, k)
+    r30 = CPyDict_SetItem(d2, r29, r28)
 L10:
-    r32 = CPyDict_CheckSize(d2, r17)
+    r31 = CPyDict_CheckSize(d2, r16)
     goto L8
 L11:
-    r33 = CPy_NoErrOccured()
+    r32 = CPy_NoErrOccured()
 L12:
-    r34 = None
-    return r34
+    return 1
 
 [case testDictLoadAddress]
 def f() -> None:
@@ -312,9 +293,7 @@ def f() -> None:
 [out]
 def f():
     r0, x :: object
-    r1 :: None
 L0:
     r0 = load_address PyDict_Type
     x = r0
-    r1 = None
-    return r1
+    return 1

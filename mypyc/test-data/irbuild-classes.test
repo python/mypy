@@ -22,11 +22,9 @@ def f(a: A) -> None:
 def f(a):
     a :: __main__.A
     r0 :: bool
-    r1 :: None
 L0:
     a.x = 2; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 
 [case testUserClassInList]
 class C:
@@ -80,12 +78,10 @@ def g(a):
     a :: __main__.A
     r0 :: str
     r1 :: int
-    r2 :: None
 L0:
     r0 = unicode_4 :: static  ('hi')
     r1 = a.f(2, r0)
-    r2 = None
-    return r2
+    return 1
 
 [case testForwardUse]
 def g(a: A) -> int:
@@ -114,25 +110,23 @@ class Node:
 def Node.length(self):
     self :: __main__.Node
     r0 :: union[__main__.Node, None]
-    r1 :: None
-    r2 :: object
-    r3, r4 :: bool
-    r5 :: union[__main__.Node, None]
-    r6 :: __main__.Node
-    r7, r8 :: int
+    r1 :: object
+    r2, r3 :: bool
+    r4 :: union[__main__.Node, None]
+    r5 :: __main__.Node
+    r6, r7 :: int
 L0:
     r0 = self.next
-    r1 = None
-    r2 = box(None, r1)
-    r3 = r0 is r2
-    r4 = !r3
-    if r4 goto L1 else goto L2 :: bool
+    r1 = box(None, 1)
+    r2 = r0 is r1
+    r3 = !r2
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r5 = self.next
-    r6 = cast(__main__.Node, r5)
-    r7 = r6.length()
-    r8 = CPyTagged_Add(2, r7)
-    return r8
+    r4 = self.next
+    r5 = cast(__main__.Node, r4)
+    r6 = r5.length()
+    r7 = CPyTagged_Add(2, r6)
+    return r7
 L2:
     return 2
 
@@ -148,21 +142,17 @@ class B(A):
 def A.__init__(self):
     self :: __main__.A
     r0 :: bool
-    r1 :: None
 L0:
     self.x = 20; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def B.__init__(self):
     self :: __main__.B
     r0 :: bool
     r1 :: bool
-    r2 :: None
 L0:
     self.x = 40; r0 = is_error
     self.y = 60; r1 = is_error
-    r2 = None
-    return r2
+    return 1
 
 [case testAttrLvalue]
 class O(object):
@@ -176,11 +166,9 @@ def increment(o: O) -> O:
 def O.__init__(self):
     self :: __main__.O
     r0 :: bool
-    r1 :: None
 L0:
     self.x = 2; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def increment(o):
     o :: __main__.O
     r0 :: int
@@ -364,7 +352,6 @@ def __top_level__():
     r78 :: dict
     r79 :: str
     r80 :: int32
-    r81 :: None
 L0:
     r0 = builtins :: module
     r1 = builtins.None :: object
@@ -462,8 +449,7 @@ L6:
     r78 = __main__.globals :: static
     r79 = unicode_12 :: static  ('D')
     r80 = CPyDict_SetItem(r78, r79, r72)
-    r81 = None
-    return r81
+    return 1
 
 [case testIsInstance]
 class A: pass
@@ -646,22 +632,18 @@ def A.__init__(self, x):
     self :: __main__.A
     x :: int
     r0 :: bool
-    r1 :: None
 L0:
     self.x = x; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def B.__init__(self, x, y):
     self :: __main__.B
     x, y :: int
     r0 :: None
     r1 :: bool
-    r2 :: None
 L0:
     r0 = A.__init__(self, x)
     self.y = y; r1 = is_error
-    r2 = None
-    return r2
+    return 1
 
 [case testClassMethod]
 class C:
@@ -710,22 +692,18 @@ def A.__init__(self, x):
     self :: __main__.A
     x :: int
     r0 :: bool
-    r1 :: None
 L0:
     self.x = x; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def B.__init__(self, x, y):
     self :: __main__.B
     x, y :: int
     r0 :: None
     r1 :: bool
-    r2 :: None
 L0:
     r0 = A.__init__(self, x)
     self.y = y; r1 = is_error
-    r2 = None
-    return r2
+    return 1
 
 [case testSuper2]
 from mypy_extensions import trait
@@ -739,17 +717,14 @@ class X(T):
 [out]
 def T.foo(self):
     self :: __main__.T
-    r0 :: None
 L0:
-    r0 = None
-    return r0
+    return 1
 def X.foo(self):
     self :: __main__.X
-    r0, r1 :: None
+    r0 :: None
 L0:
     r0 = T.foo(self)
-    r1 = None
-    return r1
+    return 1
 
 [case testClassVariable]
 from typing import ClassVar
@@ -819,12 +794,10 @@ def fOpt2(a: Derived, b: Derived) -> bool:
 def Base.__eq__(self, other):
     self :: __main__.Base
     other :: object
-    r0 :: bool
-    r1 :: object
+    r0 :: object
 L0:
-    r0 = False
-    r1 = box(bool, r0)
-    return r1
+    r0 = box(bool, 0)
+    return r0
 def Base.__ne__(self, rhs):
     self :: __main__.Base
     rhs, r0, r1 :: object
@@ -844,12 +817,10 @@ L2:
 def Derived.__eq__(self, other):
     self :: __main__.Derived
     other :: object
-    r0 :: bool
-    r1 :: object
+    r0 :: object
 L0:
-    r0 = True
-    r1 = box(bool, r0)
-    return r1
+    r0 = box(bool, 1)
+    return r0
 def f(a, b):
     a, b :: __main__.Base
     r0 :: object
@@ -940,12 +911,10 @@ L0:
 def Derived.__eq__(self, other):
     self :: __main__.Derived
     other :: object
-    r0 :: bool
-    r1 :: object
+    r0 :: object
 L0:
-    r0 = True
-    r1 = box(bool, r0)
-    return r1
+    r0 = box(bool, 1)
+    return r0
 def Derived.__ne__(self, rhs):
     self :: __main__.Derived
     rhs, r0, r1 :: object
@@ -980,18 +949,15 @@ class B(A):
 def A.lol(self):
     self :: __main__.A
     r0 :: bool
-    r1 :: None
 L0:
     self.x = 200; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def A.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.A
-    r0, r1 :: bool
+    r0 :: bool
 L0:
     __mypyc_self__.x = 20; r0 = is_error
-    r1 = True
-    return r1
+    return 1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
     r0 :: bool
@@ -1000,9 +966,8 @@ def B.__mypyc_defaults_setup(__mypyc_self__):
     r3 :: object
     r4 :: str
     r5 :: bool
-    r6 :: None
-    r7 :: object
-    r8, r9, r10, r11 :: bool
+    r6 :: object
+    r7, r8 :: bool
 L0:
     __mypyc_self__.x = 20; r0 = is_error
     r1 = __main__.globals :: static
@@ -1010,13 +975,10 @@ L0:
     r3 = CPyDict_GetItem(r1, r2)
     r4 = cast(str, r3)
     __mypyc_self__.y = r4; r5 = is_error
-    r6 = None
-    r7 = box(None, r6)
-    __mypyc_self__.z = r7; r8 = is_error
-    r9 = True
-    __mypyc_self__.b = r9; r10 = is_error
-    r11 = True
-    return r11
+    r6 = box(None, 1)
+    __mypyc_self__.z = r6; r7 = is_error
+    __mypyc_self__.b = 1; r8 = is_error
+    return 1
 
 [case testSubclassDictSpecalized]
 from typing import Dict
@@ -1029,12 +991,9 @@ def foo(x: WelpDict) -> None:
 def foo(x):
     x :: dict
     r0 :: int32
-    r1, r2 :: None
 L0:
     r0 = CPyDict_Update(x, x)
-    r1 = None
-    r2 = None
-    return r2
+    return 1
 
 [case testNoSpuriousLinearity]
 # Make sure that the non-trait MRO linearity check isn't affected by processing order

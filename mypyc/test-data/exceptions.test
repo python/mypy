@@ -35,10 +35,9 @@ def f(x, y, z):
     y, z :: int
     r0 :: object
     r1 :: int32
-    r2 :: None
-    r3 :: object
-    r4 :: bool
-    r5, r6 :: None
+    r2 :: object
+    r3 :: bool
+    r4 :: None
 L0:
     inc_ref y :: int
     r0 = box(int, y)
@@ -46,17 +45,15 @@ L0:
     dec_ref r0
     if r1 < 0 goto L3 (error at f:3) else goto L1
 L1:
-    r2 = None
     inc_ref z :: int
-    r3 = box(int, z)
-    r4 = CPyList_SetItem(x, y, r3)
-    if not r4 goto L3 (error at f:4) else goto L2 :: bool
+    r2 = box(int, z)
+    r3 = CPyList_SetItem(x, y, r2)
+    if not r3 goto L3 (error at f:4) else goto L2 :: bool
 L2:
-    r5 = None
-    return r5
+    return 1
 L3:
-    r6 = <error> :: None
-    return r6
+    r4 = <error> :: None
+    return r4
 
 [case testOptionalHandling]
 from typing import Optional
@@ -72,39 +69,35 @@ def f(x: Optional[A]) -> int:
 [out]
 def f(x):
     x :: union[__main__.A, None]
-    r0 :: None
-    r1 :: object
-    r2 :: bool
-    r3 :: __main__.A
-    r4 :: None
-    r5 :: object
-    r6, r7 :: bool
-    r8 :: int
+    r0 :: object
+    r1 :: bool
+    r2 :: __main__.A
+    r3 :: object
+    r4, r5 :: bool
+    r6 :: int
 L0:
-    r0 = None
-    r1 = box(None, r0)
-    r2 = x is r1
-    if r2 goto L1 else goto L2 :: bool
+    r0 = box(None, 1)
+    r1 = x is r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
     inc_ref x
-    r3 = cast(__main__.A, x)
-    if is_error(r3) goto L6 (error at f:8) else goto L3
+    r2 = cast(__main__.A, x)
+    if is_error(r2) goto L6 (error at f:8) else goto L3
 L3:
-    r4 = None
-    r5 = box(None, r4)
-    r6 = r3 is r5
-    dec_ref r3
-    r7 = !r6
-    if r7 goto L4 else goto L5 :: bool
+    r3 = box(None, 1)
+    r4 = r2 is r3
+    dec_ref r2
+    r5 = !r4
+    if r5 goto L4 else goto L5 :: bool
 L4:
     return 4
 L5:
     return 6
 L6:
-    r8 = <error> :: int
-    return r8
+    r6 = <error> :: int
+    return r6
 
 [case testListSum]
 from typing import List
@@ -194,7 +187,7 @@ def g():
     r7 :: str
     r8, r9 :: object
     r10 :: bool
-    r11, r12 :: None
+    r11 :: None
 L0:
 L1:
     r0 = builtins :: module
@@ -228,11 +221,10 @@ L6:
 L7:
     unreachable
 L8:
-    r11 = None
-    return r11
+    return 1
 L9:
-    r12 = <error> :: None
-    return r12
+    r11 = <error> :: None
+    return r11
 L10:
     dec_ref r3
     goto L8
@@ -345,10 +337,8 @@ def lol() -> None:
     pass
 [out]
 def lol():
-    r0 :: None
 L0:
-    r0 = None
-    return r0
+    return 1
 
 [case testExceptUndefined1]
 from typing import Any
@@ -479,9 +469,8 @@ def f(b):
     r4 :: object
     r5 :: str
     r6, r7 :: object
-    r8 :: None
-    r9 :: bool
-    r10 :: None
+    r8 :: bool
+    r9 :: None
 L0:
     r0 = unicode_1 :: static  ('a')
     inc_ref r0
@@ -504,7 +493,7 @@ L4:
     if is_error(v) goto L13 else goto L7
 L5:
     raise UnboundLocalError("local variable 'v' referenced before assignment")
-    if not r9 goto L9 (error at f:7) else goto L6 :: bool
+    if not r8 goto L9 (error at f:7) else goto L6 :: bool
 L6:
     unreachable
 L7:
@@ -513,11 +502,10 @@ L7:
     xdec_ref v
     if is_error(r7) goto L9 (error at f:7) else goto L14
 L8:
-    r8 = None
-    return r8
+    return 1
 L9:
-    r10 = <error> :: None
-    return r10
+    r9 = <error> :: None
+    return r9
 L10:
     xdec_ref v
     goto L2

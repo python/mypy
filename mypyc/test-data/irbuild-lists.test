@@ -53,12 +53,10 @@ def f(x):
     x :: list
     r0 :: object
     r1 :: bool
-    r2 :: None
 L0:
     r0 = box(short_int, 2)
     r1 = CPyList_SetItem(x, 0, r0)
-    r2 = None
-    return r2
+    return 1
 
 [case testNewListEmpty]
 from typing import List
@@ -67,12 +65,10 @@ def f() -> None:
 [out]
 def f():
     r0, x :: list
-    r1 :: None
 L0:
     r0 = []
     x = r0
-    r1 = None
-    return r1
+    return 1
 
 [case testNewListTwoItems]
 from typing import List
@@ -82,14 +78,12 @@ def f() -> None:
 def f():
     r0, r1 :: object
     r2, x :: list
-    r3 :: None
 L0:
     r0 = box(short_int, 2)
     r1 = box(short_int, 4)
     r2 = [r0, r1]
     x = r2
-    r3 = None
-    return r3
+    return 1
 
 [case testListMultiply]
 from typing import List
@@ -102,7 +96,6 @@ def f(a):
     r0, b :: list
     r1 :: object
     r2, r3 :: list
-    r4 :: None
 L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
@@ -110,8 +103,7 @@ L0:
     r2 = [r1]
     r3 = CPySequence_RMultiply(6, r2)
     b = r3
-    r4 = None
-    return r4
+    return 1
 
 [case testListLen]
 from typing import List
@@ -139,13 +131,10 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
-    r2, r3 :: None
 L0:
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
-    r2 = None
-    r3 = None
-    return r3
+    return 1
 
 [case testIndexLvalue]
 from typing import List

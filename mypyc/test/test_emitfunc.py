@@ -23,7 +23,7 @@ from mypyc.irbuild.vtable import compute_vtable
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.primitives.registry import binary_ops, c_binary_ops
-from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
+from mypyc.primitives.misc_ops import none_object_op
 from mypyc.primitives.list_ops import (
     list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
@@ -91,12 +91,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_load_None(self) -> None:
         self.assert_emit(PrimitiveOp([], none_object_op, 0), "cpy_r_r0 = Py_None;")
-
-    def test_load_True(self) -> None:
-        self.assert_emit(PrimitiveOp([], true_op, 0), "cpy_r_r0 = 1;")
-
-    def test_load_False(self) -> None:
-        self.assert_emit(PrimitiveOp([], false_op, 0), "cpy_r_r0 = 0;")
 
     def test_assign_int(self) -> None:
         self.assert_emit(Assign(self.m, self.n),

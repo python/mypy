@@ -51,15 +51,13 @@ def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_a_obj
     r0 :: __main__.a_env
     r1, inner :: object
-    r2 :: None
-    r3 :: object
+    r2 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = None
-    r3 = box(None, r2)
-    return r3
+    r2 = box(None, 1)
+    return r2
 def a():
     r0 :: __main__.a_env
     r1 :: __main__.inner_a_obj

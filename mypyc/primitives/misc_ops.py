@@ -2,11 +2,11 @@
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
-    RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
+    RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
+    simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
     call_negative_magic_emit, c_function_op, c_custom_op, load_address_op
 )
 
@@ -19,23 +19,6 @@ none_object_op = custom_op(result_type=object_rprimitive,
                            emit=name_emit('Py_None'),
                            is_borrowed=True)
 
-# Get an unboxed None value
-none_op = name_ref_op('builtins.None',
-                      result_type=none_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = 1; /* None */'))
-
-# Get an unboxed True value
-true_op = name_ref_op('builtins.True',
-                      result_type=bool_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = 1;'))
-
-# Get an unboxed False value
-false_op = name_ref_op('builtins.False',
-                       result_type=bool_rprimitive,
-                       error_kind=ERR_NEVER,
-                       emit=simple_emit('{dest} = 0;'))
 
 # Get the boxed object '...'
 ellipsis_op = custom_op(name='...',

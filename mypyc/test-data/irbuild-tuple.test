@@ -21,15 +21,13 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    r0 :: bool
-    r1, t :: tuple[bool, int]
-    r2 :: int
+    r0, t :: tuple[bool, int]
+    r1 :: int
 L0:
-    r0 = True
-    r1 = (r0, 2)
-    t = r1
-    r2 = t[1]
-    return r2
+    r0 = (1, 2)
+    t = r0
+    r1 = t[1]
+    return r1
 
 [case testTupleLen]
 from typing import Tuple
@@ -132,7 +130,6 @@ def f(xs):
     r5 :: object
     x, r6 :: str
     r7 :: short_int
-    r8 :: None
 L0:
     r0 = 0
 L1:
@@ -150,8 +147,7 @@ L3:
     r0 = r7
     goto L1
 L4:
-    r8 = None
-    return r8
+    return 1
 
 [case testNamedTupleAttribute]
 from typing import NamedTuple

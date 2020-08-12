@@ -28,7 +28,8 @@ from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
-    is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject
+    is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
+    none_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -52,7 +53,7 @@ from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
 )
 from mypyc.primitives.misc_ops import (
-    none_op, none_object_op, false_op, fast_isinstance_op, bool_op, type_is_op
+    none_object_op, fast_isinstance_op, bool_op, type_is_op
 )
 from mypyc.primitives.int_ops import int_logical_op_mapping
 from mypyc.rt_subtype import is_runtime_subtype
@@ -195,7 +196,7 @@ class LowLevelIRBuilder:
     def isinstance_helper(self, obj: Value, class_irs: List[ClassIR], line: int) -> Value:
         """Fast path for isinstance() that checks against a list of native classes."""
         if not class_irs:
-            return self.primitive_op(false_op, [], line)
+            return self.false()
         ret = self.isinstance_native(obj, class_irs[0], line)
         for class_ir in class_irs[1:]:
             def other() -> Value:
@@ -217,7 +218,7 @@ class LowLevelIRBuilder:
                                      line)
         if not concrete:
             # There can't be any concrete instance that matches this.
-            return self.primitive_op(false_op, [], line)
+            return self.false()
         type_obj = self.get_native_type(concrete[0])
         ret = self.primitive_op(type_is_op, [obj, type_obj], line)
         for c in concrete[1:]:
@@ -424,7 +425,15 @@ class LowLevelIRBuilder:
 
     def none(self) -> Value:
         """Load unboxed None value (type: none_rprimitive)."""
-        return self.add(PrimitiveOp([], none_op, line=-1))
+        return self.add(LoadInt(1, -1, none_rprimitive))
+
+    def true(self) -> Value:
+        """Load unboxed True value (type: bool_rprimitive)."""
+        return self.add(LoadInt(1, -1, bool_rprimitive))
+
+    def false(self) -> Value:
+        """Load unboxed False value (type: bool_rprimitive)."""
+        return self.add(LoadInt(0, -1, bool_rprimitive))
 
     def none_object(self) -> Value:
         """Load Python None value (type: object_rprimitive)."""

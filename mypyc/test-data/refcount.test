@@ -367,15 +367,13 @@ def f() -> None:
 def f():
     x :: int
     r0 :: int
-    r1 :: None
 L0:
     x = 2
     r0 = CPyTagged_Add(x, 2)
     dec_ref x :: int
     x = r0
     dec_ref x :: int
-    r1 = None
-    return r1
+    return 1
 
 [case testAdd1]
 def f() -> None:
@@ -385,15 +383,13 @@ def f() -> None:
 def f():
     y :: int
     r0, x :: int
-    r1 :: None
 L0:
     y = 2
     r0 = CPyTagged_Add(y, 2)
     dec_ref y :: int
     x = r0
     dec_ref x :: int
-    r1 = None
-    return r1
+    return 1
 
 [case testAdd2]
 def f(a: int) -> int:
@@ -438,7 +434,6 @@ def f(a: int) -> None:
 def f(a):
     a, r0, x :: int
     y, r1, z :: int
-    r2 :: None
 L0:
     r0 = CPyTagged_Add(a, a)
     x = r0
@@ -448,8 +443,7 @@ L0:
     dec_ref y :: int
     z = r1
     dec_ref z :: int
-    r2 = None
-    return r2
+    return 1
 
 [case testAdd5]
 def f(a: int) -> None:
@@ -460,7 +454,6 @@ def f(a: int) -> None:
 def f(a):
     a, r0 :: int
     x, r1 :: int
-    r2 :: None
 L0:
     r0 = CPyTagged_Add(a, a)
     a = r0
@@ -470,8 +463,7 @@ L0:
     dec_ref x :: int
     x = r1
     dec_ref x :: int
-    r2 = None
-    return r2
+    return 1
 
 [case testReturnInMiddleOfFunction]
 def f() -> int:
@@ -624,15 +616,13 @@ def f(a, b):
     r1 :: int
     r2 :: object
     r3 :: bool
-    r4 :: None
 L0:
     r0 = CPyList_GetItemShort(b, 0)
     r1 = unbox(int, r0)
     dec_ref r0
     r2 = box(int, r1)
     r3 = CPyList_SetItem(a, 0, r2)
-    r4 = None
-    return r4
+    return 1
 
 [case testTupleRefcount]
 from typing import Tuple
@@ -659,15 +649,13 @@ def f() -> None:
 def f():
     r0, c, r1 :: __main__.C
     r2 :: bool
-    r3 :: None
 L0:
     r0 = C()
     c = r0
     r1 = C()
     c.x = r1; r2 = is_error
     dec_ref c
-    r3 = None
-    return r3
+    return 1
 
 [case testCastRefCount]
 class C: pass
@@ -681,7 +669,6 @@ def f():
     r1, a :: list
     r2 :: object
     r3, d :: __main__.C
-    r4 :: None
 L0:
     r0 = C()
     r1 = [r0]
@@ -691,8 +678,7 @@ L0:
     r3 = cast(__main__.C, r2)
     d = r3
     dec_ref d
-    r4 = None
-    return r4
+    return 1
 
 [case testUnaryBranchSpecialCase]
 def f(x: bool) -> int:
@@ -757,15 +743,12 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
-    r2, r3 :: None
 L0:
     inc_ref x :: int
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
     dec_ref r0
-    r2 = None
-    r3 = None
-    return r3
+    return 1
 
 [case testForDict]
 from typing import Dict
@@ -788,7 +771,6 @@ def f(d):
     r9, r10 :: object
     r11 :: int
     r12, r13 :: bool
-    r14 :: None
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
@@ -818,8 +800,7 @@ L3:
 L4:
     r13 = CPy_NoErrOccured()
 L5:
-    r14 = None
-    return r14
+    return 1
 L6:
     dec_ref r3
     dec_ref r4
@@ -834,25 +815,19 @@ def make_garbage(arg: object) -> None:
 [out]
 def make_garbage(arg):
     arg :: object
-    r0, b :: bool
-    r1 :: None
-    r2 :: object
-    r3 :: bool
-    r4 :: None
+    b :: bool
+    r0 :: object
 L0:
-    r0 = True
-    b = r0
+    b = 1
 L1:
     if b goto L2 else goto L3 :: bool
 L2:
-    r1 = None
-    r2 = box(None, r1)
-    inc_ref r2
-    arg = r2
+    r0 = box(None, 1)
+    inc_ref r0
+    arg = r0
     dec_ref arg
-    r3 = False
-    b = r3
+    b = 0
     goto L1
 L3:
-    r4 = None
-    return r4
+    return 1
+

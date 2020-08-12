@@ -112,13 +112,11 @@ def f():
     r0, x :: set
     r1 :: object
     r2 :: bool
-    r3 :: None
 L0:
     r0 = set
     x = r0
     r1 = box(short_int, 2)
     r2 = CPySet_Remove(x, r1)
-    r3 = None
     return x
 
 [case testSetDiscard]
@@ -132,13 +130,11 @@ def f():
     r0, x :: set
     r1 :: object
     r2 :: int32
-    r3 :: None
 L0:
     r0 = set
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Discard(x, r1)
-    r3 = None
     return x
 
 [case testSetAdd]
@@ -152,13 +148,11 @@ def f():
     r0, x :: set
     r1 :: object
     r2 :: int32
-    r3 :: None
 L0:
     r0 = set
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Add(x, r1)
-    r3 = None
     return x
 
 [case testSetClear]
@@ -171,12 +165,10 @@ def f() -> Set[int]:
 def f():
     r0, x :: set
     r1 :: int32
-    r2 :: None
 L0:
     r0 = set
     x = r0
     r1 = PySet_Clear(x)
-    r2 = None
     return x
 
 [case testSetPop]
@@ -202,12 +194,9 @@ def update(s, x):
     s :: set
     x :: list
     r0 :: int32
-    r1, r2 :: None
 L0:
     r0 = _PySet_Update(s, x)
-    r1 = None
-    r2 = None
-    return r2
+    return 1
 
 [case testSetDisplay]
 from typing import Set

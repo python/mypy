@@ -42,6 +42,13 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     if fullname in builtin_names:
         typ, src = builtin_names[fullname]
         return builder.add(LoadAddress(typ, src, expr.line))
+    # special cases
+    if fullname == 'builtins.None':
+        return builder.none()
+    if fullname == 'builtins.True':
+        return builder.true()
+    if fullname == 'builtins.False':
+        return builder.false()
     if fullname in name_ref_ops:
         # Use special access op for this particular name.
         desc = name_ref_ops[fullname]
