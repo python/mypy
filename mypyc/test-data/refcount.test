@@ -734,7 +734,7 @@ def g(x):
     r5 :: object
     r6 :: int
 L0:
-    r0 = int
+    r0 = load_address PyLong_Type
     r1 = unicode_1 :: static  ('base')
     r2 = (x) :: tuple
     r3 = box(short_int, 4)

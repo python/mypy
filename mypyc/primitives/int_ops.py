@@ -13,20 +13,18 @@ from mypyc.ir.rtypes import (
     str_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    name_ref_op, name_emit,
-    c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
+    load_address_op, c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
 # I guess unboxing ourselves would save a check and branch though?
 
 # Get the type object for 'builtins.int'.
-# For ordinary calls to int() we use a name_ref to the type
-name_ref_op('builtins.int',
-            result_type=object_rprimitive,
-            error_kind=ERR_NEVER,
-            emit=name_emit('&PyLong_Type', target_type='PyObject *'),
-            is_borrowed=True)
+# For ordinary calls to int() we use a load_address to the type
+load_address_op(
+    name='builtins.int',
+    type=object_rprimitive,
+    src='PyLong_Type')
 
 # Convert from a float to int. We could do a bit better directly.
 c_function_op(

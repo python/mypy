@@ -832,7 +832,7 @@ def Base.__ne__(self, rhs):
     r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = NotImplemented
+    r1 = load_address _Py_NotImplementedStruct
     r2 = r0 is r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -953,7 +953,7 @@ def Derived.__ne__(self, rhs):
     r4 :: object
 L0:
     r0 = self.__eq__(rhs)
-    r1 = NotImplemented
+    r1 = load_address _Py_NotImplementedStruct
     r2 = r0 is r1
     if r2 goto L2 else goto L1 :: bool
 L1:

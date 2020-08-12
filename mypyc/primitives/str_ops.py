@@ -2,22 +2,21 @@
 
 from typing import List, Callable
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, EmitterInterface, EmitCallback
+from mypyc.ir.ops import ERR_MAGIC, EmitterInterface, EmitCallback
 from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, simple_emit, name_ref_op, method_op, call_emit, name_emit,
-    c_method_op, c_binary_op, c_function_op
+    binary_op, simple_emit, method_op, call_emit, c_method_op, c_binary_op, c_function_op,
+    load_address_op
 )
 
 
 # Get the 'str' type object.
-name_ref_op('builtins.str',
-            result_type=object_rprimitive,
-            error_kind=ERR_NEVER,
-            emit=name_emit('&PyUnicode_Type', target_type='PyObject *'),
-            is_borrowed=True)
+load_address_op(
+    name='builtins.str',
+    type=object_rprimitive,
+    src='PyUnicode_Type')
 
 # str(obj)
 c_function_op(
