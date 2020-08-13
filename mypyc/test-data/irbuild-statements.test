@@ -323,7 +323,7 @@ L0:
     r0 = 0
 L1:
     r1 = get_element_ptr ls ob_size :: PyVarObject
-    r2 = load_mem r1 :: native_int*
+    r2 = load_mem r1, ls :: native_int*
     r3 = r2 << 1
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
@@ -848,7 +848,7 @@ L0:
     r1 = 0
 L1:
     r2 = get_element_ptr a ob_size :: PyVarObject
-    r3 = load_mem r2 :: native_int*
+    r3 = load_mem r2, a :: native_int*
     r4 = r3 << 1
     r5 = r1 < r4 :: signed
     if r5 goto L2 else goto L4 :: bool
@@ -926,7 +926,7 @@ L0:
     r1 = PyObject_GetIter(b)
 L1:
     r2 = get_element_ptr a ob_size :: PyVarObject
-    r3 = load_mem r2 :: native_int*
+    r3 = load_mem r2, a :: native_int*
     r4 = r3 << 1
     r5 = r0 < r4 :: signed
     if r5 goto L2 else goto L7 :: bool
@@ -977,7 +977,7 @@ L1:
     if is_error(r3) goto L6 else goto L2
 L2:
     r4 = get_element_ptr b ob_size :: PyVarObject
-    r5 = load_mem r4 :: native_int*
+    r5 = load_mem r4, b :: native_int*
     r6 = r5 << 1
     r7 = r1 < r6 :: signed
     if r7 goto L3 else goto L6 :: bool
@@ -1002,4 +1002,3 @@ L6:
     r14 = CPy_NoErrOccured()
 L7:
     return 1
-
