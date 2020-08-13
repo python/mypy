@@ -267,7 +267,7 @@ class LowLevelIRBuilder:
 
         if len(star_arg_values) == 0:
             # We can directly construct a tuple if there are no star args.
-            pos_args_tuple = self.primitive_op(new_tuple_op, pos_arg_values, line)
+            pos_args_tuple = self.new_tuple(pos_arg_values, line)
         else:
             # Otherwise we construct a list and call extend it with the star args, since tuples
             # don't have an extend method.
@@ -338,7 +338,8 @@ class LowLevelIRBuilder:
         for lst, arg in zip(formal_to_actual, sig.args):
             output_arg = None
             if arg.kind == ARG_STAR:
-                output_arg = self.primitive_op(new_tuple_op, [args[i] for i in lst], line)
+                items = [args[i] for i in lst]
+                output_arg = self.new_tuple(items, line)
             elif arg.kind == ARG_STAR2:
                 dict_entries = [(self.load_static_unicode(cast(str, arg_names[i])), args[i])
                                 for i in lst]
@@ -843,6 +844,10 @@ class LowLevelIRBuilder:
         # generic case
         else:
             return self.call_c(generic_len_op, [val], line)
+
+    def new_tuple(self, items: List[Value], line: int) -> Value:
+        load_size_op = self.add(LoadInt(len(items), -1, c_pyssize_t_rprimitive))
+        return self.call_c(new_tuple_op, [load_size_op] + items, line)
 
     # Internal helpers
 

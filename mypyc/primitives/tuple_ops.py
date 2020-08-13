@@ -5,9 +5,11 @@ objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 """
 
 from mypyc.ir.ops import ERR_MAGIC
-from mypyc.ir.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import (
+    tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive, c_pyssize_t_rprimitive
+)
 from mypyc.primitives.registry import (
-    c_method_op, custom_op, simple_emit, c_function_op
+    c_method_op, c_function_op, c_custom_op
 )
 
 
@@ -20,14 +22,12 @@ tuple_get_item_op = c_method_op(
     error_kind=ERR_MAGIC)
 
 # Construct a boxed tuple from items: (item1, item2, ...)
-new_tuple_op = custom_op(
-    arg_types=[object_rprimitive],
-    result_type=tuple_rprimitive,
-    is_var_arg=True,
+new_tuple_op = c_custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name='PyTuple_Pack',
     error_kind=ERR_MAGIC,
-    steals=False,
-    format_str='{dest} = ({comma_args}) :: tuple',
-    emit=simple_emit('{dest} = PyTuple_Pack({num_args}{comma_if_args}{comma_args});'))
+    var_arg_type=object_rprimitive)
 
 # Construct tuple from a list.
 list_tuple_op = c_function_op(
