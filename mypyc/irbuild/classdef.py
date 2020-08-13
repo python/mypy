@@ -8,11 +8,11 @@ from mypy.nodes import (
 )
 from mypyc.ir.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
-    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress, LoadInt
+    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
-    is_object_rprimitive, is_none_rprimitive, c_pyssize_t_rprimitive
+    is_object_rprimitive, is_none_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -22,7 +22,6 @@ from mypyc.primitives.misc_ops import (
     not_implemented_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
-from mypyc.primitives.tuple_ops import new_tuple_op
 from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
@@ -165,8 +164,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
     if base_exprs:
         bases = [builder.accept(x) for x in base_exprs]
-        load_size_op = builder.add(LoadInt(len(bases), -1, c_pyssize_t_rprimitive))
-        tp_bases = builder.call_c(new_tuple_op, [load_size_op] + bases, cdef.line)
+        tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
     modname = builder.load_static_unicode(builder.module_name)
@@ -220,8 +218,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
 
         base = builder.load_global_str(cls.name, cdef.line)
         bases.append(base)
-    load_size_op = builder.add(LoadInt(len(bases), -1, c_pyssize_t_rprimitive))
-    return builder.call_c(new_tuple_op, [load_size_op] + bases, cdef.line)
+    return builder.new_tuple(bases, cdef.line)
 
 
 def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> Value:
@@ -468,10 +465,7 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
     if ir.inherits_python:
         attrs.append('__dict__')
     items = [builder.load_static_unicode(attr) for attr in attrs]
-    load_size_op = builder.add(LoadInt(len(items), -1, c_pyssize_t_rprimitive))
-    return builder.call_c(new_tuple_op,
-                          [load_size_op] + items,
-                          line)
+    return builder.new_tuple(items, line)
 
 
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:

@@ -250,6 +250,9 @@ class IRBuilder:
     def builtin_len(self, val: Value, line: int) -> Value:
         return self.builder.builtin_len(val, line)
 
+    def new_tuple(self, items: List[Value], line: int) -> Value:
+        return self.builder.new_tuple(items, line)
+
     @property
     def environment(self) -> Environment:
         return self.builder.environment
