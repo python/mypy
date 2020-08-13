@@ -335,8 +335,7 @@ def foo(x):
     r9 :: object
     r10 :: str
     r11, r12 :: object
-    r13 :: tuple[object, object, object]
-    r14 :: tuple[object, object, object]
+    r13, r14 :: tuple[object, object, object]
     r15, r16, r17, r18 :: object
     r19, r20 :: bool
     r21, r22, r23 :: tuple[object, object, object]

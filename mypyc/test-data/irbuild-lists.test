@@ -92,8 +92,7 @@ def f(a: List[int]) -> None:
     b = 3 * [4]
 [out]
 def f(a):
-    a :: list
-    r0, b :: list
+    a, r0, b :: list
     r1 :: object
     r2, r3 :: list
 L0:
@@ -150,8 +149,7 @@ def increment(l):
     r2, r3 :: short_int
     i :: int
     r4 :: bool
-    r5 :: object
-    r6, r7 :: object
+    r5, r6, r7 :: object
     r8 :: bool
     r9 :: short_int
 L0:

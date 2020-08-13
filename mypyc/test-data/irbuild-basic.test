@@ -51,8 +51,7 @@ def f(x: int) -> None:
     return
 [out]
 def f(x):
-    x :: int
-    y :: int
+    x, y :: int
 L0:
     y = 2
     y = x
@@ -63,8 +62,7 @@ def f(x: int, y: int) -> int:
     return x * (y + 1)
 [out]
 def f(x, y):
-    x, y :: int
-    r0, r1 :: int
+    x, y, r0, r1 :: int
 L0:
     r0 = CPyTagged_Add(y, 2)
     r1 = CPyTagged_Multiply(x, r0)
@@ -541,8 +539,7 @@ def f(n):
     r2 :: bool
     r3 :: native_int
     r4, r5, r6, r7, r8 :: bool
-    r9, r10 :: int
-    r11, r12, r13 :: int
+    r9, r10, r11, r12, r13 :: int
 L0:
     r1 = n & 1
     r2 = r1 == 0
@@ -651,8 +648,7 @@ def f(n: int) -> int:
     return -1
 [out]
 def f(n):
-    n :: int
-    r0 :: int
+    n, r0 :: int
 L0:
     r0 = CPyTagged_Negate(2)
     return r0
@@ -695,8 +691,7 @@ def f() -> int:
     return x
 [out]
 def f():
-    x :: int
-    r0 :: int
+    x, r0 :: int
 L0:
     x = 0
     r0 = CPyTagged_Add(x, 2)
@@ -796,8 +791,7 @@ def f(x):
     x :: int
     r0 :: object
     r1 :: str
-    r2 :: object
-    r3, r4 :: object
+    r2, r3, r4 :: object
 L0:
     r0 = builtins :: module
     r1 = unicode_1 :: static  ('print')
@@ -906,14 +900,12 @@ def g(y: object) -> object:
     return 3
 [out]
 def g(y):
-    y :: object
-    r0, r1 :: object
+    y, r0, r1 :: object
     r2, a :: list
     r3 :: tuple[int, int]
     r4 :: object
     r5 :: bool
-    r6 :: object
-    r7 :: object
+    r6, r7 :: object
 L0:
     r0 = box(short_int, 2)
     r1 = g(r0)
@@ -937,8 +929,7 @@ def f(a: A, o: object) -> None:
 [out]
 def f(a, o):
     a :: __main__.A
-    o :: object
-    r0 :: object
+    o, r0 :: object
     r1 :: bool
     r2 :: int
     r3 :: object
@@ -1122,8 +1113,7 @@ def big_int() -> None:
     max_31_bit = 1073741823
 [out]
 def big_int():
-    r0, a_62_bit, r1, max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit, r6, max_32_bit :: int
-    max_31_bit :: int
+    r0, a_62_bit, r1, max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit, r6, max_32_bit, max_31_bit :: int
 L0:
     r0 = int_1 :: static  (4611686018427387902)
     a_62_bit = r0
@@ -1580,8 +1570,7 @@ def f(x: str) -> int: ...
 def f():
     r0 :: object
     r1 :: str
-    r2 :: object
-    r3, r4 :: object
+    r2, r3, r4 :: object
     r5 :: str
 L0:
     r0 = m :: module
@@ -1805,9 +1794,7 @@ L0:
     r0 = (a, b, c)
     return r0
 def g():
-    r0 :: str
-    r1 :: str
-    r2 :: str
+    r0, r1, r2 :: str
     r3, r4, r5 :: object
     r6, r7 :: dict
     r8 :: str
@@ -1835,13 +1822,11 @@ L0:
     r14 = unbox(tuple[int, int, int], r13)
     return r14
 def h():
-    r0 :: str
-    r1 :: str
+    r0, r1 :: str
     r2, r3 :: object
     r4, r5 :: dict
     r6 :: str
-    r7 :: object
-    r8 :: object
+    r7, r8 :: object
     r9 :: tuple
     r10 :: dict
     r11 :: int32
@@ -1874,8 +1859,7 @@ def g() -> None:
 [out]
 def f(x, y, z):
     x, y :: int
-    z :: str
-    r0 :: str
+    z, r0 :: str
 L0:
     if is_error(y) goto L1 else goto L2
 L1:
@@ -1914,8 +1898,7 @@ def g() -> None:
 def A.f(self, x, y, z):
     self :: __main__.A
     x, y :: int
-    z :: str
-    r0 :: str
+    z, r0 :: str
 L0:
     if is_error(y) goto L1 else goto L2
 L1:
@@ -1963,8 +1946,7 @@ def f():
     x, r11 :: int
     r12 :: bool
     r13 :: native_int
-    r14, r15, r16, r17 :: bool
-    r18 :: bool
+    r14, r15, r16, r17, r18 :: bool
     r19 :: native_int
     r20, r21, r22, r23 :: bool
     r24 :: int
@@ -2048,8 +2030,7 @@ def f():
     x, r11 :: int
     r12 :: bool
     r13 :: native_int
-    r14, r15, r16, r17 :: bool
-    r18 :: bool
+    r14, r15, r16, r17, r18 :: bool
     r19 :: native_int
     r20, r21, r22, r23 :: bool
     r24 :: int
@@ -2310,8 +2291,7 @@ L0:
     return r1
 def BaseProperty.next(self):
     self :: __main__.BaseProperty
-    r0 :: int
-    r1 :: int
+    r0, r1 :: int
     r2 :: __main__.BaseProperty
 L0:
     r0 = self._incrementer
@@ -3354,8 +3334,7 @@ def f(a: bool) -> int:
 [out]
 def C.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.C
-    r0 :: bool
-    r1 :: bool
+    r0, r1 :: bool
 L0:
     __mypyc_self__.x = 2; r0 = is_error
     __mypyc_self__.y = 4; r1 = is_error

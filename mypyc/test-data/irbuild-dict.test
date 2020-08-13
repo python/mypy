@@ -138,8 +138,7 @@ def increment(d):
     r6 :: bool
     r7 :: object
     k, r8 :: str
-    r9 :: object
-    r10, r11 :: object
+    r9, r10, r11 :: object
     r12 :: int32
     r13, r14 :: bool
 L0:
@@ -214,8 +213,7 @@ def print_dict_methods(d1, d2):
     v, r8 :: int
     r9 :: object
     r10 :: int32
-    r11 :: bool
-    r12, r13 :: bool
+    r11, r12, r13 :: bool
     r14 :: short_int
     r15 :: native_int
     r16 :: short_int

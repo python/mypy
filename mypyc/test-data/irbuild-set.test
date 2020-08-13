@@ -204,8 +204,7 @@ def f(x: Set[int], y: Set[int]) -> Set[int]:
     return {1, 2, *x, *y, 3}
 [out]
 def f(x, y):
-    x, y :: set
-    r0 :: set
+    x, y, r0 :: set
     r1 :: object
     r2 :: int32
     r3 :: object
