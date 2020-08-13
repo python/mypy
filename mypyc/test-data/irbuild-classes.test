@@ -410,7 +410,7 @@ L6:
     r42 = pytype_from_template(r41, r39, r40)
     r43 = C_trait_vtable_setup()
     r44 = unicode_8 :: static  ('__mypyc_attrs__')
-    r45 = () :: tuple
+    r45 = PyTuple_Pack(0)
     r46 = PyObject_SetAttr(r42, r44, r45)
     __main__.C = r42 :: type
     r47 = __main__.globals :: static
@@ -421,7 +421,7 @@ L6:
     r52 = __main__.S_template :: type
     r53 = pytype_from_template(r52, r50, r51)
     r54 = unicode_8 :: static  ('__mypyc_attrs__')
-    r55 = () :: tuple
+    r55 = PyTuple_Pack(0)
     r56 = PyObject_SetAttr(r53, r54, r55)
     __main__.S = r53 :: type
     r57 = __main__.globals :: static
@@ -436,14 +436,14 @@ L6:
     r66 = unicode_6 :: static  ('T')
     r67 = CPyDict_GetItem(r65, r66)
     r68 = PyObject_GetItem(r64, r67)
-    r69 = (r60, r61, r68) :: tuple
+    r69 = PyTuple_Pack(3, r60, r61, r68)
     r70 = unicode_7 :: static  ('__main__')
     r71 = __main__.D_template :: type
     r72 = pytype_from_template(r71, r69, r70)
     r73 = D_trait_vtable_setup()
     r74 = unicode_8 :: static  ('__mypyc_attrs__')
     r75 = unicode_11 :: static  ('__dict__')
-    r76 = (r75) :: tuple
+    r76 = PyTuple_Pack(1, r75)
     r77 = PyObject_SetAttr(r72, r74, r76)
     __main__.D = r72 :: type
     r78 = __main__.globals :: static

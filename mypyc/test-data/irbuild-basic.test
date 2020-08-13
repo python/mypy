@@ -1258,7 +1258,7 @@ def call_python_function_with_keyword_arg(x):
 L0:
     r0 = load_address PyLong_Type
     r1 = unicode_3 :: static  ('base')
-    r2 = (x) :: tuple
+    r2 = PyTuple_Pack(1, x)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(1, r1, r3)
     r5 = py_call_with_kwargs(r0, r2, r4)
@@ -1287,7 +1287,7 @@ L0:
     r1 = CPyObject_GetAttr(xs, r0)
     r2 = unicode_5 :: static  ('x')
     r3 = box(short_int, 0)
-    r4 = (r3) :: tuple
+    r4 = PyTuple_Pack(1, r3)
     r5 = box(int, first)
     r6 = CPyDict_Build(1, r2, r5)
     r7 = py_call_with_kwargs(r1, r4, r6)
@@ -1295,7 +1295,7 @@ L0:
     r9 = CPyObject_GetAttr(xs, r8)
     r10 = unicode_5 :: static  ('x')
     r11 = unicode_6 :: static  ('i')
-    r12 = () :: tuple
+    r12 = PyTuple_Pack(0)
     r13 = box(int, second)
     r14 = box(short_int, 2)
     r15 = CPyDict_Build(2, r10, r13, r11, r14)
@@ -1828,7 +1828,7 @@ L0:
     r7 = __main__.globals :: static
     r8 = unicode_6 :: static  ('f')
     r9 = CPyDict_GetItem(r7, r8)
-    r10 = () :: tuple
+    r10 = PyTuple_Pack(0)
     r11 = PyDict_New()
     r12 = CPyDict_UpdateInDisplay(r11, r6)
     r13 = py_call_with_kwargs(r9, r10, r11)
@@ -1840,7 +1840,8 @@ def h():
     r2, r3 :: object
     r4, r5 :: dict
     r6 :: str
-    r7, r8 :: object
+    r7 :: object
+    r8 :: object
     r9 :: tuple
     r10 :: dict
     r11 :: int32
@@ -1856,7 +1857,7 @@ L0:
     r6 = unicode_6 :: static  ('f')
     r7 = CPyDict_GetItem(r5, r6)
     r8 = box(short_int, 2)
-    r9 = (r8) :: tuple
+    r9 = PyTuple_Pack(1, r8)
     r10 = PyDict_New()
     r11 = CPyDict_UpdateInDisplay(r10, r4)
     r12 = py_call_with_kwargs(r7, r9, r10)
