@@ -50,8 +50,7 @@ L2:
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_a_obj
     r0 :: __main__.a_env
-    r1, inner :: object
-    r2 :: object
+    r1, inner, r2 :: object
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
@@ -494,8 +493,7 @@ def b_a_obj.__call__(__mypyc_self__):
     r1, b :: object
     r2 :: __main__.b_a_env
     r3 :: bool
-    r4 :: int
-    r5 :: int
+    r4, r5 :: int
     r6 :: bool
     r7 :: __main__.c_a_b_obj
     r8, r9 :: bool
@@ -655,8 +653,7 @@ def foo_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.foo_f_obj
     r0 :: __main__.f_env
     r1, foo :: object
-    r2 :: int
-    r3 :: int
+    r2, r3 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.foo

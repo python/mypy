@@ -216,8 +216,7 @@ def f(y):
     r1 :: bool
     r2 :: native_int
     r3, r4, r5 :: bool
-    r6 :: object
-    r7 :: object
+    r6, r7 :: object
     r8, r9 :: bool
     r10 :: int
 L0:
@@ -266,8 +265,7 @@ def f(x):
     r0 :: object
     r1 :: int32
     r2 :: bool
-    r3 :: int
-    r4 :: int
+    r3, r4 :: int
     r5 :: __main__.A
     r6 :: int
 L0:

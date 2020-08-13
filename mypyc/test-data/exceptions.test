@@ -111,17 +111,14 @@ def sum(a: List[int], l: int) -> int:
 [out]
 def sum(a, l):
     a :: list
-    l :: int
-    sum :: int
-    i :: int
+    l, sum, i :: int
     r0 :: bool
     r1 :: native_int
     r2 :: bool
     r3 :: native_int
     r4, r5, r6, r7 :: bool
     r8 :: object
-    r9, r10 :: int
-    r11, r12 :: int
+    r9, r10, r11, r12 :: int
 L0:
     sum = 0
     i = 0

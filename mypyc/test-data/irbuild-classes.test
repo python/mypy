@@ -43,8 +43,7 @@ def f():
     r2, a :: list
     r3 :: object
     r4, d :: __main__.C
-    r5 :: int
-    r6 :: int
+    r5, r6 :: int
 L0:
     r0 = C()
     c = r0
@@ -147,8 +146,7 @@ L0:
     return 1
 def B.__init__(self):
     self :: __main__.B
-    r0 :: bool
-    r1 :: bool
+    r0, r1 :: bool
 L0:
     self.x = 40; r0 = is_error
     self.y = 60; r1 = is_error
@@ -171,8 +169,7 @@ L0:
     return 1
 def increment(o):
     o :: __main__.O
-    r0 :: int
-    r1 :: int
+    r0, r1 :: int
     r2 :: bool
 L0:
     r0 = o.x
@@ -656,15 +653,13 @@ def lol() -> int:
     return C.foo(1) + C.bar(2)
 [out]
 def C.foo(x):
-    x :: int
-    r0 :: int
+    x, r0 :: int
 L0:
     r0 = CPyTagged_Add(20, x)
     return r0
 def C.bar(cls, x):
     cls :: object
-    x :: int
-    r0 :: int
+    x, r0 :: int
 L0:
     r0 = CPyTagged_Add(20, x)
     return r0
@@ -793,8 +788,7 @@ def fOpt2(a: Derived, b: Derived) -> bool:
 [out]
 def Base.__eq__(self, other):
     self :: __main__.Base
-    other :: object
-    r0 :: object
+    other, r0 :: object
 L0:
     r0 = box(bool, 0)
     return r0
@@ -816,8 +810,7 @@ L2:
     return r1
 def Derived.__eq__(self, other):
     self :: __main__.Derived
-    other :: object
-    r0 :: object
+    other, r0 :: object
 L0:
     r0 = box(bool, 1)
     return r0
@@ -910,8 +903,7 @@ L0:
     return r2
 def Derived.__eq__(self, other):
     self :: __main__.Derived
-    other :: object
-    r0 :: object
+    other, r0 :: object
 L0:
     r0 = box(bool, 1)
     return r0

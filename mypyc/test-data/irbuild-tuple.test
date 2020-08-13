@@ -80,8 +80,7 @@ def f() -> int:
 def f():
     r0 :: tuple[int, int]
     t :: tuple
-    r1 :: object
-    r2 :: object
+    r1, r2 :: object
     r3 :: int
 L0:
     r0 = (2, 4)
@@ -97,8 +96,7 @@ def f(x: Sequence[int], y: Sequence[int]) -> Tuple[int, ...]:
     return (1, 2, *x, *y, 3)
 [out]
 def f(x, y):
-    x, y :: object
-    r0, r1 :: object
+    x, y, r0, r1 :: object
     r2 :: list
     r3, r4, r5 :: object
     r6 :: int32

@@ -101,8 +101,7 @@ L0:
 def f(x):
     x :: __main__.C
     r0 :: object
-    r1, y :: int
-    r2 :: int
+    r1, y, r2 :: int
     r3 :: object
     r4 :: None
     r5 :: object
