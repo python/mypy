@@ -379,10 +379,14 @@ def make_simplified_union(items: Sequence[Type],
 
 
 def get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
+    t = get_proper_type(t)
+
     if isinstance(t, Instance):
         bool_method = t.type.names.get("__bool__", None)
-        if bool_method and isinstance(bool_method.type, CallableType):
-            return bool_method.type.ret_type
+        if bool_method:
+            callee = get_proper_type(bool_method.type)
+            if isinstance(callee, CallableType):
+                return callee.ret_type
 
     return None
 
