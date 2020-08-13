@@ -262,8 +262,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
 
     def test_load_mem(self) -> None:
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr),
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
+                         """cpy_r_r00 = *(char *)cpy_r_ptr;""")
 
     def test_get_element_ptr(self) -> None:
         r = RStruct("Foo", ["b", "i32", "i64"], [bool_rprimitive,

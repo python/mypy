@@ -69,7 +69,7 @@ L0:
     r5 = box(short_int, 6)
     r6 = PySet_Add(r0, r5)
     r7 = get_element_ptr r0 used :: PySetObject
-    r8 = load_mem r7 :: native_int*
+    r8 = load_mem r7, r0 :: native_int*
     r9 = r8 << 1
     return r9
 
@@ -223,4 +223,3 @@ L0:
     r7 = box(short_int, 6)
     r8 = PySet_Add(r0, r7)
     return r0
-

@@ -1348,25 +1348,42 @@ class BinaryIntOp(RegisterOp):
 
 
 class LoadMem(RegisterOp):
-    """Reading a memory location
+    """Read a memory location.
 
-    type ret = *(type*)src
+    type ret = *(type *)src
+
+    Attributes:
+      type: Type of the read value
+      src: Pointer to memory to read
+      base: If not None, the object from which we are reading memory.
+            It's used to avoid the target object from being freed via
+            reference counting. If the target is not in reference counted
+            memory, or we know that the target won't be freed, it can be
+            None.
     """
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
         assert is_pointer_rprimitive(src.type)
         self.src = src
+        self.base = base
 
     def sources(self) -> List[Value]:
-        return [self.src]
+        if self.base:
+            return [self.src, self.base]
+        else:
+            return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = load_mem %r :: %r*", self, self.src, self.type)
+        if self.base:
+            base = env.format(', %r', self.base)
+        else:
+            base = ''
+        return env.format("%r = load_mem %r%s :: %r*", self, self.src, base, self.type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)

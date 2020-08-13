@@ -117,7 +117,7 @@ def f(a):
     r2 :: short_int
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
+    r1 = load_mem r0, a :: native_int*
     r2 = r1 << 1
     return r2
 
@@ -156,7 +156,7 @@ def increment(l):
     r9 :: short_int
 L0:
     r0 = get_element_ptr l ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
+    r1 = load_mem r0, l :: native_int*
     r2 = r1 << 1
     r3 = 0
     i = r3
@@ -196,4 +196,3 @@ L0:
     r5 = box(short_int, 6)
     r6 = PyList_Append(r2, r5)
     return r2
-

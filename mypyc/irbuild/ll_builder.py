@@ -826,7 +826,7 @@ class LowLevelIRBuilder:
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
             offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
             return self.binary_int_op(short_int_rprimitive, size_value, offset,
                                       BinaryIntOp.LEFT_SHIFT, line)
@@ -837,7 +837,7 @@ class LowLevelIRBuilder:
                                       BinaryIntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
             offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
             return self.binary_int_op(short_int_rprimitive, size_value, offset,
                                       BinaryIntOp.LEFT_SHIFT, line)
