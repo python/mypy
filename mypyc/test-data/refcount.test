@@ -847,7 +847,7 @@ L0:
     r0 = []
     x = r0
     r1 = get_element_ptr x ob_size :: PyVarObject
-    r2 = load_mem r1, x :: int64*
+    r2 = load_mem r1, x :: native_int*
     dec_ref x
     r3 = r2 << 1
     return r3
