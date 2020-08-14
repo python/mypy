@@ -41,12 +41,6 @@ no_err_occurred_op = c_custom_op(
     c_function_name='CPy_NoErrOccured',
     error_kind=ERR_FALSE)
 
-# Assert that the error indicator has been set.
-assert_err_occurred_op = c_custom_op(
-    arg_types=[],
-    return_type=void_rtype,
-    c_function_name='CPy_AssertErrOccurred',
-    error_kind=ERR_NEVER)
 
 # Keep propagating a raised exception by unconditionally giving an error value.
 # This doesn't actually raise an exception.

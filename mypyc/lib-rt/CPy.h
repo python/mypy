@@ -407,11 +407,7 @@ static int CPy_NoErrOccured(void) {
     return PyErr_Occurred() == NULL;
 }
 
-static void CPy_AssertErrOccurred(void) {
-    assert(PyErr_Occurred() != NULL && "failure w/o err!");
-}
-
-static bool CPy_KeepPropagating(void) {
+static inline bool CPy_KeepPropagating(void) {
     return 0;
 }
 // We want to avoid the public PyErr_GetExcInfo API for these because
