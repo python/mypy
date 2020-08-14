@@ -752,7 +752,7 @@ L7:
     goto L10
 L8:
     CPy_RestoreExcInfo(r1)
-    r7 = keep_propagating
+    r7 = CPy_KeepPropagating()
     if not r7 goto L11 else goto L9 :: bool
 L9:
     unreachable

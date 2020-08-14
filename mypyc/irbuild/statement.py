@@ -325,7 +325,7 @@ def transform_try_except(builder: IRBuilder,
     # the exception.
     builder.activate_block(double_except_block)
     builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
-    builder.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
+    builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
     # If present, compile the else body in the obvious way
@@ -463,7 +463,7 @@ def try_finally_resolve_control(builder: IRBuilder,
     # If there was an exception, restore again
     builder.activate_block(cleanup_block)
     finally_control.gen_cleanup(builder, -1)
-    builder.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
+    builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
     return out_block

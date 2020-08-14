@@ -213,7 +213,7 @@ L5:
 L6:
     CPy_RestoreExcInfo(r4)
     dec_ref r4
-    r10 = keep_propagating
+    r10 = CPy_KeepPropagating()
     if not r10 goto L9 else goto L7 :: bool
 L7:
     unreachable
@@ -305,7 +305,7 @@ L15:
     CPy_RestoreExcInfo(r6)
     dec_ref r6
 L16:
-    r16 = keep_propagating
+    r16 = CPy_KeepPropagating()
     if not r16 goto L19 else goto L17 :: bool
 L17:
     unreachable
