@@ -12,8 +12,7 @@ check that the priorities are configured properly.
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_NEG_INT
 from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
 from mypyc.primitives.registry import (
-    binary_op, unary_op, custom_op, call_emit, simple_emit,
-    call_negative_magic_emit, negative_int_emit,
+    binary_op, custom_op, call_emit, simple_emit,
     c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
 )
 
@@ -79,12 +78,15 @@ binary_op(op='**',
           emit=simple_emit('{dest} = PyNumber_Power({args[0]}, {args[1]}, Py_None);'),
           priority=0)
 
-binary_op('in',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=negative_int_emit('{dest} = PySequence_Contains({args[1]}, {args[0]});'),
-          priority=0)
+c_binary_op(
+    name='in',
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PySequence_Contains',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+    priority=0)
 
 binary_op('is',
           arg_types=[object_rprimitive, object_rprimitive],
@@ -113,14 +115,14 @@ for op, funcname in [('-', 'PyNumber_Negative'),
                error_kind=ERR_MAGIC,
                priority=0)
 
-unary_op(op='not',
-         arg_type=object_rprimitive,
-         result_type=bool_rprimitive,
-         error_kind=ERR_MAGIC,
-         format_str='{dest} = not {args[0]}',
-         emit=call_negative_magic_emit('PyObject_Not'),
-         priority=0)
-
+c_unary_op(
+    name='not',
+    arg_type=object_rprimitive,
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_Not',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    priority=0)
 
 # obj1[obj2]
 c_method_op(name='__getitem__',

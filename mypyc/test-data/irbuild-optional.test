@@ -92,15 +92,17 @@ def f(x):
     r0 :: object
     r1 :: bool
     r2 :: __main__.A
-    r3 :: bool
+    r3 :: int32
+    r4 :: bool
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
     if r1 goto L1 else goto L3 :: bool
 L1:
     r2 = cast(__main__.A, x)
-    r3 = bool r2 :: object
-    if r3 goto L2 else goto L3 :: bool
+    r3 = PyObject_IsTrue(r2)
+    r4 = truncate r3: int32 to builtins.bool
+    if r4 goto L2 else goto L3 :: bool
 L2:
     return 2
 L3:
