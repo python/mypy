@@ -42,7 +42,6 @@ typecheck_files = [
     'check-typevar-values.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
-    'check-redundant-expr.test',
     'check-unions.test',
     'check-isinstance.test',
     'check-lists.test',
