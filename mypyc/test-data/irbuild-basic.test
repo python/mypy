@@ -3546,3 +3546,16 @@ def h(x):
 L0:
     r0 = PySequence_List(x)
     return r0
+
+[case testBoolFunction]
+def f(x: object) -> bool:
+    return bool(x)
+[out]
+def f(x):
+    x :: object
+    r0 :: int32
+    r1 :: bool
+L0:
+    r0 = PyObject_IsTrue(x)
+    r1 = truncate r0: int32 to builtins.bool
+    return r1

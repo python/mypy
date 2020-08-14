@@ -160,7 +160,7 @@ type_is_op = custom_op(
 
 # bool(obj) with unboxed result
 bool_op = c_function_op(
-    name='not',
+    name='builtins.bool',
     arg_types=[object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name='PyObject_IsTrue',

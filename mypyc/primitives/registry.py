@@ -40,7 +40,7 @@ from typing import Dict, List, Optional, NamedTuple, Tuple
 from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
-from mypyc.ir.rtypes import RType,  bool_rprimitive
+from mypyc.ir.rtypes import RType
 
 CFunctionDescription = NamedTuple(
     'CFunctionDescription',  [('name', str),
