@@ -113,7 +113,10 @@ NO_ANY_RETURN = ErrorCode(
 UNREACHABLE = ErrorCode(
     'unreachable', "Warn about unreachable statements or expressions", 'General')  # type: Final
 REDUNDANT_EXPR = ErrorCode(
-    'redundant-expr', "Warn about redundant expressions", 'General')  # type: Final
+    'redundant-expr',
+    "Warn about redundant expressions",
+    'General',
+    default_enabled=False)  # type: Final
 
 # Syntax errors are often blocking.
 SYNTAX = ErrorCode(
