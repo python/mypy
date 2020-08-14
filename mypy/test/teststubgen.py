@@ -794,6 +794,81 @@ class StubgencSuite(unittest.TestCase):
         generate_c_property_stub('attribute', TestClass.attribute, output, readonly=True)
         assert_equal(output, ['@property', 'def attribute(self) -> str: ...'])
 
+    def test_generate_c_type_with_single_arg_generic(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: List[int])
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, ['def test(self, arg0: List[int]) -> Any: ...'])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_with_double_arg_generic(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: Dict[str, int])
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, ['def test(self, arg0: Dict[str,int]) -> Any: ...'])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_with_nested_generic(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: Dict[str, List[int]])
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, ['def test(self, arg0: Dict[str,List[int]]) -> Any: ...'])
+        assert_equal(imports, [])
+
+    def test_generate_c_type_with_generic_using_other_module_first(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: Dict[argparse.Action, int])
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, ['def test(self, arg0: Dict[argparse.Action,int]) -> Any: ...'])
+        assert_equal(imports, ['import argparse'])
+
+    def test_generate_c_type_with_generic_using_other_module_last(self) -> None:
+        class TestClass:
+            def test(self, arg0: str) -> None:
+                """
+                test(self: TestClass, arg0: Dict[str, argparse.Action])
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, ['def test(self, arg0: Dict[str,argparse.Action]) -> Any: ...'])
+        assert_equal(imports, ['import argparse'])
+
     def test_generate_c_type_with_overload_pybind11(self) -> None:
         class TestClass:
             def __init__(self, arg0: str) -> None:
