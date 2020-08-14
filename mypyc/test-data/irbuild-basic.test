@@ -207,18 +207,20 @@ def f(x: object, y: object) -> str:
 def f(x, y):
     x, y :: object
     r0, r1 :: str
-    r2 :: bool
-    r3 :: str
+    r2 :: int32
+    r3 :: bool
+    r4 :: str
 L0:
     r1 = PyObject_Str(x)
-    r2 = bool r1 :: object
-    if r2 goto L1 else goto L2 :: bool
+    r2 = PyObject_IsTrue(r1)
+    r3 = truncate r2: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
 L1:
     r0 = r1
     goto L3
 L2:
-    r3 = PyObject_Str(y)
-    r0 = r3
+    r4 = PyObject_Str(y)
+    r0 = r4
 L3:
     return r0
 
@@ -288,18 +290,20 @@ def f(x: object, y: object) -> str:
 def f(x, y):
     x, y :: object
     r0, r1 :: str
-    r2 :: bool
-    r3 :: str
+    r2 :: int32
+    r3 :: bool
+    r4 :: str
 L0:
     r1 = PyObject_Str(x)
-    r2 = bool r1 :: object
-    if r2 goto L2 else goto L1 :: bool
+    r2 = PyObject_IsTrue(r1)
+    r3 = truncate r2: int32 to builtins.bool
+    if r3 goto L2 else goto L1 :: bool
 L1:
     r0 = r1
     goto L3
 L2:
-    r3 = PyObject_Str(y)
-    r0 = r3
+    r4 = PyObject_Str(y)
+    r0 = r4
 L3:
     return r0
 
@@ -1315,10 +1319,12 @@ def lst(x: List[int]) -> int:
 [out]
 def obj(x):
     x :: object
-    r0 :: bool
+    r0 :: int32
+    r1 :: bool
 L0:
-    r0 = bool x :: object
-    if r0 goto L1 else goto L2 :: bool
+    r0 = PyObject_IsTrue(x)
+    r1 = truncate r0: int32 to builtins.bool
+    if r1 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
@@ -1444,15 +1450,17 @@ def opt_o(x):
     r0 :: object
     r1 :: bool
     r2 :: object
-    r3 :: bool
+    r3 :: int32
+    r4 :: bool
 L0:
     r0 = builtins.None :: object
     r1 = x is not r0
     if r1 goto L1 else goto L3 :: bool
 L1:
     r2 = cast(object, x)
-    r3 = bool r2 :: object
-    if r3 goto L2 else goto L3 :: bool
+    r3 = PyObject_IsTrue(r2)
+    r4 = truncate r3: int32 to builtins.bool
+    if r4 goto L2 else goto L3 :: bool
 L2:
     return 2
 L3:
@@ -2740,17 +2748,20 @@ L0:
 def A.__ne__(self, rhs):
     self :: __main__.A
     rhs, r0, r1 :: object
-    r2, r3 :: bool
-    r4 :: object
+    r2 :: bool
+    r3 :: int32
+    r4 :: bool
+    r5 :: object
 L0:
     r0 = self.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 is r1
     if r2 goto L2 else goto L1 :: bool
 L1:
-    r3 = not r0
-    r4 = box(bool, r3)
-    return r4
+    r3 = PyObject_Not(r0)
+    r4 = truncate r3: int32 to builtins.bool
+    r5 = box(bool, r4)
+    return r5
 L2:
     return r1
 
@@ -3535,3 +3546,16 @@ def h(x):
 L0:
     r0 = PySequence_List(x)
     return r0
+
+[case testBoolFunction]
+def f(x: object) -> bool:
+    return bool(x)
+[out]
+def f(x):
+    x :: object
+    r0 :: int32
+    r1 :: bool
+L0:
+    r0 = PyObject_IsTrue(x)
+    r1 = truncate r0: int32 to builtins.bool
+    return r1

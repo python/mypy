@@ -623,12 +623,12 @@ class LowLevelIRBuilder:
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        call_c_ops_candidates = c_unary_ops.get(expr_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
-        if target:
-            return target
         ops = unary_ops.get(expr_op, [])
         target = self.matching_primitive_op(ops, [lreg], line)
+        if target:
+            return target
+        call_c_ops_candidates = c_unary_ops.get(expr_op, [])
+        target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
         return target
 
@@ -745,7 +745,7 @@ class LowLevelIRBuilder:
                     self.add_bool_branch(remaining, true, false)
                 return
             elif not is_same_type(value.type, bool_rprimitive):
-                value = self.primitive_op(bool_op, [value], value.line)
+                value = self.call_c(bool_op, [value], value.line)
         self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
     def call_c(self,

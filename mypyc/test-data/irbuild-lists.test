@@ -194,3 +194,20 @@ L0:
     r5 = box(short_int, 6)
     r6 = PyList_Append(r2, r5)
     return r2
+
+[case testListIn]
+from typing import List
+def f(x: List[int], y: int) -> bool:
+    return y in x
+[out]
+def f(x, y):
+    x :: list
+    y :: int
+    r0 :: object
+    r1 :: int32
+    r2 :: bool
+L0:
+    r0 = box(int, y)
+    r1 = PySequence_Contains(x, r0)
+    r2 = truncate r1: int32 to builtins.bool
+    return r2

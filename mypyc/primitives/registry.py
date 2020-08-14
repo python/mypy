@@ -40,7 +40,7 @@ from typing import Dict, List, Optional, NamedTuple, Tuple
 from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
-from mypyc.ir.rtypes import RType,  bool_rprimitive
+from mypyc.ir.rtypes import RType
 
 CFunctionDescription = NamedTuple(
     'CFunctionDescription',  [('name', str),
@@ -123,45 +123,6 @@ def name_emit(name: str, target_type: Optional[str] = None) -> EmitCallback:
 def call_emit(func: str) -> EmitCallback:
     """Construct a PrimitiveOp emit callback function that calls a C function."""
     return simple_emit('{dest} = %s({comma_args});' % func)
-
-
-def call_void_emit(func: str) -> EmitCallback:
-    return simple_emit('%s({comma_args});' % func)
-
-
-def call_and_fail_emit(func: str) -> EmitCallback:
-    # This is a hack for our always failing operations like CPy_Raise,
-    # since we want the optimizer to see that it always fails but we
-    # don't have an ERR_ALWAYS yet.
-    # TODO: Have an ERR_ALWAYS.
-    return simple_emit('%s({comma_args}); {dest} = 0;' % func)
-
-
-def call_negative_bool_emit(func: str) -> EmitCallback:
-    """Construct an emit callback that calls a function and checks for negative return.
-
-    The negative return value is converted to a bool (true -> no error).
-    """
-    return simple_emit('{dest} = %s({comma_args}) >= 0;' % func)
-
-
-def negative_int_emit(template: str) -> EmitCallback:
-    """Construct a simple PrimitiveOp emit callback function that checks for -1 return."""
-
-    def emit(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-        temp = emitter.temp_name()
-        emitter.emit_line(template.format(args=args, dest='int %s' % temp,
-                                          comma_args=', '.join(args)))
-        emitter.emit_lines('if (%s < 0)' % temp,
-                           '    %s = %s;' % (dest, emitter.c_error_value(bool_rprimitive)),
-                           'else',
-                           '    %s = %s;' % (dest, temp))
-
-    return emit
-
-
-def call_negative_magic_emit(func: str) -> EmitCallback:
-    return negative_int_emit('{dest} = %s({comma_args});' % func)
 
 
 def binary_op(op: str,

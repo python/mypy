@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
-    call_negative_magic_emit, c_function_op, c_custom_op, load_address_op
+    c_function_op, c_custom_op, load_address_op
 )
 
 
@@ -159,12 +159,13 @@ type_is_op = custom_op(
     emit=simple_emit('{dest} = Py_TYPE({args[0]}) == (PyTypeObject *){args[1]};'))
 
 # bool(obj) with unboxed result
-bool_op = func_op(
-    'builtins.bool',
+bool_op = c_function_op(
+    name='builtins.bool',
     arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_negative_magic_emit('PyObject_IsTrue'))
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_IsTrue',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive)
 
 # slice(start, stop, step)
 new_slice_op = c_function_op(
