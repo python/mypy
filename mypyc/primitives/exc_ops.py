@@ -2,9 +2,7 @@
 
 from mypyc.ir.ops import ERR_NEVER, ERR_FALSE, ERR_ALWAYS
 from mypyc.ir.rtypes import bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple
-from mypyc.primitives.registry import (
-    simple_emit, custom_op, c_custom_op
-)
+from mypyc.primitives.registry import c_custom_op
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
 # that the argument is an exception object, and raise it.
@@ -43,22 +41,14 @@ no_err_occurred_op = c_custom_op(
     c_function_name='CPy_NoErrOccured',
     error_kind=ERR_FALSE)
 
-# Assert that the error indicator has been set.
-assert_err_occured_op = custom_op(
-    arg_types=[],
-    result_type=void_rtype,
-    error_kind=ERR_NEVER,
-    format_str='assert_err_occurred',
-    emit=simple_emit('assert(PyErr_Occurred() != NULL && "failure w/o err!");'))
 
 # Keep propagating a raised exception by unconditionally giving an error value.
 # This doesn't actually raise an exception.
-keep_propagating_op = custom_op(
+keep_propagating_op = c_custom_op(
     arg_types=[],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='{dest} = keep_propagating',
-    emit=simple_emit('{dest} = 0;'))
+    return_type=bool_rprimitive,
+    c_function_name='CPy_KeepPropagating',
+    error_kind=ERR_FALSE)
 
 # Catches a propagating exception and makes it the "currently
 # handled exception" (by sticking it into sys.exc_info()). Returns the

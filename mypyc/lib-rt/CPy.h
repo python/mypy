@@ -407,6 +407,9 @@ static int CPy_NoErrOccured(void) {
     return PyErr_Occurred() == NULL;
 }
 
+static inline bool CPy_KeepPropagating(void) {
+    return 0;
+}
 // We want to avoid the public PyErr_GetExcInfo API for these because
 // it requires a bunch of spurious refcount traffic on the parts of
 // the triple we don't care about. Unfortunately the layout of the
