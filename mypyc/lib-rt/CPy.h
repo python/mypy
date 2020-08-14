@@ -407,7 +407,7 @@ static int CPy_NoErrOccured(void) {
     return PyErr_Occurred() == NULL;
 }
 
-static void CPy_AssertErrOccured(void) {
+static void CPy_AssertErrOccurred(void) {
     assert(PyErr_Occurred() != NULL && "failure w/o err!");
 }
 
