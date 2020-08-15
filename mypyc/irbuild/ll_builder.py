@@ -559,6 +559,10 @@ class LowLevelIRBuilder:
         if value is not None:
             return value
 
+        # Special case 'is' and 'is not'
+        if expr_op in ('is', 'is not'):
+            return self.translate_is_op(lreg, rreg, expr_op, line)
+
         if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, expr_op, line)
 
@@ -724,7 +728,7 @@ class LowLevelIRBuilder:
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
-                is_none = self.binary_op(value, self.none_object(), 'is not', value.line)
+                is_none = self.translate_is_op(value, self.none_object(), 'is not', value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
                 self.add(branch)
                 always_truthy = False
@@ -976,7 +980,7 @@ class LowLevelIRBuilder:
         if not class_ir.has_method('__eq__'):
             # There's no __eq__ defined, so just use object identity.
             identity_ref_op = 'is' if expr_op == '==' else 'is not'
-            return self.binary_op(lreg, rreg, identity_ref_op, line)
+            return self.translate_is_op(lreg, rreg, identity_ref_op, line)
 
         return self.gen_method_call(
             lreg,
@@ -985,6 +989,21 @@ class LowLevelIRBuilder:
             ltype,
             line
         )
+
+    def translate_is_op(self,
+                        lreg: Value,
+                        rreg: Value,
+                        expr_op: str,
+                        line: int) -> Value:
+        """Create equality comparison operation between object types
+
+        Args:
+            expr_op: either 'is' or 'is not'
+        """
+        op = ComparisonOp.EQ if expr_op == 'is' else ComparisonOp.NEQ
+        lhs = self.coerce(lreg, object_rprimitive, line)
+        rhs = self.coerce(rreg, object_rprimitive, line)
+        return self.add(ComparisonOp(lhs, rhs, op, line))
 
     def _create_dict(self,
                      keys: List[Value],

@@ -77,7 +77,7 @@ def f(x):
     r6 :: int
 L0:
     r0 = box(None, 1)
-    r1 = x is r0
+    r1 = x == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return 2
@@ -87,7 +87,7 @@ L2:
     if is_error(r2) goto L6 (error at f:8) else goto L3
 L3:
     r3 = box(None, 1)
-    r4 = r2 is r3
+    r4 = r2 == r3
     dec_ref r2
     r5 = !r4
     if r5 goto L4 else goto L5 :: bool
@@ -478,7 +478,7 @@ L2:
     r1 = unicode_2 :: static  ('b')
     inc_ref r1
     v = r1
-    r2 = v is u
+    r2 = v == u
     r3 = !r2
     if r3 goto L11 else goto L1 :: bool
 L3:

@@ -262,9 +262,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                         """cpy_r_r05 = cpy_r_s1 | cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.XOR, 1),
                         """cpy_r_r06 = cpy_r_s1 ^ cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.LEFT_SHIFT, 1),
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
+                                     BinaryIntOp.LEFT_SHIFT, 1),
                         """cpy_r_r07 = cpy_r_s1 << cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.RIGHT_SHIFT, 1),
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
+                                     BinaryIntOp.RIGHT_SHIFT, 1),
                         """cpy_r_r08 = cpy_r_s1 >> cpy_r_s2;""")
 
     def test_comparison_op(self) -> None:
@@ -282,6 +284,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r03 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
         self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.ULT, 1),
                          """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
+
+        # object type
+        self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.EQ, 1),
+                         """cpy_r_r05 = cpy_r_o == cpy_r_o2;""")
+        self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.NEQ, 1),
+                         """cpy_r_r06 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),

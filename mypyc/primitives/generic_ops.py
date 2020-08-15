@@ -88,20 +88,6 @@ c_binary_op(
     ordering=[1, 0],
     priority=0)
 
-binary_op('is',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_NEVER,
-          emit=simple_emit('{dest} = {args[0]} == {args[1]};'),
-          priority=0)
-
-binary_op('is not',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_NEVER,
-          emit=simple_emit('{dest} = {args[0]} != {args[1]};'),
-          priority=0)
-
 
 # Unary operations
 
