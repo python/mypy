@@ -7,7 +7,7 @@ See also the documentation for mypyc.rtypes.int_rprimitive.
 """
 
 from typing import Dict, NamedTuple
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, BinaryIntOp
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
     str_rprimitive, RType
@@ -138,11 +138,11 @@ int_less_than_ = c_custom_op(
 
 # provide mapping from textual op to short int's op variant and boxed int's description
 # note these are not complete implementations
-int_logical_op_mapping = {
-    '==': IntLogicalOpDescrption(BinaryIntOp.EQ, int_equal_, False, False),
-    '!=': IntLogicalOpDescrption(BinaryIntOp.NEQ, int_equal_, True, False),
-    '<': IntLogicalOpDescrption(BinaryIntOp.SLT, int_less_than_, False, False),
-    '<=': IntLogicalOpDescrption(BinaryIntOp.SLE, int_less_than_, True, True),
-    '>': IntLogicalOpDescrption(BinaryIntOp.SGT, int_less_than_, False, True),
-    '>=': IntLogicalOpDescrption(BinaryIntOp.SGE, int_less_than_, True, False),
+int_comparison_op_mapping = {
+    '==': IntLogicalOpDescrption(ComparisonOp.EQ, int_equal_, False, False),
+    '!=': IntLogicalOpDescrption(ComparisonOp.NEQ, int_equal_, True, False),
+    '<': IntLogicalOpDescrption(ComparisonOp.SLT, int_less_than_, False, False),
+    '<=': IntLogicalOpDescrption(ComparisonOp.SLE, int_less_than_, True, True),
+    '>': IntLogicalOpDescrption(ComparisonOp.SGT, int_less_than_, False, True),
+    '>=': IntLogicalOpDescrption(ComparisonOp.SGE, int_less_than_, True, False),
 }  # type: Dict[str, IntLogicalOpDescrption]

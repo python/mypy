@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct
@@ -451,10 +451,16 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+
+    def visit_comparison_op(self, op: ComparisonOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
         lhs_cast = ""
         rhs_cast = ""
-        signed_op = {BinaryIntOp.SLT, BinaryIntOp.SGT, BinaryIntOp.SLE, BinaryIntOp.SGE}
-        unsigned_op = {BinaryIntOp.ULT, BinaryIntOp.UGT, BinaryIntOp.ULE, BinaryIntOp.UGE}
+        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
+        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
         if op.op in signed_op:
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
