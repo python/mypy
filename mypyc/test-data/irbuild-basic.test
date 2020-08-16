@@ -2624,7 +2624,7 @@ L4:
     r35 = __main__.globals :: static
     r36 = unicode_4 :: static  ('NamedTuple')
     r37 = CPyDict_GetItem(r35, r36)
-    r38 = py_call(r37, r24, r34)
+    r38 = PyObject_CallFunctionObjArgs(r37, r24, r34, 0)
     r39 = __main__.globals :: static
     r40 = unicode_5 :: static  ('Lol')
     r41 = CPyDict_SetItem(r39, r40, r38)
@@ -2633,7 +2633,7 @@ L4:
     r44 = unicode_5 :: static  ('Lol')
     r45 = CPyDict_GetItem(r43, r44)
     r46 = box(short_int, 2)
-    r47 = py_call(r45, r46, r42)
+    r47 = PyObject_CallFunctionObjArgs(r45, r46, r42, 0)
     r48 = cast(tuple, r47)
     r49 = __main__.globals :: static
     r50 = unicode_9 :: static  ('x')
@@ -2653,7 +2653,7 @@ L4:
     r64 = __main__.globals :: static
     r65 = unicode_3 :: static  ('NewType')
     r66 = CPyDict_GetItem(r64, r65)
-    r67 = py_call(r66, r60, r63)
+    r67 = PyObject_CallFunctionObjArgs(r66, r60, r63, 0)
     r68 = __main__.globals :: static
     r69 = unicode_11 :: static  ('Bar')
     r70 = CPyDict_SetItem(r68, r69, r67)
@@ -2664,7 +2664,7 @@ L4:
     r75 = __main__.globals :: static
     r76 = unicode_11 :: static  ('Bar')
     r77 = CPyDict_GetItem(r75, r76)
-    r78 = py_call(r77, r74)
+    r78 = PyObject_CallFunctionObjArgs(r77, r74, 0)
     r79 = __main__.globals :: static
     r80 = unicode_12 :: static  ('y')
     r81 = CPyDict_SetItem(r79, r80, r78)
