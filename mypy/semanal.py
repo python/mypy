@@ -2321,9 +2321,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                     lvalue.node.is_abstract_var = True
         else:
             if (self.type and self.type.is_protocol and self.is_annotated_protocol_member(s) and not self.is_func_scope()):
-                for lv in s.lvalues:
-                    print(lv)
-                    print(isinstance(lv, NameExpr), lv.is_inferred_def)
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
