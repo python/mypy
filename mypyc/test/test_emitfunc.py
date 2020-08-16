@@ -10,7 +10,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -23,7 +23,7 @@ from mypyc.irbuild.vtable import compute_vtable
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.primitives.registry import binary_ops, c_binary_ops
-from mypyc.primitives.misc_ops import none_object_op, true_op, false_op
+from mypyc.primitives.misc_ops import none_object_op
 from mypyc.primitives.list_ops import (
     list_get_item_op, list_set_item_op, new_list_op, list_append_op
 )
@@ -91,12 +91,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_load_None(self) -> None:
         self.assert_emit(PrimitiveOp([], none_object_op, 0), "cpy_r_r0 = Py_None;")
-
-    def test_load_True(self) -> None:
-        self.assert_emit(PrimitiveOp([], true_op, 0), "cpy_r_r0 = 1;")
-
-    def test_load_False(self) -> None:
-        self.assert_emit(PrimitiveOp([], false_op, 0), "cpy_r_r0 = 0;")
 
     def test_assign_int(self) -> None:
         self.assert_emit(Assign(self.m, self.n),
@@ -268,8 +262,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
 
     def test_load_mem(self) -> None:
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr),
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
+                         """cpy_r_r00 = *(char *)cpy_r_ptr;""")
 
     def test_get_element_ptr(self) -> None:
         r = RStruct("Foo", ["b", "i32", "i64"], [bool_rprimitive,
@@ -280,6 +276,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                         """cpy_r_r00 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
         self.assert_emit(GetElementPtr(self.o, r, "i64"),
                         """cpy_r_r01 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
+
+    def test_load_address(self) -> None:
+        self.assert_emit(LoadAddress(object_rprimitive, "PyDict_Type"),
+                         """cpy_r_r0 = (PyObject *)&PyDict_Type;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []

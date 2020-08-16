@@ -1,8 +1,6 @@
 """Primitive dict ops."""
 
-from typing import List
-
-from mypyc.ir.ops import EmitterInterface, ERR_FALSE, ERR_MAGIC, ERR_NEVER, ERR_NEG_INT
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER, ERR_NEG_INT
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
     list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive,
@@ -10,17 +8,14 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    name_ref_op, method_op, func_op,
-    simple_emit, name_emit, c_custom_op, c_method_op, c_function_op, c_binary_op
+    method_op, simple_emit, c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op
 )
 
-
 # Get the 'dict' type object.
-name_ref_op('builtins.dict',
-            result_type=object_rprimitive,
-            error_kind=ERR_NEVER,
-            emit=name_emit('&PyDict_Type', target_type="PyObject *"),
-            is_borrowed=True)
+load_address_op(
+    name='builtins.dict',
+    type=object_rprimitive,
+    src='PyDict_Type')
 
 # dict[key]
 dict_get_item_op = c_method_op(
@@ -168,21 +163,6 @@ dict_items_op = c_custom_op(
     c_function_name='CPyDict_Items',
     error_kind=ERR_MAGIC)
 
-
-def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_line('%s = PyDict_Size(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
-
-
-# len(dict)
-func_op(name='builtins.len',
-        arg_types=[dict_rprimitive],
-        result_type=int_rprimitive,
-        error_kind=ERR_NEVER,
-        emit=emit_len)
-
 # PyDict_Next() fast iteration
 dict_key_iter_op = c_custom_op(
     arg_types=[dict_rprimitive],
@@ -226,3 +206,9 @@ dict_check_size_op = c_custom_op(
     return_type=bool_rprimitive,
     c_function_name='CPyDict_CheckSize',
     error_kind=ERR_FALSE)
+
+dict_size_op = c_custom_op(
+    arg_types=[dict_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name='PyDict_Size',
+    error_kind=ERR_NEVER)

@@ -378,6 +378,19 @@ def make_simplified_union(items: Sequence[Type],
     return UnionType.make_union(simplified_set, line, column)
 
 
+def get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
+    t = get_proper_type(t)
+
+    if isinstance(t, Instance):
+        bool_method = t.type.names.get("__bool__", None)
+        if bool_method:
+            callee = get_proper_type(bool_method.type)
+            if isinstance(callee, CallableType):
+                return callee.ret_type
+
+    return None
+
+
 def true_only(t: Type) -> ProperType:
     """
     Restricted version of t with only True-ish values
@@ -393,8 +406,16 @@ def true_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The true version of a union type is the union of the true versions of its components
         new_items = [true_only(item) for item in t.items]
-        return make_simplified_union(new_items, line=t.line, column=t.column)
+        can_be_true_items = [item for item in new_items if item.can_be_true]
+        return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
+        ret_type = get_type_special_method_bool_ret_type(t)
+
+        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
+            new_t = copy_type(t)
+            new_t.can_be_true = False
+            return new_t
+
         new_t = copy_type(t)
         new_t.can_be_false = False
         return new_t
@@ -420,8 +441,16 @@ def false_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The false version of a union type is the union of the false versions of its components
         new_items = [false_only(item) for item in t.items]
-        return make_simplified_union(new_items, line=t.line, column=t.column)
+        can_be_false_items = [item for item in new_items if item.can_be_false]
+        return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
+        ret_type = get_type_special_method_bool_ret_type(t)
+
+        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
+            new_t = copy_type(t)
+            new_t.can_be_false = False
+            return new_t
+
         new_t = copy_type(t)
         new_t.can_be_true = False
         return new_t

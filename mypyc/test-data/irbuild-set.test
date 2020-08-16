@@ -57,7 +57,9 @@ def f():
     r4 :: int32
     r5 :: object
     r6 :: int32
-    r7 :: int
+    r7 :: ptr
+    r8 :: native_int
+    r9 :: short_int
 L0:
     r0 = set
     r1 = box(short_int, 2)
@@ -66,8 +68,10 @@ L0:
     r4 = PySet_Add(r0, r3)
     r5 = box(short_int, 6)
     r6 = PySet_Add(r0, r5)
-    r7 = len r0 :: set
-    return r7
+    r7 = get_element_ptr r0 used :: PySetObject
+    r8 = load_mem r7, r0 :: native_int*
+    r9 = r8 << 1
+    return r9
 
 [case testSetContains]
 from typing import Set
@@ -108,13 +112,11 @@ def f():
     r0, x :: set
     r1 :: object
     r2 :: bool
-    r3 :: None
 L0:
     r0 = set
     x = r0
     r1 = box(short_int, 2)
     r2 = CPySet_Remove(x, r1)
-    r3 = None
     return x
 
 [case testSetDiscard]
@@ -128,13 +130,11 @@ def f():
     r0, x :: set
     r1 :: object
     r2 :: int32
-    r3 :: None
 L0:
     r0 = set
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Discard(x, r1)
-    r3 = None
     return x
 
 [case testSetAdd]
@@ -148,13 +148,11 @@ def f():
     r0, x :: set
     r1 :: object
     r2 :: int32
-    r3 :: None
 L0:
     r0 = set
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Add(x, r1)
-    r3 = None
     return x
 
 [case testSetClear]
@@ -167,12 +165,10 @@ def f() -> Set[int]:
 def f():
     r0, x :: set
     r1 :: int32
-    r2 :: None
 L0:
     r0 = set
     x = r0
     r1 = PySet_Clear(x)
-    r2 = None
     return x
 
 [case testSetPop]
@@ -198,12 +194,9 @@ def update(s, x):
     s :: set
     x :: list
     r0 :: int32
-    r1, r2 :: None
 L0:
     r0 = _PySet_Update(s, x)
-    r1 = None
-    r2 = None
-    return r2
+    return 1
 
 [case testSetDisplay]
 from typing import Set
@@ -211,8 +204,7 @@ def f(x: Set[int], y: Set[int]) -> Set[int]:
     return {1, 2, *x, *y, 3}
 [out]
 def f(x, y):
-    x, y :: set
-    r0 :: set
+    x, y, r0 :: set
     r1 :: object
     r2 :: int32
     r3 :: object
@@ -230,4 +222,3 @@ L0:
     r7 = box(short_int, 6)
     r8 = PySet_Add(r0, r7)
     return r0
-

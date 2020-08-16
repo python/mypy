@@ -3,11 +3,10 @@
 from mypyc.primitives.registry import (
     func_op, simple_emit, c_function_op, c_method_op, c_binary_op
 )
-from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEVER, ERR_NEG_INT, EmitterInterface
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
-    object_rprimitive, bool_rprimitive, set_rprimitive, int_rprimitive, c_int_rprimitive
+    object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive
 )
-from typing import List
 
 
 # Construct an empty set.
@@ -34,23 +33,6 @@ c_function_op(
     return_type=object_rprimitive,
     c_function_name='PyFrozenSet_New',
     error_kind=ERR_MAGIC)
-
-
-def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_line('%s = PySet_GET_SIZE(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
-
-
-# len(set)
-func_op(
-    name='builtins.len',
-    arg_types=[set_rprimitive],
-    result_type=int_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=emit_len,
-)
 
 # item in set
 c_binary_op(

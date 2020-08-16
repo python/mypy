@@ -243,18 +243,13 @@ class Environment:
         regs = list(self.regs())
         if const_regs is None:
             const_regs = {}
+        regs = [reg for reg in regs if reg.name not in const_regs]
         while i < len(regs):
             i0 = i
-            if regs[i0].name not in const_regs:
-                group = [regs[i0].name]
-            else:
-                group = []
-                i += 1
-                continue
+            group = [regs[i0].name]
             while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
                 i += 1
-                if regs[i].name not in const_regs:
-                    group.append(regs[i].name)
+                group.append(regs[i].name)
             i += 1
             result.append('%s :: %s' % (', '.join(group), regs[i0].type))
         return result
@@ -1348,25 +1343,42 @@ class BinaryIntOp(RegisterOp):
 
 
 class LoadMem(RegisterOp):
-    """Reading a memory location
+    """Read a memory location.
 
-    type ret = *(type*)src
+    type ret = *(type *)src
+
+    Attributes:
+      type: Type of the read value
+      src: Pointer to memory to read
+      base: If not None, the object from which we are reading memory.
+            It's used to avoid the target object from being freed via
+            reference counting. If the target is not in reference counted
+            memory, or we know that the target won't be freed, it can be
+            None.
     """
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
         assert is_pointer_rprimitive(src.type)
         self.src = src
+        self.base = base
 
     def sources(self) -> List[Value]:
-        return [self.src]
+        if self.base:
+            return [self.src, self.base]
+        else:
+            return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = load_mem %r :: %r*", self, self.src, self.type)
+        if self.base:
+            base = env.format(', %r', self.base)
+        else:
+            base = ''
+        return env.format("%r = load_mem %r%s :: %r*", self, self.src, base, self.type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
@@ -1392,6 +1404,25 @@ class GetElementPtr(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_get_element_ptr(self)
+
+
+class LoadAddress(RegisterOp):
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self, type: RType, src: str, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = load_address %s", self, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_address(self)
 
 
 @trait
@@ -1506,6 +1537,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_get_element_ptr(self, op: GetElementPtr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_address(self, op: LoadAddress) -> T:
         raise NotImplementedError
 
 

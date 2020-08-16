@@ -27,7 +27,9 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
-    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive
+    c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
+    is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
+    none_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -45,13 +47,13 @@ from mypyc.primitives.list_ops import (
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import (
-    dict_update_in_display_op, dict_new_op, dict_build_op
+    dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
 )
 from mypyc.primitives.misc_ops import (
-    none_op, none_object_op, false_op, fast_isinstance_op, bool_op, type_is_op
+    none_object_op, fast_isinstance_op, bool_op, type_is_op
 )
 from mypyc.primitives.int_ops import int_logical_op_mapping
 from mypyc.rt_subtype import is_runtime_subtype
@@ -194,7 +196,7 @@ class LowLevelIRBuilder:
     def isinstance_helper(self, obj: Value, class_irs: List[ClassIR], line: int) -> Value:
         """Fast path for isinstance() that checks against a list of native classes."""
         if not class_irs:
-            return self.primitive_op(false_op, [], line)
+            return self.false()
         ret = self.isinstance_native(obj, class_irs[0], line)
         for class_ir in class_irs[1:]:
             def other() -> Value:
@@ -216,7 +218,7 @@ class LowLevelIRBuilder:
                                      line)
         if not concrete:
             # There can't be any concrete instance that matches this.
-            return self.primitive_op(false_op, [], line)
+            return self.false()
         type_obj = self.get_native_type(concrete[0])
         ret = self.primitive_op(type_is_op, [obj, type_obj], line)
         for c in concrete[1:]:
@@ -265,7 +267,7 @@ class LowLevelIRBuilder:
 
         if len(star_arg_values) == 0:
             # We can directly construct a tuple if there are no star args.
-            pos_args_tuple = self.primitive_op(new_tuple_op, pos_arg_values, line)
+            pos_args_tuple = self.new_tuple(pos_arg_values, line)
         else:
             # Otherwise we construct a list and call extend it with the star args, since tuples
             # don't have an extend method.
@@ -336,7 +338,8 @@ class LowLevelIRBuilder:
         for lst, arg in zip(formal_to_actual, sig.args):
             output_arg = None
             if arg.kind == ARG_STAR:
-                output_arg = self.primitive_op(new_tuple_op, [args[i] for i in lst], line)
+                items = [args[i] for i in lst]
+                output_arg = self.new_tuple(items, line)
             elif arg.kind == ARG_STAR2:
                 dict_entries = [(self.load_static_unicode(cast(str, arg_names[i])), args[i])
                                 for i in lst]
@@ -423,7 +426,15 @@ class LowLevelIRBuilder:
 
     def none(self) -> Value:
         """Load unboxed None value (type: none_rprimitive)."""
-        return self.add(PrimitiveOp([], none_op, line=-1))
+        return self.add(LoadInt(1, -1, none_rprimitive))
+
+    def true(self) -> Value:
+        """Load unboxed True value (type: bool_rprimitive)."""
+        return self.add(LoadInt(1, -1, bool_rprimitive))
+
+    def false(self) -> Value:
+        """Load unboxed False value (type: bool_rprimitive)."""
+        return self.add(LoadInt(0, -1, bool_rprimitive))
 
     def none_object(self) -> Value:
         """Load Python None value (type: object_rprimitive)."""
@@ -612,12 +623,12 @@ class LowLevelIRBuilder:
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        call_c_ops_candidates = c_unary_ops.get(expr_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
-        if target:
-            return target
         ops = unary_ops.get(expr_op, [])
         target = self.matching_primitive_op(ops, [lreg], line)
+        if target:
+            return target
+        call_c_ops_candidates = c_unary_ops.get(expr_op, [])
+        target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
         return target
 
@@ -704,7 +715,7 @@ class LowLevelIRBuilder:
             zero = self.add(LoadInt(0))
             value = self.binary_op(value, zero, '!=', value.line)
         elif is_same_type(value.type, list_rprimitive):
-            length = self.list_len(value, value.line)
+            length = self.builtin_len(value, value.line)
             zero = self.add(LoadInt(0))
             value = self.binary_op(length, zero, '!=', value.line)
         elif (isinstance(value.type, RInstance) and value.type.class_ir.is_ext_class
@@ -734,7 +745,7 @@ class LowLevelIRBuilder:
                     self.add_bool_branch(remaining, true, false)
                 return
             elif not is_same_type(value.type, bool_rprimitive):
-                value = self.primitive_op(bool_op, [value], value.line)
+                value = self.call_c(bool_op, [value], value.line)
         self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
     def call_c(self,
@@ -811,12 +822,33 @@ class LowLevelIRBuilder:
     def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(BinaryIntOp(type, lhs, rhs, op, line))
 
-    def list_len(self, val: Value, line: int) -> Value:
-        elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
-        size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
-        offset = self.add(LoadInt(1, -1, rtype=c_pyssize_t_rprimitive))
-        return self.binary_int_op(short_int_rprimitive, size_value, offset,
-                                  BinaryIntOp.LEFT_SHIFT, -1)
+    def builtin_len(self, val: Value, line: int) -> Value:
+        typ = val.type
+        if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
+            elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
+            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                      BinaryIntOp.LEFT_SHIFT, line)
+        elif is_dict_rprimitive(typ):
+            size_value = self.call_c(dict_size_op, [val], line)
+            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                      BinaryIntOp.LEFT_SHIFT, line)
+        elif is_set_rprimitive(typ):
+            elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
+            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            return self.binary_int_op(short_int_rprimitive, size_value, offset,
+                                      BinaryIntOp.LEFT_SHIFT, line)
+        # generic case
+        else:
+            return self.call_c(generic_len_op, [val], line)
+
+    def new_tuple(self, items: List[Value], line: int) -> Value:
+        load_size_op = self.add(LoadInt(len(items), -1, c_pyssize_t_rprimitive))
+        return self.call_c(new_tuple_op, [load_size_op] + items, line)
+
     # Internal helpers
 
     def decompose_union_helper(self,

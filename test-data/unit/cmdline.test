@@ -1123,3 +1123,53 @@ import foo.bar
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
 == Return code: 2
+
+[case testEnableInvalidErrorCode]
+# cmd: mypy --enable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testDisableInvalidErrorCode]
+# cmd: mypy --disable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testEnableAndDisableInvalidErrorCode]
+# cmd: mypy --disable-error-code YOLO --enable-error-code YOLO2 test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO, YOLO2
+== Return code: 2
+
+[case testEnableValidAndInvalidErrorCode]
+# cmd: mypy --enable-error-code attr-defined --enable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testDisableValidAndInvalidErrorCode]
+# cmd: mypy --disable-error-code attr-defined --disable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2

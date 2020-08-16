@@ -2,12 +2,12 @@
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
-    RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
+    RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
-    call_negative_magic_emit, c_function_op, c_custom_op
+    simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
+    c_function_op, c_custom_op, load_address_op
 )
 
 
@@ -19,23 +19,6 @@ none_object_op = custom_op(result_type=object_rprimitive,
                            emit=name_emit('Py_None'),
                            is_borrowed=True)
 
-# Get an unboxed None value
-none_op = name_ref_op('builtins.None',
-                      result_type=none_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = 1; /* None */'))
-
-# Get an unboxed True value
-true_op = name_ref_op('builtins.True',
-                      result_type=bool_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = 1;'))
-
-# Get an unboxed False value
-false_op = name_ref_op('builtins.False',
-                       result_type=bool_rprimitive,
-                       error_kind=ERR_NEVER,
-                       emit=simple_emit('{dest} = 0;'))
 
 # Get the boxed object '...'
 ellipsis_op = custom_op(name='...',
@@ -46,11 +29,10 @@ ellipsis_op = custom_op(name='...',
                         is_borrowed=True)
 
 # Get the boxed NotImplemented object
-not_implemented_op = name_ref_op(name='builtins.NotImplemented',
-                                 result_type=object_rprimitive,
-                                 error_kind=ERR_NEVER,
-                                 emit=name_emit('Py_NotImplemented'),
-                                 is_borrowed=True)
+not_implemented_op = load_address_op(
+    name='builtins.NotImplemented',
+    type=object_rprimitive,
+    src='_Py_NotImplementedStruct')
 
 # id(obj)
 c_function_op(
@@ -177,12 +159,13 @@ type_is_op = custom_op(
     emit=simple_emit('{dest} = Py_TYPE({args[0]}) == (PyTypeObject *){args[1]};'))
 
 # bool(obj) with unboxed result
-bool_op = func_op(
-    'builtins.bool',
+bool_op = c_function_op(
+    name='builtins.bool',
     arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_negative_magic_emit('PyObject_IsTrue'))
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_IsTrue',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive)
 
 # slice(start, stop, step)
 new_slice_op = c_function_op(
@@ -201,12 +184,10 @@ type_op = c_function_op(
     error_kind=ERR_NEVER)
 
 # Get 'builtins.type' (base class of all classes)
-type_object_op = name_ref_op(
-    'builtins.type',
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=name_emit('&PyType_Type', target_type='PyObject *'),
-    is_borrowed=True)
+type_object_op = load_address_op(
+    name='builtins.type',
+    type=object_rprimitive,
+    src='PyType_Type')
 
 # Create a heap type based on a template non-heap type.
 # See CPyType_FromTemplate for more docs.

@@ -332,14 +332,7 @@ class ForGenerator:
 
     def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
         """A helper to get collection length, used by several subclasses."""
-        val = self.builder.read(expr, self.line)
-        if is_list_rprimitive(val.type):
-            return self.builder.builder.list_len(self.builder.read(expr, self.line), self.line)
-        return self.builder.builder.builtin_call(
-            [self.builder.read(expr, self.line)],
-            'builtins.len',
-            self.line,
-        )
+        return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
 
 
 class ForIterable(ForGenerator):

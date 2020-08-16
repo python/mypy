@@ -62,8 +62,7 @@ def f() -> int:
     return y
 [out]
 def f():
-    x :: int
-    y :: int
+    x, y :: int
     r0 :: bool
     r1 :: native_int
     r2, r3, r4 :: bool
@@ -100,8 +99,7 @@ def f(a: int, b: int) -> int:
     return y
 [out]
 def f(a, b):
-    a, b :: int
-    r0, x, r1, y :: int
+    a, b, r0, x, r1, y :: int
 L0:
     r0 = CPyTagged_Add(a, 2)
     x = r0
@@ -118,8 +116,7 @@ def f(a: int) -> int:
     return x + y
 [out]
 def f(a):
-    a, x, y :: int
-    r0 :: int
+    a, x, y, r0 :: int
 L0:
     inc_ref a :: int
     x = a
@@ -139,8 +136,7 @@ def f(a: int) -> int:
     return y
 [out]
 def f(a):
-    a :: int
-    y :: int
+    a, y :: int
 L0:
     a = 2
     y = a
@@ -171,8 +167,7 @@ def f(a: int) -> int:
     return a
 [out]
 def f(a):
-    a :: int
-    x, y :: int
+    a, x, y :: int
 L0:
     x = 2
     inc_ref x :: int
@@ -205,8 +200,7 @@ def f(a):
     r0 :: bool
     r1 :: native_int
     r2, r3, r4 :: bool
-    x :: int
-    r5, y :: int
+    x, r5, y :: int
 L0:
     r1 = a & 1
     r2 = r1 == 0
@@ -250,8 +244,7 @@ def f(a):
     r0 :: bool
     r1 :: native_int
     r2, r3, r4 :: bool
-    x :: int
-    r5, y :: int
+    x, r5, y :: int
 L0:
     r1 = a & 1
     r2 = r1 == 0
@@ -321,8 +314,7 @@ def f(a: int) -> int:
 -- This is correct but bad code
 [out]
 def f(a):
-    a :: int
-    x, r0 :: int
+    a, x, r0 :: int
 L0:
     inc_ref a :: int
     a = a
@@ -343,10 +335,7 @@ def f(a: int) -> int:
     return a + x
 [out]
 def f(a):
-    a :: int
-    r0 :: int
-    x :: int
-    r1, r2 :: int
+    a, r0, x, r1, r2 :: int
 L0:
     r0 = CPyTagged_Add(a, 2)
     a = r0
@@ -365,17 +354,14 @@ def f() -> None:
     x = x + 1
 [out]
 def f():
-    x :: int
-    r0 :: int
-    r1 :: None
+    x, r0 :: int
 L0:
     x = 2
     r0 = CPyTagged_Add(x, 2)
     dec_ref x :: int
     x = r0
     dec_ref x :: int
-    r1 = None
-    return r1
+    return 1
 
 [case testAdd1]
 def f() -> None:
@@ -383,17 +369,14 @@ def f() -> None:
     x = y + 1
 [out]
 def f():
-    y :: int
-    r0, x :: int
-    r1 :: None
+    y, r0, x :: int
 L0:
     y = 2
     r0 = CPyTagged_Add(y, 2)
     dec_ref y :: int
     x = r0
     dec_ref x :: int
-    r1 = None
-    return r1
+    return 1
 
 [case testAdd2]
 def f(a: int) -> int:
@@ -436,9 +419,7 @@ def f(a: int) -> None:
     z = y + y
 [out]
 def f(a):
-    a, r0, x :: int
-    y, r1, z :: int
-    r2 :: None
+    a, r0, x, y, r1, z :: int
 L0:
     r0 = CPyTagged_Add(a, a)
     x = r0
@@ -448,8 +429,7 @@ L0:
     dec_ref y :: int
     z = r1
     dec_ref z :: int
-    r2 = None
-    return r2
+    return 1
 
 [case testAdd5]
 def f(a: int) -> None:
@@ -458,9 +438,7 @@ def f(a: int) -> None:
     x = x + x
 [out]
 def f(a):
-    a, r0 :: int
-    x, r1 :: int
-    r2 :: None
+    a, r0, x, r1 :: int
 L0:
     r0 = CPyTagged_Add(a, a)
     a = r0
@@ -470,8 +448,7 @@ L0:
     dec_ref x :: int
     x = r1
     dec_ref x :: int
-    r2 = None
-    return r2
+    return 1
 
 [case testReturnInMiddleOfFunction]
 def f() -> int:
@@ -484,9 +461,7 @@ def f() -> int:
     return x + y - a
 [out]
 def f():
-    x :: int
-    y :: int
-    z :: int
+    x, y, z :: int
     r0 :: bool
     r1 :: native_int
     r2, r3, r4 :: bool
@@ -536,16 +511,13 @@ def f(a: int) -> int:
     return sum
 [out]
 def f(a):
-    a :: int
-    sum :: int
-    i :: int
+    a, sum, i :: int
     r0 :: bool
     r1 :: native_int
     r2 :: bool
     r3 :: native_int
     r4, r5, r6, r7, r8 :: bool
-    r9 :: int
-    r10 :: int
+    r9, r10 :: int
 L0:
     sum = 0
     i = 0
@@ -585,8 +557,7 @@ def f(a: int) -> int:
     return f(a + 1)
 [out]
 def f(a):
-    a :: int
-    r0, r1 :: int
+    a, r0, r1 :: int
 L0:
     r0 = CPyTagged_Add(a, 2)
     r1 = f(r0)
@@ -624,15 +595,13 @@ def f(a, b):
     r1 :: int
     r2 :: object
     r3 :: bool
-    r4 :: None
 L0:
     r0 = CPyList_GetItemShort(b, 0)
     r1 = unbox(int, r0)
     dec_ref r0
     r2 = box(int, r1)
     r3 = CPyList_SetItem(a, 0, r2)
-    r4 = None
-    return r4
+    return 1
 
 [case testTupleRefcount]
 from typing import Tuple
@@ -659,15 +628,13 @@ def f() -> None:
 def f():
     r0, c, r1 :: __main__.C
     r2 :: bool
-    r3 :: None
 L0:
     r0 = C()
     c = r0
     r1 = C()
     c.x = r1; r2 = is_error
     dec_ref c
-    r3 = None
-    return r3
+    return 1
 
 [case testCastRefCount]
 class C: pass
@@ -681,7 +648,6 @@ def f():
     r1, a :: list
     r2 :: object
     r3, d :: __main__.C
-    r4 :: None
 L0:
     r0 = C()
     r1 = [r0]
@@ -691,8 +657,7 @@ L0:
     r3 = cast(__main__.C, r2)
     d = r3
     dec_ref d
-    r4 = None
-    return r4
+    return 1
 
 [case testUnaryBranchSpecialCase]
 def f(x: bool) -> int:
@@ -734,9 +699,9 @@ def g(x):
     r5 :: object
     r6 :: int
 L0:
-    r0 = int
+    r0 = load_address PyLong_Type
     r1 = unicode_1 :: static  ('base')
-    r2 = (x) :: tuple
+    r2 = PyTuple_Pack(1, x)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(1, r1, r3)
     dec_ref r3
@@ -757,15 +722,12 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
-    r2, r3 :: None
 L0:
     inc_ref x :: int
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
     dec_ref r0
-    r2 = None
-    r3 = None
-    return r3
+    return 1
 
 [case testForDict]
 from typing import Dict
@@ -777,51 +739,50 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0 :: short_int
-    r1 :: int
-    r2 :: object
-    r3 :: tuple[bool, int, object]
-    r4 :: int
-    r5 :: bool
-    r6 :: object
-    key, r7 :: int
-    r8, r9 :: object
-    r10 :: int
-    r11, r12 :: bool
-    r13 :: None
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11 :: int
+    r12, r13 :: bool
 L0:
     r0 = 0
-    r1 = len d :: dict
-    r2 = CPyDict_GetKeysIter(d)
+    r1 = PyDict_Size(d)
+    r2 = r1 << 1
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r3 = CPyDict_NextKey(r2, r0)
-    r4 = r3[1]
-    r0 = r4
-    r5 = r3[0]
-    if r5 goto L2 else goto L6 :: bool
+    r4 = CPyDict_NextKey(r3, r0)
+    r5 = r4[1]
+    r0 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L6 :: bool
 L2:
-    r6 = r3[2]
-    dec_ref r3
-    r7 = unbox(int, r6)
-    dec_ref r6
-    key = r7
-    r8 = box(int, key)
-    r9 = CPyDict_GetItem(d, r8)
-    dec_ref r8
-    r10 = unbox(int, r9)
+    r7 = r4[2]
+    dec_ref r4
+    r8 = unbox(int, r7)
+    dec_ref r7
+    key = r8
+    r9 = box(int, key)
+    r10 = CPyDict_GetItem(d, r9)
     dec_ref r9
-    dec_ref r10 :: int
+    r11 = unbox(int, r10)
+    dec_ref r10
+    dec_ref r11 :: int
 L3:
-    r11 = CPyDict_CheckSize(d, r1)
+    r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r12 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccured()
 L5:
-    r13 = None
-    return r13
+    return 1
 L6:
-    dec_ref r1 :: int
-    dec_ref r2
     dec_ref r3
+    dec_ref r4
     goto L4
 
 [case testBorrowRefs]
@@ -833,25 +794,39 @@ def make_garbage(arg: object) -> None:
 [out]
 def make_garbage(arg):
     arg :: object
-    r0, b :: bool
-    r1 :: None
-    r2 :: object
-    r3 :: bool
-    r4 :: None
+    b :: bool
+    r0 :: object
 L0:
-    r0 = True
-    b = r0
+    b = 1
 L1:
     if b goto L2 else goto L3 :: bool
 L2:
-    r1 = None
-    r2 = box(None, r1)
-    inc_ref r2
-    arg = r2
+    r0 = box(None, 1)
+    inc_ref r0
+    arg = r0
     dec_ref arg
-    r3 = False
-    b = r3
+    b = 0
     goto L1
 L3:
-    r4 = None
-    return r4
+    return 1
+
+[case testGetElementPtrLifeTime]
+from typing import List
+
+def f() -> int:
+    x: List[str] = []
+    return len(x)
+[out]
+def f():
+    r0, x :: list
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+L0:
+    r0 = []
+    x = r0
+    r1 = get_element_ptr x ob_size :: PyVarObject
+    r2 = load_mem r1, x :: native_int*
+    dec_ref x
+    r3 = r2 << 1
+    return r3

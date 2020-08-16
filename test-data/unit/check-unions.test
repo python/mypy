@@ -1048,3 +1048,14 @@ def foo(a: T2, b: T2) -> T2:
 def bar(a: T4, b: T4) -> T4:  # test multi-level alias
     return a + b
 [builtins fixtures/ops.pyi]
+
+[case testJoinUnionWithUnionAndAny]
+# flags: --strict-optional
+from typing import TypeVar, Union, Any
+T = TypeVar("T")
+def f(x: T, y: T) -> T:
+    return x
+x: Union[None, Any]
+y: Union[int, None]
+reveal_type(f(x, y)) # N: Revealed type is 'Union[None, Any, builtins.int]'
+reveal_type(f(y, x)) # N: Revealed type is 'Union[builtins.int, None, Any]'

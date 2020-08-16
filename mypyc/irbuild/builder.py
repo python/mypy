@@ -47,7 +47,7 @@ from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function
 from mypyc.primitives.list_ops import to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import true_op, false_op, import_op
+from mypyc.primitives.misc_ops import import_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -200,6 +200,15 @@ class IRBuilder:
     def none_object(self) -> Value:
         return self.builder.none_object()
 
+    def none(self) -> Value:
+        return self.builder.none()
+
+    def true(self) -> Value:
+        return self.builder.true()
+
+    def false(self) -> Value:
+        return self.builder.false()
+
     def py_call(self,
                 function: Value,
                 arg_values: List[Value],
@@ -238,8 +247,11 @@ class IRBuilder:
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tagged(lhs, rhs, op, line)
 
-    def list_len(self, val: Value, line: int) -> Value:
-        return self.builder.list_len(val, line)
+    def builtin_len(self, val: Value, line: int) -> Value:
+        return self.builder.builtin_len(val, line)
+
+    def new_tuple(self, items: List[Value], line: int) -> Value:
+        return self.builder.new_tuple(items, line)
 
     @property
     def environment(self) -> Environment:
@@ -339,9 +351,9 @@ class IRBuilder:
         """Load value of a final name or class-level attribute."""
         if isinstance(val, bool):
             if val:
-                return self.primitive_op(true_op, [], line)
+                return self.true()
             else:
-                return self.primitive_op(false_op, [], line)
+                return self.false()
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
@@ -511,7 +523,7 @@ class IRBuilder:
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1:]
             iter_list = self.call_c(to_list, [iterator], line)
-            iter_list_len = self.list_len(iter_list, line)
+            iter_list_len = self.builtin_len(iter_list, line)
             post_star_len = self.add(LoadInt(len(post_star_vals)))
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 

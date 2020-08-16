@@ -52,7 +52,6 @@ def f(a, n, c):
     r6 :: str
     r7 :: object
     r8 :: int32
-    r9 :: None
 L0:
     r0 = box(int, n)
     c.a = r0; r1 = is_error
@@ -65,8 +64,7 @@ L0:
     r6 = unicode_6 :: static  ('a')
     r7 = box(int, n)
     r8 = PyObject_SetAttr(a, r6, r7)
-    r9 = None
-    return r9
+    return 1
 
 [case testCoerceAnyInOps]
 from typing import Any, List
@@ -88,14 +86,12 @@ def f1(a, n):
     a :: object
     n :: int
     r0, r1, r2, r3 :: object
-    r4 :: None
 L0:
     r0 = box(int, n)
     r1 = PyNumber_Add(a, r0)
     r2 = box(int, n)
     r3 = PyNumber_Add(r2, a)
-    r4 = None
-    return r4
+    return 1
 def f2(a, n, l):
     a :: object
     n :: int
@@ -107,7 +103,6 @@ def f2(a, n, l):
     r8 :: bool
     r9 :: object
     r10 :: list
-    r11 :: None
 L0:
     r0 = box(int, n)
     r1 = PyObject_GetItem(a, r0)
@@ -120,14 +115,12 @@ L0:
     r8 = CPyList_SetItem(l, n, a)
     r9 = box(int, n)
     r10 = [a, r9]
-    r11 = None
-    return r11
+    return 1
 def f3(a, n):
     a :: object
     n :: int
     r0, r1, r2, r3 :: object
     r4 :: int
-    r5 :: None
 L0:
     r0 = box(int, n)
     r1 = PyNumber_InPlaceAdd(a, r0)
@@ -136,8 +129,7 @@ L0:
     r3 = PyNumber_InPlaceAdd(r2, a)
     r4 = unbox(int, r3)
     n = r4
-    r5 = None
-    return r5
+    return 1
 
 [case testCoerceAnyInConditionalExpr]
 from typing import Any
@@ -151,7 +143,6 @@ def f4(a, n, b):
     b :: bool
     r0, r1, r2, r3 :: object
     r4 :: int
-    r5 :: None
 L0:
     if b goto L1 else goto L2 :: bool
 L1:
@@ -172,5 +163,5 @@ L5:
 L6:
     r4 = unbox(int, r2)
     n = r4
-    r5 = None
-    return r5
+    return 1
+
