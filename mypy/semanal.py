@@ -2320,8 +2320,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(lvalue.node, Var):
                     lvalue.node.is_abstract_var = True
         else:
-            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
-                    self.type and self.type.is_protocol and not self.is_func_scope()):
+            if (self.type and self.type.is_protocol and self.is_annotated_protocol_member(s) and not self.is_func_scope()):
+                for lv in s.lvalues:
+                    print(lv)
+                    print(isinstance(lv, NameExpr), lv.is_inferred_def)
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
@@ -2331,6 +2333,17 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+
+    def is_annotated_protocol_member(self, s: AssertStmt) -> bool:
+        """Used to check whethere or not protocol member is annotated."""
+        return any(
+            (
+                isinstance(lv, NameExpr)
+                and lv.name != '__slots__'
+                and lv.is_inferred_def
+            )
+            for lv in s.lvalues
+        )
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc.
