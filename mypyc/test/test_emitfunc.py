@@ -91,7 +91,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_load_None(self) -> None:
         self.assert_emit(LoadAddress(none_object_op.type, none_object_op.src, 0),
-                         "cpy_r_r0 = Py_None;")
+                         "cpy_r_r0 = (PyObject *)&_Py_NoneStruct;")
 
     def test_assign_int(self) -> None:
         self.assert_emit(Assign(self.m, self.n),
