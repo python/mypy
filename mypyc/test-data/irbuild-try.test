@@ -394,7 +394,7 @@ L11: (handler for L1, L6, L7, L8)
 L12:
     if r7 goto L13 else goto L14 :: bool
 L13:
-    r25 = builtins.None :: object
+    r25 = load_address _Py_NoneStruct
     r26 = py_call(r3, r0, r25, r25, r25)
 L14:
     if is_error(r22) goto L16 else goto L15
