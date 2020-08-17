@@ -1407,7 +1407,7 @@ def opt_int(x):
     r4 :: native_int
     r5, r6, r7, r8 :: bool
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = x is not r0
     if r1 goto L1 else goto L6 :: bool
 L1:
@@ -1436,7 +1436,7 @@ def opt_a(x):
     r0 :: object
     r1 :: bool
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = x is not r0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -1453,7 +1453,7 @@ def opt_o(x):
     r3 :: int32
     r4 :: bool
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = x is not r0
     if r1 goto L1 else goto L3 :: bool
 L1:
@@ -1541,7 +1541,7 @@ def __top_level__():
     r15, r16, r17 :: object
 L0:
     r0 = builtins :: module
-    r1 = builtins.None :: object
+    r1 = load_address _Py_NoneStruct
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -2579,7 +2579,7 @@ def __top_level__():
     r81 :: int32
 L0:
     r0 = builtins :: module
-    r1 = builtins.None :: object
+    r1 = load_address _Py_NoneStruct
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -2588,7 +2588,7 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = typing :: module
-    r6 = builtins.None :: object
+    r6 = load_address _Py_NoneStruct
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
@@ -2798,7 +2798,7 @@ def g_a_obj.__get__(__mypyc_self__, instance, owner):
     r1 :: bool
     r2 :: object
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = instance is r0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -2855,7 +2855,7 @@ def g_b_obj.__get__(__mypyc_self__, instance, owner):
     r1 :: bool
     r2 :: object
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = instance is r0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -2912,7 +2912,7 @@ def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__get__(__mypy
     r1 :: bool
     r2 :: object
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = instance is r0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -3001,7 +3001,7 @@ def __top_level__():
     r29 :: int32
 L0:
     r0 = builtins :: module
-    r1 = builtins.None :: object
+    r1 = load_address _Py_NoneStruct
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -3010,7 +3010,7 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = typing :: module
-    r6 = builtins.None :: object
+    r6 = load_address _Py_NoneStruct
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
@@ -3056,7 +3056,7 @@ def g_a_obj.__get__(__mypyc_self__, instance, owner):
     r1 :: bool
     r2 :: object
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = instance is r0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -3123,7 +3123,7 @@ def __top_level__():
     r15 :: int32
 L0:
     r0 = builtins :: module
-    r1 = builtins.None :: object
+    r1 = load_address _Py_NoneStruct
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -3132,7 +3132,7 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = typing :: module
-    r6 = builtins.None :: object
+    r6 = load_address _Py_NoneStruct
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:

@@ -351,7 +351,7 @@ def __top_level__():
     r80 :: int32
 L0:
     r0 = builtins :: module
-    r1 = builtins.None :: object
+    r1 = load_address _Py_NoneStruct
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -360,7 +360,7 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = typing :: module
-    r6 = builtins.None :: object
+    r6 = load_address _Py_NoneStruct
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
@@ -379,7 +379,7 @@ L4:
     r18 = unicode_3 :: static  ('Generic')
     r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = mypy_extensions :: module
-    r21 = builtins.None :: object
+    r21 = load_address _Py_NoneStruct
     r22 = r20 is not r21
     if r22 goto L6 else goto L5 :: bool
 L5:
