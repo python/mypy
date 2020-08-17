@@ -2333,7 +2333,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.store_declared_types(lvalue, s.type)
 
     def is_annotated_protocol_member(self, s: AssignmentStmt) -> bool:
-        """Used to check whethere or not protocol member is annotated."""
+        """Check whether a protocol member is annotated."""
         return any(
             (
                 isinstance(lv, NameExpr)
