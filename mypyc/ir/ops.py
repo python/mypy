@@ -1316,7 +1316,7 @@ class BinaryIntOp(RegisterOp):
 
 
 class ComparisonOp(RegisterOp):
-    """Binary Comparsion ops
+    """Comparison ops
 
     The result type will always be boolean.
 
