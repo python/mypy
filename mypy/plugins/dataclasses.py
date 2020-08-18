@@ -17,7 +17,7 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, make_anonymous_typeddict,
     deserialize_and_fixup_type
 )
-from mypy.server.trigger import make_wildcard_trigger
+from mypy.server.trigger import make_wildcard_trigger, make_trigger
 from mypy.type_visitor import TypeTranslator
 from mypy.types import (
     Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, AnyType,
@@ -414,9 +414,6 @@ class AsDictVisitor(TypeTranslator):
         info = t.type
         any_type = AnyType(TypeOfAny.implementation_artifact)
         if is_type_dataclass(info):
-            # The resultant type from the asdict call depends on the set of attributes in the
-            # referenced dataclass and all dataclasses that are referenced by it
-            self.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
             if info.fullname in self.seen_dataclasses:
                 # Recursive types not supported, so fall back to Dict[str, Any]
                 # Note: Would be nicer to fallback to default_return_type, but that is Any
@@ -428,6 +425,7 @@ class AsDictVisitor(TypeTranslator):
             self.seen_dataclasses.add(info.fullname)
             for data in attrs:
                 attr = DataclassAttribute.deserialize(info, data, self.api)
+                self.api.add_plugin_dependency(make_trigger(info.fullname + "." + attr.name))
                 sym_node = info.names[attr.name]
                 attr_type = sym_node.type
                 assert attr_type is not None

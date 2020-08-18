@@ -1473,7 +1473,7 @@ AttributeInOtherModule = str
 
 [out]
 <m.x> -> m
-<a.MyDataclass[wildcard]> -> m
+<a.MyDataclass.attr> -> m
 <a.my_var> -> m
 <a> -> m
 <dataclasses.asdict> -> m
