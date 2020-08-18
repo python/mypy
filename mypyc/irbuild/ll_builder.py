@@ -995,7 +995,7 @@ class LowLevelIRBuilder:
                         rreg: Value,
                         expr_op: str,
                         line: int) -> Value:
-        """Create equality comparison operation between object types
+        """Create equality comparison operation between object identities
 
         Args:
             expr_op: either 'is' or 'is not'
