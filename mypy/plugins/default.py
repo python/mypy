@@ -1,9 +1,9 @@
 from functools import partial
-from typing import Callable, Optional, List, Tuple
+from typing import Callable, Optional, List
 
 from mypy import message_registry
 from mypy.nodes import (
-    Expression, StrExpr, IntExpr, DictExpr, UnaryExpr, MypyFile
+    Expression, StrExpr, IntExpr, DictExpr, UnaryExpr
 )
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
