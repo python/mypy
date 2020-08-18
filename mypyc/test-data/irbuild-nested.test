@@ -40,7 +40,7 @@ def inner_a_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -75,7 +75,7 @@ def second_b_first_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -101,7 +101,7 @@ def first_b_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -146,7 +146,7 @@ def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -185,7 +185,7 @@ def inner_d_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -280,7 +280,7 @@ def inner_a_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -322,7 +322,7 @@ def inner_b_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -368,7 +368,7 @@ def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -392,7 +392,7 @@ def inner_c_obj_0.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -454,7 +454,7 @@ def c_a_b_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -480,7 +480,7 @@ def b_a_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -549,7 +549,7 @@ def inner_f_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -573,7 +573,7 @@ def inner_f_obj_0.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -642,7 +642,7 @@ def foo_f_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -667,7 +667,7 @@ def bar_f_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -693,7 +693,7 @@ def baz_f_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -786,7 +786,7 @@ def __mypyc_lambda__0_f_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__
@@ -808,7 +808,7 @@ def __mypyc_lambda__1_f_obj.__get__(__mypyc_self__, instance, owner):
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = instance is r0
+    r1 = instance == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return __mypyc_self__

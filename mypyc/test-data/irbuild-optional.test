@@ -14,7 +14,7 @@ def f(x):
     r1 :: bool
 L0:
     r0 = box(None, 1)
-    r1 = x is r0
+    r1 = x == r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return 2
@@ -37,7 +37,7 @@ def f(x):
     r1, r2 :: bool
 L0:
     r0 = box(None, 1)
-    r1 = x is r0
+    r1 = x == r0
     r2 = !r1
     if r2 goto L1 else goto L2 :: bool
 L1:
@@ -61,7 +61,7 @@ def f(x):
     r1 :: bool
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = x is not r0
+    r1 = x != r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     return 2
@@ -96,7 +96,7 @@ def f(x):
     r4 :: bool
 L0:
     r0 = load_address _Py_NoneStruct
-    r1 = x is not r0
+    r1 = x != r0
     if r1 goto L1 else goto L3 :: bool
 L1:
     r2 = cast(__main__.A, x)
@@ -192,7 +192,7 @@ L0:
     r0 = A()
     y = r0
     r1 = box(None, 1)
-    r2 = x is r1
+    r2 = x == r1
     r3 = !r2
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -241,7 +241,7 @@ L4:
     x = r6
 L5:
     r7 = box(None, 1)
-    r8 = x is r7
+    r8 = x == r7
     r9 = !r8
     if r9 goto L6 else goto L7 :: bool
 L6:

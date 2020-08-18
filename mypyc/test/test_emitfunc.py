@@ -10,7 +10,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -247,20 +247,50 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = PyDict_Contains(cpy_r_d, cpy_r_o);""")
 
     def test_binary_int_op(self) -> None:
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.ADD, 1),
+                         """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.SUB, 1),
+                        """cpy_r_r00 = cpy_r_s1 - cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MUL, 1),
+                        """cpy_r_r01 = cpy_r_s1 * cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.DIV, 1),
+                        """cpy_r_r02 = cpy_r_s1 / cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MOD, 1),
+                        """cpy_r_r03 = cpy_r_s1 % cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.AND, 1),
+                        """cpy_r_r04 = cpy_r_s1 & cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.OR, 1),
+                        """cpy_r_r05 = cpy_r_s1 | cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.XOR, 1),
+                        """cpy_r_r06 = cpy_r_s1 ^ cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
+                                     BinaryIntOp.LEFT_SHIFT, 1),
+                        """cpy_r_r07 = cpy_r_s1 << cpy_r_s2;""")
+        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
+                                     BinaryIntOp.RIGHT_SHIFT, 1),
+                        """cpy_r_r08 = cpy_r_s1 >> cpy_r_s2;""")
+
+    def test_comparison_op(self) -> None:
         # signed
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.s1, self.s2, BinaryIntOp.SLT, 1),
+        self.assert_emit(ComparisonOp(self.s1, self.s2, ComparisonOp.SLT, 1),
                          """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 < (Py_ssize_t)cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i32, self.i32_1, BinaryIntOp.SLT, 1),
+        self.assert_emit(ComparisonOp(self.i32, self.i32_1, ComparisonOp.SLT, 1),
                          """cpy_r_r00 = cpy_r_i32 < cpy_r_i32_1;""")
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i64, self.i64_1, BinaryIntOp.SLT, 1),
+        self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.SLT, 1),
                          """cpy_r_r01 = cpy_r_i64 < cpy_r_i64_1;""")
         # unsigned
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.s1, self.s2, BinaryIntOp.ULT, 1),
+        self.assert_emit(ComparisonOp(self.s1, self.s2, ComparisonOp.ULT, 1),
                          """cpy_r_r02 = cpy_r_s1 < cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i32, self.i32_1, BinaryIntOp.ULT, 1),
+        self.assert_emit(ComparisonOp(self.i32, self.i32_1, ComparisonOp.ULT, 1),
                          """cpy_r_r03 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.i64, self.i64_1, BinaryIntOp.ULT, 1),
+        self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.ULT, 1),
                          """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
+
+        # object type
+        self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.EQ, 1),
+                         """cpy_r_r05 = cpy_r_o == cpy_r_o2;""")
+        self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.NEQ, 1),
+                         """cpy_r_r06 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),

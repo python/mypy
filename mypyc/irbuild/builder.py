@@ -209,6 +209,13 @@ class IRBuilder:
     def false(self) -> Value:
         return self.builder.false()
 
+    def translate_is_op(self,
+                        lreg: Value,
+                        rreg: Value,
+                        expr_op: str,
+                        line: int) -> Value:
+        return self.builder.translate_is_op(lreg, rreg, expr_op, line)
+
     def py_call(self,
                 function: Value,
                 arg_values: List[Value],
@@ -270,7 +277,7 @@ class IRBuilder:
 
         needs_import, out = BasicBlock(), BasicBlock()
         first_load = self.load_module(id)
-        comparison = self.binary_op(first_load, self.none_object(), 'is not', line)
+        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)

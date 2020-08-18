@@ -117,7 +117,7 @@ def Node.length(self):
 L0:
     r0 = self.next
     r1 = box(None, 1)
-    r2 = r0 is r1
+    r2 = r0 == r1
     r3 = !r2
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -352,7 +352,7 @@ def __top_level__():
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
-    r2 = r0 is not r1
+    r2 = r0 != r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = unicode_0 :: static  ('builtins')
@@ -361,7 +361,7 @@ L1:
 L2:
     r5 = typing :: module
     r6 = load_address _Py_NoneStruct
-    r7 = r5 is not r6
+    r7 = r5 != r6
     if r7 goto L4 else goto L3 :: bool
 L3:
     r8 = unicode_1 :: static  ('typing')
@@ -380,7 +380,7 @@ L4:
     r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = mypy_extensions :: module
     r21 = load_address _Py_NoneStruct
-    r22 = r20 is not r21
+    r22 = r20 != r21
     if r22 goto L6 else goto L5 :: bool
 L5:
     r23 = unicode_4 :: static  ('mypy_extensions')
@@ -756,13 +756,13 @@ def f(a, b):
     a, b :: __main__.A
     r0 :: bool
 L0:
-    r0 = a is b
+    r0 = a == b
     return r0
 def f2(a, b):
     a, b :: __main__.A
     r0 :: bool
 L0:
-    r0 = a is not b
+    r0 = a != b
     return r0
 
 [case testEqDefined]
@@ -802,7 +802,7 @@ def Base.__ne__(self, rhs):
 L0:
     r0 = self.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
-    r2 = r0 is r1
+    r2 = r0 == r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = PyObject_Not(r0)
@@ -920,7 +920,7 @@ def Derived.__ne__(self, rhs):
 L0:
     r0 = self.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
-    r2 = r0 is r1
+    r2 = r0 == r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = PyObject_Not(r0)

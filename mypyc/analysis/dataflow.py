@@ -9,7 +9,7 @@ from mypyc.ir.ops import (
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
     LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError, CallC, LoadGlobal,
-    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress
+    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
 )
 
 
@@ -206,6 +206,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_binary_int_op(self, op: BinaryIntOp) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_load_mem(self, op: LoadMem) -> GenAndKill:
