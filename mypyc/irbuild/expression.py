@@ -434,7 +434,7 @@ def transform_bytes_expr(builder: IRBuilder, expr: BytesExpr) -> Value:
 
 
 def transform_ellipsis(builder: IRBuilder, o: EllipsisExpr) -> Value:
-    return builder.primitive_op(ellipsis_op, [], o.line)
+    return builder.add(LoadAddress(ellipsis_op.type, ellipsis_op.src, o.line))
 
 
 # Display expressions
