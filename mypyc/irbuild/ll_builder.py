@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem
+    LoadMem, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -438,7 +438,7 @@ class LowLevelIRBuilder:
 
     def none_object(self) -> Value:
         """Load Python None value (type: object_rprimitive)."""
-        return self.add(PrimitiveOp([], none_object_op, line=-1))
+        return self.add(LoadAddress(none_object_op.type, none_object_op.src, line=-1))
 
     def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
         return STATIC_PREFIX + self.mapper.literal_static_name(self.current_module, value)

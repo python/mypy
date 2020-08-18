@@ -658,7 +658,7 @@ def complex_msg(x, s):
     r6 :: str
     r7, r8 :: object
 L0:
-    r0 = builtins.None :: object
+    r0 = load_address _Py_NoneStruct
     r1 = x is not r0
     if r1 goto L1 else goto L2 :: bool
 L1:

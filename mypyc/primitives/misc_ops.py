@@ -6,27 +6,22 @@ from mypyc.ir.rtypes import (
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
+    simple_emit, unary_op, func_op, custom_op, call_emit,
     c_function_op, c_custom_op, load_address_op
 )
 
 
 # Get the boxed Python 'None' object
-none_object_op = custom_op(result_type=object_rprimitive,
-                           arg_types=[],
-                           error_kind=ERR_NEVER,
-                           format_str='{dest} = builtins.None :: object',
-                           emit=name_emit('Py_None'),
-                           is_borrowed=True)
-
+none_object_op = load_address_op(
+    name='Py_None',
+    type=object_rprimitive,
+    src='_Py_NoneStruct')
 
 # Get the boxed object '...'
-ellipsis_op = custom_op(name='...',
-                        arg_types=[],
-                        result_type=object_rprimitive,
-                        error_kind=ERR_NEVER,
-                        emit=name_emit('Py_Ellipsis'),
-                        is_borrowed=True)
+ellipsis_op = load_address_op(
+    name='...',
+    type=object_rprimitive,
+    src='_Py_EllipsisObject')
 
 # Get the boxed NotImplemented object
 not_implemented_op = load_address_op(
