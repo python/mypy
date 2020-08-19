@@ -10,7 +10,9 @@ check that the priorities are configured properly.
 """
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_NEG_INT
-from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive
+from mypyc.ir.rtypes import (
+    object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive
+)
 from mypyc.primitives.registry import (
     binary_op, custom_op, call_emit, simple_emit,
     c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
@@ -192,7 +194,7 @@ py_call_op = c_custom_op(
     c_function_name='PyObject_CallFunctionObjArgs',
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
-    extra_int_constant=(0, c_int_rprimitive))
+    extra_int_constant=(0, pointer_rprimitive))
 
 # Call callable object with positional + keyword args: func(*args, **kwargs)
 # Arguments are (func, *args tuple, **kwargs dict).
