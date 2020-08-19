@@ -278,7 +278,7 @@ class LowLevelIRBuilder:
 
         kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
 
-        return self.call_c(
+        return self.primitive_op(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
     def py_method_call(self,
@@ -291,7 +291,7 @@ class LowLevelIRBuilder:
         """Call a Python method (non-native and slow)."""
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             method_name_reg = self.load_static_unicode(method_name)
-            return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
+            return self.primitive_op(py_method_call_op, [obj, method_name_reg] + arg_values, line)
         else:
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
