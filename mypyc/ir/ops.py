@@ -1263,7 +1263,7 @@ class LoadGlobal(RegisterOp):
 
 
 class BinaryIntOp(RegisterOp):
-    """Binary operations on integer types
+    """Binary arithmetic and bitwise operations on integer types
 
     These ops are low-level and will be eventually generated to simple x op y form.
     The left and right values should be of low-level integer types that support those ops
@@ -1276,18 +1276,7 @@ class BinaryIntOp(RegisterOp):
     MUL = 2  # type: Final
     DIV = 3  # type: Final
     MOD = 4  # type: Final
-    # logical
-    # S for signed and U for unsigned
-    EQ = 100  # type: Final
-    NEQ = 101  # type: Final
-    SLT = 102  # type: Final
-    SGT = 103  # type: Final
-    SLE = 104  # type: Final
-    SGE = 105  # type: Final
-    ULT = 106  # type: Final
-    UGT = 107  # type: Final
-    ULE = 108  # type: Final
-    UGE = 109  # type: Final
+
     # bitwise
     AND = 200  # type: Final
     OR = 201  # type: Final
@@ -1301,16 +1290,6 @@ class BinaryIntOp(RegisterOp):
         MUL: '*',
         DIV: '/',
         MOD: '%',
-        EQ: '==',
-        NEQ: '!=',
-        SLT: '<',
-        SGT: '>',
-        SLE: '<=',
-        SGE: '>=',
-        ULT: '<',
-        UGT: '>',
-        ULE: '<=',
-        UGE: '>=',
         AND: '&',
         OR: '|',
         XOR: '^',
@@ -1329,6 +1308,58 @@ class BinaryIntOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r %s %r', self, self.lhs,
+                          self.op_str[self.op], self.rhs)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_binary_int_op(self)
+
+
+class ComparisonOp(RegisterOp):
+    """Comparison ops
+
+    The result type will always be boolean.
+
+    Support comparison between integer types and pointer types
+    """
+    error_kind = ERR_NEVER
+
+    # S for signed and U for unsigned
+    EQ = 100  # type: Final
+    NEQ = 101  # type: Final
+    SLT = 102  # type: Final
+    SGT = 103  # type: Final
+    SLE = 104  # type: Final
+    SGE = 105  # type: Final
+    ULT = 106  # type: Final
+    UGT = 107  # type: Final
+    ULE = 108  # type: Final
+    UGE = 109  # type: Final
+
+    op_str = {
+        EQ: '==',
+        NEQ: '!=',
+        SLT: '<',
+        SGT: '>',
+        SLE: '<=',
+        SGE: '>=',
+        ULT: '<',
+        UGT: '>',
+        ULE: '<=',
+        UGE: '>=',
+    }  # type: Final
+
+    def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = bool_rprimitive
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> List[Value]:
+        return [self.lhs, self.rhs]
+
+    def to_str(self, env: Environment) -> str:
         if self.op in (self.SLT, self.SGT, self.SLE, self.SGE):
             sign_format = " :: signed"
         elif self.op in (self.ULT, self.UGT, self.ULE, self.UGE):
@@ -1339,7 +1370,7 @@ class BinaryIntOp(RegisterOp):
                           self.op_str[self.op], self.rhs, sign_format)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_binary_int_op(self)
+        return visitor.visit_comparison_op(self)
 
 
 class LoadMem(RegisterOp):
@@ -1529,6 +1560,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_binary_int_op(self, op: BinaryIntOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_comparison_op(self, op: ComparisonOp) -> T:
         raise NotImplementedError
 
     @abstractmethod
