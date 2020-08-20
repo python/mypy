@@ -668,7 +668,7 @@ L1:
     if r4 goto L3 else goto L2 :: bool
 L2:
     r5 = builtins :: module
-    r6 = unicode_3 :: static  ('AssertionError')
+    r6 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
     r7 = CPyObject_GetAttr(r5, r6)
     r8 = py_call(r7, s)
     CPy_Raise(r8)
@@ -739,13 +739,13 @@ def delDict():
     r5 :: str
     r6 :: int32
 L0:
-    r0 = unicode_1 :: static  ('one')
-    r1 = unicode_2 :: static  ('two')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
     r2 = box(short_int, 2)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     d = r4
-    r5 = unicode_1 :: static  ('one')
+    r5 = load_global CPyStatic_unicode_1 :: static  ('one')
     r6 = PyObject_DelItem(d, r5)
     return 1
 def delDictMultiple():
@@ -755,18 +755,18 @@ def delDictMultiple():
     r9, r10 :: str
     r11, r12 :: int32
 L0:
-    r0 = unicode_1 :: static  ('one')
-    r1 = unicode_2 :: static  ('two')
-    r2 = unicode_3 :: static  ('three')
-    r3 = unicode_4 :: static  ('four')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
+    r2 = load_global CPyStatic_unicode_3 :: static  ('three')
+    r3 = load_global CPyStatic_unicode_4 :: static  ('four')
     r4 = box(short_int, 2)
     r5 = box(short_int, 4)
     r6 = box(short_int, 6)
     r7 = box(short_int, 8)
     r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
     d = r8
-    r9 = unicode_1 :: static  ('one')
-    r10 = unicode_4 :: static  ('four')
+    r9 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r10 = load_global CPyStatic_unicode_4 :: static  ('four')
     r11 = PyObject_DelItem(d, r9)
     r12 = PyObject_DelItem(d, r10)
     return 1
@@ -798,7 +798,7 @@ def delAttribute():
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = unicode_3 :: static  ('x')
+    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
     r2 = PyObject_DelAttr(dummy, r1)
     return 1
 def delAttributeMultiple():
@@ -810,9 +810,9 @@ def delAttributeMultiple():
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = unicode_3 :: static  ('x')
+    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
     r2 = PyObject_DelAttr(dummy, r1)
-    r3 = unicode_4 :: static  ('y')
+    r3 = load_global CPyStatic_unicode_4 :: static  ('y')
     r4 = PyObject_DelAttr(dummy, r3)
     return 1
 

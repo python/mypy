@@ -344,7 +344,7 @@ def set(o, s):
     s, r0 :: str
     r1 :: int32
 L0:
-    r0 = unicode_5 :: static  ('a')
+    r0 = load_global CPyStatic_unicode_5 :: static  ('a')
     r1 = PyObject_SetAttr(o, r0, s)
     return 1
 
@@ -462,7 +462,7 @@ L1:
     goto L3
 L2:
     r5 = o
-    r6 = unicode_7 :: static  ('x')
+    r6 = load_global CPyStatic_unicode_7 :: static  ('x')
     r7 = CPyObject_GetAttr(r5, r6)
     r8 = unbox(int, r7)
     r0 = r8
@@ -490,7 +490,7 @@ L1:
     goto L3
 L2:
     r5 = o
-    r6 = unicode_7 :: static  ('x')
+    r6 = load_global CPyStatic_unicode_7 :: static  ('x')
     r7 = CPyObject_GetAttr(r5, r6)
     r8 = unbox(int, r7)
     r0 = r8
@@ -518,7 +518,7 @@ def f(o):
     r3 :: object
 L0:
     r1 = o
-    r2 = unicode_6 :: static  ('x')
+    r2 = load_global CPyStatic_unicode_6 :: static  ('x')
     r3 = CPyObject_GetAttr(r1, r2)
     r0 = r3
 L1:

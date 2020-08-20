@@ -78,7 +78,7 @@ def g(a):
     r0 :: str
     r1 :: int
 L0:
-    r0 = unicode_4 :: static  ('hi')
+    r0 = load_global CPyStatic_unicode_4 :: static  ('hi')
     r1 = a.f(2, r0)
     return 1
 
@@ -355,7 +355,7 @@ L0:
     r2 = r0 != r1
     if r2 goto L2 else goto L1 :: bool
 L1:
-    r3 = unicode_0 :: static  ('builtins')
+    r3 = load_global CPyStatic_unicode_0 :: static  ('builtins')
     r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
@@ -364,87 +364,87 @@ L2:
     r7 = r5 != r6
     if r7 goto L4 else goto L3 :: bool
 L3:
-    r8 = unicode_1 :: static  ('typing')
+    r8 = load_global CPyStatic_unicode_1 :: static  ('typing')
     r9 = PyImport_Import(r8)
     typing = r9 :: module
 L4:
     r10 = typing :: module
     r11 = __main__.globals :: static
-    r12 = unicode_2 :: static  ('TypeVar')
+    r12 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
     r13 = CPyObject_GetAttr(r10, r12)
-    r14 = unicode_2 :: static  ('TypeVar')
+    r14 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
     r15 = CPyDict_SetItem(r11, r14, r13)
-    r16 = unicode_3 :: static  ('Generic')
+    r16 = load_global CPyStatic_unicode_3 :: static  ('Generic')
     r17 = CPyObject_GetAttr(r10, r16)
-    r18 = unicode_3 :: static  ('Generic')
+    r18 = load_global CPyStatic_unicode_3 :: static  ('Generic')
     r19 = CPyDict_SetItem(r11, r18, r17)
     r20 = mypy_extensions :: module
     r21 = load_address _Py_NoneStruct
     r22 = r20 != r21
     if r22 goto L6 else goto L5 :: bool
 L5:
-    r23 = unicode_4 :: static  ('mypy_extensions')
+    r23 = load_global CPyStatic_unicode_4 :: static  ('mypy_extensions')
     r24 = PyImport_Import(r23)
     mypy_extensions = r24 :: module
 L6:
     r25 = mypy_extensions :: module
     r26 = __main__.globals :: static
-    r27 = unicode_5 :: static  ('trait')
+    r27 = load_global CPyStatic_unicode_5 :: static  ('trait')
     r28 = CPyObject_GetAttr(r25, r27)
-    r29 = unicode_5 :: static  ('trait')
+    r29 = load_global CPyStatic_unicode_5 :: static  ('trait')
     r30 = CPyDict_SetItem(r26, r29, r28)
-    r31 = unicode_6 :: static  ('T')
+    r31 = load_global CPyStatic_unicode_6 :: static  ('T')
     r32 = __main__.globals :: static
-    r33 = unicode_2 :: static  ('TypeVar')
+    r33 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
     r34 = CPyDict_GetItem(r32, r33)
     r35 = py_call(r34, r31)
     r36 = __main__.globals :: static
-    r37 = unicode_6 :: static  ('T')
+    r37 = load_global CPyStatic_unicode_6 :: static  ('T')
     r38 = CPyDict_SetItem(r36, r37, r35)
     r39 = <error> :: object
-    r40 = unicode_7 :: static  ('__main__')
+    r40 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r41 = __main__.C_template :: type
     r42 = pytype_from_template(r41, r39, r40)
     r43 = C_trait_vtable_setup()
-    r44 = unicode_8 :: static  ('__mypyc_attrs__')
+    r44 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r45 = PyTuple_Pack(0)
     r46 = PyObject_SetAttr(r42, r44, r45)
     __main__.C = r42 :: type
     r47 = __main__.globals :: static
-    r48 = unicode_9 :: static  ('C')
+    r48 = load_global CPyStatic_unicode_9 :: static  ('C')
     r49 = CPyDict_SetItem(r47, r48, r42)
     r50 = <error> :: object
-    r51 = unicode_7 :: static  ('__main__')
+    r51 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r52 = __main__.S_template :: type
     r53 = pytype_from_template(r52, r50, r51)
-    r54 = unicode_8 :: static  ('__mypyc_attrs__')
+    r54 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r55 = PyTuple_Pack(0)
     r56 = PyObject_SetAttr(r53, r54, r55)
     __main__.S = r53 :: type
     r57 = __main__.globals :: static
-    r58 = unicode_10 :: static  ('S')
+    r58 = load_global CPyStatic_unicode_10 :: static  ('S')
     r59 = CPyDict_SetItem(r57, r58, r53)
     r60 = __main__.C :: type
     r61 = __main__.S :: type
     r62 = __main__.globals :: static
-    r63 = unicode_3 :: static  ('Generic')
+    r63 = load_global CPyStatic_unicode_3 :: static  ('Generic')
     r64 = CPyDict_GetItem(r62, r63)
     r65 = __main__.globals :: static
-    r66 = unicode_6 :: static  ('T')
+    r66 = load_global CPyStatic_unicode_6 :: static  ('T')
     r67 = CPyDict_GetItem(r65, r66)
     r68 = PyObject_GetItem(r64, r67)
     r69 = PyTuple_Pack(3, r60, r61, r68)
-    r70 = unicode_7 :: static  ('__main__')
+    r70 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r71 = __main__.D_template :: type
     r72 = pytype_from_template(r71, r69, r70)
     r73 = D_trait_vtable_setup()
-    r74 = unicode_8 :: static  ('__mypyc_attrs__')
-    r75 = unicode_11 :: static  ('__dict__')
+    r74 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
+    r75 = load_global CPyStatic_unicode_11 :: static  ('__dict__')
     r76 = PyTuple_Pack(1, r75)
     r77 = PyObject_SetAttr(r72, r74, r76)
     __main__.D = r72 :: type
     r78 = __main__.globals :: static
-    r79 = unicode_12 :: static  ('D')
+    r79 = load_global CPyStatic_unicode_12 :: static  ('D')
     r80 = CPyDict_SetItem(r78, r79, r72)
     return 1
 
@@ -736,7 +736,7 @@ def f():
     r3 :: int
 L0:
     r0 = __main__.A :: type
-    r1 = unicode_6 :: static  ('x')
+    r1 = load_global CPyStatic_unicode_6 :: static  ('x')
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = unbox(int, r2)
     return r3
@@ -900,7 +900,7 @@ def fOpt2(a, b):
     r1 :: object
     r2 :: bool
 L0:
-    r0 = unicode_1 :: static  ('__ne__')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('__ne__')
     r1 = py_method_call(a, r0, b)
     r2 = unbox(bool, r1)
     return r2
@@ -969,7 +969,7 @@ def B.__mypyc_defaults_setup(__mypyc_self__):
 L0:
     __mypyc_self__.x = 20; r0 = is_error
     r1 = __main__.globals :: static
-    r2 = unicode_9 :: static  ('LOL')
+    r2 = load_global CPyStatic_unicode_9 :: static  ('LOL')
     r3 = CPyDict_GetItem(r1, r2)
     r4 = cast(str, r3)
     __mypyc_self__.y = r4; r5 = is_error
