@@ -1160,9 +1160,9 @@ def call_callable_type() -> float:
 def absolute_value(x):
     x :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bool
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bool
     r8, r9 :: int
 L0:
