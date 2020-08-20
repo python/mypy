@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, custom_op, call_emit, simple_emit,
+    binary_op, simple_emit,
     c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
 )
 
@@ -198,22 +198,21 @@ py_call_op = c_custom_op(
 
 # Call callable object with positional + keyword args: func(*args, **kwargs)
 # Arguments are (func, *args tuple, **kwargs dict).
-py_call_with_kwargs_op = custom_op(
+py_call_with_kwargs_op = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    format_str='{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
-    emit=call_emit('PyObject_Call'))
+    return_type=object_rprimitive,
+    c_function_name='PyObject_Call',
+    error_kind=ERR_MAGIC)
 
 # Call method with positional arguments: obj.method(arg1, ...)
 # Arguments are (object, attribute name, arg1, ...).
-py_method_call_op = custom_op(
-    arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    is_var_arg=True,
+py_method_call_op = c_custom_op(
+    arg_types=[],
+    return_type=object_rprimitive,
+    c_function_name='CPyObject_CallMethodObjArgs',
     error_kind=ERR_MAGIC,
-    format_str='{dest} = py_method_call({comma_args})',
-    emit=simple_emit('{dest} = CPyObject_CallMethodObjArgs({comma_args}, NULL);'))
+    var_arg_type=object_rprimitive,
+    extra_int_constant=(0, pointer_rprimitive))
 
 # len(obj)
 generic_len_op = c_custom_op(
