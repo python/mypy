@@ -1253,10 +1253,7 @@ class LoadGlobal(RegisterOp):
 
     def to_str(self, env: Environment) -> str:
         ann = '  ({})'.format(repr(self.ann)) if self.ann else ''
-        # return env.format('%r = %s%s', self, self.identifier, ann)
-        # TODO: a hack to prevent lots of failed IR tests when developing prototype
-        #       eventually we will change all the related tests
-        return env.format('%r = %s :: static%s', self, self.identifier[10:], ann)
+        return env.format('%r = load_global %s :: static%s', self, self.identifier, ann)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_global(self)
