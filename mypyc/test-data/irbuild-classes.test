@@ -900,8 +900,6 @@ def fOpt2(a, b):
     r1 :: object
     r2 :: bool
 L0:
-    r0 = unicode_1 :: static  ('__ne__')
-    r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
     r0 = load_global CPyStatic_unicode_1 :: static  ('__ne__')
     r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
     r2 = unbox(bool, r1)
