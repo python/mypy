@@ -222,12 +222,12 @@ L0:
     r0.inner = r1; r3 = is_error
     r4 = load_global CPyStatic_unicode_6 :: static  ('one')
     r5 = r0.inner
-    r6 = py_call(r5, r4)
+    r6 = PyObject_CallFunctionObjArgs(r5, r4, 0)
     r7 = cast(str, r6)
     a = r7
     r8 = load_global CPyStatic_unicode_7 :: static  ('two')
     r9 = r0.inner
-    r10 = py_call(r9, r8)
+    r10 = PyObject_CallFunctionObjArgs(r9, r8, 0)
     r11 = cast(str, r10)
     b = r11
     return a
@@ -313,7 +313,7 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r0.inner = r2; r4 = is_error
     r5 = r0.inner
-    r6 = py_call(r5)
+    r6 = PyObject_CallFunctionObjArgs(r5, 0)
     r7 = unbox(int, r6)
     return r7
 def inner_b_obj.__get__(__mypyc_self__, instance, owner):
@@ -357,7 +357,7 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r0.inner = r2; r4 = is_error
     r5 = r0.inner
-    r6 = py_call(r5)
+    r6 = PyObject_CallFunctionObjArgs(r5, 0)
     r7 = unbox(int, r6)
     r8 = r0.num
     r9 = CPyTagged_Add(r7, r8)
@@ -433,7 +433,7 @@ L2:
     r0.inner = r4; r6 = is_error
 L3:
     r7 = r0.inner
-    r8 = py_call(r7)
+    r8 = PyObject_CallFunctionObjArgs(r7, 0)
     r9 = cast(str, r8)
     return r9
 
@@ -512,7 +512,7 @@ L0:
     r7.__mypyc_env__ = r2; r8 = is_error
     r2.c = r7; r9 = is_error
     r10 = r2.c
-    r11 = py_call(r10)
+    r11 = PyObject_CallFunctionObjArgs(r10, 0)
     r12 = unbox(int, r11)
     return r12
 def a():
@@ -529,7 +529,7 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r0.b = r2; r4 = is_error
     r5 = r0.b
-    r6 = py_call(r5)
+    r6 = PyObject_CallFunctionObjArgs(r5, 0)
     r7 = unbox(int, r6)
     return r7
 
@@ -614,7 +614,7 @@ L2:
     r0.inner = r4; r6 = is_error
 L3:
     r7 = r0.inner
-    r8 = py_call(r7)
+    r8 = PyObject_CallFunctionObjArgs(r7, 0)
     r9 = cast(str, r8)
     return r9
 
@@ -684,7 +684,7 @@ L0:
     r1 = r0.bar
     bar = r1
     r2 = r0.foo
-    r3 = py_call(r2)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
     r4 = unbox(int, r3)
     return r4
 def baz_f_obj.__get__(__mypyc_self__, instance, owner):
@@ -732,7 +732,7 @@ L4:
 L5:
     r7 = CPyTagged_Subtract(n, 2)
     r8 = box(int, r7)
-    r9 = py_call(baz, r8)
+    r9 = PyObject_CallFunctionObjArgs(baz, r8, 0)
     r10 = unbox(int, r9)
     r11 = CPyTagged_Add(n, r10)
     return r11
@@ -763,12 +763,12 @@ L0:
     r8.__mypyc_env__ = r0; r9 = is_error
     r0.baz = r8; r10 = is_error
     r11 = r0.bar
-    r12 = py_call(r11)
+    r12 = PyObject_CallFunctionObjArgs(r11, 0)
     r13 = unbox(int, r12)
     r14 = r0.a
     r15 = r0.baz
     r16 = box(int, r14)
-    r17 = py_call(r15, r16)
+    r17 = PyObject_CallFunctionObjArgs(r15, r16, 0)
     r18 = unbox(int, r17)
     r19 = CPyTagged_Add(r13, r18)
     return r19
@@ -823,7 +823,7 @@ def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.s
-    r2 = py_call(r1, a, b)
+    r2 = PyObject_CallFunctionObjArgs(r1, a, b, 0)
     return r2
 def f(x, y):
     x, y :: int
@@ -844,7 +844,7 @@ L0:
     t = r4
     r6 = box(int, x)
     r7 = box(int, y)
-    r8 = py_call(t, r6, r7)
+    r8 = PyObject_CallFunctionObjArgs(t, r6, r7, 0)
     r9 = unbox(None, r8)
     return r9
 

@@ -15,7 +15,8 @@ from mypyc.ir.ops import (
     BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct
+    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
+    is_pointer_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
@@ -498,7 +499,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def reg(self, reg: Value) -> str:
         if reg.name in self.const_int_regs:
-            return str(self.const_int_regs[reg.name])
+            val = self.const_int_regs[reg.name]
+            if val == 0 and is_pointer_rprimitive(reg.type):
+                return "NULL"
+            return str(val)
         else:
             return self.emitter.reg(reg)
 

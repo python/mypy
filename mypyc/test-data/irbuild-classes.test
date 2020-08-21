@@ -397,7 +397,7 @@ L6:
     r32 = __main__.globals :: static
     r33 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
     r34 = CPyDict_GetItem(r32, r33)
-    r35 = py_call(r34, r31)
+    r35 = PyObject_CallFunctionObjArgs(r34, r31, 0)
     r36 = __main__.globals :: static
     r37 = load_global CPyStatic_unicode_6 :: static  ('T')
     r38 = CPyDict_SetItem(r36, r37, r35)
@@ -901,7 +901,7 @@ def fOpt2(a, b):
     r2 :: bool
 L0:
     r0 = load_global CPyStatic_unicode_1 :: static  ('__ne__')
-    r1 = py_method_call(a, r0, b)
+    r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
     r2 = unbox(bool, r1)
     return r2
 def Derived.__eq__(self, other):

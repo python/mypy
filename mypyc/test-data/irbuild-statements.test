@@ -670,7 +670,7 @@ L2:
     r5 = builtins :: module
     r6 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
     r7 = CPyObject_GetAttr(r5, r6)
-    r8 = py_call(r7, s)
+    r8 = PyObject_CallFunctionObjArgs(r7, s, 0)
     CPy_Raise(r8)
     unreachable
 L3:

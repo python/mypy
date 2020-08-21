@@ -192,7 +192,7 @@ L1:
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
-    r3 = py_call(r2)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
     dec_ref r2
     if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
@@ -203,7 +203,7 @@ L3:
     r8 = CPyObject_GetAttr(r6, r7)
     if is_error(r8) goto L6 (error at g:5) else goto L4
 L4:
-    r9 = py_call(r8, r5)
+    r9 = PyObject_CallFunctionObjArgs(r8, r5, 0)
     dec_ref r8
     if is_error(r9) goto L6 (error at g:5) else goto L11
 L5:
@@ -260,7 +260,7 @@ L1:
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
-    r3 = py_call(r2)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
     dec_ref r2
     if is_error(r3) goto L5 (error at a:3) else goto L20
 L3:
@@ -283,7 +283,7 @@ L6:
     r14 = CPyObject_GetAttr(r12, r13)
     if is_error(r14) goto L13 (error at a:6) else goto L7
 L7:
-    r15 = py_call(r14, r11)
+    r15 = PyObject_CallFunctionObjArgs(r14, r11, 0)
     dec_ref r14
     if is_error(r15) goto L13 (error at a:6) else goto L21
 L8:
@@ -494,7 +494,7 @@ L5:
 L6:
     unreachable
 L7:
-    r7 = py_call(r6, v)
+    r7 = PyObject_CallFunctionObjArgs(r6, v, 0)
     dec_ref r6
     xdec_ref v
     if is_error(r7) goto L9 (error at f:7) else goto L14
