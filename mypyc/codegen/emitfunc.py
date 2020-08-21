@@ -502,7 +502,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             val = self.const_int_regs[reg.name]
             if val == 0 and is_pointer_rprimitive(reg.type):
                 return "NULL"
-            return str(self.const_int_regs[reg.name])
+            return str(val)
         else:
             return self.emitter.reg(reg)
 
