@@ -1255,7 +1255,7 @@ L0:
     r2 = PyTuple_Pack(1, x)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(1, r1, r3)
-    r5 = py_call_with_kwargs(r0, r2, r4)
+    r5 = PyObject_Call(r0, r2, r4)
     r6 = unbox(int, r5)
     return r6
 def call_python_method_with_keyword_args(xs, first, second):
@@ -1284,7 +1284,7 @@ L0:
     r4 = PyTuple_Pack(1, r3)
     r5 = box(int, first)
     r6 = CPyDict_Build(1, r2, r5)
-    r7 = py_call_with_kwargs(r1, r4, r6)
+    r7 = PyObject_Call(r1, r4, r6)
     r8 = load_global CPyStatic_unicode_4 :: static  ('insert')
     r9 = CPyObject_GetAttr(xs, r8)
     r10 = load_global CPyStatic_unicode_5 :: static  ('x')
@@ -1293,7 +1293,7 @@ L0:
     r13 = box(int, second)
     r14 = box(short_int, 2)
     r15 = CPyDict_Build(2, r10, r13, r11, r14)
-    r16 = py_call_with_kwargs(r9, r12, r15)
+    r16 = PyObject_Call(r9, r12, r15)
     return xs
 
 [case testObjectAsBoolean]
@@ -1757,7 +1757,7 @@ L0:
     r6 = CPyList_Extend(r4, r5)
     r7 = PyList_AsTuple(r4)
     r8 = PyDict_New()
-    r9 = py_call_with_kwargs(r3, r7, r8)
+    r9 = PyObject_Call(r3, r7, r8)
     r10 = unbox(tuple[int, int, int], r9)
     return r10
 def h():
@@ -1782,7 +1782,7 @@ L0:
     r7 = CPyList_Extend(r5, r6)
     r8 = PyList_AsTuple(r5)
     r9 = PyDict_New()
-    r10 = py_call_with_kwargs(r3, r8, r9)
+    r10 = PyObject_Call(r3, r8, r9)
     r11 = unbox(tuple[int, int, int], r10)
     return r11
 
@@ -1826,7 +1826,7 @@ L0:
     r10 = PyTuple_Pack(0)
     r11 = PyDict_New()
     r12 = CPyDict_UpdateInDisplay(r11, r6)
-    r13 = py_call_with_kwargs(r9, r10, r11)
+    r13 = PyObject_Call(r9, r10, r11)
     r14 = unbox(tuple[int, int, int], r13)
     return r14
 def h():
@@ -1853,7 +1853,7 @@ L0:
     r9 = PyTuple_Pack(1, r8)
     r10 = PyDict_New()
     r11 = CPyDict_UpdateInDisplay(r10, r4)
-    r12 = py_call_with_kwargs(r7, r9, r10)
+    r12 = PyObject_Call(r7, r9, r10)
     r13 = unbox(tuple[int, int, int], r12)
     return r13
 

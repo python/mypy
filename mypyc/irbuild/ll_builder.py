@@ -278,7 +278,7 @@ class LowLevelIRBuilder:
 
         kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
 
-        return self.primitive_op(
+        return self.call_c(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
     def py_method_call(self,
