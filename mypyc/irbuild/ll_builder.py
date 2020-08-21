@@ -29,7 +29,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive, is_pointer_rprimitive
+    none_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -278,7 +278,7 @@ class LowLevelIRBuilder:
 
         kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
 
-        return self.call_c(
+        return self.primitive_op(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
     def py_method_call(self,
@@ -779,12 +779,8 @@ class LowLevelIRBuilder:
         # add extra integer constant if any
         if desc.extra_int_constant is not None:
             val, typ = desc.extra_int_constant
-            if is_pointer_rprimitive(typ) and val == 0:
-                casted_constant = self.add(LoadGlobal(object_rprimitive, "NULL"))
-                coerced.append(casted_constant)
-            else:
-                extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
-                coerced.append(extra_int_constant)
+            extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
+            coerced.append(extra_int_constant)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
                                 desc.error_kind, line, var_arg_idx))
         if desc.truncated_type is None:

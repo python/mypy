@@ -864,11 +864,11 @@ def f(x):
     r5 :: int
 L0:
     r0 = unicode_3 :: static  ('pop')
-    r1 = py_method_call(x, r0)
+    r1 = CPyObject_CallMethodObjArgs(x, r0, 0)
     r2 = unbox(int, r1)
     y = r2
     r3 = unicode_3 :: static  ('pop')
-    r4 = py_method_call(x, r3)
+    r4 = CPyObject_CallMethodObjArgs(x, r3, 0)
     r5 = unbox(int, r4)
     return r5
 

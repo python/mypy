@@ -901,7 +901,7 @@ def fOpt2(a, b):
     r2 :: bool
 L0:
     r0 = unicode_1 :: static  ('__ne__')
-    r1 = py_method_call(a, r0, b)
+    r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
     r2 = unbox(bool, r1)
     return r2
 def Derived.__eq__(self, other):
