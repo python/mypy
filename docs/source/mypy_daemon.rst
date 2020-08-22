@@ -21,7 +21,7 @@ you'll find errors sooner.
 
 .. note::
 
-    The command-line of interface of mypy daemon may change in future mypy
+    The command-line interface of mypy daemon may change in future mypy
     releases.
 
 .. note::
@@ -35,7 +35,7 @@ Basic usage
 ***********
 
 The client utility ``dmypy`` is used to control the mypy daemon.
-Use ``dmypy run -- <flags> <files>`` to typecheck a set of files
+Use ``dmypy run -- <flags> <files>`` to type check a set of files
 (or directories). This will launch the daemon if it is not running.
 You can use almost arbitrary mypy flags after ``--``.  The daemon
 will always run on the current host. Example::
@@ -175,7 +175,7 @@ In this example, the function ``format_id()`` has no annotation:
 
    root = format_id(0)
 
-``dymypy suggest`` uses call sites, return statements, and other heuristics (such as
+``dmypy suggest`` uses call sites, return statements, and other heuristics (such as
 looking for signatures in base classes) to infer that ``format_id()`` accepts
 an ``int`` argument and returns a ``str``. Use ``dmypy suggest module.format_id`` to
 print the suggested signature for the function.
