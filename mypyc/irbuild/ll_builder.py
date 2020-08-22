@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem
+    LoadMem, ComparisonOp, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -55,7 +55,7 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op, type_is_op
 )
-from mypyc.primitives.int_ops import int_logical_op_mapping
+from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
@@ -241,7 +241,7 @@ class LowLevelIRBuilder:
         """
         # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
-            return self.primitive_op(py_call_op, [function] + arg_values, line)
+            return self.call_c(py_call_op, [function] + arg_values, line)
 
         # Otherwise fallback to py_call_with_kwargs_op.
         assert arg_names is not None
@@ -278,7 +278,7 @@ class LowLevelIRBuilder:
 
         kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
 
-        return self.primitive_op(
+        return self.call_c(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
     def py_method_call(self,
@@ -291,7 +291,7 @@ class LowLevelIRBuilder:
         """Call a Python method (non-native and slow)."""
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             method_name_reg = self.load_static_unicode(method_name)
-            return self.primitive_op(py_method_call_op, [obj, method_name_reg] + arg_values, line)
+            return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
         else:
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
@@ -438,7 +438,7 @@ class LowLevelIRBuilder:
 
     def none_object(self) -> Value:
         """Load Python None value (type: object_rprimitive)."""
-        return self.add(PrimitiveOp([], none_object_op, line=-1))
+        return self.add(LoadAddress(none_object_op.type, none_object_op.src, line=-1))
 
     def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
         return STATIC_PREFIX + self.mapper.literal_static_name(self.current_module, value)
@@ -559,7 +559,11 @@ class LowLevelIRBuilder:
         if value is not None:
             return value
 
-        if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_logical_op_mapping:
+        # Special case 'is' and 'is not'
+        if expr_op in ('is', 'is not'):
+            return self.translate_is_op(lreg, rreg, expr_op, line)
+
+        if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, expr_op, line)
 
         call_c_ops_candidates = c_binary_ops.get(expr_op, [])
@@ -577,16 +581,15 @@ class LowLevelIRBuilder:
         bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, val,
                                          int_tag, BinaryIntOp.AND, line)
         zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
-        check = self.binary_int_op(bool_rprimitive, bitwise_and, zero, BinaryIntOp.EQ, line)
+        check = self.comparison_op(bitwise_and, zero, ComparisonOp.EQ, line)
         return check
 
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two tagged integers using given op"""
         # generate fast binary logic ops on short ints
         if is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type):
-            return self.binary_int_op(bool_rprimitive, lhs, rhs,
-                                      int_logical_op_mapping[op][0], line)
-        op_type, c_func_desc, negate_result, swap_op = int_logical_op_mapping[op]
+            return self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
+        op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         result = self.alloc_temp(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line)
@@ -601,7 +604,7 @@ class LowLevelIRBuilder:
         branch.negated = False
         self.add(branch)
         self.activate_block(short_int_block)
-        eq = self.binary_int_op(bool_rprimitive, lhs, rhs, op_type, line)
+        eq = self.comparison_op(lhs, rhs, op_type, line)
         self.add(Assign(result, eq, line))
         self.goto(out)
         self.activate_block(int_block)
@@ -725,7 +728,7 @@ class LowLevelIRBuilder:
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
-                is_none = self.binary_op(value, self.none_object(), 'is not', value.line)
+                is_none = self.translate_is_op(value, self.none_object(), 'is not', value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
                 self.add(branch)
                 always_truthy = False
@@ -821,6 +824,9 @@ class LowLevelIRBuilder:
 
     def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(BinaryIntOp(type, lhs, rhs, op, line))
+
+    def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.add(ComparisonOp(lhs, rhs, op, line))
 
     def builtin_len(self, val: Value, line: int) -> Value:
         typ = val.type
@@ -974,7 +980,7 @@ class LowLevelIRBuilder:
         if not class_ir.has_method('__eq__'):
             # There's no __eq__ defined, so just use object identity.
             identity_ref_op = 'is' if expr_op == '==' else 'is not'
-            return self.binary_op(lreg, rreg, identity_ref_op, line)
+            return self.translate_is_op(lreg, rreg, identity_ref_op, line)
 
         return self.gen_method_call(
             lreg,
@@ -983,6 +989,21 @@ class LowLevelIRBuilder:
             ltype,
             line
         )
+
+    def translate_is_op(self,
+                        lreg: Value,
+                        rreg: Value,
+                        expr_op: str,
+                        line: int) -> Value:
+        """Create equality comparison operation between object identities
+
+        Args:
+            expr_op: either 'is' or 'is not'
+        """
+        op = ComparisonOp.EQ if expr_op == 'is' else ComparisonOp.NEQ
+        lhs = self.coerce(lreg, object_rprimitive, line)
+        rhs = self.coerce(rreg, object_rprimitive, line)
+        return self.add(ComparisonOp(lhs, rhs, op, line))
 
     def _create_dict(self,
                      keys: List[Value],

@@ -182,7 +182,7 @@ corresponding type hints.
 
 Mypy will not try inferring the types of any 3rd party libraries you have installed
 unless they either have declared themselves to be
-:ref:`PEP 561 compliant stub package <installed-packages>` or have registered
+:ref:`PEP 561 compliant stub package <installed-packages>` (e.g. with a ``py.typed`` file) or have registered
 themselves on `typeshed <https://github.com/python/typeshed>`_, the repository
 of types for the standard library and some 3rd party libraries.
 

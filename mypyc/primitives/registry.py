@@ -114,12 +114,6 @@ def simple_emit(template: str) -> EmitCallback:
     return emit
 
 
-def name_emit(name: str, target_type: Optional[str] = None) -> EmitCallback:
-    """Construct a PrimitiveOp emit callback function that assigns a C name."""
-    cast = "({})".format(target_type) if target_type else ""
-    return simple_emit('{dest} = %s%s;' % (cast, name))
-
-
 def call_emit(func: str) -> EmitCallback:
     """Construct a PrimitiveOp emit callback function that calls a C function."""
     return simple_emit('{dest} = %s({comma_args});' % func)

@@ -681,7 +681,7 @@ def f() -> str:
 def f():
     r0 :: str
 L0:
-    r0 = unicode_1 :: static  ('some string')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('some string')
     inc_ref r0
     return r0
 
@@ -700,12 +700,12 @@ def g(x):
     r6 :: int
 L0:
     r0 = load_address PyLong_Type
-    r1 = unicode_1 :: static  ('base')
+    r1 = load_global CPyStatic_unicode_1 :: static  ('base')
     r2 = PyTuple_Pack(1, x)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(1, r1, r3)
     dec_ref r3
-    r5 = py_call_with_kwargs(r0, r2, r4)
+    r5 = PyObject_Call(r0, r2, r4)
     dec_ref r2
     dec_ref r4
     r6 = unbox(int, r5)
