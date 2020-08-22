@@ -305,9 +305,9 @@ reveal_type(p.open('rb'))
 mode = 'rb'
 reveal_type(p.open(mode))
 [out]
-_program.py:3: note: Revealed type is 'typing.TextIO'
-_program.py:4: note: Revealed type is 'typing.TextIO'
-_program.py:5: note: Revealed type is 'typing.BinaryIO'
+_program.py:3: note: Revealed type is 'io.TextIOWrapper'
+_program.py:4: note: Revealed type is 'io.TextIOWrapper'
+_program.py:5: note: Revealed type is 'io.BufferedReader'
 _program.py:7: note: Revealed type is 'typing.IO[Any]'
 
 [case testPathOpenReturnTypeInferenceSpecialCases]
