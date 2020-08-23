@@ -22,14 +22,14 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress
+    LoadMem, ComparisonOp, LoadAddress, TupleGet
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive
+    none_rprimitive, RTuple
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -619,6 +619,47 @@ class LowLevelIRBuilder:
         else:
             call_result = call
         self.add(Assign(result, call_result, line))
+        self.goto_and_activate(out)
+        return result
+
+    def compare_tuples(self,
+                       lhs: Value,
+                       rhs: Value,
+                       op: str,
+                       line: int = -1) -> Value:
+        """Compare two tuples item by item"""
+        equal = True if op == '==' else False
+        result = self.alloc_temp(bool_rprimitive)
+        # handle the trivial cases
+        same_type = is_same_type(lhs.type, rhs.type)
+        if (equal and not same_type) or (not equal and same_type):
+            self.add(Assign(result, self.false(), line))
+            return result
+        # type cast to pass mypy check
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        length = len(lhs.type.types)
+        false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
+        check_blocks = [BasicBlock()] * length
+        lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
+        rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
+        for i in range(len(lhs.type.types)):
+            if i != 0:
+                self.activate_block(check_blocks[i])
+            lhs_item = lhs_items[i]
+            rhs_item = rhs_items[i]
+            compare = self.binary_op(lhs_item, rhs_item, op, line)
+            if i < len(lhs.type.types) - 1:
+                branch = Branch(compare, false_assign, check_blocks[i + 1], Branch.BOOL_EXPR)
+            else:
+                branch = Branch(compare, false_assign, true_assign, Branch.BOOL_EXPR)
+            # branch on false
+            branch.negated = True
+            self.add(branch)
+        self.activate_block(false_assign)
+        self.add(Assign(result, self.false(), line))
+        self.goto(out)
+        self.activate_block(true_assign)
+        self.add(Assign(result, self.true(), line))
         self.goto_and_activate(out)
         return result
 
