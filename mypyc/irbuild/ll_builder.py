@@ -628,6 +628,8 @@ class LowLevelIRBuilder:
                        op: str,
                        line: int = -1) -> Value:
         """Compare two tuples item by item"""
+        # type cast to pass mypy check
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
         equal = True if op == '==' else False
         result = self.alloc_temp(bool_rprimitive)
         # handle the trivial cases
@@ -635,8 +637,10 @@ class LowLevelIRBuilder:
         if (equal and not same_type) or (not equal and same_type):
             self.add(Assign(result, self.false(), line))
             return result
-        # type cast to pass mypy check
-        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        # empty tuples
+        if (equal and same_type and len(lhs.type.types) == 0):
+            self.add(Assign(result, self.true(), line))
+            return result
         length = len(lhs.type.types)
         false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
         check_blocks = [BasicBlock()] * length
