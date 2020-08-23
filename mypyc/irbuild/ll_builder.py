@@ -552,6 +552,10 @@ class LowLevelIRBuilder:
                   rreg: Value,
                   expr_op: str,
                   line: int) -> Value:
+        # special case tuple comparison here so that nested tuples can be supported
+        if (isinstance(lreg.type, RTuple) and isinstance(rreg.type, RTuple)
+                and expr_op in ('==', '!=')):
+            return self.compare_tuples(lreg, rreg, expr_op, line)
         # Special case == and != when we can resolve the method call statically.
         value = None
         if expr_op in ('==', '!='):

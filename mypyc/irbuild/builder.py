@@ -192,10 +192,6 @@ class IRBuilder:
         return self.builder.unary_op(lreg, expr_op, line)
 
     def binary_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
-        # special case tuple comparison here so that nested tuples can be supported
-        if (isinstance(lreg.type, RTuple) and isinstance(rreg.type, RTuple)
-                and expr_op in ('==', '!=')):
-            return self.compare_tuples(lreg, rreg, expr_op, line)
         return self.builder.binary_op(lreg, rreg, expr_op, line)
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
