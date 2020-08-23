@@ -643,7 +643,7 @@ class LowLevelIRBuilder:
             return result
         length = len(lhs.type.types)
         false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
-        check_blocks = [BasicBlock()] * length
+        check_blocks = [BasicBlock() for i in range(length)]
         lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
         rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
         for i in range(len(lhs.type.types)):
