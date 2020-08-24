@@ -32,7 +32,7 @@ for op, opid in [('==', 2),   # PY_EQ
                 return_type=object_rprimitive,
                 c_function_name='PyObject_RichCompare',
                 error_kind=ERR_MAGIC,
-                extra_int_constant=(opid, c_int_rprimitive),
+                extra_int_constants=[(opid, c_int_rprimitive)],
                 priority=0)
 
 for op, funcname in [('+', 'PyNumber_Add'),
@@ -193,7 +193,7 @@ py_call_op = c_custom_op(
     c_function_name='PyObject_CallFunctionObjArgs',
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
-    extra_int_constant=(0, pointer_rprimitive))
+    extra_int_constants=[(0, pointer_rprimitive)])
 
 # Call callable object with positional + keyword args: func(*args, **kwargs)
 # Arguments are (func, *args tuple, **kwargs dict).
@@ -211,7 +211,7 @@ py_method_call_op = c_custom_op(
     c_function_name='CPyObject_CallMethodObjArgs',
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
-    extra_int_constant=(0, pointer_rprimitive))
+    extra_int_constants=[(0, pointer_rprimitive)])
 
 # len(obj)
 generic_len_op = c_custom_op(
