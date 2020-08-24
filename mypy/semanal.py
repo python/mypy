@@ -2333,7 +2333,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.store_declared_types(lvalue, s.type)
 
     def is_annotated_protocol_member(self, s: AssignmentStmt) -> bool:
-        """Check whether a protocol member is annotated."""
+        """Check whether a protocol member is annotated.
+        
+        There are some exceptions that can be left unannotated, like ``__slots__``."""
         return any(
             (
                 isinstance(lv, NameExpr)
