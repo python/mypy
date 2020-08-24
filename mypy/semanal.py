@@ -2334,7 +2334,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def is_annotated_protocol_member(self, s: AssignmentStmt) -> bool:
         """Check whether a protocol member is annotated.
-        
+
         There are some exceptions that can be left unannotated, like ``__slots__``."""
         return any(
             (
