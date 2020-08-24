@@ -29,7 +29,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive, RTuple
+    none_rprimitive, RTuple, is_bool_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -656,10 +656,14 @@ class LowLevelIRBuilder:
             lhs_item = lhs_items[i]
             rhs_item = rhs_items[i]
             compare = self.binary_op(lhs_item, rhs_item, op, line)
+            # Cast to bool if necessary since most types uses comparison returning a object type
+            # See generic_ops.py for more information
+            if not is_bool_rprimitive(compare.type):
+                comapre = self.coerce(compare, bool_rprimitive, line)
             if i < len(lhs.type.types) - 1:
-                branch = Branch(compare, false_assign, check_blocks[i + 1], Branch.BOOL_EXPR)
+                branch = Branch(comapre, false_assign, check_blocks[i + 1], Branch.BOOL_EXPR)
             else:
-                branch = Branch(compare, false_assign, true_assign, Branch.BOOL_EXPR)
+                branch = Branch(comapre, false_assign, true_assign, Branch.BOOL_EXPR)
             # branch on false
             branch.negated = True
             self.add(branch)
