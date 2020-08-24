@@ -77,12 +77,12 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # dict.get(key)
-method_op(
+c_method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetWithNone',
+    error_kind=ERR_MAGIC)
 
 # Construct an empty dictionary.
 dict_new_op = c_custom_op(

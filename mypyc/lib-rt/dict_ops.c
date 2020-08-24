@@ -63,6 +63,18 @@ PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
     return res;
 }
 
+PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
+    PyObject *res = PyDict_GetItemWithError(dict, key);
+    if (!res) {
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
+        res = Py_None;
+    }
+    Py_INCREF(res);
+    return res;
+}
+
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_SetItem(dict, key, value);
