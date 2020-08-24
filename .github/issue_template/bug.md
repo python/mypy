@@ -14,10 +14,6 @@ for this report: https://github.com/python/typeshed/issues
 
 (A clear and concise description of what the bug is.)
 
-### Have you read the [Contributing Guidelines](https://github.com/python/mypy/blob/master/CONTRIBUTING.md)?
-
-(Write your answer here.)
-
 ## To Reproduce
 
 (Write your steps here:)
@@ -54,3 +50,6 @@ for this report: https://github.com/python/typeshed/issues
 - Mypy version used:
 - Python version used:
 - Operating system and version:
+
+(You can freely edit this text, please remove all the lines
+you believe are unnecessary.)

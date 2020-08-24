@@ -7,7 +7,3 @@ labels: "documentation"
 ## 📚 Documentation
 
 (A clear and concise description of what the issue is.)
-
-### Have you read the [Contributing Guidelines](https://github.com/python/mypy/blob/master/CONTRIBUTING.md)?
-
-(Write your answer here.)
