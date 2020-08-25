@@ -637,7 +637,7 @@ class LowLevelIRBuilder:
         equal = True if op == '==' else False
         result = self.alloc_temp(bool_rprimitive)
         # empty tuples
-        if (equal and len(lhs.type.types) == 0 and len(rhs.type.types)):
+        if (equal and len(lhs.type.types) == 0 and len(rhs.type.types) == 0):
             self.add(Assign(result, self.true(), line))
             return result
         length = len(lhs.type.types)
