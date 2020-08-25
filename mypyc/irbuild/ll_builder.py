@@ -645,6 +645,12 @@ class LowLevelIRBuilder:
         check_blocks = [BasicBlock() for i in range(length)]
         lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
         rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
+
+        if equal:
+            early_stop, final = false_assign, true_assign
+        else:
+            early_stop, final = true_assign, false_assign
+
         for i in range(len(lhs.type.types)):
             if i != 0:
                 self.activate_block(check_blocks[i])
@@ -656,11 +662,11 @@ class LowLevelIRBuilder:
             if not is_bool_rprimitive(compare.type):
                 compare = self.coerce(compare, bool_rprimitive, line)
             if i < len(lhs.type.types) - 1:
-                branch = Branch(compare, false_assign, check_blocks[i + 1], Branch.BOOL_EXPR)
+                branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL_EXPR)
             else:
-                branch = Branch(compare, false_assign, true_assign, Branch.BOOL_EXPR)
-            # branch on false
-            branch.negated = True
+                branch = Branch(compare, early_stop, final, Branch.BOOL_EXPR)
+            # if op is ==, we branch on false, else branch on true
+            branch.negated = equal
             self.add(branch)
         self.activate_block(false_assign)
         self.add(Assign(result, self.false(), line))
