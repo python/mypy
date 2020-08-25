@@ -302,6 +302,7 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
 CPyTagged CPyObject_Hash(PyObject *o);
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
+PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
 
 
 // List operations
@@ -325,6 +326,7 @@ PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
+PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key);
 PyObject *CPyDict_Build(Py_ssize_t size, ...);
 int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);

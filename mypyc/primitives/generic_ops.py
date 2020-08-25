@@ -14,7 +14,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, simple_emit, c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
+    c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
 )
 
 
@@ -72,12 +72,12 @@ for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
                 error_kind=ERR_MAGIC,
                 priority=0)
 
-binary_op(op='**',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=object_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=simple_emit('{dest} = PyNumber_Power({args[0]}, {args[1]}, Py_None);'),
-          priority=0)
+c_binary_op(name='**',
+            arg_types=[object_rprimitive, object_rprimitive],
+            return_type=object_rprimitive,
+            error_kind=ERR_MAGIC,
+            c_function_name='CPyNumber_Power',
+            priority=0)
 
 c_binary_op(
     name='in',
