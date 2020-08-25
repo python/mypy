@@ -1281,6 +1281,10 @@ class BinaryIntOp(RegisterOp):
     LEFT_SHIFT = 203  # type: Final
     RIGHT_SHIFT = 204  # type: Final
 
+    # logical
+    NOR = 300  # type: Final
+
+    # since NOR is used to represent unary not, its op_str is not included
     op_str = {
         ADD: '+',
         SUB: '-',
@@ -1305,6 +1309,8 @@ class BinaryIntOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def to_str(self, env: Environment) -> str:
+        if self.lhs is self.rhs and self.op == BinaryIntOp.NOR:
+            return env.format('%r = !%r', self, self.lhs)
         return env.format('%r = %r %s %r', self, self.lhs,
                           self.op_str[self.op], self.rhs)
 
