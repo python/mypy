@@ -64,15 +64,7 @@ PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
 }
 
 PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
-    PyObject *res = PyDict_GetItemWithError(dict, key);
-    if (!res) {
-        if (PyErr_Occurred()) {
-            return NULL;
-        }
-        res = Py_None;
-    }
-    Py_INCREF(res);
-    return res;
+    return CPyDict_Get(dict, key, Py_None);
 }
 
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
