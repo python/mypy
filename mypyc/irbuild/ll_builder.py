@@ -636,13 +636,8 @@ class LowLevelIRBuilder:
         assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
         equal = True if op == '==' else False
         result = self.alloc_temp(bool_rprimitive)
-        # handle the trivial cases
-        same_type = is_same_type(lhs.type, rhs.type)
-        if (equal and not same_type) or (not equal and same_type):
-            self.add(Assign(result, self.false(), line))
-            return result
         # empty tuples
-        if (equal and same_type and len(lhs.type.types) == 0):
+        if (equal and len(lhs.type.types) == 0 and len(rhs.type.types)):
             self.add(Assign(result, self.true(), line))
             return result
         length = len(lhs.type.types)
