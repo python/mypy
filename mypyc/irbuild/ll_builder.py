@@ -777,8 +777,8 @@ class LowLevelIRBuilder:
                 arg = self.coerce(arg, desc.var_arg_type, line)
                 coerced.append(arg)
         # add extra integer constant if any
-        if desc.extra_int_constant is not None:
-            val, typ = desc.extra_int_constant
+        for item in desc.extra_int_constants:
+            val, typ = item
             extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
             coerced.append(extra_int_constant)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,

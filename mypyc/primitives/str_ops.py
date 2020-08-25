@@ -1,13 +1,14 @@
 """Primitive str ops."""
 
-from typing import List, Callable
+from typing import List, Callable, Tuple
 
-from mypyc.ir.ops import ERR_MAGIC, EmitterInterface, EmitCallback
+from mypyc.ir.ops import ERR_MAGIC, EmitterInterface
 from mypyc.ir.rtypes import (
-    RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive
+    RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive,
+    c_int_rprimitive, pointer_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, simple_emit, method_op, call_emit, c_method_op, c_binary_op, c_function_op,
+    binary_op, c_method_op, c_binary_op, c_function_op,
     load_address_op
 )
 
@@ -53,17 +54,19 @@ c_method_op(
 
 # str.split(...)
 str_split_types = [str_rprimitive, str_rprimitive, int_rprimitive]  # type: List[RType]
-str_split_emits = [simple_emit('{dest} = PyUnicode_Split({args[0]}, NULL, -1);'),
-                   simple_emit('{dest} = PyUnicode_Split({args[0]}, {args[1]}, -1);'),
-                   call_emit('CPyStr_Split')] \
-                   # type: List[EmitCallback]
+str_split_functions = ['PyUnicode_Split', 'PyUnicode_Split', 'CPyStr_Split']
+str_split_constants = [[(0, pointer_rprimitive), (-1, c_int_rprimitive)],
+                       [(-1, c_int_rprimitive)],
+                       []] \
+                       # type: List[List[Tuple[int, RType]]]
 for i in range(len(str_split_types)):
-    method_op(
+    c_method_op(
         name='split',
         arg_types=str_split_types[0:i+1],
-        result_type=list_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=str_split_emits[i])
+        return_type=list_rprimitive,
+        c_function_name=str_split_functions[i],
+        extra_int_constants=str_split_constants[i],
+        error_kind=ERR_MAGIC)
 
 # str1 += str2
 #
