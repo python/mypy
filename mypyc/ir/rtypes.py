@@ -186,7 +186,7 @@ class RPrimitive(RType):
             self.c_undefined = 'CPY_INT_TAG'
         elif ctype in ('int32_t', 'int64_t', 'CPyPtr'):
             self.c_undefined = '0'
-        elif ctype == 'PyObject *':
+        elif ctype in ('PyObject *', 'PyTypeObject *'):
             # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
         elif ctype == 'char':
@@ -222,6 +222,14 @@ class RPrimitive(RType):
 # faster.
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
                                is_refcounted=True)  # type: Final
+
+# Used to represent type object
+#
+# NOTE: For now it should only be used with misc ops that require type cast
+# if in the future this type is used in more places where requires information to
+# some/all its fields, consider refactor this type with RStruct
+# type_object_rprimitive = RPrimitive('type_object', is_unboxed=False, is_refcounted=True,
+#                                   ctype='PyTypeObject *')  # type: Final
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
 # enough values are stored unboxed, while large integers are
