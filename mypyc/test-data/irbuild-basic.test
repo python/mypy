@@ -557,7 +557,7 @@ L1:
     goto L3
 L2:
     r7 = CPyTagged_IsLt_(2, n)
-    r8 = !r7
+    r8 = r7 ^ 1
     r0 = r8
 L3:
     if r0 goto L4 else goto L5 :: bool
@@ -1346,7 +1346,7 @@ L1:
     goto L3
 L2:
     r4 = CPyTagged_IsEq_(x, 0)
-    r5 = !r4
+    r5 = r4 ^ 1
     r0 = r5
 L3:
     if r0 goto L4 else goto L5 :: bool
@@ -1421,7 +1421,7 @@ L2:
     goto L4
 L3:
     r7 = CPyTagged_IsEq_(r2, 0)
-    r8 = !r7
+    r8 = r7 ^ 1
     r3 = r8
 L4:
     if r3 goto L5 else goto L6 :: bool
@@ -1987,7 +1987,7 @@ L3:
     goto L5
 L4:
     r16 = CPyTagged_IsEq_(x, 4)
-    r17 = !r16
+    r17 = r16 ^ 1
     r12 = r17
 L5:
     if r12 goto L7 else goto L6 :: bool
@@ -2003,7 +2003,7 @@ L8:
     goto L10
 L9:
     r22 = CPyTagged_IsEq_(x, 6)
-    r23 = !r22
+    r23 = r22 ^ 1
     r18 = r23
 L10:
     if r18 goto L12 else goto L11 :: bool
@@ -2071,7 +2071,7 @@ L3:
     goto L5
 L4:
     r16 = CPyTagged_IsEq_(x, 4)
-    r17 = !r16
+    r17 = r16 ^ 1
     r12 = r17
 L5:
     if r12 goto L7 else goto L6 :: bool
@@ -2087,7 +2087,7 @@ L8:
     goto L10
 L9:
     r22 = CPyTagged_IsEq_(x, 6)
-    r23 = !r22
+    r23 = r22 ^ 1
     r18 = r23
 L10:
     if r18 goto L12 else goto L11 :: bool
@@ -3226,7 +3226,7 @@ L4:
     r8 = CPyTagged_IsEq_(i, 0)
     r4 = r8
 L5:
-    r9 = !r4
+    r9 = r4 ^ 1
     if r9 goto L6 else goto L7 :: bool
 L6:
     r0 = 0

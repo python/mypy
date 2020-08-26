@@ -29,7 +29,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive
+    none_rprimitive, is_bool_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -38,7 +38,7 @@ from mypyc.common import (
     STATIC_PREFIX
 )
 from mypyc.primitives.registry import (
-    binary_ops, unary_ops, method_ops, func_ops,
+    binary_ops, method_ops, func_ops,
     c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops
 )
@@ -622,14 +622,18 @@ class LowLevelIRBuilder:
         self.goto_and_activate(out)
         return result
 
+    def unary_not(self,
+                  value: Value,
+                  line: int) -> Value:
+        mask = self.add(LoadInt(1, line, rtype=bool_rprimitive))
+        return self.binary_int_op(bool_rprimitive, value, mask, BinaryIntOp.XOR, line)
+
     def unary_op(self,
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        ops = unary_ops.get(expr_op, [])
-        target = self.matching_primitive_op(ops, [lreg], line)
-        if target:
-            return target
+        if is_bool_rprimitive(lreg.type) and expr_op == 'not':
+            return self.unary_not(lreg, line)
         call_c_ops_candidates = c_unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
