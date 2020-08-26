@@ -625,7 +625,7 @@ class LowLevelIRBuilder:
     def unary_not(self,
                   value: Value,
                   line: int) -> Value:
-        return self.binary_int_op(bool_rprimitive, value, value, BinaryIntOp.XOR, line)
+        return self.binary_int_op(bool_rprimitive, value, value, BinaryIntOp.NOR, line)
 
     def unary_op(self,
                  lreg: Value,
