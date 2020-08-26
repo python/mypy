@@ -38,7 +38,7 @@ from mypyc.common import (
     STATIC_PREFIX
 )
 from mypyc.primitives.registry import (
-    binary_ops, unary_ops, method_ops, func_ops,
+    binary_ops, method_ops, func_ops,
     c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops
 )
@@ -676,14 +676,18 @@ class LowLevelIRBuilder:
         self.goto_and_activate(out)
         return result
 
+    def unary_not(self,
+                  value: Value,
+                  line: int) -> Value:
+        mask = self.add(LoadInt(1, line, rtype=bool_rprimitive))
+        return self.binary_int_op(bool_rprimitive, value, mask, BinaryIntOp.XOR, line)
+
     def unary_op(self,
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        ops = unary_ops.get(expr_op, [])
-        target = self.matching_primitive_op(ops, [lreg], line)
-        if target:
-            return target
+        if is_bool_rprimitive(lreg.type) and expr_op == 'not':
+            return self.unary_not(lreg, line)
         call_c_ops_candidates = c_unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
@@ -831,8 +835,8 @@ class LowLevelIRBuilder:
                 arg = self.coerce(arg, desc.var_arg_type, line)
                 coerced.append(arg)
         # add extra integer constant if any
-        if desc.extra_int_constant is not None:
-            val, typ = desc.extra_int_constant
+        for item in desc.extra_int_constants:
+            val, typ = item
             extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
             coerced.append(extra_int_constant)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,

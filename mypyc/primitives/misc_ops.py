@@ -6,7 +6,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, unary_op, func_op, custom_op, call_emit,
+    simple_emit, func_op, custom_op, call_emit,
     c_function_op, c_custom_op, load_address_op
 )
 
@@ -87,15 +87,6 @@ check_stop_op = c_custom_op(
     return_type=object_rprimitive,
     c_function_name='CPy_FetchStopIterationValue',
     error_kind=ERR_MAGIC)
-
-# Negate a primitive bool
-unary_op(op='not',
-         arg_type=bool_rprimitive,
-         result_type=bool_rprimitive,
-         error_kind=ERR_NEVER,
-         format_str='{dest} = !{args[0]}',
-         emit=simple_emit('{dest} = !{args[0]};'),
-         priority=1)
 
 # Determine the most derived metaclass and check for metaclass conflicts.
 # Arguments are (metaclass, bases).

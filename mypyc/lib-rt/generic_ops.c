@@ -35,3 +35,8 @@ PyObject *CPyIter_Next(PyObject *iter)
 {
     return (*iter->ob_type->tp_iternext)(iter);
 }
+
+PyObject *CPyNumber_Power(PyObject *base, PyObject *index)
+{
+    return PyNumber_Power(base, index, Py_None);
+}
