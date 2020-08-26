@@ -294,6 +294,12 @@ error:
     return NULL;
 }
 
+PyObject *CPyType_FromTemplateWarpper(PyObject *template_,
+                                      PyObject *orig_bases,
+                                      PyObject *modname) {
+    return CPyType_FromTemplate((PyTypeObject *)template_, orig_bases, modname);
+}
+
 static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
 {
     Py_ssize_t pos = 0;
