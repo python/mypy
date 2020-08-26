@@ -38,7 +38,7 @@ def f(x):
 L0:
     r0 = box(None, 1)
     r1 = x == r0
-    r2 = !r1
+    r2 = r1 ^ 1
     if r2 goto L1 else goto L2 :: bool
 L1:
     return 2
@@ -193,7 +193,7 @@ L0:
     y = r0
     r1 = box(None, 1)
     r2 = x == r1
-    r3 = !r2
+    r3 = r2 ^ 1
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = cast(__main__.A, x)
@@ -242,7 +242,7 @@ L4:
 L5:
     r7 = box(None, 1)
     r8 = x == r7
-    r9 = !r8
+    r9 = r8 ^ 1
     if r9 goto L6 else goto L7 :: bool
 L6:
     r10 = unbox(int, x)

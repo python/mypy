@@ -118,7 +118,7 @@ L0:
     r0 = self.next
     r1 = box(None, 1)
     r2 = r0 == r1
-    r3 = !r2
+    r3 = r2 ^ 1
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = self.next
