@@ -17,7 +17,7 @@ L1:
     goto L3
 L2:
     r4 = CPyTagged_IsEq_(x, y)
-    r5 = !r4
+    r5 = r4 ^ 1
     r0 = r5
 L3:
     return r0

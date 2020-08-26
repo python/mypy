@@ -452,10 +452,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        if lhs == rhs and op.op == BinaryIntOp.NOR:
-            self.emit_line('%s = !%s;' % (dest, lhs))
-        else:
-            self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         dest = self.reg(op)

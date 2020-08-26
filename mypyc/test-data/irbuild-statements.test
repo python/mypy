@@ -445,7 +445,7 @@ L3:
     goto L5
 L4:
     r17 = CPyTagged_IsEq_(r12, 0)
-    r18 = !r17
+    r18 = r17 ^ 1
     r13 = r18
 L5:
     if r13 goto L6 else goto L7 :: bool

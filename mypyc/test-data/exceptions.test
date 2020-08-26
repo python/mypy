@@ -89,7 +89,7 @@ L3:
     r3 = box(None, 1)
     r4 = r2 == r3
     dec_ref r2
-    r5 = !r4
+    r5 = r4 ^ 1
     if r5 goto L4 else goto L5 :: bool
 L4:
     return 4
@@ -479,7 +479,7 @@ L2:
     inc_ref r1
     v = r1
     r2 = v == u
-    r3 = !r2
+    r3 = r2 ^ 1
     if r3 goto L11 else goto L1 :: bool
 L3:
     r4 = builtins :: module

@@ -269,10 +269,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
                                      BinaryIntOp.RIGHT_SHIFT, 1),
                         """cpy_r_r08 = cpy_r_s1 >> cpy_r_s2;""")
-        # not
-        self.assert_emit(BinaryIntOp(bool_rprimitive, self.s1, self.s1,
-                                     BinaryIntOp.NOR, 1),
-                """cpy_r_r09 = !cpy_r_s1;""")
 
     def test_comparison_op(self) -> None:
         # signed
