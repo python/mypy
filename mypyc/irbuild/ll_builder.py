@@ -660,7 +660,7 @@ class LowLevelIRBuilder:
             # Cast to bool if necessary since most types uses comparison returning a object type
             # See generic_ops.py for more information
             if not is_bool_rprimitive(compare.type):
-                compare = self.coerce(compare, bool_rprimitive, line)
+                compare = self.call_c(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
                 branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL_EXPR)
             else:
