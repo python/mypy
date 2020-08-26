@@ -460,18 +460,20 @@ def f(x: A) -> B:
 def f(x):
     x :: __main__.A
     r0 :: object
-    r1 :: bool
-    r2, r3 :: __main__.B
+    r1 :: ptr
+    r2 :: bool
+    r3, r4 :: __main__.B
 L0:
     r0 = __main__.B :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = r1 == r0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = cast(__main__.B, x)
-    return r2
-L2:
-    r3 = B()
+    r3 = cast(__main__.B, x)
     return r3
+L2:
+    r4 = B()
+    return r4
 
 [case testIsInstanceTuple]
 from typing import Union
@@ -488,30 +490,34 @@ def f(x: R) -> Union[A, B]:
 def f(x):
     x :: __main__.R
     r0 :: object
-    r1, r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: union[__main__.A, __main__.B]
-    r6 :: __main__.A
+    r1 :: ptr
+    r2, r3 :: bool
+    r4 :: object
+    r5 :: ptr
+    r6 :: bool
+    r7 :: union[__main__.A, __main__.B]
+    r8 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = r1 == r0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r3 = r2
     goto L3
 L2:
-    r3 = __main__.B :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r4 = __main__.B :: type
+    r5 = get_element_ptr x ob_type :: PyObject
+    r6 = r5 == r4
+    r3 = r6
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(union[__main__.A, __main__.B], x)
-    return r5
+    r7 = cast(union[__main__.A, __main__.B], x)
+    return r7
 L5:
-    r6 = A()
-    return r6
+    r8 = A()
+    return r8
 
 [case testIsInstanceFewSubclasses]
 class R: pass
@@ -524,30 +530,34 @@ def f(x: object) -> R:
 [out]
 def f(x):
     x, r0 :: object
-    r1, r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: __main__.R
-    r6 :: __main__.A
+    r1 :: ptr
+    r2, r3 :: bool
+    r4 :: object
+    r5 :: ptr
+    r6 :: bool
+    r7 :: __main__.R
+    r8 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = r1 == r0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r3 = r2
     goto L3
 L2:
-    r3 = __main__.R :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r4 = __main__.R :: type
+    r5 = get_element_ptr x ob_type :: PyObject
+    r6 = r5 == r4
+    r3 = r6
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(__main__.R, x)
-    return r5
+    r7 = cast(__main__.R, x)
+    return r7
 L5:
-    r6 = A()
-    return r6
+    r8 = A()
+    return r8
 
 [case testIsInstanceFewSubclassesTrait]
 from mypy_extensions import trait
@@ -564,30 +574,34 @@ def f(x: object) -> R:
 [out]
 def f(x):
     x, r0 :: object
-    r1, r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: __main__.R
-    r6 :: __main__.A
+    r1 :: ptr
+    r2, r3 :: bool
+    r4 :: object
+    r5 :: ptr
+    r6 :: bool
+    r7 :: __main__.R
+    r8 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = r1 == r0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r3 = r2
     goto L3
 L2:
-    r3 = __main__.C :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r4 = __main__.C :: type
+    r5 = get_element_ptr x ob_type :: PyObject
+    r6 = r5 == r4
+    r3 = r6
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(__main__.R, x)
-    return r5
+    r7 = cast(__main__.R, x)
+    return r7
 L5:
-    r6 = A()
-    return r6
+    r8 = A()
+    return r8
 
 [case testIsInstanceManySubclasses]
 class R: pass
