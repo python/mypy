@@ -22,14 +22,14 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress
+    LoadMem, ComparisonOp, LoadAddress, TupleGet
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive, is_bool_rprimitive
+    none_rprimitive, RTuple, is_bool_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -552,6 +552,10 @@ class LowLevelIRBuilder:
                   rreg: Value,
                   expr_op: str,
                   line: int) -> Value:
+        # special case tuple comparison here so that nested tuples can be supported
+        if (isinstance(lreg.type, RTuple) and isinstance(rreg.type, RTuple)
+                and expr_op in ('==', '!=')):
+            return self.compare_tuples(lreg, rreg, expr_op, line)
         # Special case == and != when we can resolve the method call statically.
         value = None
         if expr_op in ('==', '!='):
@@ -619,6 +623,56 @@ class LowLevelIRBuilder:
         else:
             call_result = call
         self.add(Assign(result, call_result, line))
+        self.goto_and_activate(out)
+        return result
+
+    def compare_tuples(self,
+                       lhs: Value,
+                       rhs: Value,
+                       op: str,
+                       line: int = -1) -> Value:
+        """Compare two tuples item by item"""
+        # type cast to pass mypy check
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        equal = True if op == '==' else False
+        result = self.alloc_temp(bool_rprimitive)
+        # empty tuples
+        if len(lhs.type.types) == 0 and len(rhs.type.types) == 0:
+            self.add(Assign(result, self.true() if equal else self.false(), line))
+            return result
+        length = len(lhs.type.types)
+        false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
+        check_blocks = [BasicBlock() for i in range(length)]
+        lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
+        rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
+
+        if equal:
+            early_stop, final = false_assign, true_assign
+        else:
+            early_stop, final = true_assign, false_assign
+
+        for i in range(len(lhs.type.types)):
+            if i != 0:
+                self.activate_block(check_blocks[i])
+            lhs_item = lhs_items[i]
+            rhs_item = rhs_items[i]
+            compare = self.binary_op(lhs_item, rhs_item, op, line)
+            # Cast to bool if necessary since most types uses comparison returning a object type
+            # See generic_ops.py for more information
+            if not is_bool_rprimitive(compare.type):
+                compare = self.call_c(bool_op, [compare], line)
+            if i < len(lhs.type.types) - 1:
+                branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL_EXPR)
+            else:
+                branch = Branch(compare, early_stop, final, Branch.BOOL_EXPR)
+            # if op is ==, we branch on false, else branch on true
+            branch.negated = equal
+            self.add(branch)
+        self.activate_block(false_assign)
+        self.add(Assign(result, self.false(), line))
+        self.goto(out)
+        self.activate_block(true_assign)
+        self.add(Assign(result, self.true(), line))
         self.goto_and_activate(out)
         return result
 
