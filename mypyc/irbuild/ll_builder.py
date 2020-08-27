@@ -206,7 +206,8 @@ class LowLevelIRBuilder:
 
     def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
         ob_type = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
-        return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
+        cast = self.add(Cast(ob_type, object_rprimitive, line))
+        return self.add(ComparisonOp(cast, type_obj, ComparisonOp.EQ, line))
 
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
         """Fast isinstance() check for a native class.

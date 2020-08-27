@@ -228,8 +228,8 @@ object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
 # NOTE: For now it should only be used with misc ops that require type cast
 # if in the future this type is used in more places where requires information to
 # some/all its fields, consider refactor this type with RStruct
-# type_object_rprimitive = RPrimitive('type_object', is_unboxed=False, is_refcounted=True,
-#                                   ctype='PyTypeObject *')  # type: Final
+type_object_rprimitive = RPrimitive('type_object', is_unboxed=False, is_refcounted=True,
+                                  ctype='PyTypeObject *')  # type: Final
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
 # enough values are stored unboxed, while large integers are
@@ -339,6 +339,10 @@ def is_bool_rprimitive(rtype: RType) -> bool:
 
 def is_object_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.object'
+
+
+def is_type_object_rprimitive(rtype: RType) -> bool:
+    return rtype is type_object_rprimitive
 
 
 def is_none_rprimitive(rtype: RType) -> bool:
