@@ -253,11 +253,7 @@ class DefinedVisitor(BaseAnalysisVisitor):
             return {op.dest}, set()
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-        # Loading an error value may undefine the register.
-        if isinstance(op.src, LoadErrorValue) and op.src.undefines:
-            return set(), {op.dest}
-        else:
-            return {op.dest}, set()
+            return set(), set()
 
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],
@@ -320,8 +316,6 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-        if op.dest in self.args:
-            return set(), {op.dest}
         return set(), set()
 
 
@@ -359,7 +353,7 @@ class UndefinedVisitor(BaseAnalysisVisitor):
         return set(), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-        return set(), {op.dest}
+        return set(), set()
 
 
 def analyze_undefined_regs(blocks: List[BasicBlock],

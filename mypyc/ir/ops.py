@@ -1415,12 +1415,12 @@ class LoadMem(RegisterOp):
 class SetMem(Op):
     """Write a memory location.
 
-    *(type *)src = val
+    *(type *)dest = src
 
     Attributes:
       type: Type of the read value
       dest: Pointer to memory to write
-      src: source value
+      src: Source value
       base: If not None, the object from which we are reading memory.
             It's used to avoid the target object from being freed via
             reference counting. If the target is not in reference counted
@@ -1443,9 +1443,9 @@ class SetMem(Op):
 
     def sources(self) -> List[Value]:
         if self.base:
-            return [self.src, self.base]
+            return [self.src, self.base, self.dest]
         else:
-            return [self.src]
+            return [self.src, self.dest]
 
     def stolen(self) -> List[Value]:
         return [self.src]
