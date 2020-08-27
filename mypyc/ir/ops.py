@@ -1411,6 +1411,21 @@ class LoadMem(RegisterOp):
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
 
+class SetMem(Op):
+    """Write a memory location.
+
+    *(type *)src = val
+
+    Attributes:
+      type: Type of the read value
+      src: Pointer to memory to write
+      val: value
+      base: If not None, the object from which we are reading memory.
+            It's used to avoid the target object from being freed via
+            reference counting. If the target is not in reference counted
+            memory, or we know that the target won't be freed, it can be
+            None.
+    """
 
 class GetElementPtr(RegisterOp):
     """Get the address of a struct element"""
