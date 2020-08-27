@@ -9,7 +9,7 @@ from mypyc.ir.ops import (
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
     LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError, CallC, LoadGlobal,
-    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
+    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
 
 
@@ -151,6 +151,10 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_assign(self, op: Assign) -> GenAndKill:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        raise NotImplementedError
+
     def visit_call(self, op: Call) -> GenAndKill:
         return self.visit_register_op(op)
 
@@ -248,6 +252,13 @@ class DefinedVisitor(BaseAnalysisVisitor):
         else:
             return {op.dest}, set()
 
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        # Loading an error value may undefine the register.
+        if isinstance(op.src, LoadErrorValue) and op.src.undefines:
+            return set(), {op.dest}
+        else:
+            return {op.dest}, set()
+
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],
                                cfg: CFG,
@@ -308,6 +319,11 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         return set(), set()
 
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        if op.dest in self.args:
+            return set(), {op.dest}
+        return set(), set()
+
 
 def analyze_borrowed_arguments(
         blocks: List[BasicBlock],
@@ -340,6 +356,9 @@ class UndefinedVisitor(BaseAnalysisVisitor):
         return set(), {op} if not op.is_void else set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
+        return set(), {op.dest}
+
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(), {op.dest}
 
 
@@ -379,6 +398,9 @@ class LivenessVisitor(BaseAnalysisVisitor):
             return gen, set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
+        return set(op.sources()), {op.dest}
+
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(op.sources()), {op.dest}
 
 
