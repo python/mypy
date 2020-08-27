@@ -41,6 +41,12 @@ no_err_occurred_op = c_custom_op(
     c_function_name='CPy_NoErrOccured',
     error_kind=ERR_FALSE)
 
+err_occurred_op = c_custom_op(
+    arg_types=[],
+    return_type=object_rprimitive,
+    c_function_name='PyErr_Occurred',
+    error_kind=ERR_NEVER,
+    is_borrowed=True)
 
 # Keep propagating a raised exception by unconditionally giving an error value.
 # This doesn't actually raise an exception.

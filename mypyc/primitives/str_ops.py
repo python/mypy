@@ -1,15 +1,15 @@
 """Primitive str ops."""
 
-from typing import List, Callable, Tuple
+from typing import List, Tuple
 
-from mypyc.ir.ops import ERR_MAGIC, EmitterInterface
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    RType, object_rprimitive, str_rprimitive, bool_rprimitive, int_rprimitive, list_rprimitive,
+    RType, object_rprimitive, str_rprimitive, int_rprimitive, list_rprimitive,
     c_int_rprimitive, pointer_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, c_method_op, c_binary_op, c_function_op,
-    load_address_op
+    c_method_op, c_binary_op, c_function_op,
+    load_address_op, c_custom_op
 )
 
 
@@ -80,30 +80,8 @@ c_binary_op(name='+=',
             steals=[True, False])
 
 
-def emit_str_compare(comparison: str) -> Callable[[EmitterInterface, List[str], str], None]:
-    def emit(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-        temp = emitter.temp_name()
-        emitter.emit_declaration('int %s;' % temp)
-        emitter.emit_lines(
-            '%s = PyUnicode_Compare(%s, %s);' % (temp, args[0], args[1]),
-            'if (%s == -1 && PyErr_Occurred())' % temp,
-            '    %s = 2;' % dest,
-            'else',
-            '    %s = (%s %s);' % (dest, temp, comparison))
-
-    return emit
-
-
-# str1 == str2
-binary_op(op='==',
-          arg_types=[str_rprimitive, str_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=emit_str_compare('== 0'))
-
-# str1 != str2
-binary_op(op='!=',
-          arg_types=[str_rprimitive, str_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=emit_str_compare('!= 0'))
+unicode_compare = c_custom_op(
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyUnicode_Compare',
+    error_kind=ERR_NEVER)

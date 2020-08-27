@@ -55,3 +55,50 @@ L8:
 L9:
     r13 = PyUnicode_Split(s, 0, -1)
     return r13
+
+[case testStrEquality]
+def eq(x: str, y: str) -> bool:
+    return x == y
+
+def neq(x: str, y: str) -> bool:
+    return x != y
+
+[out]
+def eq(x, y):
+    x, y :: str
+    r0 :: int32
+    r1 :: bool
+    r2 :: object
+    r3, r4, r5 :: bool
+L0:
+    r0 = PyUnicode_Compare(x, y)
+    r1 = r0 == -1
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = PyErr_Occurred()
+    r3 = r2 != 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = CPy_KeepPropagating()
+L3:
+    r5 = r0 == 0
+    return r5
+def neq(x, y):
+    x, y :: str
+    r0 :: int32
+    r1 :: bool
+    r2 :: object
+    r3, r4, r5 :: bool
+L0:
+    r0 = PyUnicode_Compare(x, y)
+    r1 = r0 == -1
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = PyErr_Occurred()
+    r3 = r2 != 0
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = CPy_KeepPropagating()
+L3:
+    r5 = r0 != 0
+    return r5
