@@ -51,6 +51,7 @@ CFunctionDescription = NamedTuple(
                               ('c_function_name', str),
                               ('error_kind', int),
                               ('steals', StealsDescription),
+                              ('is_borrowed', bool),
                               ('ordering', Optional[List[int]]),
                               ('extra_int_constants', List[Tuple[int, RType]]),
                               ('priority', int)])
@@ -253,6 +254,7 @@ def c_method_op(name: str,
                 ordering: Optional[List[int]] = None,
                 extra_int_constants: List[Tuple[int, RType]] = [],
                 steals: StealsDescription = False,
+                is_borrowed: bool = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a method call.
 
@@ -275,12 +277,13 @@ def c_method_op(name: str,
                   accepted by the python syntax(before reordering)
         extra_int_constants: optional extra integer constants as the last arguments to a C call
         steals: description of arguments that this steals (ref count wise)
+        is_borrowed: if True, returned value is borrowed (no need to decrease refcount)
         priority: if multiple ops match, the one with the highest priority is picked
     """
     ops = c_method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constants,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
@@ -295,6 +298,7 @@ def c_function_op(name: str,
                   ordering: Optional[List[int]] = None,
                   extra_int_constants: List[Tuple[int, RType]] = [],
                   steals: StealsDescription = False,
+                  is_borrowed: bool = False,
                   priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a function call.
 
@@ -308,8 +312,8 @@ def c_function_op(name: str,
     """
     ops = c_function_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constants,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
@@ -324,6 +328,7 @@ def c_binary_op(name: str,
                 ordering: Optional[List[int]] = None,
                 extra_int_constants: List[Tuple[int, RType]] = [],
                 steals: StealsDescription = False,
+                is_borrowed: bool = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for a binary operation.
 
@@ -334,8 +339,8 @@ def c_binary_op(name: str,
     """
     ops = c_binary_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constants,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
@@ -348,13 +353,14 @@ def c_custom_op(arg_types: List[RType],
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
                 extra_int_constants: List[Tuple[int, RType]] = [],
-                steals: StealsDescription = False) -> CFunctionDescription:
+                steals: StealsDescription = False,
+                is_borrowed: bool = False) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
     Most arguments are similar to c_method_op().
     """
     return CFunctionDescription('<custom>', arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering,
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
                                 extra_int_constants, 0)
 
 
@@ -367,6 +373,7 @@ def c_unary_op(name: str,
                ordering: Optional[List[int]] = None,
                extra_int_constants: List[Tuple[int, RType]] = [],
                steals: StealsDescription = False,
+               is_borrowed: bool = False,
                priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for an unary operation.
 
@@ -377,8 +384,8 @@ def c_unary_op(name: str,
     """
     ops = c_unary_ops.setdefault(name, [])
     desc = CFunctionDescription(name, [arg_type], return_type, None, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constants,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 

@@ -29,7 +29,8 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive
+    none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
+    pointer_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -56,7 +57,7 @@ from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op, type_is_op
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
-from mypyc.primitives.exc_ops import no_err_occurred_op
+from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import unicode_comapre
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -634,12 +635,20 @@ class LowLevelIRBuilder:
         error_constant = self.add(LoadInt(-1, line, c_int_rprimitive))
         compare_error_check = self.add(ComparisonOp(compare_result,
                                                     error_constant, ComparisonOp.EQ, line))
-        exception_check, final_compare = BasicBlock(), BasicBlock()
+        exception_check, propagate, final_compare = BasicBlock(), BasicBlock(), BasicBlock()
         branch = Branch(compare_error_check, exception_check, final_compare, Branch.BOOL_EXPR)
         branch.negated = False
         self.add(branch)
         self.activate_block(exception_check)
-        self.call_c(no_err_occurred_op, [], line)
+        check_error_result = self.call_c(err_occurred_op, [], line)
+        null = self.add(LoadInt(0, line, pointer_rprimitive))
+        compare_error_check = self.add(ComparisonOp(check_error_result,
+                                                    null, ComparisonOp.NEQ, line))
+        branch = Branch(compare_error_check, propagate, final_compare, Branch.BOOL_EXPR)
+        branch.negated = False
+        self.add(branch)
+        self.activate_block(propagate)
+        self.call_c(keep_propagating_op, [], line)
         self.goto(final_compare)
         self.activate_block(final_compare)
         op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
@@ -860,7 +869,7 @@ class LowLevelIRBuilder:
             extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
             coerced.append(extra_int_constant)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.error_kind, line, var_arg_idx))
+                                desc.is_borrowed, desc.error_kind, line, var_arg_idx))
         if desc.truncated_type is None:
             result = target
         else:

@@ -109,7 +109,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_int_neg(self) -> None:
         self.assert_emit(CallC(int_neg_op.c_function_name, [self.m], int_neg_op.return_type,
-                               int_neg_op.steals, int_neg_op.error_kind, 55),
+                               int_neg_op.steals, int_neg_op.is_borrowed, int_neg_op.is_borrowed,
+                               int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
     def test_branch(self) -> None:
@@ -159,13 +160,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_get_item(self) -> None:
         self.assert_emit(CallC(list_get_item_op.c_function_name, [self.m, self.k],
                                list_get_item_op.return_type, list_get_item_op.steals,
-                               list_get_item_op.error_kind, 55),
+                               list_get_item_op.is_borrowed, list_get_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:
         self.assert_emit(CallC(list_set_item_op.c_function_name, [self.l, self.n, self.o],
                                list_set_item_op.return_type, list_set_item_op.steals,
-                               list_set_item_op.error_kind, 55),
+                               list_set_item_op.is_borrowed, list_set_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
     def test_box(self) -> None:
@@ -194,7 +195,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_append(self) -> None:
         self.assert_emit(CallC(list_append_op.c_function_name, [self.l, self.o],
                                list_append_op.return_type, list_append_op.steals,
-                               list_append_op.error_kind, 1),
+                               list_append_op.is_borrowed, list_append_op.error_kind, 1),
                          """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o);""")
 
     def test_get_attr(self) -> None:
@@ -221,24 +222,25 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_get_item(self) -> None:
         self.assert_emit(CallC(dict_get_item_op.c_function_name, [self.d, self.o2],
                                dict_get_item_op.return_type, dict_get_item_op.steals,
-                               dict_get_item_op.error_kind, 1),
+                               dict_get_item_op.is_borrowed, dict_get_item_op.error_kind, 1),
                          """cpy_r_r0 = CPyDict_GetItem(cpy_r_d, cpy_r_o2);""")
 
     def test_dict_set_item(self) -> None:
         self.assert_emit(CallC(dict_set_item_op.c_function_name, [self.d, self.o, self.o2],
                                dict_set_item_op.return_type, dict_set_item_op.steals,
-                               dict_set_item_op.error_kind, 1),
+                               dict_set_item_op.is_borrowed, dict_set_item_op.error_kind, 1),
                         """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2);""")
 
     def test_dict_update(self) -> None:
         self.assert_emit(CallC(dict_update_op.c_function_name, [self.d, self.o],
                                dict_update_op.return_type, dict_update_op.steals,
-                               dict_update_op.error_kind, 1),
+                               dict_update_op.is_borrowed, dict_update_op.error_kind, 1),
                         """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o);""")
 
     def test_new_dict(self) -> None:
         self.assert_emit(CallC(dict_new_op.c_function_name, [], dict_new_op.return_type,
-                               dict_new_op.steals, dict_new_op.error_kind, 1),
+                               dict_new_op.steals, dict_new_op.is_borrowed,
+                               dict_new_op.error_kind, 1),
                          """cpy_r_r0 = PyDict_New();""")
 
     def test_dict_contains(self) -> None:
@@ -344,7 +346,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                     if c_desc.ordering is not None:
                         args = [args[i] for i in c_desc.ordering]
                     self.assert_emit(CallC(c_desc.c_function_name, args, c_desc.return_type,
-                                           c_desc.steals, c_desc.error_kind, 55), expected)
+                                           c_desc.steals, c_desc.is_borrowed,
+                                           c_desc.error_kind, 55), expected)
                     return
         else:
             assert False, 'Could not find matching op'
