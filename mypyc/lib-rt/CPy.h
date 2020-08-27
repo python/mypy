@@ -409,6 +409,10 @@ static int CPy_NoErrOccured(void) {
     return PyErr_Occurred() == NULL;
 }
 
+static int CPy_ErrOccured(void) {
+    return PyErr_Occurred() != NULL;
+}
+
 static inline bool CPy_KeepPropagating(void) {
     return 0;
 }
