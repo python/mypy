@@ -58,7 +58,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_comapre
+from mypyc.primitives.str_ops import unicode_compare
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
@@ -631,7 +631,7 @@ class LowLevelIRBuilder:
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
-        compare_result = self.call_c(unicode_comapre, [lhs, rhs], line)
+        compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         error_constant = self.add(LoadInt(-1, line, c_int_rprimitive))
         compare_error_check = self.add(ComparisonOp(compare_result,
                                                     error_constant, ComparisonOp.EQ, line))

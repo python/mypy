@@ -80,7 +80,7 @@ c_binary_op(name='+=',
             steals=[True, False])
 
 
-unicode_comapre = c_custom_op(
+unicode_compare = c_custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name='PyUnicode_Compare',
