@@ -763,7 +763,7 @@ class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Unsupported operand types for + ("LongTypeName" and <tuple: 50 items>)
+main:3: error: Unsupported operand types for + ("LongTypeName" and "Tuple[LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName]")
 
 
 -- Tuple methods
