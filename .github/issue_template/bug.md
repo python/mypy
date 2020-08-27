@@ -1,12 +1,10 @@
 ---
 name: 🐛 Bug Report
-about: Submit a bug report to help us improve
 labels: "bug"
 ---
 
 <!--
-Note: if you are reporting a wrong signature of a function or a class in
-the standard library, then the typeshed tracker is better suited
+Note: If the problem you are reporting is about a specific library function, then the typeshed tracker is better suited
 for this report: https://github.com/python/typeshed/issues
 -->
 
@@ -27,7 +25,7 @@ for this report: https://github.com/python/typeshed/issues
 <!--
   How did you expect your project to behave?
   It’s fine if you’re not sure your understanding is correct.
-  Write down what you thought would happen.
+  Write down what you thought would happen. If you just expected no errors, you can delete this section.
 -->
 
 (Write what you thought would happen.)
@@ -37,19 +35,21 @@ for this report: https://github.com/python/typeshed/issues
 <!--
   Did something go wrong?
   Is something broken, or not behaving as you expected?
-  Describe this section in detail, and attach screenshots if possible.
-  Don't only say "it doesn't work"!
 -->
 
-(Write what happened. Add screenshots, if applicable.)
+(Write what happened.)
 
 ## Your Environment
 
 <!-- Include as many relevant details about the environment you experienced the bug in -->
 
 - Mypy version used:
+- Mypy command-line flags:
+- Mypy configuration options from `mypy.ini` (and other config files):
 - Python version used:
 - Operating system and version:
 
-(You can freely edit this text, please remove all the lines
-you believe are unnecessary.)
+<!--
+You can freely edit this text, please remove all the lines
+you believe are unnecessary.
+-->
