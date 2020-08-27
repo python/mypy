@@ -56,7 +56,7 @@ from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op, type_is_op
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
-from mypyc.primitives.exc_ops import err_occurred_op
+from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.primitives.str_ops import unicode_comapre
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -635,7 +635,7 @@ class LowLevelIRBuilder:
         branch.negated = False
         self.add(branch)
         self.activate_block(exception_check)
-        self.call_c(err_occurred_op, [], line)
+        self.call_c(no_err_occurred_op, [], line)
         self.goto(final_compare)
         self.activate_block(final_compare)
         op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ

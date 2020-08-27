@@ -73,7 +73,7 @@ L0:
     r1 = r0 == -1
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPy_ErrOccured()
+    r2 = CPy_NoErrOccured()
 L2:
     r3 = r0 == 0
     return r3
@@ -86,7 +86,7 @@ L0:
     r1 = r0 == -1
     if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPy_ErrOccured()
+    r2 = CPy_NoErrOccured()
 L2:
     r3 = r0 != 0
     return r3
