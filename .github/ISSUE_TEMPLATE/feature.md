@@ -1,5 +1,6 @@
 ---
 name: 🚀 Feature
+about: Submit a proposal for a new mypy feature
 labels: "feature"
 ---
 

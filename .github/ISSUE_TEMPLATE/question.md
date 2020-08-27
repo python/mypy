@@ -1,5 +1,6 @@
 ---
 name: ❓ Questions and Help
+about: If you have questions, please check the below links
 labels: "question"
 ---
 
