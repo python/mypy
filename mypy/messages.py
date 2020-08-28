@@ -1626,10 +1626,7 @@ def format_type_inner(typ: Type,
         for t in typ.items:
             items.append(format(t))
         s = 'Tuple[{}]'.format(', '.join(items))
-        if len(s) < 400:
-            return s
-        else:
-            return '<tuple: {} items>'.format(len(items))
+        return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
         if not typ.is_anonymous():
@@ -1661,10 +1658,7 @@ def format_type_inner(typ: Type,
             for t in typ.items:
                 items.append(format(t))
             s = 'Union[{}]'.format(', '.join(items))
-            if len(s) < 400:
-                return s
-            else:
-                return '<union: {} items>'.format(len(items))
+            return s
     elif isinstance(typ, NoneType):
         return 'None'
     elif isinstance(typ, AnyType):
