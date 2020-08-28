@@ -395,7 +395,7 @@ class LivenessVisitor(BaseAnalysisVisitor):
         return set(op.sources()), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-        return set(op.sources()), {op.dest}
+        return set(op.sources()), set()
 
 
 def analyze_live_regs(blocks: List[BasicBlock],
