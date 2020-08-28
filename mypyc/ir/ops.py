@@ -1166,6 +1166,7 @@ class CallC(RegisterOp):
                  args: List[Value],
                  ret_type: RType,
                  steals: StealsDescription,
+                 is_borrowed: bool,
                  error_kind: int,
                  line: int,
                  var_arg_idx: int = -1) -> None:
@@ -1175,6 +1176,7 @@ class CallC(RegisterOp):
         self.args = args
         self.type = ret_type
         self.steals = steals
+        self.is_borrowed = is_borrowed
         self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
 
     def to_str(self, env: Environment) -> str:
