@@ -2499,3 +2499,11 @@ reveal_type(abs(3))  # N: Revealed type is 'builtins.int*'
 reveal_type(abs(ALL))  # N: Revealed type is 'builtins.int*'
 [builtins fixtures/float.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testProtocolWithSlots]
+from typing import Protocol
+
+class A(Protocol):
+    __slots__ = ()
+
+[builtins fixtures/tuple.pyi]
