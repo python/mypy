@@ -16,11 +16,11 @@ from mypy.nodes import (
 from mypy.types import TupleType, get_proper_type
 
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign, LoadAddress
+    Value, TupleGet, TupleSet, BasicBlock, OpDescription, Assign, LoadAddress
 )
 from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import name_ref_ops, CFunctionDescription, builtin_names
+from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
@@ -49,11 +49,6 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         return builder.true()
     if fullname == 'builtins.False':
         return builder.false()
-    if fullname in name_ref_ops:
-        # Use special access op for this particular name.
-        desc = name_ref_ops[fullname]
-        assert desc.result_type is not None
-        return builder.add(PrimitiveOp([], desc, expr.line))
 
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
