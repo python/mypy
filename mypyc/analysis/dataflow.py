@@ -253,7 +253,7 @@ class DefinedVisitor(BaseAnalysisVisitor):
             return {op.dest}, set()
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-            return set(), set()
+        return set(), set()
 
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],
