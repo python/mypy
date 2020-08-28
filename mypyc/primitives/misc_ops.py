@@ -6,7 +6,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, func_op, custom_op, call_emit,
+    simple_emit, func_op, custom_op,
     c_function_op, c_custom_op, load_address_op
 )
 
@@ -108,12 +108,11 @@ import_op = c_custom_op(
     error_kind=ERR_MAGIC)
 
 # Get the sys.modules dictionary
-get_module_dict_op = custom_op(
-    name='get_module_dict',
+get_module_dict_op = c_custom_op(
     arg_types=[],
-    result_type=dict_rprimitive,
+    return_type=dict_rprimitive,
+    c_function_name='PyImport_GetModuleDict',
     error_kind=ERR_NEVER,
-    emit=call_emit('PyImport_GetModuleDict'),
     is_borrowed=True)
 
 # isinstance(obj, cls)

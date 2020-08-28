@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    custom_op, load_address_op, call_emit, c_function_op, c_binary_op, c_method_op
+    custom_op, load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op
 )
 
 
@@ -66,13 +66,11 @@ c_method_op(
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
-list_get_item_unsafe_op = custom_op(
-    name='__getitem__',
+list_get_item_unsafe_op = c_custom_op(
     arg_types=[list_rprimitive, short_int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = {args[0]}[{args[1]}] :: unsafe list',
-    emit=call_emit('CPyList_GetItemUnsafe'))
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemUnsafe',
+    error_kind=ERR_NEVER)
 
 # list[index] = obj
 list_set_item_op = c_method_op(

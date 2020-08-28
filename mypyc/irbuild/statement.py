@@ -125,7 +125,7 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             base = name = node_id.split('.')[0]
 
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-        mod_dict = builder.primitive_op(get_module_dict_op, [], node.line)
+        mod_dict = builder.call_c(get_module_dict_op, [], node.line)
         obj = builder.call_c(dict_get_item_op,
                              [mod_dict, builder.load_static_unicode(base)], node.line)
         builder.gen_method_call(

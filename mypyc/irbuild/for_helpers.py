@@ -392,7 +392,7 @@ def unsafe_index(
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        return builder.call_c(list_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, '__getitem__', [index], None, line)
 

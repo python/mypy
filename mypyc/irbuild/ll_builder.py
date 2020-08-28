@@ -39,8 +39,7 @@ from mypyc.common import (
     STATIC_PREFIX
 )
 from mypyc.primitives.registry import (
-    method_ops, func_ops,
-    c_method_call_ops, CFunctionDescription, c_function_ops,
+    func_ops, c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops
 )
 from mypyc.primitives.list_ops import (
@@ -1025,13 +1024,10 @@ class LowLevelIRBuilder:
 
         Return None if no translation found; otherwise return the target register.
         """
-        ops = method_ops.get(name, [])
         call_c_ops_candidates = c_method_call_ops.get(name, [])
         call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args,
                                          line, result_type)
-        if call_c_op is not None:
-            return call_c_op
-        return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)
+        return call_c_op
 
     def translate_eq_cmp(self,
                          lreg: Value,
