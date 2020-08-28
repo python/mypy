@@ -326,7 +326,7 @@ L1:
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = ls[r0] :: unsafe list
+    r5 = CPyList_GetItemUnsafe(ls, r0)
     r6 = unbox(int, r5)
     x = r6
     r7 = CPyTagged_Add(y, x)
@@ -849,7 +849,7 @@ L1:
     r5 = r1 < r4 :: signed
     if r5 goto L2 else goto L4 :: bool
 L2:
-    r6 = a[r1] :: unsafe list
+    r6 = CPyList_GetItemUnsafe(a, r1)
     r7 = unbox(int, r6)
     x = r7
     r8 = CPyTagged_Add(i, x)
@@ -932,7 +932,7 @@ L2:
     r6 = PyIter_Next(r1)
     if is_error(r6) goto L7 else goto L3
 L3:
-    r7 = a[r0] :: unsafe list
+    r7 = CPyList_GetItemUnsafe(a, r0)
     r8 = unbox(int, r7)
     x = r8
     r9 = unbox(bool, r6)
@@ -986,7 +986,7 @@ L3:
 L4:
     r9 = unbox(bool, r3)
     x = r9
-    r10 = b[r1] :: unsafe list
+    r10 = CPyList_GetItemUnsafe(b, r1)
     r11 = unbox(int, r10)
     y = r11
     x = 0
