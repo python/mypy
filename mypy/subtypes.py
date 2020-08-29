@@ -207,10 +207,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_none_type(self, left: NoneType) -> bool:
         if state.strict_optional:
-            return (isinstance(self.right, NoneType) or
-                    is_named_instance(self.right, 'builtins.object') or
-                    isinstance(self.right, Instance) and self.right.type.is_protocol and
-                    not self.right.type.protocol_members)
+            if isinstance(self.right, NoneType) or is_named_instance(self.right,
+                                                                     'builtins.object'):
+                return True
+            if isinstance(self.right, Instance) and self.right.type.is_protocol:
+                members = self.right.type.protocol_members
+                # None is compatible with Hashable (and other similar protocols). This is
+                # slightly sloppy since we don't check the signature of "__hash__".
+                return not members or members == ["__hash__"]
+            return False
         else:
             return True
 

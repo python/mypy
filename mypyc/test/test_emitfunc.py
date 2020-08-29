@@ -10,7 +10,8 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp,
+    SetMem
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -299,6 +300,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
                          """cpy_r_r00 = *(char *)cpy_r_ptr;""")
+
+    def test_set_mem(self) -> None:
+        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
+                         """*(char *)cpy_r_ptr = cpy_r_b;""")
 
     def test_get_element_ptr(self) -> None:
         r = RStruct("Foo", ["b", "i32", "i64"], [bool_rprimitive,
