@@ -13,8 +13,7 @@ from mypyc.ir.rtypes import (
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
-    int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive,
-    is_int64_rprimitive, is_pointer_rprimitive
+    int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive, is_int64_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -395,11 +394,6 @@ class Emitter:
                     '{} = NULL;'.format(dest),
                     '}')
                 return
-
-        # Special case cast from low level pointer type to object type
-        if src_type and is_pointer_rprimitive(src_type) and is_object_rprimitive(typ):
-            self.emit_line('{} = (PyObject *){};'.format(dest, src))
-            return
 
         # TODO: Verify refcount handling.
         if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ)
