@@ -2826,7 +2826,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         Return True if this looks like a type variable declaration (but maybe
         with errors), otherwise return False.
         """
-        call = self.get_typevarlike_declaration(s, "typing.TypeVar")
+        call = self.get_typevarlike_declaration(s, ("typing.TypeVar",))
         if not call:
             return False
 
@@ -2919,7 +2919,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return True
 
     def get_typevarlike_declaration(self, s: AssignmentStmt,
-                                    typevarlike_type: str) -> Optional[CallExpr]:
+                                    typevarlike_types: Tuple[str, ...]) -> Optional[CallExpr]:
         """Returns the call expression if `s` is a declaration of `typevarlike_type`
         (TypeVar or ParamSpec), or None otherwise.
         """
@@ -2931,7 +2931,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         callee = call.callee
         if not isinstance(callee, RefExpr):
             return None
-        if callee.fullname != typevarlike_type:
+        if callee.fullname not in typevarlike_types:
             return None
         return call
 
@@ -3026,7 +3026,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         In the future, ParamSpec may accept bounds and variance arguments, in which
         case more aggressive sharing of code with process_typevar_declaration should be pursued.
         """
-        call = self.get_typevarlike_declaration(s, "typing_extensions.ParamSpec")
+        call = self.get_typevarlike_declaration(
+            s, ("typing_extensions.ParamSpec", "typing.ParamSpec")
+        )
         if not call:
             return False
 
