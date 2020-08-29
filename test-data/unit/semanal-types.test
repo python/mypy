@@ -1482,7 +1482,7 @@ def f(x: (int, int)) -> None: pass
 main:1: error: Syntax error in type annotation
 main:1: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 
-[case tesQualifiedTypeNameBasedOnAny]
+[case testQualifiedTypeNameBasedOnAny]
 from typing import Any
 x = 0 # type: Any
 z = 0 # type: x.y
