@@ -3021,12 +3021,10 @@ class SemanticAnalyzer(NodeVisitor[None],
     def process_paramspec_declaration(self, s: AssignmentStmt) -> bool:
         """Checks if s declares a ParamSpec; if yes, store it in symbol table.
 
-        Return True if this looks like a parameter specification declaration (but maybe
-        with errors), otherwise return False.
+        Return True if this looks like a ParamSpec (maybe with errors), otherwise return False.
 
         In the future, ParamSpec may accept bounds and variance arguments, in which
         case more aggressive sharing of code with process_typevar_declaration should be pursued.
-
         """
         call = self.get_typevarlike_declaration(s, "typing_extensions.ParamSpec")
         if not call:
