@@ -2120,7 +2120,7 @@ class TypeVarExpr(TypeVarLikeExpr):
 
 class ParamSpecExpr(TypeVarLikeExpr):
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_paramspec_var_expr(self)
+        return visitor.visit_paramspec_expr(self)
 
     def serialize(self) -> JsonDict:
         return {

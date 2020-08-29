@@ -498,7 +498,7 @@ class TransformVisitor(NodeVisitor[Node]):
                            self.types(node.values),
                            self.type(node.upper_bound), variance=node.variance)
 
-    def visit_paramspec_var_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
+    def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
         return ParamSpecExpr(
             node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
         )

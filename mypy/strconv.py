@@ -467,7 +467,7 @@ class StrConv(NodeVisitor[str]):
             a += ['UpperBound({})'.format(o.upper_bound)]
         return self.dump(a, o)
 
-    def visit_paramspec_var_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
         import mypy.types
         a = []  # type: List[Any]
         if o.variance == mypy.nodes.COVARIANT:

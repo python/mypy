@@ -309,7 +309,7 @@ class IRBuilderVisitor(IRVisitor):
     def visit_type_var_expr(self, o: TypeVarExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
-    def visit_paramspec_var_expr(self, o: ParamSpecExpr) -> Value:
+    def visit_paramspec_expr(self, o: ParamSpecExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
     def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:

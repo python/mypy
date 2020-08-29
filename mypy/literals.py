@@ -213,7 +213,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:
         return None
 
-    def visit_paramspec_var_expr(self, e: ParamSpecExpr) -> None:
+    def visit_paramspec_expr(self, e: ParamSpecExpr) -> None:
         return None
 
     def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:

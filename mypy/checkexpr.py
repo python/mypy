@@ -3974,7 +3974,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
-    def visit_paramspec_var_expr(self, e: ParamSpecExpr) -> Type:
+    def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
