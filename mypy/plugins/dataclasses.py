@@ -12,6 +12,7 @@ from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
+from mypy.typeops import map_type_from_supertype
 from mypy.types import Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
 from mypy.server.trigger import make_wildcard_trigger
 
@@ -34,6 +35,7 @@ class DataclassAttribute:
             line: int,
             column: int,
             type: Optional[Type],
+            info: TypeInfo,
     ) -> None:
         self.name = name
         self.is_in_init = is_in_init
@@ -42,6 +44,7 @@ class DataclassAttribute:
         self.line = line
         self.column = column
         self.type = type
+        self.info = info
 
     def to_argument(self) -> Argument:
         return Argument(
@@ -72,7 +75,15 @@ class DataclassAttribute:
     ) -> 'DataclassAttribute':
         data = data.copy()
         typ = deserialize_and_fixup_type(data.pop('type'), api)
-        return cls(type=typ, **data)
+        return cls(type=typ, info=info, **data)
+
+    def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
+        """Expands type vars in the context of a subtype when an attribute is inherited
+        from a generic super type."""
+        if not isinstance(self.type, TypeVarType):
+            return
+
+        self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
@@ -267,6 +278,7 @@ class DataclassTransformer:
                 line=stmt.line,
                 column=stmt.column,
                 type=sym.type,
+                info=cls.info,
             ))
 
         # Next, collect attributes belonging to any class in the MRO
@@ -287,6 +299,7 @@ class DataclassTransformer:
                 name = data['name']  # type: str
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
+                    attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:
