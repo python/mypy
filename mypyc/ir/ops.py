@@ -1396,6 +1396,7 @@ class LoadMem(RegisterOp):
         assert is_pointer_rprimitive(src.type)
         self.src = src
         self.base = base
+        self.is_borrowed = True
 
     def sources(self) -> List[Value]:
         if self.base:
