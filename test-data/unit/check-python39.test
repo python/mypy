@@ -1,0 +1,9 @@
+[case testGivingSameKeywordArgumentTwice]
+# This test was originally in check-kwargs.test
+# Python 3.9's new parser started producing a different error message here. Since this isn't the
+# most important test, to deal with this we'll only run this test with Python 3.9 and later.
+import typing
+def f(a: 'A', b: 'B') -> None: pass
+f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
+class A: pass
+class B: pass
