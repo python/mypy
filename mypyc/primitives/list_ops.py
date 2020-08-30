@@ -46,6 +46,11 @@ new_list_op = custom_op(arg_types=[object_rprimitive],
                         format_str='{dest} = [{comma_args}]',
                         emit=emit_new)
 
+new_empty_list_op = c_custom_op(
+    arg_types=[c_int_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='PyList_New',
+    error_kind=ERR_MAGIC)
 
 # list[index] (for an integer index)
 list_get_item_op = c_method_op(

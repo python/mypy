@@ -699,3 +699,9 @@ PySetObject = RStruct(
     types=[PyObject, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive,
            pointer_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, smalltable,
            pointer_rprimitive])
+
+PyListObject = RStruct(
+    name='PyListObject',
+    names=['ob_base', 'ob_item', 'allocated'],
+    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+)

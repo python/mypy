@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -30,20 +30,20 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive
+    pointer_rprimitive, PyListObject
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
-    STATIC_PREFIX
+    STATIC_PREFIX, PLATFORM_SIZE
 )
 from mypyc.primitives.registry import (
     func_ops, c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops
 )
 from mypyc.primitives.list_ops import (
-    list_extend_op, new_list_op
+    list_extend_op, new_list_op, new_empty_list_op
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import (
@@ -273,7 +273,8 @@ class LowLevelIRBuilder:
         else:
             # Otherwise we construct a list and call extend it with the star args, since tuples
             # don't have an extend method.
-            pos_args_list = self.primitive_op(new_list_op, pos_arg_values, line)
+            pos_args_list = self.new_list_op(pos_arg_values, line)
+            # pos_args_list = self.primitive_op(new_list_op, pos_arg_values, line)
             for star_arg_value in star_arg_values:
                 self.call_c(list_extend_op, [pos_args_list, star_arg_value], line)
             pos_args_tuple = self.call_c(list_tuple_op, [pos_args_list], line)
@@ -754,6 +755,24 @@ class LowLevelIRBuilder:
             result = self._create_dict(keys, values, line)
 
         return result
+
+    def new_list_op(self, values: List[Value], line: int) -> Value:
+        length = self.add(LoadInt(len(values), line, rtype=c_int_rprimitive))
+        empty_list = self.call_c(new_empty_list_op, [length], line)
+        if len(values) == 0:
+            return empty_list
+        args = [self.coerce(item, object_rprimitive, line) for item in values]
+        ob_item_ptr = self.add(GetElementPtr(empty_list, PyListObject, 'ob_item', line))
+        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, empty_list, line))
+        for i in range(len(values)):
+            if i == 0:
+                item_address = ob_item_base
+            else:
+                offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=pointer_rprimitive))
+                item_address = self.add(BinaryIntOp(pointer_rprimitive, ob_item_base, offset,
+                                                    BinaryIntOp.ADD, line))
+            self.add(SetMem(object_rprimitive, item_address, args[i], empty_list, line))
+        return empty_list
 
     def builtin_call(self,
                      args: List[Value],
