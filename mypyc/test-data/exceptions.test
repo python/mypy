@@ -35,25 +35,27 @@ def f(x, y, z):
     y, z :: int
     r0 :: object
     r1 :: int32
-    r2 :: object
-    r3 :: bool
-    r4 :: None
+    r2 :: bit
+    r3 :: object
+    r4 :: bool
+    r5 :: None
 L0:
     inc_ref y :: int
     r0 = box(int, y)
     r1 = PyList_Append(x, r0)
     dec_ref r0
-    if r1 < 0 goto L3 (error at f:3) else goto L1
+    r2 = r1 >= 0 :: signed
+    if not r2 goto L3 (error at f:3) else goto L1 :: bool
 L1:
     inc_ref z :: int
-    r2 = box(int, z)
-    r3 = CPyList_SetItem(x, y, r2)
-    if not r3 goto L3 (error at f:4) else goto L2 :: bool
+    r3 = box(int, z)
+    r4 = CPyList_SetItem(x, y, r3)
+    if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
     return 1
 L3:
-    r4 = <error> :: None
-    return r4
+    r5 = <error> :: None
+    return r5
 
 [case testOptionalHandling]
 from typing import Optional
@@ -518,4 +520,3 @@ L13:
 L14:
     dec_ref r7
     goto L8
-

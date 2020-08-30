@@ -1,6 +1,6 @@
 """Primitive dict ops."""
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER, ERR_NEG_INT
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
     list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive,
@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op
+    c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op, ERR_NEG_INT
 )
 
 # Get the 'dict' type object.

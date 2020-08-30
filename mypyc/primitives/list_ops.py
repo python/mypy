@@ -2,13 +2,13 @@
 
 from typing import List
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, ERR_NEG_INT, EmitterInterface
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, EmitterInterface
 from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive,
     c_int_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
-    load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op
+    load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op, ERR_NEG_INT
 )
 
 

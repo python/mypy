@@ -1,13 +1,12 @@
 """Miscellaneous primitive ops."""
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, func_op, custom_op,
-    c_function_op, c_custom_op, load_address_op
+    simple_emit, func_op, custom_op, c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
 )
 
 

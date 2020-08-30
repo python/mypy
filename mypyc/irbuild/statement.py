@@ -305,7 +305,7 @@ def transform_try_except(builder: IRBuilder,
             matches = builder.call_c(
                 exc_matches_op, [builder.accept(type)], type.line
             )
-            builder.add(Branch(matches, body_block, next_block, Branch.BOOL_EXPR))
+            builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
             builder.activate_block(body_block)
         if var:
             target = builder.get_assignment_target(var)
@@ -578,7 +578,7 @@ def transform_with(builder: IRBuilder,
     def finally_body() -> None:
         out_block, exit_block = BasicBlock(), BasicBlock()
         builder.add(
-            Branch(builder.read(exc), exit_block, out_block, Branch.BOOL_EXPR)
+            Branch(builder.read(exc), exit_block, out_block, Branch.BOOL)
         )
         builder.activate_block(exit_block)
         none = builder.none_object()

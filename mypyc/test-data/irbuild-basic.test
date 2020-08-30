@@ -114,9 +114,10 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6 :: bit
+    r7 :: bool
 L0:
     r1 = x & 1
     r2 = r1 == 0

@@ -547,7 +547,7 @@ class IRBuilder:
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 
             error_block, ok_block = BasicBlock(), BasicBlock()
-            self.add(Branch(condition, ok_block, error_block, Branch.BOOL_EXPR))
+            self.add(Branch(condition, ok_block, error_block, Branch.BOOL))
 
             self.activate_block(error_block)
             self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
