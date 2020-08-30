@@ -1026,3 +1026,79 @@ else:
     reveal_type(str_or_bool_literal)  # N: Revealed type is 'Union[Literal[False], Literal[True]]'
 
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingUnionListTypes]
+from typing import Union, List, Any, Sequence
+
+a: Union[List[List[int]], List[int]]
+if isinstance(a[0], list):
+    reveal_type(a) # N: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
+else:
+    reveal_type(a) # N: Revealed type is 'builtins.list[builtins.int]'
+
+b: Union[List[str], List[int], List[bool]]
+if isinstance(b[0], str):
+    reveal_type(b) # N: Revealed type is 'builtins.list[builtins.str]'
+else:
+    reveal_type(b) # N: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.bool]]'
+
+c: Union[List[Union[str, int]], List[int], List[str]]
+if isinstance(c[0], str):
+    reveal_type(c) # N: Revealed type is 'Union[builtins.list[Union[builtins.str, builtins.int]], builtins.list[builtins.str]]'
+else:
+    reveal_type(c) # N: Revealed type is 'Union[builtins.list[Union[builtins.str, builtins.int]], builtins.list[builtins.int]]'
+
+d: Union[List[str], List[int]]
+if isinstance(d[0], str):
+    reveal_type(d) # N: Revealed type is 'builtins.list[builtins.str]'
+else:
+    reveal_type(d) # N: Revealed type is 'builtins.list[builtins.int]'
+
+if isinstance(d[0], int):
+    reveal_type(d) # N: Revealed type is 'builtins.list[builtins.int]'
+else:
+    reveal_type(d) # N: Revealed type is 'builtins.list[builtins.str]'
+
+e: Union[List[object], List[str]]
+if isinstance(e[0], str):
+    reveal_type(e) # N: Revealed type is 'Union[builtins.list[builtins.object], builtins.list[builtins.str]]'
+else:
+    reveal_type(e) # N: Revealed type is 'builtins.list[builtins.object]'
+
+f: Union[List[Any], List[str]]
+if isinstance(f[0], str):
+    reveal_type(f) # N: Revealed type is 'Union[builtins.list[Any], builtins.list[builtins.str]]'
+else:
+    reveal_type(f) # N: Revealed type is 'Union[builtins.list[Any], builtins.list[builtins.str]]'
+
+h: Union[List[int], Any]
+if isinstance(h[0], int):
+    reveal_type(h[0]) # N: Revealed type is 'builtins.int*'
+    reveal_type(h) # N: Revealed type is 'Union[builtins.list[builtins.int], Any]'
+else:
+    reveal_type(h[0]) # N: Revealed type is 'Any'
+    reveal_type(h) # N: Revealed type is 'Union[builtins.list[builtins.int], Any]'
+
+i: Union[List[int], Sequence[str]]
+if isinstance(i[0], int):
+    reveal_type(i) # N: Revealed type is 'builtins.list[builtins.int]'
+else:
+    reveal_type(i) # N: Revealed type is 'typing.Sequence[builtins.str]'
+
+q: Union[List[int], List[str], List[List[object]]]
+if isinstance(q[0], (str, int)):
+    reveal_type(q[0]) # N: Revealed type is 'Union[builtins.int*, builtins.str*]'
+    reveal_type(q) # N: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+else:
+    reveal_type(q[0]) # N: Revealed type is 'builtins.list*[builtins.object]'
+    reveal_type(q) # N: Revealed type is 'builtins.list[builtins.list[builtins.object]]'
+
+g: Union[List[str], List[int]]
+if isinstance(g[0], (int, str)):
+    reveal_type(g) # N: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
+else:
+    reveal_type(g)
+
+[builtins fixtures/list.pyi]
+[builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
