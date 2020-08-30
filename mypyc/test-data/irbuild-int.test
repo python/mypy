@@ -21,4 +21,3 @@ L2:
     r0 = r5
 L3:
     return r0
-

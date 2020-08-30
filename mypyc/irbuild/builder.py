@@ -19,7 +19,7 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -39,7 +39,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive,
+    str_rprimitive, is_int_rprimitive, is_short_int_rprimitive, is_tagged
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -813,10 +813,37 @@ class IRBuilder:
                 self.process_conditional(e.right, true, false)
         elif isinstance(e, UnaryExpr) and e.op == 'not':
             self.process_conditional(e.expr, false, true)
-        # Catch-all for arbitrary expressions.
         else:
+            res = self.maybe_process_conditional_comparison(e, true, false)
+            if res:
+                return
+            # Catch-all for arbitrary expressions.
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
+
+    def maybe_process_conditional_comparison(self,
+                                             e: Expression,
+                                             true: BasicBlock,
+                                             false: BasicBlock) -> bool:
+        """Transform some comparison expressions in a conditional context.
+
+        Return True if the operation is supported. Otherwise, do nothing
+        and return False.
+        """
+        if not isinstance(e, ComparisonExpr) or len(e.operands) != 2:
+            return False
+        left = self.accept(e.operands[0])
+        right = self.accept(e.operands[1])
+        op = e.operators[0]
+        if not is_tagged(left.type) or not is_tagged(right.type):
+            return False
+        if op not in ('==', '!=', '<', '<=', '>', '>='):
+            return False
+        # "left op right" for two tagged integers
+        self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
+        return True
+
+    # Basic helpers
 
     def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
         """Flatten classes in isinstance(obj, (A, (B, C))).
@@ -840,8 +867,6 @@ class IRBuilder:
                 else:
                     return None
             return res
-
-    # Basic helpers
 
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
