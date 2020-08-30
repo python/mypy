@@ -3995,7 +3995,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if isinstance(first_node_arg, IndexExpr):
                         arg_type = get_proper_type(type_map[first_node_arg.base])
                         if isinstance(arg_type, UnionType) and if_map is not None and else_map is not None:
-                            var_name = first_node_arg.base
                             if_branch_union = []
                             else_branch_union = []
                             t = if_map[expr]
@@ -4010,8 +4009,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     if_branch_union.append(x)
                                 else:
                                     else_branch_union.append(x)
-                            if_map[var_name] = UnionType(if_branch_union)
-                            else_map[var_name] = UnionType(else_branch_union)
+                            if_map[first_node_arg.base] = UnionType(if_branch_union)
+                            else_map[first_node_arg.base] = UnionType(else_branch_union)
                     return if_map, else_map
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
