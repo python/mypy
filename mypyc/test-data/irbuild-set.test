@@ -5,20 +5,8 @@ def f() -> Set[int]:
 [out]
 def f():
     r0 :: set
-    r1 :: object
-    r2 :: int32
-    r3 :: object
-    r4 :: int32
-    r5 :: object
-    r6 :: int32
 L0:
-    r0 = set
-    r1 = box(short_int, 2)
-    r2 = PySet_Add(r0, r1)
-    r3 = box(short_int, 4)
-    r4 = PySet_Add(r0, r3)
-    r5 = box(short_int, 6)
-    r6 = PySet_Add(r0, r5)
+    r0 = PySet_New(0)
     return r0
 
 [case testNewEmptySet]
@@ -29,7 +17,7 @@ def f() -> Set[int]:
 def f():
     r0 :: set
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     return r0
 
 [case testNewSetFromIterable]
@@ -51,27 +39,15 @@ def f() -> int:
 [out]
 def f():
     r0 :: set
-    r1 :: object
-    r2 :: int32
-    r3 :: object
-    r4 :: int32
-    r5 :: object
-    r6 :: int32
-    r7 :: ptr
-    r8 :: native_int
-    r9 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
 L0:
-    r0 = set
-    r1 = box(short_int, 2)
-    r2 = PySet_Add(r0, r1)
-    r3 = box(short_int, 4)
-    r4 = PySet_Add(r0, r3)
-    r5 = box(short_int, 6)
-    r6 = PySet_Add(r0, r5)
-    r7 = get_element_ptr r0 used :: PySetObject
-    r8 = load_mem r7, r0 :: native_int*
-    r9 = r8 << 1
-    return r9
+    r0 = PySet_New(0)
+    r1 = get_element_ptr r0 used :: PySetObject
+    r2 = load_mem r1, r0 :: native_int*
+    r3 = r2 << 1
+    return r3
 
 [case testSetContains]
 from typing import Set
@@ -80,26 +56,17 @@ def f() -> bool:
     return (5 in x)
 [out]
 def f():
-    r0 :: set
+    r0, x :: set
     r1 :: object
     r2 :: int32
-    r3 :: object
-    r4 :: int32
-    x :: set
-    r5 :: object
-    r6 :: int32
-    r7 :: bool
+    r3 :: bool
 L0:
-    r0 = set
-    r1 = box(short_int, 6)
-    r2 = PySet_Add(r0, r1)
-    r3 = box(short_int, 8)
-    r4 = PySet_Add(r0, r3)
+    r0 = PySet_New(0)
     x = r0
-    r5 = box(short_int, 10)
-    r6 = PySet_Contains(x, r5)
-    r7 = truncate r6: int32 to builtins.bool
-    return r7
+    r1 = box(short_int, 10)
+    r2 = PySet_Contains(x, r1)
+    r3 = truncate r2: int32 to builtins.bool
+    return r3
 
 [case testSetRemove]
 from typing import Set
@@ -113,7 +80,7 @@ def f():
     r1 :: object
     r2 :: bool
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = box(short_int, 2)
     r2 = CPySet_Remove(x, r1)
@@ -131,7 +98,7 @@ def f():
     r1 :: object
     r2 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Discard(x, r1)
@@ -149,7 +116,7 @@ def f():
     r1 :: object
     r2 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Add(x, r1)
@@ -166,7 +133,7 @@ def f():
     r0, x :: set
     r1 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = PySet_Clear(x)
     return x
@@ -205,20 +172,14 @@ def f(x: Set[int], y: Set[int]) -> Set[int]:
 [out]
 def f(x, y):
     x, y, r0 :: set
-    r1 :: object
-    r2 :: int32
+    r1, r2 :: int32
     r3 :: object
-    r4, r5, r6 :: int32
-    r7 :: object
-    r8 :: int32
+    r4 :: int32
 L0:
-    r0 = set
-    r1 = box(short_int, 2)
-    r2 = PySet_Add(r0, r1)
-    r3 = box(short_int, 4)
+    r0 = PySet_New(0)
+    r1 = _PySet_Update(r0, x)
+    r2 = _PySet_Update(r0, y)
+    r3 = box(short_int, 6)
     r4 = PySet_Add(r0, r3)
-    r5 = _PySet_Update(r0, x)
-    r6 = _PySet_Update(r0, y)
-    r7 = box(short_int, 6)
-    r8 = PySet_Add(r0, r7)
     return r0
+

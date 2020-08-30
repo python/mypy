@@ -43,7 +43,7 @@ from mypyc.primitives.registry import (
     c_binary_ops, c_unary_ops
 )
 from mypyc.primitives.list_ops import (
-    list_extend_op, new_list_op, new_empty_list_op
+    list_extend_op, new_empty_list_op
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import (
@@ -58,6 +58,7 @@ from mypyc.primitives.misc_ops import (
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import unicode_compare
+from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
@@ -274,7 +275,6 @@ class LowLevelIRBuilder:
             # Otherwise we construct a list and call extend it with the star args, since tuples
             # don't have an extend method.
             pos_args_list = self.new_list_op(pos_arg_values, line)
-            # pos_args_list = self.primitive_op(new_list_op, pos_arg_values, line)
             for star_arg_value in star_arg_values:
                 self.call_c(list_extend_op, [pos_args_list, star_arg_value], line)
             pos_args_tuple = self.call_c(list_tuple_op, [pos_args_list], line)
@@ -773,6 +773,9 @@ class LowLevelIRBuilder:
                                                     BinaryIntOp.ADD, line))
             self.add(SetMem(object_rprimitive, item_address, args[i], empty_list, line))
         return empty_list
+
+    def new_set_op(self, values: List[Value], line: int) -> Value:
+        return self.call_c(new_set_op, [], line)
 
     def builtin_call(self,
                      args: List[Value],

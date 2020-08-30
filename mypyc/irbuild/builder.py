@@ -212,6 +212,9 @@ class IRBuilder:
     def new_list_op(self, values: List[Value], line: int) -> Value:
         return self.builder.new_list_op(values, line)
 
+    def new_set_op(self, values: List[Value], line: int) -> Value:
+        return self.builder.new_set_op(values, line)
+
     def translate_is_op(self,
                         lreg: Value,
                         rreg: Value,

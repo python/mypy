@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
     c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    custom_op, load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op
+    load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op
 )
 
 
@@ -26,25 +26,6 @@ to_list = c_function_op(
     c_function_name='PySequence_List',
     error_kind=ERR_MAGIC,
 )
-
-
-def emit_new(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    # TODO: This would be better split into multiple smaller ops.
-    emitter.emit_line('%s = PyList_New(%d); ' % (dest, len(args)))
-    emitter.emit_line('if (likely(%s != NULL)) {' % dest)
-    for i, arg in enumerate(args):
-        emitter.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, arg))
-    emitter.emit_line('}')
-
-
-# Construct a list from values: [item1, item2, ....]
-new_list_op = custom_op(arg_types=[object_rprimitive],
-                        result_type=list_rprimitive,
-                        is_var_arg=True,
-                        error_kind=ERR_MAGIC,
-                        steals=True,
-                        format_str='{dest} = [{comma_args}]',
-                        emit=emit_new)
 
 new_empty_list_op = c_custom_op(
     arg_types=[c_int_rprimitive],
