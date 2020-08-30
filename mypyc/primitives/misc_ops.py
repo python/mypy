@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
-    int_rprimitive, dict_rprimitive, c_int_rprimitive
+    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
     simple_emit, func_op, custom_op, c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
@@ -177,6 +177,6 @@ pytype_from_template_op = c_custom_op(
 # CPyDataclass_SleightOfHand for more docs.
 dataclass_sleight_of_hand = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPyDataclass_SleightOfHand',
     error_kind=ERR_FALSE)
