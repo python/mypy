@@ -28,7 +28,7 @@ from mypyc.analysis.dataflow import (
 )
 from mypyc.ir.ops import (
     BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Op, ControlOp, Value, Register
+    Op, ControlOp, Value, Register, SetMem
 )
 from mypyc.ir.func_ir import FuncIR
 
@@ -103,7 +103,7 @@ def transform_block(block: BasicBlock,
         key = (block, i)
 
         assert op not in pre_live[key]
-        dest = op.dest if isinstance(op, Assign) else op
+        dest = op.dest if isinstance(op, Assign) or isinstance(op, SetMem) else op
         stolen = op.stolen()
 
         # Incref any references that are being stolen that stay live, were borrowed,
