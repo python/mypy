@@ -134,9 +134,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    # FIXME: typeshed incorrectly has the type of indent as int when
-    # it should be str. Make it Any to avoid rusing mypyc.
-    def _fill_text(self, text: str, width: int, indent: Any) -> str:
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
