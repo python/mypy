@@ -270,6 +270,11 @@ float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
                              ctype='char', size=1)  # type: Final
 
+# A low-level boolean value with two possible values: 0 and 1. Any
+# other value results in undefined behavior.
+bit_rprimitive = RPrimitive('bit', is_unboxed=True, is_refcounted=False,
+                            ctype='char', size=1)  # type: Final
+
 # The 'None' value. The possible values are 0 -> None and 2 -> error.
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
                              ctype='char', size=1)  # type: Final
@@ -327,6 +332,10 @@ def is_float_rprimitive(rtype: RType) -> bool:
 
 def is_bool_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.bool'
+
+
+def is_bit_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'bit'
 
 
 def is_object_rprimitive(rtype: RType) -> bool:
