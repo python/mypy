@@ -34,7 +34,7 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1, r2 :: bool
+    r1, r2 :: bit
 L0:
     r0 = box(None, 1)
     r1 = x == r0
@@ -543,4 +543,3 @@ L0:
     r0 = r3
 L1:
     return 1
-

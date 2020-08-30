@@ -726,14 +726,14 @@ class LowLevelIRBuilder:
     def unary_not(self,
                   value: Value,
                   line: int) -> Value:
-        mask = self.add(LoadInt(1, line, rtype=bool_rprimitive))
-        return self.binary_int_op(bool_rprimitive, value, mask, BinaryIntOp.XOR, line)
+        mask = self.add(LoadInt(1, line, rtype=value.type))
+        return self.binary_int_op(value.type, value, mask, BinaryIntOp.XOR, line)
 
     def unary_op(self,
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        if is_bool_rprimitive(lreg.type) and expr_op == 'not':
+        if (is_bool_rprimitive(lreg.type) or is_bit_rprimitive(lreg.type)) and expr_op == 'not':
             return self.unary_not(lreg, line)
         call_c_ops_candidates = c_unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
