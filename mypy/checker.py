@@ -3986,7 +3986,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
                 if literal(expr) == LITERAL_TYPE:
-                    if_map, else_map = self.conditional_type_map_with_intersection(
+                    if_map_base, else_map_base = self.conditional_type_map_with_intersection(
                         expr,
                         type_map[expr],
                         get_isinstance_type(node.args[1], type_map),
@@ -3994,24 +3994,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     first_node_arg = node.args[0]
                     if isinstance(first_node_arg, IndexExpr):
                         arg_type = get_proper_type(type_map[first_node_arg.base])
-                        if isinstance(arg_type, UnionType) and if_map is not None and else_map is not None:
+                        if (isinstance(arg_type, UnionType) and
+                                if_map_base is not None and else_map_base is not None):
                             if_branch_union = []
                             else_branch_union = []
-                            t = if_map[expr]
+                            t = if_map_base[expr]
                             for x in arg_type.items:
                                 x = get_proper_type(x)
                                 if not isinstance(x, Instance) or not x.args:
-                                    return if_map, else_map
-                                if is_overlapping_types(x.args[0], t) is not covers_at_runtime(x.args[0], t, False):
+                                    return if_map_base, else_map_base
+                                if (is_overlapping_types(x.args[0], t) is not
+                                        covers_at_runtime(x.args[0], t, False)):
                                     if_branch_union.append(x)
                                     else_branch_union.append(x)
                                 elif is_overlapping_types(x.args[0], t):
                                     if_branch_union.append(x)
                                 else:
                                     else_branch_union.append(x)
-                            if_map[first_node_arg.base] = UnionType(if_branch_union)
-                            else_map[first_node_arg.base] = UnionType(else_branch_union)
-                    return if_map, else_map
+                            if_map_base[first_node_arg.base] = UnionType(if_branch_union)
+                            else_map_base[first_node_arg.base] = UnionType(else_branch_union)
+                    return if_map_base, else_map_base
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
