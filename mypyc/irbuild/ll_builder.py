@@ -30,7 +30,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive
+    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -841,7 +841,7 @@ class LowLevelIRBuilder:
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_runtime_subtype(value.type, int_rprimitive):
-            zero = self.add(LoadInt(0))
+            zero = self.add(LoadInt(0, rtype=value.type))
             value = self.binary_op(value, zero, '!=', value.line)
         elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
@@ -873,7 +873,7 @@ class LowLevelIRBuilder:
                     remaining = self.unbox_or_cast(value, value_type, value.line)
                     self.add_bool_branch(remaining, true, false)
                 return
-            elif not is_same_type(value.type, bool_rprimitive):
+            elif not is_bool_rprimitive(value.type) and not is_bit_rprimitive(value.type):
                 value = self.call_c(bool_op, [value], value.line)
         self.add(Branch(value, true, false, Branch.BOOL))
 

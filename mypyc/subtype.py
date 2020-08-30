@@ -2,9 +2,8 @@
 
 from mypyc.ir.rtypes import (
     RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion, RStruct,
-    is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive,
-    is_short_int_rprimitive,
-    is_object_rprimitive
+    is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive, is_short_int_rprimitive,
+    is_object_rprimitive, is_bit_rprimitive
 )
 
 
@@ -42,11 +41,17 @@ class SubtypeVisitor(RTypeVisitor[bool]):
                    for item in left.items)
 
     def visit_rprimitive(self, left: RPrimitive) -> bool:
-        if is_bool_rprimitive(left) and is_int_rprimitive(self.right):
-            return True
-        if is_short_int_rprimitive(left) and is_int_rprimitive(self.right):
-            return True
-        return left is self.right
+        right = self.right
+        if is_bool_rprimitive(left):
+            if is_int_rprimitive(right):
+                return True
+        elif is_bit_rprimitive(left):
+            if is_bool_rprimitive(right) or is_int_rprimitive(right):
+                return True
+        elif is_short_int_rprimitive(left):
+            if is_int_rprimitive(right):
+                return True
+        return left is right
 
     def visit_rtuple(self, left: RTuple) -> bool:
         if is_tuple_rprimitive(self.right):
