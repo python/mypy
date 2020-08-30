@@ -446,7 +446,8 @@ def _visit_list_display(builder: IRBuilder, items: List[Expression], line: int) 
         builder.new_list_op,
         list_append_op,
         list_extend_op,
-        line
+        line,
+        True
     )
 
 
@@ -493,7 +494,8 @@ def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
         builder.new_set_op,
         set_add_op,
         set_update_op,
-        expr.line
+        expr.line,
+        False
     )
 
 
@@ -502,7 +504,8 @@ def _visit_display(builder: IRBuilder,
                    constructor_op: Callable[[List[Value], int], Value],
                    append_op: CFunctionDescription,
                    extend_op: CFunctionDescription,
-                   line: int
+                   line: int,
+                   is_list: bool
                    ) -> Value:
     accepted_items = []
     for item in items:
@@ -514,7 +517,7 @@ def _visit_display(builder: IRBuilder,
     result = None  # type: Union[Value, None]
     initial_items = []
     for starred, value in accepted_items:
-        if result is None and not starred:
+        if result is None and not starred and is_list:
             initial_items.append(value)
             continue
 
