@@ -114,6 +114,7 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
+    'typing.OrderedDict': 'collections.OrderedDict',
 }  # type: Final
 
 # This keeps track of the oldest supported Python version where the corresponding
@@ -127,6 +128,7 @@ type_aliases_target_versions = {
     'typing.Counter': (2, 7),
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
+    'typing.OrderedDict': (3, 1),
 }  # type: Final
 
 reverse_builtin_aliases = {
