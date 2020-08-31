@@ -94,6 +94,8 @@ typecheck_files = [
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info >= (3, 8):
     typecheck_files.append('check-python38.test')
+if sys.version_info >= (3, 9):
+    typecheck_files.append('check-python39.test')
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
