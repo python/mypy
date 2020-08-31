@@ -473,7 +473,7 @@ def default_lib_path(data_dir: str,
 
 
 @functools.lru_cache(maxsize=None)
-def get_site_packages_dirs(python_executable: str) -> Tuple[List[str], List[str]]:
+def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
     This runs a subprocess call, which generates a list of the egg directories, and the site
@@ -486,7 +486,9 @@ def get_site_packages_dirs(python_executable: str) -> Tuple[List[str], List[str]
         else:
             return os.path.join(root, os.path.normpath(path))
 
-    if python_executable == sys.executable:
+    if python_executable is None:
+        return [], []
+    elif python_executable == sys.executable:
         # Use running Python's package dirs
         site_packages = sitepkgs.getsitepackages()
     else:
@@ -566,11 +568,7 @@ def compute_search_paths(sources: List[BuildSource],
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    if options.python_executable is None:
-        egg_dirs = []  # type: List[str]
-        site_packages = []  # type: List[str]
-    else:
-        egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+    egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
     for site_dir in site_packages:
         assert site_dir not in lib_path
         if (site_dir in mypypath or
