@@ -342,7 +342,7 @@ def _verify_arg_default_value(
             # Fallback to the type annotation type if var type is missing. The type annotation
             # is an UnboundType, but I don't know enough to know what the pros and cons here are.
             # UnboundTypes have ugly question marks following them, so default to var type.
-            # Note we do this same fallback when constructing signatures in from_overloadedfuncdef
+            # Note we do this same fallback when constructing signatures in from_overloadedfuncdef.
             stub_type = stub_arg.variable.type or stub_arg.type_annotation
             if isinstance(stub_type, mypy.types.TypeVarType):
                 stub_type = stub_type.upper_bound
