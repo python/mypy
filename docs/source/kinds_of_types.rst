@@ -505,7 +505,7 @@ following special import is enough:
 
 .. code-block:: python
 
-   from future import annotations
+   from __future__ import annotations
 
    def f(x: A) -> None:  # OK
        ...
