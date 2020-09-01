@@ -20,6 +20,8 @@ env:
   EXTRA_ARGS="-n 2"
   TEST_MYPYC=0
   PYTHON_DEBUG_BUILD=0
+  # work around pypa/setuptools#2352
+  SETUPTOOLS_USE_DISTUTILS=stdlib
 
 jobs:
   include:
