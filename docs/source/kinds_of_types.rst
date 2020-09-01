@@ -489,8 +489,8 @@ defined. Thus this code does not work as expected:
    class A:
        ...
 
-In cases like these you can enter the type as a string literal — this
-is a *forward reference*:
+In cases when a type hint contains names that have not been defined yet,
+you can enter the type as a string literal — this is a *forward reference*:
 
 .. code-block:: python
 
@@ -500,7 +500,37 @@ is a *forward reference*:
    class A:
        ...
 
-Of course, instead of using a string literal type, you could move the
+Starting from Python 3.7 (:pep:`563`) using of string literal type is no longer required,
+following special import is enough:
+
+.. code-block:: python
+
+   from future import annotations
+
+   def f(x: A) -> None:  # OK
+       ...
+
+   class A:
+       ...
+
+.. note::
+
+    Despite adding special import, there are some scenarios that still
+    require working around forward references with string literals:
+
+    * :ref:`type aliases <type-aliases>`;
+    * :ref:`casts <casts>`;
+    * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
+    * base classes.
+
+    .. code-block:: python
+
+        # base class example
+        class A(Tuple['B', 'C']): ...# OK
+        class B: ...
+        class C: ...
+
+Of course, instead of using a string literal type or special import, you could move the
 function definition after the class definition. This is not always
 desirable or even possible, though.
 
@@ -514,7 +544,7 @@ string-literal types with non-string-literal types freely:
 
    class A: pass
 
-String literal types are never needed in ``# type:`` comments.
+String literal types are never needed in `# type:` comments.
 
 String literal types must be defined (or imported) later *in the same
 module*.  They cannot be used to leave cross-module references
