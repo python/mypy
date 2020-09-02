@@ -40,11 +40,11 @@ attr_dataclass_makers = {
 }  # type: Final
 attr_frozen_makers = {
     'attr.frozen'
-} # type: Final
+}  # type: Final
 attr_define_makers = {
     'attr.define',
     'attr.mutable'
-} # type: Final
+}  # type: Final
 attr_attrib_makers = {
     'attr.ib',
     'attr.attrib',
