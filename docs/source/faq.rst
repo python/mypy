@@ -132,7 +132,7 @@ As a rule of thumb, we recommend using nominal classes where possible, and
 protocols where necessary. For more details about protocol types and structural
 subtyping see :ref:`protocol-types` and :pep:`544`.
 
-I like Python and I have no need for static typing
+I like Python and need static typing?
 **************************************************
 
 The aim of mypy is not to convince everybody to write statically typed
