@@ -489,8 +489,8 @@ defined. Thus this code does not work as expected:
    class A:
        ...
 
-In cases when a type hint contains names that have not been defined yet,
-you can enter the type as a string literal — this is a *forward reference*:
+In cases like these you can enter the type as a string literal — this
+is a *forward reference*:
 
 .. code-block:: python
 
@@ -500,8 +500,8 @@ you can enter the type as a string literal — this is a *forward reference*:
    class A:
        ...
 
-Starting from Python 3.7 (:pep:`563`) using of string literal type is no longer required,
-following special import is enough:
+Starting from Python 3.7 (:pep:`563`), you can add the special import ``from __future__ import annotations``,
+which makes the use of string literals unnecessary:
 
 .. code-block:: python
 
@@ -515,8 +515,8 @@ following special import is enough:
 
 .. note::
 
-    Despite adding special import, there are some scenarios that still
-    require working around forward references with string literals:
+    Even with the ``__future__`` import, there are some scenarios that still
+    require string literals:
 
     * :ref:`type aliases <type-aliases>`;
     * :ref:`casts <casts>`;
@@ -526,7 +526,7 @@ following special import is enough:
     .. code-block:: python
 
         # base class example
-        class A(Tuple['B', 'C']): ...# OK
+        class A(Tuple['B', 'C']): ... # OK
         class B: ...
         class C: ...
 
@@ -544,7 +544,7 @@ string-literal types with non-string-literal types freely:
 
    class A: pass
 
-String literal types are never needed in `# type:` comments.
+String literal types are never needed in `# type:` comments and :ref:`stub files <stub-files>`.
 
 String literal types must be defined (or imported) later *in the same
 module*.  They cannot be used to leave cross-module references
