@@ -501,7 +501,7 @@ is a *forward reference*:
        ...
 
 Starting from Python 3.7 (:pep:`563`), you can add the special import ``from __future__ import annotations``,
-which makes the use of string literals unnecessary:
+which makes the use of string literals in annotations unnecessary:
 
 .. code-block:: python
 
@@ -515,8 +515,8 @@ which makes the use of string literals unnecessary:
 
 .. note::
 
-    Even with the ``__future__`` import, there are some scenarios that still
-    require string literals:
+    Even with the ``__future__`` import, there are some scenarios that could still
+    require string literals, typically involving use of forward references or generics in:
 
     * :ref:`type aliases <type-aliases>`;
     * :ref:`casts <casts>`;
