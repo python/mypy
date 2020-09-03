@@ -80,9 +80,6 @@ jobs:
   #   env:
   #   - TOXENV=dev
   #   - EXTRA_ARGS=
-  allow_failures:
-  - name: "run test suite with python 3.9"
-    python: 3.9-dev
 
 install:
 - pip install -U pip setuptools
