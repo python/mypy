@@ -544,7 +544,7 @@ string-literal types with non-string-literal types freely:
 
    class A: pass
 
-String literal types are never needed in `# type:` comments and :ref:`stub files <stub-files>`.
+String literal types are never needed in ``# type:`` comments and :ref:`stub files <stub-files>`.
 
 String literal types must be defined (or imported) later *in the same
 module*.  They cannot be used to leave cross-module references
