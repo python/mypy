@@ -1,13 +1,10 @@
 # Test cases related to environment variables
 [case testEnvvar_MYPY_CONFIG_FILE_DIR]
 # cmd: mypy --config-file=subdir/mypy.ini
-# flags: --save-failures-to=/tmp/mypy
-# To run just this test:
-#    pytest -n0 -k testEnvvar_MYPY_CONFIG_FILE_DIR
 [file bogus.py]
-FOO: int = 'x'
+FOO = 'x'		# type: int
 [file subdir/good.py]
-BAR: int = 0
+BAR = 0			# type: int
 [file subdir/mypy.ini]
 \[mypy]
 files=$MYPY_CONFIG_FILE_DIR/good.py
