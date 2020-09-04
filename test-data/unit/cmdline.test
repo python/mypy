@@ -636,7 +636,10 @@ reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
 reveal_type(a**b) # N: Revealed type is 'Any'
 reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
 reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
-a.__pow__() # E: Too few arguments for "__pow__" of "int"
+a.__pow__() # E: All overload variants of "__pow__" of "int" require at least one argument \
+            # N: Possible overload variants: \
+            # N:     def __pow__(self, Literal[2], Optional[int] = ...) -> int \
+            # N:     def __pow__(self, int, Optional[int] = ...) -> Any
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
