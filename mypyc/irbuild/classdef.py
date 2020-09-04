@@ -171,8 +171,8 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
                                    builder.module_name, NAMESPACE_TYPE))
     # Create the class
-    tp = builder.primitive_op(pytype_from_template_op,
-                           [template, tp_bases, modname], cdef.line)
+    tp = builder.call_c(pytype_from_template_op,
+                    [template, tp_bases, modname], cdef.line)
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:

@@ -404,7 +404,7 @@ L6:
     r39 = <error> :: object
     r40 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r41 = __main__.C_template :: type
-    r42 = pytype_from_template(r41, r39, r40)
+    r42 = CPyType_FromTemplate(r41, r39, r40)
     r43 = C_trait_vtable_setup()
     r44 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r45 = PyTuple_Pack(0)
@@ -416,7 +416,7 @@ L6:
     r50 = <error> :: object
     r51 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r52 = __main__.S_template :: type
-    r53 = pytype_from_template(r52, r50, r51)
+    r53 = CPyType_FromTemplate(r52, r50, r51)
     r54 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r55 = PyTuple_Pack(0)
     r56 = PyObject_SetAttr(r53, r54, r55)
@@ -436,7 +436,7 @@ L6:
     r69 = PyTuple_Pack(3, r60, r61, r68)
     r70 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r71 = __main__.D_template :: type
-    r72 = pytype_from_template(r71, r69, r70)
+    r72 = CPyType_FromTemplate(r71, r69, r70)
     r73 = D_trait_vtable_setup()
     r74 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r75 = load_global CPyStatic_unicode_11 :: static  ('__dict__')
