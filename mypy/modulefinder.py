@@ -496,7 +496,7 @@ def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]
     """Expands .pth imports in site-packages directories"""
     egg_dirs = []  # type: List[str]
     for dir in site_packages:
-        if not os.path.exists(dir):
+        if not os.path.isdir(dir):
             continue
         pth_filenames = sorted(name for name in os.listdir(dir) if name.endswith(".pth"))
         for pth_filename in pth_filenames:
@@ -508,7 +508,7 @@ def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]
 def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
     """
     Mimics a subset of .pth import hook from Lib/site.py
-    cref https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
+    See https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
     """
 
     pth_file = os.path.join(dir, pth_filename)
@@ -522,7 +522,7 @@ def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
                 # Skip comment lines
                 continue
             if line.startswith(("import ", "import\t")):
-                # import statements in .pth files are not supported"
+                # import statements in .pth files are not supported
                 continue
 
             yield _make_abspath(line.rstrip(), dir)
