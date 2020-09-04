@@ -25,7 +25,6 @@ python3_path = sys.executable
 cmdline_files = [
     'cmdline.test',
     'reports.test',
-    'envvars.test',
 ]
 
 
