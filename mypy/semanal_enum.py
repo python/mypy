@@ -8,7 +8,7 @@ from typing import List, Tuple, Optional, Union, cast
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
     UnicodeExpr, TupleExpr, ListExpr, DictExpr, Var, SymbolTableNode, MDEF, ARG_POS,
-    EnumCallExpr, MemberExpr
+    ARG_NAMED, EnumCallExpr, MemberExpr
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
@@ -104,23 +104,37 @@ class EnumCallAnalyzer:
         Return a tuple of fields, values, was there an error.
         """
         args = call.args
+        if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
+            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
         if len(args) < 2:
             return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
-        if len(args) > 2:
+        if len(args) > 6:
             return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
-        if not isinstance(args[0], (StrExpr, UnicodeExpr)):
+        valid_name = [None, 'value', 'names', 'module', 'qualname', 'type', 'start']
+        for arg_name in call.arg_names:
+            if arg_name not in valid_name:
+                self.fail_enum_call_arg("Unexpected keyword argument '{}'".format(arg_name), call)
+        value, names = None, None
+        for arg_name, arg in zip(call.arg_names, args):
+            if arg_name == 'value':
+                value = arg
+            if arg_name == 'names':
+                names = arg
+        if value is None:
+            value = args[0]
+        if names is None:
+            names = args[1]
+        if not isinstance(value, (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
                 "%s() expects a string literal as the first argument" % class_name, call)
         items = []
         values = []  # type: List[Optional[Expression]]
-        if isinstance(args[1], (StrExpr, UnicodeExpr)):
-            fields = args[1].value
+        if isinstance(names, (StrExpr, UnicodeExpr)):
+            fields = names.value
             for field in fields.replace(',', ' ').split():
                 items.append(field)
-        elif isinstance(args[1], (TupleExpr, ListExpr)):
-            seq_items = args[1].items
+        elif isinstance(names, (TupleExpr, ListExpr)):
+            seq_items = names.items
             if all(isinstance(seq_item, (StrExpr, UnicodeExpr)) for seq_item in seq_items):
                 items = [cast(Union[StrExpr, UnicodeExpr], seq_item).value
                          for seq_item in seq_items]
@@ -139,8 +153,8 @@ class EnumCallAnalyzer:
                     "%s() with tuple or list expects strings or (name, value) pairs" %
                     class_name,
                     call)
-        elif isinstance(args[1], DictExpr):
-            for key, value in args[1].items:
+        elif isinstance(names, DictExpr):
+            for key, value in names.items:
                 if not isinstance(key, (StrExpr, UnicodeExpr)):
                     return self.fail_enum_call_arg(
                         "%s() with dict literal requires string literals" % class_name, call)

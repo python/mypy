@@ -179,14 +179,20 @@ class NamedTupleAnalyzer:
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
             self.store_namedtuple_info(info, name, call, is_typed)
             return True, info
-        name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
-        if name != var_name or is_func_scope:
-            # There are three special cases where need to give it a unique name derived
+
+        # We use the variable name as the class name if it exists. If
+        # it doesn't, we use the name passed as an argument. We prefer
+        # the variable name because it should be unique inside a
+        # module, and so we don't need to disambiguate it with a line
+        # number.
+        if var_name:
+            name = var_name
+        else:
+            name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
+
+        if var_name is None or is_func_scope:
+            # There are two special cases where need to give it a unique name derived
             # from the line number:
-            #   * There is a name mismatch with l.h.s., therefore we need to disambiguate
-            #     situations like:
-            #         A = NamedTuple('Same', [('x', int)])
-            #         B = NamedTuple('Same', [('y', str)])
             #   * This is a base class expression, since it often matches the class name:
             #         class NT(NamedTuple('NT', [...])):
             #             ...

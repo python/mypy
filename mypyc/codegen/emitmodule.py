@@ -5,7 +5,7 @@
 
 import os
 import json
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
 from mypy.nodes import MypyFile
@@ -23,7 +23,7 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
-    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, shared_lib_name,
+    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, shared_lib_name,
 )
 from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
@@ -493,8 +493,8 @@ class GroupGenerator:
         # Optionally just include the runtime library c files to
         # reduce the number of compiler invocations needed
         if self.compiler_options.include_runtime_files:
-            base_emitter.emit_line('#include "CPy.c"')
-            base_emitter.emit_line('#include "getargs.c"')
+            for name in RUNTIME_C_FILES:
+                base_emitter.emit_line('#include "{}"'.format(name))
         base_emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
         base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.short_group_suffix))
         emitter = base_emitter

@@ -5057,7 +5057,7 @@ NT = NamedTuple('BadName', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
+tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.NT]'
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
 

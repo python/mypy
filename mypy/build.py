@@ -223,7 +223,9 @@ def _build(sources: List[BuildSource],
                     options.show_error_codes,
                     options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version),
-                    options.show_absolute_path)
+                    options.show_absolute_path,
+                    options.enabled_error_codes,
+                    options.disabled_error_codes)
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Add catch-all .gitignore to cache dir if we created it
@@ -762,13 +764,14 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module_simple(id, self) is not None
 
-    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool,
+                   options: Options) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
-        tree = parse(source, path, id, self.errors, options=self.options)
+        tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
@@ -1988,20 +1991,21 @@ class State:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(
                             self.path, os.strerror(ioerr.errno))],
-                        module_with_blocker=self.id)
+                        module_with_blocker=self.id) from ioerr
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     if self.path.endswith('.pyd'):
                         err = "mypy: stubgen does not support .pyd files: '{}'".format(self.path)
                     else:
                         err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
-                    raise CompileError([err], module_with_blocker=self.id)
+                    raise CompileError([err], module_with_blocker=self.id) from decodeerr
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors)
+                                           self.ignore_all or self.options.ignore_errors,
+                                           self.options)
 
         modules[self.id] = self.tree
 

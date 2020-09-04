@@ -282,6 +282,8 @@ class B(A):
   def h(self, x: A, y: 'B') -> object: pass  # Fail
 [out]
 main:7: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "A"
+main:7: note: This violates the Liskov substitution principle
+main:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:9: error: Return type "object" of "h" incompatible with return type "A" in supertype "A"
 
 [case testEqMethodsOverridingWithNonObjects]
@@ -290,6 +292,8 @@ class A:
 [builtins fixtures/attr.pyi]
 [out]
 main:2: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
+main:2: note: This violates the Liskov substitution principle
+main:2: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:2: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
 main:2: note:     def __eq__(self, other: object) -> bool:
 main:2: note:         if not isinstance(other, A):
@@ -318,6 +322,8 @@ class C(B): # with gap in implementations
         pass
 [out]
 main:6: error: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "B"
+main:6: note: This violates the Liskov substitution principle
+main:6: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy2]
 import typing
@@ -459,7 +465,9 @@ class B(A):
     @staticmethod
     def f(x: int, y: str) -> None: pass
     @staticmethod
-    def g(x: str, y: str) -> None: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int"
+    def g(x: str, y: str) -> None: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                        # N: This violates the Liskov substitution principle \
+                                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/classmethod.pyi]
 
 [case testOverrideClassMethodWithClassMethod]
@@ -473,7 +481,9 @@ class B(A):
     @classmethod
     def f(cls, x: int, y: str) -> None: pass
     @classmethod
-    def g(cls, x: str, y: str) -> None: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int"
+    def g(cls, x: str, y: str) -> None: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                             # N: This violates the Liskov substitution principle \
+                                             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [builtins fixtures/classmethod.pyi]
 
 [case testOverrideClassMethodWithStaticMethod]
@@ -489,7 +499,9 @@ class B(A):
     @staticmethod
     def f(x: int) -> None: pass
     @staticmethod
-    def g(x: str) -> int: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int"
+    def g(x: str) -> int: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                               # N: This violates the Liskov substitution principle \
+                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     @staticmethod
     def h() -> int: pass
 [builtins fixtures/classmethod.pyi]
@@ -507,7 +519,9 @@ class B(A):
     @classmethod
     def f(cls, x: int) -> None: pass
     @classmethod
-    def g(cls, x: int) -> int: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "str"
+    def g(cls, x: int) -> int: pass # E: Argument 1 of "g" is incompatible with supertype "A"; supertype defines the argument type as "str" \
+                                    # N: This violates the Liskov substitution principle \
+                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     @classmethod
     def h(cls) -> int: pass
 [builtins fixtures/classmethod.pyi]
@@ -2478,6 +2492,8 @@ class D(A):
 [out]
 main:6: error: Return type "A" of "__iadd__" incompatible with return type "B" in "__add__" of supertype "A"
 main:8: error: Argument 1 of "__iadd__" is incompatible with "__add__" of supertype "A"; supertype defines the argument type as "A"
+main:8: note: This violates the Liskov substitution principle
+main:8: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
 [case testGetattribute]
@@ -3172,10 +3188,9 @@ def process(cls: Type[U]):
 
 [case testTypeUsingTypeCErrorUnsupportedType]
 from typing import Type, Tuple
-def foo(arg: Type[Tuple[int]]):  # E: Unsupported type Type["Tuple[int]"]
-    arg()
+def foo(arg: Type[Tuple[int]]):
+    arg()  # E: Cannot instantiate type "Type[Tuple[int]]"
 [builtins fixtures/tuple.pyi]
-[out]
 
 [case testTypeUsingTypeCOverloadedClass]
 from foo import *
@@ -3218,10 +3233,8 @@ def f(a: T): pass
 [case testTypeUsingTypeCTuple]
 from typing import Type, Tuple
 def f(a: Type[Tuple[int, int]]):
-    a()
+    a()  # E: Cannot instantiate type "Type[Tuple[int, int]]"
 [builtins fixtures/tuple.pyi]
-[out]
-main:2: error: Unsupported type Type["Tuple[int, int]"]
 
 [case testTypeUsingTypeCNamedTuple]
 from typing import Type, NamedTuple

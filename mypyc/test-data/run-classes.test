@@ -390,29 +390,6 @@ assert c.a == 13
 assert type(c) == C
 assert not hasattr(c, 'b')
 
-[case testListOfUserDefinedClass]
-class C:
-    x: int
-
-def f() -> int:
-    c = C()
-    c.x = 5
-    a = [c]
-    d = a[0]
-    return d.x + 1
-
-def g() -> int:
-    a = [C()]
-    a[0].x = 3
-    return a[0].x + 4
-[file driver.py]
-from native import f, g
-print(f())
-print(g())
-[out]
-6
-7
-
 [case testCastUserClass]
 from typing import List
 
@@ -709,14 +686,26 @@ from typing import List
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
+
+    def foo(self, x: int) -> int:
+        return x
+
 class B(A):
     def __init__(self, x: int, y: int) -> None:
         super().__init__(x)
         self.y = y
+
+    def foo(self, x: int) -> int:
+        return super().foo(x+1)
+
 class C(B):
     def __init__(self, x: int, y: int) -> None:
         init = super(C, self).__init__
         init(x, y+1)
+
+    def foo(self, x: int) -> int:
+        # should go to A, not B
+        return super(B, self).foo(x+1)
 
 class X:
     def __init__(self, x: int) -> None:
@@ -752,6 +741,8 @@ c = C(10, 20)
 assert c.x == 10 and c.y == 21
 z = Z(10, 20)
 assert z.x == 10 and z.y == 20
+
+assert c.foo(10) == 11
 
 PrintList().v_list([1,2,3])
 [out]
@@ -943,6 +934,48 @@ assert b.y == 'rofl'
 assert b.z is None
 # N.B: this doesn't match cpython
 assert not hasattr(b, 'bogus')
+
+[case testProtocol]
+from typing_extensions import Protocol
+
+class Proto(Protocol):
+    def foo(self, x: int) -> None:
+        pass
+
+    def bar(self, x: int) -> None:
+        pass
+
+class A:
+    def foo(self, x: int) -> None:
+        print("A:", x)
+
+    def bar(self, *args: int, **kwargs: int) -> None:
+        print("A:", args, kwargs)
+
+class B(A, Proto):
+    def foo(self, x: int) -> None:
+        print("B:", x)
+
+    def bar(self, *args: int, **kwargs: int) -> None:
+        print("B:", args, kwargs)
+
+def f(x: Proto) -> None:
+    x.foo(20)
+    x.bar(x=20)
+
+[file driver.py]
+from native import A, B, f
+
+f(A())
+f(B())
+
+# ... this exploits a bug in glue methods to distinguish whether we
+# are making a direct call or a pycall...
+[out]
+A: 20
+A: () {'x': 20}
+B: 20
+B: (20,) {}
 
 [case testMethodOverrideDefault1]
 class A:
@@ -1410,3 +1443,328 @@ with patch("interp.Bar.spam", lambda self: 20):
 
 with assertRaises(TypeError, "int object expected; got str"):
     y.x = "test"
+
+[case testProperty]
+from typing import Callable
+from mypy_extensions import trait
+class Temperature:
+    @property
+    def celsius(self) -> float:
+        return 5.0 * (self.farenheit - 32.0) / 9.0
+
+    def __init__(self, farenheit: float) -> None:
+        self.farenheit = farenheit
+
+    def print_temp(self) -> None:
+        print("F:", self.farenheit, "C:", self.celsius)
+
+    @property
+    def rankine(self) -> float:
+        raise NotImplementedError
+
+class Access:
+    @property
+    def number_of_accesses(self) -> int:
+        self._count += 1
+        return self._count
+    def __init__(self) -> None:
+        self._count = 0
+
+from typing import Callable
+class BaseProperty:
+    @property
+    def doc(self) -> str:
+        return "Represents a sequence of values. Updates itself by next, which is a new value."
+
+    @property
+    def value(self) -> object:
+        return self._incrementer
+
+    @property
+    def bad_value(self) -> object:
+        return self._incrementer
+
+    @property
+    def next(self) -> BaseProperty:
+        return BaseProperty(self._incrementer + 1)
+
+    def __init__(self, value: int) -> None:
+        self._incrementer = value
+
+class DerivedProperty(BaseProperty):
+    @property
+    def value(self) -> int:
+        return self._incrementer
+
+    @property
+    def bad_value(self) -> object:
+        return self._incrementer
+
+    def __init__(self, incr_func: Callable[[int], int], value: int) -> None:
+        BaseProperty.__init__(self, value)
+        self._incr_func = incr_func
+
+    @property
+    def next(self) -> DerivedProperty:
+        return DerivedProperty(self._incr_func, self._incr_func(self.value))
+
+class AgainProperty(DerivedProperty):
+    @property
+    def next(self) -> AgainProperty:
+        return AgainProperty(self._incr_func, self._incr_func(self._incr_func(self.value)))
+
+    @property
+    def bad_value(self) -> int:
+        return self._incrementer
+
+def print_first_n(n: int, thing: BaseProperty) -> None:
+    vals = []
+    cur_thing = thing
+    for _ in range(n):
+        vals.append(cur_thing.value)
+        cur_thing = cur_thing.next
+    print ('', vals)
+
+@trait
+class Trait:
+    @property
+    def value(self) -> int:
+        return 3
+
+class Printer(Trait):
+    def print_value(self) -> None:
+        print(self.value)
+
+[file driver.py]
+from native import Temperature, Access
+import traceback
+x = Temperature(32.0)
+try:
+    print (x.rankine)
+except NotImplementedError as e:
+    traceback.print_exc()
+print (x.celsius)
+x.print_temp()
+
+y = Temperature(212.0)
+print (y.celsius)
+y.print_temp()
+
+z = Access()
+print (z.number_of_accesses)
+print (z.number_of_accesses)
+print (z.number_of_accesses)
+print (z.number_of_accesses)
+
+from native import BaseProperty, DerivedProperty, AgainProperty, print_first_n
+a = BaseProperty(7)
+b = DerivedProperty((lambda x: x // 2 if (x % 2 == 0) else 3 * x + 1), 7)
+c = AgainProperty((lambda x: x // 2 if (x % 2 == 0) else 3 * x + 1), 7)
+
+def py_print_first_n(n: int, thing: BaseProperty) -> None:
+    vals = []
+    cur_thing = thing
+    for _ in range(n):
+        vals.append(cur_thing.value)
+        cur_thing = cur_thing.next
+    print ('', vals)
+
+py_print_first_n(20, a)
+py_print_first_n(20, b)
+py_print_first_n(20, c)
+
+print(a.next.next.next.bad_value)
+print(b.next.next.next.bad_value)
+print(c.next.next.next.bad_value)
+
+print_first_n(20, a)
+print_first_n(20, b)
+print_first_n(20, c)
+
+print (a.doc)
+print (b.doc)
+print (c.doc)
+
+from native import Printer
+Printer().print_value()
+print (Printer().value)
+[out]
+Traceback (most recent call last):
+  File "driver.py", line 5, in <module>
+    print (x.rankine)
+  File "native.py", line 16, in rankine
+    raise NotImplementedError
+NotImplementedError
+0.0
+F: 32.0 C: 0.0
+100.0
+F: 212.0 C: 100.0
+1
+2
+3
+4
+ [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+ [7, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1, 4, 2, 1]
+ [7, 11, 17, 26, 40, 10, 16, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4]
+10
+34
+26
+ [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+ [7, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1, 4, 2, 1]
+ [7, 11, 17, 26, 40, 10, 16, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4, 1, 2, 4]
+Represents a sequence of values. Updates itself by next, which is a new value.
+Represents a sequence of values. Updates itself by next, which is a new value.
+Represents a sequence of values. Updates itself by next, which is a new value.
+3
+3
+
+[case testPropertySetters]
+
+from mypy_extensions import trait
+
+class Foo():
+    def __init__(self) -> None:
+        self.attr = "unmodified"
+
+class A:
+    def __init__(self) -> None:
+        self._x = 0
+        self._foo = Foo()
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val
+
+    @property
+    def foo(self) -> Foo:
+        return self._foo
+
+    @foo.setter
+    def foo(self, val : Foo) -> None:
+        self._foo = val
+
+# Overrides base property setters and getters
+class B(A):
+    def __init__(self) -> None:
+        self._x = 10
+
+    @property
+    def x(self) -> int:
+        return self._x + 1
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val + 1
+
+#Inerits base property setters and getters
+class C(A):
+    def __init__(self) -> None:
+        A.__init__(self)
+
+@trait
+class D():
+    def __init__(self) -> None:
+        self._x = 0
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val
+
+#Inherits trait property setters and getters
+class E(D):
+    def __init__(self) -> None:
+        D.__init__(self)
+
+#Overrides trait property setters and getters
+class F(D):
+    def __init__(self) -> None:
+        self._x = 10
+
+    @property
+    def x(self) -> int:
+        return self._x + 10
+
+    @x.setter
+    def x(self, val : int) -> None:
+        self._x = val + 10
+
+# # Property setter and getter are subtypes of base property setters and getters
+# # class G(A):
+# #   def __init__(self) -> None:
+# #       A.__init__(self)
+
+# #   @property
+# #   def y(self) -> int:
+# #       return self._y
+
+# #   @y.setter
+# #   def y(self, val : object) -> None:
+# #       self._y = val
+
+[file other.py]
+# Run in both interpreted and compiled mode
+
+from native import A, B, C, D, E, F
+
+a = A()
+assert a.x == 0
+assert a._x == 0
+a.x = 1
+assert a.x == 1
+assert a._x == 1
+a._x = 0
+assert a.x == 0
+assert a._x == 0
+b = B()
+assert b.x == 11
+assert b._x == 10
+b.x = 11
+assert b.x == 13
+b._x = 11
+assert b.x == 12
+c = C()
+assert c.x == 0
+c.x = 1000
+assert c.x == 1000
+e = E()
+assert e.x == 0
+e.x = 1000
+assert e.x == 1000
+f = F()
+assert f.x == 20
+f.x = 30
+assert f.x == 50
+
+[file driver.py]
+# Run the tests in both interpreted and compiled mode
+import other
+import other_interpreted
+
+[out]
+
+[case testSubclassAttributeAccess]
+from mypy_extensions import trait
+
+class A:
+    v = 0
+
+class B(A):
+    v = 1
+
+class C(B):
+    v = 2
+
+[file driver.py]
+from native import A, B, C
+
+a = A()
+b = B()
+c = C()

@@ -37,6 +37,9 @@ A trivial example of using the api is the following
 
     print('\nExit status:', result[2])
 
+
+.. _extending-mypy-using-plugins:
+
 Extending mypy using plugins
 ****************************
 
@@ -69,7 +72,7 @@ Configuring mypy to use plugins
 *******************************
 
 Plugins are Python files that can be specified in a mypy
-:ref:`config file <config-file>` using one of the two formats: relative or
+:ref:`config file <config-file>` using the :confval:`plugins` option and one of the two formats: relative or
 absolute path to the plugin file, or a module name (if the plugin
 is installed using ``pip install`` in the same virtual environment where mypy
 is running). The two formats can be mixed, for example:

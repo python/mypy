@@ -181,7 +181,7 @@ def g() -> Any: pass
 def f() -> typ: return g()
 [builtins fixtures/tuple.pyi]
 [out]
-main:11: error: Returning Any from function declared to return <tuple: 91 items>
+main:11: error: Returning Any from function declared to return "Tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int]"
 
 [case testReturnAnySilencedFromTypedFunction]
 # flags: --warn-return-any

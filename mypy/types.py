@@ -3,7 +3,7 @@
 import copy
 import sys
 from abc import abstractmethod
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -397,7 +397,7 @@ class UnboundType(ProperType):
 
     def __init__(self,
                  name: Optional[str],
-                 args: Optional[List[Type]] = None,
+                 args: Optional[Sequence[Type]] = None,
                  line: int = -1,
                  column: int = -1,
                  optional: bool = False,
@@ -410,7 +410,7 @@ class UnboundType(ProperType):
             args = []
         assert name is not None
         self.name = name
-        self.args = args
+        self.args = tuple(args)
         # Should this type be wrapped in an Optional?
         self.optional = optional
         # Special case for X[()]
@@ -432,7 +432,7 @@ class UnboundType(ProperType):
         self.original_str_fallback = original_str_fallback
 
     def copy_modified(self,
-                      args: Bogus[Optional[List[Type]]] = _dummy,
+                      args: Bogus[Optional[Sequence[Type]]] = _dummy,
                       ) -> 'UnboundType':
         if args is _dummy:
             args = self.args
@@ -731,12 +731,12 @@ class Instance(ProperType):
 
     __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
 
-    def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
+    def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
                  line: int = -1, column: int = -1, erased: bool = False,
                  last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
-        self.args = args
+        self.args = tuple(args)
         self.type_ref = None  # type: Optional[str]
 
         # True if result of type variable substitution
@@ -2013,7 +2013,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         if t.erased:
             s += '*'
-        if t.args != []:
+        if t.args:
             s += '[{}]'.format(self.list_str(t.args))
         if self.id_mapper:
             s += '<{}>'.format(self.id_mapper.id(t.type))

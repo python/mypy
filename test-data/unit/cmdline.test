@@ -452,6 +452,16 @@ main.py:6: note: Revealed type is 'builtins.int'
 main.py:7: note: Revealed type is 'Any'
 main.py:8: note: Revealed type is 'Any'
 
+[case testConfigFollowImportsInvalid]
+# cmd: mypy main.py
+[file mypy.ini]
+\[mypy]
+follow_imports =True
+[file main.py]
+[out]
+mypy.ini: [mypy]: follow_imports: invalid choice 'True' (choose from 'normal', 'silent', 'skip', 'error')
+== Return code: 0
+
 [case testConfigSilentMissingImportsOff]
 # cmd: mypy main.py
 [file main.py]
@@ -475,6 +485,37 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = True
 [out]
 main.py:2: note: Revealed type is 'Any'
+
+
+[case testFailedImportOnWrongCWD]
+# cmd: mypy main.py
+# cwd: main/subdir1/subdir2
+[file main/subdir1/subdir2/main.py]
+import parent
+import grandparent
+import missing
+[file main/subdir1/subdir2/__init__.py]
+[file main/subdir1/parent.py]
+[file main/subdir1/__init__.py]
+[file main/grandparent.py]
+[file main/__init__.py]
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'parent'
+main.py:1: note: You may be running mypy in a subpackage, mypy should be run on the package root
+main.py:2: error: Cannot find implementation or library stub for module named 'grandparent'
+main.py:3: error: Cannot find implementation or library stub for module named 'missing'
+main.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+
+[case testImportInParentButNoInit]
+# cmd: mypy main.py
+# cwd: main/not_a_package
+[file main/not_a_package/main.py]
+import needs_init
+[file main/needs_init.py]
+[file main/__init__.py]
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named 'needs_init'
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testConfigNoErrorForUnknownXFlagInSubsection]
 # cmd: mypy -c pass
@@ -1081,4 +1122,54 @@ import foo.bar
 1+'x'
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
+== Return code: 2
+
+[case testEnableInvalidErrorCode]
+# cmd: mypy --enable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testDisableInvalidErrorCode]
+# cmd: mypy --disable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testEnableAndDisableInvalidErrorCode]
+# cmd: mypy --disable-error-code YOLO --enable-error-code YOLO2 test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO, YOLO2
+== Return code: 2
+
+[case testEnableValidAndInvalidErrorCode]
+# cmd: mypy --enable-error-code attr-defined --enable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testDisableValidAndInvalidErrorCode]
+# cmd: mypy --disable-error-code attr-defined --disable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
 == Return code: 2

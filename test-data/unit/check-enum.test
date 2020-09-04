@@ -316,17 +316,27 @@ main:5: note: Revealed type is 'Literal[__main__.F.baz]?'
 main:6: note: Revealed type is 'Literal[1]?'
 main:7: note: Revealed type is 'Literal['bar']?'
 
+
+[case testEnumKeywordsArgs]
+from enum import Enum, IntEnum
+
+PictureSize = Enum('PictureSize', 'P0 P1 P2 P3 P4 P5 P6 P7 P8', type=str, module=__name__)
+fake_enum1 = Enum('fake_enum1', ['a', 'b'])
+fake_enum2 = Enum('fake_enum1', names=['a', 'b'])
+fake_enum3 = Enum(value='fake_enum1', names=['a', 'b'])
+fake_enum4 = Enum(value='fake_enum1', names=['a', 'b'] , module=__name__)
+
 [case testFunctionalEnumErrors]
 from enum import Enum, IntEnum
 A = Enum('A')
 B = Enum('B', 42)
-C = Enum('C', 'a b', 'x')
+C = Enum('C', 'a b', 'x', 'y', 'z', 'p', 'q')
 D = Enum('D', foo)
 bar = 'x y z'
 E = Enum('E', bar)
 I = IntEnum('I')
 J = IntEnum('I', 42)
-K = IntEnum('I', 'p q', 'z')
+K = IntEnum('I', 'p q', 'x', 'y', 'z', 'p', 'q')
 L = Enum('L', ' ')
 M = Enum('M', ())
 N = IntEnum('M', [])
@@ -357,7 +367,7 @@ main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
 main:17: error: Enum() with dict literal requires string literals
-main:18: error: Unexpected arguments to Enum()
+main:18: error: Unexpected keyword argument 'keyword'
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
 main:22: error: "Type[W]" has no attribute "c"

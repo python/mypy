@@ -50,7 +50,7 @@ from mypy.typeops import (
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
-    true_only, false_only, function_type, TypeVarExtractor, custom_special_method,
+    true_only, false_only, function_type, get_type_vars, custom_special_method,
     is_literal_type_like,
 )
 from mypy import message_registry
@@ -2482,8 +2482,47 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # using the type of rhs, because this allowed more fine grained
             # control in cases like: a, b = [int, str] where rhs would get
             # type List[object]
-
-            rvalues = rvalue.items
+            rvalues = []  # type: List[Expression]
+            iterable_type = None  # type: Optional[Type]
+            last_idx = None  # type: Optional[int]
+            for idx_rval, rval in enumerate(rvalue.items):
+                if isinstance(rval, StarExpr):
+                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    if isinstance(typs, TupleType):
+                        rvalues.extend([TempNode(typ) for typ in typs.items])
+                    elif self.type_is_iterable(typs) and isinstance(typs, Instance):
+                        if (iterable_type is not None
+                                and iterable_type != self.iterable_item_type(typs)):
+                            self.fail("Contiguous iterable with same type expected", context)
+                        else:
+                            if last_idx is None or last_idx + 1 == idx_rval:
+                                rvalues.append(rval)
+                                last_idx = idx_rval
+                                iterable_type = self.iterable_item_type(typs)
+                            else:
+                                self.fail("Contiguous iterable with same type expected", context)
+                    else:
+                        self.fail("Invalid type '{}' for *expr (iterable expected)".format(typs),
+                             context)
+                else:
+                    rvalues.append(rval)
+            iterable_start = None  # type: Optional[int]
+            iterable_end = None  # type: Optional[int]
+            for i, rval in enumerate(rvalues):
+                if isinstance(rval, StarExpr):
+                    typs = get_proper_type(self.expr_checker.visit_star_expr(rval).type)
+                    if self.type_is_iterable(typs) and isinstance(typs, Instance):
+                        if iterable_start is None:
+                            iterable_start = i
+                        iterable_end = i
+            if (iterable_start is not None
+                    and iterable_end is not None
+                    and iterable_type is not None):
+                iterable_num = iterable_end - iterable_start + 1
+                rvalue_needed = len(lvalues) - (len(rvalues) - iterable_num)
+                if rvalue_needed > 0:
+                    rvalues = rvalues[0: iterable_start] + [TempNode(iterable_type)
+                        for i in range(rvalue_needed)] + rvalues[iterable_end + 1:]
 
             if self.check_rvalue_count_in_assignment(lvalues, len(rvalues), context):
                 star_index = next((i for i, lv in enumerate(lvalues) if
@@ -3278,6 +3317,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = get_proper_type(self.expr_checker.accept(e))
+        if isinstance(typ, DeletedType):
+            self.msg.deleted_as_rvalue(typ, e)
+            return
         exc_type = self.named_type('builtins.BaseException')
         expected_type = UnionType([exc_type, TypeType(exc_type)])
         if optional:
@@ -5286,7 +5328,7 @@ def detach_callable(typ: CallableType) -> CallableType:
 
     appear_map = {}  # type: Dict[str, List[int]]
     for i, inner_type in enumerate(type_list):
-        typevars_available = inner_type.accept(TypeVarExtractor())
+        typevars_available = get_type_vars(inner_type)
         for var in typevars_available:
             if var.fullname not in appear_map:
                 appear_map[var.fullname] = []
@@ -5296,7 +5338,7 @@ def detach_callable(typ: CallableType) -> CallableType:
     for var_name, appearances in appear_map.items():
         used_type_var_names.add(var_name)
 
-    all_type_vars = typ.accept(TypeVarExtractor())
+    all_type_vars = get_type_vars(typ)
     new_variables = []
     for var in set(all_type_vars):
         if var.fullname not in used_type_var_names:
@@ -5718,7 +5760,10 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
     elif isinstance(typ, Instance):
         method = typ.type.get_method('__call__')
         if method:
-            return not is_typed_callable(method.type)
+            if isinstance(method.type, Overloaded):
+                return any(is_untyped_decorator(item) for item in method.type.items())
+            else:
+                return not is_typed_callable(method.type)
         else:
             return False
     elif isinstance(typ, Overloaded):

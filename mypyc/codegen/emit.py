@@ -1,6 +1,6 @@
 """Utilities for emitting C code."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import List, Set, Dict, Optional, Callable, Union
 
 from mypyc.common import (
@@ -13,7 +13,7 @@ from mypyc.ir.rtypes import (
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
-    int_rprimitive, is_optional_type, optional_value_type
+    int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive, is_int64_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -695,6 +695,10 @@ class Emitter:
             self.emit_lines('{}{} = Py_None;'.format(declaration, dest))
             if not can_borrow:
                 self.emit_inc_ref(dest, object_rprimitive)
+        elif is_int32_rprimitive(typ):
+            self.emit_line('{}{} = PyLong_FromLong({});'.format(declaration, dest, src))
+        elif is_int64_rprimitive(typ):
+            self.emit_line('{}{} = PyLong_FromLongLong({});'.format(declaration, dest, src))
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))

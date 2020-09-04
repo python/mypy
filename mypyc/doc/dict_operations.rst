@@ -33,12 +33,16 @@ Statements
 ----------
 
 * ``d[key] = value``
+* ``for key in d:``
 
 Methods
 -------
 
 * ``d.get(key)``
 * ``d.get(key, default)``
+* ``d.keys()``
+* ``d.values()``
+* ``d.items()``
 * ``d1.update(d2: dict)``
 * ``d.update(x: Iterable)``
 

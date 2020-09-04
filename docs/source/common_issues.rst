@@ -454,8 +454,8 @@ whose name is passed to :option:`--always-true <mypy --always-true>` or :option:
    check to a variable. This may change in future versions of mypy.
 
 By default, mypy will use your current version of Python and your current
-operating system as default values for ``sys.version_info`` and
-``sys.platform``.
+operating system as default values for :py:data:`sys.version_info` and
+:py:data:`sys.platform`.
 
 To target a different Python version, use the :option:`--python-version X.Y <mypy --python-version>` flag.
 For example, to verify your code typechecks if were run using Python 2, pass
@@ -808,3 +808,58 @@ not necessary:
     class NarrowerArgument(A):
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
+
+Unreachable code
+----------------
+
+Mypy may consider some code as *unreachable*, even if it might not be
+immediately obvious why.  It's important to note that mypy will *not*
+type check such code. Consider this example:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        return
+        x: int = 'abc'  # Unreachable -- no error
+
+It's easy to see that any statement after ``return`` is unreachable,
+and hence mypy will not complain about the mis-typed code below
+it. For a more subtle example, consider this code:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        assert foo.bar is None
+        x: int = 'abc'  # Unreachable -- no error
+
+Again, mypy will not report any errors. The type of ``foo.bar`` is
+``str``, and mypy reasons that it can never be ``None``.  Hence the
+``assert`` statement will always fail and the statement below will
+never be executed.  (Note that in Python, ``None`` is not an empty
+reference but an object of type ``None``.)
+
+In this example mypy will go on to check the last line and report an
+error, since mypy thinks that the condition could be either True or
+False:
+
+.. code-block:: python
+
+    class Foo:
+        bar: str = ''
+
+    def bar() -> None:
+        foo: Foo = Foo()
+        if not foo.bar:
+            return
+        x: int = 'abc'  # Reachable -- error
+
+If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
+an error about each unreachable code block.

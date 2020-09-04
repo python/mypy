@@ -18,6 +18,7 @@ from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPat
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
+from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
 from mypy.config_parser import parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
@@ -97,11 +98,7 @@ def main(script_path: Optional[str],
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
                          if glob in options.unused_configs)),
               file=stderr)
-    if options.junit_xml:
-        t1 = time.time()
-        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml,
-                             py_version, options.platform)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -137,9 +134,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    # FIXME: typeshed incorrectly has the type of indent as int when
-    # it should be str. Make it Any to avoid rusing mypyc.
-    def _fill_text(self, text: str, width: int, indent: Any) -> str:
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
@@ -196,10 +191,11 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
                                           ['-c', 'import sys; print(sys.executable)'],
                                           stderr=subprocess.STDOUT).decode().strip()
         return sys_exe
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         raise PythonExecutableInferenceError(
             'failed to find a Python executable matching version {},'
-            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version)
+        ) from e
 
 
 def infer_python_executable(options: Options,
@@ -615,6 +611,14 @@ def process_options(args: List[str],
         '--strict', action='store_true', dest='special-opts:strict',
         help=strict_help)
 
+    strictness_group.add_argument(
+        '--disable-error-code', metavar='NAME', action='append', default=[],
+        help="Disable a specific error code")
+    strictness_group.add_argument(
+        '--enable-error-code', metavar='NAME', action='append', default=[],
+        help="Enable a specific error code"
+    )
+
     error_group = parser.add_argument_group(
         title='Configuring error messages',
         description="Adjust the amount of detail shown in error messages.")
@@ -863,6 +867,23 @@ def process_options(args: List[str],
         parser.error("You can't make a variable always true and always false (%s)" %
                      ', '.join(sorted(overlap)))
 
+    # Process `--enable-error-code` and `--disable-error-code` flags
+    disabled_codes = set(options.disable_error_code)
+    enabled_codes = set(options.enable_error_code)
+
+    valid_error_codes = set(error_codes.keys())
+
+    invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+    if invalid_codes:
+        parser.error("Invalid error code(s): %s" %
+                     ', '.join(sorted(invalid_codes)))
+
+    options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+    options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+    # Enabling an error code always overrides disabling
+    options.disabled_error_codes -= options.enabled_error_codes
+
     # Set build flags.
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
@@ -907,10 +928,10 @@ def process_options(args: List[str],
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),
-                     stderr)
+                     stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p), stderr)
+                fail("Can't find package '{}'".format(p), stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -926,7 +947,7 @@ def process_options(args: List[str],
         # which causes issues when using the same variable to catch
         # exceptions of different types.
         except InvalidSourceList as e2:
-            fail(str(e2), stderr)
+            fail(str(e2), stderr, options)
         return targets, options
 
 
@@ -987,6 +1008,15 @@ def process_cache_map(parser: argparse.ArgumentParser,
         options.cache_map[source] = (meta_file, data_file)
 
 
-def fail(msg: str, stderr: TextIO) -> None:
+def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
+    if options.junit_xml:
+        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
+        util.write_junit_xml(
+            td, serious, messages, options.junit_xml, py_version, options.platform)
+
+
+def fail(msg: str, stderr: TextIO, options: Options) -> None:
+    """Fail with a serious error."""
     stderr.write('%s\n' % msg)
+    maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)

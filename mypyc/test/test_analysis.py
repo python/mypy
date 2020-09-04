@@ -7,12 +7,12 @@ from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
-from mypyc import analysis
+from mypyc.analysis import dataflow
 from mypyc.transform import exceptions
 from mypyc.ir.func_ir import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
-    assert_test_output,
+    assert_test_output, replace_native_int
 )
 
 files = [
@@ -29,6 +29,7 @@ class TestAnalysis(MypycDataSuite):
         """Perform a data-flow analysis test case."""
 
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
+            testcase.output = replace_native_int(testcase.output)
             try:
                 ir = build_ir_for_single_file(testcase.input)
             except CompileError as e:
@@ -41,25 +42,25 @@ class TestAnalysis(MypycDataSuite):
                         continue
                     exceptions.insert_exception_handling(fn)
                     actual.extend(format_func(fn))
-                    cfg = analysis.get_cfg(fn.blocks)
+                    cfg = dataflow.get_cfg(fn.blocks)
 
                     args = set(reg for reg, i in fn.env.indexes.items() if i < len(fn.args))
 
                     name = testcase.name
                     if name.endswith('_MaybeDefined'):
                         # Forward, maybe
-                        analysis_result = analysis.analyze_maybe_defined_regs(fn.blocks, cfg, args)
+                        analysis_result = dataflow.analyze_maybe_defined_regs(fn.blocks, cfg, args)
                     elif name.endswith('_Liveness'):
                         # Backward, maybe
-                        analysis_result = analysis.analyze_live_regs(fn.blocks, cfg)
+                        analysis_result = dataflow.analyze_live_regs(fn.blocks, cfg)
                     elif name.endswith('_MustDefined'):
                         # Forward, must
-                        analysis_result = analysis.analyze_must_defined_regs(
+                        analysis_result = dataflow.analyze_must_defined_regs(
                             fn.blocks, cfg, args,
                             regs=fn.env.regs())
                     elif name.endswith('_BorrowedArgument'):
                         # Forward, must
-                        analysis_result = analysis.analyze_borrowed_arguments(fn.blocks, cfg, args)
+                        analysis_result = dataflow.analyze_borrowed_arguments(fn.blocks, cfg, args)
                     else:
                         assert False, 'No recognized _AnalysisName suffix in test case'
 

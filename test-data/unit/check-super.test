@@ -280,6 +280,20 @@ class B(A):
 class C:
     a = super().whatever  # E: super() outside of a method is not supported
 
+[case testSuperWithObjectClassAsFirstArgument]
+class A:
+    def f(self) -> None:
+        super(object, self).f()  # E: Target class has no base class
+
+[case testSuperWithTypeVarAsFirstArgument]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(obj: T) -> None:
+    super(obj.__class__, obj).f()  # E: Target class has no base class
+[builtins fixtures/__new__.pyi]
+
 [case testSuperWithSingleArgument]
 class B:
     def f(self) -> None: pass

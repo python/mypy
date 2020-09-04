@@ -4,7 +4,7 @@
 # contain its own tests so that pytest will rewrite the asserts...
 
 from typing import Any, Dict, Tuple
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from collections.abc import Iterable
 
 from mypyc.ir.ops import DeserMaps

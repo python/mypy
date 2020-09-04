@@ -10,7 +10,7 @@ from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterato
 from mypy import defaults
 import mypy.api as api
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly

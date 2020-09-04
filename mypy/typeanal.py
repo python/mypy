@@ -3,9 +3,9 @@
 import itertools
 from itertools import chain
 from contextlib import contextmanager
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable
+from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Sequence
 from typing_extensions import Final
 from mypy_extensions import DefaultNamedArg
 
@@ -324,7 +324,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
         return get_omitted_any(disallow_any, self.fail, self.note, typ, fullname)
 
-    def analyze_type_with_type_info(self, info: TypeInfo, args: List[Type], ctx: Context) -> Type:
+    def analyze_type_with_type_info(
+            self, info: TypeInfo, args: Sequence[Type], ctx: Context) -> Type:
         """Bind unbound type when were able to find target TypeInfo.
 
         This handles simple cases like 'int', 'modname.UserClass[str]', etc.
@@ -951,7 +952,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
         else:
             fullname = t.type.fullname
         any_type = get_omitted_any(disallow_any, fail, note, t, fullname, unexpanded_type)
-        t.args = [any_type] * len(t.type.type_vars)
+        t.args = (any_type,) * len(t.type.type_vars)
         return
     # Invalid number of type parameters.
     n = len(t.type.type_vars)
@@ -968,7 +969,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
     # things to be right.
-    t.args = [AnyType(TypeOfAny.from_error) for _ in t.type.type_vars]
+    t.args = tuple(AnyType(TypeOfAny.from_error) for _ in t.type.type_vars)
     t.invalid = True
 
 

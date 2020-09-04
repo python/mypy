@@ -17,12 +17,12 @@ from mypy.nodes import (
 
 from mypyc.ir.ops import (
     Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, PrimitiveOp, RaiseStandardError, LoadErrorValue,
+    AssignmentTargetAttr, AssignmentTargetTuple, RaiseStandardError, LoadErrorValue,
     BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import true_op, false_op, type_op, get_module_dict_op
+from mypyc.primitives.misc_ops import type_op, get_module_dict_op
 from mypyc.primitives.dict_ops import dict_get_item_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
@@ -125,9 +125,9 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
             base = name = node_id.split('.')[0]
 
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-        mod_dict = builder.primitive_op(get_module_dict_op, [], node.line)
-        obj = builder.primitive_op(dict_get_item_op,
-                                [mod_dict, builder.load_static_unicode(base)], node.line)
+        mod_dict = builder.call_c(get_module_dict_op, [], node.line)
+        obj = builder.call_c(dict_get_item_op,
+                             [mod_dict, builder.load_static_unicode(base)], node.line)
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_static_unicode(name), obj],
             result_type=None, line=node.line)
@@ -238,12 +238,12 @@ def transform_continue_stmt(builder: IRBuilder, node: ContinueStmt) -> None:
 
 def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
     if s.expr is None:
-        builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         return
 
     exc = builder.accept(s.expr)
-    builder.primitive_op(raise_exception_op, [exc], s.line)
+    builder.call_c(raise_exception_op, [exc], s.line)
     builder.add(Unreachable())
 
 
@@ -278,7 +278,7 @@ def transform_try_except(builder: IRBuilder,
     # exception is raised, based on the exception in exc_info.
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
-    old_exc = builder.maybe_spill(builder.primitive_op(error_catch_op, [], line))
+    old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
     builder.nonlocal_control.append(
         ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
@@ -288,7 +288,7 @@ def transform_try_except(builder: IRBuilder,
         next_block = None
         if type:
             next_block, body_block = BasicBlock(), BasicBlock()
-            matches = builder.primitive_op(
+            matches = builder.call_c(
                 exc_matches_op, [builder.accept(type)], type.line
             )
             builder.add(Branch(matches, body_block, next_block, Branch.BOOL_EXPR))
@@ -297,7 +297,7 @@ def transform_try_except(builder: IRBuilder,
             target = builder.get_assignment_target(var)
             builder.assign(
                 target,
-                builder.primitive_op(get_exc_value_op, [], var.line),
+                builder.call_c(get_exc_value_op, [], var.line),
                 var.line
             )
         handler_body()
@@ -307,7 +307,7 @@ def transform_try_except(builder: IRBuilder,
 
     # Reraise the exception if needed
     if next_block:
-        builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
 
     builder.nonlocal_control.pop()
@@ -317,15 +317,15 @@ def transform_try_except(builder: IRBuilder,
     # restore the saved exc_info information and continue propagating
     # the exception if it exists.
     builder.activate_block(cleanup_block)
-    builder.primitive_op(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
     builder.goto(exit_block)
 
     # Cleanup for if we leave except through a raised exception:
     # restore the saved exc_info information and continue propagating
     # the exception.
     builder.activate_block(double_except_block)
-    builder.primitive_op(restore_exc_info_op, [builder.read(old_exc)], line)
-    builder.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
     # If present, compile the else body in the obvious way
@@ -402,7 +402,7 @@ def try_finally_entry_blocks(builder: IRBuilder,
                 builder.add(LoadErrorValue(builder.ret_types[-1]))
             )
         )
-    builder.add(Assign(old_exc, builder.primitive_op(error_catch_op, [], -1)))
+    builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], -1)))
     builder.goto(finally_block)
 
     return old_exc
@@ -442,7 +442,7 @@ def try_finally_resolve_control(builder: IRBuilder,
 
     # Reraise the exception if there was one
     builder.activate_block(reraise)
-    builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+    builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
     builder.builder.pop_error_handler()
 
@@ -463,7 +463,7 @@ def try_finally_resolve_control(builder: IRBuilder,
     # If there was an exception, restore again
     builder.activate_block(cleanup_block)
     finally_control.gen_cleanup(builder, -1)
-    builder.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
+    builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
     return out_block
@@ -520,7 +520,7 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
 
 
 def get_sys_exc_info(builder: IRBuilder) -> List[Value]:
-    exc_info = builder.primitive_op(get_exc_info_op, [], -1)
+    exc_info = builder.call_c(get_exc_info_op, [], -1)
     return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
 
 
@@ -534,13 +534,13 @@ def transform_with(builder: IRBuilder,
     # We could probably optimize the case where the manager is compiled by us,
     # but that is not our common case at all, so.
     mgr_v = builder.accept(expr)
-    typ = builder.primitive_op(type_op, [mgr_v], line)
+    typ = builder.call_c(type_op, [mgr_v], line)
     exit_ = builder.maybe_spill(builder.py_get_attr(typ, '__exit__', line))
     value = builder.py_call(
         builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
     )
     mgr = builder.maybe_spill(mgr_v)
-    exc = builder.maybe_spill_assignable(builder.primitive_op(true_op, [], -1))
+    exc = builder.maybe_spill_assignable(builder.true())
 
     def try_body() -> None:
         if target:
@@ -548,7 +548,7 @@ def transform_with(builder: IRBuilder,
         body()
 
     def except_body() -> None:
-        builder.assign(exc, builder.primitive_op(false_op, [], -1), line)
+        builder.assign(exc, builder.false(), line)
         out_block, reraise_block = BasicBlock(), BasicBlock()
         builder.add_bool_branch(
             builder.py_call(builder.read(exit_),
@@ -557,7 +557,7 @@ def transform_with(builder: IRBuilder,
             reraise_block
         )
         builder.activate_block(reraise_block)
-        builder.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.activate_block(out_block)
 
@@ -614,7 +614,7 @@ def transform_assert_stmt(builder: IRBuilder, a: AssertStmt) -> None:
         message = builder.accept(a.msg)
         exc_type = builder.load_module_attr_by_fullname('builtins.AssertionError', a.line)
         exc = builder.py_call(exc_type, [message], a.line)
-        builder.primitive_op(raise_exception_op, [exc], a.line)
+        builder.call_c(raise_exception_op, [exc], a.line)
     builder.add(Unreachable())
     builder.activate_block(ok_block)
 
@@ -634,7 +634,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         )
     elif isinstance(target, AssignmentTargetAttr):
         key = builder.load_static_unicode(target.attr)
-        builder.add(PrimitiveOp([target.obj, key], py_delattr_op, line))
+        builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.

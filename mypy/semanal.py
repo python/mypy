@@ -76,6 +76,7 @@ from mypy.nodes import (
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
+    ParamSpecExpr
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.typevars import fill_typevars
@@ -1921,6 +1922,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         # * type variable definition
         elif self.process_typevar_declaration(s):
             special_form = True
+        elif self.process_paramspec_declaration(s):
+            special_form = True
         # * type constructors
         elif self.analyze_namedtuple_assign(s):
             special_form = True
@@ -2320,8 +2323,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(lvalue.node, Var):
                     lvalue.node.is_abstract_var = True
         else:
-            if (any(isinstance(lv, NameExpr) and lv.is_inferred_def for lv in s.lvalues) and
-                    self.type and self.type.is_protocol and not self.is_func_scope()):
+            if (self.type and self.type.is_protocol and
+                    self.is_annotated_protocol_member(s) and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
@@ -2331,6 +2334,19 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+
+    def is_annotated_protocol_member(self, s: AssignmentStmt) -> bool:
+        """Check whether a protocol member is annotated.
+
+        There are some exceptions that can be left unannotated, like ``__slots__``."""
+        return any(
+            (
+                isinstance(lv, NameExpr)
+                and lv.name != '__slots__'
+                and lv.is_inferred_def
+            )
+            for lv in s.lvalues
+        )
 
     def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc.
@@ -2823,7 +2839,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         Return True if this looks like a type variable declaration (but maybe
         with errors), otherwise return False.
         """
-        call = self.get_typevar_declaration(s)
+        call = self.get_typevarlike_declaration(s, ("typing.TypeVar",))
         if not call:
             return False
 
@@ -2834,7 +2850,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
 
         name = lvalue.name
-        if not self.check_typevar_name(call, name, s):
+        if not self.check_typevarlike_name(call, name, s):
             return False
 
         # Constraining types
@@ -2894,24 +2910,31 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.add_symbol(name, call.analyzed, s)
         return True
 
-    def check_typevar_name(self, call: CallExpr, name: str, context: Context) -> bool:
+    def check_typevarlike_name(self, call: CallExpr, name: str, context: Context) -> bool:
+        """Checks that the name of a TypeVar or ParamSpec matches its variable."""
         name = unmangle(name)
+        assert isinstance(call.callee, RefExpr)
+        typevarlike_type = (
+            call.callee.name if isinstance(call.callee, NameExpr) else call.callee.fullname
+        )
         if len(call.args) < 1:
-            self.fail("Too few arguments for TypeVar()", context)
+            self.fail("Too few arguments for {}()".format(typevarlike_type), context)
             return False
         if (not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
                 or not call.arg_kinds[0] == ARG_POS):
-            self.fail("TypeVar() expects a string literal as first argument", context)
+            self.fail("{}() expects a string literal as first argument".format(typevarlike_type),
+                      context)
             return False
         elif call.args[0].value != name:
-            msg = "String argument 1 '{}' to TypeVar(...) does not match variable name '{}'"
-            self.fail(msg.format(call.args[0].value, name), context)
+            msg = "String argument 1 '{}' to {}(...) does not match variable name '{}'"
+            self.fail(msg.format(call.args[0].value, typevarlike_type, name), context)
             return False
         return True
 
-    def get_typevar_declaration(self, s: AssignmentStmt) -> Optional[CallExpr]:
-        """Returns the TypeVar() call expression if `s` is a type var declaration
-        or None otherwise.
+    def get_typevarlike_declaration(self, s: AssignmentStmt,
+                                    typevarlike_types: Tuple[str, ...]) -> Optional[CallExpr]:
+        """Returns the call expression if `s` is a declaration of `typevarlike_type`
+        (TypeVar or ParamSpec), or None otherwise.
         """
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return None
@@ -2921,7 +2944,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         callee = call.callee
         if not isinstance(callee, RefExpr):
             return None
-        if callee.fullname != 'typing.TypeVar':
+        if callee.fullname not in typevarlike_types:
             return None
         return call
 
@@ -3007,6 +3030,41 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             variance = INVARIANT
         return variance, upper_bound
+
+    def process_paramspec_declaration(self, s: AssignmentStmt) -> bool:
+        """Checks if s declares a ParamSpec; if yes, store it in symbol table.
+
+        Return True if this looks like a ParamSpec (maybe with errors), otherwise return False.
+
+        In the future, ParamSpec may accept bounds and variance arguments, in which
+        case more aggressive sharing of code with process_typevar_declaration should be pursued.
+        """
+        call = self.get_typevarlike_declaration(
+            s, ("typing_extensions.ParamSpec", "typing.ParamSpec")
+        )
+        if not call:
+            return False
+
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        if s.type:
+            self.fail("Cannot declare the type of a parameter specification", s)
+            return False
+
+        name = lvalue.name
+        if not self.check_typevarlike_name(call, name, s):
+            return False
+
+        # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
+        # ParamSpec in a later PEP. If and when that happens, we should do something
+        # on the lines of process_typevar_parameters
+        paramspec_var = ParamSpecExpr(
+            name, self.qualified_name(name), self.object_type(), INVARIANT
+        )
+        paramspec_var.line = call.line
+        call.analyzed = paramspec_var
+        self.add_symbol(name, call.analyzed, s)
+        return True
 
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
@@ -4542,9 +4600,18 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.is_func_scope():
             assert self.locals[-1] is not None
             if escape_comprehensions:
+                assert len(self.locals) == len(self.is_comprehension_stack)
+                # Retrieve the symbol table from the enclosing non-comprehension scope.
                 for i, is_comprehension in enumerate(reversed(self.is_comprehension_stack)):
                     if not is_comprehension:
-                        names = self.locals[-1 - i]
+                        if i == len(self.locals) - 1:  # The last iteration.
+                            # The caller of the comprehension is in the global space.
+                            names = self.globals
+                        else:
+                            names_candidate = self.locals[-1 - i]
+                            assert names_candidate is not None, \
+                                "Escaping comprehension from invalid scope"
+                            names = names_candidate
                         break
                 else:
                     assert False, "Should have at least one non-comprehension scope"

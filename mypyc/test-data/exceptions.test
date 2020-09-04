@@ -9,22 +9,20 @@ def f(x: List[int]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: short_int
-    r1 :: object
-    r2, r3 :: int
+    r0 :: object
+    r1, r2 :: int
 L0:
-    r0 = 0
-    r1 = x[r0] :: list
-    if is_error(r1) goto L3 (error at f:3) else goto L1
+    r0 = CPyList_GetItemShort(x, 0)
+    if is_error(r0) goto L3 (error at f:3) else goto L1
 L1:
-    r2 = unbox(int, r1)
-    dec_ref r1
-    if is_error(r2) goto L3 (error at f:3) else goto L2
+    r1 = unbox(int, r0)
+    dec_ref r0
+    if is_error(r1) goto L3 (error at f:3) else goto L2
 L2:
-    return r2
+    return r1
 L3:
-    r3 = <error> :: int
-    return r3
+    r2 = <error> :: int
+    return r2
 
 [case testListAppendAndSetItemError]
 from typing import List
@@ -36,29 +34,26 @@ def f(x, y, z):
     x :: list
     y, z :: int
     r0 :: object
-    r1 :: bool
-    r2 :: None
-    r3 :: object
-    r4 :: bool
-    r5, r6 :: None
+    r1 :: int32
+    r2 :: object
+    r3 :: bool
+    r4 :: None
 L0:
     inc_ref y :: int
     r0 = box(int, y)
-    r1 = x.append(r0) :: list
+    r1 = PyList_Append(x, r0)
     dec_ref r0
-    if not r1 goto L3 (error at f:3) else goto L1 :: bool
+    if r1 < 0 goto L3 (error at f:3) else goto L1
 L1:
-    r2 = None
     inc_ref z :: int
-    r3 = box(int, z)
-    r4 = x.__setitem__(y, r3) :: list
-    if not r4 goto L3 (error at f:4) else goto L2 :: bool
+    r2 = box(int, z)
+    r3 = CPyList_SetItem(x, y, r2)
+    if not r3 goto L3 (error at f:4) else goto L2 :: bool
 L2:
-    r5 = None
-    return r5
+    return 1
 L3:
-    r6 = <error> :: None
-    return r6
+    r4 = <error> :: None
+    return r4
 
 [case testOptionalHandling]
 from typing import Optional
@@ -74,44 +69,35 @@ def f(x: Optional[A]) -> int:
 [out]
 def f(x):
     x :: union[__main__.A, None]
-    r0 :: None
-    r1 :: object
-    r2 :: bool
-    r3 :: short_int
-    r4 :: __main__.A
-    r5 :: None
-    r6 :: object
-    r7, r8 :: bool
-    r9, r10 :: short_int
-    r11 :: int
+    r0 :: object
+    r1 :: bool
+    r2 :: __main__.A
+    r3 :: object
+    r4, r5 :: bool
+    r6 :: int
 L0:
-    r0 = None
-    r1 = box(None, r0)
-    r2 = x is r1
-    if r2 goto L1 else goto L2 :: bool
+    r0 = box(None, 1)
+    r1 = x == r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = 1
-    return r3
+    return 2
 L2:
     inc_ref x
-    r4 = cast(__main__.A, x)
-    if is_error(r4) goto L6 (error at f:8) else goto L3
+    r2 = cast(__main__.A, x)
+    if is_error(r2) goto L6 (error at f:8) else goto L3
 L3:
-    r5 = None
-    r6 = box(None, r5)
-    r7 = r4 is r6
-    dec_ref r4
-    r8 = !r7
-    if r8 goto L4 else goto L5 :: bool
+    r3 = box(None, 1)
+    r4 = r2 == r3
+    dec_ref r2
+    r5 = r4 ^ 1
+    if r5 goto L4 else goto L5 :: bool
 L4:
-    r9 = 2
-    return r9
+    return 4
 L5:
-    r10 = 3
-    return r10
+    return 6
 L6:
-    r11 = <error> :: int
-    return r11
+    r6 = <error> :: int
+    return r6
 
 [case testListSum]
 from typing import List
@@ -125,53 +111,61 @@ def sum(a: List[int], l: int) -> int:
 [out]
 def sum(a, l):
     a :: list
-    l :: int
-    r0 :: short_int
-    sum :: int
-    r1 :: short_int
-    i :: int
+    l, sum, i :: int
+    r0 :: bool
+    r1 :: native_int
     r2 :: bool
-    r3 :: object
-    r4, r5 :: int
-    r6 :: short_int
-    r7, r8 :: int
+    r3 :: native_int
+    r4, r5, r6, r7 :: bool
+    r8 :: object
+    r9, r10, r11, r12 :: int
 L0:
-    r0 = 0
-    sum = r0
-    r1 = 0
-    i = r1
+    sum = 0
+    i = 0
 L1:
-    r2 = i < l :: int
-    if r2 goto L2 else goto L7 :: bool
+    r1 = i & 1
+    r2 = r1 == 0
+    r3 = l & 1
+    r4 = r3 == 0
+    r5 = r2 & r4
+    if r5 goto L2 else goto L3 :: bool
 L2:
-    r3 = a[i] :: list
-    if is_error(r3) goto L8 (error at sum:6) else goto L3
+    r6 = i < l :: signed
+    r0 = r6
+    goto L4
 L3:
-    r4 = unbox(int, r3)
-    dec_ref r3
-    if is_error(r4) goto L8 (error at sum:6) else goto L4
+    r7 = CPyTagged_IsLt_(i, l)
+    r0 = r7
 L4:
-    r5 = sum + r4 :: int
-    dec_ref sum :: int
-    dec_ref r4 :: int
-    sum = r5
-    r6 = 1
-    r7 = i + r6 :: int
-    dec_ref i :: int
-    i = r7
-    goto L1
+    if r0 goto L5 else goto L10 :: bool
 L5:
-    return sum
+    r8 = CPyList_GetItem(a, i)
+    if is_error(r8) goto L11 (error at sum:6) else goto L6
 L6:
-    r8 = <error> :: int
-    return r8
+    r9 = unbox(int, r8)
+    dec_ref r8
+    if is_error(r9) goto L11 (error at sum:6) else goto L7
 L7:
+    r10 = CPyTagged_Add(sum, r9)
+    dec_ref sum :: int
+    dec_ref r9 :: int
+    sum = r10
+    r11 = CPyTagged_Add(i, 2)
     dec_ref i :: int
-    goto L5
+    i = r11
+    goto L1
 L8:
+    return sum
+L9:
+    r12 = <error> :: int
+    return r12
+L10:
+    dec_ref i :: int
+    goto L8
+L11:
     dec_ref sum :: int
     dec_ref i :: int
-    goto L6
+    goto L9
 
 [case testTryExcept]
 def g() -> None:
@@ -190,45 +184,44 @@ def g():
     r7 :: str
     r8, r9 :: object
     r10 :: bool
-    r11, r12 :: None
+    r11 :: None
 L0:
 L1:
     r0 = builtins :: module
-    r1 = unicode_1 :: static  ('object')
-    r2 = getattr r0, r1
+    r1 = load_global CPyStatic_unicode_1 :: static  ('object')
+    r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
-    r3 = py_call(r2)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
     dec_ref r2
     if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
-    r4 = error_catch
-    r5 = unicode_2 :: static  ('weeee')
+    r4 = CPy_CatchError()
+    r5 = load_global CPyStatic_unicode_2 :: static  ('weeee')
     r6 = builtins :: module
-    r7 = unicode_3 :: static  ('print')
-    r8 = getattr r6, r7
+    r7 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r8 = CPyObject_GetAttr(r6, r7)
     if is_error(r8) goto L6 (error at g:5) else goto L4
 L4:
-    r9 = py_call(r8, r5)
+    r9 = PyObject_CallFunctionObjArgs(r8, r5, 0)
     dec_ref r8
     if is_error(r9) goto L6 (error at g:5) else goto L11
 L5:
-    restore_exc_info r4
+    CPy_RestoreExcInfo(r4)
     dec_ref r4
     goto L8
 L6:
-    restore_exc_info r4
+    CPy_RestoreExcInfo(r4)
     dec_ref r4
-    r10 = keep_propagating
+    r10 = CPy_KeepPropagating()
     if not r10 goto L9 else goto L7 :: bool
 L7:
     unreachable
 L8:
-    r11 = None
-    return r11
+    return 1
 L9:
-    r12 = <error> :: None
-    return r12
+    r11 = <error> :: None
+    return r11
 L10:
     dec_ref r3
     goto L8
@@ -258,20 +251,20 @@ def a():
     r12 :: object
     r13 :: str
     r14, r15 :: object
-    r16, r17 :: bool
-    r18 :: str
+    r16 :: bool
+    r17 :: str
 L0:
 L1:
     r0 = builtins :: module
-    r1 = unicode_1 :: static  ('print')
-    r2 = getattr r0, r1
+    r1 = load_global CPyStatic_unicode_1 :: static  ('print')
+    r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
-    r3 = py_call(r2)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
     dec_ref r2
     if is_error(r3) goto L5 (error at a:3) else goto L20
 L3:
-    r4 = unicode_2 :: static  ('hi')
+    r4 = load_global CPyStatic_unicode_2 :: static  ('hi')
     inc_ref r4
     r5 = r4
 L4:
@@ -281,23 +274,23 @@ L4:
 L5:
     r9 = <error> :: str
     r5 = r9
-    r10 = error_catch
+    r10 = CPy_CatchError()
     r6 = r10
 L6:
-    r11 = unicode_3 :: static  ('goodbye!')
+    r11 = load_global CPyStatic_unicode_3 :: static  ('goodbye!')
     r12 = builtins :: module
-    r13 = unicode_1 :: static  ('print')
-    r14 = getattr r12, r13
+    r13 = load_global CPyStatic_unicode_1 :: static  ('print')
+    r14 = CPyObject_GetAttr(r12, r13)
     if is_error(r14) goto L13 (error at a:6) else goto L7
 L7:
-    r15 = py_call(r14, r11)
+    r15 = PyObject_CallFunctionObjArgs(r14, r11, 0)
     dec_ref r14
     if is_error(r15) goto L13 (error at a:6) else goto L21
 L8:
     if is_error(r6) goto L11 else goto L9
 L9:
-    reraise_exc; r16 = 0
-    if not r16 goto L13 else goto L22 :: bool
+    CPy_Reraise()
+    if not 0 goto L13 else goto L22 :: bool
 L10:
     unreachable
 L11:
@@ -309,18 +302,18 @@ L13:
 L14:
     if is_error(r6) goto L16 else goto L15
 L15:
-    restore_exc_info r6
+    CPy_RestoreExcInfo(r6)
     dec_ref r6
 L16:
-    r17 = keep_propagating
-    if not r17 goto L19 else goto L17 :: bool
+    r16 = CPy_KeepPropagating()
+    if not r16 goto L19 else goto L17 :: bool
 L17:
     unreachable
 L18:
     unreachable
 L19:
-    r18 = <error> :: str
-    return r18
+    r17 = <error> :: str
+    return r17
 L20:
     dec_ref r3
     goto L3
@@ -341,10 +334,8 @@ def lol() -> None:
     pass
 [out]
 def lol():
-    r0 :: None
 L0:
-    r0 = None
-    return r0
+    return 1
 
 [case testExceptUndefined1]
 from typing import Any
@@ -366,16 +357,16 @@ def lol(x):
     r5 :: object
 L0:
 L1:
-    r0 = unicode_3 :: static  ('foo')
-    r1 = getattr x, r0
+    r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
+    r1 = CPyObject_GetAttr(x, r0)
     if is_error(r1) goto L3 (error at lol:4) else goto L2
 L2:
     st = r1
     goto L4
 L3:
-    r2 = error_catch
-    r3 = unicode_4 :: static
-    restore_exc_info r2
+    r2 = CPy_CatchError()
+    r3 = load_global CPyStatic_unicode_4 :: static
+    CPy_RestoreExcInfo(r2)
     dec_ref r2
     inc_ref r3
     return r3
@@ -406,21 +397,21 @@ def lol(x):
     r9 :: object
 L0:
 L1:
-    r0 = unicode_3 :: static  ('foo')
-    r1 = getattr x, r0
+    r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
+    r1 = CPyObject_GetAttr(x, r0)
     if is_error(r1) goto L4 (error at lol:4) else goto L15
 L2:
     a = r1
-    r2 = unicode_4 :: static  ('bar')
-    r3 = getattr x, r2
+    r2 = load_global CPyStatic_unicode_4 :: static  ('bar')
+    r3 = CPyObject_GetAttr(x, r2)
     if is_error(r3) goto L4 (error at lol:5) else goto L16
 L3:
     b = r3
     goto L6
 L4:
-    r4 = error_catch
+    r4 = CPy_CatchError()
 L5:
-    restore_exc_info r4
+    CPy_RestoreExcInfo(r4)
     dec_ref r4
 L6:
     if is_error(a) goto L17 else goto L9
@@ -437,7 +428,7 @@ L10:
 L11:
     unreachable
 L12:
-    r6 = a + b
+    r6 = PyNumber_Add(a, b)
     xdec_ref a
     xdec_ref b
     if is_error(r6) goto L14 (error at lol:9) else goto L13
@@ -475,45 +466,43 @@ def f(b):
     r4 :: object
     r5 :: str
     r6, r7 :: object
-    r8 :: None
-    r9 :: bool
-    r10 :: None
+    r8 :: bool
+    r9 :: None
 L0:
-    r0 = unicode_1 :: static  ('a')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('a')
     inc_ref r0
     u = r0
 L1:
     if b goto L10 else goto L11 :: bool
 L2:
-    r1 = unicode_2 :: static  ('b')
+    r1 = load_global CPyStatic_unicode_2 :: static  ('b')
     inc_ref r1
     v = r1
-    r2 = v is u
-    r3 = !r2
+    r2 = v == u
+    r3 = r2 ^ 1
     if r3 goto L11 else goto L1 :: bool
 L3:
     r4 = builtins :: module
-    r5 = unicode_3 :: static  ('print')
-    r6 = getattr r4, r5
+    r5 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r6 = CPyObject_GetAttr(r4, r5)
     if is_error(r6) goto L12 (error at f:7) else goto L4
 L4:
     if is_error(v) goto L13 else goto L7
 L5:
     raise UnboundLocalError("local variable 'v' referenced before assignment")
-    if not r9 goto L9 (error at f:7) else goto L6 :: bool
+    if not r8 goto L9 (error at f:7) else goto L6 :: bool
 L6:
     unreachable
 L7:
-    r7 = py_call(r6, v)
+    r7 = PyObject_CallFunctionObjArgs(r6, v, 0)
     dec_ref r6
     xdec_ref v
     if is_error(r7) goto L9 (error at f:7) else goto L14
 L8:
-    r8 = None
-    return r8
+    return 1
 L9:
-    r10 = <error> :: None
-    return r10
+    r9 = <error> :: None
+    return r9
 L10:
     xdec_ref v
     goto L2

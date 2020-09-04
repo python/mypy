@@ -1,6 +1,6 @@
 """Semantic analysis of TypedDict definitions."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 
@@ -136,7 +136,7 @@ class TypedDictAnalyzer:
                     self.fail('Overwriting TypedDict field "{}" while extending'
                               .format(name), stmt)
                 if name in fields:
-                    self.fail('Duplicate TypedDict field "{}"'.format(name), stmt)
+                    self.fail('Duplicate TypedDict key "{}"'.format(name), stmt)
                     continue
                 # Append name and type in this case...
                 fields.append(name)
@@ -215,8 +215,8 @@ class TypedDictAnalyzer:
         call.analyzed.set_line(call.line, call.column)
         return True, info
 
-    def parse_typeddict_args(self, call: CallExpr) -> Optional[Tuple[str, List[str], List[Type],
-                                                                     bool, bool]]:
+    def parse_typeddict_args(
+            self, call: CallExpr) -> Optional[Tuple[str, List[str], List[Type], bool, bool]]:
         """Parse typed dict call expression.
 
         Return names, types, totality, was there an error during parsing.
@@ -271,11 +271,16 @@ class TypedDictAnalyzer:
 
         Return names, types, was there an error. If some type is not ready, return None.
         """
+        seen_keys = set()
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for (field_name_expr, field_type_expr) in dict_items:
             if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
-                items.append(field_name_expr.value)
+                key = field_name_expr.value
+                items.append(key)
+                if key in seen_keys:
+                    self.fail('Duplicate TypedDict key "{}"'.format(key), field_name_expr)
+                seen_keys.add(key)
             else:
                 name_context = field_name_expr or field_type_expr
                 self.fail_typeddict_arg("Invalid TypedDict() field name", name_context)

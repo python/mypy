@@ -91,7 +91,7 @@ def find_module_path_and_all_py2(module: str,
     except subprocess.CalledProcessError as e:
         path = find_module_path_using_py2_sys_path(module, interpreter)
         if path is None:
-            raise CantImport(module, str(e))
+            raise CantImport(module, str(e)) from e
         return path, None
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
@@ -153,7 +153,7 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
         # Fall back to finding the module using sys.path.
         path = find_module_path_using_sys_path(module, sys.path)
         if path is None:
-            raise CantImport(module, str(e))
+            raise CantImport(module, str(e)) from e
         return path, None
     if mod.is_c_module:
         return None

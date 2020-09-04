@@ -20,7 +20,7 @@ For the core of the IR transform implementation, look at build_ir()
 below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import List, Dict, Callable, Any, TypeVar, cast
 
 from mypy.nodes import MypyFile, Expression, ClassDef

@@ -2,79 +2,71 @@ Introduction
 ============
 
 Mypyc is a compiler for a strict, statically typed Python variant that
-creates CPython C extension modules. The goal of mypyc is to speed up
-Python modules -- code compiled with mypyc is often much faster than
-CPython. Mypyc uses Python type hints to generate fast code, but it
-also restricts the use of some dynamic Python features to gain
-performance.
+generates CPython C extension modules. Code compiled with mypyc is
+often much faster than CPython. Mypyc uses Python `type hints
+<https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html>`_ to
+generate fast code, and it also restricts the use of some dynamic
+Python features to gain performance.
 
 Mypyc uses `mypy <http://www.mypy-lang.org/>`_ to perform type
 checking and type inference. Most type checking features in the stdlib
 `typing <https://docs.python.org/3/library/typing.html>`_ module are
 supported, including generic types, optional and union types, tuple
 types, and type variables. Using type hints is not necessary, but type
-annotations are often the key to getting impressive performance gains.
+annotations are the key to impressive performance gains.
 
 Compiled modules can import arbitrary Python modules, including
 third-party libraries, and compiled modules can be freely used from
-other Python modules.  Typically you use mypyc to only compile modules
-that contain performance bottlenecks.
+other Python modules. Often you'd use mypyc to only compile modules
+with performance bottlenecks.
 
-You can run compiled modules also as normal, interpreted Python
-modules, since mypyc only compiles valid Python code. This means that
-all Python developer tools and debuggers can be used (though some only
-fully work in interpreted mode).
+You can run the modules you compile also as normal, interpreted Python
+modules. Mypyc only compiles valid Python code. This means that all
+Python developer tools and debuggers can be used, though some only
+fully work in interpreted mode.
 
 How fast is mypyc
 -----------------
 
 The speed improvement from compilation depends on many factors.
-Certain operations will be a lot faster, while other things will
-remain the same.
+Certain operations will be a lot faster, while others will get no
+speedup.
 
 These estimates give a rough idea of what to expect (2x improvement
 halves the runtime):
 
-* Existing code with type annotations may get **1.5x to 5x** better
-  performance.
+* Typical code with type annotations may get **1.5x to 5x** faster.
 
-* Existing code with *no* type annotations can expect **1.0x to 1.3x**
-  better performance.
+* Typical code with *no* type annotations may get **1.0x to 1.3x**
+  faster.
 
-* Code optimized for mypyc may see **5x to 10x** performance
-  improvement.
+* Code optimized for mypyc may get **5x to 10x** faster.
 
-Only performance of compiled modules improves. Time spent in libraries
-or on I/O will not change (unless you also compile libraries).
+Remember that only performance of compiled modules improves. Time
+spent in libraries or on I/O will not change (unless you also compile
+libraries).
 
-Why does speed matter
----------------------
+Why speed matters
+-----------------
 
-Here are reasons why speed can be important:
+Faster code has many benefits, some obvious and others less so:
 
-* It can lower hardware costs. If a server application is 2x faster,
-  it may only need half as much hardware to run.
+* Users prefer efficient and responsive applications, tools and
+  libraries.
 
-* It can improve user experience. If a request can be served in half
-  the time, it can help you attract more users.
+* If your server application is faster, you need less hardware, which
+  saves money.
 
-* It can make your library or tool more popular. If there are two
-  options, and one of them is 2x faster, many users will pick the
-  faster one.
+* Faster code uses less energy, especially on servers that run 24/7.
+  This lowers your environmental footprint.
 
-* More efficient code uses less energy to run.
-
-* Compiled code may make your tests run faster, or allow batch jobs to
-  complete quicker, reducing wasted time. (This needs to offset
-  compilation time.)
-
-* Python is popular. Even a small efficiency gain across the Python
-  community can have a big impact (say, in a popular library).
+* If tests or batch jobs run faster, you'll be more productive and
+  save time.
 
 How does mypyc work
 -------------------
 
-Mypyc can produce fast code through several features:
+Mypyc produces fast code via several techniques:
 
 * Mypyc uses *ahead-of-time compilation* to native code. This removes
   CPython interpreter overhead.
@@ -91,9 +83,9 @@ Mypyc can produce fast code through several features:
   attributes declared ``Final`` are immutable (and tries to enforce
   this).
 
-* Classes are usually compiled to *C extension classes*. They use
+* Most classes are compiled to *C extension classes*. They use
   `vtables <https://en.wikipedia.org/wiki/Virtual_method_table>`_ for
-  efficient method calls and attribute accesses.
+  fast method calls and attribute access.
 
 * Mypyc uses efficient (unboxed) representations for some primitive
   types, such as integers and booleans.
@@ -101,14 +93,7 @@ Mypyc can produce fast code through several features:
 Why mypyc
 ---------
 
-**High performance and high productivity.** Since code compiled with
-mypyc can be run with CPython without compilation, and mypyc supports
-most Python features, mypyc improves performance of Python with minor
-changes to workflows, and with minimal productivity impact.
-
-**Migration path for existing Python code.** Existing Python code
-often requires only minor changes to compile using mypyc, especially
-if it's already using type annotations and mypy for type checking.
+Here are some mypyc properties and features that can be useful.
 
 **Powerful Python types.** Mypyc leverages most features of standard
 Python type hint syntax, unlike tools such as Cython, which focus on
@@ -118,56 +103,61 @@ such as local type inference, generics, optional types, tuple types
 and union types. Type hints act as machine-checked documentation,
 making code easier to understand and modify.
 
-**Static and runtime type safety.** Mypyc aims to protect you from
-segfaults and memory corruption. We consider any unexpected runtime
-type safety violation as a bug. Mypyc uses mypy for powerful type
+**Fast program startup.** Python implementations using a JIT compiler,
+such as PyPy, slow down program startup, sometimes significantly.
+Mypyc uses ahead-of-time compilation, so compilation does not slow
+down program startup.
+
+**Python ecosystem compatibility.** Since mypyc uses the standard
+CPython runtime, you can freely use the stdlib and use pip to install
+arbitary third-party libraries, including C extensions.
+
+**Migration path for existing Python code.** Existing Python code
+often requires only minor changes to compile using mypyc.
+
+**No need to wait for compilation.** Compiled code also runs as normal
+Python code. You can use intepreted Python during development, with
+familiar workflows.
+
+**Runtime type safety.** Mypyc aims to protect you from segfaults and
+memory corruption. We consider any unexpected runtime type safety
+violation as a bug.
+
+**Find errors statically.** Mypyc uses mypy for powerful static type
 checking that will catch many bugs, saving you from a lot of
 debugging.
 
-**Fast program startup.** Python implementations using a JIT compiler,
-such as PyPy, slow down program startup, sometimes significantly.
-Mypyc uses ahead-of-time compilation, so compilation does not
-happen during program startup.
-
-**Ecosystem compatibility.** Since mypyc uses unmodified CPython as
-the runtime, the stdlib and all existing third-party libraries,
-including C extensions, continue to work.
-
-**Easy path to "real" static typing.** Mypyc is an easy way to get
-started with a statically typed language, with only a small set of
-concepts to learn beyond Python skills. Unlike with a completely new
-language, such as Go, Rust, or C++, you can become productive with
-mypyc in a matter of hours, since the libraries, the tools and the
-Python ecosystem are still there for you.
+**Easy path to static typing.** Mypyc lets Python developers easily
+dip their toes into modern static typing, without having to learn all
+new syntax, libraries and idioms.
 
 Use cases for mypyc
 -------------------
 
-Here are examples of use cases where mypyc can be effective:
+Here are examples of use cases where mypyc can be effective.
 
-* Your project has a particular module that is critical for
-  performance. Add type annotations and compile it for quick
-  performance gains.
+**Address a performance bottleneck.** Profiling shows that most time
+is spent in a certain Python module. Add type annotations and compile
+the module for performance gains.
 
-* You've been using mypy to type check your code. Using mypyc is now
-  easy since your code is already annotated.
+**Leverage existing type hints.** You already use mypy to type check
+your code. Using mypyc will now be easy, since you already use static
+typing.
 
-* You want your entire program to be as fast as possible.  You compile
-  all modules (except tests) for each release.  You continue to use
-  interpreted mode during development, for a faster edit-run cycle.
-  (This is how mypy achieved a 4x end-to-end performance improvement
-  through mypyc.)
+**Compile everything.** You want your whole application to be fast.
+During development you use interpreted mode, for a quick edit-run
+cycle, but in your releases all (non-test) code is compiled. This is
+how mypy achieved a 4x performance improvement using mypyc.
 
-* You are writing a new module that must be fast. You write the module
-  in Python, and focus on primitives that mypyc can optimize well. The
-  module is much faster when compiled, and you've saved a lot of
-  effort compared to writing an extension in C (and you don't need to
-  know C).
+**Alternative to C.** You are writing a new module that must be fast.
+You write the module in Python, and try to use operations that mypyc
+can optimize well. The module is much faster when compiled, and you've
+saved a lot of effort compared to writing an extension in C (and you
+don't need to know C).
 
-* You've written a C extension, but you are unhappy with it, and would
-  prefer to maintain Python code. In some cases you can switch to
-  Python and use mypyc to get performance comparable to the
-  original C.
+**Rewriting a C extension.** You've written a C extension, but
+maintaining C code is no fun. You might be able to switch to Python
+and use mypyc to get performance comparable to the original C.
 
 Development status
 ------------------

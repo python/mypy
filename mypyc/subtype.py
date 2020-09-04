@@ -1,7 +1,7 @@
 """Subtype check for RTypes."""
 
 from mypyc.ir.rtypes import (
-    RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion,
+    RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion, RStruct,
     is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive,
     is_short_int_rprimitive,
     is_object_rprimitive
@@ -55,6 +55,9 @@ class SubtypeVisitor(RTypeVisitor[bool]):
             return len(self.right.types) == len(left.types) and all(
                 is_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types))
         return False
+
+    def visit_rstruct(self, left: RStruct) -> bool:
+        return isinstance(self.right, RStruct) and self.right.name == left.name
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)

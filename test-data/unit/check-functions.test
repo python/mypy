@@ -46,7 +46,10 @@ class A(object):
     def f(self, a: int, b: str) -> None: pass
 
 class B(A):
-    def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
+    def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+                                              # N: This violates the Liskov substitution principle \
+                                              # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides \
+                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str" 
 
 class C(A):
     def f(self, foo: int, bar: str) -> None: pass
@@ -2569,3 +2572,9 @@ lambda a=nonsense: a  # E: Name 'nonsense' is not defined
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
 def f(x: int = i):  # E: Name 'i' is not defined
     i = 42
+
+[case testRevealTypeOfCallExpressionReturningNoneWorks]
+def foo() -> None:
+    pass
+
+reveal_type(foo()) # N: Revealed type is 'None'

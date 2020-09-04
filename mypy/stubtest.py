@@ -23,6 +23,7 @@ import mypy.build
 import mypy.modulefinder
 import mypy.types
 from mypy import nodes
+from mypy.config_parser import parse_config_file
 from mypy.options import Options
 from mypy.util import FancyFormatter
 
@@ -237,8 +238,11 @@ def verify_typeinfo(
         return
 
     to_check = set(stub.names)
+    dunders_to_check = ("__init__", "__new__", "__call__")
     # cast to workaround mypyc complaints
-    to_check.update(m for m in cast(Any, vars)(runtime) if not m.startswith("_"))
+    to_check.update(
+        m for m in cast(Any, vars)(runtime) if m in dunders_to_check or not m.startswith("_")
+    )
 
     for entry in sorted(to_check):
         mangled_entry = entry
@@ -254,7 +258,7 @@ def verify_typeinfo(
 def _verify_static_class_methods(
     stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
 ) -> Iterator[str]:
-    if runtime.__name__ == "__new__":
+    if stub.name == "__new__":
         # Special cased by Python, so never declared as staticmethod
         return
     if inspect.isbuiltin(runtime):
@@ -662,15 +666,6 @@ def verify_funcitem(
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        try:
-            # We shouldn't really get here since that would involve something not existing both in
-            # the stub and the runtime, however, some modules like distutils.command have some
-            # weird things going on. Try to see if we can find a runtime object by importing it,
-            # otherwise crash.
-            runtime = importlib.import_module(".".join(object_path))
-        except ImportError:
-            raise RuntimeError
     yield Error(object_path, "is not present in stub", stub, runtime)
 
 
@@ -963,7 +958,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     except mypy.errors.CompileError as e:
         output = [_style("error: ", color="red", bold=True), "failed mypy compile.\n", str(e)]
         print("".join(output))
-        raise RuntimeError
+        raise RuntimeError from e
     if res.errors:
         output = [_style("error: ", color="red", bold=True), "failed mypy build.\n"]
         print("".join(output) + "\n".join(res.errors))
@@ -1046,6 +1041,12 @@ def test_stubs(args: argparse.Namespace) -> int:
     options = Options()
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
+    options.config_file = args.mypy_config_file
+
+    if options.config_file:
+        def set_strict_flags() -> None:  # not needed yet
+            return
+        parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
@@ -1138,6 +1139,19 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         "--ignore-unused-whitelist",
         action="store_true",
         help="Ignore unused whitelist entries",
+    )
+    config_group = parser.add_argument_group(
+        title='mypy config file',
+        description="Use a config file instead of command line arguments. "
+                    "Plugins and mypy path are the only supported "
+                    "configurations.",
+    )
+    config_group.add_argument(
+        '--mypy-config-file',
+        help=(
+            "An existing mypy configuration file, currently used by stubtest to help "
+            "determine mypy path and plugins"
+        ),
     )
 
     return parser.parse_args(args)
