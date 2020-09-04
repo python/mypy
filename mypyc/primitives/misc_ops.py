@@ -179,7 +179,7 @@ type_object_op = load_address_op(
 pytype_from_template_op = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, str_rprimitive],
     return_type=object_rprimitive,
-    c_function_name='CPyType_FromTemplateWarpper',
+    c_function_name='CPyType_FromTemplate',
     error_kind=ERR_MAGIC)
 
 # Create a dataclass from an extension class. See
