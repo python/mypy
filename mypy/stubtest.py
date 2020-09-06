@@ -755,7 +755,7 @@ def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
         # It's enough like a property...
         return
     # Sometimes attributes pretend to be properties, for instance, to express that they
-    # are read only. So whitelist if runtime_type matches the return type of stub.
+    # are read only. So allowlist if runtime_type matches the return type of stub.
     runtime_type = get_mypy_type_of_runtime_value(runtime)
     func_type = (
         stub.func.type.ret_type if isinstance(stub.func.type, mypy.types.CallableType) else None
@@ -1001,14 +1001,14 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     return sorted(modules)
 
 
-def get_whitelist_entries(whitelist_file: str) -> Iterator[str]:
+def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
     def strip_comments(s: str) -> str:
         try:
             return s[: s.index("#")].strip()
         except ValueError:
             return s.strip()
 
-    with open(whitelist_file) as f:
+    with open(allowlist_file) as f:
         for line in f.readlines():
             entry = strip_comments(line)
             if entry:
@@ -1017,17 +1017,17 @@ def get_whitelist_entries(whitelist_file: str) -> Iterator[str]:
 
 def test_stubs(args: argparse.Namespace) -> int:
     """This is stubtest! It's time to test the stubs!"""
-    # Load the whitelist. This is a series of strings corresponding to Error.object_desc
-    # Values in the dict will store whether we used the whitelist entry or not.
-    whitelist = {
+    # Load the allowlist. This is a series of strings corresponding to Error.object_desc
+    # Values in the dict will store whether we used the allowlist entry or not.
+    allowlist = {
         entry: False
-        for whitelist_file in args.whitelist
-        for entry in get_whitelist_entries(whitelist_file)
+        for allowlist_file in args.allowlist
+        for entry in get_allowlist_entries(allowlist_file)
     }
-    whitelist_regexes = {entry: re.compile(entry) for entry in whitelist}
+    allowlist_regexes = {entry: re.compile(entry) for entry in allowlist}
 
-    # If we need to generate a whitelist, we store Error.object_desc for each error here.
-    generated_whitelist = set()
+    # If we need to generate an allowlist, we store Error.object_desc for each error here.
+    generated_allowlist = set()
 
     modules = args.modules
     if args.check_typeshed:
@@ -1061,37 +1061,37 @@ def test_stubs(args: argparse.Namespace) -> int:
                 continue
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
-            if error.object_desc in whitelist:
-                whitelist[error.object_desc] = True
+            if error.object_desc in allowlist:
+                allowlist[error.object_desc] = True
                 continue
-            is_whitelisted = False
-            for w in whitelist:
-                if whitelist_regexes[w].fullmatch(error.object_desc):
-                    whitelist[w] = True
-                    is_whitelisted = True
+            is_allowlisted = False
+            for w in allowlist:
+                if allowlist_regexes[w].fullmatch(error.object_desc):
+                    allowlist[w] = True
+                    is_allowlisted = True
                     break
-            if is_whitelisted:
+            if is_allowlisted:
                 continue
 
             # We have errors, so change exit code, and output whatever necessary
             exit_code = 1
-            if args.generate_whitelist:
-                generated_whitelist.add(error.object_desc)
+            if args.generate_allowlist:
+                generated_allowlist.add(error.object_desc)
                 continue
             print(error.get_description(concise=args.concise))
 
-    # Print unused whitelist entries
-    if not args.ignore_unused_whitelist:
-        for w in whitelist:
+    # Print unused allowlist entries
+    if not args.ignore_unused_allowlist:
+        for w in allowlist:
             # Don't consider an entry unused if it regex-matches the empty string
-            # This allows us to whitelist errors that don't manifest at all on some systems
-            if not whitelist[w] and not whitelist_regexes[w].fullmatch(""):
+            # This lets us allowlist errors that don't manifest at all on some systems
+            if not allowlist[w] and not allowlist_regexes[w].fullmatch(""):
                 exit_code = 1
-                print("note: unused whitelist entry {}".format(w))
+                print("note: unused allowlist entry {}".format(w))
 
-    # Print the generated whitelist
-    if args.generate_whitelist:
-        for e in sorted(generated_whitelist):
+    # Print the generated allowlist
+    if args.generate_allowlist:
+        for e in sorted(generated_allowlist):
             print(e)
         exit_code = 0
 
@@ -1121,24 +1121,27 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
     )
     parser.add_argument(
+        "--allowlist",
         "--whitelist",
         action="append",
         metavar="FILE",
         default=[],
         help=(
-            "Use file as a whitelist. Can be passed multiple times to combine multiple "
-            "whitelists. Whitelists can be created with --generate-whitelist"
+            "Use file as an allowlist. Can be passed multiple times to combine multiple "
+            "allowlists. Allowlists can be created with --generate-allowlist"
         ),
     )
     parser.add_argument(
+        "--generate-allowlist",
         "--generate-whitelist",
         action="store_true",
-        help="Print a whitelist (to stdout) to be used with --whitelist",
+        help="Print an allowlist (to stdout) to be used with --allowlist",
     )
     parser.add_argument(
+        "--ignore-unused-allowlist",
         "--ignore-unused-whitelist",
         action="store_true",
-        help="Ignore unused whitelist entries",
+        help="Ignore unused allowlist entries",
     )
     config_group = parser.add_argument_group(
         title='mypy config file',
