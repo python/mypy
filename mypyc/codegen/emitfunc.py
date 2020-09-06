@@ -481,11 +481,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
         src = self.reg(op.src)
-        type = self.ctype(op.type)
+        dest_type = self.ctype(op.dest_type)
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            self.emit_line('*(%s *)%s = %s;' % (type, dest, src))
+            self.emit_line('*(%s *)%s = %s;' % (dest_type, dest, src))
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)

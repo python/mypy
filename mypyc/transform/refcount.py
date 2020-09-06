@@ -114,7 +114,7 @@ def transform_block(block: BasicBlock,
                 # For assignments to registers that were already live,
                 # decref the old value.
                 if (dest not in pre_borrow[key] and dest in pre_live[key]):
-                    assert isinstance(op, Assign) or isinstance(op, SetMem)
+                    assert isinstance(op, Assign)
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
         ops.append(op)

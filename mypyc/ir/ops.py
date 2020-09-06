@@ -1438,7 +1438,8 @@ class SetMem(Op):
                  base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
-        self.type = type
+        self.type = RVoid
+        self.dest_type = type
         self.src = src
         self.dest = dest
         self.base = base
@@ -1457,7 +1458,7 @@ class SetMem(Op):
             base = env.format(', %r', self.base)
         else:
             base = ''
-        return env.format("set_mem %r, %r%s :: %r*", self.dest, self.src, base, self.type)
+        return env.format("set_mem %r, %r%s :: %r*", self.dest, self.src, base, self.dest_type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_set_mem(self)
