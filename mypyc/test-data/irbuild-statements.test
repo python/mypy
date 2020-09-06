@@ -697,9 +697,9 @@ L0:
     r2 = box(short_int, 4)
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3, r0 :: ptr*
-    set_mem r4 = r1, r0 :: builtins.object*
-    r5 = r4 + 8
-    set_mem r5 = r2, r0 :: builtins.object*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
     l = r0
     r6 = box(short_int, 2)
     r7 = PyObject_DelItem(l, r6)
@@ -726,19 +726,19 @@ L0:
     r7 = box(short_int, 14)
     r8 = get_element_ptr r0 ob_item :: PyListObject
     r9 = load_mem r8, r0 :: ptr*
-    set_mem r9 = r1, r0 :: builtins.object*
-    r10 = r9 + 8
-    set_mem r10 = r2, r0 :: builtins.object*
-    r11 = r9 + 16
-    set_mem r11 = r3, r0 :: builtins.object*
-    r12 = r9 + 24
-    set_mem r12 = r4, r0 :: builtins.object*
-    r13 = r9 + 32
-    set_mem r13 = r5, r0 :: builtins.object*
-    r14 = r9 + 40
-    set_mem r14 = r6, r0 :: builtins.object*
-    r15 = r9 + 48
-    set_mem r15 = r7, r0 :: builtins.object*
+    set_mem r9, r1, r0 :: builtins.object*
+    r10 = r9 + WORD_SIZE*1
+    set_mem r10, r2, r0 :: builtins.object*
+    r11 = r9 + WORD_SIZE*2
+    set_mem r11, r3, r0 :: builtins.object*
+    r12 = r9 + WORD_SIZE*3
+    set_mem r12, r4, r0 :: builtins.object*
+    r13 = r9 + WORD_SIZE*4
+    set_mem r13, r5, r0 :: builtins.object*
+    r14 = r9 + WORD_SIZE*5
+    set_mem r14, r6, r0 :: builtins.object*
+    r15 = r9 + WORD_SIZE*6
+    set_mem r15, r7, r0 :: builtins.object*
     l = r0
     r16 = box(short_int, 2)
     r17 = PyObject_DelItem(l, r16)

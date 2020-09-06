@@ -5,7 +5,7 @@ from typing import List
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, ERR_NEG_INT, EmitterInterface
 from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive,
-    c_int_rprimitive
+    c_int_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op
@@ -27,8 +27,8 @@ to_list = c_function_op(
     error_kind=ERR_MAGIC,
 )
 
-new_empty_list_op = c_custom_op(
-    arg_types=[c_int_rprimitive],
+new_list_op = c_custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PyList_New',
     error_kind=ERR_MAGIC)

@@ -53,7 +53,7 @@ L0:
     r2 = PyList_New(1)
     r3 = get_element_ptr r2 ob_item :: PyListObject
     r4 = load_mem r3, r2 :: ptr*
-    set_mem r4 = c, r2 :: builtins.object*
+    set_mem r4, c, r2 :: builtins.object*
     a = r2
     r5 = CPyList_GetItemShort(a, 0)
     r6 = cast(__main__.C, r5)

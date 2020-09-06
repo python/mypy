@@ -893,7 +893,7 @@ L0:
     r2 = box(short_int, 2)
     r3 = get_element_ptr r1 ob_item :: PyListObject
     r4 = load_mem r3, r1 :: ptr*
-    set_mem r4 = r2, r1 :: builtins.object*
+    set_mem r4, r2, r1 :: builtins.object*
     r5 = g(r1)
     r6 = box(None, 1)
     r7 = g(r6)
@@ -922,7 +922,7 @@ L0:
     r2 = PyList_New(1)
     r3 = get_element_ptr r2 ob_item :: PyListObject
     r4 = load_mem r3, r2 :: ptr*
-    set_mem r4 = y, r2 :: builtins.object*
+    set_mem r4, y, r2 :: builtins.object*
     a = r2
     r5 = (2, 4)
     r6 = box(tuple[int, int], r5)
@@ -1791,7 +1791,7 @@ L0:
     r5 = box(short_int, 2)
     r6 = get_element_ptr r4 ob_item :: PyListObject
     r7 = load_mem r6, r4 :: ptr*
-    set_mem r7 = r5, r4 :: builtins.object*
+    set_mem r7, r5, r4 :: builtins.object*
     r8 = box(tuple[int, int], r0)
     r9 = CPyList_Extend(r4, r8)
     r10 = PyList_AsTuple(r4)
@@ -1983,11 +1983,11 @@ L0:
     r4 = box(short_int, 6)
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5, r1 :: ptr*
-    set_mem r6 = r2, r1 :: builtins.object*
-    r7 = r6 + 8
-    set_mem r7 = r3, r1 :: builtins.object*
-    r8 = r6 + 16
-    set_mem r8 = r4, r1 :: builtins.object*
+    set_mem r6, r2, r1 :: builtins.object*
+    r7 = r6 + WORD_SIZE*1
+    set_mem r7, r3, r1 :: builtins.object*
+    r8 = r6 + WORD_SIZE*2
+    set_mem r8, r4, r1 :: builtins.object*
     r9 = 0
 L1:
     r10 = get_element_ptr r1 ob_size :: PyVarObject
@@ -2075,11 +2075,11 @@ L0:
     r4 = box(short_int, 6)
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5, r1 :: ptr*
-    set_mem r6 = r2, r1 :: builtins.object*
-    r7 = r6 + 8
-    set_mem r7 = r3, r1 :: builtins.object*
-    r8 = r6 + 16
-    set_mem r8 = r4, r1 :: builtins.object*
+    set_mem r6, r2, r1 :: builtins.object*
+    r7 = r6 + WORD_SIZE*1
+    set_mem r7, r3, r1 :: builtins.object*
+    r8 = r6 + WORD_SIZE*2
+    set_mem r8, r4, r1 :: builtins.object*
     r9 = 0
 L1:
     r10 = get_element_ptr r1 ob_size :: PyVarObject
@@ -2693,11 +2693,11 @@ L4:
     r74 = box(short_int, 6)
     r75 = get_element_ptr r71 ob_item :: PyListObject
     r76 = load_mem r75, r71 :: ptr*
-    set_mem r76 = r72, r71 :: builtins.object*
-    r77 = r76 + 8
-    set_mem r77 = r73, r71 :: builtins.object*
-    r78 = r76 + 16
-    set_mem r78 = r74, r71 :: builtins.object*
+    set_mem r76, r72, r71 :: builtins.object*
+    r77 = r76 + WORD_SIZE*1
+    set_mem r77, r73, r71 :: builtins.object*
+    r78 = r76 + WORD_SIZE*2
+    set_mem r78, r74, r71 :: builtins.object*
     r79 = __main__.globals :: static
     r80 = load_global CPyStatic_unicode_11 :: static  ('Bar')
     r81 = CPyDict_GetItem(r79, r80)

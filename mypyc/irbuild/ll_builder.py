@@ -43,7 +43,7 @@ from mypyc.primitives.registry import (
     c_binary_ops, c_unary_ops
 )
 from mypyc.primitives.list_ops import (
-    list_extend_op, new_empty_list_op
+    list_extend_op, new_list_op
 )
 from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
 from mypyc.primitives.dict_ops import (
@@ -757,22 +757,22 @@ class LowLevelIRBuilder:
         return result
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
-        length = self.add(LoadInt(len(values), line, rtype=c_int_rprimitive))
-        empty_list = self.call_c(new_empty_list_op, [length], line)
+        length = self.add(LoadInt(len(values), line, rtype=c_pyssize_t_rprimitive))
+        result_list = self.call_c(new_list_op, [length], line)
         if len(values) == 0:
-            return empty_list
+            return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
-        ob_item_ptr = self.add(GetElementPtr(empty_list, PyListObject, 'ob_item', line))
-        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, empty_list, line))
+        ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
+        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, result_list, line))
         for i in range(len(values)):
             if i == 0:
                 item_address = ob_item_base
             else:
-                offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=pointer_rprimitive))
+                offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=c_pyssize_t_rprimitive))
                 item_address = self.add(BinaryIntOp(pointer_rprimitive, ob_item_base, offset,
                                                     BinaryIntOp.ADD, line))
-            self.add(SetMem(object_rprimitive, item_address, args[i], empty_list, line))
-        return empty_list
+            self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
+        return result_list
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
         return self.call_c(new_set_op, [], line)
