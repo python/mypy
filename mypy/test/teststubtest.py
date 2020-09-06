@@ -577,6 +577,8 @@ class StubtestUnit(unittest.TestCase):
         yield Case("", "__all__ = []", None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
+        # Here we should only check that runtime has B, since the stub explicitly re-exports it
+        yield Case(stub="from mystery import A, B as B  # type: ignore", runtime="", error="B")
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:

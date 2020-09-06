@@ -1762,8 +1762,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # Target module exists but the imported name is missing or hidden.
                 self.report_missing_module_attribute(module_id, id, imported_id, imp)
             else:
+                module_public = (
+                    not self.is_stub_file
+                    and self.options.implicit_reexport
+                    or as_id is not None
+                )
                 # Import of a missing (sub)module.
-                self.add_unknown_imported_symbol(imported_id, imp, target_name=fullname)
+                self.add_unknown_imported_symbol(
+                    imported_id, imp, target_name=fullname, module_public=module_public
+                )
 
     def process_imported_symbol(self,
                                 node: SymbolTableNode,
@@ -4415,7 +4422,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_public=module_public,
                             module_hidden=module_hidden)
         else:
-            self.add_unknown_imported_symbol(as_id, context, target_name=id)
+            self.add_unknown_imported_symbol(
+                as_id, context, target_name=id, module_public=module_public
+            )
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
         """Add local variable or function."""
@@ -4440,7 +4449,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     def add_unknown_imported_symbol(self,
                                     name: str,
                                     context: Context,
-                                    target_name: Optional[str] = None) -> None:
+                                    target_name: Optional[str] = None,
+                                    module_public: bool = True) -> None:
         """Add symbol that we don't know what it points to because resolving an import failed.
 
         This can happen if a module is missing, or it is present, but doesn't have
@@ -4468,7 +4478,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         var.type = any_type
         var.is_suppressed_import = True
-        self.add_symbol(name, var, context)
+        self.add_symbol(name, var, context, module_public=module_public)
 
     #
     # Other helpers
