@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, Tuple, Set, List
 
 from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
@@ -6,7 +6,7 @@ from mypy.types import (
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
     ProperType, get_proper_type, TypeAliasType, ParamSpecType, Parameters, UnpackType
 )
-from mypy.typeops import tuple_fallback, make_simplified_union
+from mypy.typeops import tuple_fallback, make_simplified_union, is_simple_literal
 
 
 def is_same_type(left: Type, right: Type) -> bool:
@@ -153,14 +153,32 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         if isinstance(self.right, UnionType):
+            # fast path for simple literals
+            def _extract_literals(u: UnionType) -> Tuple[Set[Type], List[Type]]:
+                lit: Set[Type] = set()
+                rem: List[Type] = []
+                for i in u.relevant_items():
+                    i = get_proper_type(i)
+                    if is_simple_literal(i):
+                        lit.add(i)
+                    else:
+                        rem.append(i)
+                return lit, rem
+
+            left_lit, left_rem = _extract_literals(left)
+            right_lit, right_rem = _extract_literals(self.right)
+
+            if left_lit != right_lit:
+                return False
+
             # Check that everything in left is in right
-            for left_item in left.items:
-                if not any(is_same_type(left_item, right_item) for right_item in self.right.items):
+            for left_item in left_rem:
+                if not any(is_same_type(left_item, right_item) for right_item in right_rem):
                     return False
 
             # Check that everything in right is in left
-            for right_item in self.right.items:
-                if not any(is_same_type(right_item, left_item) for left_item in left.items):
+            for right_item in right_rem:
+                if not any(is_same_type(right_item, left_item) for left_item in left_rem):
                     return False
 
             return True
