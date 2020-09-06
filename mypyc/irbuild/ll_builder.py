@@ -775,7 +775,7 @@ class LowLevelIRBuilder:
         return result_list
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
-        return self.call_c(new_set_op, [], line)
+        return self.call_c(new_set_op, values, line)
 
     def builtin_call(self,
                      args: List[Value],
