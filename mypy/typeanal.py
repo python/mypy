@@ -196,7 +196,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins
                     and t.args and
-                    not self.allow_unnormalized):
+                    not self.allow_unnormalized and
+                    not self.api.is_future_flag_set("annotations")):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
             tvar_def = self.tvar_scope.get_binding(sym)
@@ -291,12 +292,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return make_optional_type(item)
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
-        elif fullname == 'typing.Type':
+        elif (fullname == 'typing.Type' or
+             (fullname == 'builtins.type' and self.api.is_future_flag_set('annotations'))):
             if len(t.args) == 0:
                 any_type = self.get_omitted_any(t)
                 return TypeType(any_type, line=t.line, column=t.column)
+            type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
             if len(t.args) != 1:
-                self.fail('Type[...] must have exactly one type argument', t)
+                self.fail(type_str + ' must have exactly one type argument', t)
             item = self.anal_type(t.args[0])
             return TypeType.make_normalized(item, line=t.line)
         elif fullname == 'typing.ClassVar':

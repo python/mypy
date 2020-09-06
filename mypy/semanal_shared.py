@@ -73,6 +73,11 @@ class SemanticAnalyzerCoreInterface:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
+    @abstractmethod
+    def is_future_flag_set(self, flag: str) -> bool:
+        """Is the specific __future__ feature imported"""
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
