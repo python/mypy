@@ -1438,7 +1438,7 @@ class SetMem(Op):
                  base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
-        self.type = RVoid
+        self.type = void_rtype
         self.dest_type = type
         self.src = src
         self.dest = dest
