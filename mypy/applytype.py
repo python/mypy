@@ -10,6 +10,49 @@ from mypy.types import (
 from mypy.nodes import Context
 
 
+def get_target_type(
+    tvar: TypeVarLikeDef,
+    type: ProperType,
+    callable: CallableType,
+    report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
+    context: Context,
+    skip_unsatisfied: bool
+) -> Optional[Type]:
+    # TODO(shantanu): fix for ParamSpecDef
+    assert isinstance(tvar, TypeVarDef)
+    values = get_proper_types(tvar.values)
+    if values:
+        if isinstance(type, AnyType):
+            return type
+        if isinstance(type, TypeVarType) and type.values:
+            # Allow substituting T1 for T if every allowed value of T1
+            # is also a legal value of T.
+            if all(any(mypy.sametypes.is_same_type(v, v1) for v in values)
+                   for v1 in type.values):
+                return type
+        matching = []
+        for value in values:
+            if mypy.subtypes.is_subtype(type, value):
+                matching.append(value)
+        if matching:
+            best = matching[0]
+            # If there are more than one matching value, we select the narrowest
+            for match in matching[1:]:
+                if mypy.subtypes.is_subtype(match, best):
+                    best = match
+            return best
+        if skip_unsatisfied:
+            return None
+        report_incompatible_typevar_value(callable, type, tvar.name, context)
+    else:
+        upper_bound = tvar.upper_bound
+        if not mypy.subtypes.is_subtype(type, upper_bound):
+            if skip_unsatisfied:
+                return None
+            report_incompatible_typevar_value(callable, type, tvar.name, context)
+    return type
+
+
 def apply_generic_arguments(
         callable: CallableType, orig_types: Sequence[Optional[Type]],
         report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
@@ -34,47 +77,14 @@ def apply_generic_arguments(
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]
 
-    def get_target_type(tvar: TypeVarLikeDef, type: ProperType) -> Optional[Type]:
-        # TODO(shantanu): fix for ParamSpecDef
-        assert isinstance(tvar, TypeVarDef)
-        values = get_proper_types(tvar.values)
-        if values:
-            if isinstance(type, AnyType):
-                return type
-            if isinstance(type, TypeVarType) and type.values:
-                # Allow substituting T1 for T if every allowed value of T1
-                # is also a legal value of T.
-                if all(any(mypy.sametypes.is_same_type(v, v1) for v in values)
-                       for v1 in type.values):
-                    return type
-            matching = []
-            for value in values:
-                if mypy.subtypes.is_subtype(type, value):
-                    matching.append(value)
-            if matching:
-                best = matching[0]
-                # If there are more than one matching value, we select the narrowest
-                for match in matching[1:]:
-                    if mypy.subtypes.is_subtype(match, best):
-                        best = match
-                return best
-            if skip_unsatisfied:
-                return None
-            report_incompatible_typevar_value(callable, type, tvar.name, context)
-        else:
-            upper_bound = tvar.upper_bound
-            if not mypy.subtypes.is_subtype(type, upper_bound):
-                if skip_unsatisfied:
-                    return None
-                report_incompatible_typevar_value(callable, type, tvar.name, context)
-        return type
-
     for tvar, type in zip(tvars, types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"
         if type is None:
             continue
 
-        target_type = get_target_type(tvar, type)
+        target_type = get_target_type(
+            tvar, type, callable, report_incompatible_typevar_value, context, skip_unsatisfied
+        )
         if target_type is not None:
             id_to_type[tvar.id] = target_type
 
