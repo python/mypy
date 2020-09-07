@@ -7,7 +7,6 @@ class TypeVarLikeScope:
     """Scope that holds bindings for type variables and parameter specifications.
 
     Node fullname -> TypeVarLikeDef.
-
     """
 
     def __init__(self,
