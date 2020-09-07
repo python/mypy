@@ -205,6 +205,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail('ParamSpec "{}" is unbound'.format(t.name), t)
                     return AnyType(TypeOfAny.from_error)
                 self.fail('Invalid location for ParamSpec "{}"'.format(t.name), t)
+                self.note(
+                    'You can use ParamSpec as the first argument to Callable, e.g., '
+                    "'Callable[{}, int]'".format(t.name),
+                    t
+                )
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
