@@ -614,6 +614,32 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             assert isinstance(n.node, TypeInfo)
             return self.analyze_type_with_type_info(n.node, t.args, t)
 
+    def analyze_callable_args_for_paramspec(
+        self,
+        callable_args: Type,
+        ret_type: Type,
+        fallback: Instance,
+    ) -> Optional[CallableType]:
+        """Construct a 'Callable[P, RET]', where P is ParamSpec, return None if we cannot."""
+        if not isinstance(callable_args, UnboundType):
+            return None
+        sym = self.lookup_qualified(callable_args.name, callable_args)
+        if sym is None:
+            return None
+        tvar_def = self.tvar_scope.get_binding(sym)
+        if not isinstance(tvar_def, ParamSpecDef):
+            return None
+
+        # TODO(shantanu): construct correct type for paramspec
+        return CallableType(
+            [AnyType(TypeOfAny.explicit), AnyType(TypeOfAny.explicit)],
+            [nodes.ARG_STAR, nodes.ARG_STAR2],
+            [None, None],
+            ret_type=ret_type,
+            fallback=fallback,
+            is_ellipsis_args=True
+        )
+
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.named_type('builtins.function')
         if len(t.args) == 0:
@@ -649,23 +675,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                    fallback=fallback,
                                    is_ellipsis_args=True)
             else:
-                try:
-                    if not isinstance(callable_args, UnboundType):
-                        raise ValueError
-                    sym = self.lookup_qualified(callable_args.name, callable_args)
-                    if sym is None:
-                        raise ValueError
-                    tvar_def = self.tvar_scope.get_binding(sym)
-                    if not isinstance(tvar_def, ParamSpecDef):
-                        raise ValueError
-
-                    # TODO(shantanu): construct correct type for paramspec
-                    return AnyType(TypeOfAny.from_error)
-                except ValueError:
+                # Callable[P, RET] (where P is ParamSpec)
+                maybe_ret = self.analyze_callable_args_for_paramspec(
+                    callable_args,
+                    ret_type,
+                    fallback
+                )
+                if maybe_ret is None:
+                    # Callable[?, RET] (where ? is something invalid)
                     # TODO(shantanu): change error to mention paramspec, once we actually have some
                     # support for it
                     self.fail('The first argument to Callable must be a list of types or "..."', t)
                     return AnyType(TypeOfAny.from_error)
+                ret = maybe_ret
         else:
             self.fail('Please use "Callable[[<parameters>], <return type>]" or "Callable"', t)
             return AnyType(TypeOfAny.from_error)
