@@ -1,11 +1,11 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, Optional, Union, List
+from typing import cast, Callable, Optional, Union, Sequence
 from typing_extensions import TYPE_CHECKING
 
 from mypy.types import (
-    Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
-    Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
+    Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
+    TypeVarLikeDef, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType
 )
 from mypy.nodes import (
@@ -676,7 +676,7 @@ def analyze_class_attribute_access(itype: Instance,
                                    name: str,
                                    mx: MemberContext,
                                    override_info: Optional[TypeInfo] = None,
-                                   original_vars: Optional[List[TypeVarDef]] = None
+                                   original_vars: Optional[Sequence[TypeVarLikeDef]] = None
                                    ) -> Optional[Type]:
     """Analyze access to an attribute on a class object.
 
@@ -839,7 +839,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
 def add_class_tvars(t: ProperType, isuper: Optional[Instance],
                     is_classmethod: bool,
                     original_type: Type,
-                    original_vars: Optional[List[TypeVarDef]] = None) -> Type:
+                    original_vars: Optional[Sequence[TypeVarLikeDef]] = None) -> Type:
     """Instantiate type variables during analyze_class_attribute_access,
     e.g T and Q in the following:
 
@@ -883,7 +883,7 @@ def add_class_tvars(t: ProperType, isuper: Optional[Instance],
             assert isuper is not None
             t = cast(CallableType, expand_type_by_instance(t, isuper))
             freeze_type_vars(t)
-        return t.copy_modified(variables=tvars + t.variables)
+        return t.copy_modified(variables=list(tvars) + list(t.variables))
     elif isinstance(t, Overloaded):
         return Overloaded([cast(CallableType, add_class_tvars(item, isuper,
                                                               is_classmethod, original_type,

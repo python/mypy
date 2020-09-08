@@ -78,7 +78,7 @@ from mypy.nodes import (
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
 from mypy.visitor import NodeVisitor
 from mypy.errors import Errors, report_internal_error
@@ -97,7 +97,7 @@ from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVariableQuery, TypeVarList, remove_dups, has_any_from_unimported_type,
+    TypeVarLikeQuery, TypeVarLikeList, remove_dups, has_any_from_unimported_type,
     check_for_explicit_any, type_constructors, fix_instance_types
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -175,7 +175,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = None  # type: List[Optional[TypeInfo]]
     # Type variables bound by the current scope, be it class or function
-    tvar_scope = None  # type: TypeVarScope
+    tvar_scope = None  # type: TypeVarLikeScope
     # Per-module options
     options = None  # type: Options
 
@@ -250,7 +250,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.imports = set()
         self.type = None
         self.type_stack = []
-        self.tvar_scope = TypeVarScope()
+        self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
         self.loop_depth = 0
@@ -495,7 +495,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.is_stub_file = file_node.path.lower().endswith('.pyi')
         self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
         self.globals = file_node.names
-        self.tvar_scope = TypeVarScope()
+        self.tvar_scope = TypeVarLikeScope()
 
         self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
         self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
@@ -1229,7 +1229,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         Returns (remaining base expressions, inferred type variables, is protocol).
         """
         removed = []  # type: List[int]
-        declared_tvars = []  # type: TypeVarList
+        declared_tvars = []  # type: TypeVarLikeList
         is_protocol = False
         for i, base_expr in enumerate(base_type_exprs):
             self.analyze_type_expr(base_expr)
@@ -1277,10 +1277,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            assert isinstance(tvar_def, TypeVarDef), (
+                "mypy does not currently support ParamSpec use in generic classes"
+            )
             tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
-    def analyze_class_typevar_declaration(self, base: Type) -> Optional[Tuple[TypeVarList, bool]]:
+    def analyze_class_typevar_declaration(
+        self,
+        base: Type
+    ) -> Optional[Tuple[TypeVarLikeList, bool]]:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -1299,7 +1305,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 sym.node.fullname == 'typing.Protocol' and base.args or
                 sym.node.fullname == 'typing_extensions.Protocol' and base.args):
             is_proto = sym.node.fullname != 'typing.Generic'
-            tvars = []  # type: TypeVarList
+            tvars = []  # type: TypeVarLikeList
             for arg in unbound.args:
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
@@ -1329,9 +1335,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def get_all_bases_tvars(self,
                             base_type_exprs: List[Expression],
-                            removed: List[int]) -> TypeVarList:
+                            removed: List[int]) -> TypeVarLikeList:
         """Return all type variable references in bases."""
-        tvars = []  # type: TypeVarList
+        tvars = []  # type: TypeVarLikeList
         for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
@@ -1339,7 +1345,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                base_tvars = base.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
+                base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
@@ -2443,7 +2449,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         typ = None  # type: Optional[Type]
         if res:
             typ, depends_on = res
-            found_type_vars = typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
+            found_type_vars = typ.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
             alias_tvars = [name for (name, node) in found_type_vars]
             qualified_tvars = [node.fullname for (name, node) in found_type_vars]
         else:
@@ -4485,7 +4491,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
 
     @contextmanager
-    def tvar_scope_frame(self, frame: TypeVarScope) -> Iterator[None]:
+    def tvar_scope_frame(self, frame: TypeVarLikeScope) -> Iterator[None]:
         old_scope = self.tvar_scope
         self.tvar_scope = frame
         yield
@@ -4818,11 +4824,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         # them semantically analyzed, however, if they need to treat it as an expression
         # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
         # in a fresh tvar scope in order to suppress any errors about using type variables.
-        with self.tvar_scope_frame(TypeVarScope()):
+        with self.tvar_scope_frame(TypeVarLikeScope()):
             expr.accept(self)
 
     def type_analyzer(self, *,
-                      tvar_scope: Optional[TypeVarScope] = None,
+                      tvar_scope: Optional[TypeVarLikeScope] = None,
                       allow_tuple_literal: bool = False,
                       allow_unbound_tvars: bool = False,
                       allow_placeholder: bool = False,
@@ -4845,7 +4851,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def anal_type(self,
                   typ: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   allow_placeholder: bool = False,

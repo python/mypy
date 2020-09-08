@@ -1389,15 +1389,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
         subst = []  # type: List[List[Tuple[TypeVarId, Type]]]
-        tvars = typ.variables or []
-        tvars = tvars[:]
+        tvars = list(typ.variables) or []
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
+        # TODO(shantanu): audit for paramspec
         for tvar in tvars:
-            if tvar.values:
-                subst.append([(tvar.id, value)
-                              for value in tvar.values])
+            if isinstance(tvar, TypeVarDef) and tvar.values:
+                subst.append([(tvar.id, value) for value in tvar.values])
         # Make a copy of the function to check for each combination of
         # value restricted type variables. (Except when running mypyc,
         # where we need one canonical version of the function.)
