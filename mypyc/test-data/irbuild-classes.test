@@ -40,22 +40,27 @@ def f() -> int:
 def f():
     r0, c :: __main__.C
     r1 :: bool
-    r2, a :: list
-    r3 :: object
-    r4, d :: __main__.C
-    r5, r6 :: int
+    r2 :: list
+    r3, r4 :: ptr
+    a :: list
+    r5 :: object
+    r6, d :: __main__.C
+    r7, r8 :: int
 L0:
     r0 = C()
     c = r0
     c.x = 10; r1 = is_error
-    r2 = [c]
+    r2 = PyList_New(1)
+    r3 = get_element_ptr r2 ob_item :: PyListObject
+    r4 = load_mem r3, r2 :: ptr*
+    set_mem r4, c, r2 :: builtins.object*
     a = r2
-    r3 = CPyList_GetItemShort(a, 0)
-    r4 = cast(__main__.C, r3)
-    d = r4
-    r5 = d.x
-    r6 = CPyTagged_Add(r5, 2)
-    return r6
+    r5 = CPyList_GetItemShort(a, 0)
+    r6 = cast(__main__.C, r5)
+    d = r6
+    r7 = d.x
+    r8 = CPyTagged_Add(r7, 2)
+    return r8
 
 [case testMethodCall]
 class A:
