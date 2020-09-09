@@ -316,26 +316,30 @@ def set(o: Union[A, B], s: str) -> None:
 def get(o):
     o :: union[__main__.A, __main__.B]
     r0, r1 :: object
-    r2 :: bool
-    r3 :: __main__.A
-    r4 :: int
-    r5 :: object
-    r6 :: __main__.B
-    r7, z :: object
+    r2 :: ptr
+    r3 :: object
+    r4 :: bool
+    r5 :: __main__.A
+    r6 :: int
+    r7 :: object
+    r8 :: __main__.B
+    r9, z :: object
 L0:
     r1 = __main__.A :: type
-    r2 = type_is o, r1
-    if r2 goto L1 else goto L2 :: bool
+    r2 = get_element_ptr o ob_type :: PyObject
+    r3 = load_mem r2, o :: builtins.object*
+    r4 = r3 == r1
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r3 = cast(__main__.A, o)
-    r4 = r3.a
-    r5 = box(int, r4)
-    r0 = r5
+    r5 = cast(__main__.A, o)
+    r6 = r5.a
+    r7 = box(int, r6)
+    r0 = r7
     goto L3
 L2:
-    r6 = cast(__main__.B, o)
-    r7 = r6.a
-    r0 = r7
+    r8 = cast(__main__.B, o)
+    r9 = r8.a
+    r0 = r9
 L3:
     z = r0
     return 1
@@ -381,43 +385,51 @@ L0:
 def g(o):
     o :: union[__main__.A, __main__.B, __main__.C]
     r0, r1 :: object
-    r2 :: bool
-    r3 :: __main__.A
-    r4 :: int
-    r5, r6 :: object
-    r7 :: bool
-    r8 :: __main__.B
-    r9, r10 :: object
-    r11 :: __main__.C
-    r12 :: object
-    r13 :: int
-    r14, z :: object
+    r2 :: ptr
+    r3 :: object
+    r4 :: bool
+    r5 :: __main__.A
+    r6 :: int
+    r7, r8 :: object
+    r9 :: ptr
+    r10 :: object
+    r11 :: bool
+    r12 :: __main__.B
+    r13, r14 :: object
+    r15 :: __main__.C
+    r16 :: object
+    r17 :: int
+    r18, z :: object
 L0:
     r1 = __main__.A :: type
-    r2 = type_is o, r1
-    if r2 goto L1 else goto L2 :: bool
+    r2 = get_element_ptr o ob_type :: PyObject
+    r3 = load_mem r2, o :: builtins.object*
+    r4 = r3 == r1
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r3 = cast(__main__.A, o)
-    r4 = r3.f(2)
-    r5 = box(int, r4)
-    r0 = r5
+    r5 = cast(__main__.A, o)
+    r6 = r5.f(2)
+    r7 = box(int, r6)
+    r0 = r7
     goto L5
 L2:
-    r6 = __main__.B :: type
-    r7 = type_is o, r6
-    if r7 goto L3 else goto L4 :: bool
+    r8 = __main__.B :: type
+    r9 = get_element_ptr o ob_type :: PyObject
+    r10 = load_mem r9, o :: builtins.object*
+    r11 = r10 == r8
+    if r11 goto L3 else goto L4 :: bool
 L3:
-    r8 = cast(__main__.B, o)
-    r9 = box(short_int, 2)
-    r10 = r8.f(r9)
-    r0 = r10
+    r12 = cast(__main__.B, o)
+    r13 = box(short_int, 2)
+    r14 = r12.f(r13)
+    r0 = r14
     goto L5
 L4:
-    r11 = cast(__main__.C, o)
-    r12 = box(short_int, 2)
-    r13 = r11.f(r12)
-    r14 = box(int, r13)
-    r0 = r14
+    r15 = cast(__main__.C, o)
+    r16 = box(short_int, 2)
+    r17 = r15.f(r16)
+    r18 = box(int, r17)
+    r0 = r18
 L5:
     z = r0
     return 1
@@ -444,56 +456,64 @@ def f(o):
     o :: union[__main__.A, object]
     r0 :: int
     r1 :: object
-    r2 :: bool
-    r3 :: __main__.A
-    r4 :: int
-    r5 :: object
-    r6 :: str
+    r2 :: ptr
+    r3 :: object
+    r4 :: bool
+    r5 :: __main__.A
+    r6 :: int
     r7 :: object
-    r8 :: int
+    r8 :: str
+    r9 :: object
+    r10 :: int
 L0:
     r1 = __main__.A :: type
-    r2 = type_is o, r1
-    if r2 goto L1 else goto L2 :: bool
+    r2 = get_element_ptr o ob_type :: PyObject
+    r3 = load_mem r2, o :: builtins.object*
+    r4 = r3 == r1
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r3 = cast(__main__.A, o)
-    r4 = r3.x
-    r0 = r4
+    r5 = cast(__main__.A, o)
+    r6 = r5.x
+    r0 = r6
     goto L3
 L2:
-    r5 = o
-    r6 = load_global CPyStatic_unicode_7 :: static  ('x')
-    r7 = CPyObject_GetAttr(r5, r6)
-    r8 = unbox(int, r7)
-    r0 = r8
+    r7 = o
+    r8 = load_global CPyStatic_unicode_7 :: static  ('x')
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = unbox(int, r9)
+    r0 = r10
 L3:
     return 1
 def g(o):
     o :: union[object, __main__.A]
     r0 :: int
     r1 :: object
-    r2 :: bool
-    r3 :: __main__.A
-    r4 :: int
-    r5 :: object
-    r6 :: str
+    r2 :: ptr
+    r3 :: object
+    r4 :: bool
+    r5 :: __main__.A
+    r6 :: int
     r7 :: object
-    r8 :: int
+    r8 :: str
+    r9 :: object
+    r10 :: int
 L0:
     r1 = __main__.A :: type
-    r2 = type_is o, r1
-    if r2 goto L1 else goto L2 :: bool
+    r2 = get_element_ptr o ob_type :: PyObject
+    r3 = load_mem r2, o :: builtins.object*
+    r4 = r3 == r1
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r3 = cast(__main__.A, o)
-    r4 = r3.x
-    r0 = r4
+    r5 = cast(__main__.A, o)
+    r6 = r5.x
+    r0 = r6
     goto L3
 L2:
-    r5 = o
-    r6 = load_global CPyStatic_unicode_7 :: static  ('x')
-    r7 = CPyObject_GetAttr(r5, r6)
-    r8 = unbox(int, r7)
-    r0 = r8
+    r7 = o
+    r8 = load_global CPyStatic_unicode_7 :: static  ('x')
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = unbox(int, r9)
+    r0 = r10
 L3:
     return 1
 

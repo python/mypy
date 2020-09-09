@@ -30,7 +30,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyListObject
+    pointer_rprimitive, PyObject, PyListObject
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -53,7 +53,7 @@ from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
 )
 from mypyc.primitives.misc_ops import (
-    none_object_op, fast_isinstance_op, bool_op, type_is_op
+    none_object_op, fast_isinstance_op, bool_op
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
@@ -207,6 +207,11 @@ class LowLevelIRBuilder:
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
+    def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
+        ob_type_address = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
+        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address, obj))
+        return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
+
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
         """Fast isinstance() check for a native class.
 
@@ -223,10 +228,10 @@ class LowLevelIRBuilder:
             # There can't be any concrete instance that matches this.
             return self.false()
         type_obj = self.get_native_type(concrete[0])
-        ret = self.primitive_op(type_is_op, [obj, type_obj], line)
+        ret = self.type_is_op(obj, type_obj, line)
         for c in concrete[1:]:
             def other() -> Value:
-                return self.primitive_op(type_is_op, [obj, self.get_native_type(c)], line)
+                return self.type_is_op(obj, self.get_native_type(c), line)
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
