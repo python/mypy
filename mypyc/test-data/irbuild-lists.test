@@ -66,7 +66,7 @@ def f() -> None:
 def f():
     r0, x :: list
 L0:
-    r0 = []
+    r0 = PyList_New(0)
     x = r0
     return 1
 
@@ -76,13 +76,20 @@ def f() -> None:
     x: List[int] = [1, 2]
 [out]
 def f():
-    r0, r1 :: object
-    r2, x :: list
+    r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    x :: list
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    x = r2
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    x = r0
     return 1
 
 [case testListMultiply]
@@ -92,16 +99,20 @@ def f(a: List[int]) -> None:
     b = 3 * [4]
 [out]
 def f(a):
-    a, r0, b :: list
-    r1 :: object
-    r2, r3 :: list
+    a, r0, b, r1 :: list
+    r2 :: object
+    r3, r4 :: ptr
+    r5 :: list
 L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
-    r1 = box(short_int, 8)
-    r2 = [r1]
-    r3 = CPySequence_RMultiply(6, r2)
-    b = r3
+    r1 = PyList_New(1)
+    r2 = box(short_int, 8)
+    r3 = get_element_ptr r1 ob_item :: PyListObject
+    r4 = load_mem r3, r1 :: ptr*
+    set_mem r4, r2, r1 :: builtins.object*
+    r5 = CPySequence_RMultiply(6, r1)
+    b = r5
     return 1
 
 [case testListLen]
@@ -180,20 +191,25 @@ def f(x: List[int], y: List[int]) -> List[int]:
     return [1, 2, *x, *y, 3]
 [out]
 def f(x, y):
-    x, y :: list
-    r0, r1 :: object
-    r2 :: list
-    r3, r4, r5 :: object
-    r6 :: int32
+    x, y, r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    r6, r7, r8 :: object
+    r9 :: int32
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    r3 = CPyList_Extend(r2, x)
-    r4 = CPyList_Extend(r2, y)
-    r5 = box(short_int, 6)
-    r6 = PyList_Append(r2, r5)
-    return r2
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    r6 = CPyList_Extend(r0, x)
+    r7 = CPyList_Extend(r0, y)
+    r8 = box(short_int, 6)
+    r9 = PyList_Append(r0, r8)
+    return r0
 
 [case testListIn]
 from typing import List

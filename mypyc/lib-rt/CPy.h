@@ -449,9 +449,12 @@ PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
 PyObject *CPy_FetchStopIterationValue(void);
-PyObject *CPyType_FromTemplate(PyTypeObject *template_,
+PyObject *CPyType_FromTemplate(PyObject *template_,
                                PyObject *orig_bases,
                                PyObject *modname);
+PyObject *CPyType_FromTemplateWarpper(PyObject *template_,
+                                      PyObject *orig_bases,
+                                      PyObject *modname);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                                PyObject *dict, PyObject *annotations);
 PyObject *CPyPickle_SetState(PyObject *obj, PyObject *state);

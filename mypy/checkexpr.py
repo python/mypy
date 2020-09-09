@@ -31,6 +31,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
+    ParamSpecExpr,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
@@ -3973,6 +3974,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
+    def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
+        return AnyType(TypeOfAny.special_form)
+
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
@@ -4307,6 +4311,8 @@ def merge_typevars_in_callables_by_name(
             for tvdef in target.variables:
                 name = tvdef.fullname
                 if name not in unique_typevars:
+                    # TODO(shantanu): fix for ParamSpecDef
+                    assert isinstance(tvdef, TypeVarDef)
                     unique_typevars[name] = TypeVarType(tvdef)
                     variables.append(tvdef)
                 rename[tvdef.id] = unique_typevars[name]

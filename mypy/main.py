@@ -14,7 +14,10 @@ from mypy import build
 from mypy import defaults
 from mypy import state
 from mypy import util
-from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
+from mypy.modulefinder import (
+    BuildSource, FindModuleCache, SearchPaths,
+    get_site_packages_dirs, mypy_path,
+)
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
@@ -134,9 +137,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    # FIXME: typeshed incorrectly has the type of indent as int when
-    # it should be str. Make it Any to avoid rusing mypyc.
-    def _fill_text(self, text: str, width: int, indent: Any) -> str:
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
@@ -923,7 +924,11 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
+        egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+        search_paths = SearchPaths((os.getcwd(),),
+                                   tuple(mypy_path() + options.mypy_path),
+                                   tuple(egg_dirs + site_packages),
+                                   ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)

@@ -12,5 +12,5 @@ pytest-cov>=2.10.0,<3.0.0
 typing>=3.5.2; python_version < '3.5'
 py>=1.5.2
 virtualenv<20
-setuptools
+setuptools<50
 importlib-metadata==0.20

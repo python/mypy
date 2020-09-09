@@ -574,13 +574,20 @@ def f() -> int:
     return 0
 [out]
 def f():
-    r0, r1 :: object
-    r2, a :: list
+    r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    a :: list
 L0:
-    r0 = box(short_int, 0)
-    r1 = box(short_int, 2)
-    r2 = [r0, r1]
-    a = r2
+    r0 = PyList_New(2)
+    r1 = box(short_int, 0)
+    r2 = box(short_int, 2)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    a = r0
     dec_ref a
     return 0
 
@@ -645,17 +652,22 @@ def f() -> None:
 [out]
 def f():
     r0 :: __main__.C
-    r1, a :: list
-    r2 :: object
-    r3, d :: __main__.C
+    r1 :: list
+    r2, r3 :: ptr
+    a :: list
+    r4 :: object
+    r5, d :: __main__.C
 L0:
     r0 = C()
-    r1 = [r0]
+    r1 = PyList_New(1)
+    r2 = get_element_ptr r1 ob_item :: PyListObject
+    r3 = load_mem r2, r1 :: ptr*
+    set_mem r3, r0, r1 :: builtins.object*
     a = r1
-    r2 = CPyList_GetItemShort(a, 0)
+    r4 = CPyList_GetItemShort(a, 0)
     dec_ref a
-    r3 = cast(__main__.C, r2)
-    d = r3
+    r5 = cast(__main__.C, r4)
+    d = r5
     dec_ref d
     return 1
 
@@ -823,10 +835,11 @@ def f():
     r2 :: native_int
     r3 :: short_int
 L0:
-    r0 = []
+    r0 = PyList_New(0)
     x = r0
     r1 = get_element_ptr x ob_size :: PyVarObject
     r2 = load_mem r1, x :: native_int*
     dec_ref x
     r3 = r2 << 1
     return r3
+

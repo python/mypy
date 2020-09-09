@@ -897,8 +897,9 @@ class GroupGenerator:
             if cl.is_generated:
                 type_struct = emitter.type_struct_name(cl)
                 emitter.emit_lines(
-                    '{t} = (PyTypeObject *)CPyType_FromTemplate({t}_template, NULL, modname);'.
-                    format(t=type_struct))
+                    '{t} = (PyTypeObject *)CPyType_FromTemplate('
+                    '(PyObject *){t}_template, NULL, modname);'
+                    .format(t=type_struct))
                 emitter.emit_lines('if (unlikely(!{}))'.format(type_struct),
                                    '    return NULL;')
 

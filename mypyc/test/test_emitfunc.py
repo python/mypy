@@ -9,7 +9,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
-    Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
+    Call, Unbox, Box, TupleGet, GetAttr, RegisterOp,
     SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp,
     SetMem
 )
@@ -26,7 +26,7 @@ from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisi
 from mypyc.primitives.registry import c_binary_ops
 from mypyc.primitives.misc_ops import none_object_op
 from mypyc.primitives.list_ops import (
-    list_get_item_op, list_set_item_op, new_list_op, list_append_op
+    list_get_item_op, list_set_item_op, list_append_op
 )
 from mypyc.primitives.dict_ops import (
     dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
@@ -181,15 +181,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                             else {
                                 CPy_TypeError("int", cpy_r_m);
                                 cpy_r_r0 = CPY_INT_TAG;
-                            }
-                         """)
-
-    def test_new_list(self) -> None:
-        self.assert_emit(PrimitiveOp([self.n, self.m], new_list_op, 55),
-                         """cpy_r_r0 = PyList_New(2);
-                            if (likely(cpy_r_r0 != NULL)) {
-                                PyList_SET_ITEM(cpy_r_r0, 0, cpy_r_n);
-                                PyList_SET_ITEM(cpy_r_r0, 1, cpy_r_m);
                             }
                          """)
 

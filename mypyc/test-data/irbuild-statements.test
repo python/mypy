@@ -685,43 +685,67 @@ def delListMultiple() -> None:
     del l[1], l[2], l[3]
 [out]
 def delList():
-    r0, r1 :: object
-    r2, l :: list
-    r3 :: object
-    r4 :: int32
+    r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    l :: list
+    r6 :: object
+    r7 :: int32
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    l = r2
-    r3 = box(short_int, 2)
-    r4 = PyObject_DelItem(l, r3)
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    l = r0
+    r6 = box(short_int, 2)
+    r7 = PyObject_DelItem(l, r6)
     return 1
 def delListMultiple():
-    r0, r1, r2, r3, r4, r5, r6 :: object
-    r7, l :: list
-    r8 :: object
-    r9 :: int32
-    r10 :: object
-    r11 :: int32
-    r12 :: object
-    r13 :: int32
+    r0 :: list
+    r1, r2, r3, r4, r5, r6, r7 :: object
+    r8, r9, r10, r11, r12, r13, r14, r15 :: ptr
+    l :: list
+    r16 :: object
+    r17 :: int32
+    r18 :: object
+    r19 :: int32
+    r20 :: object
+    r21 :: int32
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = box(short_int, 6)
-    r3 = box(short_int, 8)
-    r4 = box(short_int, 10)
-    r5 = box(short_int, 12)
-    r6 = box(short_int, 14)
-    r7 = [r0, r1, r2, r3, r4, r5, r6]
-    l = r7
-    r8 = box(short_int, 2)
-    r9 = PyObject_DelItem(l, r8)
-    r10 = box(short_int, 4)
-    r11 = PyObject_DelItem(l, r10)
-    r12 = box(short_int, 6)
-    r13 = PyObject_DelItem(l, r12)
+    r0 = PyList_New(7)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = box(short_int, 6)
+    r4 = box(short_int, 8)
+    r5 = box(short_int, 10)
+    r6 = box(short_int, 12)
+    r7 = box(short_int, 14)
+    r8 = get_element_ptr r0 ob_item :: PyListObject
+    r9 = load_mem r8, r0 :: ptr*
+    set_mem r9, r1, r0 :: builtins.object*
+    r10 = r9 + WORD_SIZE*1
+    set_mem r10, r2, r0 :: builtins.object*
+    r11 = r9 + WORD_SIZE*2
+    set_mem r11, r3, r0 :: builtins.object*
+    r12 = r9 + WORD_SIZE*3
+    set_mem r12, r4, r0 :: builtins.object*
+    r13 = r9 + WORD_SIZE*4
+    set_mem r13, r5, r0 :: builtins.object*
+    r14 = r9 + WORD_SIZE*5
+    set_mem r14, r6, r0 :: builtins.object*
+    r15 = r9 + WORD_SIZE*6
+    set_mem r15, r7, r0 :: builtins.object*
+    l = r0
+    r16 = box(short_int, 2)
+    r17 = PyObject_DelItem(l, r16)
+    r18 = box(short_int, 4)
+    r19 = PyObject_DelItem(l, r18)
+    r20 = box(short_int, 6)
+    r21 = PyObject_DelItem(l, r20)
     return 1
 
 [case testDelDict]

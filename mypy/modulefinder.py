@@ -11,7 +11,7 @@ import subprocess
 import sys
 from enum import Enum
 
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
 
 from mypy.defaults import PYTHON3_VERSION_MIN
@@ -473,20 +473,16 @@ def default_lib_path(data_dir: str,
 
 
 @functools.lru_cache(maxsize=None)
-def get_site_packages_dirs(python_executable: str) -> Tuple[List[str], List[str]]:
+def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
     This runs a subprocess call, which generates a list of the egg directories, and the site
     package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
     lru_cache the results."""
-    def make_abspath(path: str, root: str) -> str:
-        """Take a path and make it absolute relative to root if not already absolute."""
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        else:
-            return os.path.join(root, os.path.normpath(path))
 
-    if python_executable == sys.executable:
+    if python_executable is None:
+        return [], []
+    elif python_executable == sys.executable:
         # Use running Python's package dirs
         site_packages = sitepkgs.getsitepackages()
     else:
@@ -495,13 +491,51 @@ def get_site_packages_dirs(python_executable: str) -> Tuple[List[str], List[str]
         site_packages = ast.literal_eval(
             subprocess.check_output([python_executable, sitepkgs.__file__],
             stderr=subprocess.PIPE).decode())
-    egg_dirs = []
+    return expand_site_packages(site_packages)
+
+
+def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]]:
+    """Expands .pth imports in site-packages directories"""
+    egg_dirs = []  # type: List[str]
     for dir in site_packages:
-        pth = os.path.join(dir, 'easy-install.pth')
-        if os.path.isfile(pth):
-            with open(pth) as f:
-                egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
+        if not os.path.isdir(dir):
+            continue
+        pth_filenames = sorted(name for name in os.listdir(dir) if name.endswith(".pth"))
+        for pth_filename in pth_filenames:
+            egg_dirs.extend(_parse_pth_file(dir, pth_filename))
+
     return egg_dirs, site_packages
+
+
+def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
+    """
+    Mimics a subset of .pth import hook from Lib/site.py
+    See https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
+    """
+
+    pth_file = os.path.join(dir, pth_filename)
+    try:
+        f = open(pth_file, "r")
+    except OSError:
+        return
+    with f:
+        for line in f.readlines():
+            if line.startswith("#"):
+                # Skip comment lines
+                continue
+            if line.startswith(("import ", "import\t")):
+                # import statements in .pth files are not supported
+                continue
+
+            yield _make_abspath(line.rstrip(), dir)
+
+
+def _make_abspath(path: str, root: str) -> str:
+    """Take a path and make it absolute relative to root if not already absolute."""
+    if os.path.isabs(path):
+        return os.path.normpath(path)
+    else:
+        return os.path.join(root, os.path.normpath(path))
 
 
 def compute_search_paths(sources: List[BuildSource],
@@ -566,11 +600,7 @@ def compute_search_paths(sources: List[BuildSource],
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    if options.python_executable is None:
-        egg_dirs = []  # type: List[str]
-        site_packages = []  # type: List[str]
-    else:
-        egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+    egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
     for site_dir in site_packages:
         assert site_dir not in lib_path
         if (site_dir in mypypath or

@@ -101,8 +101,9 @@ def f2(a, n, l):
     r6 :: object
     r7 :: int32
     r8 :: bool
-    r9 :: object
-    r10 :: list
+    r9 :: list
+    r10 :: object
+    r11, r12, r13 :: ptr
 L0:
     r0 = box(int, n)
     r1 = PyObject_GetItem(a, r0)
@@ -113,8 +114,13 @@ L0:
     r6 = box(int, n)
     r7 = PyObject_SetItem(l, a, r6)
     r8 = CPyList_SetItem(l, n, a)
-    r9 = box(int, n)
-    r10 = [a, r9]
+    r9 = PyList_New(2)
+    r10 = box(int, n)
+    r11 = get_element_ptr r9 ob_item :: PyListObject
+    r12 = load_mem r11, r9 :: ptr*
+    set_mem r12, a, r9 :: builtins.object*
+    r13 = r12 + WORD_SIZE*1
+    set_mem r13, r10, r9 :: builtins.object*
     return 1
 def f3(a, n):
     a :: object

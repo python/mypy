@@ -1,22 +1,22 @@
 """Primitive set (and frozenset) ops."""
 
 from mypyc.primitives.registry import (
-    func_op, simple_emit, c_function_op, c_method_op, c_binary_op
+    c_function_op, c_method_op, c_binary_op
 )
 from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
-    object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive
+    object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive, pointer_rprimitive
 )
 
 
 # Construct an empty set.
-new_set_op = func_op(
+new_set_op = c_function_op(
     name='builtins.set',
     arg_types=[],
-    result_type=set_rprimitive,
+    return_type=set_rprimitive,
+    c_function_name='PySet_New',
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PySet_New(NULL);')
-)
+    extra_int_constants=[(0, pointer_rprimitive)])
 
 # set(obj)
 c_function_op(

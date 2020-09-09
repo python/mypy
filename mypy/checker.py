@@ -50,7 +50,7 @@ from mypy.typeops import (
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
-    true_only, false_only, function_type, TypeVarExtractor, custom_special_method,
+    true_only, false_only, function_type, get_type_vars, custom_special_method,
     is_literal_type_like,
 )
 from mypy import message_registry
@@ -1389,15 +1389,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
         subst = []  # type: List[List[Tuple[TypeVarId, Type]]]
-        tvars = typ.variables or []
-        tvars = tvars[:]
+        tvars = list(typ.variables) or []
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
+        # TODO(shantanu): audit for paramspec
         for tvar in tvars:
-            if tvar.values:
-                subst.append([(tvar.id, value)
-                              for value in tvar.values])
+            if isinstance(tvar, TypeVarDef) and tvar.values:
+                subst.append([(tvar.id, value) for value in tvar.values])
         # Make a copy of the function to check for each combination of
         # value restricted type variables. (Except when running mypyc,
         # where we need one canonical version of the function.)
@@ -5328,7 +5327,7 @@ def detach_callable(typ: CallableType) -> CallableType:
 
     appear_map = {}  # type: Dict[str, List[int]]
     for i, inner_type in enumerate(type_list):
-        typevars_available = inner_type.accept(TypeVarExtractor())
+        typevars_available = get_type_vars(inner_type)
         for var in typevars_available:
             if var.fullname not in appear_map:
                 appear_map[var.fullname] = []
@@ -5338,7 +5337,7 @@ def detach_callable(typ: CallableType) -> CallableType:
     for var_name, appearances in appear_map.items():
         used_type_var_names.add(var_name)
 
-    all_type_vars = typ.accept(TypeVarExtractor())
+    all_type_vars = get_type_vars(typ)
     new_variables = []
     for var in set(all_type_vars):
         if var.fullname not in used_type_var_names:

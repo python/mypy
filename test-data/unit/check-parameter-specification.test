@@ -1,0 +1,29 @@
+[case testBasicParamSpec]
+from typing_extensions import ParamSpec
+P = ParamSpec('P')
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLocations]
+from typing import Callable, List
+from typing_extensions import ParamSpec, Concatenate
+P = ParamSpec('P')
+
+x: P  # E: ParamSpec "P" is unbound
+
+def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
+
+def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
+                          # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+# TODO(shantanu): uncomment once we have support for Concatenate
+# def foo3(x: Concatenate[int, P]) -> int: ...  $ E: Invalid location for Concatenate
+
+def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                   # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                                   # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+[builtins fixtures/tuple.pyi]
