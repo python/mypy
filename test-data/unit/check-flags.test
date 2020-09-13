@@ -1210,7 +1210,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import a
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1224,7 +1224,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportStarConsideredImplicit]
 # flags: --no-implicit-reexport
@@ -1234,7 +1234,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import *
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportStarCanBeReexportedWithAll]
 # flags: --no-implicit-reexport
@@ -1248,7 +1248,19 @@ from other_module_1 import *
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case textNoImplicitReexportSuggestions]
+# flags: --no-implicit-reexport
+from other_module_2 import attr_1
+
+[file other_module_1.py]
+attr_1 = 5
+attr_2 = 6
+[file other_module_2.py]
+from other_module_1 import attr_1, attr_2
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'attr_1'; implicit reexport disabled
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini

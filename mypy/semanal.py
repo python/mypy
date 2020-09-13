@@ -1834,11 +1834,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
-            alternatives = set(module.names.keys()).difference({source_id})
-            matches = best_matches(source_id, alternatives)[:3]
-            if matches:
-                suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
-                message += "{}".format(suggestion)
+            if not self.options.implicit_reexport and source_id in module.names.keys():
+                message = ("Module '{}' does not explicitly export attribute '{}'"
+                           "; implicit reexport disabled".format(import_id, source_id))
+            else:
+                alternatives = set(module.names.keys()).difference({source_id})
+                matches = best_matches(source_id, alternatives)[:3]
+                if matches:
+                    suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
+                    message += "{}".format(suggestion)
         self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(imported_id, context)
 
