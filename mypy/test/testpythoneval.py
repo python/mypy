@@ -18,7 +18,7 @@ from subprocess import PIPE
 import sys
 from tempfile import TemporaryDirectory
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 from typing import List
 

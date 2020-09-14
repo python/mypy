@@ -35,7 +35,7 @@ from mypy.dmypy_server import Server
 from mypy.config_parser import parse_config_file
 from mypy.find_sources import create_source_list
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
 CHECK_CONSISTENCY = False

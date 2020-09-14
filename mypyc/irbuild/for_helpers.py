@@ -24,11 +24,10 @@ from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
-
 
 GenFunc = Callable[[], None]
 
@@ -88,7 +87,7 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
-    list_ops = builder.primitive_op(new_list_op, [], gen.line)
+    list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:
@@ -243,7 +242,7 @@ def make_for_loop_generator(builder: IRBuilder,
         if (expr.callee.fullname == 'builtins.reversed'
                 and len(expr.args) == 1
                 and expr.arg_kinds == [ARG_POS]
-                and is_sequence_rprimitive(rtyp)):
+                and is_sequence_rprimitive(builder.node_type(expr.args[0]))):
             # Special case "for x in reversed(<list>)".
             expr_reg = builder.accept(expr.args[0])
             target_type = builder.get_sequence_type(expr)
@@ -333,11 +332,7 @@ class ForGenerator:
 
     def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
         """A helper to get collection length, used by several subclasses."""
-        return self.builder.builder.builtin_call(
-            [self.builder.read(expr, self.line)],
-            'builtins.len',
-            self.line,
-        )
+        return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
 
 
 class ForIterable(ForGenerator):
@@ -352,7 +347,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
+        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type
@@ -364,7 +359,7 @@ class ForIterable(ForGenerator):
         # for NULL (an exception does not necessarily have to be raised).
         builder = self.builder
         line = self.line
-        self.next_reg = builder.primitive_op(next_op, [builder.read(self.iter_target, line)], line)
+        self.next_reg = builder.call_c(next_op, [builder.read(self.iter_target, line)], line)
         builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
 
     def begin_body(self) -> None:
@@ -397,7 +392,7 @@ def unsafe_index(
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        return builder.call_c(list_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, '__getitem__', [index], None, line)
 

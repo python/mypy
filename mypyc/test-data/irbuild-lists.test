@@ -53,12 +53,10 @@ def f(x):
     x :: list
     r0 :: object
     r1 :: bool
-    r2 :: None
 L0:
     r0 = box(short_int, 2)
     r1 = CPyList_SetItem(x, 0, r0)
-    r2 = None
-    return r2
+    return 1
 
 [case testNewListEmpty]
 from typing import List
@@ -67,12 +65,10 @@ def f() -> None:
 [out]
 def f():
     r0, x :: list
-    r1 :: None
 L0:
-    r0 = []
+    r0 = PyList_New(0)
     x = r0
-    r1 = None
-    return r1
+    return 1
 
 [case testNewListTwoItems]
 from typing import List
@@ -80,16 +76,21 @@ def f() -> None:
     x: List[int] = [1, 2]
 [out]
 def f():
-    r0, r1 :: object
-    r2, x :: list
-    r3 :: None
+    r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    x :: list
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    x = r2
-    r3 = None
-    return r3
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    x = r0
+    return 1
 
 [case testListMultiply]
 from typing import List
@@ -98,20 +99,21 @@ def f(a: List[int]) -> None:
     b = 3 * [4]
 [out]
 def f(a):
-    a :: list
-    r0, b :: list
-    r1 :: object
-    r2, r3 :: list
-    r4 :: None
+    a, r0, b, r1 :: list
+    r2 :: object
+    r3, r4 :: ptr
+    r5 :: list
 L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
-    r1 = box(short_int, 8)
-    r2 = [r1]
-    r3 = CPySequence_RMultiply(6, r2)
-    b = r3
-    r4 = None
-    return r4
+    r1 = PyList_New(1)
+    r2 = box(short_int, 8)
+    r3 = get_element_ptr r1 ob_item :: PyListObject
+    r4 = load_mem r3, r1 :: ptr*
+    set_mem r4, r2, r1 :: builtins.object*
+    r5 = CPySequence_RMultiply(6, r1)
+    b = r5
+    return 1
 
 [case testListLen]
 from typing import List
@@ -120,10 +122,14 @@ def f(a: List[int]) -> int:
 [out]
 def f(a):
     a :: list
-    r0 :: short_int
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
 L0:
-    r0 = len a :: list
-    return r0
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0, a :: native_int*
+    r2 = r1 << 1
+    return r2
 
 [case testListAppend]
 from typing import List
@@ -135,13 +141,10 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
-    r2, r3 :: None
 L0:
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
-    r2 = None
-    r3 = None
-    return r3
+    return 1
 
 [case testIndexLvalue]
 from typing import List
@@ -152,29 +155,32 @@ def increment(l: List[int]) -> List[int]:
 [out]
 def increment(l):
     l :: list
-    r0, r1 :: short_int
+    r0 :: ptr
+    r1 :: native_int
+    r2, r3 :: short_int
     i :: int
-    r2 :: bool
-    r3 :: object
-    r4, r5 :: object
-    r6 :: bool
-    r7 :: short_int
+    r4 :: bool
+    r5, r6, r7 :: object
+    r8 :: bool
+    r9 :: short_int
 L0:
-    r0 = len l :: list
-    r1 = 0
-    i = r1
+    r0 = get_element_ptr l ob_size :: PyVarObject
+    r1 = load_mem r0, l :: native_int*
+    r2 = r1 << 1
+    r3 = 0
+    i = r3
 L1:
-    r2 = r1 < r0 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r4 = r3 < r2 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r3 = CPyList_GetItem(l, i)
-    r4 = box(short_int, 2)
-    r5 = r3 += r4
-    r6 = CPyList_SetItem(l, i, r5)
+    r5 = CPyList_GetItem(l, i)
+    r6 = box(short_int, 2)
+    r7 = PyNumber_InPlaceAdd(r5, r6)
+    r8 = CPyList_SetItem(l, i, r7)
 L3:
-    r7 = r1 + 2
-    r1 = r7
-    i = r7
+    r9 = r3 + 2
+    r3 = r9
+    i = r9
     goto L1
 L4:
     return l
@@ -185,18 +191,39 @@ def f(x: List[int], y: List[int]) -> List[int]:
     return [1, 2, *x, *y, 3]
 [out]
 def f(x, y):
-    x, y :: list
-    r0, r1 :: object
-    r2 :: list
-    r3, r4, r5 :: object
-    r6 :: int32
+    x, y, r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    r6, r7, r8 :: object
+    r9 :: int32
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    r3 = CPyList_Extend(r2, x)
-    r4 = CPyList_Extend(r2, y)
-    r5 = box(short_int, 6)
-    r6 = PyList_Append(r2, r5)
-    return r2
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    r6 = CPyList_Extend(r0, x)
+    r7 = CPyList_Extend(r0, y)
+    r8 = box(short_int, 6)
+    r9 = PyList_Append(r0, r8)
+    return r0
 
+[case testListIn]
+from typing import List
+def f(x: List[int], y: int) -> bool:
+    return y in x
+[out]
+def f(x, y):
+    x :: list
+    y :: int
+    r0 :: object
+    r1 :: int32
+    r2 :: bool
+L0:
+    r0 = box(int, y)
+    r1 = PySequence_Contains(x, r0)
+    r2 = truncate r1: int32 to builtins.bool
+    return r2

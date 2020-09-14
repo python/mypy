@@ -31,6 +31,8 @@ FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
 
 IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
 
+PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
+
 # Runtime C library files
 RUNTIME_C_FILES = [
     'init.c',

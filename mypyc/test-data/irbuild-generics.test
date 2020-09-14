@@ -17,9 +17,13 @@ def g(x):
     x :: list
     r0 :: object
     r1 :: list
+    r2, r3 :: ptr
 L0:
     r0 = CPyList_GetItemShort(x, 0)
-    r1 = [r0]
+    r1 = PyList_New(1)
+    r2 = get_element_ptr r1 ob_item :: PyListObject
+    r3 = load_mem r2, r1 :: ptr*
+    set_mem r3, r0, r1 :: builtins.object*
     return r1
 def h(x, y):
     x :: int
@@ -27,7 +31,6 @@ def h(x, y):
     r0, r1 :: object
     r2 :: int
     r3 :: list
-    r4 :: None
 L0:
     r0 = box(int, x)
     r1 = f(r0)
@@ -35,8 +38,7 @@ L0:
     x = r2
     r3 = g(y)
     y = r3
-    r4 = None
-    return r4
+    return 1
 
 [case testGenericAttrAndTypeApplication]
 from typing import TypeVar, Generic
@@ -54,7 +56,6 @@ def f():
     r2 :: bool
     r3 :: object
     r4, r5 :: int
-    r6 :: None
 L0:
     r0 = C()
     c = r0
@@ -63,8 +64,7 @@ L0:
     r3 = c.x
     r4 = unbox(int, r3)
     r5 = CPyTagged_Add(4, r4)
-    r6 = None
-    return r6
+    return 1
 
 [case testGenericMethod]
 from typing import TypeVar, Generic
@@ -86,11 +86,9 @@ def C.__init__(self, x):
     self :: __main__.C
     x :: object
     r0 :: bool
-    r1 :: None
 L0:
     self.x = x; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def C.get(self):
     self :: __main__.C
     r0 :: object
@@ -101,21 +99,17 @@ def C.set(self, y):
     self :: __main__.C
     y :: object
     r0 :: bool
-    r1 :: None
 L0:
     self.x = y; r0 = is_error
-    r1 = None
-    return r1
+    return 1
 def f(x):
     x :: __main__.C
     r0 :: object
-    r1, y :: int
-    r2 :: int
+    r1, y, r2 :: int
     r3 :: object
     r4 :: None
     r5 :: object
     r6 :: __main__.C
-    r7 :: None
 L0:
     r0 = x.get()
     r1 = unbox(int, r0)
@@ -126,6 +120,4 @@ L0:
     r5 = box(short_int, 4)
     r6 = C(r5)
     x = r6
-    r7 = None
-    return r7
-
+    return 1

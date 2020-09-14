@@ -18,14 +18,13 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable, OpDescription
+    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
     bool_rprimitive, is_dict_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
-from mypyc.primitives.misc_ops import true_op, false_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
 
@@ -75,6 +74,9 @@ def translate_len(
             # though we still need to evaluate it.
             builder.accept(expr.args[0])
             return builder.add(LoadInt(len(expr_rtype.types)))
+        else:
+            obj = builder.accept(expr.args[0])
+            return builder.builtin_len(obj, -1)
     return None
 
 
@@ -144,7 +146,7 @@ def translate_any_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
     if (len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]
             and isinstance(expr.args[0], GeneratorExpr)):
-        return any_all_helper(builder, expr.args[0], false_op, lambda x: x, true_op)
+        return any_all_helper(builder, expr.args[0], builder.false, lambda x: x, builder.true)
     return None
 
 
@@ -155,20 +157,20 @@ def translate_all_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
             and isinstance(expr.args[0], GeneratorExpr)):
         return any_all_helper(
             builder, expr.args[0],
-            true_op,
+            builder.true,
             lambda x: builder.unary_op(x, 'not', expr.line),
-            false_op
+            builder.false
         )
     return None
 
 
 def any_all_helper(builder: IRBuilder,
                    gen: GeneratorExpr,
-                   initial_value_op: OpDescription,
+                   initial_value: Callable[[], Value],
                    modify: Callable[[Value], Value],
-                   new_value_op: OpDescription) -> Value:
+                   new_value: Callable[[], Value]) -> Value:
     retval = builder.alloc_temp(bool_rprimitive)
-    builder.assign(retval, builder.primitive_op(initial_value_op, [], -1), -1)
+    builder.assign(retval, initial_value(), -1)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
@@ -176,7 +178,7 @@ def any_all_helper(builder: IRBuilder,
         comparison = modify(builder.accept(gen.left_expr))
         builder.add_bool_branch(comparison, true_block, false_block)
         builder.activate_block(true_block)
-        builder.assign(retval, builder.primitive_op(new_value_op, [], -1), -1)
+        builder.assign(retval, new_value(), -1)
         builder.goto(exit_block)
         builder.activate_block(false_block)
 

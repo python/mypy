@@ -4955,6 +4955,33 @@ def g(name: str) -> int:
 reveal_type(f)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
 reveal_type(g)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
 
+[case testDisallowUntypedDecoratorsOverloadDunderCall]
+# flags: --disallow-untyped-decorators
+from typing import Any, Callable, overload, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+class Dec:
+    @overload
+    def __call__(self, x: F) -> F: ...
+    @overload
+    def __call__(self, x: str) -> Callable[[F], F]: ...
+    def __call__(self, x) -> Any:
+        pass
+
+dec = Dec()
+
+@dec
+def f(name: str) -> int:
+    return 0
+
+@dec('abc')
+def g(name: str) -> int:
+    return 0
+
+reveal_type(f)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
+reveal_type(g)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
+
 [case testOverloadBadArgumentsInferredToAny1]
 from typing import Union, Any, overload
 

@@ -2043,23 +2043,10 @@ COVARIANT = 1  # type: Final[int]
 CONTRAVARIANT = 2  # type: Final[int]
 
 
-class TypeVarExpr(SymbolNode, Expression):
-    """Type variable expression TypeVar(...).
-
-    This is also used to represent type variables in symbol tables.
-
-    A type variable is not valid as a type unless bound in a TypeVarScope.
-    That happens within:
-
-     1. a generic class that uses the type variable as a type argument or
-     2. a generic function that refers to the type variable in its signature.
-    """
-
+class TypeVarLikeExpr(SymbolNode, Expression):
+    """Base class for TypeVarExpr and ParamSpecExpr."""
     _name = ''
     _fullname = ''
-    # Value restriction: only types in the list are valid as values. If the
-    # list is empty, there is no restriction.
-    values = None  # type: List[mypy.types.Type]
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
     upper_bound = None  # type: mypy.types.Type
@@ -2069,14 +2056,12 @@ class TypeVarExpr(SymbolNode, Expression):
     # variable.
     variance = INVARIANT
 
-    def __init__(self, name: str, fullname: str,
-                 values: List['mypy.types.Type'],
-                 upper_bound: 'mypy.types.Type',
-                 variance: int = INVARIANT) -> None:
+    def __init__(
+        self, name: str, fullname: str, upper_bound: 'mypy.types.Type', variance: int = INVARIANT
+    ) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
-        self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
 
@@ -2087,6 +2072,29 @@ class TypeVarExpr(SymbolNode, Expression):
     @property
     def fullname(self) -> str:
         return self._fullname
+
+
+class TypeVarExpr(TypeVarLikeExpr):
+    """Type variable expression TypeVar(...).
+
+    This is also used to represent type variables in symbol tables.
+
+    A type variable is not valid as a type unless bound in a TypeVarLikeScope.
+    That happens within:
+
+     1. a generic class that uses the type variable as a type argument or
+     2. a generic function that refers to the type variable in its signature.
+    """
+    # Value restriction: only types in the list are valid as values. If the
+    # list is empty, there is no restriction.
+    values = None  # type: List[mypy.types.Type]
+
+    def __init__(self, name: str, fullname: str,
+                 values: List['mypy.types.Type'],
+                 upper_bound: 'mypy.types.Type',
+                 variance: int = INVARIANT) -> None:
+        super().__init__(name, fullname, upper_bound, variance)
+        self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
@@ -2108,6 +2116,30 @@ class TypeVarExpr(SymbolNode, Expression):
                            [mypy.types.deserialize_type(v) for v in data['values']],
                            mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
+
+
+class ParamSpecExpr(TypeVarLikeExpr):
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_paramspec_expr(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            '.class': 'ParamSpecExpr',
+            'name': self._name,
+            'fullname': self._fullname,
+            'upper_bound': self.upper_bound.serialize(),
+            'variance': self.variance,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecExpr':
+        assert data['.class'] == 'ParamSpecExpr'
+        return ParamSpecExpr(
+            data['name'],
+            data['fullname'],
+            mypy.types.deserialize_type(data['upper_bound']),
+            data['variance']
+        )
 
 
 class TypeAliasExpr(Expression):

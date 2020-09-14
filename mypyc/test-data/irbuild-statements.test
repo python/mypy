@@ -11,7 +11,6 @@ def f():
     r1 :: bool
     r2 :: int
     r3 :: short_int
-    r4 :: None
 L0:
     x = 0
     r0 = 0
@@ -28,8 +27,7 @@ L3:
     i = r3
     goto L1
 L4:
-    r4 = None
-    return r4
+    return 1
 
 [case testForInNegativeRange]
 def f() -> None:
@@ -41,7 +39,6 @@ def f():
     i :: int
     r1 :: bool
     r2 :: short_int
-    r3 :: None
 L0:
     r0 = 20
     i = r0
@@ -55,8 +52,7 @@ L3:
     i = r2
     goto L1
 L4:
-    r3 = None
-    return r3
+    return 1
 
 [case testBreak]
 def f() -> None:
@@ -71,7 +67,6 @@ def f():
     r2 :: bool
     r3 :: native_int
     r4, r5, r6, r7 :: bool
-    r8 :: None
 L0:
     n = 0
 L1:
@@ -92,8 +87,7 @@ L4:
     if r0 goto L5 else goto L6 :: bool
 L5:
 L6:
-    r8 = None
-    return r8
+    return 1
 
 [case testBreakFor]
 def f() -> None:
@@ -105,7 +99,6 @@ def f():
     n :: int
     r1 :: bool
     r2 :: short_int
-    r3 :: None
 L0:
     r0 = 0
     n = r0
@@ -120,8 +113,7 @@ L3:
     n = r2
     goto L1
 L4:
-    r3 = None
-    return r3
+    return 1
 
 [case testBreakNested]
 def f() -> None:
@@ -137,13 +129,11 @@ def f():
     r1 :: native_int
     r2 :: bool
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
-    r8 :: bool
+    r4, r5, r6, r7, r8 :: bool
     r9 :: native_int
     r10 :: bool
     r11 :: native_int
     r12, r13, r14, r15 :: bool
-    r16 :: None
 L0:
     n = 0
 L1:
@@ -182,8 +172,7 @@ L9:
 L10:
 L11:
 L12:
-    r16 = None
-    return r16
+    return 1
 
 [case testContinue]
 def f() -> None:
@@ -198,7 +187,6 @@ def f():
     r2 :: bool
     r3 :: native_int
     r4, r5, r6, r7 :: bool
-    r8 :: None
 L0:
     n = 0
 L1:
@@ -220,8 +208,7 @@ L4:
 L5:
     goto L1
 L6:
-    r8 = None
-    return r8
+    return 1
 
 [case testContinueFor]
 def f() -> None:
@@ -233,7 +220,6 @@ def f():
     n :: int
     r1 :: bool
     r2 :: short_int
-    r3 :: None
 L0:
     r0 = 0
     n = r0
@@ -247,8 +233,7 @@ L3:
     n = r2
     goto L1
 L4:
-    r3 = None
-    return r3
+    return 1
 
 [case testContinueNested]
 def f() -> None:
@@ -264,13 +249,11 @@ def f():
     r1 :: native_int
     r2 :: bool
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
-    r8 :: bool
+    r4, r5, r6, r7, r8 :: bool
     r9 :: native_int
     r10 :: bool
     r11 :: native_int
     r12, r13, r14, r15 :: bool
-    r16 :: None
 L0:
     n = 0
 L1:
@@ -311,8 +294,7 @@ L10:
 L11:
     goto L1
 L12:
-    r16 = None
-    return r16
+    return 1
 
 [case testForList]
 from typing import List
@@ -326,27 +308,32 @@ def f(ls: List[int]) -> int:
 def f(ls):
     ls :: list
     y :: int
-    r0, r1 :: short_int
-    r2 :: bool
-    r3 :: object
-    x, r4, r5 :: int
-    r6 :: short_int
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bool
+    r5 :: object
+    x, r6, r7 :: int
+    r8 :: short_int
 L0:
     y = 0
     r0 = 0
 L1:
-    r1 = len ls :: list
-    r2 = r0 < r1 :: signed
-    if r2 goto L2 else goto L4 :: bool
+    r1 = get_element_ptr ls ob_size :: PyVarObject
+    r2 = load_mem r1, ls :: native_int*
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r3 = ls[r0] :: unsafe list
-    r4 = unbox(int, r3)
-    x = r4
-    r5 = CPyTagged_Add(y, x)
-    y = r5
+    r5 = CPyList_GetItemUnsafe(ls, r0)
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = CPyTagged_Add(y, x)
+    y = r7
 L3:
-    r6 = r0 + 2
-    r0 = r6
+    r8 = r0 + 2
+    r0 = r8
     goto L1
 L4:
     return y
@@ -361,42 +348,42 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0 :: short_int
-    r1 :: int
-    r2 :: object
-    r3 :: tuple[bool, int, object]
-    r4 :: int
-    r5 :: bool
-    r6 :: object
-    key, r7 :: int
-    r8, r9 :: object
-    r10 :: int
-    r11, r12 :: bool
-    r13 :: None
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11 :: int
+    r12, r13 :: bool
 L0:
     r0 = 0
-    r1 = len d :: dict
-    r2 = CPyDict_GetKeysIter(d)
+    r1 = PyDict_Size(d)
+    r2 = r1 << 1
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r3 = CPyDict_NextKey(r2, r0)
-    r4 = r3[1]
-    r0 = r4
-    r5 = r3[0]
-    if r5 goto L2 else goto L4 :: bool
+    r4 = CPyDict_NextKey(r3, r0)
+    r5 = r4[1]
+    r0 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L4 :: bool
 L2:
-    r6 = r3[2]
-    r7 = unbox(int, r6)
-    key = r7
-    r8 = box(int, key)
-    r9 = CPyDict_GetItem(d, r8)
-    r10 = unbox(int, r9)
+    r7 = r4[2]
+    r8 = unbox(int, r7)
+    key = r8
+    r9 = box(int, key)
+    r10 = CPyDict_GetItem(d, r9)
+    r11 = unbox(int, r10)
 L3:
-    r11 = CPyDict_CheckSize(d, r1)
+    r12 = CPyDict_CheckSize(d, r2)
     goto L1
 L4:
-    r12 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccured()
 L5:
-    r13 = None
-    return r13
+    return 1
 
 [case testForDictContinue]
 from typing import Dict
@@ -413,67 +400,68 @@ def sum_over_even_values(d):
     d :: dict
     s :: int
     r0 :: short_int
-    r1 :: int
-    r2 :: object
-    r3 :: tuple[bool, int, object]
-    r4 :: int
-    r5 :: bool
-    r6 :: object
-    key, r7 :: int
-    r8, r9 :: object
-    r10 :: int
-    r11 :: int
-    r12 :: bool
-    r13 :: native_int
-    r14, r15, r16, r17 :: bool
-    r18, r19 :: object
-    r20, r21 :: int
-    r22, r23 :: bool
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: object
+    r4 :: tuple[bool, int, object]
+    r5 :: int
+    r6 :: bool
+    r7 :: object
+    key, r8 :: int
+    r9, r10 :: object
+    r11, r12 :: int
+    r13 :: bool
+    r14 :: native_int
+    r15, r16, r17, r18 :: bool
+    r19, r20 :: object
+    r21, r22 :: int
+    r23, r24 :: bool
 L0:
     s = 0
     r0 = 0
-    r1 = len d :: dict
-    r2 = CPyDict_GetKeysIter(d)
+    r1 = PyDict_Size(d)
+    r2 = r1 << 1
+    r3 = CPyDict_GetKeysIter(d)
 L1:
-    r3 = CPyDict_NextKey(r2, r0)
-    r4 = r3[1]
-    r0 = r4
-    r5 = r3[0]
-    if r5 goto L2 else goto L9 :: bool
+    r4 = CPyDict_NextKey(r3, r0)
+    r5 = r4[1]
+    r0 = r5
+    r6 = r4[0]
+    if r6 goto L2 else goto L9 :: bool
 L2:
-    r6 = r3[2]
-    r7 = unbox(int, r6)
-    key = r7
-    r8 = box(int, key)
-    r9 = CPyDict_GetItem(d, r8)
-    r10 = unbox(int, r9)
-    r11 = CPyTagged_Remainder(r10, 4)
-    r13 = r11 & 1
-    r14 = r13 == 0
-    if r14 goto L3 else goto L4 :: bool
+    r7 = r4[2]
+    r8 = unbox(int, r7)
+    key = r8
+    r9 = box(int, key)
+    r10 = CPyDict_GetItem(d, r9)
+    r11 = unbox(int, r10)
+    r12 = CPyTagged_Remainder(r11, 4)
+    r14 = r12 & 1
+    r15 = r14 == 0
+    if r15 goto L3 else goto L4 :: bool
 L3:
-    r15 = r11 != 0
-    r12 = r15
+    r16 = r12 != 0
+    r13 = r16
     goto L5
 L4:
-    r16 = CPyTagged_IsEq_(r11, 0)
-    r17 = !r16
-    r12 = r17
+    r17 = CPyTagged_IsEq_(r12, 0)
+    r18 = r17 ^ 1
+    r13 = r18
 L5:
-    if r12 goto L6 else goto L7 :: bool
+    if r13 goto L6 else goto L7 :: bool
 L6:
     goto L8
 L7:
-    r18 = box(int, key)
-    r19 = CPyDict_GetItem(d, r18)
-    r20 = unbox(int, r19)
-    r21 = CPyTagged_Add(s, r20)
-    s = r21
+    r19 = box(int, key)
+    r20 = CPyDict_GetItem(d, r19)
+    r21 = unbox(int, r20)
+    r22 = CPyTagged_Add(s, r21)
+    s = r22
 L8:
-    r22 = CPyDict_CheckSize(d, r1)
+    r23 = CPyDict_CheckSize(d, r2)
     goto L1
 L9:
-    r23 = CPy_NoErrOccured()
+    r24 = CPy_NoErrOccured()
 L10:
     return s
 
@@ -492,14 +480,12 @@ def from_tuple(t):
     y :: str
     r0 :: int
     r1 :: str
-    r2 :: None
 L0:
     r0 = t[0]
     x = r0
     r1 = t[1]
     y = r1
-    r2 = None
-    return r2
+    return 1
 def from_any(a):
     a, x, y, r0, r1 :: object
     r2 :: bool
@@ -507,31 +493,29 @@ def from_any(a):
     r4 :: bool
     r5 :: object
     r6 :: bool
-    r7 :: None
 L0:
-    r0 = iter a :: object
-    r1 = next r0 :: object
+    r0 = PyObject_GetIter(a)
+    r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
     raise ValueError('not enough values to unpack')
     unreachable
 L2:
     x = r1
-    r3 = next r0 :: object
+    r3 = PyIter_Next(r0)
     if is_error(r3) goto L3 else goto L4
 L3:
     raise ValueError('not enough values to unpack')
     unreachable
 L4:
     y = r3
-    r5 = next r0 :: object
+    r5 = PyIter_Next(r0)
     if is_error(r5) goto L6 else goto L5
 L5:
     raise ValueError('too many values to unpack')
     unreachable
 L6:
-    r7 = None
-    return r7
+    return 1
 
 [case testMultiAssignmentCoercions]
 from typing import Tuple, Any
@@ -551,7 +535,6 @@ def from_tuple(t):
     y, r0 :: int
     r1, r2 :: object
     r3 :: int
-    r4 :: None
 L0:
     r0 = t[0]
     r1 = box(int, r0)
@@ -559,8 +542,7 @@ L0:
     r2 = t[1]
     r3 = unbox(int, r2)
     y = r3
-    r4 = None
-    return r4
+    return 1
 def from_any(a):
     a :: object
     x :: int
@@ -571,10 +553,9 @@ def from_any(a):
     r5 :: bool
     r6 :: object
     r7 :: bool
-    r8 :: None
 L0:
-    r0 = iter a :: object
-    r1 = next r0 :: object
+    r0 = PyObject_GetIter(a)
+    r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
     raise ValueError('not enough values to unpack')
@@ -582,21 +563,20 @@ L1:
 L2:
     r3 = unbox(int, r1)
     x = r3
-    r4 = next r0 :: object
+    r4 = PyIter_Next(r0)
     if is_error(r4) goto L3 else goto L4
 L3:
     raise ValueError('not enough values to unpack')
     unreachable
 L4:
     y = r4
-    r6 = next r0 :: object
+    r6 = PyIter_Next(r0)
     if is_error(r6) goto L6 else goto L5
 L5:
     raise ValueError('too many values to unpack')
     unreachable
 L6:
-    r8 = None
-    return r8
+    return 1
 
 [case testMultiAssignmentNested]
 from typing import Tuple, Any, List
@@ -612,15 +592,13 @@ def multi_assign(t, a, l):
     t :: tuple[int, tuple[str, object]]
     a :: __main__.A
     l :: list
-    z :: int
-    r0 :: int
+    z, r0 :: int
     r1 :: bool
     r2 :: tuple[str, object]
     r3 :: str
     r4 :: bool
     r5 :: object
     r6 :: int
-    r7 :: None
 L0:
     r0 = t[0]
     a.x = r0; r1 = is_error
@@ -630,8 +608,7 @@ L0:
     r5 = r2[1]
     r6 = unbox(int, r5)
     z = r6
-    r7 = None
-    return r7
+    return 1
 
 [case testAssert]
 from typing import Optional
@@ -658,10 +635,12 @@ L2:
     return 2
 def literal_msg(x):
     x :: object
-    r0, r1 :: bool
+    r0 :: int32
+    r1, r2 :: bool
 L0:
-    r0 = bool x :: object
-    if r0 goto L2 else goto L1 :: bool
+    r0 = PyObject_IsTrue(x)
+    r1 = truncate r0: int32 to builtins.bool
+    if r1 goto L2 else goto L1 :: bool
 L1:
     raise AssertionError('message')
     unreachable
@@ -673,29 +652,29 @@ def complex_msg(x, s):
     r0 :: object
     r1 :: bool
     r2 :: str
-    r3 :: bool
-    r4 :: object
-    r5 :: str
-    r6, r7 :: object
-    r8 :: None
+    r3 :: int32
+    r4 :: bool
+    r5 :: object
+    r6 :: str
+    r7, r8 :: object
 L0:
-    r0 = builtins.None :: object
-    r1 = x is not r0
+    r0 = load_address _Py_NoneStruct
+    r1 = x != r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = cast(str, x)
-    r3 = bool r2 :: object
-    if r3 goto L3 else goto L2 :: bool
+    r3 = PyObject_IsTrue(r2)
+    r4 = truncate r3: int32 to builtins.bool
+    if r4 goto L3 else goto L2 :: bool
 L2:
-    r4 = builtins :: module
-    r5 = unicode_3 :: static  ('AssertionError')
-    r6 = getattr r4, r5
-    r7 = py_call(r6, s)
-    CPy_Raise(r7)
+    r5 = builtins :: module
+    r6 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
+    r7 = CPyObject_GetAttr(r5, r6)
+    r8 = PyObject_CallFunctionObjArgs(r7, s, 0)
+    CPy_Raise(r8)
     unreachable
 L3:
-    r8 = None
-    return r8
+    return 1
 
 [case testDelList]
 def delList() -> None:
@@ -706,48 +685,68 @@ def delListMultiple() -> None:
     del l[1], l[2], l[3]
 [out]
 def delList():
-    r0, r1 :: object
-    r2, l :: list
-    r3 :: object
-    r4 :: bool
-    r5 :: None
+    r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    l :: list
+    r6 :: object
+    r7 :: int32
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    l = r2
-    r3 = box(short_int, 2)
-    r4 = l.__delitem__(r3) :: object
-    r5 = None
-    return r5
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    l = r0
+    r6 = box(short_int, 2)
+    r7 = PyObject_DelItem(l, r6)
+    return 1
 def delListMultiple():
-    r0, r1, r2, r3, r4, r5, r6 :: object
-    r7, l :: list
-    r8 :: object
-    r9 :: bool
-    r10 :: object
-    r11 :: bool
-    r12 :: object
-    r13 :: bool
-    r14 :: None
+    r0 :: list
+    r1, r2, r3, r4, r5, r6, r7 :: object
+    r8, r9, r10, r11, r12, r13, r14, r15 :: ptr
+    l :: list
+    r16 :: object
+    r17 :: int32
+    r18 :: object
+    r19 :: int32
+    r20 :: object
+    r21 :: int32
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = box(short_int, 6)
-    r3 = box(short_int, 8)
-    r4 = box(short_int, 10)
-    r5 = box(short_int, 12)
-    r6 = box(short_int, 14)
-    r7 = [r0, r1, r2, r3, r4, r5, r6]
-    l = r7
-    r8 = box(short_int, 2)
-    r9 = l.__delitem__(r8) :: object
-    r10 = box(short_int, 4)
-    r11 = l.__delitem__(r10) :: object
-    r12 = box(short_int, 6)
-    r13 = l.__delitem__(r12) :: object
-    r14 = None
-    return r14
+    r0 = PyList_New(7)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = box(short_int, 6)
+    r4 = box(short_int, 8)
+    r5 = box(short_int, 10)
+    r6 = box(short_int, 12)
+    r7 = box(short_int, 14)
+    r8 = get_element_ptr r0 ob_item :: PyListObject
+    r9 = load_mem r8, r0 :: ptr*
+    set_mem r9, r1, r0 :: builtins.object*
+    r10 = r9 + WORD_SIZE*1
+    set_mem r10, r2, r0 :: builtins.object*
+    r11 = r9 + WORD_SIZE*2
+    set_mem r11, r3, r0 :: builtins.object*
+    r12 = r9 + WORD_SIZE*3
+    set_mem r12, r4, r0 :: builtins.object*
+    r13 = r9 + WORD_SIZE*4
+    set_mem r13, r5, r0 :: builtins.object*
+    r14 = r9 + WORD_SIZE*5
+    set_mem r14, r6, r0 :: builtins.object*
+    r15 = r9 + WORD_SIZE*6
+    set_mem r15, r7, r0 :: builtins.object*
+    l = r0
+    r16 = box(short_int, 2)
+    r17 = PyObject_DelItem(l, r16)
+    r18 = box(short_int, 4)
+    r19 = PyObject_DelItem(l, r18)
+    r20 = box(short_int, 6)
+    r21 = PyObject_DelItem(l, r20)
+    return 1
 
 [case testDelDict]
 def delDict() -> None:
@@ -758,51 +757,43 @@ def delDictMultiple() -> None:
     del d["one"], d["four"]
 [out]
 def delDict():
-    r0 :: str
-    r1 :: str
+    r0, r1 :: str
     r2, r3 :: object
     r4, d :: dict
     r5 :: str
-    r6 :: bool
-    r7 :: None
+    r6 :: int32
 L0:
-    r0 = unicode_1 :: static  ('one')
-    r1 = unicode_2 :: static  ('two')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
     r2 = box(short_int, 2)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     d = r4
-    r5 = unicode_1 :: static  ('one')
-    r6 = d.__delitem__(r5) :: object
-    r7 = None
-    return r7
+    r5 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r6 = PyObject_DelItem(d, r5)
+    return 1
 def delDictMultiple():
-    r0 :: str
-    r1 :: str
-    r2 :: str
-    r3 :: str
+    r0, r1, r2, r3 :: str
     r4, r5, r6, r7 :: object
     r8, d :: dict
     r9, r10 :: str
-    r11, r12 :: bool
-    r13 :: None
+    r11, r12 :: int32
 L0:
-    r0 = unicode_1 :: static  ('one')
-    r1 = unicode_2 :: static  ('two')
-    r2 = unicode_3 :: static  ('three')
-    r3 = unicode_4 :: static  ('four')
+    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
+    r2 = load_global CPyStatic_unicode_3 :: static  ('three')
+    r3 = load_global CPyStatic_unicode_4 :: static  ('four')
     r4 = box(short_int, 2)
     r5 = box(short_int, 4)
     r6 = box(short_int, 6)
     r7 = box(short_int, 8)
     r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
     d = r8
-    r9 = unicode_1 :: static  ('one')
-    r10 = unicode_4 :: static  ('four')
-    r11 = d.__delitem__(r9) :: object
-    r12 = d.__delitem__(r10) :: object
-    r13 = None
-    return r13
+    r9 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r10 = load_global CPyStatic_unicode_4 :: static  ('four')
+    r11 = PyObject_DelItem(d, r9)
+    r12 = PyObject_DelItem(d, r10)
+    return 1
 
 [case testDelAttribute]
 class Dummy():
@@ -820,40 +811,34 @@ def Dummy.__init__(self, x, y):
     self :: __main__.Dummy
     x, y :: int
     r0, r1 :: bool
-    r2 :: None
 L0:
     self.x = x; r0 = is_error
     self.y = y; r1 = is_error
-    r2 = None
-    return r2
+    return 1
 def delAttribute():
     r0, dummy :: __main__.Dummy
     r1 :: str
-    r2 :: bool
-    r3 :: None
+    r2 :: int32
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = unicode_3 :: static  ('x')
-    r2 = delattr dummy, r1
-    r3 = None
-    return r3
+    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r2 = PyObject_DelAttr(dummy, r1)
+    return 1
 def delAttributeMultiple():
     r0, dummy :: __main__.Dummy
     r1 :: str
-    r2 :: bool
+    r2 :: int32
     r3 :: str
-    r4 :: bool
-    r5 :: None
+    r4 :: int32
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = unicode_3 :: static  ('x')
-    r2 = delattr dummy, r1
-    r3 = unicode_4 :: static  ('y')
-    r4 = delattr dummy, r3
-    r5 = None
-    return r5
+    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r2 = PyObject_DelAttr(dummy, r1)
+    r3 = load_global CPyStatic_unicode_4 :: static  ('y')
+    r4 = PyObject_DelAttr(dummy, r3)
+    return 1
 
 [case testForEnumerate]
 from typing import List, Iterable
@@ -869,36 +854,39 @@ def f(a):
     a :: list
     r0 :: short_int
     i :: int
-    r1, r2 :: short_int
-    r3 :: bool
-    r4 :: object
-    x, r5, r6 :: int
-    r7, r8 :: short_int
-    r9 :: None
+    r1 :: short_int
+    r2 :: ptr
+    r3 :: native_int
+    r4 :: short_int
+    r5 :: bool
+    r6 :: object
+    x, r7, r8 :: int
+    r9, r10 :: short_int
 L0:
     r0 = 0
     i = 0
     r1 = 0
 L1:
-    r2 = len a :: list
-    r3 = r1 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    r2 = get_element_ptr a ob_size :: PyVarObject
+    r3 = load_mem r2, a :: native_int*
+    r4 = r3 << 1
+    r5 = r1 < r4 :: signed
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r4 = a[r1] :: unsafe list
-    r5 = unbox(int, r4)
-    x = r5
-    r6 = CPyTagged_Add(i, x)
+    r6 = CPyList_GetItemUnsafe(a, r1)
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = CPyTagged_Add(i, x)
 L3:
-    r7 = r0 + 2
-    r0 = r7
-    i = r7
-    r8 = r1 + 2
-    r1 = r8
+    r9 = r0 + 2
+    r0 = r9
+    i = r9
+    r10 = r1 + 2
+    r1 = r10
     goto L1
 L4:
 L5:
-    r9 = None
-    return r9
+    return 1
 def g(x):
     x :: object
     r0 :: short_int
@@ -907,13 +895,12 @@ def g(x):
     r3, n :: int
     r4 :: short_int
     r5 :: bool
-    r6 :: None
 L0:
     r0 = 0
     i = 0
-    r1 = iter x :: object
+    r1 = PyObject_GetIter(x)
 L1:
-    r2 = next r1 :: object
+    r2 = PyIter_Next(r1)
     if is_error(r2) goto L4 else goto L2
 L2:
     r3 = unbox(int, r2)
@@ -926,8 +913,7 @@ L3:
 L4:
     r5 = CPy_NoErrOccured()
 L5:
-    r6 = None
-    return r6
+    return 1
 
 [case testForZip]
 from typing import List, Iterable
@@ -946,44 +932,49 @@ def f(a, b):
     b :: object
     r0 :: short_int
     r1 :: object
-    r2 :: short_int
-    r3 :: bool
-    r4, r5 :: object
-    x, r6 :: int
-    r7, y, r8 :: bool
-    r9 :: short_int
-    r10 :: bool
-    r11 :: None
+    r2 :: ptr
+    r3 :: native_int
+    r4 :: short_int
+    r5 :: bool
+    r6, r7 :: object
+    x, r8 :: int
+    r9, y :: bool
+    r10 :: int32
+    r11 :: bool
+    r12 :: short_int
+    r13 :: bool
 L0:
     r0 = 0
-    r1 = iter b :: object
+    r1 = PyObject_GetIter(b)
 L1:
-    r2 = len a :: list
-    r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L7 :: bool
+    r2 = get_element_ptr a ob_size :: PyVarObject
+    r3 = load_mem r2, a :: native_int*
+    r4 = r3 << 1
+    r5 = r0 < r4 :: signed
+    if r5 goto L2 else goto L7 :: bool
 L2:
-    r4 = next r1 :: object
-    if is_error(r4) goto L7 else goto L3
+    r6 = PyIter_Next(r1)
+    if is_error(r6) goto L7 else goto L3
 L3:
-    r5 = a[r0] :: unsafe list
-    r6 = unbox(int, r5)
-    x = r6
-    r7 = unbox(bool, r4)
-    y = r7
-    r8 = bool b :: object
-    if r8 goto L4 else goto L5 :: bool
+    r7 = CPyList_GetItemUnsafe(a, r0)
+    r8 = unbox(int, r7)
+    x = r8
+    r9 = unbox(bool, r6)
+    y = r9
+    r10 = PyObject_IsTrue(b)
+    r11 = truncate r10: int32 to builtins.bool
+    if r11 goto L4 else goto L5 :: bool
 L4:
     x = 2
 L5:
 L6:
-    r9 = r0 + 2
-    r0 = r9
+    r12 = r0 + 2
+    r0 = r12
     goto L1
 L7:
-    r10 = CPy_NoErrOccured()
+    r13 = CPy_NoErrOccured()
 L8:
-    r11 = None
-    return r11
+    return 1
 def g(a, b):
     a :: object
     b :: list
@@ -991,47 +982,46 @@ def g(a, b):
     r1, r2 :: short_int
     z :: int
     r3 :: object
-    r4 :: short_int
-    r5, r6, r7, x :: bool
-    r8 :: object
-    y, r9 :: int
-    r10 :: bool
-    r11, r12 :: short_int
-    r13 :: bool
-    r14 :: None
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: short_int
+    r7, r8, r9, x :: bool
+    r10 :: object
+    y, r11 :: int
+    r12, r13 :: short_int
+    r14 :: bool
 L0:
-    r0 = iter a :: object
+    r0 = PyObject_GetIter(a)
     r1 = 0
     r2 = 0
     z = r2
 L1:
-    r3 = next r0 :: object
+    r3 = PyIter_Next(r0)
     if is_error(r3) goto L6 else goto L2
 L2:
-    r4 = len b :: list
-    r5 = r1 < r4 :: signed
-    if r5 goto L3 else goto L6 :: bool
+    r4 = get_element_ptr b ob_size :: PyVarObject
+    r5 = load_mem r4, b :: native_int*
+    r6 = r5 << 1
+    r7 = r1 < r6 :: signed
+    if r7 goto L3 else goto L6 :: bool
 L3:
-    r6 = r2 < 10 :: signed
-    if r6 goto L4 else goto L6 :: bool
+    r8 = r2 < 10 :: signed
+    if r8 goto L4 else goto L6 :: bool
 L4:
-    r7 = unbox(bool, r3)
-    x = r7
-    r8 = b[r1] :: unsafe list
-    r9 = unbox(int, r8)
-    y = r9
-    r10 = False
-    x = r10
+    r9 = unbox(bool, r3)
+    x = r9
+    r10 = CPyList_GetItemUnsafe(b, r1)
+    r11 = unbox(int, r10)
+    y = r11
+    x = 0
 L5:
-    r11 = r1 + 2
-    r1 = r11
-    r12 = r2 + 2
-    r2 = r12
-    z = r12
+    r12 = r1 + 2
+    r1 = r12
+    r13 = r2 + 2
+    r2 = r13
+    z = r13
     goto L1
 L6:
-    r13 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccured()
 L7:
-    r14 = None
-    return r14
-
+    return 1

@@ -557,6 +557,10 @@ class Server:
             if module[0] not in graph:
                 continue
             sources2 = self.direct_imports(module, graph)
+            # Filter anything already seen before. This prevents
+            # infinite looping if there are any self edges. (Self
+            # edges are maybe a bug, but...)
+            sources2 = [source for source in sources2 if source.module not in seen]
             changed, new_files = self.find_reachable_changed_modules(
                 sources2, graph, seen, changed_paths
             )

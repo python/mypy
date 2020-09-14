@@ -34,7 +34,7 @@ from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, PrimitiveOp, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
+    InitStatic, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
@@ -44,10 +44,10 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function_ops
-from mypyc.primitives.list_ops import list_len_op, to_list, list_pop_last
+from mypyc.primitives.list_ops import to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import true_op, false_op, import_op
+from mypyc.primitives.misc_ops import import_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -200,6 +200,28 @@ class IRBuilder:
     def none_object(self) -> Value:
         return self.builder.none_object()
 
+    def none(self) -> Value:
+        return self.builder.none()
+
+    def true(self) -> Value:
+        return self.builder.true()
+
+    def false(self) -> Value:
+        return self.builder.false()
+
+    def new_list_op(self, values: List[Value], line: int) -> Value:
+        return self.builder.new_list_op(values, line)
+
+    def new_set_op(self, values: List[Value], line: int) -> Value:
+        return self.builder.new_set_op(values, line)
+
+    def translate_is_op(self,
+                        lreg: Value,
+                        rreg: Value,
+                        expr_op: str,
+                        line: int) -> Value:
+        return self.builder.translate_is_op(lreg, rreg, expr_op, line)
+
     def py_call(self,
                 function: Value,
                 arg_values: List[Value],
@@ -238,6 +260,15 @@ class IRBuilder:
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tagged(lhs, rhs, op, line)
 
+    def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        return self.builder.compare_tuples(lhs, rhs, op, line)
+
+    def builtin_len(self, val: Value, line: int) -> Value:
+        return self.builder.builtin_len(val, line)
+
+    def new_tuple(self, items: List[Value], line: int) -> Value:
+        return self.builder.new_tuple(items, line)
+
     @property
     def environment(self) -> Environment:
         return self.builder.environment
@@ -255,11 +286,11 @@ class IRBuilder:
 
         needs_import, out = BasicBlock(), BasicBlock()
         first_load = self.load_module(id)
-        comparison = self.binary_op(first_load, self.none_object(), 'is not', line)
+        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)
-        value = self.primitive_op(import_op, [self.load_static_unicode(id)], line)
+        value = self.call_c(import_op, [self.load_static_unicode(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
@@ -336,9 +367,9 @@ class IRBuilder:
         """Load value of a final name or class-level attribute."""
         if isinstance(val, bool):
             if val:
-                return self.primitive_op(true_op, [], line)
+                return self.true()
             else:
-                return self.primitive_op(false_op, [], line)
+                return self.false()
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
@@ -448,7 +479,7 @@ class IRBuilder:
             else:
                 key = self.load_static_unicode(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
-                self.add(PrimitiveOp([target.obj, key, boxed_reg], py_setattr_op, line))
+                self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.gen_method_call(
                 target.base, '__setitem__', [target.index, rvalue_reg], None, line)
@@ -484,14 +515,14 @@ class IRBuilder:
                                           rvalue_reg: Value,
                                           line: int) -> None:
 
-        iterator = self.primitive_op(iter_op, [rvalue_reg], line)
+        iterator = self.call_c(iter_op, [rvalue_reg], line)
 
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
 
         # Assign values before the first starred value
         for litem in target.items[:split_idx]:
-            ritem = self.primitive_op(next_op, [iterator], line)
+            ritem = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
 
@@ -508,7 +539,7 @@ class IRBuilder:
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1:]
             iter_list = self.call_c(to_list, [iterator], line)
-            iter_list_len = self.primitive_op(list_len_op, [iter_list], line)
+            iter_list_len = self.builtin_len(iter_list, line)
             post_star_len = self.add(LoadInt(len(post_star_vals)))
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 
@@ -532,7 +563,7 @@ class IRBuilder:
         # There is no starred value, so check if there are extra values in rhs that
         # have not been assigned.
         else:
-            extra = self.primitive_op(next_op, [iterator], line)
+            extra = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
 

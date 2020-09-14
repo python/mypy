@@ -446,9 +446,12 @@ raise x # E: Exception must be derived from BaseException
 e = None # type: BaseException
 f = None # type: MyError
 a = None # type: A
+x = None # type: BaseException
+del x
 raise e from a # E: Exception must be derived from BaseException
 raise e from e
 raise e from f
+raise e from x # E: Trying to read deleted variable 'x'
 class A: pass
 class MyError(BaseException): pass
 [builtins fixtures/exception.pyi]
