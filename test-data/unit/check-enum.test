@@ -59,6 +59,26 @@ reveal_type(Truth.true.name)    # N: Revealed type is 'Literal['true']?'
 reveal_type(Truth.false.value)  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
+[case testEnumValueExtended]
+from enum import Enum
+class Truth(Enum):
+    true = True
+    false = False
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is 'builtins.bool'
+[builtins fixtures/bool.pyi]
+
+[case testEnumValueInhomogenous]
+from enum import Enum
+class Truth(Enum):
+    true = 'True'
+    false = 0
+
+def cannot_infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is 'Any'
+[builtins fixtures/bool.pyi]
+
 [case testEnumUnique]
 import enum
 @enum.unique
