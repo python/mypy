@@ -78,7 +78,7 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """
     enum_field_name = _extract_underlying_field_name(ctx.type)
     if enum_field_name is None:
-        # We do not know the ennum field name (perhaps it was passed to a function and we only
+        # We do not know the enum field name (perhaps it was passed to a function and we only
         # know that it _is_ a member).  All is not lost however, if we can prove that the all
         # of the enum members have the same value-type, then it doesn't matter which member
         # was passed in.  The value-type is still known.
