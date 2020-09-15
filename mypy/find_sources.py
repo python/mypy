@@ -127,6 +127,10 @@ class SourceFinder:
             res = ''
             base_dir = dir or '.'
         else:
+            # Remove -stubs to treat PEP-561 stub-only directories as packages
+            if base.endswith('-stubs'):
+                base = base[:-6]
+
             # Ensure that base is a valid python module name
             if not base.isidentifier():
                 raise InvalidSourceList('{} is not a valid Python package name'.format(base))
