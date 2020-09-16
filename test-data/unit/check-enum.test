@@ -69,6 +69,58 @@ def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
 
+[case testEnumValueAllAuto]
+from enum import Enum, auto
+class Truth(Enum):
+    true = auto()
+    false = auto()
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is 'builtins.int'
+[builtins fixtures/bool.pyi]
+[builtins fixtures/primitives.pyi]
+
+[case testEnumValueSomeAuto]
+from enum import Enum, auto
+class Truth(Enum):
+    true = 8675309
+    false = auto()
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is 'builtins.int'
+[builtins fixtures/bool.pyi]
+
+[case testEnumValueExtraMethods]
+from enum import Enum, auto
+class Truth(Enum):
+    true = True
+    false = False
+
+    def foo(self) -> str:
+        return 'bar'
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is 'builtins.bool'
+[builtins fixtures/bool.pyi]
+
+[case testEnumValueCustomAuto]
+from enum import Enum, auto
+from typing import List, Any
+class AutoName(Enum):
+    @staticmethod
+    def _generate_next_value_(name: str, start: int, count: int, last_values: List[Any]) -> str:
+        return name
+
+class Truth(AutoName):
+    true = auto()
+    false = auto()
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is 'builtins.str'
+[builtins fixtures/bool.pyi]
+[builtins fixtures/staticmethod.pyi]
+[builtins fixtures/list.pyi]
+
 [case testEnumValueInhomogenous]
 from enum import Enum
 class Truth(Enum):
