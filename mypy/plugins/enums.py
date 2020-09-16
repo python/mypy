@@ -68,7 +68,7 @@ def _infer_value_type_with_auto_fallback(
         info = ctx.type.type
         # Find the first _generate_next_value_ on the mro.  We need to know
         # if it is `Enum` because `Enum` types say that the return-value of
-        #`_generate_next_value_` is `Any`.  In reality the default `auto()`
+        # `_generate_next_value_` is `Any`.  In reality the default `auto()`
         # returns an `int` (presumably the `Any` in typeshed is to make it
         # easier to subclass and change the returned type).
         type_with_generate_next_value = next(
