@@ -77,7 +77,6 @@ class Truth(Enum):
 
 def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is 'builtins.int'
-[builtins fixtures/bool.pyi]
 [builtins fixtures/primitives.pyi]
 
 [case testEnumValueSomeAuto]
@@ -88,7 +87,6 @@ class Truth(Enum):
 
 def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is 'builtins.int'
-[builtins fixtures/bool.pyi]
 
 [case testEnumValueExtraMethods]
 from enum import Enum, auto
@@ -107,9 +105,11 @@ def infer_truth(truth: Truth) -> None:
 from enum import Enum, auto
 from typing import List, Any
 class AutoName(Enum):
-    @staticmethod
-    def _generate_next_value_(name: str, start: int, count: int, last_values: List[Any]) -> str:
-        return name
+
+    # In `typeshed`, this is a staticmethod and has more arguments,
+    # but I have lied a bit to keep the test stubs lean.
+    def _generate_next_value_(self) -> str:
+        return "name"
 
 class Truth(AutoName):
     true = auto()
@@ -569,8 +569,8 @@ reveal_type(A1.x.value)         # N: Revealed type is 'Any'
 reveal_type(A1.x._value_)       # N: Revealed type is 'Any'
 is_x(reveal_type(A2.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(A2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(A2.x.value)         # N: Revealed type is 'Any'
-reveal_type(A2.x._value_)       # N: Revealed type is 'Any'
+reveal_type(A2.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(A2.x._value_)       # N: Revealed type is 'builtins.int'
 is_x(reveal_type(A3.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(A3.x._name_))  # N: Revealed type is 'Literal['x']'
 reveal_type(A3.x.value)         # N: Revealed type is 'builtins.int'
@@ -591,7 +591,7 @@ reveal_type(B1.x._value_)       # N: Revealed type is 'Any'
 is_x(reveal_type(B2.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(B2.x._name_))  # N: Revealed type is 'Literal['x']'
 reveal_type(B2.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(B2.x._value_)       # N: Revealed type is 'Any'
+reveal_type(B2.x._value_)       # N: Revealed type is 'builtins.int'
 is_x(reveal_type(B3.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(B3.x._name_))  # N: Revealed type is 'Literal['x']'
 reveal_type(B3.x.value)         # N: Revealed type is 'builtins.int'
@@ -612,8 +612,8 @@ reveal_type(C1.x.value)         # N: Revealed type is 'Any'
 reveal_type(C1.x._value_)       # N: Revealed type is 'Any'
 is_x(reveal_type(C2.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(C2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(C2.x.value)         # N: Revealed type is 'Any'
-reveal_type(C2.x._value_)       # N: Revealed type is 'Any'
+reveal_type(C2.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(C2.x._value_)       # N: Revealed type is 'builtins.int'
 is_x(reveal_type(C3.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(C3.x._name_))  # N: Revealed type is 'Literal['x']'
 reveal_type(C3.x.value)         # N: Revealed type is 'builtins.int'
@@ -631,8 +631,8 @@ reveal_type(D1.x.value)         # N: Revealed type is 'Any'
 reveal_type(D1.x._value_)       # N: Revealed type is 'Any'
 is_x(reveal_type(D2.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(D2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(D2.x.value)         # N: Revealed type is 'Any'
-reveal_type(D2.x._value_)       # N: Revealed type is 'Any'
+reveal_type(D2.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(D2.x._value_)       # N: Revealed type is 'builtins.int'
 is_x(reveal_type(D3.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(D3.x._name_))  # N: Revealed type is 'Literal['x']'
 reveal_type(D3.x.value)         # N: Revealed type is 'builtins.int'
@@ -650,8 +650,8 @@ class E3(Parent):
 
 is_x(reveal_type(E2.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(E2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(E2.x.value)         # N: Revealed type is 'Any'
-reveal_type(E2.x._value_)       # N: Revealed type is 'Any'
+reveal_type(E2.x.value)         # N: Revealed type is 'builtins.int'
+reveal_type(E2.x._value_)       # N: Revealed type is 'builtins.int'
 is_x(reveal_type(E3.x.name))    # N: Revealed type is 'Literal['x']'
 is_x(reveal_type(E3.x._name_))  # N: Revealed type is 'Literal['x']'
 reveal_type(E3.x.value)         # N: Revealed type is 'builtins.int'
