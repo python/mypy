@@ -65,6 +65,8 @@ def _infer_value_type_with_auto_fallback(
         return None
     if (isinstance(proper_type, Instance) and
             proper_type.type.fullname == 'enum.auto'):
+        if not isinstance(ctx.type, Instance):
+            raise ValueError("An incorrect ctx.type was passed.")
         info = ctx.type.type
         # Find the first _generate_next_value_ on the mro.  We need to know
         # if it is `Enum` because `Enum` types say that the return-value of
@@ -83,7 +85,7 @@ def _infer_value_type_with_auto_fallback(
             return ctx.default_attr_type
 
         # This should be a `CallableType`
-        node_type = stnode.type
+        node_type = get_proper_type(stnode.type)
         if isinstance(node_type, CallableType):
             if type_with_generate_next_value.fullname == 'enum.Enum':
                 int_type = ctx.api.named_generic_type('builtins.int', [])
@@ -128,14 +130,13 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             stnodes = (info.get(name) for name in info.names)
             # Enums _can_ have methods.
             # Omit methods for our value inference.
-            stnodes_non_method = (
-                n for n in stnodes if not isinstance(n.type, CallableType))
             node_types = (
                 get_proper_type(n.type) if n else None
-                for n in stnodes_non_method)
+                for n in stnodes)
             proper_types = (
                 _infer_value_type_with_auto_fallback(ctx, t)
-                for t in node_types)
+                for t in node_types
+                if t is None or not isinstance(t, CallableType))
             underlying_type = next(proper_types, None)
             if underlying_type is None:
                 return ctx.default_attr_type
@@ -153,13 +154,12 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     if stnode is None:
         return ctx.default_attr_type
 
-    underlying_type = get_proper_type(stnode.type)
+    underlying_type = _infer_value_type_with_auto_fallback(
+        ctx, get_proper_type(stnode.type))
     if underlying_type is None:
-        # TODO: Deduce the inferred type if the user omits adding their own default types.
-        # TODO: Consider using the return type of `Enum._generate_next_value_` here?
         return ctx.default_attr_type
 
-    return _infer_value_type_with_auto_fallback(ctx, underlying_type)
+    return underlying_type
 
 
 def _extract_underlying_field_name(typ: Type) -> Optional[str]:
