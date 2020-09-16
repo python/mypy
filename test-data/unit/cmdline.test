@@ -1176,3 +1176,39 @@ usage: mypy [-h] [-v] [-V] [more options; see below]
             [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
 mypy: error: Invalid error code(s): YOLO
 == Return code: 2
+
+[case testStubsDirectory]
+# cmd: mypy --error-summary pkg-stubs
+[file pkg-stubs/__init__.pyi]
+[file pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 2 source files
+== Return code: 0
+
+[case testStubsDirectoryFile]
+# cmd: mypy --error-summary pkg-stubs/thing.pyi
+[file pkg-stubs/__init__.pyi]
+[file pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 1 source file
+== Return code: 0
+
+[case testStubsSubDirectory]
+# cmd: mypy --error-summary src/pkg-stubs
+[file src/pkg-stubs/__init__.pyi]
+[file src/pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 2 source files
+== Return code: 0
+
+[case testStubsSubDirectoryFile]
+# cmd: mypy --error-summary src/pkg-stubs/thing.pyi
+[file src/pkg-stubs/__init__.pyi]
+[file src/pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 1 source file
+== Return code: 0
