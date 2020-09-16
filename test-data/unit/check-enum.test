@@ -103,7 +103,6 @@ def infer_truth(truth: Truth) -> None:
 
 [case testEnumValueCustomAuto]
 from enum import Enum, auto
-from typing import List, Any
 class AutoName(Enum):
 
     # In `typeshed`, this is a staticmethod and has more arguments,
@@ -117,9 +116,6 @@ class Truth(AutoName):
 
 def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is 'builtins.str'
-[builtins fixtures/bool.pyi]
-[builtins fixtures/staticmethod.pyi]
-[builtins fixtures/list.pyi]
 
 [case testEnumValueInhomogenous]
 from enum import Enum
