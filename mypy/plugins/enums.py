@@ -63,8 +63,8 @@ def _infer_value_type_with_auto_fallback(
     """
     if proper_type is None:
         return None
-    if not (isinstance(proper_type, Instance) or
-            proper_type.type.fullname != 'enum.auto'):
+    if not ((isinstance(proper_type, Instance) and
+            proper_type.type.fullname == 'enum.auto')):
         return proper_type
     assert isinstance(ctx.type, Instance), 'An incorrect ctx.type was passed.'
     info = ctx.type.type
