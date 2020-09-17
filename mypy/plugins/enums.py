@@ -63,36 +63,36 @@ def _infer_value_type_with_auto_fallback(
     """
     if proper_type is None:
         return None
-    if (isinstance(proper_type, Instance) and
-            proper_type.type.fullname == 'enum.auto'):
-        if not isinstance(ctx.type, Instance):
-            raise ValueError("An incorrect ctx.type was passed.")
-        info = ctx.type.type
-        # Find the first _generate_next_value_ on the mro.  We need to know
-        # if it is `Enum` because `Enum` types say that the return-value of
-        # `_generate_next_value_` is `Any`.  In reality the default `auto()`
-        # returns an `int` (presumably the `Any` in typeshed is to make it
-        # easier to subclass and change the returned type).
-        type_with_generate_next_value = next(
-            (type_info for type_info in info.mro
-                if type_info.names.get('_generate_next_value_')),
-            None)
-        if type_with_generate_next_value is None:
-            return ctx.default_attr_type
-
-        stnode = type_with_generate_next_value.get('_generate_next_value_')
-        if stnode is None:
-            return ctx.default_attr_type
-
-        # This should be a `CallableType`
-        node_type = get_proper_type(stnode.type)
-        if isinstance(node_type, CallableType):
-            if type_with_generate_next_value.fullname == 'enum.Enum':
-                int_type = ctx.api.named_generic_type('builtins.int', [])
-                return int_type
-            return get_proper_type(node_type.ret_type)
+    if not (isinstance(proper_type, Instance) or
+            proper_type.type.fullname != 'enum.auto'):
+        return proper_type
+    if not isinstance(ctx.type, Instance):
+        raise ValueError("An incorrect ctx.type was passed.")
+    info = ctx.type.type
+    # Find the first _generate_next_value_ on the mro.  We need to know
+    # if it is `Enum` because `Enum` types say that the return-value of
+    # `_generate_next_value_` is `Any`.  In reality the default `auto()`
+    # returns an `int` (presumably the `Any` in typeshed is to make it
+    # easier to subclass and change the returned type).
+    type_with_generate_next_value = next(
+        (type_info for type_info in info.mro
+            if type_info.names.get('_generate_next_value_')),
+        None)
+    if type_with_generate_next_value is None:
         return ctx.default_attr_type
-    return proper_type
+
+    stnode = type_with_generate_next_value.get('_generate_next_value_')
+    if stnode is None:
+        return ctx.default_attr_type
+
+    # This should be a `CallableType`
+    node_type = get_proper_type(stnode.type)
+    if isinstance(node_type, CallableType):
+        if type_with_generate_next_value.fullname == 'enum.Enum':
+            int_type = ctx.api.named_generic_type('builtins.int', [])
+            return int_type
+        return get_proper_type(node_type.ret_type)
+    return ctx.default_attr_type
 
 
 def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
