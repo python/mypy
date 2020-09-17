@@ -73,21 +73,17 @@ def _infer_value_type_with_auto_fallback(
     # `_generate_next_value_` is `Any`.  In reality the default `auto()`
     # returns an `int` (presumably the `Any` in typeshed is to make it
     # easier to subclass and change the returned type).
-    type_with_generate_next_value = next(
-        (type_info for type_info in info.mro
-            if type_info.names.get('_generate_next_value_')),
-        None)
-    if type_with_generate_next_value is None:
+    type_with_gnv = next(
+        (ti for ti in info.mro if ti.names.get('_generate_next_value_')), None)
+    if type_with_gnv is None:
         return ctx.default_attr_type
 
-    stnode = type_with_generate_next_value.get('_generate_next_value_')
-    if stnode is None:
-        return ctx.default_attr_type
+    stnode = type_with_gnv.names['_generate_next_value_']
 
     # This should be a `CallableType`
     node_type = get_proper_type(stnode.type)
     if isinstance(node_type, CallableType):
-        if type_with_generate_next_value.fullname == 'enum.Enum':
+        if type_with_gnv.fullname == 'enum.Enum':
             int_type = ctx.api.named_generic_type('builtins.int', [])
             return int_type
         return get_proper_type(node_type.ret_type)
