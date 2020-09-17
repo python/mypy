@@ -41,7 +41,4 @@ class IntFlag(int, Flag):
 
 
 class auto(IntFlag):
-
     value: Any
-
-    def __init__(self) -> None: pass

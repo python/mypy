@@ -87,6 +87,7 @@ class Truth(Enum):
 
 def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is 'builtins.int'
+[builtins fixtures/primitives.pyi]
 
 [case testEnumValueExtraMethods]
 from enum import Enum, auto
@@ -116,6 +117,7 @@ class Truth(AutoName):
 
 def infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is 'builtins.str'
+[builtins fixtures/primitives.pyi]
 
 [case testEnumValueInhomogenous]
 from enum import Enum
