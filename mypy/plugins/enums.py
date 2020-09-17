@@ -10,7 +10,7 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
-from typing import Optional
+from typing import Iterable, Optional, TypeVar
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
@@ -53,6 +53,19 @@ def enum_name_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
         return str_type.copy_modified(last_known_value=literal_type)
 
 
+_T = TypeVar('_T')
+
+
+def _first(it: Iterable[_T]) -> Optional[_T]:
+    """Return the first value from any iterable.
+
+    Returns ``None`` if the iterable is empty.
+    """
+    for val in it:
+        return val
+    return None
+
+
 def _infer_value_type_with_auto_fallback(
         ctx: 'mypy.plugin.AttributeContext',
         proper_type: Optional[ProperType]) -> Optional[Type]:
@@ -73,8 +86,8 @@ def _infer_value_type_with_auto_fallback(
     # `_generate_next_value_` is `Any`.  In reality the default `auto()`
     # returns an `int` (presumably the `Any` in typeshed is to make it
     # easier to subclass and change the returned type).
-    type_with_gnv = next(
-        (ti for ti in info.mro if ti.names.get('_generate_next_value_')), None)
+    type_with_gnv = _first(
+        ti for ti in info.mro if ti.names.get('_generate_next_value_'))
     if type_with_gnv is None:
         return ctx.default_attr_type
 
@@ -132,7 +145,7 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
                 if t is None or not isinstance(t, CallableType))
-            underlying_type = next(proper_types, None)
+            underlying_type = _first(proper_types)
             if underlying_type is None:
                 return ctx.default_attr_type
             all_same_value_type = all(
