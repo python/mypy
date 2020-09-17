@@ -12,7 +12,4 @@ def console_entry() -> None:
 
 
 if __name__ == '__main__':
-    try:
-        main(None, sys.stdout, sys.stderr)
-    except BrokenPipeError:
-        sys.exit(2)
+    console_entry()
