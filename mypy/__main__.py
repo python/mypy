@@ -5,8 +5,14 @@ from mypy.main import main
 
 
 def console_entry() -> None:
-    main(None, sys.stdout, sys.stderr)
+    try:
+        main(None, sys.stdout, sys.stderr)
+    except BrokenPipeError:
+        sys.exit(2)
 
 
 if __name__ == '__main__':
-    main(None, sys.stdout, sys.stderr)
+    try:
+        main(None, sys.stdout, sys.stderr)
+    except BrokenPipeError:
+        sys.exit(2)
