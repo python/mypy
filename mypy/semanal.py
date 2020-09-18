@@ -405,7 +405,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                     continue
                 # Need to construct the type ourselves, to avoid issues with __builtins__.list
                 # not being subscriptable or typing.List not getting bound
-                typ = self.named_type("__builtins__.list", [self.str_type()])
+                sym = self.lookup_qualified("__builtins__.list", Context())
+                if not sym:
+                    continue
+                node = sym.node
+                assert isinstance(node, TypeInfo)
+                typ = Instance(node, [self.str_type()])
             else:
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
