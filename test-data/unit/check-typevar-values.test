@@ -598,7 +598,7 @@ class C:
 
 [builtins fixtures/list.pyi]
 
-[case testTypeVarBoundAttribute]
+[case testTypeVarWithAnyTypeBound]
 # flags: --follow-imports=skip
 from typing import Type, TypeVar
 from a import A
