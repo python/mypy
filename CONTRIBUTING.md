@@ -94,8 +94,8 @@ that will help you do it.
 
 The best pull requests are focused, clearly describe what they're for
 and why they're correct, and contain tests for whatever changes they
-make to the code's behavior.  As a bonus these are easiest for someone
-to review, which helps your pull request get merged quickly!  Standard
+make to the code's behavior.  As a bonus, these are easiest for someone
+to review, which helps your pull request gets merged quickly!  Standard
 advice about good pull requests for open-source projects applies; we
 have [our own writeup](https://github.com/python/mypy/wiki/Good-Pull-Request)
 of this advice.
@@ -152,7 +152,7 @@ and labels mean.
 
 We use GitHub "labels" ([see our
 list](https://github.com/python/mypy/labels)) to roughly order what we
-want to do soon and less soon.  There's two dimensions taken into
+want to do soon and less soon.  There are two dimensions taken into
 account: **priority** (does it matter to our users) and **size** (how
 long will it take to complete).
 
@@ -185,5 +185,5 @@ years that we haven't yet re-reviewed since adopting these conventions.
   These classify the user-facing impact of the change.  Specifically
   "refactoring" means there should be no user-facing effect.
 * **topic-** labels group issues touching a similar aspect of the
-  project, for example PEP 484 compatibility, a specific command-line
-  option or dependency.
+  project, for example, PEP 484 compatibility, a specific command-line
+  option, or dependency.
