@@ -280,6 +280,9 @@ def analyze_type_type_member_access(name: str,
             item = upper_bound
         elif isinstance(upper_bound, TupleType):
             item = tuple_fallback(upper_bound)
+        elif isinstance(upper_bound, AnyType):
+            mx = mx.copy_modified(messages=ignore_messages)
+            return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TupleType):
         item = tuple_fallback(typ.item)
     elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
