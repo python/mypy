@@ -7,7 +7,7 @@ class object:
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
-# copy passed from primitives.pyi
+# copy pasted from primitives.pyi
 class type:
     def __init__(self, x) -> None: pass
 
