@@ -712,7 +712,7 @@ m.f(1)
 [file p/__init__.py]
 
 [file p/m.py.2]
-# This change will trigger a cached file (main.py) through a supressed
+# This change will trigger a cached file (main.py) through a suppressed
 # submodule, resulting in additional errors in main.py.
 def f() -> None: pass
 

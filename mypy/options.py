@@ -21,9 +21,8 @@ class BuildType:
 
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
-    "allow_untyped_globals",
     "allow_redefinition",
-    "strict_equality",
+    "allow_untyped_globals",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -42,11 +41,12 @@ PER_MODULE_OPTIONS = {
     "follow_imports_for_stubs",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_reexport",
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
-    "implicit_reexport",
     "show_none_errors",
+    "strict_equality",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
