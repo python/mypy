@@ -24,7 +24,7 @@ from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
@@ -87,7 +87,7 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
-    list_ops = builder.primitive_op(new_list_op, [], gen.line)
+    list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:
@@ -392,7 +392,7 @@ def unsafe_index(
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        return builder.call_c(list_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, '__getitem__', [index], None, line)
 

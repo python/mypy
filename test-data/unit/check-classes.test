@@ -1815,6 +1815,16 @@ reveal_type(B() + A())  # N: Revealed type is '__main__.A'
 reveal_type(A() + B())  # N: Revealed type is '__main__.A'
 [builtins fixtures/isinstance.pyi]
 
+[case testBinaryOpeartorMethodPositionalArgumentsOnly]
+class A:
+    def __add__(self, other: int) -> int: pass
+    def __iadd__(self, other: int) -> int: pass
+    def __radd__(self, other: int) -> int: pass
+
+reveal_type(A.__add__)  # N: Revealed type is 'def (__main__.A, builtins.int) -> builtins.int'
+reveal_type(A.__iadd__) # N: Revealed type is 'def (__main__.A, builtins.int) -> builtins.int'
+reveal_type(A.__radd__) # N: Revealed type is 'def (__main__.A, builtins.int) -> builtins.int'
+
 [case testOperatorMethodOverrideWithIdenticalOverloadedType]
 from foo import *
 [file foo.pyi]

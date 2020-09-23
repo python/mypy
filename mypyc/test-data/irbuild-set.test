@@ -12,7 +12,7 @@ def f():
     r5 :: object
     r6 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     r1 = box(short_int, 2)
     r2 = PySet_Add(r0, r1)
     r3 = box(short_int, 4)
@@ -29,7 +29,7 @@ def f() -> Set[int]:
 def f():
     r0 :: set
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     return r0
 
 [case testNewSetFromIterable]
@@ -61,7 +61,7 @@ def f():
     r8 :: native_int
     r9 :: short_int
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     r1 = box(short_int, 2)
     r2 = PySet_Add(r0, r1)
     r3 = box(short_int, 4)
@@ -90,7 +90,7 @@ def f():
     r6 :: int32
     r7 :: bool
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     r1 = box(short_int, 6)
     r2 = PySet_Add(r0, r1)
     r3 = box(short_int, 8)
@@ -113,7 +113,7 @@ def f():
     r1 :: object
     r2 :: bool
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = box(short_int, 2)
     r2 = CPySet_Remove(x, r1)
@@ -131,7 +131,7 @@ def f():
     r1 :: object
     r2 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Discard(x, r1)
@@ -149,7 +149,7 @@ def f():
     r1 :: object
     r2 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = box(short_int, 2)
     r2 = PySet_Add(x, r1)
@@ -166,7 +166,7 @@ def f():
     r0, x :: set
     r1 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     x = r0
     r1 = PySet_Clear(x)
     return x
@@ -212,7 +212,7 @@ def f(x, y):
     r7 :: object
     r8 :: int32
 L0:
-    r0 = set
+    r0 = PySet_New(0)
     r1 = box(short_int, 2)
     r2 = PySet_Add(r0, r1)
     r3 = box(short_int, 4)
@@ -222,3 +222,4 @@ L0:
     r7 = box(short_int, 6)
     r8 = PySet_Add(r0, r7)
     return r0
+

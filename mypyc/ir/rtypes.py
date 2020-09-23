@@ -132,7 +132,7 @@ class RVoid(RType):
     """The void type (no value).
 
     This is a singleton -- use void_rtype (below) to refer to this instead of
-    constructing a new instace.
+    constructing a new instance.
     """
 
     is_unboxed = False
@@ -515,7 +515,7 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
             current_offset += cur_size
             next_alignment = alignments[i + 1]
             # compute aligned offset,
-            # check https://en.wikipedia.org/wiki/Data_structure_alignment for more infomation
+            # check https://en.wikipedia.org/wiki/Data_structure_alignment for more information
             current_offset = (current_offset + (next_alignment - 1)) & -next_alignment
         else:
             struct_alignment = max(alignments)
@@ -699,3 +699,9 @@ PySetObject = RStruct(
     types=[PyObject, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive,
            pointer_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, smalltable,
            pointer_rprimitive])
+
+PyListObject = RStruct(
+    name='PyListObject',
+    names=['ob_base', 'ob_item', 'allocated'],
+    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+)

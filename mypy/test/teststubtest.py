@@ -75,7 +75,7 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         output = run_stubtest(
             stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
             runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
-            options=["--generate-whitelist"],
+            options=["--generate-allowlist"],
         )
 
         actual_errors = set(output.splitlines())
@@ -577,6 +577,8 @@ class StubtestUnit(unittest.TestCase):
         yield Case("", "__all__ = []", None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
+        # Here we should only check that runtime has B, since the stub explicitly re-exports it
+        yield Case(stub="from mystery import A, B as B  # type: ignore", runtime="", error="B")
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -667,33 +669,33 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         assert not output
 
-    def test_whitelist(self) -> None:
+    def test_allowlist(self) -> None:
         # Can't use this as a context because Windows
-        whitelist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+        allowlist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         try:
-            with whitelist:
-                whitelist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
+            with allowlist:
+                allowlist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
                 runtime="def bad(asdf, text): pass",
-                options=["--whitelist", whitelist.name],
+                options=["--allowlist", allowlist.name],
             )
             assert not output
 
             # test unused entry detection
-            output = run_stubtest(stub="", runtime="", options=["--whitelist", whitelist.name])
-            assert output == "note: unused whitelist entry {}.bad\n".format(TEST_MODULE_NAME)
+            output = run_stubtest(stub="", runtime="", options=["--allowlist", allowlist.name])
+            assert output == "note: unused allowlist entry {}.bad\n".format(TEST_MODULE_NAME)
 
             output = run_stubtest(
                 stub="",
                 runtime="",
-                options=["--whitelist", whitelist.name, "--ignore-unused-whitelist"],
+                options=["--allowlist", allowlist.name, "--ignore-unused-allowlist"],
             )
             assert not output
 
             # test regex matching
-            with open(whitelist.name, mode="w+") as f:
+            with open(allowlist.name, mode="w+") as f:
                 f.write("{}.b.*\n".format(TEST_MODULE_NAME))
                 f.write("(unused_missing)?\n")
                 f.write("unused.*\n")
@@ -713,13 +715,13 @@ class StubtestMiscUnit(unittest.TestCase):
                     def also_bad(asdf): pass
                     """.lstrip("\n")
                 ),
-                options=["--whitelist", whitelist.name, "--generate-whitelist"],
+                options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
-            assert output == "note: unused whitelist entry unused.*\n{}.also_bad\n".format(
+            assert output == "note: unused allowlist entry unused.*\n{}.also_bad\n".format(
                 TEST_MODULE_NAME
             )
         finally:
-            os.unlink(whitelist.name)
+            os.unlink(allowlist.name)
 
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])

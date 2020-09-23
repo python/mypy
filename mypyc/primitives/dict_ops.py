@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    method_op, simple_emit, c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op
+    c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op
 )
 
 # Get the 'dict' type object.
@@ -77,12 +77,12 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # dict.get(key)
-method_op(
+c_method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_GetWithNone',
+    error_kind=ERR_MAGIC)
 
 # Construct an empty dictionary.
 dict_new_op = c_custom_op(

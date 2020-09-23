@@ -9,8 +9,9 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
-    Call, Unbox, Box, TupleGet, GetAttr, PrimitiveOp, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
+    Call, Unbox, Box, TupleGet, GetAttr, RegisterOp,
+    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp,
+    SetMem
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -22,10 +23,10 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.primitives.registry import binary_ops, c_binary_ops
+from mypyc.primitives.registry import c_binary_ops
 from mypyc.primitives.misc_ops import none_object_op
 from mypyc.primitives.list_ops import (
-    list_get_item_op, list_set_item_op, new_list_op, list_append_op
+    list_get_item_op, list_set_item_op, list_append_op
 )
 from mypyc.primitives.dict_ops import (
     dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
@@ -109,7 +110,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_int_neg(self) -> None:
         self.assert_emit(CallC(int_neg_op.c_function_name, [self.m], int_neg_op.return_type,
-                               int_neg_op.steals, int_neg_op.error_kind, 55),
+                               int_neg_op.steals, int_neg_op.is_borrowed, int_neg_op.is_borrowed,
+                               int_neg_op.error_kind, 55),
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
     def test_branch(self) -> None:
@@ -159,13 +161,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_get_item(self) -> None:
         self.assert_emit(CallC(list_get_item_op.c_function_name, [self.m, self.k],
                                list_get_item_op.return_type, list_get_item_op.steals,
-                               list_get_item_op.error_kind, 55),
+                               list_get_item_op.is_borrowed, list_get_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_GetItem(cpy_r_m, cpy_r_k);""")
 
     def test_list_set_item(self) -> None:
         self.assert_emit(CallC(list_set_item_op.c_function_name, [self.l, self.n, self.o],
                                list_set_item_op.return_type, list_set_item_op.steals,
-                               list_set_item_op.error_kind, 55),
+                               list_set_item_op.is_borrowed, list_set_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
     def test_box(self) -> None:
@@ -182,19 +184,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                             }
                          """)
 
-    def test_new_list(self) -> None:
-        self.assert_emit(PrimitiveOp([self.n, self.m], new_list_op, 55),
-                         """cpy_r_r0 = PyList_New(2);
-                            if (likely(cpy_r_r0 != NULL)) {
-                                PyList_SET_ITEM(cpy_r_r0, 0, cpy_r_n);
-                                PyList_SET_ITEM(cpy_r_r0, 1, cpy_r_m);
-                            }
-                         """)
-
     def test_list_append(self) -> None:
         self.assert_emit(CallC(list_append_op.c_function_name, [self.l, self.o],
                                list_append_op.return_type, list_append_op.steals,
-                               list_append_op.error_kind, 1),
+                               list_append_op.is_borrowed, list_append_op.error_kind, 1),
                          """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o);""")
 
     def test_get_attr(self) -> None:
@@ -221,24 +214,25 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_get_item(self) -> None:
         self.assert_emit(CallC(dict_get_item_op.c_function_name, [self.d, self.o2],
                                dict_get_item_op.return_type, dict_get_item_op.steals,
-                               dict_get_item_op.error_kind, 1),
+                               dict_get_item_op.is_borrowed, dict_get_item_op.error_kind, 1),
                          """cpy_r_r0 = CPyDict_GetItem(cpy_r_d, cpy_r_o2);""")
 
     def test_dict_set_item(self) -> None:
         self.assert_emit(CallC(dict_set_item_op.c_function_name, [self.d, self.o, self.o2],
                                dict_set_item_op.return_type, dict_set_item_op.steals,
-                               dict_set_item_op.error_kind, 1),
+                               dict_set_item_op.is_borrowed, dict_set_item_op.error_kind, 1),
                         """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2);""")
 
     def test_dict_update(self) -> None:
         self.assert_emit(CallC(dict_update_op.c_function_name, [self.d, self.o],
                                dict_update_op.return_type, dict_update_op.steals,
-                               dict_update_op.error_kind, 1),
+                               dict_update_op.is_borrowed, dict_update_op.error_kind, 1),
                         """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o);""")
 
     def test_new_dict(self) -> None:
         self.assert_emit(CallC(dict_new_op.c_function_name, [], dict_new_op.return_type,
-                               dict_new_op.steals, dict_new_op.error_kind, 1),
+                               dict_new_op.steals, dict_new_op.is_borrowed,
+                               dict_new_op.error_kind, 1),
                          """cpy_r_r0 = PyDict_New();""")
 
     def test_dict_contains(self) -> None:
@@ -298,6 +292,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
                          """cpy_r_r00 = *(char *)cpy_r_ptr;""")
 
+    def test_set_mem(self) -> None:
+        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
+                         """*(char *)cpy_r_ptr = cpy_r_b;""")
+
     def test_get_element_ptr(self) -> None:
         r = RStruct("Foo", ["b", "i32", "i64"], [bool_rprimitive,
                                                  int32_rprimitive, int64_rprimitive])
@@ -344,14 +342,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                     if c_desc.ordering is not None:
                         args = [args[i] for i in c_desc.ordering]
                     self.assert_emit(CallC(c_desc.c_function_name, args, c_desc.return_type,
-                                           c_desc.steals, c_desc.error_kind, 55), expected)
+                                           c_desc.steals, c_desc.is_borrowed,
+                                           c_desc.error_kind, 55), expected)
                     return
-        ops = binary_ops[op]
-        for desc in ops:
-            if (is_subtype(left.type, desc.arg_types[0])
-                    and is_subtype(right.type, desc.arg_types[1])):
-                self.assert_emit(PrimitiveOp([left, right], desc, 55), expected)
-                break
         else:
             assert False, 'Could not find matching op'
 

@@ -567,7 +567,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease referece count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref r).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -1166,6 +1166,7 @@ class CallC(RegisterOp):
                  args: List[Value],
                  ret_type: RType,
                  steals: StealsDescription,
+                 is_borrowed: bool,
                  error_kind: int,
                  line: int,
                  var_arg_idx: int = -1) -> None:
@@ -1175,6 +1176,7 @@ class CallC(RegisterOp):
         self.args = args
         self.type = ret_type
         self.steals = steals
+        self.is_borrowed = is_borrowed
         self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
 
     def to_str(self, env: Environment) -> str:
@@ -1394,6 +1396,7 @@ class LoadMem(RegisterOp):
         assert is_pointer_rprimitive(src.type)
         self.src = src
         self.base = base
+        self.is_borrowed = True
 
     def sources(self) -> List[Value]:
         if self.base:
@@ -1410,6 +1413,56 @@ class LoadMem(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
+
+
+class SetMem(Op):
+    """Write a memory location.
+
+    *(type *)dest = src
+
+    Attributes:
+      type: Type of the read value
+      dest: Pointer to memory to write
+      src: Source value
+      base: If not None, the object from which we are reading memory.
+            It's used to avoid the target object from being freed via
+            reference counting. If the target is not in reference counted
+            memory, or we know that the target won't be freed, it can be
+            None.
+    """
+    error_kind = ERR_NEVER
+
+    def __init__(self,
+                 type: RType,
+                 dest: Value,
+                 src: Value,
+                 base: Optional[Value],
+                 line: int = -1) -> None:
+        super().__init__(line)
+        self.type = void_rtype
+        self.dest_type = type
+        self.src = src
+        self.dest = dest
+        self.base = base
+
+    def sources(self) -> List[Value]:
+        if self.base:
+            return [self.src, self.base, self.dest]
+        else:
+            return [self.src, self.dest]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        if self.base:
+            base = env.format(', %r', self.base)
+        else:
+            base = ''
+        return env.format("set_mem %r, %r%s :: %r*", self.dest, self.src, base, self.dest_type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_set_mem(self)
 
 
 class GetElementPtr(RegisterOp):
@@ -1565,6 +1618,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_mem(self, op: LoadMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_set_mem(self, op: SetMem) -> T:
         raise NotImplementedError
 
     @abstractmethod

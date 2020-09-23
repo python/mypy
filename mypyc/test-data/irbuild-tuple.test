@@ -96,21 +96,28 @@ def f(x: Sequence[int], y: Sequence[int]) -> Tuple[int, ...]:
     return (1, 2, *x, *y, 3)
 [out]
 def f(x, y):
-    x, y, r0, r1 :: object
-    r2 :: list
-    r3, r4, r5 :: object
-    r6 :: int32
-    r7 :: tuple
+    x, y :: object
+    r0 :: list
+    r1, r2 :: object
+    r3, r4, r5 :: ptr
+    r6, r7, r8 :: object
+    r9 :: int32
+    r10 :: tuple
 L0:
-    r0 = box(short_int, 2)
-    r1 = box(short_int, 4)
-    r2 = [r0, r1]
-    r3 = CPyList_Extend(r2, x)
-    r4 = CPyList_Extend(r2, y)
-    r5 = box(short_int, 6)
-    r6 = PyList_Append(r2, r5)
-    r7 = PyList_AsTuple(r2)
-    return r7
+    r0 = PyList_New(2)
+    r1 = box(short_int, 2)
+    r2 = box(short_int, 4)
+    r3 = get_element_ptr r0 ob_item :: PyListObject
+    r4 = load_mem r3, r0 :: ptr*
+    set_mem r4, r1, r0 :: builtins.object*
+    r5 = r4 + WORD_SIZE*1
+    set_mem r5, r2, r0 :: builtins.object*
+    r6 = CPyList_Extend(r0, x)
+    r7 = CPyList_Extend(r0, y)
+    r8 = box(short_int, 6)
+    r9 = PyList_Append(r0, r8)
+    r10 = PyList_AsTuple(r0)
+    return r10
 
 [case testTupleFor]
 from typing import Tuple, List

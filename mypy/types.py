@@ -328,12 +328,34 @@ class TypeVarId:
         return self.meta_level > 0
 
 
-class TypeVarDef(mypy.nodes.Context):
-    """Definition of a single type variable."""
-
+class TypeVarLikeDef(mypy.nodes.Context):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
     id = None  # type: TypeVarId
+
+    def __init__(
+        self, name: str, fullname: str, id: Union[TypeVarId, int], line: int = -1, column: int = -1
+    ) -> None:
+        super().__init__(line, column)
+        self.name = name
+        self.fullname = fullname
+        if isinstance(id, int):
+            id = TypeVarId(id)
+        self.id = id
+
+    def __repr__(self) -> str:
+        return self.name
+
+    def serialize(self) -> JsonDict:
+        raise NotImplementedError
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarLikeDef':
+        raise NotImplementedError
+
+
+class TypeVarDef(TypeVarLikeDef):
+    """Definition of a single type variable."""
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
@@ -341,13 +363,8 @@ class TypeVarDef(mypy.nodes.Context):
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
-        super().__init__(line, column)
+        super().__init__(name, fullname, id, line, column)
         assert values is not None, "No restrictions must be represented by empty list"
-        self.name = name
-        self.fullname = fullname
-        if isinstance(id, int):
-            id = TypeVarId(id)
-        self.id = id
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
@@ -387,6 +404,28 @@ class TypeVarDef(mypy.nodes.Context):
                           deserialize_type(data['upper_bound']),
                           data['variance'],
                           )
+
+
+class ParamSpecDef(TypeVarLikeDef):
+    """Definition of a single ParamSpec variable."""
+
+    def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
+        return {
+            '.class': 'ParamSpecDef',
+            'name': self.name,
+            'fullname': self.fullname,
+            'id': self.id.raw_id,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecDef':
+        assert data['.class'] == 'ParamSpecDef'
+        return ParamSpecDef(
+            data['name'],
+            data['fullname'],
+            data['id'],
+        )
 
 
 class UnboundType(ProperType):
@@ -976,7 +1015,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
-                 variables: Optional[List[TypeVarDef]] = None,
+                 variables: Optional[Sequence[TypeVarLikeDef]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
@@ -1028,7 +1067,7 @@ class CallableType(FunctionLike):
                       fallback: Bogus[Instance] = _dummy,
                       name: Bogus[Optional[str]] = _dummy,
                       definition: Bogus[SymbolNode] = _dummy,
-                      variables: Bogus[List[TypeVarDef]] = _dummy,
+                      variables: Bogus[Sequence[TypeVarLikeDef]] = _dummy,
                       line: Bogus[int] = _dummy,
                       column: Bogus[int] = _dummy,
                       is_ellipsis_args: Bogus[bool] = _dummy,
@@ -2057,15 +2096,19 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         if t.variables:
             vs = []
-            # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
             for var in t.variables:
-                if var.values:
-                    vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
-                    vs.append('{} in {}'.format(var.name, vals))
-                elif not is_named_instance(var.upper_bound, 'builtins.object'):
-                    vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                if isinstance(var, TypeVarDef):
+                    # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+                    if var.values:
+                        vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
+                        vs.append('{} in {}'.format(var.name, vals))
+                    elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                        vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                    else:
+                        vs.append(var.name)
                 else:
-                    vs.append(var.name)
+                    # For other TypeVarLikeDefs, just use the repr
+                    vs.append(repr(var))
             s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
         return 'def {}'.format(s)

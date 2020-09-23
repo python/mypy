@@ -134,9 +134,10 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
 // We don't support NULL bases and a non-type metaclass.
-PyObject *CPyType_FromTemplate(PyTypeObject *template_,
+PyObject *CPyType_FromTemplate(PyObject *template,
                                PyObject *orig_bases,
                                PyObject *modname) {
+    PyTypeObject *template_ = (PyTypeObject *)template;
     PyHeapTypeObject *t = NULL;
     PyTypeObject *dummy_class = NULL;
     PyObject *name = NULL;

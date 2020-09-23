@@ -6,7 +6,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, unary_op, func_op, custom_op, call_emit,
+    simple_emit, func_op, custom_op,
     c_function_op, c_custom_op, load_address_op
 )
 
@@ -88,15 +88,6 @@ check_stop_op = c_custom_op(
     c_function_name='CPy_FetchStopIterationValue',
     error_kind=ERR_MAGIC)
 
-# Negate a primitive bool
-unary_op(op='not',
-         arg_type=bool_rprimitive,
-         result_type=bool_rprimitive,
-         error_kind=ERR_NEVER,
-         format_str='{dest} = !{args[0]}',
-         emit=simple_emit('{dest} = !{args[0]};'),
-         priority=1)
-
 # Determine the most derived metaclass and check for metaclass conflicts.
 # Arguments are (metaclass, bases).
 py_calc_meta_op = custom_op(
@@ -117,12 +108,11 @@ import_op = c_custom_op(
     error_kind=ERR_MAGIC)
 
 # Get the sys.modules dictionary
-get_module_dict_op = custom_op(
-    name='get_module_dict',
+get_module_dict_op = c_custom_op(
     arg_types=[],
-    result_type=dict_rprimitive,
+    return_type=dict_rprimitive,
+    c_function_name='PyImport_GetModuleDict',
     error_kind=ERR_NEVER,
-    emit=call_emit('PyImport_GetModuleDict'),
     is_borrowed=True)
 
 # isinstance(obj, cls)
@@ -144,14 +134,6 @@ fast_isinstance_op = func_op(
     error_kind=ERR_NEVER,
     emit=simple_emit('{dest} = PyObject_TypeCheck({args[0]}, (PyTypeObject *){args[1]});'),
     priority=0)
-
-# Exact type check that doesn't consider subclasses: type(obj) is cls
-type_is_op = custom_op(
-    name='type_is',
-    arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=simple_emit('{dest} = Py_TYPE({args[0]}) == (PyTypeObject *){args[1]};'))
 
 # bool(obj) with unboxed result
 bool_op = c_function_op(
@@ -186,13 +168,11 @@ type_object_op = load_address_op(
 
 # Create a heap type based on a template non-heap type.
 # See CPyType_FromTemplate for more docs.
-pytype_from_template_op = custom_op(
+pytype_from_template_op = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, str_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    format_str='{dest} = pytype_from_template({comma_args})',
-    emit=simple_emit(
-        '{dest} = CPyType_FromTemplate((PyTypeObject *){args[0]}, {args[1]}, {args[2]});'))
+    return_type=object_rprimitive,
+    c_function_name='CPyType_FromTemplate',
+    error_kind=ERR_MAGIC)
 
 # Create a dataclass from an extension class. See
 # CPyDataclass_SleightOfHand for more docs.

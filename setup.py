@@ -147,7 +147,7 @@ if USE_MYPYC:
     ext_modules = mypycify(
         mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
-        # Use multi-file compliation mode on windows because without it
+        # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
     )

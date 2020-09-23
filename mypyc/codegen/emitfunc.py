@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -477,6 +477,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line('%s = *(%s *)%s;' % (dest, type, src))
+
+    def visit_set_mem(self, op: SetMem) -> None:
+        dest = self.reg(op.dest)
+        src = self.reg(op.src)
+        dest_type = self.ctype(op.dest_type)
+        # clang whines about self assignment (which we might generate
+        # for some casts), so don't emit it.
+        if dest != src:
+            self.emit_line('*(%s *)%s = %s;' % (dest_type, dest, src))
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)

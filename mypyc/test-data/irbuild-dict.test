@@ -99,7 +99,7 @@ L0:
     r0 = box(short_int, 8)
     r1 = PyDict_Contains(d, r0)
     r2 = truncate r1: int32 to builtins.bool
-    r3 = !r2
+    r3 = r2 ^ 1
     if r3 goto L1 else goto L2 :: bool
 L1:
     return 1

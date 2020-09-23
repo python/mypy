@@ -40,22 +40,27 @@ def f() -> int:
 def f():
     r0, c :: __main__.C
     r1 :: bool
-    r2, a :: list
-    r3 :: object
-    r4, d :: __main__.C
-    r5, r6 :: int
+    r2 :: list
+    r3, r4 :: ptr
+    a :: list
+    r5 :: object
+    r6, d :: __main__.C
+    r7, r8 :: int
 L0:
     r0 = C()
     c = r0
     c.x = 10; r1 = is_error
-    r2 = [c]
+    r2 = PyList_New(1)
+    r3 = get_element_ptr r2 ob_item :: PyListObject
+    r4 = load_mem r3, r2 :: ptr*
+    set_mem r4, c, r2 :: builtins.object*
     a = r2
-    r3 = CPyList_GetItemShort(a, 0)
-    r4 = cast(__main__.C, r3)
-    d = r4
-    r5 = d.x
-    r6 = CPyTagged_Add(r5, 2)
-    return r6
+    r5 = CPyList_GetItemShort(a, 0)
+    r6 = cast(__main__.C, r5)
+    d = r6
+    r7 = d.x
+    r8 = CPyTagged_Add(r7, 2)
+    return r8
 
 [case testMethodCall]
 class A:
@@ -118,7 +123,7 @@ L0:
     r0 = self.next
     r1 = box(None, 1)
     r2 = r0 == r1
-    r3 = !r2
+    r3 = r2 ^ 1
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = self.next
@@ -404,7 +409,7 @@ L6:
     r39 = <error> :: object
     r40 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r41 = __main__.C_template :: type
-    r42 = pytype_from_template(r41, r39, r40)
+    r42 = CPyType_FromTemplate(r41, r39, r40)
     r43 = C_trait_vtable_setup()
     r44 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r45 = PyTuple_Pack(0)
@@ -416,7 +421,7 @@ L6:
     r50 = <error> :: object
     r51 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r52 = __main__.S_template :: type
-    r53 = pytype_from_template(r52, r50, r51)
+    r53 = CPyType_FromTemplate(r52, r50, r51)
     r54 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r55 = PyTuple_Pack(0)
     r56 = PyObject_SetAttr(r53, r54, r55)
@@ -436,7 +441,7 @@ L6:
     r69 = PyTuple_Pack(3, r60, r61, r68)
     r70 = load_global CPyStatic_unicode_7 :: static  ('__main__')
     r71 = __main__.D_template :: type
-    r72 = pytype_from_template(r71, r69, r70)
+    r72 = CPyType_FromTemplate(r71, r69, r70)
     r73 = D_trait_vtable_setup()
     r74 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
     r75 = load_global CPyStatic_unicode_11 :: static  ('__dict__')
@@ -460,18 +465,22 @@ def f(x: A) -> B:
 def f(x):
     x :: __main__.A
     r0 :: object
-    r1 :: bool
-    r2, r3 :: __main__.B
+    r1 :: ptr
+    r2 :: object
+    r3 :: bool
+    r4, r5 :: __main__.B
 L0:
     r0 = __main__.B :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1, x :: builtins.object*
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = cast(__main__.B, x)
-    return r2
+    r4 = cast(__main__.B, x)
+    return r4
 L2:
-    r3 = B()
-    return r3
+    r5 = B()
+    return r5
 
 [case testIsInstanceTuple]
 from typing import Union
@@ -488,30 +497,38 @@ def f(x: R) -> Union[A, B]:
 def f(x):
     x :: __main__.R
     r0 :: object
-    r1, r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: union[__main__.A, __main__.B]
-    r6 :: __main__.A
+    r1 :: ptr
+    r2 :: object
+    r3, r4 :: bool
+    r5 :: object
+    r6 :: ptr
+    r7 :: object
+    r8 :: bool
+    r9 :: union[__main__.A, __main__.B]
+    r10 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1, x :: builtins.object*
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r4 = r3
     goto L3
 L2:
-    r3 = __main__.B :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r5 = __main__.B :: type
+    r6 = get_element_ptr x ob_type :: PyObject
+    r7 = load_mem r6, x :: builtins.object*
+    r8 = r7 == r5
+    r4 = r8
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(union[__main__.A, __main__.B], x)
-    return r5
+    r9 = cast(union[__main__.A, __main__.B], x)
+    return r9
 L5:
-    r6 = A()
-    return r6
+    r10 = A()
+    return r10
 
 [case testIsInstanceFewSubclasses]
 class R: pass
@@ -524,30 +541,38 @@ def f(x: object) -> R:
 [out]
 def f(x):
     x, r0 :: object
-    r1, r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: __main__.R
-    r6 :: __main__.A
+    r1 :: ptr
+    r2 :: object
+    r3, r4 :: bool
+    r5 :: object
+    r6 :: ptr
+    r7 :: object
+    r8 :: bool
+    r9 :: __main__.R
+    r10 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1, x :: builtins.object*
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r4 = r3
     goto L3
 L2:
-    r3 = __main__.R :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r5 = __main__.R :: type
+    r6 = get_element_ptr x ob_type :: PyObject
+    r7 = load_mem r6, x :: builtins.object*
+    r8 = r7 == r5
+    r4 = r8
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(__main__.R, x)
-    return r5
+    r9 = cast(__main__.R, x)
+    return r9
 L5:
-    r6 = A()
-    return r6
+    r10 = A()
+    return r10
 
 [case testIsInstanceFewSubclassesTrait]
 from mypy_extensions import trait
@@ -564,30 +589,38 @@ def f(x: object) -> R:
 [out]
 def f(x):
     x, r0 :: object
-    r1, r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: __main__.R
-    r6 :: __main__.A
+    r1 :: ptr
+    r2 :: object
+    r3, r4 :: bool
+    r5 :: object
+    r6 :: ptr
+    r7 :: object
+    r8 :: bool
+    r9 :: __main__.R
+    r10 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1, x :: builtins.object*
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r4 = r3
     goto L3
 L2:
-    r3 = __main__.C :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r5 = __main__.C :: type
+    r6 = get_element_ptr x ob_type :: PyObject
+    r7 = load_mem r6, x :: builtins.object*
+    r8 = r7 == r5
+    r4 = r8
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(__main__.R, x)
-    return r5
+    r9 = cast(__main__.R, x)
+    return r9
 L5:
-    r6 = A()
-    return r6
+    r10 = A()
+    return r10
 
 [case testIsInstanceManySubclasses]
 class R: pass

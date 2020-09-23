@@ -22,24 +22,24 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
-    none_rprimitive
+    none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
+    pointer_rprimitive, PyObject, PyListObject
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
-    STATIC_PREFIX
+    STATIC_PREFIX, PLATFORM_SIZE
 )
 from mypyc.primitives.registry import (
-    binary_ops, unary_ops, method_ops, func_ops,
-    c_method_call_ops, CFunctionDescription, c_function_ops,
+    func_ops, c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops
 )
 from mypyc.primitives.list_ops import (
@@ -53,9 +53,12 @@ from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
 )
 from mypyc.primitives.misc_ops import (
-    none_object_op, fast_isinstance_op, bool_op, type_is_op
+    none_object_op, fast_isinstance_op, bool_op
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
+from mypyc.primitives.str_ops import unicode_compare
+from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
@@ -204,6 +207,11 @@ class LowLevelIRBuilder:
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
+    def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
+        ob_type_address = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
+        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address, obj))
+        return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
+
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
         """Fast isinstance() check for a native class.
 
@@ -220,10 +228,10 @@ class LowLevelIRBuilder:
             # There can't be any concrete instance that matches this.
             return self.false()
         type_obj = self.get_native_type(concrete[0])
-        ret = self.primitive_op(type_is_op, [obj, type_obj], line)
+        ret = self.type_is_op(obj, type_obj, line)
         for c in concrete[1:]:
             def other() -> Value:
-                return self.primitive_op(type_is_op, [obj, self.get_native_type(c)], line)
+                return self.type_is_op(obj, self.get_native_type(c), line)
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
@@ -271,7 +279,7 @@ class LowLevelIRBuilder:
         else:
             # Otherwise we construct a list and call extend it with the star args, since tuples
             # don't have an extend method.
-            pos_args_list = self.primitive_op(new_list_op, pos_arg_values, line)
+            pos_args_list = self.new_list_op(pos_arg_values, line)
             for star_arg_value in star_arg_values:
                 self.call_c(list_extend_op, [pos_args_list, star_arg_value], line)
             pos_args_tuple = self.call_c(list_tuple_op, [pos_args_list], line)
@@ -552,6 +560,10 @@ class LowLevelIRBuilder:
                   rreg: Value,
                   expr_op: str,
                   line: int) -> Value:
+        # special case tuple comparison here so that nested tuples can be supported
+        if (isinstance(lreg.type, RTuple) and isinstance(rreg.type, RTuple)
+                and expr_op in ('==', '!=')):
+            return self.compare_tuples(lreg, rreg, expr_op, line)
         # Special case == and != when we can resolve the method call statically.
         value = None
         if expr_op in ('==', '!='):
@@ -563,15 +575,15 @@ class LowLevelIRBuilder:
         if expr_op in ('is', 'is not'):
             return self.translate_is_op(lreg, rreg, expr_op, line)
 
+        if (is_str_rprimitive(lreg.type) and is_str_rprimitive(rreg.type)
+                and expr_op in ('==', '!=')):
+            return self.compare_strings(lreg, rreg, expr_op, line)
+
         if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, expr_op, line)
 
         call_c_ops_candidates = c_binary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
-        if target:
-            return target
-        ops = binary_ops.get(expr_op, [])
-        target = self.matching_primitive_op(ops, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % expr_op
         return target
 
@@ -622,14 +634,94 @@ class LowLevelIRBuilder:
         self.goto_and_activate(out)
         return result
 
+    def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        """Compare two strings"""
+        compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
+        error_constant = self.add(LoadInt(-1, line, c_int_rprimitive))
+        compare_error_check = self.add(ComparisonOp(compare_result,
+                                                    error_constant, ComparisonOp.EQ, line))
+        exception_check, propagate, final_compare = BasicBlock(), BasicBlock(), BasicBlock()
+        branch = Branch(compare_error_check, exception_check, final_compare, Branch.BOOL_EXPR)
+        branch.negated = False
+        self.add(branch)
+        self.activate_block(exception_check)
+        check_error_result = self.call_c(err_occurred_op, [], line)
+        null = self.add(LoadInt(0, line, pointer_rprimitive))
+        compare_error_check = self.add(ComparisonOp(check_error_result,
+                                                    null, ComparisonOp.NEQ, line))
+        branch = Branch(compare_error_check, propagate, final_compare, Branch.BOOL_EXPR)
+        branch.negated = False
+        self.add(branch)
+        self.activate_block(propagate)
+        self.call_c(keep_propagating_op, [], line)
+        self.goto(final_compare)
+        self.activate_block(final_compare)
+        op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
+        return self.add(ComparisonOp(compare_result,
+                                     self.add(LoadInt(0, line, c_int_rprimitive)), op_type, line))
+
+    def compare_tuples(self,
+                       lhs: Value,
+                       rhs: Value,
+                       op: str,
+                       line: int = -1) -> Value:
+        """Compare two tuples item by item"""
+        # type cast to pass mypy check
+        assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
+        equal = True if op == '==' else False
+        result = self.alloc_temp(bool_rprimitive)
+        # empty tuples
+        if len(lhs.type.types) == 0 and len(rhs.type.types) == 0:
+            self.add(Assign(result, self.true() if equal else self.false(), line))
+            return result
+        length = len(lhs.type.types)
+        false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
+        check_blocks = [BasicBlock() for i in range(length)]
+        lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
+        rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
+
+        if equal:
+            early_stop, final = false_assign, true_assign
+        else:
+            early_stop, final = true_assign, false_assign
+
+        for i in range(len(lhs.type.types)):
+            if i != 0:
+                self.activate_block(check_blocks[i])
+            lhs_item = lhs_items[i]
+            rhs_item = rhs_items[i]
+            compare = self.binary_op(lhs_item, rhs_item, op, line)
+            # Cast to bool if necessary since most types uses comparison returning a object type
+            # See generic_ops.py for more information
+            if not is_bool_rprimitive(compare.type):
+                compare = self.call_c(bool_op, [compare], line)
+            if i < len(lhs.type.types) - 1:
+                branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL_EXPR)
+            else:
+                branch = Branch(compare, early_stop, final, Branch.BOOL_EXPR)
+            # if op is ==, we branch on false, else branch on true
+            branch.negated = equal
+            self.add(branch)
+        self.activate_block(false_assign)
+        self.add(Assign(result, self.false(), line))
+        self.goto(out)
+        self.activate_block(true_assign)
+        self.add(Assign(result, self.true(), line))
+        self.goto_and_activate(out)
+        return result
+
+    def unary_not(self,
+                  value: Value,
+                  line: int) -> Value:
+        mask = self.add(LoadInt(1, line, rtype=bool_rprimitive))
+        return self.binary_int_op(bool_rprimitive, value, mask, BinaryIntOp.XOR, line)
+
     def unary_op(self,
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        ops = unary_ops.get(expr_op, [])
-        target = self.matching_primitive_op(ops, [lreg], line)
-        if target:
-            return target
+        if is_bool_rprimitive(lreg.type) and expr_op == 'not':
+            return self.unary_not(lreg, line)
         call_c_ops_candidates = c_unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
@@ -668,6 +760,27 @@ class LowLevelIRBuilder:
             result = self._create_dict(keys, values, line)
 
         return result
+
+    def new_list_op(self, values: List[Value], line: int) -> Value:
+        length = self.add(LoadInt(len(values), line, rtype=c_pyssize_t_rprimitive))
+        result_list = self.call_c(new_list_op, [length], line)
+        if len(values) == 0:
+            return result_list
+        args = [self.coerce(item, object_rprimitive, line) for item in values]
+        ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
+        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, result_list, line))
+        for i in range(len(values)):
+            if i == 0:
+                item_address = ob_item_base
+            else:
+                offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=c_pyssize_t_rprimitive))
+                item_address = self.add(BinaryIntOp(pointer_rprimitive, ob_item_base, offset,
+                                                    BinaryIntOp.ADD, line))
+            self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
+        return result_list
+
+    def new_set_op(self, values: List[Value], line: int) -> Value:
+        return self.call_c(new_set_op, values, line)
 
     def builtin_call(self,
                      args: List[Value],
@@ -782,7 +895,7 @@ class LowLevelIRBuilder:
             extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
             coerced.append(extra_int_constant)
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.error_kind, line, var_arg_idx))
+                                desc.is_borrowed, desc.error_kind, line, var_arg_idx))
         if desc.truncated_type is None:
             result = target
         else:
@@ -938,13 +1051,10 @@ class LowLevelIRBuilder:
 
         Return None if no translation found; otherwise return the target register.
         """
-        ops = method_ops.get(name, [])
         call_c_ops_candidates = c_method_call_ops.get(name, [])
         call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args,
                                          line, result_type)
-        if call_c_op is not None:
-            return call_c_op
-        return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)
+        return call_c_op
 
     def translate_eq_cmp(self,
                          lreg: Value,

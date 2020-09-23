@@ -24,6 +24,7 @@ ClassVar = 0
 Final = 0
 NoReturn = 0
 NewType = 0
+ParamSpec = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)

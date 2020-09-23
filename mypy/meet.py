@@ -339,9 +339,9 @@ def is_overlapping_types(left: Type,
             # Or, to use a more concrete example, List[Union[A, B]] and List[Union[B, C]]
             # would be considered partially overlapping since it's possible for both lists
             # to contain only instances of B at runtime.
-            for left_arg, right_arg in zip(left.args, right.args):
-                if _is_overlapping_types(left_arg, right_arg):
-                    return True
+            if all(_is_overlapping_types(left_arg, right_arg)
+                   for left_arg, right_arg in zip(left.args, right.args)):
+                return True
 
         return False
 

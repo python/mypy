@@ -135,6 +135,9 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     else:
         return
 
+    os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
+            os.path.abspath(config_file))
+
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
             print("%s: No [mypy] section in config file" % file_read, file=stderr)

@@ -10,7 +10,7 @@ from typing_extensions import Type as TypingType
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, TypeVarLikeDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery
@@ -113,7 +113,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
                    is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
-    variables = []  # type: List[TypeVarDef]
+    variables = []  # type: List[TypeVarLikeDef]
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
@@ -227,6 +227,8 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         # TODO: infer bounds on the type of *args?
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
+
+    variables = []  # type: Sequence[TypeVarLikeDef]
     if func.variables and supported_self_type(self_param_type):
         if original_type is None:
             # TODO: type check method override (see #7861).
@@ -472,7 +474,9 @@ def true_or_false(t: Type) -> ProperType:
     return new_t
 
 
-def erase_def_to_union_or_bound(tdef: TypeVarDef) -> Type:
+def erase_def_to_union_or_bound(tdef: TypeVarLikeDef) -> Type:
+    # TODO(shantanu): fix for ParamSpecDef
+    assert isinstance(tdef, TypeVarDef)
     if tdef.values:
         return make_simplified_union(tdef.values)
     else:
