@@ -2741,7 +2741,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result_is_left = not left_type.can_be_false
 
         # If left_map is None then we know mypy considers the left expression
-        # to be reundant.
+        # to be redundant.
         #
         # Note that we perform these checks *before* we take into account
         # the analysis from the semanal phase below. We assume that nodes
