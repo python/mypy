@@ -377,3 +377,13 @@ def check_partial_list() -> None:
         z.append(3)
     reveal_type(z)  # N: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
+
+[case testWalrusExpr]
+def func() -> None:
+    foo = Foo()
+    if x := foo.x:
+        pass
+
+class Foo:
+    def __init__(self) -> None:
+        self.x = 123
