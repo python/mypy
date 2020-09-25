@@ -3788,7 +3788,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert typ is not None
         self.chk.store_type(node, typ)
 
-        if isinstance(node, AssignmentExpr):
+        if isinstance(node, AssignmentExpr) and not has_uninhabited_component(typ):
             self.chk.store_type(node.target, typ)
 
         if (self.chk.options.disallow_any_expr and
