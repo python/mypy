@@ -138,7 +138,7 @@ Documentation and additional information is available at the web site:
 
 Or you can jump straight to the documentation:
 
-  http://mypy.readthedocs.io/
+  https://mypy.readthedocs.io/
 
 
 Troubleshooting
