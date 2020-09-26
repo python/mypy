@@ -304,12 +304,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return make_optional_type(item)
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
-        elif (fullname == 'typing.Type'):
+        elif (fullname == 'typing.Type' or
+             (fullname == 'builtins.type' and self.api.is_future_flag_set('annotations'))):
             if len(t.args) == 0:
-                any_type = self.get_omitted_any(t)
-                return TypeType(any_type, line=t.line, column=t.column)
+                if fullname == 'typing.Type':
+                    any_type = self.get_omitted_any(t)
+                    return TypeType(any_type, line=t.line, column=t.column)
+                else:
+                    return None
+            type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
             if len(t.args) != 1:
-                self.fail('Type[...] must have exactly one type argument', t)
+                self.fail(type_str + ' must have exactly one type argument', t)
             item = self.anal_type(t.args[0])
             return TypeType.make_normalized(item, line=t.line)
         elif fullname == 'typing.ClassVar':
