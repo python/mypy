@@ -132,12 +132,40 @@ assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
 
 [case testIntOps]
-def _and(x: int, y: int) -> int:
-    return x + y
+from typing import Any
 
-def assert_eq(x: int, y: int) -> None:
-    assert x == y, '{} != {}'.format(x, y)
+def check_and(x: int, y: int) -> None:
+    x_any: Any = x
+    y_any: Any = y
+    # Use generic operation to calculate expected result.
+    expected = x_any & y_any
+    # Use specialized operation to calculate actual result.
+    actual = x & y
+    assert actual == expected, '{} != {}'.format(actual, expected)
 
-def test_and() -> None:
-    assert_eq(_and(12345, 3423), 15768)
-    assert_eq(_and(12345 << 100, 3423 << 100), 15768 << 100)
+def check_or(x: int, y: int) -> None:
+    x_any: Any = x
+    y_any: Any = y
+    # Use generic operation to calculate expected result.
+    expected = x_any | y_any
+    # Use specialized operation to calculate actual result.
+    actual = x | y
+    assert actual == expected, '{} != {}'.format(actual, expected)
+
+def check_xor(x: int, y: int) -> None:
+    x_any: Any = x
+    y_any: Any = y
+    # Use generic operation to calculate expected result.
+    expected = x_any ^ y_any
+    # Use specialized operation to calculate actual result.
+    actual = x ^ y
+    assert actual == expected, '{} != {}'.format(actual, expected)
+
+def check_bitwise(x: int, y: int) -> None:
+    check_and(x, y)
+    check_or(x, y)
+    check_xor(x, y)
+
+def test_bitwise() -> None:
+    check_bitwise(12345, 3423)
+    check_bitwise(12345 << 100, 3423 << 100)
