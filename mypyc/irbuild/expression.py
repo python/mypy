@@ -27,7 +27,7 @@ from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
-from mypyc.primitives.tuple_ops import list_tuple_op
+from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
