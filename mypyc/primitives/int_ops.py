@@ -85,6 +85,8 @@ int_binary_op('+', 'CPyTagged_Add')
 int_binary_op('-', 'CPyTagged_Subtract')
 int_binary_op('*', 'CPyTagged_Multiply')
 int_binary_op('&', 'CPyTagged_And')
+int_binary_op('|', 'CPyTagged_Or')
+int_binary_op('^', 'CPyTagged_Xor')
 # Divide and remainder we honestly propagate errors from because they
 # can raise ZeroDivisionError
 int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
