@@ -20,7 +20,7 @@ def crash_report(module_path: str, line: int) -> 'NoReturn':
     tb = traceback.extract_stack()[:-4]
     # Excise all the traceback from the test runner
     for i, x in enumerate(tb):
-        if x.name == 'pytest_runtest_call':
+        if(x.name == 'pytest_runtest_call'):
             tb = tb[i + 1:]
             break
     tb2 = traceback.extract_tb(sys.exc_info()[2])[1:]
