@@ -636,7 +636,10 @@ reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
 reveal_type(a**b) # N: Revealed type is 'Any'
 reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
 reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
-a.__pow__() # E: Too few arguments for "__pow__" of "int"
+a.__pow__() # E: All overload variants of "__pow__" of "int" require at least one argument \
+            # N: Possible overload variants: \
+            # N:     def __pow__(self, Literal[2], Optional[int] = ...) -> int \
+            # N:     def __pow__(self, int, Optional[int] = ...) -> Any
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -1123,3 +1126,89 @@ import foo.bar
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
 == Return code: 2
+
+[case testEnableInvalidErrorCode]
+# cmd: mypy --enable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testDisableInvalidErrorCode]
+# cmd: mypy --disable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testEnableAndDisableInvalidErrorCode]
+# cmd: mypy --disable-error-code YOLO --enable-error-code YOLO2 test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO, YOLO2
+== Return code: 2
+
+[case testEnableValidAndInvalidErrorCode]
+# cmd: mypy --enable-error-code attr-defined --enable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testDisableValidAndInvalidErrorCode]
+# cmd: mypy --disable-error-code attr-defined --disable-error-code YOLO test.py
+[file test.py]
+x = 1
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Invalid error code(s): YOLO
+== Return code: 2
+
+[case testStubsDirectory]
+# cmd: mypy --error-summary pkg-stubs
+[file pkg-stubs/__init__.pyi]
+[file pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 2 source files
+== Return code: 0
+
+[case testStubsDirectoryFile]
+# cmd: mypy --error-summary pkg-stubs/thing.pyi
+[file pkg-stubs/__init__.pyi]
+[file pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 1 source file
+== Return code: 0
+
+[case testStubsSubDirectory]
+# cmd: mypy --error-summary src/pkg-stubs
+[file src/pkg-stubs/__init__.pyi]
+[file src/pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 2 source files
+== Return code: 0
+
+[case testStubsSubDirectoryFile]
+# cmd: mypy --error-summary src/pkg-stubs/thing.pyi
+[file src/pkg-stubs/__init__.pyi]
+[file src/pkg-stubs/thing.pyi]
+class Thing: ...
+[out]
+Success: no issues found in 1 source file
+== Return code: 0

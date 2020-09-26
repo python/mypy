@@ -8,7 +8,7 @@ from mypy.nodes import (
 )
 from mypyc.ir.ops import (
     Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
-    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE
+    BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
@@ -19,10 +19,9 @@ from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, py_hasattr_op
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand, pytype_from_template_op, py_calc_meta_op, type_object_op,
-    not_implemented_op, true_op
+    not_implemented_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
-from mypyc.primitives.tuple_ops import new_tuple_op
 from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
@@ -165,15 +164,15 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
     if base_exprs:
         bases = [builder.accept(x) for x in base_exprs]
-        tp_bases = builder.primitive_op(new_tuple_op, bases, cdef.line)
+        tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
     modname = builder.load_static_unicode(builder.module_name)
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
                                    builder.module_name, NAMESPACE_TYPE))
     # Create the class
-    tp = builder.primitive_op(pytype_from_template_op,
-                           [template, tp_bases, modname], cdef.line)
+    tp = builder.call_c(pytype_from_template_op,
+                    [template, tp_bases, modname], cdef.line)
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -219,7 +218,7 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
 
         base = builder.load_global_str(cls.name, cdef.line)
         bases.append(base)
-    return builder.primitive_op(new_tuple_op, bases, cdef.line)
+    return builder.new_tuple(bases, cdef.line)
 
 
 def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> Value:
@@ -227,7 +226,8 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
     if cdef.metaclass:
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
-        declared_metaclass = builder.primitive_op(type_object_op, [], cdef.line)
+        declared_metaclass = builder.add(LoadAddress(type_object_op.type,
+                                                     type_object_op.src, cdef.line))
 
     return builder.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
 
@@ -279,7 +279,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
     # which attributes to compute on.
     # TODO: Maybe generate more precise types for annotations
     key = builder.load_static_unicode(lvalue.name)
-    typ = builder.primitive_op(type_object_op, [], stmt.line)
+    typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
     builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
     # Only add the attribute to the __dict__ if the assignment is of the form:
@@ -349,7 +349,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
         val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
         builder.add(SetAttr(self_var, lvalue.name, val, -1))
 
-    builder.add(Return(builder.primitive_op(true_op, [], -1)))
+    builder.add(Return(builder.true()))
 
     blocks, env, ret_type, _ = builder.leave()
     ir = FuncIR(
@@ -393,9 +393,10 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     # If __eq__ returns NotImplemented, then __ne__ should also
     not_implemented_block, regular_block = BasicBlock(), BasicBlock()
     eqval = builder.add(MethodCall(args[0], '__eq__', [args[1]], line))
-    not_implemented = builder.primitive_op(not_implemented_op, [], line)
+    not_implemented = builder.add(LoadAddress(not_implemented_op.type,
+                                              not_implemented_op.src, line))
     builder.add(Branch(
-        builder.binary_op(eqval, not_implemented, 'is', line),
+        builder.translate_is_op(eqval, not_implemented, 'is', line),
         not_implemented_block,
         regular_block,
         Branch.BOOL_EXPR))
@@ -463,9 +464,8 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
     attrs = [name for ancestor in ir.mro for name in ancestor.attributes]
     if ir.inherits_python:
         attrs.append('__dict__')
-    return builder.primitive_op(new_tuple_op,
-                             [builder.load_static_unicode(attr) for attr in attrs],
-                             line)
+    items = [builder.load_static_unicode(attr) for attr in attrs]
+    return builder.new_tuple(items, line)
 
 
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
@@ -521,7 +521,7 @@ def dataclass_non_ext_info(builder: IRBuilder, cdef: ClassDef) -> Optional[NonEx
             builder.call_c(dict_new_op, [], cdef.line),
             builder.add(TupleSet([], cdef.line)),
             builder.call_c(dict_new_op, [], cdef.line),
-            builder.primitive_op(type_object_op, [], cdef.line),
+            builder.add(LoadAddress(type_object_op.type, type_object_op.src, cdef.line))
         )
     else:
         return None

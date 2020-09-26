@@ -3,11 +3,14 @@ import re
 import pprint
 import sys
 
-from typing_extensions import Final
+from typing_extensions import Final, TYPE_CHECKING
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, Any
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
+
+if TYPE_CHECKING:
+    from mypy.errors import ErrorCode
 
 
 class BuildType:
@@ -18,9 +21,8 @@ class BuildType:
 
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
-    "allow_untyped_globals",
     "allow_redefinition",
-    "strict_equality",
+    "allow_untyped_globals",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -39,11 +41,12 @@ PER_MODULE_OPTIONS = {
     "follow_imports_for_stubs",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_reexport",
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
-    "implicit_reexport",
     "show_none_errors",
+    "strict_equality",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
@@ -176,6 +179,14 @@ class Options:
 
         # Variable names considered False
         self.always_false = []  # type: List[str]
+
+        # Error codes to disable
+        self.disable_error_code = []  # type: List[str]
+        self.disabled_error_codes = set()  # type: Set[ErrorCode]
+
+        # Error codes to enable
+        self.enable_error_code = []  # type: List[str]
+        self.enabled_error_codes = set()  # type: Set[ErrorCode]
 
         # Use script name instead of __main__
         self.scripts_are_modules = False

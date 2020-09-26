@@ -5,20 +5,18 @@ from typing import List
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, ERR_NEG_INT, EmitterInterface
 from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive,
-    c_int_rprimitive
+    c_int_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, custom_op, name_emit,
-    call_emit, c_function_op, c_binary_op, c_method_op, c_custom_op
+    load_address_op, c_function_op, c_binary_op, c_method_op, c_custom_op
 )
 
 
 # Get the 'builtins.list' type object.
-name_ref_op('builtins.list',
-            result_type=object_rprimitive,
-            error_kind=ERR_NEVER,
-            emit=name_emit('&PyList_Type', target_type='PyObject *'),
-            is_borrowed=True)
+load_address_op(
+    name='builtins.list',
+    type=object_rprimitive,
+    src='PyList_Type')
 
 # list(obj)
 to_list = c_function_op(
@@ -29,25 +27,11 @@ to_list = c_function_op(
     error_kind=ERR_MAGIC,
 )
 
-
-def emit_new(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    # TODO: This would be better split into multiple smaller ops.
-    emitter.emit_line('%s = PyList_New(%d); ' % (dest, len(args)))
-    emitter.emit_line('if (likely(%s != NULL)) {' % dest)
-    for i, arg in enumerate(args):
-        emitter.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, arg))
-    emitter.emit_line('}')
-
-
-# Construct a list from values: [item1, item2, ....]
-new_list_op = custom_op(arg_types=[object_rprimitive],
-                        result_type=list_rprimitive,
-                        is_var_arg=True,
-                        error_kind=ERR_MAGIC,
-                        steals=True,
-                        format_str='{dest} = [{comma_args}]',
-                        emit=emit_new)
-
+new_list_op = c_custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='PyList_New',
+    error_kind=ERR_MAGIC)
 
 # list[index] (for an integer index)
 list_get_item_op = c_method_op(
@@ -68,13 +52,11 @@ c_method_op(
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
-list_get_item_unsafe_op = custom_op(
-    name='__getitem__',
+list_get_item_unsafe_op = c_custom_op(
     arg_types=[list_rprimitive, short_int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str='{dest} = {args[0]}[{args[1]}] :: unsafe list',
-    emit=call_emit('CPyList_GetItemUnsafe'))
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemUnsafe',
+    error_kind=ERR_NEVER)
 
 # list[index] = obj
 list_set_item_op = c_method_op(

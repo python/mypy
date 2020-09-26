@@ -14,10 +14,14 @@ from mypy import build
 from mypy import defaults
 from mypy import state
 from mypy import util
-from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
+from mypy.modulefinder import (
+    BuildSource, FindModuleCache, SearchPaths,
+    get_site_packages_dirs, mypy_path,
+)
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
+from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
 from mypy.config_parser import parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
@@ -71,14 +75,11 @@ def main(script_path: Optional[str],
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
         f = stderr if serious else stdout
-        try:
-            for msg in new_messages:
-                if options.color_output:
-                    msg = formatter.colorize(msg)
-                f.write(msg + '\n')
-            f.flush()
-        except BrokenPipeError:
-            sys.exit(2)
+        for msg in new_messages:
+            if options.color_output:
+                msg = formatter.colorize(msg)
+            f.write(msg + '\n')
+        f.flush()
 
     serious = False
     blockers = False
@@ -133,9 +134,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
-    # FIXME: typeshed incorrectly has the type of indent as int when
-    # it should be str. Make it Any to avoid rusing mypyc.
-    def _fill_text(self, text: str, width: int, indent: Any) -> str:
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
         if '\n' in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
@@ -575,7 +574,7 @@ def process_options(args: List[str],
                         group=lint_group)
     add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
                         help="Warn about statements or expressions inferred to be"
-                             " unreachable or redundant",
+                             " unreachable",
                         group=lint_group)
 
     # Note: this group is intentionally added here even though we don't add
@@ -611,6 +610,14 @@ def process_options(args: List[str],
     strictness_group.add_argument(
         '--strict', action='store_true', dest='special-opts:strict',
         help=strict_help)
+
+    strictness_group.add_argument(
+        '--disable-error-code', metavar='NAME', action='append', default=[],
+        help="Disable a specific error code")
+    strictness_group.add_argument(
+        '--enable-error-code', metavar='NAME', action='append', default=[],
+        help="Enable a specific error code"
+    )
 
     error_group = parser.add_argument_group(
         title='Configuring error messages',
@@ -860,6 +867,23 @@ def process_options(args: List[str],
         parser.error("You can't make a variable always true and always false (%s)" %
                      ', '.join(sorted(overlap)))
 
+    # Process `--enable-error-code` and `--disable-error-code` flags
+    disabled_codes = set(options.disable_error_code)
+    enabled_codes = set(options.enable_error_code)
+
+    valid_error_codes = set(error_codes.keys())
+
+    invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
+    if invalid_codes:
+        parser.error("Invalid error code(s): %s" %
+                     ', '.join(sorted(invalid_codes)))
+
+    options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
+    options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
+
+    # Enabling an error code always overrides disabling
+    options.disabled_error_codes -= options.enabled_error_codes
+
     # Set build flags.
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
@@ -897,7 +921,11 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
+        egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+        search_paths = SearchPaths((os.getcwd(),),
+                                   tuple(mypy_path() + options.mypy_path),
+                                   tuple(egg_dirs + site_packages),
+                                   ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)

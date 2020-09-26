@@ -40,7 +40,7 @@ from typing import Dict, List, Optional, NamedTuple, Tuple
 from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
-from mypyc.ir.rtypes import RType,  bool_rprimitive
+from mypyc.ir.rtypes import RType
 
 CFunctionDescription = NamedTuple(
     'CFunctionDescription',  [('name', str),
@@ -51,32 +51,19 @@ CFunctionDescription = NamedTuple(
                               ('c_function_name', str),
                               ('error_kind', int),
                               ('steals', StealsDescription),
+                              ('is_borrowed', bool),
                               ('ordering', Optional[List[int]]),
-                              ('extra_int_constant', Optional[Tuple[int, RType]]),
+                              ('extra_int_constants', List[Tuple[int, RType]]),
                               ('priority', int)])
 
 # A description for C load operations including LoadGlobal and LoadAddress
-CLoadDescription = NamedTuple(
-    'CLoadDescription',     [('name', str),
-                            ('return_type', RType),
-                            ('identifier', str),  # name of the target to load
-                            ('cast_str', str),  # string represents optional type cast
-                            ('load_address', bool)])  # True for LoadAddress otherwise LoadGlobal
-
-# Primitive binary ops (key is operator such as '+')
-binary_ops = {}  # type: Dict[str, List[OpDescription]]
-
-# Primitive unary ops (key is operator such as '-')
-unary_ops = {}  # type: Dict[str, List[OpDescription]]
+LoadAddressDescription = NamedTuple(
+    'LoadAddressDescription',     [('name', str),
+                                   ('type', RType),
+                                   ('src', str)])  # name of the target to load
 
 # Primitive ops for built-in functions (key is function name such as 'builtins.len')
 func_ops = {}  # type: Dict[str, List[OpDescription]]
-
-# Primitive ops for built-in methods (key is method name such as 'builtins.list.append')
-method_ops = {}  # type: Dict[str, List[OpDescription]]
-
-# Primitive ops for reading module attributes (key is name such as 'builtins.None')
-name_ref_ops = {}  # type: Dict[str, OpDescription]
 
 # CallC op for method call(such as 'str.join')
 c_method_call_ops = {}  # type: Dict[str, List[CFunctionDescription]]
@@ -90,8 +77,7 @@ c_binary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 # CallC op for unary ops
 c_unary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
 
-# LoadGlobal/LoadAddress op for reading global names
-c_name_ref_ops = {}  # type: Dict[str, CLoadDescription]
+builtin_names = {}  # type: Dict[str, Tuple[RType, str]]
 
 
 def simple_emit(template: str) -> EmitCallback:
@@ -115,106 +101,6 @@ def simple_emit(template: str) -> EmitCallback:
             num_args=len(args)))
 
     return emit
-
-
-def name_emit(name: str, target_type: Optional[str] = None) -> EmitCallback:
-    """Construct a PrimitiveOp emit callback function that assigns a C name."""
-    cast = "({})".format(target_type) if target_type else ""
-    return simple_emit('{dest} = %s%s;' % (cast, name))
-
-
-def call_emit(func: str) -> EmitCallback:
-    """Construct a PrimitiveOp emit callback function that calls a C function."""
-    return simple_emit('{dest} = %s({comma_args});' % func)
-
-
-def call_void_emit(func: str) -> EmitCallback:
-    return simple_emit('%s({comma_args});' % func)
-
-
-def call_and_fail_emit(func: str) -> EmitCallback:
-    # This is a hack for our always failing operations like CPy_Raise,
-    # since we want the optimizer to see that it always fails but we
-    # don't have an ERR_ALWAYS yet.
-    # TODO: Have an ERR_ALWAYS.
-    return simple_emit('%s({comma_args}); {dest} = 0;' % func)
-
-
-def call_negative_bool_emit(func: str) -> EmitCallback:
-    """Construct an emit callback that calls a function and checks for negative return.
-
-    The negative return value is converted to a bool (true -> no error).
-    """
-    return simple_emit('{dest} = %s({comma_args}) >= 0;' % func)
-
-
-def negative_int_emit(template: str) -> EmitCallback:
-    """Construct a simple PrimitiveOp emit callback function that checks for -1 return."""
-
-    def emit(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-        temp = emitter.temp_name()
-        emitter.emit_line(template.format(args=args, dest='int %s' % temp,
-                                          comma_args=', '.join(args)))
-        emitter.emit_lines('if (%s < 0)' % temp,
-                           '    %s = %s;' % (dest, emitter.c_error_value(bool_rprimitive)),
-                           'else',
-                           '    %s = %s;' % (dest, temp))
-
-    return emit
-
-
-def call_negative_magic_emit(func: str) -> EmitCallback:
-    return negative_int_emit('{dest} = %s({comma_args});' % func)
-
-
-def binary_op(op: str,
-              arg_types: List[RType],
-              result_type: RType,
-              error_kind: int,
-              emit: EmitCallback,
-              format_str: Optional[str] = None,
-              steals: StealsDescription = False,
-              is_borrowed: bool = False,
-              priority: int = 1) -> None:
-    """Define a PrimitiveOp for a binary operation.
-
-    Arguments are similar to func_op(), but exactly two argument types
-    are expected.
-
-    This will be automatically generated by matching against the AST.
-    """
-    assert len(arg_types) == 2
-    ops = binary_ops.setdefault(op, [])
-    if format_str is None:
-        format_str = '{dest} = {args[0]} %s {args[1]}' % op
-    desc = OpDescription(op, arg_types, result_type, False, error_kind, format_str, emit,
-                         steals, is_borrowed, priority)
-    ops.append(desc)
-
-
-def unary_op(op: str,
-             arg_type: RType,
-             result_type: RType,
-             error_kind: int,
-             emit: EmitCallback,
-             format_str: Optional[str] = None,
-             steals: StealsDescription = False,
-             is_borrowed: bool = False,
-             priority: int = 1) -> OpDescription:
-    """Define a PrimitiveOp for a unary operation.
-
-    Arguments are similar to func_op(), but only a single argument type
-    is expected.
-
-    This will be automatically generated by matching against the AST.
-    """
-    ops = unary_ops.setdefault(op, [])
-    if format_str is None:
-        format_str = '{dest} = %s{args[0]}' % op
-    desc = OpDescription(op, [arg_type], result_type, False, error_kind, format_str, emit,
-                         steals, is_borrowed, priority)
-    ops.append(desc)
-    return desc
 
 
 def func_op(name: str,
@@ -254,62 +140,6 @@ def func_op(name: str,
     desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
                          steals, is_borrowed, priority)
     ops.append(desc)
-    return desc
-
-
-def method_op(name: str,
-              arg_types: List[RType],
-              result_type: Optional[RType],
-              error_kind: int,
-              emit: EmitCallback,
-              steals: StealsDescription = False,
-              is_borrowed: bool = False,
-              priority: int = 1) -> OpDescription:
-    """Define a primitive op that replaces a method call.
-
-    Most arguments are similar to func_op().
-
-    This will be automatically generated by matching against the AST.
-
-    Args:
-        name: short name of the method (for example, 'append')
-        arg_types: argument types; the receiver is always the first argument
-        result_type: type of the result, None if void
-    """
-    ops = method_ops.setdefault(name, [])
-    assert len(arg_types) > 0
-    args = ', '.join('{args[%d]}' % i
-                     for i in range(1, len(arg_types)))
-    type_name = short_name(arg_types[0].name)
-    if name == '__getitem__':
-        format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % type_name
-    else:
-        format_str = '{dest} = {args[0]}.%s(%s) :: %s' % (name, args, type_name)
-    desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
-                         steals, is_borrowed, priority)
-    ops.append(desc)
-    return desc
-
-
-def name_ref_op(name: str,
-                result_type: RType,
-                error_kind: int,
-                emit: EmitCallback,
-                is_borrowed: bool = False) -> OpDescription:
-    """Define an op that is used to implement reading a module attribute.
-
-    This will be automatically generated by matching against the AST.
-
-    Most arguments are similar to func_op().
-
-    Args:
-        name: fully-qualified name (e.g. 'builtins.None')
-    """
-    assert name not in name_ref_ops, 'already defined: %s' % name
-    format_str = '{dest} = %s' % short_name(name)
-    desc = OpDescription(name, [], result_type, False, error_kind, format_str, emit,
-                         False, is_borrowed, 0)
-    name_ref_ops[name] = desc
     return desc
 
 
@@ -356,8 +186,9 @@ def c_method_op(name: str,
                 var_arg_type: Optional[RType] = None,
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
-                extra_int_constant: Optional[Tuple[int, RType]] = None,
+                extra_int_constants: List[Tuple[int, RType]] = [],
                 steals: StealsDescription = False,
+                is_borrowed: bool = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a method call.
 
@@ -378,14 +209,15 @@ def c_method_op(name: str,
                   should never be used together with var_arg_type.
                   all the other arguments(such as arg_types) are in the order
                   accepted by the python syntax(before reordering)
-        extra_int_constant: optional extra integer constant as the last argument to a C call
+        extra_int_constants: optional extra integer constants as the last arguments to a C call
         steals: description of arguments that this steals (ref count wise)
+        is_borrowed: if True, returned value is borrowed (no need to decrease refcount)
         priority: if multiple ops match, the one with the highest priority is picked
     """
     ops = c_method_call_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constant,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
@@ -398,8 +230,9 @@ def c_function_op(name: str,
                   var_arg_type: Optional[RType] = None,
                   truncated_type: Optional[RType] = None,
                   ordering: Optional[List[int]] = None,
-                  extra_int_constant: Optional[Tuple[int, RType]] = None,
+                  extra_int_constants: List[Tuple[int, RType]] = [],
                   steals: StealsDescription = False,
+                  is_borrowed: bool = False,
                   priority: int = 1) -> CFunctionDescription:
     """Define a c function call op that replaces a function call.
 
@@ -413,8 +246,8 @@ def c_function_op(name: str,
     """
     ops = c_function_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constant,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
@@ -427,8 +260,9 @@ def c_binary_op(name: str,
                 var_arg_type: Optional[RType] = None,
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
-                extra_int_constant: Optional[Tuple[int, RType]] = None,
+                extra_int_constants: List[Tuple[int, RType]] = [],
                 steals: StealsDescription = False,
+                is_borrowed: bool = False,
                 priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for a binary operation.
 
@@ -439,8 +273,8 @@ def c_binary_op(name: str,
     """
     ops = c_binary_ops.setdefault(name, [])
     desc = CFunctionDescription(name, arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constant,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
@@ -452,15 +286,16 @@ def c_custom_op(arg_types: List[RType],
                 var_arg_type: Optional[RType] = None,
                 truncated_type: Optional[RType] = None,
                 ordering: Optional[List[int]] = None,
-                extra_int_constant: Optional[Tuple[int, RType]] = None,
-                steals: StealsDescription = False) -> CFunctionDescription:
+                extra_int_constants: List[Tuple[int, RType]] = [],
+                steals: StealsDescription = False,
+                is_borrowed: bool = False) -> CFunctionDescription:
     """Create a one-off CallC op that can't be automatically generated from the AST.
 
     Most arguments are similar to c_method_op().
     """
     return CFunctionDescription('<custom>', arg_types, return_type, var_arg_type, truncated_type,
-                                c_function_name, error_kind, steals, ordering,
-                                extra_int_constant, 0)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, 0)
 
 
 def c_unary_op(name: str,
@@ -470,8 +305,9 @@ def c_unary_op(name: str,
                error_kind: int,
                truncated_type: Optional[RType] = None,
                ordering: Optional[List[int]] = None,
-               extra_int_constant: Optional[Tuple[int, RType]] = None,
+               extra_int_constants: List[Tuple[int, RType]] = [],
                steals: StealsDescription = False,
+               is_borrowed: bool = False,
                priority: int = 1) -> CFunctionDescription:
     """Define a c function call op for an unary operation.
 
@@ -482,22 +318,19 @@ def c_unary_op(name: str,
     """
     ops = c_unary_ops.setdefault(name, [])
     desc = CFunctionDescription(name, [arg_type], return_type, None, truncated_type,
-                                c_function_name, error_kind, steals, ordering, extra_int_constant,
-                                priority)
+                                c_function_name, error_kind, steals, is_borrowed, ordering,
+                                extra_int_constants, priority)
     ops.append(desc)
     return desc
 
 
-def c_name_ref_op(name: str,
-                  return_type: RType,
-                  identifier: str,
-                  cast_str: Optional[str] = None,
-                  load_address: bool = False) -> CLoadDescription:
-    assert name not in c_name_ref_ops, 'already defined: %s' % name
-    cast_str = cast_str if cast_str else ""
-    desc = CLoadDescription(name, return_type, identifier, cast_str, load_address)
-    c_name_ref_ops[name] = desc
-    return desc
+def load_address_op(name: str,
+                    type: RType,
+                    src: str) -> LoadAddressDescription:
+    assert name not in builtin_names, 'already defined: %s' % name
+    builtin_names[name] = (type, src)
+    return LoadAddressDescription(name, type, src)
+
 
 # Import various modules that set up global state.
 import mypyc.primitives.int_ops  # noqa

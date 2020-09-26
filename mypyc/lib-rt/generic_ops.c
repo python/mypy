@@ -36,6 +36,11 @@ PyObject *CPyIter_Next(PyObject *iter)
     return (*iter->ob_type->tp_iternext)(iter);
 }
 
+PyObject *CPyNumber_Power(PyObject *base, PyObject *index)
+{
+    return PyNumber_Power(base, index, Py_None);
+}
+
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     PyObject *start_obj = CPyTagged_AsObject(start);
     PyObject *end_obj = CPyTagged_AsObject(end);

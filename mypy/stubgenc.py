@@ -214,7 +214,16 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         imports: list of import statements (may be modified during the call)
     """
     stripped_type = typ
-    if module and typ.startswith(module.__name__ + '.'):
+    if any(c in typ for c in '[,'):
+        for subtyp in re.split(r'[\[,\]]', typ):
+            strip_or_import(subtyp.strip(), module, imports)
+        if module:
+            stripped_type = re.sub(
+                r'(^|[\[, ]+)' + re.escape(module.__name__ + '.'),
+                r'\1',
+                typ,
+            )
+    elif module and typ.startswith(module.__name__ + '.'):
         stripped_type = typ[len(module.__name__) + 1:]
     elif '.' in typ:
         arg_module = typ[:typ.rindex('.')]

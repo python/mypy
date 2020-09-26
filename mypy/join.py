@@ -119,7 +119,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_union_type(self, t: UnionType) -> ProperType:
-        if is_subtype(self.s, t):
+        if is_proper_subtype(self.s, t):
             return t
         else:
             return mypy.typeops.make_simplified_union([self.s, t])

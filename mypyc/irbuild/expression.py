@@ -4,7 +4,7 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Callable
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -17,21 +17,21 @@ from mypy.types import TupleType, get_proper_type
 
 from mypyc.common import MAX_LITERAL_SHORT_INT
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
+    Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import name_ref_ops, CFunctionDescription
+from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op, list_slice_op
-from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
+from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
+from mypyc.primitives.tuple_ops import list_tuple_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
-from mypyc.primitives.int_ops import int_logical_op_mapping
 from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
@@ -43,11 +43,16 @@ from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehensio
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
     fullname = expr.node.fullname
-    if fullname in name_ref_ops:
-        # Use special access op for this particular name.
-        desc = name_ref_ops[fullname]
-        assert desc.result_type is not None
-        return builder.add(PrimitiveOp([], desc, expr.line))
+    if fullname in builtin_names:
+        typ, src = builtin_names[fullname]
+        return builder.add(LoadAddress(typ, src, expr.line))
+    # special cases
+    if fullname == 'builtins.None':
+        return builder.none()
+    if fullname == 'builtins.True':
+        return builder.true()
+    if fullname == 'builtins.False':
+        return builder.false()
 
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
@@ -432,7 +437,7 @@ def transform_basic_comparison(builder: IRBuilder,
                                right: Value,
                                line: int) -> Value:
     if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
-            and op in int_logical_op_mapping.keys()):
+            and op in int_comparison_op_mapping.keys()):
         return builder.compare_tagged(left, right, op, line)
     negate = False
     if op == 'is not':
@@ -472,7 +477,7 @@ def transform_bytes_expr(builder: IRBuilder, expr: BytesExpr) -> Value:
 
 
 def transform_ellipsis(builder: IRBuilder, o: EllipsisExpr) -> Value:
-    return builder.primitive_op(ellipsis_op, [], o.line)
+    return builder.add(LoadAddress(ellipsis_op.type, ellipsis_op.src, o.line))
 
 
 # Display expressions
@@ -486,10 +491,11 @@ def _visit_list_display(builder: IRBuilder, items: List[Expression], line: int) 
     return _visit_display(
         builder,
         items,
-        new_list_op,
+        builder.new_list_op,
         list_append_op,
         list_extend_op,
-        line
+        line,
+        True
     )
 
 
@@ -533,19 +539,21 @@ def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
     return _visit_display(
         builder,
         expr.items,
-        new_set_op,
+        builder.new_set_op,
         set_add_op,
         set_update_op,
-        expr.line
+        expr.line,
+        False
     )
 
 
 def _visit_display(builder: IRBuilder,
                    items: List[Expression],
-                   constructor_op: OpDescription,
+                   constructor_op: Callable[[List[Value], int], Value],
                    append_op: CFunctionDescription,
                    extend_op: CFunctionDescription,
-                   line: int
+                   line: int,
+                   is_list: bool
                    ) -> Value:
     accepted_items = []
     for item in items:
@@ -557,17 +565,17 @@ def _visit_display(builder: IRBuilder,
     result = None  # type: Union[Value, None]
     initial_items = []
     for starred, value in accepted_items:
-        if result is None and not starred and constructor_op.is_var_arg:
+        if result is None and not starred and is_list:
             initial_items.append(value)
             continue
 
         if result is None:
-            result = builder.primitive_op(constructor_op, initial_items, line)
+            result = constructor_op(initial_items, line)
 
         builder.call_c(extend_op if starred else append_op, [result, value], line)
 
     if result is None:
-        result = builder.primitive_op(constructor_op, initial_items, line)
+        result = constructor_op(initial_items, line)
 
     return result
 
@@ -581,7 +589,7 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
     gen = o.generator
-    set_ops = builder.primitive_op(new_set_op, [], o.line)
+    set_ops = builder.call_c(new_set_op, [], o.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:

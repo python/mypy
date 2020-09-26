@@ -12,10 +12,11 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct
+    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
+    is_pointer_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
@@ -451,10 +452,16 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+
+    def visit_comparison_op(self, op: ComparisonOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
         lhs_cast = ""
         rhs_cast = ""
-        signed_op = {BinaryIntOp.SLT, BinaryIntOp.SGT, BinaryIntOp.SLE, BinaryIntOp.SGE}
-        unsigned_op = {BinaryIntOp.ULT, BinaryIntOp.UGT, BinaryIntOp.ULE, BinaryIntOp.UGE}
+        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
+        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
         if op.op in signed_op:
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
@@ -471,6 +478,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         type = self.ctype(op.type)
         self.emit_line('%s = *(%s *)%s;' % (dest, type, src))
 
+    def visit_set_mem(self, op: SetMem) -> None:
+        dest = self.reg(op.dest)
+        src = self.reg(op.src)
+        dest_type = self.ctype(op.dest_type)
+        # clang whines about self assignment (which we might generate
+        # for some casts), so don't emit it.
+        if dest != src:
+            self.emit_line('*(%s *)%s = %s;' % (dest_type, dest, src))
+
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
@@ -480,6 +496,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_line('%s = (%s)&((%s *)%s)->%s;' % (dest, op.type._ctype, op.src_type.name,
                                                       src, op.field))
 
+    def visit_load_address(self, op: LoadAddress) -> None:
+        typ = op.type
+        dest = self.reg(op)
+        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, op.src))
+
     # Helpers
 
     def label(self, label: BasicBlock) -> str:
@@ -487,7 +508,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def reg(self, reg: Value) -> str:
         if reg.name in self.const_int_regs:
-            return str(self.const_int_regs[reg.name])
+            val = self.const_int_regs[reg.name]
+            if val == 0 and is_pointer_rprimitive(reg.type):
+                return "NULL"
+            return str(val)
         else:
             return self.emitter.reg(reg)
 
