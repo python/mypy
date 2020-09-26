@@ -281,6 +281,8 @@ static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
     v->ob_base.ob_size = i;
 }
 
+// Shared implementation of bitwise '&', '|' and '^' (specified by op) for at least
+// one long operand.
 static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
     // Directly access the digits, as there is no fast C API function for this.
     PyLongObject *aobj = (PyLongObject *)CPyTagged_AsObject(a);
@@ -289,7 +291,7 @@ static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
     Py_ssize_t bsize = bobj->ob_base.ob_size;
     PyLongObject *r;
     if (unlikely(asize < 0 || bsize < 0)) {
-        // Negative numbers are slow, as bitwise ops on them are rare.
+        // Negative operand. This is slower, but bitwise ops on them are fairly rare.
         switch (op) {
         case '&':
             r = (PyLongObject *)PyNumber_And((PyObject *)aobj, (PyObject *)bobj);
@@ -304,7 +306,7 @@ static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
             CPyError_OutOfMemory();
         }
     } else {
-        // Optimized for two non-negative integers.
+        // Optimized implementation for two non-negative integers.
         Py_ssize_t size = asize < bsize ? asize : bsize;
         r = _PyLong_New(size);
         if (unlikely(r == NULL)) {
@@ -334,6 +336,7 @@ static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
     return CPyTagged_StealFromObject((PyObject *)r);
 }
 
+// Bitwise '&'
 CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
     if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
         return left & right;
@@ -341,6 +344,7 @@ CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
     return CPyTagged_BitwiseLong(left, right, '&');
 }
 
+// Bitwise '|'
 CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
     if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
         return left | right;
@@ -348,6 +352,7 @@ CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
     return CPyTagged_BitwiseLong(left, right, '|');
 }
 
+// Bitwise '^'
 CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
     if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
         return left ^ right;
