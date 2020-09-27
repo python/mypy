@@ -37,6 +37,7 @@ class int:
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
+    def __invert__(self) -> int: pass
     def __and__(self, n: int) -> int: pass
     def __or__(self, n: int) -> int: pass
     def __xor__(self, n: int) -> int: pass

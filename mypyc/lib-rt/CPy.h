@@ -129,6 +129,7 @@ void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
 CPyTagged CPyTagged_Negate(CPyTagged num);
+CPyTagged CPyTagged_Invert(CPyTagged num);
 CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);

@@ -404,3 +404,18 @@ CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
     }
     return CPyTagged_BitwiseLong(left, right, '^');
 }
+
+// Bitwise '~'
+CPyTagged CPyTagged_Invert(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
+        return ~num & ~CPY_INT_TAG;
+    } else {
+        PyObject *obj = CPyTagged_AsObject(num);
+        PyObject *inverted = PyNumber_Invert(obj);
+        if (unlikely(inverted == NULL)) {
+            CPyError_OutOfMemory();
+        }
+        Py_DECREF(obj);
+        return CPyTagged_StealFromObject(inverted);
+    }
+}

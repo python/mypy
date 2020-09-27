@@ -179,8 +179,12 @@ DIGIT50 = 315723472 << (SHIFT * 50)
 DIGIT100a = 1020652627 << (SHIFT * 100)
 DIGIT100b = 923752451 << (SHIFT * 100)
 BIG_SHORT = 3491190729721336556
+MAX_SHORT = (1 << 62) - 1
+MIN_SHORT = -(1 << 62)
+MAX_SHORT_32 = (1 << 30) - 1
+MIN_SHORT_32 = -(1 << 30)
 
-def test_bitwise() -> None:
+def test_and_or_xor() -> None:
     check_bitwise(0, 0)
     check_bitwise(0, 1)
     check_bitwise(1, 1)
@@ -208,3 +212,22 @@ def test_bitwise_inplace() -> None:
         n = x
         n ^= y
         assert n == x ^ y
+
+def check_invert(x: int) -> None:
+    x_any: Any = x
+    assert ~x == ~x_any
+    assert ~(-x) == ~(-x_any)
+
+def test_invert() -> None:
+    check_invert(0)
+    check_invert(1)
+    check_invert(DIGIT0a)
+    check_invert(DIGIT0a + DIGIT1a)
+    check_invert(DIGIT0a + DIGIT1a + DIGIT2a)
+    check_invert(DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
+    check_invert(BIG_SHORT)
+    for delta in -1, 0, 1:
+        check_invert(MAX_SHORT + delta)
+        check_invert(MIN_SHORT + delta)
+        check_invert(MAX_SHORT_32 + delta)
+        check_invert(MIN_SHORT_32 + delta)

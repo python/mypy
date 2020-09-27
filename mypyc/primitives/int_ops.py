@@ -114,6 +114,7 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
+int_invert_op = int_unary_op('~', 'CPyTagged_Invert')
 
 # integer comparsion operation implementation related:
 
