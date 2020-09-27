@@ -411,11 +411,39 @@ CPyTagged CPyTagged_Invert(CPyTagged num) {
         return ~num & ~CPY_INT_TAG;
     } else {
         PyObject *obj = CPyTagged_AsObject(num);
-        PyObject *inverted = PyNumber_Invert(obj);
-        if (unlikely(inverted == NULL)) {
+        PyObject *result = PyNumber_Invert(obj);
+        if (unlikely(result == NULL)) {
             CPyError_OutOfMemory();
         }
         Py_DECREF(obj);
-        return CPyTagged_StealFromObject(inverted);
+        return CPyTagged_StealFromObject(result);
+    }
+}
+
+// Bitwise '>>'
+CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0)) {
+        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
+        if (unlikely(count >= CPY_INT_BITS)) {
+            if ((Py_ssize_t)left >= 0) {
+                return 0;
+            } else {
+                return CPyTagged_ShortFromInt(-1);
+            }
+        }
+        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
+    } else {
+        PyObject *lobj = CPyTagged_AsObject(left);
+        PyObject *robj = CPyTagged_AsObject(right);
+        PyObject *result = PyNumber_Rshift(lobj, robj);
+        Py_DECREF(lobj);
+        Py_DECREF(robj);
+        if (result == NULL) {
+            // Propagate error (could be negative shift count)
+            return CPY_INT_TAG;
+        }
+        return CPyTagged_StealFromObject(result);
     }
 }

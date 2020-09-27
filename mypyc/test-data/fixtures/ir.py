@@ -42,6 +42,7 @@ class int:
     def __or__(self, n: int) -> int: pass
     def __xor__(self, n: int) -> int: pass
     def __lshift__(self, x: int) -> int: pass
+    def __rshift__(self, x: int) -> int: pass
     def __eq__(self, n: object) -> bool: pass
     def __ne__(self, n: object) -> bool: pass
     def __lt__(self, n: int) -> bool: pass

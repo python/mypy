@@ -138,6 +138,7 @@ CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 PyObject *CPyTagged_Str(CPyTagged n);

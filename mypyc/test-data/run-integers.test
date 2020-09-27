@@ -231,3 +231,27 @@ def test_invert() -> None:
         check_invert(MIN_SHORT + delta)
         check_invert(MAX_SHORT_32 + delta)
         check_invert(MIN_SHORT_32 + delta)
+
+def check_right_shift(x: int, n: int) -> None:
+    if n < 0:
+        try:
+            x >> n
+        except ValueError:
+            return
+        assert False, "no exeption raised"
+    x_any: Any = x
+    expected = x_any >> n
+    actual = x >> n
+    assert actual == expected, "{} >> {}: got {}, expected {}".format(x, n, actual, expected)
+
+def test_right_shift() -> None:
+    for x in 0, 1, 1235, DIGIT0a, DIGIT0a + DIGIT1a, DIGIT0a + DIGIT50:
+        for n in 0, 1, 2, 10, 40, 10000, DIGIT50, -1, -1334444, -DIGIT50:
+            check_right_shift(x, n)
+            check_right_shift(-x, n)
+    x = DIGIT0a
+    x >>= 1
+    assert x == DIGIT0a >> 1
+    x = DIGIT50
+    x >>= 5
+    assert x == DIGIT50 >> 5
