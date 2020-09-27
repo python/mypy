@@ -178,6 +178,7 @@ DIGIT2b = 656420725 << (SHIFT * 2)
 DIGIT50 = 315723472 << (SHIFT * 50)
 DIGIT100a = 1020652627 << (SHIFT * 100)
 DIGIT100b = 923752451 << (SHIFT * 100)
+BIG_SHORT = 3491190729721336556
 
 def test_bitwise() -> None:
     check_bitwise(0, 0)
@@ -190,3 +191,7 @@ def test_bitwise() -> None:
     check_bitwise(DIGIT0a, DIGIT0b + DIGIT2a)
     check_bitwise(DIGIT0a, DIGIT0b + DIGIT50)
     check_bitwise(DIGIT50 + DIGIT1a, DIGIT100a + DIGIT2b)
+    check_bitwise(BIG_SHORT, DIGIT0a)
+    check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a)
+    check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a)
+    check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
