@@ -141,7 +141,7 @@ def check_and(x: int, y: int) -> None:
     expected = x_any & y_any
     # Use specialized operation to calculate actual result.
     actual = x & y
-    assert actual == expected, '{} != {}'.format(actual, expected)
+    assert actual == expected, '{} & {}: got {}, expected {}'.format(x, y, actual, expected)
 
 def check_or(x: int, y: int) -> None:
     x_any: Any = x
@@ -150,7 +150,7 @@ def check_or(x: int, y: int) -> None:
     expected = x_any | y_any
     # Use specialized operation to calculate actual result.
     actual = x | y
-    assert actual == expected, '{} != {}'.format(actual, expected)
+    assert actual == expected, '{} | {}: got {}, expected {}'.format(x, y, actual, expected)
 
 def check_xor(x: int, y: int) -> None:
     x_any: Any = x
@@ -159,12 +159,14 @@ def check_xor(x: int, y: int) -> None:
     expected = x_any ^ y_any
     # Use specialized operation to calculate actual result.
     actual = x ^ y
-    assert actual == expected, '{} != {}'.format(actual, expected)
+    assert actual == expected, '{} ^ {}: got {}, expected {}'.format(x, y, actual, expected)
 
 def check_bitwise(x: int, y: int) -> None:
-    check_and(x, y)
-    check_or(x, y)
-    check_xor(x, y)
+    for l, r in (x, y), (y, x):
+        for ll, rr in (l, r), (-l, r), (l, -r), (-l, -r):
+            check_and(ll, rr)
+            check_or(ll, rr)
+            check_xor(ll, rr)
 
 def test_bitwise() -> None:
     check_bitwise(12345, 3423)
