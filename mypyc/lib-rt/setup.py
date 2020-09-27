@@ -10,7 +10,7 @@ if sys.platform == 'darwin':
     kwargs = {'language': 'c++'}
     compile_args = []
 else:
-    kwargs = {}
+    kwargs = {}  # type: ignore
     compile_args = ['--std=c++11']
 
 setup(name='test_capi',
