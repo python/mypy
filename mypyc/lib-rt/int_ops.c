@@ -281,73 +281,101 @@ static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
     v->ob_base.ob_size = i;
 }
 
+static CPyTagged CPyTagged_GenericBitwise(CPyTagged a, CPyTagged b, char op) {
+    PyObject *aobj = CPyTagged_AsObject(a);
+    PyObject *bobj = CPyTagged_AsObject(b);
+    PyObject *r;
+    if (op == '&') {
+        r = PyNumber_And(aobj, bobj);
+    } else if (op == '|') {
+        r = PyNumber_Or(aobj, bobj);
+    } else {
+        r = PyNumber_Xor(aobj, bobj);
+    }
+    if (unlikely(r == NULL)) {
+        CPyError_OutOfMemory();
+    }
+    return CPyTagged_StealFromObject(r);
+}
+
+static digit *CPyTagged_GetDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
+    if (CPyTagged_CheckShort(n)) {
+        Py_ssize_t val = CPyTagged_ShortAsSsize_t(n);
+        bool neg = val < 0;
+        int len = 1;
+        if (neg) {
+            val = -val;
+        }
+        buf[0] = val & PyLong_MASK;
+        if (val > PyLong_MASK) {
+            val >>= PyLong_SHIFT;
+            buf[1] = val & PyLong_MASK;
+            if (val > PyLong_MASK) {
+                buf[2] = val >> PyLong_SHIFT;
+                len = 3;
+            } else {
+                len = 2;
+            }
+        }
+        *size = neg ? -len : len;
+        return buf;
+    } else {
+        PyLongObject *obj = (PyLongObject *)CPyTagged_LongAsObject(n);
+        *size = obj->ob_base.ob_size;
+        return obj->ob_digit;
+    }
+}
+
 // Shared implementation of bitwise '&', '|' and '^' (specified by op) for at least
 // one long operand.
 static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
     // Directly access the digits, as there is no fast C API function for this.
-    PyLongObject *aobj = (PyLongObject *)CPyTagged_AsObject(a);
-    PyLongObject *bobj = (PyLongObject *)CPyTagged_AsObject(b);
-    Py_ssize_t asize = aobj->ob_base.ob_size;
-    Py_ssize_t bsize = bobj->ob_base.ob_size;
+    digit abuf[3];
+    digit bbuf[3];
+    Py_ssize_t asize;
+    Py_ssize_t bsize;
+    digit *adigits = CPyTagged_GetDigits(a, &asize, abuf);
+    digit *bdigits = CPyTagged_GetDigits(b, &bsize, bbuf);
+
     PyLongObject *r;
     if (unlikely(asize < 0 || bsize < 0)) {
         // Negative operand. This is slower, but bitwise ops on them are fairly rare.
-        switch (op) {
-        case '&':
-            r = (PyLongObject *)PyNumber_And((PyObject *)aobj, (PyObject *)bobj);
-            break;
-        case '|':
-            r = (PyLongObject *)PyNumber_Or((PyObject *)aobj, (PyObject *)bobj);
-            break;
-        default:
-            r = (PyLongObject *)PyNumber_Xor((PyObject *)aobj, (PyObject *)bobj);
-        }
-        if (unlikely(r == NULL)) {
-            CPyError_OutOfMemory();
+        return CPyTagged_GenericBitwise(a, b, op);
+    }
+    // Optimized implementation for two non-negative integers.
+    // Ensure a is no longer than b.
+    if (asize > bsize) {
+        digit *tmp = adigits;
+        adigits = bdigits;
+        bdigits = tmp;
+        Py_ssize_t tmp_size = asize;
+        asize = bsize;
+        bsize = tmp_size;
+    }
+    r = _PyLong_New(op == '&' ? asize : bsize);
+    if (unlikely(r == NULL)) {
+        CPyError_OutOfMemory();
+    }
+    Py_ssize_t i;
+    if (op == '&') {
+        for (i = 0; i < asize; i++) {
+            r->ob_digit[i] = adigits[i] & bdigits[i];
         }
     } else {
-        // Optimized implementation for two non-negative integers.
-        // Ensure a is no longer than b.
-        if (asize > bsize) {
-            PyLongObject *tmp = aobj;
-            aobj = bobj;
-            bobj = tmp;
-            Py_ssize_t tmp_size = asize;
-            asize = bsize;
-            bsize = tmp_size;
-        }
-        Py_ssize_t size = op == '&' ? asize : bsize;
-        r = _PyLong_New(size);
-        if (unlikely(r == NULL)) {
-            CPyError_OutOfMemory();
-        }
-        Py_ssize_t i;
-        switch (op) {
-        case '&':
+        if (op == '|') {
             for (i = 0; i < asize; i++) {
-                r->ob_digit[i] = aobj->ob_digit[i] & bobj->ob_digit[i];
+                r->ob_digit[i] = adigits[i] | bdigits[i];
             }
-            break;
-        case '|':
+        } else {
             for (i = 0; i < asize; i++) {
-                r->ob_digit[i] = aobj->ob_digit[i] | bobj->ob_digit[i];
-            }
-            for (; i < bsize; i++) {
-                r->ob_digit[i] = bobj->ob_digit[i];
-            }
-            break;
-        default:
-            for (i = 0; i < asize; i++) {
-                r->ob_digit[i] = aobj->ob_digit[i] ^ bobj->ob_digit[i];
-            }
-            for (; i < bsize; i++) {
-                r->ob_digit[i] = bobj->ob_digit[i];
+                r->ob_digit[i] = adigits[i] ^ bdigits[i];
             }
         }
-        CPyLong_NormalizeUnsigned(r);
+        for (; i < bsize; i++) {
+            r->ob_digit[i] = bdigits[i];
+        }
     }
-    Py_DECREF(aobj);
-    Py_DECREF(bobj);
+    CPyLong_NormalizeUnsigned(r);
     return CPyTagged_StealFromObject((PyObject *)r);
 }
 
