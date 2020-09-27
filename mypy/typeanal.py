@@ -311,6 +311,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     any_type = self.get_omitted_any(t)
                     return TypeType(any_type, line=t.line, column=t.column)
                 else:
+                    # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
+                    # See https://github.com/python/mypy/issues/9476 for more information
                     return None
             type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
             if len(t.args) != 1:
