@@ -195,3 +195,16 @@ def test_bitwise() -> None:
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a)
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a)
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
+
+def test_bitwise_inplace() -> None:
+    # Basic sanity checks; these should use the same code as the non-in-place variants.
+    for x, y in (DIGIT0a, DIGIT1a), (DIGIT2a, DIGIT0a + DIGIT2b):
+        n = x
+        n &= y
+        assert n == x & y
+        n = x
+        n |= y
+        assert n == x | y
+        n = x
+        n ^= y
+        assert n == x ^ y
