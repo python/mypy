@@ -295,6 +295,8 @@ static CPyTagged CPyTagged_GenericBitwise(CPyTagged a, CPyTagged b, char op) {
     if (unlikely(r == NULL)) {
         CPyError_OutOfMemory();
     }
+    Py_DECREF(aobj);
+    Py_DECREF(bobj);
     return CPyTagged_StealFromObject(r);
 }
 
