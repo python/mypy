@@ -307,7 +307,16 @@ static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
         }
     } else {
         // Optimized implementation for two non-negative integers.
-        Py_ssize_t size = asize < bsize ? asize : bsize;
+        // Ensure a is no longer than b.
+        if (asize > bsize) {
+            PyLongObject *tmp = aobj;
+            aobj = bobj;
+            bobj = tmp;
+            Py_ssize_t tmp_size = asize;
+            asize = bsize;
+            bsize = tmp_size;
+        }
+        Py_ssize_t size = op == '&' ? asize : bsize;
         r = _PyLong_New(size);
         if (unlikely(r == NULL)) {
             CPyError_OutOfMemory();
@@ -315,18 +324,24 @@ static CPyTagged CPyTagged_BitwiseLong(CPyTagged a, CPyTagged b, char op) {
         Py_ssize_t i;
         switch (op) {
         case '&':
-            for (i = 0; i < size; i++) {
+            for (i = 0; i < asize; i++) {
                 r->ob_digit[i] = aobj->ob_digit[i] & bobj->ob_digit[i];
             }
             break;
         case '|':
-            for (i = 0; i < size; i++) {
+            for (i = 0; i < asize; i++) {
                 r->ob_digit[i] = aobj->ob_digit[i] | bobj->ob_digit[i];
+            }
+            for (; i < bsize; i++) {
+                r->ob_digit[i] = bobj->ob_digit[i];
             }
             break;
         default:
-            for (i = 0; i < size; i++) {
+            for (i = 0; i < asize; i++) {
                 r->ob_digit[i] = aobj->ob_digit[i] ^ bobj->ob_digit[i];
+            }
+            for (; i < bsize; i++) {
+                r->ob_digit[i] = bobj->ob_digit[i];
             }
         }
         CPyLong_NormalizeUnsigned(r);

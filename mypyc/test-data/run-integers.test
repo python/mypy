@@ -168,6 +168,25 @@ def check_bitwise(x: int, y: int) -> None:
             check_or(ll, rr)
             check_xor(ll, rr)
 
+SHIFT = 30
+DIGIT0a = 615729753
+DIGIT0b = 832796681
+DIGIT1a = 744342356 << SHIFT
+DIGIT1b = 321006080 << SHIFT
+DIGIT2a = 643582106 << (SHIFT * 2)
+DIGIT2b = 656420725 << (SHIFT * 2)
+DIGIT50 = 315723472 << (SHIFT * 50)
+DIGIT100a = 1020652627 << (SHIFT * 100)
+DIGIT100b = 923752451 << (SHIFT * 100)
+
 def test_bitwise() -> None:
-    check_bitwise(12345, 3423)
-    check_bitwise(12345 << 100, 3423 << 100)
+    check_bitwise(0, 0)
+    check_bitwise(0, 1)
+    check_bitwise(1, 1)
+    check_bitwise(DIGIT0a, DIGIT0b)
+    check_bitwise(DIGIT1a, DIGIT1b)
+    check_bitwise(DIGIT2a, DIGIT2b)
+    check_bitwise(DIGIT100a, DIGIT100b)
+    check_bitwise(DIGIT0a, DIGIT0b + DIGIT2a)
+    check_bitwise(DIGIT0a, DIGIT0b + DIGIT50)
+    check_bitwise(DIGIT50 + DIGIT1a, DIGIT100a + DIGIT2b)
