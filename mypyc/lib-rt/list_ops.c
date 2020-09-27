@@ -123,3 +123,19 @@ PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
     return CPySequence_Multiply(seq, t_size);
 }
+
+PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
+    if (likely(PyList_CheckExact(obj)
+               && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end))) {
+        Py_ssize_t startn = CPyTagged_ShortAsSsize_t(start);
+        Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
+        if (startn < 0) {
+            startn += PyList_GET_SIZE(obj);
+        }
+        if (endn < 0) {
+            endn += PyList_GET_SIZE(obj);
+        }
+        return PyList_GetSlice(obj, startn, endn);
+    }
+    return CPyObject_GetSlice(obj, start, end);
+}

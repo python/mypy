@@ -15,18 +15,22 @@ from mypy.nodes import (
 )
 from mypy.types import TupleType, get_proper_type
 
+from mypyc.common import MAX_LITERAL_SHORT_INT
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+)
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
-from mypyc.primitives.list_ops import list_append_op, list_extend_op
-from mypyc.primitives.tuple_ops import list_tuple_op
+from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
+from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
+from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
@@ -323,13 +327,57 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base = builder.accept(expr.base)
+    index = expr.index
 
-    if isinstance(base.type, RTuple) and isinstance(expr.index, IntExpr):
-        return builder.add(TupleGet(base, expr.index.value, expr.line))
+    if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
+        return builder.add(TupleGet(base, index.value, expr.line))
+
+    if isinstance(index, SliceExpr):
+        value = try_gen_slice_op(builder, base, index)
+        if value:
+            return value
 
     index_reg = builder.accept(expr.index)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
+
+
+def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optional[Value]:
+    """Generate specialized slice op for some index expressions.
+
+    Return None if a specialized op isn't available.
+
+    This supports obj[x:y], obj[:x], and obj[x:] for a few types.
+    """
+    if index.stride:
+        # We can only handle the default stride of 1.
+        return None
+
+    if index.begin_index:
+        begin_type = builder.node_type(index.begin_index)
+    else:
+        begin_type = int_rprimitive
+    if index.end_index:
+        end_type = builder.node_type(index.end_index)
+    else:
+        end_type = int_rprimitive
+
+    # Both begin and end index must be int (or missing).
+    if is_int_rprimitive(begin_type) and is_int_rprimitive(end_type):
+        if index.begin_index:
+            begin = builder.accept(index.begin_index)
+        else:
+            begin = builder.load_static_int(0)
+        if index.end_index:
+            end = builder.accept(index.end_index)
+        else:
+            # Replace missing end index with the largest short integer
+            # (a sequence can't be longer).
+            end = builder.load_static_int(MAX_LITERAL_SHORT_INT)
+        candidates = [list_slice_op, tuple_slice_op, str_slice_op]
+        return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
+
+    return None
 
 
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:

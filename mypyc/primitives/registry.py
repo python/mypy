@@ -151,7 +151,8 @@ def custom_op(arg_types: List[RType],
               format_str: Optional[str] = None,
               steals: StealsDescription = False,
               is_borrowed: bool = False,
-              is_var_arg: bool = False) -> OpDescription:
+              is_var_arg: bool = False,
+              priority: int = 1) -> OpDescription:
     """Create a one-off op that can't be automatically generated from the AST.
 
     Note that if the format_str argument is not provided, then a
@@ -174,7 +175,7 @@ def custom_op(arg_types: List[RType],
                                        typename)
     assert format_str is not None
     return OpDescription('<custom>', arg_types, result_type, is_var_arg, error_kind, format_str,
-                         emit, steals, is_borrowed, 0)
+                         emit, steals, is_borrowed, priority)
 
 
 def c_method_op(name: str,

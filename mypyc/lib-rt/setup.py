@@ -17,7 +17,7 @@ setup(name='test_capi',
       version='0.1',
       ext_modules=[Extension(
           'test_capi',
-          ['test_capi.cc', 'init.c', 'int_ops.c', 'list_ops.c', 'exc_ops.c'],
+          ['test_capi.cc', 'init.c', 'int_ops.c', 'list_ops.c', 'exc_ops.c', 'generic_ops.c'],
           depends=['CPy.h', 'mypyc_util.h', 'pythonsupport.h'],
           extra_compile_args=['-Wno-unused-function', '-Wno-sign-compare'] + compile_args,
           library_dirs=['../external/googletest/make'],

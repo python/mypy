@@ -8,9 +8,7 @@ from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import (
     tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive, c_pyssize_t_rprimitive
 )
-from mypyc.primitives.registry import (
-    c_method_op, c_function_op, c_custom_op
-)
+from mypyc.primitives.registry import c_method_op, c_function_op, c_custom_op
 
 
 # tuple[index] (for an int index)
@@ -44,4 +42,11 @@ c_function_op(
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,
     c_function_name='PySequence_Tuple',
+    error_kind=ERR_MAGIC)
+
+# tuple[begin:end]
+tuple_slice_op = c_custom_op(
+    arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPySequenceTuple_GetSlice',
     error_kind=ERR_MAGIC)

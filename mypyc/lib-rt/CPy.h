@@ -303,6 +303,7 @@ CPyTagged CPyObject_Hash(PyObject *o);
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
+PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 
 // List operations
@@ -318,6 +319,7 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
+PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 
 // Dict operations
@@ -367,6 +369,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
+PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 
 // Set operations
@@ -379,6 +382,7 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 
 PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
+PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 
 // Exception operations

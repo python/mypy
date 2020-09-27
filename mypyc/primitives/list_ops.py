@@ -128,3 +128,11 @@ def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     emitter.emit_declaration('Py_ssize_t %s;' % temp)
     emitter.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, args[0]))
     emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
+
+
+# list[begin:end]
+list_slice_op = c_custom_op(
+    arg_types=[list_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetSlice',
+    error_kind=ERR_MAGIC,)

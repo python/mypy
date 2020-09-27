@@ -24,6 +24,10 @@ Indexing:
 
 * ``s[n]`` (integer index)
 
+Slicing:
+
+* ``s[n:m]``, ``s[n:]``, ``s[:m]``
+
 Comparisons:
 
 * ``s1 == s2``, ``s1 != s2``

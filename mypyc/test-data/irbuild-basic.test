@@ -1114,7 +1114,35 @@ L0:
     r2 = PyNumber_Add(r0, r1)
     return r2
 
-[case testBigIntLiteral]
+[case testBigIntLiteral_64bit]
+def big_int() -> None:
+    a_62_bit = 4611686018427387902
+    max_62_bit = 4611686018427387903
+    b_63_bit = 4611686018427387904
+    c_63_bit = 9223372036854775806
+    max_63_bit = 9223372036854775807
+    d_64_bit = 9223372036854775808
+    max_32_bit = 2147483647
+    max_31_bit = 1073741823
+[out]
+def big_int():
+    a_62_bit, max_62_bit, r0, b_63_bit, r1, c_63_bit, r2, max_63_bit, r3, d_64_bit, max_32_bit, max_31_bit :: int
+L0:
+    a_62_bit = 9223372036854775804
+    max_62_bit = 9223372036854775806
+    r0 = load_global CPyStatic_int_1 :: static  (4611686018427387904)
+    b_63_bit = r0
+    r1 = load_global CPyStatic_int_2 :: static  (9223372036854775806)
+    c_63_bit = r1
+    r2 = load_global CPyStatic_int_3 :: static  (9223372036854775807)
+    max_63_bit = r2
+    r3 = load_global CPyStatic_int_4 :: static  (9223372036854775808)
+    d_64_bit = r3
+    max_32_bit = 4294967294
+    max_31_bit = 2147483646
+    return 1
+
+[case testBigIntLiteral_32bit]
 def big_int() -> None:
     a_62_bit = 4611686018427387902
     max_62_bit = 4611686018427387903

@@ -29,6 +29,10 @@ Get item by integer index:
 
 * ``lst[n]``
 
+Slicing:
+
+* ``lst[n:m]``, ``lst[n:]``, ``lst[:m]``, ``lst[:]``
+
 Repeat list ``n`` times:
 
 * ``lst * n``, ``n * lst``

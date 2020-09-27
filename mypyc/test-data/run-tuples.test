@@ -156,3 +156,25 @@ def foo(x: bool, y: bool) -> Tuple[Optional[A], bool]:
     z = lol()
 
     return None if y else z, x
+
+def test_slicing() -> None:
+    # Use dummy adds to avoid constant folding
+    zero = int()
+    two = zero + 2
+    s: Tuple[str, ...] = ("f", "o", "o", "b", "a", "r")
+    assert s[two:] == ("o", "b", "a", "r")
+    assert s[:two] == ("f", "o")
+    assert s[two:-two] == ("o", "b")
+    assert s[two:two] == ()
+    assert s[two:two + 1] == ("o",)
+    assert s[-two:] == ("a", "r")
+    assert s[:-two] == ("f", "o", "o", "b")
+    assert s[:] == ("f", "o", "o", "b", "a", "r")
+    assert s[two:333] == ("o", "b", "a", "r")
+    assert s[333:two] == ()
+    assert s[two:-333] == ()
+    assert s[-333:two] == ("f", "o")
+    long_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert s[1:long_int] == ("o", "o", "b", "a", "r")
+    assert s[long_int:] == ()
+    assert s[-long_int:-1] == ("f", "o", "o", "b", "a")
