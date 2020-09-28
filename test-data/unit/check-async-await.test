@@ -745,3 +745,16 @@ def t() -> None:
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAsyncWithInGenericClass]
+from typing import Generic, AsyncContextManager, TypeVar
+
+T = TypeVar('T', str, int)
+
+class Foo(Generic[T]):
+    async def foo(self, manager: AsyncContextManager):
+        async with manager:
+            pass
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

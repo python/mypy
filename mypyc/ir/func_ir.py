@@ -1,4 +1,5 @@
 """Intermediate representation of functions."""
+import re
 
 from typing import List, Optional, Sequence, Dict
 from typing_extensions import Final
@@ -10,6 +11,7 @@ from mypyc.ir.ops import (
     DeserMaps, Goto, Branch, Return, Unreachable, BasicBlock, Environment
 )
 from mypyc.ir.rtypes import RType, deserialize_type
+from mypyc.ir.const_int import find_constant_integer_registers
 from mypyc.namegen import NameGenerator
 
 
@@ -218,7 +220,9 @@ class FuncIR:
 INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
 
 
-def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
+def format_blocks(blocks: List[BasicBlock],
+                  env: Environment,
+                  const_regs: Dict[str, int]) -> List[str]:
     """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
@@ -244,9 +248,14 @@ def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
                 and ops[-1].label == blocks[i + 1]):
             # Hide the last goto if it just goes to the next basic block.
             ops = ops[:-1]
+        # load int registers start with 'i'
+        regex = re.compile(r'\bi[0-9]+\b')
         for op in ops:
-            line = '    ' + op.to_str(env)
-            lines.append(line)
+            if op.name not in const_regs:
+                line = '    ' + op.to_str(env)
+                line = regex.sub(lambda i: str(const_regs[i.group()]) if i.group() in const_regs
+                                 else i.group(), line)
+                lines.append(line)
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.
@@ -259,8 +268,10 @@ def format_func(fn: FuncIR) -> List[str]:
     cls_prefix = fn.class_name + '.' if fn.class_name else ''
     lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
                                         ', '.join(arg.name for arg in fn.args)))
-    for line in fn.env.to_lines():
+    # compute constants
+    const_regs = find_constant_integer_registers(fn.blocks)
+    for line in fn.env.to_lines(const_regs):
         lines.append('    ' + line)
-    code = format_blocks(fn.blocks, fn.env)
+    code = format_blocks(fn.blocks, fn.env, const_regs)
     lines.extend(code)
     return lines

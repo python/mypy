@@ -3,19 +3,26 @@
 These can be used for filtering specific errors.
 """
 
-from typing import List
+from typing import Dict, List
 from typing_extensions import Final
 
 
 # All created error codes are implicitly stored in this list.
 all_error_codes = []  # type: List[ErrorCode]
 
+error_codes = {}  # type: Dict[str, ErrorCode]
+
 
 class ErrorCode:
-    def __init__(self, code: str, description: str, category: str) -> None:
+    def __init__(self, code: str,
+                 description: str,
+                 category: str,
+                 default_enabled: bool = True) -> None:
         self.code = code
         self.description = description
         self.category = category
+        self.default_enabled = default_enabled
+        error_codes[code] = self
 
     def __str__(self) -> str:
         return '<ErrorCode {}>'.format(self.code)
@@ -105,6 +112,11 @@ NO_ANY_RETURN = ErrorCode(
     'General')  # type: Final
 UNREACHABLE = ErrorCode(
     'unreachable', "Warn about unreachable statements or expressions", 'General')  # type: Final
+REDUNDANT_EXPR = ErrorCode(
+    'redundant-expr',
+    "Warn about redundant expressions",
+    'General',
+    default_enabled=False)  # type: Final
 
 # Syntax errors are often blocking.
 SYNTAX = ErrorCode(

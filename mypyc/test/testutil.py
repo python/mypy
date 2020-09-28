@@ -7,7 +7,7 @@ import re
 import shutil
 from typing import List, Callable, Iterator, Optional, Tuple
 
-import pytest  # type: ignore[import]
+import pytest
 
 from mypy import build
 from mypy.errors import CompileError
@@ -22,6 +22,7 @@ from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.test.config import test_data_prefix
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 
 # The builtins stub used during icode generation test cases.
 ICODE_GEN_BUILTINS = os.path.join(test_data_prefix, 'fixtures/ir.py')
@@ -148,9 +149,11 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         print(data, file=f)
 
 
-def assert_test_output(testcase: DataDrivenTestCase, actual: List[str],
+def assert_test_output(testcase: DataDrivenTestCase,
+                       actual: List[str],
                        message: str,
-                       expected: Optional[List[str]] = None) -> None:
+                       expected: Optional[List[str]] = None,
+                       formatted: Optional[List[str]] = None) -> None:
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption('--update-data', False):
         update_testcase_output(testcase, actual)
@@ -208,3 +211,25 @@ def fudge_dir_mtimes(dir: str, delta: int) -> None:
             path = os.path.join(dirpath, name)
             new_mtime = os.stat(path).st_mtime + delta
             os.utime(path, times=(new_mtime, new_mtime))
+
+
+def replace_native_int(text: List[str]) -> List[str]:
+    """Replace native_int with platform specific ints"""
+    int_format_str = 'int32' if IS_32_BIT_PLATFORM else 'int64'
+    return [s.replace('native_int', int_format_str) for s in text]
+
+
+def replace_word_size(text: List[str]) -> List[str]:
+    """Replace WORDSIZE with platform specific word sizes"""
+    result = []
+    for line in text:
+        index = line.find('WORD_SIZE')
+        if index != -1:
+            # get 'WORDSIZE*n' token
+            word_size_token = line[index:].split()[0]
+            n = int(word_size_token[10:])
+            replace_str = str(PLATFORM_SIZE * n)
+            result.append(line.replace(word_size_token, replace_str))
+        else:
+            result.append(line)
+    return result

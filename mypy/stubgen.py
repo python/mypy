@@ -1191,7 +1191,7 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
         try:
             source_list = create_source_list(options.files, mypy_opts)
         except InvalidSourceList as e:
-            raise SystemExit(str(e))
+            raise SystemExit(str(e)) from e
         py_modules = [StubSource(m.module, m.path) for m in source_list]
         c_modules = []
 
@@ -1362,7 +1362,7 @@ def generate_asts_for_modules(py_modules: List[StubSource],
     try:
         res = build(list(py_modules), mypy_options)
     except CompileError as e:
-        raise SystemExit("Critical error during semantic analysis: {}".format(e))
+        raise SystemExit("Critical error during semantic analysis: {}".format(e)) from e
 
     for mod in py_modules:
         mod.ast = res.graph[mod.module].tree

@@ -10,11 +10,11 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
-from typing import Optional
+from typing import Iterable, Optional, TypeVar
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.types import Type, Instance, LiteralType, get_proper_type
+from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, get_proper_type
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
@@ -53,6 +53,56 @@ def enum_name_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
         return str_type.copy_modified(last_known_value=literal_type)
 
 
+_T = TypeVar('_T')
+
+
+def _first(it: Iterable[_T]) -> Optional[_T]:
+    """Return the first value from any iterable.
+
+    Returns ``None`` if the iterable is empty.
+    """
+    for val in it:
+        return val
+    return None
+
+
+def _infer_value_type_with_auto_fallback(
+        ctx: 'mypy.plugin.AttributeContext',
+        proper_type: Optional[ProperType]) -> Optional[Type]:
+    """Figure out the type of an enum value accounting for `auto()`.
+
+    This method is a no-op for a `None` proper_type and also in the case where
+    the type is not "enum.auto"
+    """
+    if proper_type is None:
+        return None
+    if not ((isinstance(proper_type, Instance) and
+            proper_type.type.fullname == 'enum.auto')):
+        return proper_type
+    assert isinstance(ctx.type, Instance), 'An incorrect ctx.type was passed.'
+    info = ctx.type.type
+    # Find the first _generate_next_value_ on the mro.  We need to know
+    # if it is `Enum` because `Enum` types say that the return-value of
+    # `_generate_next_value_` is `Any`.  In reality the default `auto()`
+    # returns an `int` (presumably the `Any` in typeshed is to make it
+    # easier to subclass and change the returned type).
+    type_with_gnv = _first(
+        ti for ti in info.mro if ti.names.get('_generate_next_value_'))
+    if type_with_gnv is None:
+        return ctx.default_attr_type
+
+    stnode = type_with_gnv.names['_generate_next_value_']
+
+    # This should be a `CallableType`
+    node_type = get_proper_type(stnode.type)
+    if isinstance(node_type, CallableType):
+        if type_with_gnv.fullname == 'enum.Enum':
+            int_type = ctx.api.named_generic_type('builtins.int', [])
+            return int_type
+        return get_proper_type(node_type.ret_type)
+    return ctx.default_attr_type
+
+
 def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """This plugin refines the 'value' attribute in enums to refer to
     the original underlying value. For example, suppose we have the
@@ -78,6 +128,32 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """
     enum_field_name = _extract_underlying_field_name(ctx.type)
     if enum_field_name is None:
+        # We do not know the enum field name (perhaps it was passed to a
+        # function and we only know that it _is_ a member).  All is not lost
+        # however, if we can prove that the all of the enum members have the
+        # same value-type, then it doesn't matter which member was passed in.
+        # The value-type is still known.
+        if isinstance(ctx.type, Instance):
+            info = ctx.type.type
+            stnodes = (info.get(name) for name in info.names)
+            # Enums _can_ have methods.
+            # Omit methods for our value inference.
+            node_types = (
+                get_proper_type(n.type) if n else None
+                for n in stnodes)
+            proper_types = (
+                _infer_value_type_with_auto_fallback(ctx, t)
+                for t in node_types
+                if t is None or not isinstance(t, CallableType))
+            underlying_type = _first(proper_types)
+            if underlying_type is None:
+                return ctx.default_attr_type
+            all_same_value_type = all(
+                proper_type is not None and proper_type == underlying_type
+                for proper_type in proper_types)
+            if all_same_value_type:
+                if underlying_type is not None:
+                    return underlying_type
         return ctx.default_attr_type
 
     assert isinstance(ctx.type, Instance)
@@ -86,15 +162,9 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     if stnode is None:
         return ctx.default_attr_type
 
-    underlying_type = get_proper_type(stnode.type)
+    underlying_type = _infer_value_type_with_auto_fallback(
+        ctx, get_proper_type(stnode.type))
     if underlying_type is None:
-        # TODO: Deduce the inferred type if the user omits adding their own default types.
-        # TODO: Consider using the return type of `Enum._generate_next_value_` here?
-        return ctx.default_attr_type
-
-    if isinstance(underlying_type, Instance) and underlying_type.type.fullname == 'enum.auto':
-        # TODO: Deduce the correct inferred type when the user uses 'enum.auto'.
-        # We should use the same strategy we end up picking up above.
         return ctx.default_attr_type
 
     return underlying_type

@@ -1092,7 +1092,7 @@ import a
 [file a.py]
 C = 1
 MYPY = False
-if MYPY:  # Tweak processing ordre
+if MYPY:  # Tweak processing order
     from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]

@@ -31,6 +31,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
+    ParamSpecExpr,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
@@ -2306,6 +2307,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
                 return not is_overlapping_types(left.args[0], right.args[0])
+        if isinstance(left, LiteralType) and isinstance(right, LiteralType):
+            if isinstance(left.value, bool) and isinstance(right.value, bool):
+                # Comparing different booleans is not dangerous.
+                return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
@@ -2736,6 +2741,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
+        # If left_map is None then we know mypy considers the left expression
+        # to be redundant.
+        #
+        # Note that we perform these checks *before* we take into account
+        # the analysis from the semanal phase below. We assume that nodes
+        # marked as unreachable during semantic analysis were done so intentionally.
+        # So, we shouldn't report an error.
+        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
+            if left_map is None:
+                self.msg.redundant_left_operand(e.op, e.left)
+
         # If right_map is None then we know mypy considers the right branch
         # to be unreachable and therefore any errors found in the right branch
         # should be suppressed.
@@ -2745,10 +2761,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
         if self.chk.options.warn_unreachable:
-            if left_map is None:
-                self.msg.redundant_left_operand(e.op, e.left)
             if right_map is None:
-                self.msg.redundant_right_operand(e.op, e.right)
+                self.msg.unreachable_right_operand(e.op, e.right)
 
         if e.right_unreachable:
             right_map = None
@@ -3460,6 +3474,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
             return AnyType(TypeOfAny.from_error)
 
+        if len(mro) == index + 1:
+            self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
+            return AnyType(TypeOfAny.from_error)
+
         for base in mro[index+1:]:
             if e.name in base.names or base == mro[-1]:
                 if e.info and e.info.fallback_to_any and base == mro[-1]:
@@ -3665,7 +3683,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     for var, type in true_map.items():
                         self.chk.binder.put(var, type)
 
-                if self.chk.options.warn_unreachable:
+                if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
                     if true_map is None:
                         self.msg.redundant_condition_in_comprehension(False, condition)
                     elif false_map is None:
@@ -3678,7 +3696,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Gain type information from isinstance if it is there
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
-        if self.chk.options.warn_unreachable:
+        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
             if if_map is None:
                 self.msg.redundant_condition_in_if(False, e.cond)
             elif else_map is None:
@@ -3769,6 +3787,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.type_context.pop()
         assert typ is not None
         self.chk.store_type(node, typ)
+
+        if isinstance(node, AssignmentExpr) and not has_uninhabited_component(typ):
+            self.chk.store_type(node.target, typ)
 
         if (self.chk.options.disallow_any_expr and
                 not always_allow_any and
@@ -3963,6 +3984,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return e.type
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
@@ -4299,6 +4323,8 @@ def merge_typevars_in_callables_by_name(
             for tvdef in target.variables:
                 name = tvdef.fullname
                 if name not in unique_typevars:
+                    # TODO(shantanu): fix for ParamSpecDef
+                    assert isinstance(tvdef, TypeVarDef)
                     unique_typevars[name] = TypeVarType(tvdef)
                     variables.append(tvdef)
                 rename[tvdef.id] = unique_typevars[name]

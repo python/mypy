@@ -9,7 +9,7 @@ import shutil
 from abc import abstractmethod
 import sys
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
@@ -160,8 +160,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.expected_fine_grained_targets = targets
 
 
-class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
+class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
+
+    # Override parent member type
+    parent = None  # type: DataSuiteCollector
 
     input = None  # type: List[str]
     output = None  # type: List[str]  # Output for the first pass
@@ -510,7 +513,9 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector(name, parent=collector)
+            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
+                parent=collector, name=name
+            )
     return None
 
 
@@ -535,19 +540,23 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     for i in range(1, len(cases), 6):
         name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
         platform = platform_flag[1:] if platform_flag else None
-        yield DataDrivenTestCase(parent, suite, file,
-                                 name=add_test_name_suffix(name, suite.test_name_suffix),
-                                 writescache=bool(writescache),
-                                 only_when=only_when,
-                                 platform=platform,
-                                 skip=bool(skip),
-                                 data=data,
-                                 line=line_no)
+        yield DataDrivenTestCase.from_parent(
+            parent=parent,
+            suite=suite,
+            file=file,
+            name=add_test_name_suffix(name, suite.test_name_suffix),
+            writescache=bool(writescache),
+            only_when=only_when,
+            platform=platform,
+            skip=bool(skip),
+            data=data,
+            line=line_no,
+        )
         line_no += data.count('\n') + 1
 
 
-class DataSuiteCollector(pytest.Class):  # type: ignore  # inheriting from Any
-    def collect(self) -> Iterator[pytest.Item]:  # type: ignore
+class DataSuiteCollector(pytest.Class):
+    def collect(self) -> Iterator[pytest.Item]:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.

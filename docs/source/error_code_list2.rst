@@ -193,3 +193,24 @@ incorrect control flow or conditional checks that are accidentally always true o
         return
         # Error: Statement is unreachable  [unreachable]
         print('unreachable')
+
+Check that expression is redundant [redundant-expr]
+---------------------------------------------------
+
+If you use :option:`--enable-error-code redundant-expr <mypy --enable-error-code>`,
+mypy generates an error if it thinks that an expression is redundant.
+
+.. code-block:: python
+
+    # mypy: enable-error-code redundant-expr
+
+    def example(x: int) -> None:
+        # Error: Left operand of 'and' is always true  [redundant-expr]
+        if isinstance(x, int) and x > 0:
+            pass
+
+        # Error: If condition is always true  [redundant-expr]
+        1 if isinstance(x, int) else 0
+
+        # Error: If condition in comprehension is always true  [redundant-expr]
+        [i for i in range(x) if isinstance(i, int)]

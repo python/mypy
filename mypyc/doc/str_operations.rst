@@ -10,6 +10,7 @@ Construction
 ------------
 
 * String literal
+* ``str(x: int)``
 * ``str(x: object)``
 
 Operators
@@ -22,6 +23,10 @@ Concatenation:
 Indexing:
 
 * ``s[n]`` (integer index)
+
+Slicing:
+
+* ``s[n:m]``, ``s[n:]``, ``s[:m]``
 
 Comparisons:
 

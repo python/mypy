@@ -383,3 +383,29 @@ g(c1, c2)
 assert c1.x == 1
 assert c2.x == 2
 [out]
+
+[case testTraitErrorMessages]
+from mypy_extensions import trait
+
+@trait
+class Trait:
+    pass
+
+def create() -> Trait:
+    return Trait()
+
+[file driver.py]
+from native import Trait, create
+from testutil import assertRaises
+
+with assertRaises(TypeError, "traits may not be directly created"):
+    Trait()
+
+with assertRaises(TypeError, "traits may not be directly created"):
+    create()
+
+class Sub(Trait):
+    pass
+
+with assertRaises(TypeError, "interpreted classes cannot inherit from compiled traits"):
+    Sub()

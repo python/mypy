@@ -53,7 +53,7 @@ The stubs will be much more useful if you add more precise type annotations,
 at least for the most commonly used functionality.
 
 The rest of this section documents the command line interface of stubgen.
-Run ``stubgen --help`` for a quick summary of options.
+Run :option:`stubgen --help` for a quick summary of options.
 
 .. note::
 
@@ -76,7 +76,7 @@ them for any ``.py`` files and generate stubs for all of them::
     $ stubgen my_pkg_dir
 
 Alternatively, you can give module or package names using the
-``-m`` or ``-p`` options::
+:option:`-m` or :option:`-p` options::
 
     $ stubgen -m foo -m bar -p my_pkg_dir
 
@@ -142,6 +142,10 @@ alter the default behavior:
 
 Additional flags
 ****************
+
+.. option:: -h, --help
+
+    Show help message and exit.
 
 .. option:: --py2
 

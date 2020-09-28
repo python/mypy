@@ -4,7 +4,7 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Callable
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -15,18 +15,23 @@ from mypy.nodes import (
 )
 from mypy.types import TupleType, get_proper_type
 
+from mypyc.common import MAX_LITERAL_SHORT_INT
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, PrimitiveOp, BasicBlock, OpDescription, Assign
+    Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+)
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import name_ref_ops
+from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
-from mypyc.primitives.tuple_ops import list_tuple_op
+from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
+from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
+from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
@@ -38,11 +43,16 @@ from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehensio
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     assert expr.node, "RefExpr not resolved"
     fullname = expr.node.fullname
-    if fullname in name_ref_ops:
-        # Use special access op for this particular name.
-        desc = name_ref_ops[fullname]
-        assert desc.result_type is not None
-        return builder.add(PrimitiveOp([], desc, expr.line))
+    if fullname in builtin_names:
+        typ, src = builtin_names[fullname]
+        return builder.add(LoadAddress(typ, src, expr.line))
+    # special cases
+    if fullname == 'builtins.None':
+        return builder.none()
+    if fullname == 'builtins.True':
+        return builder.true()
+    if fullname == 'builtins.False':
+        return builder.false()
 
     if isinstance(expr.node, Var) and expr.node.is_final:
         value = builder.emit_load_final(
@@ -278,7 +288,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     if decl.kind != FUNC_STATICMETHOD:
         vself = next(iter(builder.environment.indexes))  # grab first argument
         if decl.kind == FUNC_CLASSMETHOD:
-            vself = builder.primitive_op(type_op, [vself], expr.line)
+            vself = builder.call_c(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
             # For generator classes, the self target is the 6th value
             # in the symbol table (which is an ordered dict). This is sort
@@ -317,13 +327,57 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base = builder.accept(expr.base)
+    index = expr.index
 
-    if isinstance(base.type, RTuple) and isinstance(expr.index, IntExpr):
-        return builder.add(TupleGet(base, expr.index.value, expr.line))
+    if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
+        return builder.add(TupleGet(base, index.value, expr.line))
+
+    if isinstance(index, SliceExpr):
+        value = try_gen_slice_op(builder, base, index)
+        if value:
+            return value
 
     index_reg = builder.accept(expr.index)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
+
+
+def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optional[Value]:
+    """Generate specialized slice op for some index expressions.
+
+    Return None if a specialized op isn't available.
+
+    This supports obj[x:y], obj[:x], and obj[x:] for a few types.
+    """
+    if index.stride:
+        # We can only handle the default stride of 1.
+        return None
+
+    if index.begin_index:
+        begin_type = builder.node_type(index.begin_index)
+    else:
+        begin_type = int_rprimitive
+    if index.end_index:
+        end_type = builder.node_type(index.end_index)
+    else:
+        end_type = int_rprimitive
+
+    # Both begin and end index must be int (or missing).
+    if is_int_rprimitive(begin_type) and is_int_rprimitive(end_type):
+        if index.begin_index:
+            begin = builder.accept(index.begin_index)
+        else:
+            begin = builder.load_static_int(0)
+        if index.end_index:
+            end = builder.accept(index.end_index)
+        else:
+            # Replace missing end index with the largest short integer
+            # (a sequence can't be longer).
+            end = builder.load_static_int(MAX_LITERAL_SHORT_INT)
+        candidates = [list_slice_op, tuple_slice_op, str_slice_op]
+        return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
+
+    return None
 
 
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
@@ -382,6 +436,9 @@ def transform_basic_comparison(builder: IRBuilder,
                                left: Value,
                                right: Value,
                                line: int) -> Value:
+    if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
+            and op in int_comparison_op_mapping.keys()):
+        return builder.compare_tagged(left, right, op, line)
     negate = False
     if op == 'is not':
         op, negate = 'is', True
@@ -420,7 +477,7 @@ def transform_bytes_expr(builder: IRBuilder, expr: BytesExpr) -> Value:
 
 
 def transform_ellipsis(builder: IRBuilder, o: EllipsisExpr) -> Value:
-    return builder.primitive_op(ellipsis_op, [], o.line)
+    return builder.add(LoadAddress(ellipsis_op.type, ellipsis_op.src, o.line))
 
 
 # Display expressions
@@ -434,10 +491,11 @@ def _visit_list_display(builder: IRBuilder, items: List[Expression], line: int) 
     return _visit_display(
         builder,
         items,
-        new_list_op,
+        builder.new_list_op,
         list_append_op,
         list_extend_op,
-        line
+        line,
+        True
     )
 
 
@@ -463,7 +521,7 @@ def transform_tuple_expr(builder: IRBuilder, expr: TupleExpr) -> Value:
 def _visit_tuple_display(builder: IRBuilder, expr: TupleExpr) -> Value:
     """Create a list, then turn it into a tuple."""
     val_as_list = _visit_list_display(builder, expr.items, expr.line)
-    return builder.primitive_op(list_tuple_op, [val_as_list], expr.line)
+    return builder.call_c(list_tuple_op, [val_as_list], expr.line)
 
 
 def transform_dict_expr(builder: IRBuilder, expr: DictExpr) -> Value:
@@ -481,19 +539,21 @@ def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
     return _visit_display(
         builder,
         expr.items,
-        new_set_op,
+        builder.new_set_op,
         set_add_op,
         set_update_op,
-        expr.line
+        expr.line,
+        False
     )
 
 
 def _visit_display(builder: IRBuilder,
                    items: List[Expression],
-                   constructor_op: OpDescription,
-                   append_op: OpDescription,
-                   extend_op: OpDescription,
-                   line: int
+                   constructor_op: Callable[[List[Value], int], Value],
+                   append_op: CFunctionDescription,
+                   extend_op: CFunctionDescription,
+                   line: int,
+                   is_list: bool
                    ) -> Value:
     accepted_items = []
     for item in items:
@@ -505,17 +565,17 @@ def _visit_display(builder: IRBuilder,
     result = None  # type: Union[Value, None]
     initial_items = []
     for starred, value in accepted_items:
-        if result is None and not starred and constructor_op.is_var_arg:
+        if result is None and not starred and is_list:
             initial_items.append(value)
             continue
 
         if result is None:
-            result = builder.primitive_op(constructor_op, initial_items, line)
+            result = constructor_op(initial_items, line)
 
-        builder.primitive_op(extend_op if starred else append_op, [result, value], line)
+        builder.call_c(extend_op if starred else append_op, [result, value], line)
 
     if result is None:
-        result = builder.primitive_op(constructor_op, initial_items, line)
+        result = constructor_op(initial_items, line)
 
     return result
 
@@ -529,12 +589,12 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
     gen = o.generator
-    set_ops = builder.primitive_op(new_set_op, [], o.line)
+    set_ops = builder.call_c(new_set_op, [], o.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(set_add_op, [set_ops, e], o.line)
+        builder.call_c(set_add_op, [set_ops, e], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return set_ops
@@ -547,7 +607,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
     def gen_inner_stmts() -> None:
         k = builder.accept(o.key)
         v = builder.accept(o.value)
-        builder.primitive_op(dict_set_item_op, [d, k, v], o.line)
+        builder.call_c(dict_set_item_op, [d, k, v], o.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return d
@@ -566,11 +626,11 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
     args = [get_arg(expr.begin_index),
             get_arg(expr.end_index),
             get_arg(expr.stride)]
-    return builder.primitive_op(new_slice_op, args, expr.line)
+    return builder.call_c(new_slice_op, args, expr.line)
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     builder.warning('Treating generator comprehension as list', o.line)
-    return builder.primitive_op(
+    return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line
     )
