@@ -190,11 +190,11 @@ def f(i: int) -> bool:
 def f(i):
     i :: int
     r0, r1, r2 :: bool
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bool
-    r8 :: int64
+    r8 :: native_int
     r9, r10, r11, r12 :: bool
-    r13 :: int64
+    r13 :: native_int
     r14, r15, r16 :: bool
 L0:
     r3 = i & 1
