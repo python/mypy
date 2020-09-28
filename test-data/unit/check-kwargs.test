@@ -53,13 +53,6 @@ f(b=[], a=A())
 class A: pass
 [builtins fixtures/list.pyi]
 
-[case testGivingSameKeywordArgumentTwice]
-import typing
-def f(a: 'A', b: 'B') -> None: pass
-f(a=A(), b=B(), a=A()) # E: keyword argument repeated
-class A: pass
-class B: pass
-
 [case testGivingArgumentAsPositionalAndKeywordArg]
 import typing
 def f(a: 'A', b: 'B' = None) -> None: pass

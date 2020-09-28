@@ -384,9 +384,10 @@ class StringFormatterChecker:
             if self.chk.options.python_version >= (3, 0):
                 if (has_type_component(actual_type, 'builtins.bytes') and
                         not custom_special_method(actual_type, '__str__')):
-                    self.msg.fail("On Python 3 '{}'.format(b'abc') produces \"b'abc'\";"
-                                  " use !r if this is a desired behavior", call,
-                                  code=codes.STR_BYTES_PY3)
+                    self.msg.fail(
+                        "On Python 3 '{}'.format(b'abc') produces \"b'abc'\", not 'abc'; "
+                        "use '{!r}'.format(b'abc') if this is desired behavior",
+                        call, code=codes.STR_BYTES_PY3)
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
                                        self.named_type('builtins.float')])
@@ -843,9 +844,10 @@ class StringFormatterChecker:
             # Couple special cases for string formatting.
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(typ, 'builtins.bytes'):
-                    self.msg.fail("On Python 3 '%s' % b'abc' produces \"b'abc'\";"
-                                  " use %r if this is a desired behavior", context,
-                                  code=codes.STR_BYTES_PY3)
+                    self.msg.fail(
+                        "On Python 3 '%s' % b'abc' produces \"b'abc'\", not 'abc'; "
+                        "use '%r' % b'abc' if this is desired behavior",
+                        context, code=codes.STR_BYTES_PY3)
             if self.chk.options.python_version < (3, 0):
                 if has_type_component(typ, 'builtins.unicode'):
                     self.unicode_upcast = True

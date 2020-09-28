@@ -598,6 +598,18 @@ class C:
 
 [builtins fixtures/list.pyi]
 
+[case testTypeVarWithAnyTypeBound]
+# flags: --follow-imports=skip
+from typing import Type, TypeVar
+from a import A
+T = TypeVar('T', bound=A)
+def method(t: Type[T]) -> None:
+    t.a
+[file a.py]
+class A:
+    a: int = 7
+[out]
+
 [case testParameterLessGenericAsRestriction]
 from typing import Sequence, Iterable, TypeVar
 S = TypeVar('S', Sequence, Iterable)

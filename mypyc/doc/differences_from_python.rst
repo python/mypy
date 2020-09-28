@@ -262,12 +262,6 @@ Descriptors
 Native classes can't contain arbitrary descriptors. Properties, static
 methods and class methods are supported.
 
-Defining protocols
-******************
-
-Protocols can't be defined in compiled code. You can use protocols
-defined elsewhere, however.
-
 Stack introspection
 *******************
 

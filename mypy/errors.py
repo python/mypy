@@ -164,7 +164,9 @@ class Errors:
                  show_error_codes: bool = False,
                  pretty: bool = False,
                  read_source: Optional[Callable[[str], Optional[List[str]]]] = None,
-                 show_absolute_path: bool = False) -> None:
+                 show_absolute_path: bool = False,
+                 enabled_error_codes: Optional[Set[ErrorCode]] = None,
+                 disabled_error_codes: Optional[Set[ErrorCode]] = None) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
@@ -172,6 +174,8 @@ class Errors:
         self.pretty = pretty
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
+        self.enabled_error_codes = enabled_error_codes or set()
+        self.disabled_error_codes = disabled_error_codes or set()
         self.initialize()
 
     def initialize(self) -> None:
@@ -195,7 +199,9 @@ class Errors:
                      self.show_error_codes,
                      self.pretty,
                      self.read_source,
-                     self.show_absolute_path)
+                     self.show_absolute_path,
+                     self.enabled_error_codes,
+                     self.disabled_error_codes)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.function_or_member = self.function_or_member[:]
@@ -351,14 +357,24 @@ class Errors:
         self._add_error_info(file, info)
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
-        if line not in ignores:
+        if info.code and self.is_error_code_enabled(info.code) is False:
+            return True
+        elif line not in ignores:
             return False
         elif not ignores[line]:
             # Empty list means that we ignore all errors
             return True
-        elif info.code:
+        elif info.code and self.is_error_code_enabled(info.code) is True:
             return info.code.code in ignores[line]
         return False
+
+    def is_error_code_enabled(self, error_code: ErrorCode) -> bool:
+        if error_code in self.disabled_error_codes:
+            return False
+        elif error_code in self.enabled_error_codes:
+            return True
+        else:
+            return error_code.default_enabled
 
     def clear_errors_in_targets(self, path: str, targets: Set[str]) -> None:
         """Remove errors in specific fine-grained targets within a file."""

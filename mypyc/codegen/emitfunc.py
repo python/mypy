@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union
+from typing import Union, Dict
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -11,11 +11,16 @@ from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal
+    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
-from mypyc.ir.rtypes import RType, RTuple, is_int32_rprimitive, is_int64_rprimitive
+from mypyc.ir.rtypes import (
+    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
+    is_pointer_rprimitive
+)
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.const_int import find_constant_integer_registers
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -42,10 +47,15 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
 def generate_native_function(fn: FuncIR,
                              emitter: Emitter,
                              source_path: str,
-                             module_name: str) -> None:
+                             module_name: str,
+                             optimize_int: bool = True) -> None:
+    if optimize_int:
+        const_int_regs = find_constant_integer_registers(fn.blocks)
+    else:
+        const_int_regs = {}
     declarations = Emitter(emitter.context, fn.env)
     body = Emitter(emitter.context, fn.env)
-    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
+    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
     body.indent()
@@ -59,10 +69,11 @@ def generate_native_function(fn: FuncIR,
         init = ''
         if r in fn.env.vars_needing_init:
             init = ' = {}'.format(declarations.c_error_value(r.type))
-        declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
-                                                                     prefix=REG_PREFIX,
-                                                                     name=r.name,
-                                                                     init=init))
+        if r.name not in const_int_regs:
+            declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
+                                                                        prefix=REG_PREFIX,
+                                                                        name=r.name,
+                                                                        init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -84,13 +95,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                  emitter: Emitter,
                  declarations: Emitter,
                  source_path: str,
-                 module_name: str) -> None:
+                 module_name: str,
+                 const_int_regs: Dict[str, int]) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.env = self.emitter.env
         self.source_path = source_path
         self.module_name = module_name
+        self.const_int_regs = const_int_regs
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -130,15 +143,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
         self.emit_line('if ({}) {{'.format(cond))
 
-        if op.traceback_entry is not None:
-            globals_static = self.emitter.static_name('globals', self.module_name)
-            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                op.traceback_entry[1],
-                globals_static))
-            if DEBUG_ERRORS:
-                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+        self.emit_traceback(op)
 
         self.emit_lines(
             'goto %s;' % self.label(op.true),
@@ -181,11 +186,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = %s;' % (dest, src))
 
     def visit_load_int(self, op: LoadInt) -> None:
+        if op.name in self.const_int_regs:
+            return
         dest = self.reg(op)
-        if is_int32_rprimitive(op.type) or is_int64_rprimitive(op.type):
-            self.emit_line('%s = %d;' % (dest, op.value))
-        else:
-            self.emit_line('%s = %d;' % (dest, op.value * 2))
+        self.emit_line('%s = %d;' % (dest, op.value))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):
@@ -422,9 +426,18 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emitter.emit_line('{} = 0;'.format(self.reg(op)))
 
     def visit_call_c(self, op: CallC) -> None:
-        dest = self.get_dest_assign(op)
+        if op.is_void:
+            dest = ''
+        else:
+            dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
         self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
+
+    def visit_truncate(self, op: Truncate) -> None:
+        dest = self.reg(op)
+        value = self.reg(op.src)
+        # for C backend the generated code are straight assignments
+        self.emit_line("{} = {};".format(dest, value))
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)
@@ -435,13 +448,72 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 ann = ' /* %s */' % s
         self.emit_line('%s = %s;%s' % (dest, op.identifier, ann))
 
+    def visit_binary_int_op(self, op: BinaryIntOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+
+    def visit_comparison_op(self, op: ComparisonOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        lhs_cast = ""
+        rhs_cast = ""
+        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
+        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
+        if op.op in signed_op:
+            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
+            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+        elif op.op in unsigned_op:
+            lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
+            rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
+        self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
+                                               op.op_str[op.op], rhs_cast, rhs))
+
+    def visit_load_mem(self, op: LoadMem) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        # TODO: we shouldn't dereference to type that are pointer type so far
+        type = self.ctype(op.type)
+        self.emit_line('%s = *(%s *)%s;' % (dest, type, src))
+
+    def visit_set_mem(self, op: SetMem) -> None:
+        dest = self.reg(op.dest)
+        src = self.reg(op.src)
+        dest_type = self.ctype(op.dest_type)
+        # clang whines about self assignment (which we might generate
+        # for some casts), so don't emit it.
+        if dest != src:
+            self.emit_line('*(%s *)%s = %s;' % (dest_type, dest, src))
+
+    def visit_get_element_ptr(self, op: GetElementPtr) -> None:
+        dest = self.reg(op)
+        src = self.reg(op.src)
+        # TODO: support tuple type
+        assert isinstance(op.src_type, RStruct)
+        assert op.field in op.src_type.names, "Invalid field name."
+        self.emit_line('%s = (%s)&((%s *)%s)->%s;' % (dest, op.type._ctype, op.src_type.name,
+                                                      src, op.field))
+
+    def visit_load_address(self, op: LoadAddress) -> None:
+        typ = op.type
+        dest = self.reg(op)
+        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, op.src))
+
     # Helpers
 
     def label(self, label: BasicBlock) -> str:
         return self.emitter.label(label)
 
     def reg(self, reg: Value) -> str:
-        return self.emitter.reg(reg)
+        if reg.name in self.const_int_regs:
+            val = self.const_int_regs[reg.name]
+            if val == 0 and is_pointer_rprimitive(reg.type):
+                return "NULL"
+            return str(val)
+        else:
+            return self.emitter.reg(reg)
 
     def ctype(self, rtype: RType) -> str:
         return self.emitter.ctype(rtype)
@@ -466,3 +538,28 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def emit_declaration(self, line: str) -> None:
         self.declarations.emit_line(line)
+
+    def emit_traceback(self, op: Branch) -> None:
+        if op.traceback_entry is not None:
+            globals_static = self.emitter.static_name('globals', self.module_name)
+            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
+                self.source_path.replace("\\", "\\\\"),
+                op.traceback_entry[0],
+                op.traceback_entry[1],
+                globals_static))
+            if DEBUG_ERRORS:
+                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_signed_int_cast(self, type: RType) -> str:
+        if is_tagged(type):
+            return '(Py_ssize_t)'
+        else:
+            return ''
+
+    def emit_unsigned_int_cast(self, type: RType) -> str:
+        if is_int32_rprimitive(type):
+            return '(uint32_t)'
+        elif is_int64_rprimitive(type):
+            return '(uint64_t)'
+        else:
+            return ''

@@ -1,5 +1,6 @@
 import sys
 from typing import Dict, Any
+import sys
 
 from typing_extensions import Final
 
@@ -22,7 +23,11 @@ INT_PREFIX = '__tmp_literal_int_'  # type: Final
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
-MAX_LITERAL_SHORT_INT = (1 << 30) - 1  # type: Final
+
+# Maximum value for a short tagged integer.
+#
+# Note: Assume that the compiled code uses the same bit width as mypyc.
+MAX_LITERAL_SHORT_INT = sys.maxsize >> 1  # type: Final
 
 TOP_LEVEL_NAME = '__top_level__'  # type: Final # Special function representing module top level
 
@@ -30,6 +35,23 @@ TOP_LEVEL_NAME = '__top_level__'  # type: Final # Special function representing 
 FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
 
 IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
+
+PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
+
+# Runtime C library files
+RUNTIME_C_FILES = [
+    'init.c',
+    'getargs.c',
+    'int_ops.c',
+    'list_ops.c',
+    'dict_ops.c',
+    'str_ops.c',
+    'set_ops.c',
+    'tuple_ops.c',
+    'exc_ops.c',
+    'misc_ops.c',
+    'generic_ops.c',
+]  # type: Final
 
 
 def decorator_helper_name(func_name: str) -> str:

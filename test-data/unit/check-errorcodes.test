@@ -617,8 +617,8 @@ def g() -> int:
 '%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
-'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
-'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
+'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -748,3 +748,41 @@ def f() -> Optional[C]:
 
 f(  # type: ignore[operator]
 ) + C()
+
+[case testErrorCodeSpecialArgTypeErrors]
+from typing import TypedDict
+
+class C(TypedDict):
+    x: int
+
+c: C
+c.setdefault('x', '1')  # type: ignore[arg-type]
+
+class A:
+    pass
+
+class B(A):
+    def f(self) -> None:
+        super(1, self).foo()  # type: ignore[arg-type]
+
+def f(**x: int) -> None:
+    pass
+
+f(**1)  # type: ignore[arg-type]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRedundantExpressions]
+# flags: --enable-error-code redundant-expr
+def foo() -> bool: ...
+
+lst = [1, 2, 3, 4]
+
+b = False or foo()                       # E: Left operand of 'or' is always false  [redundant-expr]
+c = True and foo()                       # E: Left operand of 'and' is always true  [redundant-expr]
+g = 3 if True else 4                     # E: If condition is always true  [redundant-expr]
+h = 3 if False else 4                    # E: If condition is always false  [redundant-expr]
+i = [x for x in lst if True]             # E: If condition in comprehension is always true  [redundant-expr]
+j = [x for x in lst if False]            # E: If condition in comprehension is always false  [redundant-expr]
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]

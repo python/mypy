@@ -129,8 +129,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_full = not cl.is_trait and not cl.builtin_base
     needs_getseters = not cl.is_generated
 
-    if generate_full:
+    if not cl.builtin_base:
         fields['tp_new'] = new_name
+
+    if generate_full:
         fields['tp_dealloc'] = '(destructor){}_dealloc'.format(name_prefix)
         fields['tp_traverse'] = '(traverseproc){}_traverse'.format(name_prefix)
         fields['tp_clear'] = '(inquiry){}_clear'.format(name_prefix)
@@ -229,6 +231,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_getseters_table(cl, getseters_name, emitter)
         emit_line()
+
+    if cl.is_trait:
+        generate_new_for_trait(cl, new_name, emitter)
+
     generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
@@ -542,6 +548,27 @@ def generate_new_for_class(cl: ClassIR,
         emitter.emit_line('}')
 
     emitter.emit_line('return {}(type);'.format(setup_name))
+    emitter.emit_line('}')
+
+
+def generate_new_for_trait(cl: ClassIR,
+                           func_name: str,
+                           emitter: Emitter) -> None:
+    emitter.emit_line('static PyObject *')
+    emitter.emit_line(
+        '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
+    emitter.emit_line('{')
+    emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, '
+        '"interpreted classes cannot inherit from compiled traits");'
+    )
+    emitter.emit_line('} else {')
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, "traits may not be directly created");'
+    )
+    emitter.emit_line('}')
+    emitter.emit_line('return NULL;')
     emitter.emit_line('}')
 
 

@@ -25,7 +25,7 @@ from mypy.nodes import SymbolNode
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype
+    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive
 )
 from mypyc.common import short_name
 
@@ -138,6 +138,7 @@ class Environment:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
+        self.temp_load_int_idx = 0
         # All names genereted; value is the number of duplicates seen.
         self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]
@@ -198,6 +199,10 @@ class Environment:
         """Record the value of an operation."""
         if reg.is_void:
             return
+        if isinstance(reg, LoadInt):
+            self.add(reg, "i%d" % self.temp_load_int_idx)
+            self.temp_load_int_idx += 1
+            return
         self.add(reg, 'r%d' % self.temp_index)
         self.temp_index += 1
 
@@ -232,11 +237,13 @@ class Environment:
                 i = n
         return ''.join(result)
 
-    def to_lines(self) -> List[str]:
+    def to_lines(self, const_regs: Optional[Dict[str, int]] = None) -> List[str]:
         result = []
         i = 0
         regs = list(self.regs())
-
+        if const_regs is None:
+            const_regs = {}
+        regs = [reg for reg in regs if reg.name not in const_regs]
         while i < len(regs):
             i0 = i
             group = [regs[i0].name]
@@ -295,6 +302,8 @@ ERR_MAGIC = 1  # type: Final
 ERR_FALSE = 2  # type: Final
 # Generates negative integer on exception
 ERR_NEG_INT = 3  # type: Final
+# Always fails
+ERR_ALWAYS = 4  # type: Final
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -558,7 +567,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease referece count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref r).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -789,7 +798,10 @@ class LoadInt(RegisterOp):
 
     def __init__(self, value: int, line: int = -1, rtype: RType = short_int_rprimitive) -> None:
         super().__init__(line)
-        self.value = value
+        if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
+            self.value = value * 2
+        else:
+            self.value = value
         self.type = rtype
 
     def sources(self) -> List[Value]:
@@ -1154,6 +1166,7 @@ class CallC(RegisterOp):
                  args: List[Value],
                  ret_type: RType,
                  steals: StealsDescription,
+                 is_borrowed: bool,
                  error_kind: int,
                  line: int,
                  var_arg_idx: int = -1) -> None:
@@ -1163,11 +1176,15 @@ class CallC(RegisterOp):
         self.args = args
         self.type = ret_type
         self.steals = steals
+        self.is_borrowed = is_borrowed
         self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
 
     def to_str(self, env: Environment) -> str:
         args_str = ', '.join(env.format('%r', arg) for arg in self.args)
-        return env.format('%r = %s(%s)', self, self.function_name, args_str)
+        if self.is_void:
+            return env.format('%s(%s)', self.function_name, args_str)
+        else:
+            return env.format('%r = %s(%s)', self, self.function_name, args_str)
 
     def sources(self) -> List[Value]:
         return self.args
@@ -1181,6 +1198,40 @@ class CallC(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_call_c(self)
+
+
+class Truncate(RegisterOp):
+    """truncate src: src_type to dst_type
+
+    Truncate a value from type with more bits to type with less bits
+
+    both src_type and dst_type should be non-reference counted integer types or bool
+    especially note that int_rprimitive is reference counted so should never be used here
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self,
+                 src: Value,
+                 src_type: RType,
+                 dst_type: RType,
+                 line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.src_type = src_type
+        self.type = dst_type
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = truncate %r: %r to %r", self, self.src, self.src_type, self.type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_truncate(self)
 
 
 class LoadGlobal(RegisterOp):
@@ -1204,13 +1255,255 @@ class LoadGlobal(RegisterOp):
 
     def to_str(self, env: Environment) -> str:
         ann = '  ({})'.format(repr(self.ann)) if self.ann else ''
-        # return env.format('%r = %s%s', self, self.identifier, ann)
-        # TODO: a hack to prevent lots of failed IR tests when developing prototype
-        #       eventually we will change all the related tests
-        return env.format('%r = %s :: static%s', self, self.identifier[10:], ann)
+        return env.format('%r = load_global %s :: static%s', self, self.identifier, ann)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_global(self)
+
+
+class BinaryIntOp(RegisterOp):
+    """Binary arithmetic and bitwise operations on integer types
+
+    These ops are low-level and will be eventually generated to simple x op y form.
+    The left and right values should be of low-level integer types that support those ops
+    """
+    error_kind = ERR_NEVER
+
+    # arithmetic
+    ADD = 0  # type: Final
+    SUB = 1  # type: Final
+    MUL = 2  # type: Final
+    DIV = 3  # type: Final
+    MOD = 4  # type: Final
+
+    # bitwise
+    AND = 200  # type: Final
+    OR = 201  # type: Final
+    XOR = 202  # type: Final
+    LEFT_SHIFT = 203  # type: Final
+    RIGHT_SHIFT = 204  # type: Final
+
+    op_str = {
+        ADD: '+',
+        SUB: '-',
+        MUL: '*',
+        DIV: '/',
+        MOD: '%',
+        AND: '&',
+        OR: '|',
+        XOR: '^',
+        LEFT_SHIFT: '<<',
+        RIGHT_SHIFT: '>>',
+    }  # type: Final
+
+    def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> List[Value]:
+        return [self.lhs, self.rhs]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %r %s %r', self, self.lhs,
+                          self.op_str[self.op], self.rhs)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_binary_int_op(self)
+
+
+class ComparisonOp(RegisterOp):
+    """Comparison ops
+
+    The result type will always be boolean.
+
+    Support comparison between integer types and pointer types
+    """
+    error_kind = ERR_NEVER
+
+    # S for signed and U for unsigned
+    EQ = 100  # type: Final
+    NEQ = 101  # type: Final
+    SLT = 102  # type: Final
+    SGT = 103  # type: Final
+    SLE = 104  # type: Final
+    SGE = 105  # type: Final
+    ULT = 106  # type: Final
+    UGT = 107  # type: Final
+    ULE = 108  # type: Final
+    UGE = 109  # type: Final
+
+    op_str = {
+        EQ: '==',
+        NEQ: '!=',
+        SLT: '<',
+        SGT: '>',
+        SLE: '<=',
+        SGE: '>=',
+        ULT: '<',
+        UGT: '>',
+        ULE: '<=',
+        UGE: '>=',
+    }  # type: Final
+
+    def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = bool_rprimitive
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> List[Value]:
+        return [self.lhs, self.rhs]
+
+    def to_str(self, env: Environment) -> str:
+        if self.op in (self.SLT, self.SGT, self.SLE, self.SGE):
+            sign_format = " :: signed"
+        elif self.op in (self.ULT, self.UGT, self.ULE, self.UGE):
+            sign_format = " :: unsigned"
+        else:
+            sign_format = ""
+        return env.format('%r = %r %s %r%s', self, self.lhs,
+                          self.op_str[self.op], self.rhs, sign_format)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_comparison_op(self)
+
+
+class LoadMem(RegisterOp):
+    """Read a memory location.
+
+    type ret = *(type *)src
+
+    Attributes:
+      type: Type of the read value
+      src: Pointer to memory to read
+      base: If not None, the object from which we are reading memory.
+            It's used to avoid the target object from being freed via
+            reference counting. If the target is not in reference counted
+            memory, or we know that the target won't be freed, it can be
+            None.
+    """
+    error_kind = ERR_NEVER
+
+    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        # TODO: for now we enforce that the src memory address should be Py_ssize_t
+        #       later we should also support same width unsigned int
+        assert is_pointer_rprimitive(src.type)
+        self.src = src
+        self.base = base
+        self.is_borrowed = True
+
+    def sources(self) -> List[Value]:
+        if self.base:
+            return [self.src, self.base]
+        else:
+            return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        if self.base:
+            base = env.format(', %r', self.base)
+        else:
+            base = ''
+        return env.format("%r = load_mem %r%s :: %r*", self, self.src, base, self.type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_mem(self)
+
+
+class SetMem(Op):
+    """Write a memory location.
+
+    *(type *)dest = src
+
+    Attributes:
+      type: Type of the read value
+      dest: Pointer to memory to write
+      src: Source value
+      base: If not None, the object from which we are reading memory.
+            It's used to avoid the target object from being freed via
+            reference counting. If the target is not in reference counted
+            memory, or we know that the target won't be freed, it can be
+            None.
+    """
+    error_kind = ERR_NEVER
+
+    def __init__(self,
+                 type: RType,
+                 dest: Value,
+                 src: Value,
+                 base: Optional[Value],
+                 line: int = -1) -> None:
+        super().__init__(line)
+        self.type = void_rtype
+        self.dest_type = type
+        self.src = src
+        self.dest = dest
+        self.base = base
+
+    def sources(self) -> List[Value]:
+        if self.base:
+            return [self.src, self.base, self.dest]
+        else:
+            return [self.src, self.dest]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        if self.base:
+            base = env.format(', %r', self.base)
+        else:
+            base = ''
+        return env.format("set_mem %r, %r%s :: %r*", self.dest, self.src, base, self.dest_type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_set_mem(self)
+
+
+class GetElementPtr(RegisterOp):
+    """Get the address of a struct element"""
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = pointer_rprimitive
+        self.src = src
+        self.src_type = src_type
+        self.field = field
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = get_element_ptr %r %s :: %r", self, self.src,
+                          self.field, self.src_type)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_get_element_ptr(self)
+
+
+class LoadAddress(RegisterOp):
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self, type: RType, src: str, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = type
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format("%r = load_address %s", self, self.src)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_address(self)
 
 
 @trait
@@ -1308,7 +1601,35 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_truncate(self, op: Truncate) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_load_global(self, op: LoadGlobal) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_binary_int_op(self, op: BinaryIntOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_comparison_op(self, op: ComparisonOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_mem(self, op: LoadMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_set_mem(self, op: SetMem) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_get_element_ptr(self, op: GetElementPtr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_address(self, op: LoadAddress) -> T:
         raise NotImplementedError
 
 

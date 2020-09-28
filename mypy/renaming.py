@@ -249,7 +249,7 @@ class VariableRenameVisitor(TraverserVisitor):
         is_func = self.scope_kinds[-1] == FUNCTION
         for name, refs in self.refs[-1].items():
             if len(refs) == 1:
-                # Only one definition -- no renaming neeed.
+                # Only one definition -- no renaming needed.
                 continue
             if is_func:
                 # In a function, don't rename the first definition, as it

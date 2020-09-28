@@ -21,7 +21,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType, TypeVarDef,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
     get_proper_types
 )
@@ -854,7 +854,7 @@ class MessageBuilder:
                 suffix = ', not {}'.format(format_type(typ))
             self.fail(
                 'Argument after ** must be a mapping{}'.format(suffix),
-                context)
+                context, code=codes.ARG_TYPE)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -867,7 +867,8 @@ class MessageBuilder:
             type_str = 'a non-type instance'
         else:
             type_str = format_type(actual)
-        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
+        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context,
+                  code=codes.ARG_TYPE)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context,
@@ -1188,7 +1189,8 @@ class MessageBuilder:
             expected: Type,
             context: Context) -> None:
         msg = 'Argument 2 to "setdefault" of "TypedDict" has incompatible type {}; expected {}'
-        self.fail(msg.format(format_type(default), format_type(expected)), context)
+        self.fail(msg.format(format_type(default), format_type(expected)), context,
+                  code=codes.ARG_TYPE)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
@@ -1278,7 +1280,7 @@ class MessageBuilder:
         """
         self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
 
-    def redundant_right_operand(self, op_name: str, context: Context) -> None:
+    def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the right operand of a boolean expression is redundant:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
@@ -1297,7 +1299,7 @@ class MessageBuilder:
 
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
-                  context, code=codes.UNREACHABLE)
+                  context, code=codes.REDUNDANT_EXPR)
 
     def impossible_intersection(self,
                                 formatted_base_class_list: str,
@@ -1624,10 +1626,7 @@ def format_type_inner(typ: Type,
         for t in typ.items:
             items.append(format(t))
         s = 'Tuple[{}]'.format(', '.join(items))
-        if len(s) < 400:
-            return s
-        else:
-            return '<tuple: {} items>'.format(len(items))
+        return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
         if not typ.is_anonymous():
@@ -1659,10 +1658,7 @@ def format_type_inner(typ: Type,
             for t in typ.items:
                 items.append(format(t))
             s = 'Union[{}]'.format(', '.join(items))
-            if len(s) < 400:
-                return s
-            else:
-                return '<union: {} items>'.format(len(items))
+            return s
     elif isinstance(typ, NoneType):
         return 'None'
     elif isinstance(typ, AnyType):
@@ -1866,16 +1862,20 @@ def pretty_callable(tp: CallableType) -> str:
     if tp.variables:
         tvars = []
         for tvar in tp.variables:
-            upper_bound = get_proper_type(tvar.upper_bound)
-            if (isinstance(upper_bound, Instance) and
-                    upper_bound.type.fullname != 'builtins.object'):
-                tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
-            elif tvar.values:
-                tvars.append('{} in ({})'
-                             .format(tvar.name, ', '.join([format_type_bare(tp)
-                                                           for tp in tvar.values])))
+            if isinstance(tvar, TypeVarDef):
+                upper_bound = get_proper_type(tvar.upper_bound)
+                if (isinstance(upper_bound, Instance) and
+                        upper_bound.type.fullname != 'builtins.object'):
+                    tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
+                elif tvar.values:
+                    tvars.append('{} in ({})'
+                                 .format(tvar.name, ', '.join([format_type_bare(tp)
+                                                               for tp in tvar.values])))
+                else:
+                    tvars.append(tvar.name)
             else:
-                tvars.append(tvar.name)
+                # For other TypeVarLikeDefs, just use the repr
+                tvars.append(repr(tvar))
         s = '[{}] {}'.format(', '.join(tvars), s)
     return 'def {}'.format(s)
 

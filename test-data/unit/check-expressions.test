@@ -1183,8 +1183,8 @@ xb: bytes
 xs: str
 
 '%s' % xs   # OK
-'%s' % xb   # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
-'%(name)s' % {'name': b'value'}  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
+'%s' % xb   # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior
+'%(name)s' % {'name': b'value'}  # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationSBytesVsStrResultsPy2]
@@ -1576,17 +1576,17 @@ N = NewType('N', bytes)
 n: N
 
 '{}'.format(a)
-'{}'.format(b)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
-'{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
-'{}'.format(n)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
+'{}'.format(b)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
+'{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
+'{}'.format(n)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
 
 class C(Generic[B]):
     x: B
     def meth(self) -> None:
-        '{}'.format(self.x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
+        '{}'.format(self.x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
 
 def func(x: A) -> A:
-    '{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
+    '{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
     return x
 
 '{!r}'.format(b)

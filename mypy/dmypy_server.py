@@ -141,10 +141,8 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
                  "pass it to check/recheck instead")
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
-    # Our file change tracking can't yet handle changes to files that aren't
-    # specified in the sources list.
     if options.follow_imports not in ('skip', 'error', 'normal'):
-        sys.exit("dmypy: follow-imports must be 'skip' or 'error'")
+        sys.exit("dmypy: follow-imports=silent not supported")
     return options
 
 
@@ -559,6 +557,10 @@ class Server:
             if module[0] not in graph:
                 continue
             sources2 = self.direct_imports(module, graph)
+            # Filter anything already seen before. This prevents
+            # infinite looping if there are any self edges. (Self
+            # edges are maybe a bug, but...)
+            sources2 = [source for source in sources2 if source.module not in seen]
             changed, new_files = self.find_reachable_changed_modules(
                 sources2, graph, seen, changed_paths
             )

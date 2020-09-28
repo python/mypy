@@ -1419,3 +1419,12 @@ def g() -> None:
                           # N: (Hint: Use "T" in function signature to bind "T" inside a function)
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testParamSpec]
+from typing_extensions import ParamSpec
+
+TParams = ParamSpec('TParams')
+TP = ParamSpec('?')  # E: String argument 1 '?' to ParamSpec(...) does not match variable name 'TP'
+TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
+
+[out]

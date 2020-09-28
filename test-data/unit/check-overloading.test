@@ -4955,6 +4955,33 @@ def g(name: str) -> int:
 reveal_type(f)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
 reveal_type(g)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
 
+[case testDisallowUntypedDecoratorsOverloadDunderCall]
+# flags: --disallow-untyped-decorators
+from typing import Any, Callable, overload, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+class Dec:
+    @overload
+    def __call__(self, x: F) -> F: ...
+    @overload
+    def __call__(self, x: str) -> Callable[[F], F]: ...
+    def __call__(self, x) -> Any:
+        pass
+
+dec = Dec()
+
+@dec
+def f(name: str) -> int:
+    return 0
+
+@dec('abc')
+def g(name: str) -> int:
+    return 0
+
+reveal_type(f)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
+reveal_type(g)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
+
 [case testOverloadBadArgumentsInferredToAny1]
 from typing import Union, Any, overload
 
@@ -5124,3 +5151,25 @@ compose(ID, fakeint)("test")
 reveal_type(compose(ID, fakeint))  # N: Revealed type is 'def (Union[builtins.str, builtins.bytes]) -> __main__.ID*'
 
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadTwoTypeArgs]
+from typing import Generic, overload, TypeVar, Any
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+class A: ...
+class B: ...
+class G(Generic[T1, T2]): ...
+
+@overload
+def f1(g: G[A, A]) -> A: ...
+@overload
+def f1(g: G[A, B]) -> B: ...
+def f1(g: Any) -> Any: ...
+
+@overload
+def f2(g: G[A, Any]) -> A: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f2(g: G[A, B], x: int = ...) -> B: ...
+def f2(g: Any, x: int = ...) -> Any: ...

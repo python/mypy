@@ -65,6 +65,7 @@ typecheck_files = [
     'check-selftype.test',
     'check-python2.test',
     'check-columns.test',
+    'check-future.test',
     'check-functions.test',
     'check-tuples.test',
     'check-expressions.test',
@@ -89,11 +90,14 @@ typecheck_files = [
     'check-reports.test',
     'check-errorcodes.test',
     'check-annotated.test',
+    'check-parameter-specification.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info >= (3, 8):
     typecheck_files.append('check-python38.test')
+if sys.version_info >= (3, 9):
+    typecheck_files.append('check-python39.test')
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):

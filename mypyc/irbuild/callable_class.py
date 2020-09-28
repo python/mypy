@@ -119,7 +119,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     # object. If accessed through an object, create a new bound
     # instance method object.
     instance_block, class_block = BasicBlock(), BasicBlock()
-    comparison = builder.binary_op(
+    comparison = builder.translate_is_op(
         builder.read(instance), builder.none_object(), 'is', line
     )
     builder.add_bool_branch(comparison, class_block, instance_block)
@@ -128,7 +128,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     builder.add(Return(vself))
 
     builder.activate_block(instance_block)
-    builder.add(Return(builder.primitive_op(method_new_op, [vself, builder.read(instance)], line)))
+    builder.add(Return(builder.call_c(method_new_op, [vself, builder.read(instance)], line)))
 
     blocks, env, _, fn_info = builder.leave()
 

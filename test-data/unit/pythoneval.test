@@ -1083,8 +1083,8 @@ _testTypedDictGet.py:8: note: Revealed type is 'builtins.str'
 _testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, k: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object
+_testTypedDictGet.py:10: note:     def get(self, key: str) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
 _testTypedDictGet.py:12: note: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]

@@ -10,7 +10,7 @@ from typing_extensions import Type as TypingType
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, TypeVarLikeDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery
@@ -113,7 +113,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
                    is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
-    variables = []  # type: List[TypeVarDef]
+    variables = []  # type: List[TypeVarLikeDef]
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
@@ -227,6 +227,8 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         # TODO: infer bounds on the type of *args?
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
+
+    variables = []  # type: Sequence[TypeVarLikeDef]
     if func.variables and supported_self_type(self_param_type):
         if original_type is None:
             # TODO: type check method override (see #7861).
@@ -344,24 +346,51 @@ def make_simplified_union(items: Sequence[Type],
     from mypy.subtypes import is_proper_subtype
 
     removed = set()  # type: Set[int]
-    for i, ti in enumerate(items):
-        if i in removed: continue
-        # Keep track of the truishness info for deleted subtypes which can be relevant
-        cbt = cbf = False
-        for j, tj in enumerate(items):
-            if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
-                # We found a redundant item in the union.
-                removed.add(j)
-                cbt = cbt or tj.can_be_true
-                cbf = cbf or tj.can_be_false
-        # if deleted subtypes had more general truthiness, use that
-        if not ti.can_be_true and cbt:
-            items[i] = true_or_false(ti)
-        elif not ti.can_be_false and cbf:
-            items[i] = true_or_false(ti)
+
+    # Avoid slow nested for loop for Union of Literal of strings (issue #9169)
+    if all((isinstance(item, LiteralType) and
+            item.fallback.type.fullname == 'builtins.str')
+           for item in items):
+        seen = set()    # type: Set[str]
+        for index, item in enumerate(items):
+            assert isinstance(item, LiteralType)
+            assert isinstance(item.value, str)
+            if item.value in seen:
+                removed.add(index)
+            seen.add(item.value)
+
+    else:
+        for i, ti in enumerate(items):
+            if i in removed: continue
+            # Keep track of the truishness info for deleted subtypes which can be relevant
+            cbt = cbf = False
+            for j, tj in enumerate(items):
+                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
+                    # We found a redundant item in the union.
+                    removed.add(j)
+                    cbt = cbt or tj.can_be_true
+                    cbf = cbf or tj.can_be_false
+            # if deleted subtypes had more general truthiness, use that
+            if not ti.can_be_true and cbt:
+                items[i] = true_or_false(ti)
+            elif not ti.can_be_false and cbf:
+                items[i] = true_or_false(ti)
 
     simplified_set = [items[i] for i in range(len(items)) if i not in removed]
     return UnionType.make_union(simplified_set, line, column)
+
+
+def get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
+    t = get_proper_type(t)
+
+    if isinstance(t, Instance):
+        bool_method = t.type.names.get("__bool__", None)
+        if bool_method:
+            callee = get_proper_type(bool_method.type)
+            if isinstance(callee, CallableType):
+                return callee.ret_type
+
+    return None
 
 
 def true_only(t: Type) -> ProperType:
@@ -379,8 +408,16 @@ def true_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The true version of a union type is the union of the true versions of its components
         new_items = [true_only(item) for item in t.items]
-        return make_simplified_union(new_items, line=t.line, column=t.column)
+        can_be_true_items = [item for item in new_items if item.can_be_true]
+        return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
+        ret_type = get_type_special_method_bool_ret_type(t)
+
+        if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
+            new_t = copy_type(t)
+            new_t.can_be_true = False
+            return new_t
+
         new_t = copy_type(t)
         new_t.can_be_false = False
         return new_t
@@ -406,8 +443,16 @@ def false_only(t: Type) -> ProperType:
     elif isinstance(t, UnionType):
         # The false version of a union type is the union of the false versions of its components
         new_items = [false_only(item) for item in t.items]
-        return make_simplified_union(new_items, line=t.line, column=t.column)
+        can_be_false_items = [item for item in new_items if item.can_be_false]
+        return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
+        ret_type = get_type_special_method_bool_ret_type(t)
+
+        if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
+            new_t = copy_type(t)
+            new_t.can_be_false = False
+            return new_t
+
         new_t = copy_type(t)
         new_t.can_be_true = False
         return new_t
@@ -429,7 +474,9 @@ def true_or_false(t: Type) -> ProperType:
     return new_t
 
 
-def erase_def_to_union_or_bound(tdef: TypeVarDef) -> Type:
+def erase_def_to_union_or_bound(tdef: TypeVarLikeDef) -> Type:
+    # TODO(shantanu): fix for ParamSpecDef
+    assert isinstance(tdef, TypeVarDef)
     if tdef.values:
         return make_simplified_union(tdef.values)
     else:
