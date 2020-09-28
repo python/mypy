@@ -449,10 +449,9 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         # x not in []/() -> True
         elif n_items == 0:
             if e.operators[0] == 'in':
-                name = 'builtins.False'
+                return builder.false()
             else:
-                name = 'builtins.True'
-            return builder.add(PrimitiveOp([], name_ref_ops[name], e.line))
+                return builder.true()
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
