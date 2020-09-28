@@ -189,32 +189,59 @@ def f(i: int) -> bool:
 [out]
 def f(i):
     i :: int
-    r0, r1 :: bool
-    r2 :: short_int
-    r3 :: bool
-    r4 :: short_int
-    r5 :: bool
-    r6 :: short_int
-    r7 :: bool
+    r0, r1, r2 :: bool
+    r3 :: int64
+    r4, r5, r6, r7 :: bool
+    r8 :: int64
+    r9, r10, r11, r12 :: bool
+    r13 :: int64
+    r14, r15, r16 :: bool
 L0:
-    r2 = 1
-    r3 = CPyTagged_IsEq(i, r2)
-    if r3 goto L1 else goto L2 :: bool
+    r3 = i & 1
+    r4 = r3 == 0
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r1 = r3
+    r5 = i == 2
+    r2 = r5
     goto L3
 L2:
-    r4 = 2
-    r5 = CPyTagged_IsEq(i, r4)
-    r1 = r5
+    r6 = CPyTagged_IsEq_(i, 2)
+    r2 = r6
 L3:
-    if r1 goto L4 else goto L5 :: bool
+    if r2 goto L4 else goto L5 :: bool
 L4:
-    r0 = r1
-    goto L6
+    r1 = r2
+    goto L9
 L5:
-    r6 = 3
-    r7 = CPyTagged_IsEq(i, r6)
-    r0 = r7
+    r8 = i & 1
+    r9 = r8 == 0
+    if r9 goto L6 else goto L7 :: bool
 L6:
+    r10 = i == 4
+    r7 = r10
+    goto L8
+L7:
+    r11 = CPyTagged_IsEq_(i, 4)
+    r7 = r11
+L8:
+    r1 = r7
+L9:
+    if r1 goto L10 else goto L11 :: bool
+L10:
+    r0 = r1
+    goto L15
+L11:
+    r13 = i & 1
+    r14 = r13 == 0
+    if r14 goto L12 else goto L13 :: bool
+L12:
+    r15 = i == 6
+    r12 = r15
+    goto L14
+L13:
+    r16 = CPyTagged_IsEq_(i, 6)
+    r12 = r16
+L14:
+    r0 = r12
+L15:
     return r0
