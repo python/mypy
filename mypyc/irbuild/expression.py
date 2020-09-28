@@ -408,7 +408,9 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
-    if e.operators[0] in ['in', 'not in'] and len(e.operators) == 1 and isinstance(e.operands[1], (TupleExpr, ListExpr)):
+    if (e.operators[0] in ['in', 'not in']
+            and len(e.operators) == 1
+            and isinstance(e.operands[1], (TupleExpr, ListExpr))):
         items = e.operands[1].items
         n_items = len(items)
         # x in y -> x == y[0] or ... or x == y[n]
