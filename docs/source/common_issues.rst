@@ -865,7 +865,7 @@ If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy
 an error about each unreachable code block.
 
 Unpacking Dictionary in keyword arguments
------------------------------------
+-----------------------------------------
 
 If you are unpacking a dictionary into a Callable's arguments, then
 you need to ensure the types of dictionary members by providing either
