@@ -2808,6 +2808,5 @@ def f() -> int:  # E: Missing return statement
 from typing import TypeVar
 T = TypeVar("T")
 x: int
-x + T  # E: Unsupported left operand type for + ("int")
+x + T  # E: Unsupported operand types for + ("int" and "object")
 T()  # E: "object" not callable
-[builtins fixtures/tuple.pyi]
