@@ -4419,6 +4419,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             i += 1
 
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
+        """Add local variable or function."""
+        assert self.is_func_scope()
+        name = node.name
+        node._fullname = name
+        self.add_symbol(name, node, context)
+
     def add_module_symbol(self,
                           id: str,
                           as_id: str,
@@ -4435,13 +4442,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.add_unknown_imported_symbol(
                 as_id, context, target_name=id, module_public=module_public
             )
-
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
-        """Add local variable or function."""
-        assert self.is_func_scope()
-        name = node.name
-        node._fullname = name
-        self.add_symbol(name, node, context)
 
     def add_imported_symbol(self,
                             name: str,
