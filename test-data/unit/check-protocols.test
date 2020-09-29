@@ -2559,13 +2559,16 @@ class Gleemer:
 
 
 [case testPartialTypeProtocolHashable]
-# flags: --strict-optional
+# flags: --no-strict-optional
 from typing import Protocol
 
 class Hashable(Protocol):
     def __hash__(self) -> int: ...
 
-class DataArray:
+class ObjectHashable:
+    def __hash__(self) -> int: ...
+
+class DataArray(ObjectHashable):
     __hash__ = None
 
     def f(self, x: Hashable) -> None:
