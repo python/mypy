@@ -15,7 +15,7 @@ from mypy.nodes import (
 )
 from mypy.types import TupleType, get_proper_type, Instance
 
-from mypyc.common import MAX_LITERAL_SHORT_INT
+from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
     Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
@@ -373,7 +373,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
         else:
             # Replace missing end index with the largest short integer
             # (a sequence can't be longer).
-            end = builder.load_static_int(MAX_LITERAL_SHORT_INT)
+            end = builder.load_static_int(MAX_SHORT_INT)
         candidates = [list_slice_op, tuple_slice_op, str_slice_op]
         return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
 
