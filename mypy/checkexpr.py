@@ -228,6 +228,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.alias_type_in_runtime_context(node, node.no_args, e,
                                                         alias_definition=e.is_alias_rvalue
                                                         or lvalue)
+        elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
+            result = self.object_type()
         else:
             if isinstance(node, PlaceholderNode):
                 assert False, 'PlaceholderNode %r leaked to checker' % node.fullname
