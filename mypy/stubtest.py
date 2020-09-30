@@ -784,7 +784,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
     def apply_decorator_to_funcitem(
         decorator: nodes.Expression, func: nodes.FuncItem
     ) -> Optional[nodes.FuncItem]:
-        if not isinstance(decorator, nodes.NameExpr):
+        if not isinstance(decorator, nodes.RefExpr):
             return None
         if decorator.fullname is None:
             # Happens with namedtuple
