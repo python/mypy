@@ -2500,8 +2500,6 @@ reveal_type(abs(ALL))  # N: Revealed type is 'builtins.int*'
 [builtins fixtures/float.pyi]
 [typing fixtures/typing-full.pyi]
 
-[builtins fixtures/tuple.pyi]
-
 [case testNoneVsProtocol]
 # mypy: strict-optional
 from typing_extensions import Protocol
