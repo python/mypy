@@ -1099,7 +1099,7 @@ from queue import Queue
 p: PathLike
 q: Queue
 [out]
-test.py:4: error: Missing type parameters for generic type "_PathLike"
+test.py:4: error: Missing type parameters for generic type "PathLike"
 test.py:4: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
 test.py:5: error: Missing type parameters for generic type "Queue"
 test.py:5: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
