@@ -1587,3 +1587,12 @@ def bad_return_type() -> str:
     return None  # E: Incompatible return value type (got "None", expected "str")  [return-value]
 
 bad_return_type('no args taken!')
+
+[case testDisallowUntypedCallsArgType]
+# flags: --disallow-untyped-calls
+def f(x):
+    pass
+
+y = 1
+f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
+                  # N: Revealed type is 'builtins.int'
