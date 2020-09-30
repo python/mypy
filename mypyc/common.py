@@ -36,10 +36,12 @@ PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 # Python 3.5 on macOS uses a hybrid 32/64-bit build that requires some workarounds.
 # The same generated C will be compiled in both 32 and 64 bit modes when building mypy
 # wheels (for an unknown reason).
-IS_MIXED_32_64_BIT_BUILD = sys.platform == 'darwin' and sys.version_info < (3, 6)
+#
+# Note that we use "in ['darwin']" because of https://github.com/mypyc/mypyc/issues/761.
+IS_MIXED_32_64_BIT_BUILD = sys.platform in ['darwin'] and sys.version_info < (3, 6)  # type: Final
 
 # Maximum value for a short tagged integer.
-MAX_SHORT_INT = sys.maxsize >> 1
+MAX_SHORT_INT = sys.maxsize >> 1  # type: Final
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
