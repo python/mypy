@@ -987,7 +987,11 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
                 message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
                 typ,
                 code=codes.TYPE_ARG)
-            if orig_type.type.fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
+            base_type = get_proper_type(orig_type)
+            base_fullname = (
+                base_type.type.fullname if isinstance(base_type, Instance) else fullname
+            )
+            if base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
                 # Recommend `from __future__ import annotations` or to put type in quotes
                 # (string literal escaping) for classes not generic at runtime
                 note(
