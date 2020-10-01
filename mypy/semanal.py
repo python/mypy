@@ -1764,7 +1764,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.add_symbol(imported_id, gvar, imp)
                     continue
 
-            # Modules imported in a stub file without using 'from Y import X as X' won't get exported
+            # Modules imported in a stub file without using 'from Y import X as X' will
+            # not get exported.
             # When implicit re-exporting is disabled, we have the same behavior as stubs.
             use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
             module_public = use_implicit_reexport or (as_id is not None and id == as_id)
