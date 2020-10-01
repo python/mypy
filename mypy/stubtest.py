@@ -212,11 +212,18 @@ def verify_mypyfile(
         for m, o in stub.names.items()
         if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
     )
-    # Check all things declared in module's __all__
-    to_check.update(getattr(runtime, "__all__", []))
+    runtime_public_contents = [
+        m
+        for m in dir(runtime)
+        if not m.startswith("_")
+        # Ensure that the object's module is `runtime`, e.g. so that we don't pick up reexported
+        # modules and infinitely recurse. Unfortunately, there's no way to detect an explicit
+        # reexport missing from the stubs (that isn't specified in __all__)
+        and getattr(getattr(runtime, m), "__module__", None) == runtime.__name__
+    ]
+    # Check all things declared in module's __all__, falling back to runtime_public_contents
+    to_check.update(getattr(runtime, "__all__", runtime_public_contents))
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
-    # We currently don't check things in the module that aren't in the stub, other than things that
-    # are in __all__, to avoid false positives.
 
     for entry in sorted(to_check):
         yield from verify(
