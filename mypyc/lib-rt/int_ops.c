@@ -435,6 +435,7 @@ CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
         }
         return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
     } else {
+        // Long integer or negative shift -- use generic op
         PyObject *lobj = CPyTagged_AsObject(left);
         PyObject *robj = CPyTagged_AsObject(right);
         PyObject *result = PyNumber_Rshift(lobj, robj);
@@ -460,8 +461,10 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
                && right < CPY_INT_BITS * 2)) {
         CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
         if (!IsShortLshiftOverflow(left, shift))
+            // Short integers, no overflow
             return left << shift;
     }
+    // Long integer or out of range shift -- use generic op
     PyObject *lobj = CPyTagged_AsObject(left);
     PyObject *robj = CPyTagged_AsObject(right);
     PyObject *result = PyNumber_Lshift(lobj, robj);
