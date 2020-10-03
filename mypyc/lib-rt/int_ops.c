@@ -281,6 +281,7 @@ static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
     v->ob_base.ob_size = i;
 }
 
+// Bitwise op '&', '|' or '^' using the generic (slow) API
 static CPyTagged GenericBitwiseOp(CPyTagged a, CPyTagged b, char op) {
     PyObject *aobj = CPyTagged_AsObject(a);
     PyObject *bobj = CPyTagged_AsObject(b);
@@ -300,7 +301,11 @@ static CPyTagged GenericBitwiseOp(CPyTagged a, CPyTagged b, char op) {
     return CPyTagged_StealFromObject(r);
 }
 
-static digit *CPyTagged_GetDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
+// Return pointer to digits of a PyLong object. If it's a short
+// integer, place digits in the buffer buf instead to avoid memory
+// allocation (it's assumed to be big enough). Return the number of
+// digits in *size. *size is negative if the integer is negative.
+static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
     if (CPyTagged_CheckShort(n)) {
         Py_ssize_t val = CPyTagged_ShortAsSsize_t(n);
         bool neg = val < 0;
@@ -329,23 +334,23 @@ static digit *CPyTagged_GetDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
 }
 
 // Shared implementation of bitwise '&', '|' and '^' (specified by op) for at least
-// one long operand.
+// one long operand. This is somewhat optimized for performance.
 static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
     // Directly access the digits, as there is no fast C API function for this.
     digit abuf[3];
     digit bbuf[3];
     Py_ssize_t asize;
     Py_ssize_t bsize;
-    digit *adigits = CPyTagged_GetDigits(a, &asize, abuf);
-    digit *bdigits = CPyTagged_GetDigits(b, &bsize, bbuf);
+    digit *adigits = GetIntDigits(a, &asize, abuf);
+    digit *bdigits = GetIntDigits(b, &bsize, bbuf);
 
     PyLongObject *r;
     if (unlikely(asize < 0 || bsize < 0)) {
-        // Negative operand. This is slower, but bitwise ops on them are fairly rare.
+        // Negative operand. This is slower, but bitwise ops on them are pretty rare.
         return GenericBitwiseOp(a, b, op);
     }
     // Optimized implementation for two non-negative integers.
-    // Ensure a is no longer than b.
+    // Swap a and b as needed to ensure a is no longer than b.
     if (asize > bsize) {
         digit *tmp = adigits;
         adigits = bdigits;
