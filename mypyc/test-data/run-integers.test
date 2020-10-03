@@ -132,32 +132,21 @@ assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
 
 [case testIntOps]
-from typing import Any
-
 def check_and(x: int, y: int) -> None:
-    x_any: Any = x
-    y_any: Any = y
-    # Use generic operation to calculate expected result.
-    expected = x_any & y_any
-    # Use specialized operation to calculate actual result.
+    # eval() can be trusted to calculate expected result
+    expected = eval('{} & {}'.format(x, y))
     actual = x & y
     assert actual == expected, '{} & {}: got {}, expected {}'.format(x, y, actual, expected)
 
 def check_or(x: int, y: int) -> None:
-    x_any: Any = x
-    y_any: Any = y
-    # Use generic operation to calculate expected result.
-    expected = x_any | y_any
-    # Use specialized operation to calculate actual result.
+    # eval() can be trusted to calculate expected result
+    expected = eval('{} | {}'.format(x, y))
     actual = x | y
     assert actual == expected, '{} | {}: got {}, expected {}'.format(x, y, actual, expected)
 
 def check_xor(x: int, y: int) -> None:
-    x_any: Any = x
-    y_any: Any = y
-    # Use generic operation to calculate expected result.
-    expected = x_any ^ y_any
-    # Use specialized operation to calculate actual result.
+    # eval() can be trusted to calculate expected result
+    expected = eval('{} ^ {}'.format(x, y))
     actual = x ^ y
     assert actual == expected, '{} ^ {}: got {}, expected {}'.format(x, y, actual, expected)
 
@@ -201,7 +190,7 @@ def test_and_or_xor() -> None:
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
 
 def test_bitwise_inplace() -> None:
-    # Basic sanity checks; these should use the same code as the non-in-place variants.
+    # Basic sanity checks; these should use the same code as the non-in-place variants
     for x, y in (DIGIT0a, DIGIT1a), (DIGIT2a, DIGIT0a + DIGIT2b):
         n = x
         n &= y
@@ -214,9 +203,9 @@ def test_bitwise_inplace() -> None:
         assert n == x ^ y
 
 def check_invert(x: int) -> None:
-    x_any: Any = x
-    assert ~x == ~x_any
-    assert ~(-x) == ~(-x_any)
+    # Use eval() as the source of truth
+    assert ~x == eval('~{}'.format(x))
+    assert ~(-x) == eval('~({})'.format(-x))
 
 def test_invert() -> None:
     check_invert(0)
@@ -238,9 +227,9 @@ def check_right_shift(x: int, n: int) -> None:
             x >> n
         except ValueError:
             return
-        assert False, "no exeption raised"
-    x_any: Any = x
-    expected = x_any >> n
+        assert False, "no exception raised"
+    # Use eval() as the source of truth
+    expected = eval('{} >> {}'.format(x, n))
     actual = x >> n
     assert actual == expected, "{} >> {}: got {}, expected {}".format(x, n, actual, expected)
 
@@ -255,3 +244,27 @@ def test_right_shift() -> None:
     x = DIGIT50
     x >>= 5
     assert x == DIGIT50 >> 5
+
+def check_left_shift(x: int, n: int) -> None:
+    if n < 0:
+        try:
+            x << n
+        except ValueError:
+            return
+        assert False, "no exception raised"
+    # Use eval() as the source of truth
+    expected = eval('{} << {}'.format(x, n))
+    actual = x << n
+    assert actual == expected, "{} << {}: got {}, expected {}".format(x, n, actual, expected)
+
+def test_left_shift() -> None:
+    for x in 0, 1, 1235, DIGIT0a, DIGIT0a + DIGIT1a, DIGIT0a + DIGIT50:
+        for n in 0, 1, 2, 10, 40, 10000, DIGIT50, -1, -1334444, -DIGIT50:
+            check_right_shift(x, n)
+            check_right_shift(-x, n)
+    x = DIGIT0a
+    x <<= 1
+    assert x == DIGIT0a << 1
+    x = DIGIT50
+    x <<= 5
+    assert x == DIGIT50 << 5

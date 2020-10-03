@@ -93,6 +93,7 @@ int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 # Negative shift counts raise an exception
 int_binary_op('>>', 'CPyTagged_Rshift', error_kind=ERR_MAGIC)
+int_binary_op('<<', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 # This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment
@@ -106,6 +107,7 @@ int_binary_op('^=', 'CPyTagged_Xor')
 int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 int_binary_op('>>=', 'CPyTagged_Rshift', error_kind=ERR_MAGIC)
+int_binary_op('<<=', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
