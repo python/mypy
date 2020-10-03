@@ -235,7 +235,7 @@ def check_right_shift(x: int, n: int) -> None:
 
 def test_right_shift() -> None:
     for x in 0, 1, 1235, DIGIT0a, DIGIT0a + DIGIT1a, DIGIT0a + DIGIT50:
-        for n in 0, 1, 2, 10, 40, 10000, DIGIT50, -1, -1334444, -DIGIT50:
+        for n in 0, 1, 2, 3, 4, 10, 40, 10000, DIGIT50, -1, -1334444, -DIGIT50:
             check_right_shift(x, n)
             check_right_shift(-x, n)
     x = DIGIT0a
@@ -244,6 +244,13 @@ def test_right_shift() -> None:
     x = DIGIT50
     x >>= 5
     assert x == DIGIT50 >> 5
+    for i in range(256):
+        check_right_shift(1, i)
+        check_right_shift(137, i)
+        check_right_shift(MAX_SHORT, i)
+        check_right_shift(MAX_SHORT_32, i)
+        check_right_shift(MAX_SHORT + 1, i)
+        check_right_shift(MAX_SHORT_32 + 1, i)
 
 def check_left_shift(x: int, n: int) -> None:
     if n < 0:
@@ -259,12 +266,15 @@ def check_left_shift(x: int, n: int) -> None:
 
 def test_left_shift() -> None:
     for x in 0, 1, 1235, DIGIT0a, DIGIT0a + DIGIT1a, DIGIT0a + DIGIT50:
-        for n in 0, 1, 2, 10, 40, 10000, DIGIT50, -1, -1334444, -DIGIT50:
-            check_right_shift(x, n)
-            check_right_shift(-x, n)
+        for n in 0, 1, 2, 10, 40, 10000, -1, -1334444, -DIGIT50:
+            check_left_shift(x, n)
+            check_left_shift(-x, n)
     x = DIGIT0a
     x <<= 1
     assert x == DIGIT0a << 1
     x = DIGIT50
     x <<= 5
     assert x == DIGIT50 << 5
+    for shift in range(256):
+        check_left_shift(1, shift)
+        check_left_shift(137, shift)
