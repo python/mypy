@@ -558,33 +558,35 @@ class LowLevelIRBuilder:
     def binary_op(self,
                   lreg: Value,
                   rreg: Value,
-                  expr_op: str,
+                  op: str,
                   line: int) -> Value:
-        # special case tuple comparison here so that nested tuples can be supported
-        if (isinstance(lreg.type, RTuple) and isinstance(rreg.type, RTuple)
-                and expr_op in ('==', '!=')):
-            return self.compare_tuples(lreg, rreg, expr_op, line)
-        # Special case == and != when we can resolve the method call statically.
-        value = None
-        if expr_op in ('==', '!='):
-            value = self.translate_eq_cmp(lreg, rreg, expr_op, line)
-        if value is not None:
-            return value
+        ltype = lreg.type
+        rtype = rreg.type
 
-        # Special case 'is' and 'is not'
-        if expr_op in ('is', 'is not'):
-            return self.translate_is_op(lreg, rreg, expr_op, line)
+        # Special case tuple comparison here so that nested tuples can be supported
+        if isinstance(ltype, RTuple) and isinstance(rtype, RTuple) and op in ('==', '!='):
+            return self.compare_tuples(lreg, rreg, op, line)
 
-        if (is_str_rprimitive(lreg.type) and is_str_rprimitive(rreg.type)
-                and expr_op in ('==', '!=')):
-            return self.compare_strings(lreg, rreg, expr_op, line)
+        # Special case == and != when we can resolve the method call statically
+        if op in ('==', '!='):
+            value = self.translate_eq_cmp(lreg, rreg, op, line)
+            if value is not None:
+                return value
 
-        if is_tagged(lreg.type) and is_tagged(rreg.type) and expr_op in int_comparison_op_mapping:
-            return self.compare_tagged(lreg, rreg, expr_op, line)
+        # Special case various ops
+        if op in ('is', 'is not'):
+            return self.translate_is_op(lreg, rreg, op, line)
+        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op in ('==', '!='):
+            return self.compare_strings(lreg, rreg, op, line)
+        if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
+            return self.compare_tagged(lreg, rreg, op, line)
+        if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
+                '&', '&=', '|', '|=', '^', '^='):
+            return self.bool_bitwise_op(lreg, rreg, op[0], line)
 
-        call_c_ops_candidates = c_binary_ops.get(expr_op, [])
+        call_c_ops_candidates = c_binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
-        assert target, 'Unsupported binary operation: %s' % expr_op
+        assert target, 'Unsupported binary operation: %s' % op
         return target
 
     def check_tagged_short_int(self, val: Value, line: int) -> Value:
@@ -709,6 +711,17 @@ class LowLevelIRBuilder:
         self.add(Assign(result, self.true(), line))
         self.goto_and_activate(out)
         return result
+
+    def bool_bitwise_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+        if op == '&':
+            code = BinaryIntOp.AND
+        elif op == '|':
+            code = BinaryIntOp.OR
+        elif op == '^':
+            code = BinaryIntOp.XOR
+        else:
+            assert False, op
+        return self.add(BinaryIntOp(bool_rprimitive, lreg, rreg, code, line))
 
     def unary_not(self,
                   value: Value,
