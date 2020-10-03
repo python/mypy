@@ -269,7 +269,7 @@ class DataDrivenTestCase(pytest.Item):
             # call exit() and they already print out a stack trace.
             excrepr = excinfo.exconly()
         else:
-            self.parent._prunetraceback(excinfo)  # type: ignore[no-untyped-call]
+            self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
         return "data: {}:{}:\n{}".format(self.file, self.line, excrepr)

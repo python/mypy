@@ -79,9 +79,15 @@ c_binary_op(name='+=',
             error_kind=ERR_MAGIC,
             steals=[True, False])
 
-
 unicode_compare = c_custom_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name='PyUnicode_Compare',
     error_kind=ERR_NEVER)
+
+# str[begin:end]
+str_slice_op = c_custom_op(
+    arg_types=[str_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyStr_GetSlice',
+    error_kind=ERR_MAGIC)

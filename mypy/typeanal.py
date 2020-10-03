@@ -307,8 +307,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif (fullname == 'typing.Type' or
              (fullname == 'builtins.type' and self.api.is_future_flag_set('annotations'))):
             if len(t.args) == 0:
-                any_type = self.get_omitted_any(t)
-                return TypeType(any_type, line=t.line, column=t.column)
+                if fullname == 'typing.Type':
+                    any_type = self.get_omitted_any(t)
+                    return TypeType(any_type, line=t.line, column=t.column)
+                else:
+                    # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
+                    # See https://github.com/python/mypy/issues/9476 for more information
+                    return None
             type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
             if len(t.args) != 1:
                 self.fail(type_str + ' must have exactly one type argument', t)
@@ -965,25 +970,28 @@ MsgCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code
 
 
 def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
-                    typ: Type, fullname: Optional[str] = None,
+                    orig_type: Type, fullname: Optional[str] = None,
                     unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
         if fullname in nongen_builtins:
+            typ = orig_type
             # We use a dedicated error message for builtin generics (as the most common case).
             alternative = nongen_builtins[fullname]
             fail(message_registry.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), typ,
                  code=codes.TYPE_ARG)
         else:
-            typ = unexpanded_type or typ
+            typ = unexpanded_type or orig_type
             type_str = typ.name if isinstance(typ, UnboundType) else format_type_bare(typ)
 
             fail(
-                message_registry.BARE_GENERIC.format(
-                    quote_type_string(type_str)),
+                message_registry.BARE_GENERIC.format(quote_type_string(type_str)),
                 typ,
                 code=codes.TYPE_ARG)
-
-            if fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
+            base_type = get_proper_type(orig_type)
+            base_fullname = (
+                base_type.type.fullname if isinstance(base_type, Instance) else fullname
+            )
+            if base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
                 # Recommend `from __future__ import annotations` or to put type in quotes
                 # (string literal escaping) for classes not generic at runtime
                 note(
@@ -995,7 +1003,9 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
 
         any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
     else:
-        any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
+        any_type = AnyType(
+            TypeOfAny.from_omitted_generics, line=orig_type.line, column=orig_type.column
+        )
     return any_type
 
 

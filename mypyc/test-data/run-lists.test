@@ -126,3 +126,145 @@ print(g())
 [out]
 6
 7
+
+[case testListOps]
+def test_slicing() -> None:
+    # Use dummy adds to avoid constant folding
+    zero = int()
+    two = zero + 2
+    s = ["f", "o", "o", "b", "a", "r"]
+    assert s[two:] == ["o", "b", "a", "r"]
+    assert s[:two] == ["f", "o"]
+    assert s[two:-two] == ["o", "b"]
+    assert s[two:two] == []
+    assert s[two:two + 1] == ["o"]
+    assert s[-two:] == ["a", "r"]
+    assert s[:-two] == ["f", "o", "o", "b"]
+    assert s[:] == ["f", "o", "o", "b", "a", "r"]
+    assert s[two:333] == ["o", "b", "a", "r"]
+    assert s[333:two] == []
+    assert s[two:-333] == []
+    assert s[-333:two] == ["f", "o"]
+    long_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert s[1:long_int] == ["o", "o", "b", "a", "r"]
+    assert s[long_int:] == []
+    assert s[-long_int:-1] == ["f", "o", "o", "b", "a"]
+
+[case testOperatorInExpression]
+
+def tuple_in_int0(i: int) -> bool:
+    return i in []
+
+def tuple_in_int1(i: int) -> bool:
+    return i in (1,)
+
+def tuple_in_int3(i: int) -> bool:
+    return i in (1, 2, 3)
+
+def tuple_not_in_int0(i: int) -> bool:
+    return i not in []
+
+def tuple_not_in_int1(i: int) -> bool:
+    return i not in (1,)
+
+def tuple_not_in_int3(i: int) -> bool:
+    return i not in (1, 2, 3)
+
+def tuple_in_str(s: "str") -> bool:
+    return s in ("foo", "bar", "baz")
+
+def tuple_not_in_str(s: "str") -> bool:
+    return s not in ("foo", "bar", "baz")
+
+def list_in_int0(i: int) -> bool:
+    return i in []
+
+def list_in_int1(i: int) -> bool:
+    return i in (1,)
+
+def list_in_int3(i: int) -> bool:
+    return i in (1, 2, 3)
+
+def list_not_in_int0(i: int) -> bool:
+    return i not in []
+
+def list_not_in_int1(i: int) -> bool:
+    return i not in (1,)
+
+def list_not_in_int3(i: int) -> bool:
+    return i not in (1, 2, 3)
+
+def list_in_str(s: "str") -> bool:
+    return s in ("foo", "bar", "baz")
+
+def list_not_in_str(s: "str") -> bool:
+    return s not in ("foo", "bar", "baz")
+
+def list_in_mixed(i: object):
+    return i in [[], (), "", 0, 0.0, False, 0j, {}, set(), type]
+
+[file driver.py]
+
+from native import *
+
+assert not tuple_in_int0(0)
+assert not tuple_in_int1(0)
+assert tuple_in_int1(1)
+assert not tuple_in_int3(0)
+assert tuple_in_int3(1)
+assert tuple_in_int3(2)
+assert tuple_in_int3(3)
+assert not tuple_in_int3(4)
+
+assert tuple_not_in_int0(0)
+assert tuple_not_in_int1(0)
+assert not tuple_not_in_int1(1)
+assert tuple_not_in_int3(0)
+assert not tuple_not_in_int3(1)
+assert not tuple_not_in_int3(2)
+assert not tuple_not_in_int3(3)
+assert tuple_not_in_int3(4)
+
+assert tuple_in_str("foo")
+assert tuple_in_str("bar")
+assert tuple_in_str("baz")
+assert not tuple_in_str("apple")
+assert not tuple_in_str("pie")
+assert not tuple_in_str("\0")
+assert not tuple_in_str("")
+
+assert not list_in_int0(0)
+assert not list_in_int1(0)
+assert list_in_int1(1)
+assert not list_in_int3(0)
+assert list_in_int3(1)
+assert list_in_int3(2)
+assert list_in_int3(3)
+assert not list_in_int3(4)
+
+assert list_not_in_int0(0)
+assert list_not_in_int1(0)
+assert not list_not_in_int1(1)
+assert list_not_in_int3(0)
+assert not list_not_in_int3(1)
+assert not list_not_in_int3(2)
+assert not list_not_in_int3(3)
+assert list_not_in_int3(4)
+
+assert list_in_str("foo")
+assert list_in_str("bar")
+assert list_in_str("baz")
+assert not list_in_str("apple")
+assert not list_in_str("pie")
+assert not list_in_str("\0")
+assert not list_in_str("")
+
+assert list_in_mixed(0)
+assert list_in_mixed([])
+assert list_in_mixed({})
+assert list_in_mixed(())
+assert list_in_mixed(False)
+assert list_in_mixed(0.0)
+assert not list_in_mixed([1])
+assert not list_in_mixed(object)
+assert list_in_mixed(type)

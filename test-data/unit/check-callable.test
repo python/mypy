@@ -473,3 +473,14 @@ else:
     reveal_type(fn) # N: Revealed type is 'None'
 
 [builtins fixtures/callable.pyi]
+
+[case testBuiltinsTypeAsCallable]
+# flags: --python-version 3.7
+from __future__ import annotations
+
+reveal_type(type)  # N: Revealed type is 'def (x: Any) -> builtins.type'
+_TYPE = type
+reveal_type(_TYPE)  # N: Revealed type is 'def (x: Any) -> builtins.type'
+_TYPE('bar')
+
+[builtins fixtures/callable.pyi]

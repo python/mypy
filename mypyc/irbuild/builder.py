@@ -185,6 +185,9 @@ class IRBuilder:
     def load_static_unicode(self, value: str) -> Value:
         return self.builder.load_static_unicode(value)
 
+    def load_static_int(self, value: int) -> Value:
+        return self.builder.load_static_int(value)
+
     def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
         return self.builder.primitive_op(desc, args, line)
 

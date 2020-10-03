@@ -574,7 +574,7 @@ def process_options(args: List[str],
                         group=lint_group)
     add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
                         help="Warn about statements or expressions inferred to be"
-                             " unreachable or redundant",
+                             " unreachable",
                         group=lint_group)
 
     # Note: this group is intentionally added here even though we don't add
