@@ -1776,11 +1776,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                 )
             elif module and not missing_submodule:
                 # Target module exists but the imported name is missing or hidden.
-                self.report_missing_module_attribute(module_id, id, imported_id, imp)
+                self.report_missing_module_attribute(
+                    module_id, id, imported_id, module_public=module_public,
+                    module_hidden=not module_public, context=imp
+                )
             else:
                 # Import of a missing (sub)module.
                 self.add_unknown_imported_symbol(
-                    imported_id, imp, target_name=fullname, module_public=module_public
+                    imported_id, imp, target_name=fullname, module_public=module_public,
+                    module_hidden=not module_public
                 )
 
     def process_imported_symbol(self,
@@ -1795,7 +1799,10 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
-                self.report_missing_module_attribute(module_id, id, imported_id, context)
+                self.report_missing_module_attribute(
+                    module_id, id, imported_id, module_public=module_public,
+                    module_hidden=module_hidden, context=context
+                )
                 return
             else:
                 # This might become a type.
@@ -1820,8 +1827,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                                  module_public=module_public,
                                  module_hidden=module_hidden)
 
-    def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
-                                        context: Node) -> None:
+    def report_missing_module_attribute(
+        self, import_id: str, source_id: str, imported_id: str, module_public: bool,
+        module_hidden: bool, context: Node
+    ) -> None:
         # Missing attribute.
         if self.is_incomplete_namespace(import_id):
             # We don't know whether the name will be there, since the namespace
@@ -1842,7 +1851,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                     suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
                     message += "{}".format(suggestion)
         self.fail(message, context, code=codes.ATTR_DEFINED)
-        self.add_unknown_imported_symbol(imported_id, context)
+        self.add_unknown_imported_symbol(
+            imported_id, context, target_name=None, module_public=module_public,
+            module_hidden=not module_public
+        )
 
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -4438,7 +4450,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_hidden=module_hidden)
         else:
             self.add_unknown_imported_symbol(
-                as_id, context, target_name=id, module_public=module_public
+                as_id, context, target_name=id, module_public=module_public,
+                module_hidden=module_hidden
             )
 
     def add_imported_symbol(self,
@@ -4457,8 +4470,9 @@ class SemanticAnalyzer(NodeVisitor[None],
     def add_unknown_imported_symbol(self,
                                     name: str,
                                     context: Context,
-                                    target_name: Optional[str] = None,
-                                    module_public: bool = True) -> None:
+                                    target_name: Optional[str],
+                                    module_public: bool,
+                                    module_hidden: bool) -> None:
         """Add symbol that we don't know what it points to because resolving an import failed.
 
         This can happen if a module is missing, or it is present, but doesn't have
@@ -4486,7 +4500,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         var.type = any_type
         var.is_suppressed_import = True
-        self.add_symbol(name, var, context, module_public=module_public)
+        self.add_symbol(
+            name, var, context, module_public=module_public, module_hidden=module_hidden
+        )
 
     #
     # Other helpers
