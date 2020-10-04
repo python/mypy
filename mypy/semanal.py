@@ -1708,18 +1708,19 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_import(self, i: Import) -> None:
         self.statement = i
         for id, as_id in i.ids:
+            # Modules imported in a stub file without using 'import X as X' won't get exported
+            # When implicit re-exporting is disabled, we have the same behavior as stubs.
+            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
             if as_id is not None:
-                self.add_module_symbol(id, as_id, module_public=True, context=i)
+                base_id = id
+                imported_id = as_id
+                module_public = use_implicit_reexport or id.split(".")[-1] == as_id
             else:
-                # Modules imported in a stub file without using 'as x' won't get exported
-                # When implicit re-exporting is disabled, we have the same behavior as stubs.
-                module_public = (
-                    not self.is_stub_file
-                    and self.options.implicit_reexport
-                )
-                base = id.split('.')[0]
-                self.add_module_symbol(base, base, module_public=module_public,
-                                       context=i, module_hidden=not module_public)
+                base_id = id.split('.')[0]
+                imported_id = base_id
+                module_public = use_implicit_reexport
+            self.add_module_symbol(base_id, imported_id, context=i, module_public=module_public,
+                                   module_hidden=not module_public)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
@@ -1762,17 +1763,21 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
                     continue
+
+            # Modules imported in a stub file without using 'from Y import X as X' will
+            # not get exported.
+            # When implicit re-exporting is disabled, we have the same behavior as stubs.
+            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
+            module_public = use_implicit_reexport or (as_id is not None and id == as_id)
+
             if node and not node.module_hidden:
-                self.process_imported_symbol(node, module_id, id, as_id, fullname, imp)
+                self.process_imported_symbol(
+                    node, module_id, id, imported_id, fullname, module_public, context=imp
+                )
             elif module and not missing_submodule:
                 # Target module exists but the imported name is missing or hidden.
                 self.report_missing_module_attribute(module_id, id, imported_id, imp)
             else:
-                module_public = (
-                    not self.is_stub_file
-                    and self.options.implicit_reexport
-                    or as_id is not None
-                )
                 # Import of a missing (sub)module.
                 self.add_unknown_imported_symbol(
                     imported_id, imp, target_name=fullname, module_public=module_public
@@ -1782,17 +1787,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 node: SymbolTableNode,
                                 module_id: str,
                                 id: str,
-                                as_id: Optional[str],
+                                imported_id: str,
                                 fullname: str,
+                                module_public: bool,
                                 context: ImportBase) -> None:
-        imported_id = as_id or id
-        # 'from m import x as x' exports x in a stub file or when implicit
-        # re-exports are disabled.
-        module_public = (
-            not self.is_stub_file
-            and self.options.implicit_reexport
-            or as_id is not None
-        )
         module_hidden = not module_public and fullname not in self.modules
 
         if isinstance(node.node, PlaceholderNode):
@@ -4419,12 +4417,19 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             i += 1
 
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
+        """Add local variable or function."""
+        assert self.is_func_scope()
+        name = node.name
+        node._fullname = name
+        self.add_symbol(name, node, context)
+
     def add_module_symbol(self,
                           id: str,
                           as_id: str,
-                          module_public: bool,
                           context: Context,
-                          module_hidden: bool = False) -> None:
+                          module_public: bool,
+                          module_hidden: bool) -> None:
         """Add symbol that is a reference to a module object."""
         if id in self.modules:
             node = self.modules[id]
@@ -4436,19 +4441,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                 as_id, context, target_name=id, module_public=module_public
             )
 
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
-        """Add local variable or function."""
-        assert self.is_func_scope()
-        name = node.name
-        node._fullname = name
-        self.add_symbol(name, node, context)
-
     def add_imported_symbol(self,
                             name: str,
                             node: SymbolTableNode,
                             context: Context,
-                            module_public: bool = True,
-                            module_hidden: bool = False) -> None:
+                            module_public: bool,
+                            module_hidden: bool) -> None:
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
         symbol = SymbolTableNode(node.kind, node.node,
