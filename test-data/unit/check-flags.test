@@ -1081,7 +1081,7 @@ always_false = BLAH, BLAH1
 [case testDisableErrorCodeConfigFile]
 # flags: --config-file tmp/mypy.ini --disallow-untyped-defs
 import foo
-def foo():
+def bar():
     pass
 [file mypy.ini]
 \[mypy]
