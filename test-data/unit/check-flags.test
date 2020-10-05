@@ -1078,6 +1078,15 @@ always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
+[case testDisableErrorCodeConfigFile]
+# flags: --config-file tmp/mypy.ini --disallow-untyped-defs
+import foo
+def bar():
+    pass
+[file mypy.ini]
+\[mypy]
+disable_error_code = import, no-untyped-def
+
 [case testCheckDisallowAnyGenericsNamedTuple]
 # flags: --disallow-any-generics
 from typing import NamedTuple
