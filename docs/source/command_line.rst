@@ -480,6 +480,11 @@ of the above sections.
            # 'items' now has type List[List[str]]
            ...
 
+.. option:: --disable-error-code CODE
+
+    This flag will cause mypy to suppress errors with error code ``CODE``.
+    This flag may be repeated.
+
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,
