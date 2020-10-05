@@ -529,6 +529,12 @@ Miscellaneous strictness flags
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
+.. confval:: disable_error_code
+
+    :type: comma-separated list of strings
+
+    Causes mypy to suppress errors with given error codes.
+
 .. confval:: implicit_reexport
 
     :type: boolean
