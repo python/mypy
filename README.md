@@ -122,11 +122,8 @@ Mypy can be integrated into popular IDEs:
   [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
 * VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
 
-Mypy can also be integrated into [Flake8] using [flake8-mypy], or
-can be set up as a pre-commit hook using [pre-commit mirrors-mypy].
+Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 
-[Flake8]: https://flake8.pycqa.org/
-[flake8-mypy]: https://github.com/ambv/flake8-mypy
 [pre-commit mirrors-mypy]: https://github.com/pre-commit/mirrors-mypy
 
 Web site and documentation
