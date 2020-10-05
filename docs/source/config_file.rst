@@ -533,7 +533,7 @@ Miscellaneous strictness flags
 
     :type: comma-separated list of strings
 
-    Causes mypy to suppress errors with given error codes.
+    Allows disabling one or multiple error codes globally.
 
 .. confval:: implicit_reexport
 
