@@ -94,6 +94,8 @@ config_types = {
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'disable_error_code': lambda s: [p.strip() for p in s.split(',')],
+    'enable_error_code': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
     'cache_dir': expand_path,
     'python_executable': expand_path,
