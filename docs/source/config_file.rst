@@ -529,6 +529,12 @@ Miscellaneous strictness flags
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
+.. confval:: disable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows disabling one or multiple error codes globally.
+
 .. confval:: implicit_reexport
 
     :type: boolean
