@@ -180,6 +180,11 @@ class NamedTupleAnalyzer:
             self.store_namedtuple_info(info, name, call, is_typed)
             return True, info
 
+        typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
+        if var_name and var_name != typename:
+            self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
+                var_name, typename), call)
+
         # We use the variable name as the class name if it exists. If
         # it doesn't, we use the name passed as an argument. We prefer
         # the variable name because it should be unique inside a
@@ -188,7 +193,7 @@ class NamedTupleAnalyzer:
         if var_name:
             name = var_name
         else:
-            name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
+            name = typename
 
         if var_name is None or is_func_scope:
             # There are two special cases where need to give it a unique name derived
