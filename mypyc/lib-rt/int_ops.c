@@ -273,3 +273,211 @@ PyObject *CPyLong_FromFloat(PyObject *o) {
 PyObject *CPyBool_Str(bool b) {
     return PyObject_Str(b ? Py_True : Py_False);
 }
+
+static void CPyLong_NormalizeUnsigned(PyLongObject *v) {
+    Py_ssize_t i = v->ob_base.ob_size;
+    while (i > 0 && v->ob_digit[i - 1] == 0)
+        i--;
+    v->ob_base.ob_size = i;
+}
+
+// Bitwise op '&', '|' or '^' using the generic (slow) API
+static CPyTagged GenericBitwiseOp(CPyTagged a, CPyTagged b, char op) {
+    PyObject *aobj = CPyTagged_AsObject(a);
+    PyObject *bobj = CPyTagged_AsObject(b);
+    PyObject *r;
+    if (op == '&') {
+        r = PyNumber_And(aobj, bobj);
+    } else if (op == '|') {
+        r = PyNumber_Or(aobj, bobj);
+    } else {
+        r = PyNumber_Xor(aobj, bobj);
+    }
+    if (unlikely(r == NULL)) {
+        CPyError_OutOfMemory();
+    }
+    Py_DECREF(aobj);
+    Py_DECREF(bobj);
+    return CPyTagged_StealFromObject(r);
+}
+
+// Return pointer to digits of a PyLong object. If it's a short
+// integer, place digits in the buffer buf instead to avoid memory
+// allocation (it's assumed to be big enough). Return the number of
+// digits in *size. *size is negative if the integer is negative.
+static digit *GetIntDigits(CPyTagged n, Py_ssize_t *size, digit *buf) {
+    if (CPyTagged_CheckShort(n)) {
+        Py_ssize_t val = CPyTagged_ShortAsSsize_t(n);
+        bool neg = val < 0;
+        int len = 1;
+        if (neg) {
+            val = -val;
+        }
+        buf[0] = val & PyLong_MASK;
+        if (val > PyLong_MASK) {
+            val >>= PyLong_SHIFT;
+            buf[1] = val & PyLong_MASK;
+            if (val > PyLong_MASK) {
+                buf[2] = val >> PyLong_SHIFT;
+                len = 3;
+            } else {
+                len = 2;
+            }
+        }
+        *size = neg ? -len : len;
+        return buf;
+    } else {
+        PyLongObject *obj = (PyLongObject *)CPyTagged_LongAsObject(n);
+        *size = obj->ob_base.ob_size;
+        return obj->ob_digit;
+    }
+}
+
+// Shared implementation of bitwise '&', '|' and '^' (specified by op) for at least
+// one long operand. This is somewhat optimized for performance.
+static CPyTagged BitwiseLongOp(CPyTagged a, CPyTagged b, char op) {
+    // Directly access the digits, as there is no fast C API function for this.
+    digit abuf[3];
+    digit bbuf[3];
+    Py_ssize_t asize;
+    Py_ssize_t bsize;
+    digit *adigits = GetIntDigits(a, &asize, abuf);
+    digit *bdigits = GetIntDigits(b, &bsize, bbuf);
+
+    PyLongObject *r;
+    if (unlikely(asize < 0 || bsize < 0)) {
+        // Negative operand. This is slower, but bitwise ops on them are pretty rare.
+        return GenericBitwiseOp(a, b, op);
+    }
+    // Optimized implementation for two non-negative integers.
+    // Swap a and b as needed to ensure a is no longer than b.
+    if (asize > bsize) {
+        digit *tmp = adigits;
+        adigits = bdigits;
+        bdigits = tmp;
+        Py_ssize_t tmp_size = asize;
+        asize = bsize;
+        bsize = tmp_size;
+    }
+    r = _PyLong_New(op == '&' ? asize : bsize);
+    if (unlikely(r == NULL)) {
+        CPyError_OutOfMemory();
+    }
+    Py_ssize_t i;
+    if (op == '&') {
+        for (i = 0; i < asize; i++) {
+            r->ob_digit[i] = adigits[i] & bdigits[i];
+        }
+    } else {
+        if (op == '|') {
+            for (i = 0; i < asize; i++) {
+                r->ob_digit[i] = adigits[i] | bdigits[i];
+            }
+        } else {
+            for (i = 0; i < asize; i++) {
+                r->ob_digit[i] = adigits[i] ^ bdigits[i];
+            }
+        }
+        for (; i < bsize; i++) {
+            r->ob_digit[i] = bdigits[i];
+        }
+    }
+    CPyLong_NormalizeUnsigned(r);
+    return CPyTagged_StealFromObject((PyObject *)r);
+}
+
+// Bitwise '&'
+CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left & right;
+    }
+    return BitwiseLongOp(left, right, '&');
+}
+
+// Bitwise '|'
+CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left | right;
+    }
+    return BitwiseLongOp(left, right, '|');
+}
+
+// Bitwise '^'
+CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
+        return left ^ right;
+    }
+    return BitwiseLongOp(left, right, '^');
+}
+
+// Bitwise '~'
+CPyTagged CPyTagged_Invert(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num) && num != CPY_TAGGED_ABS_MIN)) {
+        return ~num & ~CPY_INT_TAG;
+    } else {
+        PyObject *obj = CPyTagged_AsObject(num);
+        PyObject *result = PyNumber_Invert(obj);
+        if (unlikely(result == NULL)) {
+            CPyError_OutOfMemory();
+        }
+        Py_DECREF(obj);
+        return CPyTagged_StealFromObject(result);
+    }
+}
+
+// Bitwise '>>'
+CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0)) {
+        CPyTagged count = CPyTagged_ShortAsSsize_t(right);
+        if (unlikely(count >= CPY_INT_BITS)) {
+            if ((Py_ssize_t)left >= 0) {
+                return 0;
+            } else {
+                return CPyTagged_ShortFromInt(-1);
+            }
+        }
+        return ((Py_ssize_t)left >> count) & ~CPY_INT_TAG;
+    } else {
+        // Long integer or negative shift -- use generic op
+        PyObject *lobj = CPyTagged_AsObject(left);
+        PyObject *robj = CPyTagged_AsObject(right);
+        PyObject *result = PyNumber_Rshift(lobj, robj);
+        Py_DECREF(lobj);
+        Py_DECREF(robj);
+        if (result == NULL) {
+            // Propagate error (could be negative shift count)
+            return CPY_INT_TAG;
+        }
+        return CPyTagged_StealFromObject(result);
+    }
+}
+
+static inline bool IsShortLshiftOverflow(Py_ssize_t short_int, Py_ssize_t shift) {
+    return ((Py_ssize_t)(short_int << shift) >> shift) != short_int;
+}
+
+// Bitwise '<<'
+CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
+    if (likely(CPyTagged_CheckShort(left)
+               && CPyTagged_CheckShort(right)
+               && (Py_ssize_t)right >= 0
+               && right < CPY_INT_BITS * 2)) {
+        CPyTagged shift = CPyTagged_ShortAsSsize_t(right);
+        if (!IsShortLshiftOverflow(left, shift))
+            // Short integers, no overflow
+            return left << shift;
+    }
+    // Long integer or out of range shift -- use generic op
+    PyObject *lobj = CPyTagged_AsObject(left);
+    PyObject *robj = CPyTagged_AsObject(right);
+    PyObject *result = PyNumber_Lshift(lobj, robj);
+    Py_DECREF(lobj);
+    Py_DECREF(robj);
+    if (result == NULL) {
+        // Propagate error (could be negative shift count)
+        return CPY_INT_TAG;
+    }
+    return CPyTagged_StealFromObject(result);
+}

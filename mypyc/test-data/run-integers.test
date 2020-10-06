@@ -130,3 +130,173 @@ assert neg(9223372036854775807) == -9223372036854775807
 assert neg(-9223372036854775807) == 9223372036854775807
 assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
+
+[case testIntOps]
+def check_and(x: int, y: int) -> None:
+    # eval() can be trusted to calculate expected result
+    expected = eval('{} & {}'.format(x, y))
+    actual = x & y
+    assert actual == expected, '{} & {}: got {}, expected {}'.format(x, y, actual, expected)
+
+def check_or(x: int, y: int) -> None:
+    # eval() can be trusted to calculate expected result
+    expected = eval('{} | {}'.format(x, y))
+    actual = x | y
+    assert actual == expected, '{} | {}: got {}, expected {}'.format(x, y, actual, expected)
+
+def check_xor(x: int, y: int) -> None:
+    # eval() can be trusted to calculate expected result
+    expected = eval('{} ^ {}'.format(x, y))
+    actual = x ^ y
+    assert actual == expected, '{} ^ {}: got {}, expected {}'.format(x, y, actual, expected)
+
+def check_bitwise(x: int, y: int) -> None:
+    for l, r in (x, y), (y, x):
+        for ll, rr in (l, r), (-l, r), (l, -r), (-l, -r):
+            check_and(ll, rr)
+            check_or(ll, rr)
+            check_xor(ll, rr)
+
+SHIFT = 30
+DIGIT0a = 615729753
+DIGIT0b = 832796681
+DIGIT1a = 744342356 << SHIFT
+DIGIT1b = 321006080 << SHIFT
+DIGIT2a = 643582106 << (SHIFT * 2)
+DIGIT2b = 656420725 << (SHIFT * 2)
+DIGIT50 = 315723472 << (SHIFT * 50)
+DIGIT100a = 1020652627 << (SHIFT * 100)
+DIGIT100b = 923752451 << (SHIFT * 100)
+BIG_SHORT = 3491190729721336556
+MAX_SHORT = (1 << 62) - 1
+MIN_SHORT = -(1 << 62)
+MAX_SHORT_32 = (1 << 30) - 1
+MIN_SHORT_32 = -(1 << 30)
+
+def test_and_or_xor() -> None:
+    check_bitwise(0, 0)
+    check_bitwise(0, 1)
+    check_bitwise(1, 1)
+    check_bitwise(DIGIT0a, DIGIT0b)
+    check_bitwise(DIGIT1a, DIGIT1b)
+    check_bitwise(DIGIT2a, DIGIT2b)
+    check_bitwise(DIGIT100a, DIGIT100b)
+    check_bitwise(DIGIT0a, DIGIT0b + DIGIT2a)
+    check_bitwise(DIGIT0a, DIGIT0b + DIGIT50)
+    check_bitwise(DIGIT50 + DIGIT1a, DIGIT100a + DIGIT2b)
+    check_bitwise(BIG_SHORT, DIGIT0a)
+    check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a)
+    check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a)
+    check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
+
+def test_bitwise_inplace() -> None:
+    # Basic sanity checks; these should use the same code as the non-in-place variants
+    for x, y in (DIGIT0a, DIGIT1a), (DIGIT2a, DIGIT0a + DIGIT2b):
+        n = x
+        n &= y
+        assert n == x & y
+        n = x
+        n |= y
+        assert n == x | y
+        n = x
+        n ^= y
+        assert n == x ^ y
+
+def check_invert(x: int) -> None:
+    # Use eval() as the source of truth
+    assert ~x == eval('~{}'.format(x))
+    assert ~(-x) == eval('~({})'.format(-x))
+
+def test_invert() -> None:
+    check_invert(0)
+    check_invert(1)
+    check_invert(DIGIT0a)
+    check_invert(DIGIT0a + DIGIT1a)
+    check_invert(DIGIT0a + DIGIT1a + DIGIT2a)
+    check_invert(DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
+    check_invert(BIG_SHORT)
+    for delta in -1, 0, 1:
+        check_invert(MAX_SHORT + delta)
+        check_invert(MIN_SHORT + delta)
+        check_invert(MAX_SHORT_32 + delta)
+        check_invert(MIN_SHORT_32 + delta)
+
+def check_right_shift(x: int, n: int) -> None:
+    if n < 0:
+        try:
+            x >> n
+        except ValueError:
+            return
+        assert False, "no exception raised"
+    # Use eval() as the source of truth
+    expected = eval('{} >> {}'.format(x, n))
+    actual = x >> n
+    assert actual == expected, "{} >> {}: got {}, expected {}".format(x, n, actual, expected)
+
+def test_right_shift() -> None:
+    for x in 0, 1, 1235, DIGIT0a, DIGIT0a + DIGIT1a, DIGIT0a + DIGIT50:
+        for n in 0, 1, 2, 3, 4, 10, 40, 10000, DIGIT1a, -1, -1334444, -DIGIT1a:
+            check_right_shift(x, n)
+            check_right_shift(-x, n)
+    x = DIGIT0a
+    x >>= 1
+    assert x == DIGIT0a >> 1
+    x = DIGIT50
+    x >>= 5
+    assert x == DIGIT50 >> 5
+    for i in range(256):
+        check_right_shift(1, i)
+        check_right_shift(137, i)
+        check_right_shift(MAX_SHORT, i)
+        check_right_shift(MAX_SHORT_32, i)
+        check_right_shift(MAX_SHORT + 1, i)
+        check_right_shift(MAX_SHORT_32 + 1, i)
+    for x in 1, DIGIT50:
+        try:
+            # It's okay if this raises an exception
+            assert x >> DIGIT2a == 0
+        except Exception:
+            pass
+        try:
+            x >> -DIGIT2a
+            assert False
+        except Exception:
+            pass
+
+def check_left_shift(x: int, n: int) -> None:
+    if n < 0:
+        try:
+            x << n
+        except ValueError:
+            return
+        assert False, "no exception raised"
+    # Use eval() as the source of truth
+    expected = eval('{} << {}'.format(x, n))
+    actual = x << n
+    assert actual == expected, "{} << {}: got {}, expected {}".format(x, n, actual, expected)
+
+def test_left_shift() -> None:
+    for x in 0, 1, 1235, DIGIT0a, DIGIT0a + DIGIT1a, DIGIT0a + DIGIT50:
+        for n in 0, 1, 2, 10, 40, 10000, -1, -1334444:
+            check_left_shift(x, n)
+            check_left_shift(-x, n)
+    x = DIGIT0a
+    x <<= 1
+    assert x == DIGIT0a << 1
+    x = DIGIT50
+    x <<= 5
+    assert x == DIGIT50 << 5
+    for shift in range(256):
+        check_left_shift(1, shift)
+        check_left_shift(137, shift)
+    for x in 1, DIGIT50:
+        try:
+            x << DIGIT50
+            assert False
+        except Exception:
+            pass
+        try:
+            x << -DIGIT50
+            assert False
+        except Exception:
+            pass

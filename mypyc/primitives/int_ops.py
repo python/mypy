@@ -84,10 +84,16 @@ def int_binary_op(name: str, c_function_name: str,
 int_binary_op('+', 'CPyTagged_Add')
 int_binary_op('-', 'CPyTagged_Subtract')
 int_binary_op('*', 'CPyTagged_Multiply')
+int_binary_op('&', 'CPyTagged_And')
+int_binary_op('|', 'CPyTagged_Or')
+int_binary_op('^', 'CPyTagged_Xor')
 # Divide and remainder we honestly propagate errors from because they
 # can raise ZeroDivisionError
 int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
+# Negative shift counts raise an exception
+int_binary_op('>>', 'CPyTagged_Rshift', error_kind=ERR_MAGIC)
+int_binary_op('<<', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 # This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment
@@ -95,8 +101,13 @@ int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 int_binary_op('+=', 'CPyTagged_Add')
 int_binary_op('-=', 'CPyTagged_Subtract')
 int_binary_op('*=', 'CPyTagged_Multiply')
+int_binary_op('&=', 'CPyTagged_And')
+int_binary_op('|=', 'CPyTagged_Or')
+int_binary_op('^=', 'CPyTagged_Xor')
 int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
+int_binary_op('>>=', 'CPyTagged_Rshift', error_kind=ERR_MAGIC)
+int_binary_op('<<=', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
@@ -108,6 +119,7 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
+int_invert_op = int_unary_op('~', 'CPyTagged_Invert')
 
 # integer comparsion operation implementation related:
 
