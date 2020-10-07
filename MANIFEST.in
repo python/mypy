@@ -19,5 +19,5 @@ recursive-include mypyc/doc *.rst *.py *.md Makefile *.bat
 include mypy_bootstrap.ini
 include mypy_self_check.ini
 include LICENSE
-include runtests.py
+include conftest.py runtests.py
 include pytest.ini
