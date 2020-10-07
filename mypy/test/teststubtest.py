@@ -69,9 +69,16 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
 
     def test(*args: Any, **kwargs: Any) -> None:
         cases = list(fn(*args, **kwargs))
-        expected_errors = set(
-            "{}.{}".format(TEST_MODULE_NAME, c.error) for c in cases if c.error is not None
-        )
+        expected_errors = set()
+        for c in cases:
+            if c.error is None:
+                continue
+            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            assert expected_error not in expected_errors, (
+                "collect_cases merges cases into a single stubtest invocation; we already "
+                "expect an error for {}".format(expected_error)
+            )
+            expected_errors.add(expected_error)
         output = run_stubtest(
             stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
             runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
@@ -583,6 +590,11 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_missing_no_runtime_all(self) -> Iterator[Case]:
+        yield Case(stub="", runtime="import sys", error=None)
+        yield Case(stub="", runtime="def g(): ...", error="g")
+
+    @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
         yield Case(
             stub="""
@@ -663,6 +675,11 @@ class StubtestMiscUnit(unittest.TestCase):
     def test_ignore_flags(self) -> None:
         output = run_stubtest(
             stub="", runtime="__all__ = ['f']\ndef f(): pass", options=["--ignore-missing-stub"]
+        )
+        assert not output
+
+        output = run_stubtest(
+            stub="", runtime="def f(): pass", options=["--ignore-missing-stub"]
         )
         assert not output
 
