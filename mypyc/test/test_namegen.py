@@ -37,4 +37,7 @@ class TestNameGen(unittest.TestCase):
         assert g.private_name('foo', 'C.x_y') == 'foo___C___x_y'
         assert g.private_name('foo', 'C_x_y') == 'foo___C_x_y'
         assert g.private_name('foo', 'C_x_y') == 'foo___C_x_y'
-        assert g.private_name('foo', '___') == 'foo______3_'
+        assert g.private_name('foo', '_') == 'foo____'
+        assert g.private_name('foo', '__') == 'foo_____'
+        assert g.private_name('foo', '___') == 'foo_______'
+        assert g.private_name('foo', '____') == 'foo________'

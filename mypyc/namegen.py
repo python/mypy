@@ -5,9 +5,13 @@ from typing import List, Dict, Tuple, Set, Optional, Iterable, Match
 def make_c_compatible(name: str) -> str:
     """Replace characters that can't be used in C identifiers."""
     def as_compatible_char(match: Match[str]) -> str:
+        if match.group(0).startswith('_'):
+            return match.group(0) + '_'
+        if match.group(0) == '.':
+            return '___'
         codepoint = ord(match.group(0))
         return '_{}'.format(hex(codepoint))
-    name = re.sub(r'[^._a-zA-Z0-9]', as_compatible_char, name, flags=re.ASCII)
+    name = re.sub(r'[^_a-zA-Z0-9]|_{3,}', as_compatible_char, name, flags=re.ASCII)
     return name
 
 
@@ -36,9 +40,7 @@ class NameGenerator:
       prefixes will be 'bar_foo_' and 'baz_foo_'.
 
     * Replace '.' in the Python name with '___' in the C name. (And
-      replace the unlikely but possible '___' with '___3_'. This
-      collides '___' with '.3_', but this is OK because names
-      may not start with a digit.)
+      replace '___' with '____' and so on to prevent collisions)
 
     * Replace non-ASCII characters with their codepoints, such as '_e9'
       for U+00E9.
@@ -77,7 +79,6 @@ class NameGenerator:
         """
         if partial_name is None:
             return exported_name(self.module_map[module].rstrip('.'))
-        partial_name = make_c_compatible(partial_name)
         if (module, partial_name) in self.translations:
             return self.translations[module, partial_name]
         if module in self.module_map:
@@ -98,7 +99,7 @@ def exported_name(fullname: str) -> str:
     'fullname' argument, so the names are distinct across multiple
     builds.
     """
-    return make_c_compatible(fullname.replace('___', '___3_').replace('.', '___'))
+    return make_c_compatible(fullname)
 
 
 def make_module_translation_map(names: List[str]) -> Dict[str, str]:

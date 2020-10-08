@@ -7,7 +7,7 @@ from mypyc.common import JsonDict
 from mypyc.ir.ops import Value, DeserMaps
 from mypyc.ir.rtypes import RType, RInstance, deserialize_type
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
-from mypyc.namegen import NameGenerator, exported_name
+from mypyc.namegen import NameGenerator, make_c_compatible
 from mypyc.common import PROPSET_PREFIX
 
 
@@ -215,7 +215,7 @@ class ClassIR:
         return names.private_name(self.module_name, self.name)
 
     def struct_name(self, names: NameGenerator) -> str:
-        return '{}Object'.format(exported_name(self.fullname))
+        return make_c_compatible('{}Object'.format(self.fullname))
 
     def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, 'ClassIR']]:
         for ir in self.mro:

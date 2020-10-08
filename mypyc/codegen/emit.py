@@ -17,7 +17,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.namegen import NameGenerator, exported_name, make_c_compatible
+from mypyc.namegen import NameGenerator, make_c_compatible
 from mypyc.sametype import is_same_type
 
 
@@ -169,7 +169,7 @@ class Emitter:
         target_group_name = groups.get(module_name)
         if target_group_name and target_group_name != self.context.group_name:
             self.context.group_deps.add(target_group_name)
-            return 'exports_{}.'.format(exported_name(target_group_name))
+            return 'exports_{}.'.format(make_c_compatible(target_group_name))
         else:
             return ''
 
