@@ -1257,11 +1257,13 @@ class ASTConverter:
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        return TupleExpr(self.translate_expr_list(n.dims))
+        # cast for mypyc's benefit on Python 3.9
+        return TupleExpr(self.translate_expr_list(cast(Any, n.dims)))
 
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
-        return self.visit(n.value)
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n.value))
 
 
 class TypeConverter:
