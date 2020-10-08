@@ -73,6 +73,8 @@ class str:
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
     def upper(self) -> str: pass
+    def startswith(self, x: str, start: int=..., end: int=...) -> bool: pass
+    def endswith(self, x: str, start: int=..., end: int=...) -> bool: pass
 
 class float:
     def __init__(self, x: object) -> None: pass

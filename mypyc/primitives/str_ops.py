@@ -5,7 +5,7 @@ from typing import List, Tuple
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, int_rprimitive, list_rprimitive,
-    c_int_rprimitive, pointer_rprimitive
+    c_int_rprimitive, pointer_rprimitive, bool_rprimitive
 )
 from mypyc.primitives.registry import (
     c_method_op, c_binary_op, c_function_op,
@@ -41,6 +41,24 @@ c_method_op(
     return_type=str_rprimitive,
     c_function_name='PyUnicode_Join',
     error_kind=ERR_MAGIC
+)
+
+# str.startswith(str)
+c_method_op(
+    name='startswith',
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPyStr_Startswith',
+    error_kind=ERR_NEVER
+)
+
+# str.endswith(str)
+c_method_op(
+    name='endswith',
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPyStr_Endswith',
+    error_kind=ERR_NEVER
 )
 
 # str[index] (for an int index)

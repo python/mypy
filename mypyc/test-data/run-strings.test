@@ -1,6 +1,7 @@
 # Test cases for strings (compile and run)
 
 [case testStr]
+from typing import Tuple
 def f() -> str:
     return 'some string'
 def g() -> str:
@@ -17,9 +18,11 @@ def eq(x: str) -> int:
     elif x != 'bar':
         return 1
     return 2
+def match(x: str, y: str) -> Tuple[bool, bool]:
+    return (x.startswith(y), x.endswith(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq
+from native import f, g, tostr, booltostr, concat, eq, match
 assert f() == 'some string'
 assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
 assert tostr(57) == '57'
@@ -32,6 +35,11 @@ assert eq('bar') == 2
 
 assert int(tostr(0)) == 0
 assert int(tostr(20)) == 20
+assert match('', '') == (True, True)
+assert match('abc', '') == (True, True)
+assert match('abc', 'a') == (True, False)
+assert match('abc', 'c') == (False, True)
+assert match('', 'abc') == (False, False)
 
 [case testStringOps]
 from typing import List, Optional
