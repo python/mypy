@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
 from mypyc.ir.class_ir import ClassIR
-from mypyc.namegen import NameGenerator, make_c_compatible
+from mypyc.namegen import NameGenerator
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
@@ -82,8 +82,10 @@ def generate_wrapper_function(fn: FuncIR,
 
     arg_ptrs = []  # type: List[str]
     if groups[ARG_STAR] or groups[ARG_STAR2]:
-        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].c_name) if groups[ARG_STAR] else 'NULL']
-        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].c_name) if groups[ARG_STAR2] else 'NULL']
+        arg_ptrs += [
+            '&obj_{}'.format(groups[ARG_STAR][0].c_name) if groups[ARG_STAR] else 'NULL',
+            '&obj_{}'.format(groups[ARG_STAR2][0].c_name) if groups[ARG_STAR2] else 'NULL'
+        ]
     arg_ptrs += ['&obj_{}'.format(arg.c_name) for arg in reordered_args]
 
     emitter.emit_lines(
