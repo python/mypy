@@ -17,7 +17,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.namegen import NameGenerator, exported_name
+from mypyc.namegen import NameGenerator, exported_name, make_c_compatible
 from mypyc.sametype import is_same_type
 
 
@@ -107,10 +107,10 @@ class Emitter:
         return 'CPyL%s' % label.label
 
     def reg(self, reg: Value) -> str:
-        return REG_PREFIX + reg.name
+        return make_c_compatible(REG_PREFIX + reg.name)
 
     def attr(self, name: str) -> str:
-        return ATTR_PREFIX + name
+        return make_c_compatible(ATTR_PREFIX + name)
 
     def emit_line(self, line: str = '') -> None:
         if line.startswith('}'):

@@ -972,3 +972,21 @@ from native import foo
 
 assert foo(None) == None
 assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
+
+[case testUnicode]
+def ᾼ(ᾭ: bool) -> bool:
+    return ᾭ
+
+class A:
+    def ᾋ(self) -> int:
+        ἁ = 20
+        return 6 + ἁ
+
+ᾘ = 4
+
+[file driver.py]
+from native import ᾼ, ᾘ, A
+assert ᾼ(True)
+assert not ᾼ(False)
+assert ᾘ == 4
+assert A().ᾋ() == 26

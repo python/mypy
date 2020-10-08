@@ -21,6 +21,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.const_int import find_constant_integer_registers
+from mypyc.namegen import make_c_compatible
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -36,7 +37,9 @@ def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
 def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
     args = []
     for arg in fn.sig.args:
-        args.append('{}{}{}'.format(emitter.ctype_spaced(arg.type), REG_PREFIX, arg.name))
+        args.append('{}{}'.format(
+            emitter.ctype_spaced(arg.type),
+            make_c_compatible(REG_PREFIX + arg.name)))
 
     return '{ret_type}{name}({args})'.format(
         ret_type=emitter.ctype_spaced(fn.sig.ret_type),
@@ -70,10 +73,10 @@ def generate_native_function(fn: FuncIR,
         if r in fn.env.vars_needing_init:
             init = ' = {}'.format(declarations.c_error_value(r.type))
         if r.name not in const_int_regs:
-            declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
-                                                                        prefix=REG_PREFIX,
-                                                                        name=r.name,
-                                                                        init=init))
+            declarations.emit_line('{ctype}{name}{init};'.format(
+                ctype=ctype,
+                name=make_c_compatible(REG_PREFIX + r.name),
+                init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -417,8 +420,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                     'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
             elif isinstance(op.value, Value):
                 self.emitter.emit_line(
-                    'PyErr_SetObject(PyExc_{}, {}{});'.format(op.class_name, REG_PREFIX,
-                                                              op.value.name))
+                    'PyErr_SetObject(PyExc_{}, {});'.format(op.class_name,
+                            make_c_compatible(REG_PREFIX + op.value.name)))
             else:
                 assert False, 'op value type must be either str or Value'
         else:

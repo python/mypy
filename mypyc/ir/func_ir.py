@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.ir.const_int import find_constant_integer_registers
-from mypyc.namegen import NameGenerator
+from mypyc.namegen import NameGenerator, make_c_compatible
 
 
 class RuntimeArg:
@@ -25,6 +25,7 @@ class RuntimeArg:
         self.name = name
         self.type = typ
         self.kind = kind
+        self.c_name = make_c_compatible(name)
 
     @property
     def optional(self) -> bool:

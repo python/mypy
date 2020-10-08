@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
 from mypyc.ir.class_ir import ClassIR
-from mypyc.namegen import NameGenerator
+from mypyc.namegen import NameGenerator, make_c_compatible
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
@@ -63,7 +63,7 @@ def generate_wrapper_function(fn: FuncIR,
     real_args = list(fn.args)
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
-        emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
+        emitter.emit_line('PyObject *obj_{} = self;'.format(arg.c_name))
 
     # Need to order args as: required, optional, kwonly optional, kwonly required
     # This is because CPyArg_ParseTupleAndKeywords format string requires
@@ -75,16 +75,16 @@ def generate_wrapper_function(fn: FuncIR,
     emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
-                          arg.name, ' = NULL' if arg.optional else ''))
+                          arg.c_name, ' = NULL' if arg.optional else ''))
 
-    cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
+    cleanups = ['CPy_DECREF(obj_{});'.format(arg.c_name)
                 for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
     arg_ptrs = []  # type: List[str]
     if groups[ARG_STAR] or groups[ARG_STAR2]:
-        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
-        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
-    arg_ptrs += ['&obj_{}'.format(arg.name) for arg in reordered_args]
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].c_name) if groups[ARG_STAR] else 'NULL']
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].c_name) if groups[ARG_STAR2] else 'NULL']
+    arg_ptrs += ['&obj_{}'.format(arg.c_name) for arg in reordered_args]
 
     emitter.emit_lines(
         'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
@@ -103,7 +103,7 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     protocol slot. This specifically means that the arguments are taken as *PyObjects and returned
     as *PyObjects.
     """
-    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.c_name) for arg in fn.args)
     name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
     emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
         name=name,
@@ -230,7 +230,7 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
     use_goto = bool(cleanups or traceback_code)
     error_code = 'return NULL;' if not use_goto else 'goto fail;'
 
-    arg_names = arg_names or [arg.name for arg in fn.args]
+    arg_names = arg_names or [arg.c_name for arg in fn.args]
     for arg_name, arg in zip(arg_names, fn.args):
         # Suppress the argument check for *args/**kwargs, since we know it must be right.
         typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
