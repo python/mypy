@@ -81,10 +81,6 @@ def main(script_path: Optional[str],
             f.write(msg + '\n')
         f.flush()
 
-    if options.python_version >= (3, 9):
-        from mypy.nodes import nongen_builtins
-        nongen_builtins.clear()
-
     serious = False
     blockers = False
     res = None
