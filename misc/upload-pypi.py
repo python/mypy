@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterator, List
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"
-REPO = "hauntsaninja/mypy_mypyc-wheelsv2"
+REPO = "mypyc/mypy_mypyc-wheels"
 
 
 def is_whl_or_tar(name: str) -> bool:
