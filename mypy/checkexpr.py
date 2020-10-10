@@ -2762,7 +2762,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # the analysis from the semanal phase below. We assume that nodes
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
-        if self.chk.options.warn_unreachable:
+        if self.chk.should_report_unreachable_issues():
             if right_map is None:
                 self.msg.unreachable_right_operand(e.op, e.right)
 
