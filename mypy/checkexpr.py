@@ -2204,10 +2204,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 cont_type = self.chk.analyze_container_item_type(right_type)
                 iter_type = right_type
                 changed_expr = right
+                proper_right_type = get_proper_type(right_type)
                 if (local_errors.is_errors() and
-                        isinstance(right_type, UnionType)):
+                        isinstance(proper_right_type, UnionType)):
                     typs = []  # type: List[Type]
-                    for item in right_type.relevant_items():
+                    for item in proper_right_type.relevant_items():
                         temp_errors = self.msg.copy()
                         temp_errors.disable_count = 0
                         self.check_method_call_by_name(
