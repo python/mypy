@@ -83,6 +83,9 @@ def map_actuals_to_formals(actual_kinds: List[int],
 
     if ambiguous_actual_kwargs:
         # Assume the ambiguous kwargs will fill the remaining arguments.
+        #
+        # TODO: If there are also tuple varargs, we might be missing some potential
+        #       matches if the tuple was short enough to not match everything.
         unmatched_formals = [
             fi for fi in range(nformals)
             if (formal_names[fi]
