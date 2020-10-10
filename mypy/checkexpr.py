@@ -2212,7 +2212,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         temp_errors.disable_count = 0
                         self.check_method_call_by_name(
                             '__contains__', item, [left], [ARG_POS], e, temp_errors)
-                        if(temp_errors.is_errors() and not isinstance(item, NoneType)):
+                        if temp_errors.is_errors():
                             typs.append(item)
                     iter_type = UnionType.make_union(typs)
                     changed_expr = TempNode(iter_type)
