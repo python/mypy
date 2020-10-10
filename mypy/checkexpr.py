@@ -4115,18 +4115,22 @@ def is_non_empty_tuple(t: Type) -> bool:
 def is_duplicate_mapping(mapping: List[int],
                          actual_types: List[Type],
                          actual_kinds: List[int]) -> bool:
-    # Multiple actuals can map to the same formal only if they both come from
-    # varargs (*args and **kwargs); in this case at runtime it is possible that
-    # there are no duplicates. We need to allow this, as the convention
-    # f(..., *args, **kwargs) is common enough.
-    return len(mapping) > 1 and not (
-        len(mapping) == 2 and
-        actual_kinds[mapping[0]] == nodes.ARG_STAR and
-        actual_kinds[mapping[1]] == nodes.ARG_STAR2) and not all(
-            actual_kinds[m] == nodes.ARG_STAR2 and
-            not isinstance(actual_types[m], TypedDictType)
-            for m in mapping
-        )
+    return (
+        len(mapping) > 1
+        # Multiple actuals can map to the same formal if they both come from
+        # varargs (*args and **kwargs); in this case at runtime it is possible
+        # that here are no duplicates. We need to allow this, as the convention
+        # f(..., *args, **kwargs) is common enough.
+        and not (len(mapping) == 2
+                 and actual_kinds[mapping[0]] == nodes.ARG_STAR
+                 and actual_kinds[mapping[1]] == nodes.ARG_STAR2)
+        # Multiple actuals can map to the same formal if there are multiple
+        # **kwargs which cannot be mapped with certainty (non-TypedDict
+        # **kwargs).
+        and not all(actual_kinds[m] == nodes.ARG_STAR2 and
+                    not isinstance(actual_types[m], TypedDictType)
+                    for m in mapping)
+    )
 
 
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:

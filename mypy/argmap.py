@@ -80,8 +80,9 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 # caller, so we'll defer until all the other unambiguous
                 # actuals have been processed
                 ambiguous_actual_kwargs.append(ai)
-    
+
     if ambiguous_actual_kwargs:
+        # Assume the ambiguous kwargs will fill the remaining arguments.
         unmatched_formals = [
             fi for fi in range(nformals)
             if (formal_names[fi]
@@ -93,7 +94,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
         for ai in ambiguous_actual_kwargs:
             for fi in unmatched_formals:
                 formal_to_actual[fi].append(ai)
-    
+
     return formal_to_actual
 
 
