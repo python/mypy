@@ -2206,7 +2206,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 changed_expr = right
                 if (local_errors.is_errors() and
                         isinstance(right_type, UnionType)):
-                    typs: List[Type] = []
+                    typs = []  # type: List[Type]
                     for item in right_type.relevant_items():
                         temp_errors = self.msg.copy()
                         temp_errors.disable_count = 0
