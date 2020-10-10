@@ -406,6 +406,12 @@ class D(Iterable[A]):
     def __iter__(self) -> Iterator[A]: pass
 [builtins fixtures/bool.pyi]
 
+[case testInOperatorUnion]
+from typing import Iterable, Union, Container
+u: Union[Iterable[str], Container[str], Iterable[str]]
+'x' in u
+[typing fixtures/typing-full.pyi]
+
 [case testNotInOperator]
 from typing import Iterator, Iterable, Any
 a, b, c, d, e = None, None, None, None, None # type: (A, B, bool, D, Any)
