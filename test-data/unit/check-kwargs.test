@@ -400,14 +400,6 @@ f(**d) # E: Too many arguments for "f"
 class A: pass
 [builtins fixtures/dict.pyi]
 
-[case testPassingKeywordVarArgsToPositionalOnlyFunction]
-from typing import Any, Dict
-def f(a: 'A', /) -> None: pass
-d = None # type: Dict[Any, Any]
-f(**d) # E: Too many arguments for "f"  # E: Too few arguments for "f"
-class A: pass
-[builtins fixtures/dict.pyi]
-
 [case testKeywordArgumentAndCommentSignature]
 import typing
 def f(x): # type: (int) -> str # N: "f" defined here
