@@ -1434,7 +1434,6 @@ class B(A):
 
 [out]
 <m.A.(abstract)> -> <m.B.__init__>, m
-<m.A._DT> -> <m.B._DT>
 <m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__init__> -> <m.B.__init__>, m.B.__init__
 <m.A.__new__> -> <m.B.__new__>
