@@ -245,7 +245,7 @@ class NamedTupleAnalyzer:
         Returns a 4-tuple:
         - List of argument names
         - List of argument types
-        - Number of arguments that have a default value
+        - List of default values
         - Whether the definition typechecked.
 
         Return None if at least one of the types is not ready.
