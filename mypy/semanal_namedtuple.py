@@ -145,7 +145,7 @@ class NamedTupleAnalyzer:
         which this is assigned, if any.
 
         Return a tuple of two items:
-          * Name of the named tuple, which is passed as the first argument to namedtuple,
+          * Internal name of the named tuple (e.g. the name passed as an argument to namedtuple)
             or None if it is not a valid named tuple
           * Corresponding TypeInfo, or None if not ready.
 
