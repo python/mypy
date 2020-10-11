@@ -9635,12 +9635,12 @@ from n import M
 
 [file n.py]
 from typing import NamedTuple
-M = NamedTuple('_N', [('x', int)])
+M = NamedTuple('M', [('x', int)])
 
 [file n.py.2]
 # change the line numbers
 from typing import NamedTuple
-M = NamedTuple('_N', [('x', int)])
+M = NamedTuple('M', [('x', int)])
 
 [builtins fixtures/tuple.pyi]
 [out]
