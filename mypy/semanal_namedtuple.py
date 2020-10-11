@@ -180,7 +180,7 @@ class NamedTupleAnalyzer:
                 name = 'namedtuple@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
             self.store_namedtuple_info(info, name, call, is_typed)
-            return typename, info
+            return name, info
 
         # We use the variable name as the class name if it exists. If
         # it doesn't, we use the name passed as an argument. We prefer
