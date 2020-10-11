@@ -368,6 +368,7 @@ def bool_strategy_empty(strategy_constant: int) -> bool:
         return True
     return False
 
+
 class TypeQueryBool(SyntheticTypeVisitor[bool]):
     """Specialized visitor for boolean strategies
 
@@ -467,23 +468,15 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
         Return
         """
         res = []  # type: List[bool]
-        if self.strategy_constant == BoolStrategies.ALL_STRATEGY:
-            for t in types:
-                if isinstance(t, TypeAliasType):
-                    # Avoid infinite recursion for recursive type aliases.
-                    if t in self.seen_aliases:
-                        continue
-                    self.seen_aliases.add(t)
-                if not t.accept(self):
-                    return False
-            return True
-
-        else:
-            for t in types:
-                if isinstance(t, TypeAliasType):
-                    if t in self.seen_aliases:
-                        continue
-                    self.seen_aliases.add(t)
-                if t.accept(self):
-                    return True
-        return False
+        for t in types:
+            if isinstance(t, TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                if t in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(t)
+            res = t.accept(self)
+            if res and self.strategy_constant == BoolStrategies.ANY_STRATEGY:
+                return True
+            elif not res and self.strategy_constant == BoolStrategies.ALL_STRATEGY:
+                return False
+        return self.strategy_constant == BoolStrategies.ALL_STRATEGY
