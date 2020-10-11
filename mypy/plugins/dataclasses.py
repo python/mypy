@@ -13,7 +13,7 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
 from mypy.types import (
-    ProperType, Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type,
+    Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type,
     AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
