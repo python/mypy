@@ -2186,7 +2186,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         if internal_name != name:
             self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
-                name, internal_name), s)
+                name, internal_name), s.rvalue)
             return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
