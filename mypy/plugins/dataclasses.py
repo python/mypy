@@ -13,7 +13,7 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
 from mypy.types import (
-    Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type,
+    ProperType, Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type,
     AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
@@ -348,8 +348,7 @@ class DataclassTransformer:
     def _add_dataclass_fields_magic_attribute(self) -> None:
         attr_name = '__dataclass_fields__'
         any_type = AnyType(TypeOfAny.explicit)
-        field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type])
-        field_type = field_type or any_type
+        field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type]) or any_type
         attr_type = self._ctx.api.named_type('__builtins__.dict', [
             self._ctx.api.named_type('__builtins__.str'),
             field_type,
