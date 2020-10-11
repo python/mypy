@@ -4128,7 +4128,7 @@ def is_duplicate_mapping(mapping: List[int],
         # **kwargs which cannot be mapped with certainty (non-TypedDict
         # **kwargs).
         and not all(actual_kinds[m] == nodes.ARG_STAR2 and
-                    not isinstance(actual_types[m], TypedDictType)
+                    not isinstance(get_proper_type(actual_types[m]), TypedDictType)
                     for m in mapping)
     )
 
