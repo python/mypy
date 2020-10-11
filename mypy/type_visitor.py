@@ -347,3 +347,142 @@ class TypeQuery(SyntheticTypeVisitor[T]):
                 self.seen_aliases.add(t)
             res.append(t.accept(self))
         return self.strategy(res)
+
+
+class TypeQueryBool(SyntheticTypeVisitor[bool]):
+    """Visitor for performing queries of types.
+
+    strategy is used to combine results for a series of types,
+    common use cases involve a boolean query using `any` or `all`.
+
+    Note: this visitor keeps an internal state (tracks type aliases to avoid
+    recursion), so it should *never* be re-used for querying different types,
+    create a new visitor instance instead.
+
+    # TODO: check that we don't have existing violations of this rule.
+    """
+
+    def __init__(self, strategy: int) -> None:
+        # 0: any()
+        # 1: all()
+        self.strategy = strategy
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]].
+        self.seen_aliases = set()  # type: Set[TypeAliasType]
+
+    def visit_unbound_type(self, t: UnboundType) -> bool:
+        return self.query_types(t.args)
+
+    def visit_type_list(self, t: TypeList) -> bool:
+        return self.query_types(t.items)
+
+    def visit_callable_argument(self, t: CallableArgument) -> bool:
+        return t.typ.accept(self)
+
+    def visit_any(self, t: AnyType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_none_type(self, t: NoneType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_erased_type(self, t: ErasedType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_deleted_type(self, t: DeletedType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return self.query_types([t.upper_bound] + t.values)
+
+    def visit_partial_type(self, t: PartialType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_instance(self, t: Instance) -> bool:
+        return self.query_types(t.args)
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        # FIX generics
+        return self.query_types(t.arg_types + [t.ret_type])
+
+    def visit_tuple_type(self, t: TupleType) -> bool:
+        return self.query_types(t.items)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> bool:
+        return self.query_types(t.items.values())
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_literal_type(self, t: LiteralType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_star_type(self, t: StarType) -> bool:
+        return t.type.accept(self)
+
+    def visit_union_type(self, t: UnionType) -> bool:
+        return self.query_types(t.items)
+
+    def visit_overloaded(self, t: Overloaded) -> bool:
+        return self.query_types(t.items())
+
+    def visit_type_type(self, t: TypeType) -> bool:
+        return t.item.accept(self)
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> bool:
+        if self.strategy:
+            return True
+        return False
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        return self.query_types(t.args)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
+        return get_proper_type(t).accept(self)
+
+    def query_types(self, types: Iterable[Type]) -> bool:
+        """Perform a query for a list of types.
+
+        Use the strategy to combine the results.
+        Skip type aliases already visited types to avoid infinite recursion.
+        """
+        res = []  # type: List[bool]
+        for t in types:
+            if isinstance(t, TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+                #       about duplicates.
+                if t in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(t)
+            res.append(t.accept(self))
+
+        if self.strategy:
+            # all()
+            for element in res:
+                if not element:
+                    return False
+            return True
+        # else: any()
+        for element in res:
+            if element:
+                return True
+        return False
