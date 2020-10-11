@@ -14,7 +14,7 @@ from mypy.util import correct_relative_import
 from mypy.types import (
     Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.errorcodes import ErrorCode
 from mypy import join
 
@@ -73,6 +73,11 @@ class SemanticAnalyzerCoreInterface:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
+    @abstractmethod
+    def is_future_flag_set(self, flag: str) -> bool:
+        """Is the specific __future__ feature imported"""
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
@@ -105,7 +110,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
 
     @abstractmethod
     def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True) -> Optional[Type]:
@@ -160,6 +165,10 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @property
     @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_func_scope(self) -> bool:
         raise NotImplementedError
 
 
@@ -217,4 +226,4 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == 'builtins.tuple'
-    fallback.args[0] = join.join_type_list(list(typ.items))
+    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]

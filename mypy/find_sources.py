@@ -128,6 +128,8 @@ class SourceFinder:
             base_dir = dir or '.'
         else:
             # Ensure that base is a valid python module name
+            if base.endswith('-stubs'):
+                base = base[:-6]  # PEP-561 stub-only directory
             if not base.isidentifier():
                 raise InvalidSourceList('{} is not a valid Python package name'.format(base))
             parent, base_dir = self.crawl_up_dir(parent_dir)

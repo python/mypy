@@ -15,7 +15,7 @@ from mypy.nodes import (
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
-    SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
+    SymbolTable, RefExpr, TypeVarExpr, ParamSpecExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
@@ -250,6 +250,7 @@ class TransformVisitor(NodeVisitor[Node]):
                       self.block(node.body),
                       self.optional_block(node.else_body),
                       self.optional_type(node.unanalyzed_index_type))
+        new.is_async = node.is_async
         new.index_type = self.optional_type(node.index_type)
         return new
 
@@ -293,6 +294,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.optional_expressions(node.target),
                        self.block(node.body),
                        self.optional_type(node.unanalyzed_type))
+        new.is_async = node.is_async
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
 
@@ -495,6 +497,11 @@ class TransformVisitor(NodeVisitor[Node]):
         return TypeVarExpr(node.name, node.fullname,
                            self.types(node.values),
                            self.type(node.upper_bound), variance=node.variance)
+
+    def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
+        return ParamSpecExpr(
+            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+        )
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
         return TypeAliasExpr(node.node)

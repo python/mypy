@@ -14,7 +14,7 @@ coercion is necessary first.
 """
 
 from mypyc.ir.rtypes import (
-    RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor,
+    RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RStruct,
     is_int_rprimitive, is_short_int_rprimitive,
 )
 from mypyc.subtype import is_subtype
@@ -50,6 +50,9 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
             return len(self.right.types) == len(left.types) and all(
                 is_runtime_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types))
         return False
+
+    def visit_rstruct(self, left: RStruct) -> bool:
+        return isinstance(self.right, RStruct) and self.right.name == left.name
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)

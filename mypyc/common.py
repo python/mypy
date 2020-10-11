@@ -1,4 +1,6 @@
+import sys
 from typing import Dict, Any
+import sys
 
 from typing_extensions import Final
 
@@ -21,12 +23,47 @@ INT_PREFIX = '__tmp_literal_int_'  # type: Final
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
-MAX_LITERAL_SHORT_INT = (1 << 30) - 1  # type: Final
 
 TOP_LEVEL_NAME = '__top_level__'  # type: Final # Special function representing module top level
 
 # Maximal number of subclasses for a class to trigger fast path in isinstance() checks.
 FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
+
+IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
+
+PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
+
+# Python 3.5 on macOS uses a hybrid 32/64-bit build that requires some workarounds.
+# The same generated C will be compiled in both 32 and 64 bit modes when building mypy
+# wheels (for an unknown reason).
+#
+# Note that we use "in ['darwin']" because of https://github.com/mypyc/mypyc/issues/761.
+IS_MIXED_32_64_BIT_BUILD = sys.platform in ['darwin'] and sys.version_info < (3, 6)  # type: Final
+
+# Maximum value for a short tagged integer.
+MAX_SHORT_INT = sys.maxsize >> 1  # type: Final
+
+# Maximum value for a short tagged integer represented as a C integer literal.
+#
+# Note: Assume that the compiled code uses the same bit width as mypyc, except for
+#       Python 3.5 on macOS.
+MAX_LITERAL_SHORT_INT = (sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD
+                         else 2**30 - 1)  # type: Final
+
+# Runtime C library files
+RUNTIME_C_FILES = [
+    'init.c',
+    'getargs.c',
+    'int_ops.c',
+    'list_ops.c',
+    'dict_ops.c',
+    'str_ops.c',
+    'set_ops.c',
+    'tuple_ops.c',
+    'exc_ops.c',
+    'misc_ops.c',
+    'generic_ops.c',
+]  # type: Final
 
 
 def decorator_helper_name(func_name: str) -> str:

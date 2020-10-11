@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
 from mypy.stubtest import parse_options, test_stubs
+from mypy.test.data import root_dir
 
 
 @contextlib.contextmanager
@@ -27,13 +28,18 @@ def use_tmp_dir() -> Iterator[None]:
 TEST_MODULE_NAME = "test_module"
 
 
-def run_stubtest(stub: str, runtime: str, options: List[str]) -> str:
+def run_stubtest(
+    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
+) -> str:
     with use_tmp_dir():
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
             f.write(runtime)
-
+        if config_file:
+            with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
+                f.write(config_file)
+            options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
         if sys.path[0] != ".":
             sys.path.insert(0, ".")
         if TEST_MODULE_NAME in sys.modules:
@@ -63,13 +69,20 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
 
     def test(*args: Any, **kwargs: Any) -> None:
         cases = list(fn(*args, **kwargs))
-        expected_errors = set(
-            "{}.{}".format(TEST_MODULE_NAME, c.error) for c in cases if c.error is not None
-        )
+        expected_errors = set()
+        for c in cases:
+            if c.error is None:
+                continue
+            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            assert expected_error not in expected_errors, (
+                "collect_cases merges cases into a single stubtest invocation; we already "
+                "expect an error for {}".format(expected_error)
+            )
+            expected_errors.add(expected_error)
         output = run_stubtest(
             stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
             runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
-            options=["--generate-whitelist"],
+            options=["--generate-allowlist"],
         )
 
         actual_errors = set(output.splitlines())
@@ -571,6 +584,15 @@ class StubtestUnit(unittest.TestCase):
         yield Case("", "__all__ = []", None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
+        # Here we should only check that runtime has B, since the stub explicitly re-exports it
+        yield Case(
+            stub="from mystery import A, B as B, C as D  # type: ignore", runtime="", error="B"
+        )
+
+    @collect_cases
+    def test_missing_no_runtime_all(self) -> Iterator[Case]:
+        yield Case(stub="", runtime="import sys", error=None)
+        yield Case(stub="", runtime="def g(): ...", error="g")
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -586,6 +608,38 @@ class StubtestUnit(unittest.TestCase):
                 def __mangle_bad(self, text): pass
             """,
             error="X.__mangle_bad"
+        )
+
+    @collect_cases
+    def test_mro(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class A:
+                def foo(self, x: int) -> None: ...
+            class B(A):
+                pass
+            class C(A):
+                pass
+            """,
+            runtime="""
+            class A:
+                def foo(self, x: int) -> None: ...
+            class B(A):
+                def foo(self, x: int) -> None: ...
+            class C(A):
+                def foo(self, y: int) -> None: ...
+            """,
+            error="C.foo"
+        )
+        yield Case(
+            stub="""
+            class X: ...
+            """,
+            runtime="""
+            class X:
+                def __init__(self, x): pass
+            """,
+            error="X.__init__"
         )
 
 
@@ -625,37 +679,42 @@ class StubtestMiscUnit(unittest.TestCase):
         assert not output
 
         output = run_stubtest(
+            stub="", runtime="def f(): pass", options=["--ignore-missing-stub"]
+        )
+        assert not output
+
+        output = run_stubtest(
             stub="def f(__a): ...", runtime="def f(a): pass", options=["--ignore-positional-only"]
         )
         assert not output
 
-    def test_whitelist(self) -> None:
+    def test_allowlist(self) -> None:
         # Can't use this as a context because Windows
-        whitelist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+        allowlist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         try:
-            with whitelist:
-                whitelist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
+            with allowlist:
+                allowlist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
                 runtime="def bad(asdf, text): pass",
-                options=["--whitelist", whitelist.name],
+                options=["--allowlist", allowlist.name],
             )
             assert not output
 
             # test unused entry detection
-            output = run_stubtest(stub="", runtime="", options=["--whitelist", whitelist.name])
-            assert output == "note: unused whitelist entry {}.bad\n".format(TEST_MODULE_NAME)
+            output = run_stubtest(stub="", runtime="", options=["--allowlist", allowlist.name])
+            assert output == "note: unused allowlist entry {}.bad\n".format(TEST_MODULE_NAME)
 
             output = run_stubtest(
                 stub="",
                 runtime="",
-                options=["--whitelist", whitelist.name, "--ignore-unused-whitelist"],
+                options=["--allowlist", allowlist.name, "--ignore-unused-allowlist"],
             )
             assert not output
 
             # test regex matching
-            with open(whitelist.name, mode="w+") as f:
+            with open(allowlist.name, mode="w+") as f:
                 f.write("{}.b.*\n".format(TEST_MODULE_NAME))
                 f.write("(unused_missing)?\n")
                 f.write("unused.*\n")
@@ -675,13 +734,13 @@ class StubtestMiscUnit(unittest.TestCase):
                     def also_bad(asdf): pass
                     """.lstrip("\n")
                 ),
-                options=["--whitelist", whitelist.name, "--generate-whitelist"],
+                options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
-            assert output == "note: unused whitelist entry unused.*\n{}.also_bad\n".format(
+            assert output == "note: unused allowlist entry unused.*\n{}.also_bad\n".format(
                 TEST_MODULE_NAME
             )
         finally:
-            os.unlink(whitelist.name)
+            os.unlink(allowlist.name)
 
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])
@@ -721,3 +780,18 @@ class StubtestIntegration(unittest.TestCase):
     def test_typeshed(self) -> None:
         # check we don't crash while checking typeshed
         test_stubs(parse_options(["--check-typeshed"]))
+
+    def test_config_file(self) -> None:
+        runtime = "temp = 5\n"
+        stub = "from decimal import Decimal\ntemp: Decimal\n"
+        config_file = (
+            "[mypy]\n"
+            "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
+        )
+        output = run_stubtest(stub=stub, runtime=runtime, options=[])
+        assert output == (
+            "error: test_module.temp variable differs from runtime type Literal[5]\n"
+            "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
+        )
+        output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
+        assert output == ""

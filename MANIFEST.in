@@ -2,9 +2,22 @@ recursive-include scripts *
 recursive-include test-data *
 recursive-include extensions *
 recursive-include docs *
+recursive-include misc proper_plugin.py
 recursive-include mypy/typeshed *.py *.pyi
 recursive-include mypy/xml *.xsd *.xslt *.css
-recursive-include mypyc/lib-rt *.c *.h *.tmpl
+recursive-include mypyc/lib-rt *.c *.h *.tmpl *.py *.cc
+recursive-include mypyc/ir *.py
+recursive-include mypyc/codegen *.py
+recursive-include mypyc/irbuild *.py
+recursive-include mypyc/primitives *.py
+recursive-include mypyc/transform *.py
+recursive-include mypyc/external *.cc *.h Makefile *.pump LICENSE README
+recursive-include mypyc/test *.py
+recursive-include mypyc/test-data *.test
+recursive-include mypyc/test-data/fixtures *.py *.pyi
+recursive-include mypyc/doc *.rst *.py *.md Makefile *.bat
 include mypy_bootstrap.ini
 include mypy_self_check.ini
 include LICENSE
+include runtests.py
+include pytest.ini

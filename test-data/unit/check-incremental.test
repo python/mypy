@@ -1896,6 +1896,28 @@ main:1: error: Module 'tdcrash' has no attribute 'nope'
 [out2]
 main:1: error: Module 'tdcrash' has no attribute 'nope'
 
+[case testIncrementalNewTypeInMethod]
+from ntcrash import nope
+[file ntcrash.py]
+from mypy_extensions import TypedDict
+from typing import NewType, NamedTuple
+class C:
+    def f(self) -> None:
+        X = NewType('X', int)
+        A = TypedDict('A', {'x': X, 'y': int})
+        B = NamedTuple('B', [('x', X)])
+
+def f() -> None:
+    X = NewType('X', int)
+    A = TypedDict('A', {'x': X, 'y': int})
+    B = NamedTuple('B', [('x', X)])
+
+[builtins fixtures/dict.pyi]
+[out1]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+[out2]
+main:1: error: Module 'ntcrash' has no attribute 'nope'
+
 [case testIncrementalInnerClassAttrInMethod]
 import crash
 nonexisting
@@ -2274,6 +2296,7 @@ tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out]
 [out2]
 mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+-- '
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -2484,7 +2507,7 @@ A = Dict[str, int]
 [out]
 
 -- Some crazy self-referential named tuples, types dicts, and aliases
--- to be sure that everything can be _serialized_ (i.e. ForwardRef's are removed).
+-- to be sure that everything can be _serialized_ (i.e. ForwardRefs are removed).
 -- For this reason errors are silenced (tests with # type: ignore have equivalents in other files)
 
 [case testForwardTypeAliasInBase1]
@@ -2993,8 +3016,6 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 [case testAttrsIncrementalDunder]
 from a import A
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> a.A'
-reveal_type(A.__eq__)  # N: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__ne__)  # N: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__lt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__le__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 reveal_type(A.__gt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
@@ -3032,20 +3053,18 @@ class A:
 [stale]
 [out2]
 main:2: note: Revealed type is 'def (a: builtins.int) -> a.A'
-main:3: note: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-main:4: note: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:3: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:4: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:5: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
 main:6: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:7: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:8: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:17: error: Unsupported operand types for < ("A" and "int")
-main:18: error: Unsupported operand types for <= ("A" and "int")
-main:19: error: Unsupported operand types for > ("A" and "int")
-main:20: error: Unsupported operand types for >= ("A" and "int")
-main:24: error: Unsupported operand types for > ("A" and "int")
-main:25: error: Unsupported operand types for >= ("A" and "int")
-main:26: error: Unsupported operand types for < ("A" and "int")
-main:27: error: Unsupported operand types for <= ("A" and "int")
+main:15: error: Unsupported operand types for < ("A" and "int")
+main:16: error: Unsupported operand types for <= ("A" and "int")
+main:17: error: Unsupported operand types for > ("A" and "int")
+main:18: error: Unsupported operand types for >= ("A" and "int")
+main:22: error: Unsupported operand types for > ("A" and "int")
+main:23: error: Unsupported operand types for >= ("A" and "int")
+main:24: error: Unsupported operand types for < ("A" and "int")
+main:25: error: Unsupported operand types for <= ("A" and "int")
 
 [case testAttrsIncrementalSubclassModified]
 from b import B
@@ -5038,7 +5057,7 @@ NT = NamedTuple('BadName', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.BadName@2]'
+tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.NT]'
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
 
@@ -5386,3 +5405,37 @@ class N(p.util.Test):
     ...
 [out2]
 tmp/a.py:2: error: "object" has no attribute "N"
+
+[case testIncrementalIndirectSkipWarnUnused]
+# flags: --follow-imports=skip --warn-unused-ignores
+# cmd: mypy -m main a b c1
+# cmd2: mypy -m main a b c2
+
+[file main.py]
+import a
+a.foo.bar()
+
+[file a.py]
+import b
+foo = b.Foo()
+
+[file b.py]
+from c1 import C
+class Foo:
+    def bar(self) -> C:
+        return C()
+
+[file c1.py]
+class C: pass
+
+[file b.py.2]
+from c2 import C
+class Foo:
+    def bar(self) -> C:
+        return C()
+
+[file c2.py]
+
+[delete c1.py.2]
+[file c2.py.2]
+class C: pass

@@ -1023,31 +1023,6 @@ class A:
 ==
 main:2: error: Unsupported left operand type for < ("B")
 
-[case testAttrsUpdateKwOnly]
-[file a.py]
-import attr
-@attr.s(kw_only=True)
-class A:
-    a = attr.ib(15)   # type: int
-[file b.py]
-from a import A
-import attr
-@attr.s(kw_only=True)
-class B(A):
-    b = attr.ib("16")   # type: str
-
-[file b.py.2]
-from a import A
-import attr
-@attr.s()
-class B(A):
-    b = attr.ib("16")   # type: str
-B(b="foo", a=7)
-[builtins fixtures/attr.pyi]
-[out]
-==
-b.py:5: error: Non keyword-only attributes are not allowed after a keyword-only attribute.
-
 [case testAttrsUpdateBaseKwOnly]
 from b import B
 B(5)
@@ -9647,3 +9622,26 @@ class C:
 [out]
 ==
 main:5: error: Unsupported left operand type for + ("str")
+
+[case testReexportNamedTupleChange]
+from m import M
+
+def f(x: M) -> None: ...
+
+f(M(0))
+
+[file m.py]
+from n import M
+
+[file n.py]
+from typing import NamedTuple
+M = NamedTuple('_N', [('x', int)])
+
+[file n.py.2]
+# change the line numbers
+from typing import NamedTuple
+M = NamedTuple('_N', [('x', int)])
+
+[builtins fixtures/tuple.pyi]
+[out]
+==

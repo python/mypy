@@ -63,6 +63,16 @@ def split_and_match_files(paths: str) -> List[str]:
     return expanded_paths
 
 
+def check_follow_imports(choice: str) -> str:
+    choices = ['normal', 'silent', 'skip', 'error']
+    if choice not in choices:
+        raise argparse.ArgumentTypeError(
+            "invalid choice '{}' (choose from {})".format(
+                choice,
+                ', '.join("'{}'".format(x) for x in choices)))
+    return choice
+
+
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -79,12 +89,17 @@ config_types = {
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'follow_imports': check_follow_imports,
+    'no_site_packages': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'disable_error_code': lambda s: [p.strip() for p in s.split(',')],
+    'enable_error_code': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
     'cache_dir': expand_path,
     'python_executable': expand_path,
+    'strict': bool,
 }  # type: Final
 
 
@@ -121,6 +136,9 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             break
     else:
         return
+
+    os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
+            os.path.abspath(config_file))
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
@@ -208,7 +226,7 @@ def parse_section(prefix: str, template: Options,
                     options_key = key[3:]
                     invert = True
                 elif key == 'strict':
-                    set_strict_flags()
+                    pass  # Special handling below
                 else:
                     print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=stderr)
@@ -238,6 +256,10 @@ def parse_section(prefix: str, template: Options,
                 continue
         except ValueError as err:
             print("%s%s: %s" % (prefix, key, err), file=stderr)
+            continue
+        if key == 'strict':
+            if v:
+                set_strict_flags()
             continue
         if key == 'silent_imports':
             print("%ssilent_imports has been replaced by "

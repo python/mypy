@@ -10,7 +10,7 @@ from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterato
 from mypy import defaults
 import mypy.api as api
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -233,6 +233,8 @@ def clean_up(a: List[str]) -> List[str]:
     remove trailing carriage returns.
     """
     res = []
+    pwd = os.getcwd()
+    driver = pwd + '/driver.py'
     for s in a:
         prefix = os.sep
         ss = s
@@ -241,6 +243,8 @@ def clean_up(a: List[str]) -> List[str]:
                 ss = ss.replace(p, '')
         # Ignore spaces at end of line.
         ss = re.sub(' +$', '', ss)
+        # Remove pwd from driver.py's path
+        ss = ss.replace(driver, 'driver.py')
         res.append(re.sub('\\r$', '', ss))
     return res
 

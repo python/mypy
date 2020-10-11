@@ -108,8 +108,7 @@ imports.
     prefers "classic" packages over namespace packages) along the
     module search path -- this is primarily set from the source files
     passed on the command line, the ``MYPYPATH`` environment variable,
-    and the :ref:`mypy_path config option
-    <config-file-import-discovery>`.
+    and the :confval:`mypy_path` config option.
 
     Note that this only affects import discovery -- for modules and
     packages explicitly passed on the command line, mypy still
@@ -468,7 +467,7 @@ of the above sections.
 .. option:: --allow-redefinition
 
     By default, mypy won't allow a variable to be redefined with an
-    unrelated type. This flag enables redefinion of a variable with an
+    unrelated type. This flag enables redefinition of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
     Example where this can be useful:
@@ -554,6 +553,36 @@ of the above sections.
     Note: the exact list of flags enabled by running :option:`--strict` may change
     over time.
 
+.. option:: --disable-error-code
+
+    This flag allows disabling one or multiple error codes globally.
+
+    .. code-block:: python
+
+        # no flag
+        x = 'a string'
+        x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
+
+        # --disable-error-code attr-defined
+        x = 'a string'
+        x.trim()
+
+.. option:: --enable-error-code
+
+    This flag allows enabling one or multiple error codes globally.
+
+    Note: This flag will override disabled error codes from the --disable-error-code
+    flag
+
+    .. code-block:: python
+
+        # --disable-error-code attr-defined
+        x = 'a string'
+        x.trim()
+
+        # --disable-error-code attr-defined --enable-error-code attr-defined
+        x = 'a string'
+        x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
 .. _configuring-error-messages:
 

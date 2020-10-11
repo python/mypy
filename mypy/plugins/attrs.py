@@ -1,6 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
 from typing_extensions import Final
@@ -176,10 +176,10 @@ class Attribute:
         )
 
 
-def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> Tuple[bool, bool]:
+def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
     """
     Validate the combination of *cmp*, *eq*, and *order*. Derive the effective
-    values of eq and order.
+    value of order.
     """
     cmp = _get_decorator_optional_bool_argument(ctx, 'cmp')
     eq = _get_decorator_optional_bool_argument(ctx, 'eq')
@@ -190,7 +190,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> Tuple[bool, bool]
 
     # cmp takes precedence due to bw-compatibility.
     if cmp is not None:
-        return cmp, cmp
+        return cmp
 
     # If left None, equality is on and ordering mirrors equality.
     if eq is None:
@@ -202,7 +202,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> Tuple[bool, bool]
     if eq is False and order is True:
         ctx.api.fail("eq must be True if order is True", ctx.reason)
 
-    return eq, order
+    return order
 
 
 def _get_decorator_optional_bool_argument(
@@ -248,7 +248,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx)
-    eq, order = _determine_eq_order(ctx)
+    order = _determine_eq_order(ctx)
 
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
@@ -289,8 +289,6 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     adder = MethodAdder(ctx)
     if init:
         _add_init(ctx, attributes, adder)
-    if eq:
-        _add_eq(ctx, adder)
     if order:
         _add_order(ctx, adder)
     if frozen:
@@ -362,7 +360,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
-    last_kw_only = False
 
     for i, attribute in enumerate(attributes):
         if not attribute.init:
@@ -370,7 +367,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
 
         if attribute.kw_only:
             # Keyword-only attributes don't care whether they are default or not.
-            last_kw_only = True
             continue
 
         # If the issue comes from merging different classes, report it
@@ -381,11 +377,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.fail(
                 "Non-default attributes not allowed after default attributes.",
                 context)
-        if last_kw_only:
-            ctx.api.fail(
-                "Non keyword-only attributes are not allowed after a keyword-only attribute.",
-                context
-            )
         last_default |= attribute.has_default
 
     return attributes
@@ -589,17 +580,6 @@ def _parse_assignments(
     return lvalues, rvalues
 
 
-def _add_eq(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
-    """Generate __eq__ and __ne__ for this class."""
-    # For __ne__ and __eq__ the type is:
-    #     def __ne__(self, other: object) -> bool
-    bool_type = ctx.api.named_type('__builtins__.bool')
-    object_type = ctx.api.named_type('__builtins__.object')
-    args = [Argument(Var('other', object_type), object_type, None, ARG_POS)]
-    for method in ['__ne__', '__eq__']:
-        adder.add_method(method, args, bool_type)
-
-
 def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     """Generate all the ordering methods for this class."""
     bool_type = ctx.api.named_type('__builtins__.bool')
@@ -641,7 +621,18 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
               adder: 'MethodAdder') -> None:
     """Generate an __init__ method for the attributes and add it to the class."""
-    args = [attribute.argument(ctx) for attribute in attributes if attribute.init]
+    # Convert attributes to arguments with kw_only arguments at the  end of
+    # the argument list
+    pos_args = []
+    kw_only_args = []
+    for attribute in attributes:
+        if not attribute.init:
+            continue
+        if attribute.kw_only:
+            kw_only_args.append(attribute.argument(ctx))
+        else:
+            pos_args.append(attribute.argument(ctx))
+    args = pos_args + kw_only_args
     if all(
         # We use getattr rather than instance checks because the variable.type
         # might be wrapped into a Union or some other type, but even non-Any

@@ -1,6 +1,6 @@
 """Calculation of the least upper bound types (joins)."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from typing import List, Optional
 
 from mypy.types import (
@@ -119,7 +119,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_union_type(self, t: UnionType) -> ProperType:
-        if is_subtype(self.s, t):
+        if is_proper_subtype(self.s, t):
             return t
         else:
             return mypy.typeops.make_simplified_union([self.s, t])
@@ -513,8 +513,11 @@ def object_or_any_from_type(typ: ProperType) -> ProperType:
     elif isinstance(typ, TypeVarType) and isinstance(typ.upper_bound, ProperType):
         return object_or_any_from_type(typ.upper_bound)
     elif isinstance(typ, UnionType):
-        joined = join_type_list([it for it in typ.items if isinstance(it, ProperType)])
-        return object_or_any_from_type(joined)
+        for item in typ.items:
+            if isinstance(item, ProperType):
+                candidate = object_or_any_from_type(item)
+                if isinstance(candidate, Instance):
+                    return candidate
     return AnyType(TypeOfAny.implementation_artifact)
 
 

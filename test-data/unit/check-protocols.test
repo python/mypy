@@ -2499,3 +2499,78 @@ reveal_type(abs(3))  # N: Revealed type is 'builtins.int*'
 reveal_type(abs(ALL))  # N: Revealed type is 'builtins.int*'
 [builtins fixtures/float.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testProtocolWithSlots]
+from typing import Protocol
+
+class A(Protocol):
+    __slots__ = ()
+
+[builtins fixtures/tuple.pyi]
+
+[case testNoneVsProtocol]
+# mypy: strict-optional
+from typing_extensions import Protocol
+
+class MyHashable(Protocol):
+    def __hash__(self) -> int: ...
+
+def f(h: MyHashable) -> None: pass
+f(None)
+
+class Proto(Protocol):
+    def __hash__(self) -> int: ...
+    def method(self) -> None: ...
+
+def g(h: Proto) -> None: pass
+g(None)  # E: Argument 1 to "g" has incompatible type "None"; expected "Proto"
+
+class Proto2(Protocol):
+    def hash(self) -> None: ...
+
+def h(h: Proto2) -> None: pass
+h(None)  # E: Argument 1 to "h" has incompatible type "None"; expected "Proto2"
+
+class EmptyProto(Protocol): ...
+
+def hh(h: EmptyProto) -> None: pass
+hh(None)
+[builtins fixtures/tuple.pyi]
+
+
+[case testPartialTypeProtocol]
+from typing import Protocol
+
+class Flapper(Protocol):
+    def flap(self) -> int: ...
+
+class Blooper:
+    flap = None
+
+    def bloop(self, x: Flapper) -> None:
+        reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
+
+class Gleemer:
+    flap = []  # E: Need type annotation for 'flap' (hint: "flap: List[<type>] = ...")
+
+    def gleem(self, x: Flapper) -> None:
+        reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
+[builtins fixtures/tuple.pyi]
+
+
+[case testPartialTypeProtocolHashable]
+# flags: --no-strict-optional
+from typing import Protocol
+
+class Hashable(Protocol):
+    def __hash__(self) -> int: ...
+
+class ObjectHashable:
+    def __hash__(self) -> int: ...
+
+class DataArray(ObjectHashable):
+    __hash__ = None
+
+    def f(self, x: Hashable) -> None:
+        reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
+[builtins fixtures/tuple.pyi]

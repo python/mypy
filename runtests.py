@@ -18,7 +18,7 @@ else:
 CMDLINE = 'PythonCmdline'
 SAMPLES = 'SamplesSuite'
 TYPESHED = 'TypeshedSuite'
-PEP561 = 'TestPEP561'
+PEP561 = 'PEP561Suite'
 EVALUATION = 'PythonEvaluation'
 DAEMON = 'testdaemon'
 STUBGEN_CMD = 'StubgenCmdLine'

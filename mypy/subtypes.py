@@ -207,10 +207,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_none_type(self, left: NoneType) -> bool:
         if state.strict_optional:
-            return (isinstance(self.right, NoneType) or
-                    is_named_instance(self.right, 'builtins.object') or
-                    isinstance(self.right, Instance) and self.right.type.is_protocol and
-                    not self.right.type.protocol_members)
+            if isinstance(self.right, NoneType) or is_named_instance(self.right,
+                                                                     'builtins.object'):
+                return True
+            if isinstance(self.right, Instance) and self.right.type.is_protocol:
+                members = self.right.type.protocol_members
+                # None is compatible with Hashable (and other similar protocols). This is
+                # slightly sloppy since we don't check the signature of "__hash__".
+                return not members or members == ["__hash__"]
+            return False
         else:
             return True
 
@@ -399,6 +404,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return False
         elif isinstance(right, Overloaded):
+            if left == self.right:
+                # When it is the same overload, then the types are equal.
+                return True
+
             # Ensure each overload in the right side (the supertype) is accounted for.
             previous_match_left_index = -1
             matched_overloads = set()
@@ -408,7 +417,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 found_match = False
 
                 for left_index, left_item in enumerate(left.items()):
-                    subtype_match = self._is_subtype(left_item, right_item)\
+                    subtype_match = self._is_subtype(left_item, right_item)
 
                     # Order matters: we need to make sure that the index of
                     # this item is at least the index of the previous one.
@@ -534,6 +543,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
             # print(member, 'of', right, 'has type', supertype)
             if not subtype:
                 return False
+            if isinstance(subtype, PartialType):
+                subtype = NoneType() if subtype.type is None else Instance(
+                    subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+                )
             if not proper_subtype:
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to

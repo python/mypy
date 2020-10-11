@@ -6,20 +6,28 @@ such special case.
 """
 
 from typing import Union, List, Optional, Tuple, Callable
+from typing_extensions import Type, ClassVar
 
-from mypy.nodes import Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS
+from mypy.nodes import (
+    Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
+)
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget
+    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget, TupleGet,
+    AssignmentTargetTuple, TupleSet, BinaryIntOp
 )
 from mypyc.ir.rtypes import (
-    RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive
+    RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
+    RTuple, is_dict_rprimitive, short_int_rprimitive
 )
-from mypyc.primitives.int_ops import unsafe_short_add
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.registry import CFunctionDescription
+from mypyc.primitives.dict_ops import (
+    dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
+    dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
+)
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
-
 
 GenFunc = Callable[[], None]
 
@@ -79,12 +87,12 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
-    list_ops = builder.primitive_op(new_list_op, [], gen.line)
+    list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:
         e = builder.accept(gen.left_expr)
-        builder.primitive_op(list_append_op, [list_ops, e], gen.line)
+        builder.call_c(list_append_op, [list_ops, e], gen.line)
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return list_ops
@@ -170,6 +178,15 @@ def make_for_loop_generator(builder: IRBuilder,
         for_list.init(expr_reg, target_type, reverse=False)
         return for_list
 
+    if is_dict_rprimitive(rtyp):
+        # Special case "for k in <dict>".
+        expr_reg = builder.accept(expr)
+        target_type = builder.get_dict_key_type(expr)
+
+        for_dict = ForDictionaryKeys(builder, index, body_block, loop_exit, line, nested)
+        for_dict.init(expr_reg, target_type)
+        return for_dict
+
     if (isinstance(expr, CallExpr)
             and isinstance(expr.callee, RefExpr)):
         if (expr.callee.fullname == 'builtins.range'
@@ -225,7 +242,7 @@ def make_for_loop_generator(builder: IRBuilder,
         if (expr.callee.fullname == 'builtins.reversed'
                 and len(expr.args) == 1
                 and expr.arg_kinds == [ARG_POS]
-                and is_sequence_rprimitive(rtyp)):
+                and is_sequence_rprimitive(builder.node_type(expr.args[0]))):
             # Special case "for x in reversed(<list>)".
             expr_reg = builder.accept(expr.args[0])
             target_type = builder.get_sequence_type(expr)
@@ -233,6 +250,27 @@ def make_for_loop_generator(builder: IRBuilder,
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
             return for_list
+    if (isinstance(expr, CallExpr)
+            and isinstance(expr.callee, MemberExpr)
+            and not expr.args):
+        # Special cases for dictionary iterator methods, like dict.items().
+        rtype = builder.node_type(expr.callee.expr)
+        if (is_dict_rprimitive(rtype)
+                and expr.callee.name in ('keys', 'values', 'items')):
+            expr_reg = builder.accept(expr.callee.expr)
+            for_dict_type = None  # type: Optional[Type[ForGenerator]]
+            if expr.callee.name == 'keys':
+                target_type = builder.get_dict_key_type(expr.callee.expr)
+                for_dict_type = ForDictionaryKeys
+            elif expr.callee.name == 'values':
+                target_type = builder.get_dict_value_type(expr.callee.expr)
+                for_dict_type = ForDictionaryValues
+            else:
+                target_type = builder.get_dict_item_type(expr.callee.expr)
+                for_dict_type = ForDictionaryItems
+            for_dict_gen = for_dict_type(builder, index, body_block, loop_exit, line, nested)
+            for_dict_gen.init(expr_reg, target_type)
+            return for_dict_gen
 
     # Default to a generic for loop.
     expr_reg = builder.accept(expr)
@@ -292,6 +330,10 @@ class ForGenerator:
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
 
+    def load_len(self, expr: Union[Value, AssignmentTarget]) -> Value:
+        """A helper to get collection length, used by several subclasses."""
+        return self.builder.builder.builtin_len(self.builder.read(expr, self.line), self.line)
+
 
 class ForIterable(ForGenerator):
     """Generate IR for a for loop over an arbitrary iterable (the normal case)."""
@@ -305,7 +347,7 @@ class ForIterable(ForGenerator):
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
         builder = self.builder
-        iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
+        iter_reg = builder.call_c(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
         self.iter_target = builder.maybe_spill(iter_reg)
         self.target_type = target_type
@@ -317,7 +359,7 @@ class ForIterable(ForGenerator):
         # for NULL (an exception does not necessarily have to be raised).
         builder = self.builder
         line = self.line
-        self.next_reg = builder.primitive_op(next_op, [builder.read(self.iter_target, line)], line)
+        self.next_reg = builder.call_c(next_op, [builder.read(self.iter_target, line)], line)
         builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
 
     def begin_body(self) -> None:
@@ -339,7 +381,7 @@ class ForIterable(ForGenerator):
         # an exception was raised during the loop, then err_reg wil be set to
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
-        self.builder.primitive_op(no_err_occurred_op, [], self.line)
+        self.builder.call_c(no_err_occurred_op, [], self.line)
 
 
 def unsafe_index(
@@ -350,7 +392,7 @@ def unsafe_index(
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        return builder.call_c(list_get_item_unsafe_op, [target, index], line)
     else:
         return builder.gen_method_call(target, '__getitem__', [index], None, line)
 
@@ -371,16 +413,10 @@ class ForSequence(ForGenerator):
         if not reverse:
             index_reg = builder.add(LoadInt(0))
         else:
-            index_reg = builder.binary_op(self.load_len(), builder.add(LoadInt(1)), '-', self.line)
+            index_reg = builder.binary_op(self.load_len(self.expr_target),
+                                          builder.add(LoadInt(1)), '-', self.line)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
-
-    def load_len(self) -> Value:
-        return self.builder.builder.builtin_call(
-            [self.builder.read(self.expr_target, self.line)],
-            'builtins.len',
-            self.line,
-        )
 
     def gen_condition(self) -> None:
         builder = self.builder
@@ -398,7 +434,7 @@ class ForSequence(ForGenerator):
             builder.activate_block(second_check)
         # For compatibility with python semantics we recalculate the length
         # at every iteration.
-        len_reg = self.load_len()
+        len_reg = self.load_len(self.expr_target)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, '<', line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
@@ -424,16 +460,144 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         step = 1 if not self.reverse else -1
-        builder.assign(self.index_target, builder.primitive_op(
-            unsafe_short_add,
-            [builder.read(self.index_target, line),
-             builder.add(LoadInt(step))], line), line)
+        add = builder.binary_int_op(short_int_rprimitive,
+                                    builder.read(self.index_target, line),
+                                    builder.add(LoadInt(step)), BinaryIntOp.ADD, line)
+        builder.assign(self.index_target, add, line)
+
+
+class ForDictionaryCommon(ForGenerator):
+    """Generate optimized IR for a for loop over dictionary keys/values.
+
+    The logic is pretty straightforward, we use PyDict_Next() API wrapped in
+    a tuple, so that we can modify only a single register. The layout of the tuple:
+      * f0: are there more items (bool)
+      * f1: current offset (int)
+      * f2: next key (object)
+      * f3: next value (object)
+    For more info see https://docs.python.org/3/c-api/dict.html#c.PyDict_Next.
+
+    Note that for subclasses we fall back to generic PyObject_GetIter() logic,
+    since they may override some iteration methods in subtly incompatible manner.
+    The fallback logic is implemented in CPy.h via dynamic type check.
+    """
+    dict_next_op = None  # type: ClassVar[CFunctionDescription]
+    dict_iter_op = None  # type: ClassVar[CFunctionDescription]
+
+    def need_cleanup(self) -> bool:
+        # Technically, a dict subclass can raise an unrelated exception
+        # in __next__(), so we need this.
+        return True
+
+    def init(self, expr_reg: Value, target_type: RType) -> None:
+        builder = self.builder
+        self.target_type = target_type
+
+        # We add some variables to environment class, so they can be read across yield.
+        self.expr_target = builder.maybe_spill(expr_reg)
+        offset_reg = builder.add(LoadInt(0))
+        self.offset_target = builder.maybe_spill_assignable(offset_reg)
+        self.size = builder.maybe_spill(self.load_len(self.expr_target))
+
+        # For dict class (not a subclass) this is the dictionary itself.
+        iter_reg = builder.call_c(self.dict_iter_op, [expr_reg], self.line)
+        self.iter_target = builder.maybe_spill(iter_reg)
+
+    def gen_condition(self) -> None:
+        """Get next key/value pair, set new offset, and check if we should continue."""
+        builder = self.builder
+        line = self.line
+        self.next_tuple = self.builder.call_c(
+            self.dict_next_op, [builder.read(self.iter_target, line),
+                                builder.read(self.offset_target, line)], line)
+
+        # Do this here instead of in gen_step() to minimize variables in environment.
+        new_offset = builder.add(TupleGet(self.next_tuple, 1, line))
+        builder.assign(self.offset_target, new_offset, line)
+
+        should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
+        builder.add(
+            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
+        )
+
+    def gen_step(self) -> None:
+        """Check that dictionary didn't change size during iteration.
+
+        Raise RuntimeError if it is not the case to match CPython behavior.
+        """
+        builder = self.builder
+        line = self.line
+        # Technically, we don't need a new primitive for this, but it is simpler.
+        builder.call_c(dict_check_size_op,
+                       [builder.read(self.expr_target, line),
+                        builder.read(self.size, line)], line)
+
+    def gen_cleanup(self) -> None:
+        # Same as for generic ForIterable.
+        self.builder.call_c(no_err_occurred_op, [], self.line)
+
+
+class ForDictionaryKeys(ForDictionaryCommon):
+    """Generate optimized IR for a for loop over dictionary keys."""
+    dict_next_op = dict_next_key_op
+    dict_iter_op = dict_key_iter_op
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+
+        # Key is stored at the third place in the tuple.
+        key = builder.add(TupleGet(self.next_tuple, 2, line))
+        builder.assign(builder.get_assignment_target(self.index),
+                       builder.coerce(key, self.target_type, line), line)
+
+
+class ForDictionaryValues(ForDictionaryCommon):
+    """Generate optimized IR for a for loop over dictionary values."""
+    dict_next_op = dict_next_value_op
+    dict_iter_op = dict_value_iter_op
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+
+        # Value is stored at the third place in the tuple.
+        value = builder.add(TupleGet(self.next_tuple, 2, line))
+        builder.assign(builder.get_assignment_target(self.index),
+                       builder.coerce(value, self.target_type, line), line)
+
+
+class ForDictionaryItems(ForDictionaryCommon):
+    """Generate optimized IR for a for loop over dictionary items."""
+    dict_next_op = dict_next_item_op
+    dict_iter_op = dict_item_iter_op
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+
+        key = builder.add(TupleGet(self.next_tuple, 2, line))
+        value = builder.add(TupleGet(self.next_tuple, 3, line))
+
+        # Coerce just in case e.g. key is itself a tuple to be unpacked.
+        assert isinstance(self.target_type, RTuple)
+        key = builder.coerce(key, self.target_type.types[0], line)
+        value = builder.coerce(value, self.target_type.types[1], line)
+
+        target = builder.get_assignment_target(self.index)
+        if isinstance(target, AssignmentTargetTuple):
+            # Simpler code for common case: for k, v in d.items().
+            if len(target.items) != 2:
+                builder.error("Expected a pair for dict item iteration", line)
+            builder.assign(target.items[0], key, line)
+            builder.assign(target.items[1], value, line)
+        else:
+            rvalue = builder.add(TupleSet([key, value], line))
+            builder.assign(target, rvalue, line)
 
 
 class ForRange(ForGenerator):
     """Generate optimized IR for a for loop over an integer range."""
-
-    # TODO: Use a separate register for the index to allow safe index mutation.
 
     def init(self, start_reg: Value, end_reg: Value, step: int) -> None:
         builder = self.builder
@@ -441,7 +605,9 @@ class ForRange(ForGenerator):
         self.end_reg = end_reg
         self.step = step
         self.end_target = builder.maybe_spill(end_reg)
-        self.index_reg = builder.maybe_spill_assignable(start_reg)
+        index_reg = builder.alloc_temp(start_reg.type)
+        builder.assign(index_reg, start_reg, -1)
+        self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target = builder.get_assignment_target(
             self.index)  # type: Union[Register, AssignmentTarget]
@@ -452,7 +618,7 @@ class ForRange(ForGenerator):
         line = self.line
         # Add loop condition check.
         cmp = '<' if self.step > 0 else '>'
-        comparison = builder.binary_op(builder.read(self.index_target, line),
+        comparison = builder.binary_op(builder.read(self.index_reg, line),
                                        builder.read(self.end_target, line), cmp, line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
@@ -464,9 +630,9 @@ class ForRange(ForGenerator):
         # short ints.
         if (is_short_int_rprimitive(self.start_reg.type)
                 and is_short_int_rprimitive(self.end_reg.type)):
-            new_val = builder.primitive_op(
-                unsafe_short_add, [builder.read(self.index_reg, line),
-                                   builder.add(LoadInt(self.step))], line)
+            new_val = builder.binary_int_op(short_int_rprimitive,
+                            builder.read(self.index_reg, line),
+                            builder.add(LoadInt(self.step)), BinaryIntOp.ADD, line)
 
         else:
             new_val = builder.binary_op(
@@ -494,9 +660,9 @@ class ForInfiniteCounter(ForGenerator):
         # We can safely assume that the integer is short, since we are not going to wrap
         # around a 63-bit integer.
         # NOTE: This would be questionable if short ints could be 32 bits.
-        new_val = builder.primitive_op(
-            unsafe_short_add, [builder.read(self.index_reg, line),
-                               builder.add(LoadInt(1))], line)
+        new_val = builder.binary_int_op(short_int_rprimitive,
+                builder.read(self.index_reg, line),
+                builder.add(LoadInt(1)), BinaryIntOp.ADD, line)
         builder.assign(self.index_reg, new_val, line)
         builder.assign(self.index_target, new_val, line)
 

@@ -49,6 +49,8 @@ try:
         import ast as ast3
         assert 'kind' in ast3.Constant._fields, \
                "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+        # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
+        # TODO: Index, ExtSlice are deprecated in 3.9.
         from ast import (
             AST,
             Call,
@@ -167,7 +169,15 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True, code=codes.SYNTAX)
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
+        if is_py38_or_earlier and e.filename == "<fstring>":
+            # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
+            # start of the f-string. This would be misleading, as mypy will report the error as the
+            # lineno within the file.
+            e.lineno = None
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+                      code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
@@ -315,7 +325,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
@@ -838,7 +848,9 @@ class ASTConverter:
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     def visit_Try(self, n: ast3.Try) -> TryStmt:
-        vs = [NameExpr(h.name) if h.name is not None else None for h in n.handlers]
+        vs = [
+            self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
+        ]
         types = [self.visit(h.type) for h in n.handlers]
         handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
 
@@ -1200,8 +1212,16 @@ class ASTConverter:
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
         self.set_line(e, n)
-        if isinstance(e.index, SliceExpr):
-            # Slice has no line/column in the raw ast.
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
+        if (
+            isinstance(n.slice, ast3.Slice) or
+            (is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice))
+        ):
+            # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
+            # visit_Slice doesn't set_line, even in Python 3.9 on.
+            # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
+            # e.index when visiting n.slice.
             e.index.line = e.line
             e.index.column = e.column
         return e
@@ -1228,7 +1248,7 @@ class ASTConverter:
 
     # Tuple(expr* elts, expr_context ctx)
     def visit_Tuple(self, n: ast3.Tuple) -> TupleExpr:
-        e = TupleExpr([self.visit(e) for e in n.elts])
+        e = TupleExpr(self.translate_expr_list(n.elts))
         return self.set_line(e, n)
 
     # --- slice ---
@@ -1241,11 +1261,13 @@ class ASTConverter:
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        return TupleExpr(self.translate_expr_list(n.dims))
+        # cast for mypyc's benefit on Python 3.9
+        return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
 
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
-        return self.visit(n.value)
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
 
 
 class TypeConverter:
@@ -1500,19 +1522,30 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
-    # Subscript(expr value, slice slice, expr_context ctx)
+    # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
+    # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if not isinstance(n.slice, Index):
-            self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+        if sys.version_info >= (3, 9):  # Really 3.9a5 or later
+            sliceval = n.slice  # type: Any
+            if (isinstance(sliceval, ast3.Slice) or
+                (isinstance(sliceval, ast3.Tuple) and
+                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                return AnyType(TypeOfAny.from_error)
+        else:
+            # Python 3.8 or earlier use a different AST structure for subscripts
+            if not isinstance(n.slice, Index):
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                return AnyType(TypeOfAny.from_error)
+            sliceval = n.slice.value
 
         empty_tuple_index = False
-        if isinstance(n.slice.value, ast3.Tuple):
-            params = self.translate_expr_list(n.slice.value.elts)
-            if len(n.slice.value.elts) == 0:
+        if isinstance(sliceval, ast3.Tuple):
+            params = self.translate_expr_list(sliceval.elts)
+            if len(sliceval.elts) == 0:
                 empty_tuple_index = True
         else:
-            params = [self.visit(n.slice.value)]
+            params = [self.visit(sliceval)]
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:

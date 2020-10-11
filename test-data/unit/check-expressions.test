@@ -911,7 +911,7 @@ class C:
 [out]
 main:3: error: Invalid index type "C" for "A"; expected type "B"
 main:4: error: Incompatible types in assignment (expression has type "A", target has type "C")
-main:5: error: Unsupported target for indexed assignment
+main:5: error: Unsupported target for indexed assignment ("B")
 
 [case testOverloadedIndexing]
 from foo import *
@@ -1183,8 +1183,8 @@ xb: bytes
 xs: str
 
 '%s' % xs   # OK
-'%s' % xb   # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
-'%(name)s' % {'name': b'value'}  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior
+'%s' % xb   # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior
+'%(name)s' % {'name': b'value'}  # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationSBytesVsStrResultsPy2]
@@ -1576,17 +1576,17 @@ N = NewType('N', bytes)
 n: N
 
 '{}'.format(a)
-'{}'.format(b)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
-'{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
-'{}'.format(n)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
+'{}'.format(b)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
+'{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
+'{}'.format(n)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
 
 class C(Generic[B]):
     x: B
     def meth(self) -> None:
-        '{}'.format(self.x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
+        '{}'.format(self.x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
 
 def func(x: A) -> A:
-    '{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior
+    '{}'.format(x)  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior
     return x
 
 '{!r}'.format(b)
@@ -1990,6 +1990,13 @@ a: Any
 x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, Literal[1]?]'
 reveal_type(a if int() else 1)  # N: Revealed type is 'Any'
 
+[case testConditionalExpressionStatementNoReturn]
+from typing import List, Union
+x = []
+y = ""
+x.append(y) if bool() else x.append(y)
+z = x.append(y) if bool() else x.append(y) # E: "append" of "list" does not return a value
+[builtins fixtures/list.pyi]
 
 -- Special cases
 -- -------------
@@ -2796,3 +2803,10 @@ def f() -> int:  # E: Missing return statement
     x: int
     assert isinstance(x, int), '...'
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeVarAsValue]
+from typing import TypeVar
+T = TypeVar("T")
+x: int
+x + T  # E: Unsupported operand types for + ("int" and "object")
+T()  # E: "object" not callable

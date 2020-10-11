@@ -20,7 +20,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     """Substitute type variables in type using values from an Instance.
     Type variables are considered to be bound by the class declaration."""
     # TODO: use an overloaded signature? (ProperType stays proper after expansion.)
-    if instance.args == []:
+    if not instance.args:
         return typ
     else:
         variables = {}  # type: Dict[TypeVarId, Type]
@@ -40,6 +40,8 @@ def freshen_function_type_vars(callee: F) -> F:
         tvdefs = []
         tvmap = {}  # type: Dict[TypeVarId, Type]
         for v in callee.variables:
+            # TODO(shantanu): fix for ParamSpecDef
+            assert isinstance(v, TypeVarDef)
             tvdef = TypeVarDef.new_unification_variable(v)
             tvdefs.append(tvdef)
             tvmap[v.id] = TypeVarType(tvdef)

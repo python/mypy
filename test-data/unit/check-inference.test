@@ -2276,7 +2276,7 @@ T = TypeVar('T')
 class C(Sequence[T], Generic[T]): pass
 C[0] = 0
 [out]
-main:4: error: Unsupported target for indexed assignment
+main:4: error: Unsupported target for indexed assignment ("Type[C[Any]]")
 main:4: error: Invalid type: try using Literal[0] instead?
 
 [case testNoCrashOnPartialMember]
@@ -3144,3 +3144,35 @@ reveal_type(S() if bool() else '')  # N: Revealed type is 'builtins.unicode'
 reveal_type('' if bool() else S())  # N: Revealed type is 'builtins.unicode'
 reveal_type(S() if bool() else str())  # N: Revealed type is 'builtins.unicode'
 reveal_type(str() if bool() else S())  # N: Revealed type is 'builtins.unicode'
+
+[case testInferCallableReturningNone1]
+# flags: --no-strict-optional
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def f(x: Callable[[], T]) -> T:
+    return x()
+
+reveal_type(f(lambda: None))  # N: Revealed type is 'None'
+reveal_type(f(lambda: 1))  # N: Revealed type is 'builtins.int*'
+
+def g() -> None: pass
+
+reveal_type(f(g))  # N: Revealed type is 'None'
+
+[case testInferCallableReturningNone2]
+# flags: --strict-optional
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+def f(x: Callable[[], T]) -> T:
+    return x()
+
+reveal_type(f(lambda: None))  # N: Revealed type is 'None'
+reveal_type(f(lambda: 1))  # N: Revealed type is 'builtins.int*'
+
+def g() -> None: pass
+
+reveal_type(f(g))  # N: Revealed type is 'None'

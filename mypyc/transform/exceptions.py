@@ -12,10 +12,11 @@ only be placed at the end of a basic block.
 from typing import List, Optional
 
 from mypyc.ir.ops import (
-    BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, NO_TRACEBACK_LINE_NO,
+    BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, LoadInt, ERR_NEVER, ERR_MAGIC,
+    ERR_FALSE, ERR_NEG_INT, ERR_ALWAYS, NO_TRACEBACK_LINE_NO, Environment
 )
 from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.rtypes import bool_rprimitive
 
 
 def insert_exception_handling(ir: FuncIR) -> None:
@@ -29,7 +30,7 @@ def insert_exception_handling(ir: FuncIR) -> None:
             error_label = add_handler_block(ir)
             break
     if error_label:
-        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.traceback_name)
+        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.traceback_name, ir.env)
 
 
 def add_handler_block(ir: FuncIR) -> BasicBlock:
@@ -44,7 +45,8 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
 
 def split_blocks_at_errors(blocks: List[BasicBlock],
                            default_error_handler: BasicBlock,
-                           func_name: Optional[str]) -> List[BasicBlock]:
+                           func_name: Optional[str],
+                           env: Environment) -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
 
     # First split blocks on ops that may raise.
@@ -60,6 +62,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
         block.error_handler = None
 
         for op in ops:
+            target = op
             cur_block.ops.append(op)
             if isinstance(op, RegisterOp) and op.error_kind != ERR_NEVER:
                 # Split
@@ -74,14 +77,27 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     # Op returns a C false value on error.
                     variant = Branch.BOOL_EXPR
                     negated = True
+                elif op.error_kind == ERR_NEG_INT:
+                    variant = Branch.NEG_INT_EXPR
+                    negated = False
+                elif op.error_kind == ERR_ALWAYS:
+                    variant = Branch.BOOL_EXPR
+                    negated = True
+                    # this is a hack to represent the always fail
+                    # semantics, using a temporary bool with value false
+                    tmp = LoadInt(0, rtype=bool_rprimitive)
+                    cur_block.ops.append(tmp)
+                    env.add_op(tmp)
+                    target = tmp
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind
 
                 # Void ops can't generate errors since error is always
                 # indicated by a special value stored in a register.
-                assert not op.is_void, "void op generating errors?"
+                if op.error_kind != ERR_ALWAYS:
+                    assert not op.is_void, "void op generating errors?"
 
-                branch = Branch(op,
+                branch = Branch(target,
                                 true_label=error_label,
                                 false_label=new_block,
                                 op=variant,

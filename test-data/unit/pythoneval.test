@@ -287,17 +287,14 @@ _program.py:3: note: Revealed type is 'typing.BinaryIO'
 _program.py:5: note: Revealed type is 'typing.IO[Any]'
 
 [case testOpenReturnTypeInferenceSpecialCases]
-reveal_type(open())
 reveal_type(open(mode='rb', file='x'))
 reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.TextIO'
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:3: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:5: note: Revealed type is 'typing.IO[Any]'
+_testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is 'typing.IO[Any]'
 
 [case testPathOpenReturnTypeInference]
 from pathlib import Path
@@ -1086,8 +1083,8 @@ _testTypedDictGet.py:8: note: Revealed type is 'builtins.str'
 _testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, k: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object
+_testTypedDictGet.py:10: note:     def get(self, key: str) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
 _testTypedDictGet.py:12: note: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]

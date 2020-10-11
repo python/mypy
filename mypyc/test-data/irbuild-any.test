@@ -51,8 +51,7 @@ def f(a, n, c):
     r5 :: int
     r6 :: str
     r7 :: object
-    r8 :: bool
-    r9 :: None
+    r8 :: int32
 L0:
     r0 = box(int, n)
     c.a = r0; r1 = is_error
@@ -62,11 +61,10 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = unicode_6 :: static  ('a')
+    r6 = load_global CPyStatic_unicode_6 :: static  ('a')
     r7 = box(int, n)
-    r8 = setattr a, r6, r7
-    r9 = None
-    return r9
+    r8 = PyObject_SetAttr(a, r6, r7)
+    return 1
 
 [case testCoerceAnyInOps]
 from typing import Any, List
@@ -88,55 +86,56 @@ def f1(a, n):
     a :: object
     n :: int
     r0, r1, r2, r3 :: object
-    r4 :: None
 L0:
     r0 = box(int, n)
-    r1 = a + r0
+    r1 = PyNumber_Add(a, r0)
     r2 = box(int, n)
-    r3 = r2 + a
-    r4 = None
-    return r4
+    r3 = PyNumber_Add(r2, a)
+    return 1
 def f2(a, n, l):
     a :: object
     n :: int
     l :: list
     r0, r1, r2, r3, r4 :: object
-    r5 :: bool
+    r5 :: int32
     r6 :: object
-    r7, r8 :: bool
-    r9 :: object
-    r10 :: list
-    r11 :: None
+    r7 :: int32
+    r8 :: bool
+    r9 :: list
+    r10 :: object
+    r11, r12, r13 :: ptr
 L0:
     r0 = box(int, n)
-    r1 = a[r0] :: object
-    r2 = l[a] :: object
+    r1 = PyObject_GetItem(a, r0)
+    r2 = PyObject_GetItem(l, a)
     r3 = box(int, n)
     r4 = box(int, n)
-    r5 = a.__setitem__(r3, r4) :: object
+    r5 = PyObject_SetItem(a, r3, r4)
     r6 = box(int, n)
-    r7 = l.__setitem__(a, r6) :: object
-    r8 = l.__setitem__(n, a) :: list
-    r9 = box(int, n)
-    r10 = [a, r9]
-    r11 = None
-    return r11
+    r7 = PyObject_SetItem(l, a, r6)
+    r8 = CPyList_SetItem(l, n, a)
+    r9 = PyList_New(2)
+    r10 = box(int, n)
+    r11 = get_element_ptr r9 ob_item :: PyListObject
+    r12 = load_mem r11, r9 :: ptr*
+    set_mem r12, a, r9 :: builtins.object*
+    r13 = r12 + WORD_SIZE*1
+    set_mem r13, r10, r9 :: builtins.object*
+    return 1
 def f3(a, n):
     a :: object
     n :: int
     r0, r1, r2, r3 :: object
     r4 :: int
-    r5 :: None
 L0:
     r0 = box(int, n)
-    r1 = a += r0
+    r1 = PyNumber_InPlaceAdd(a, r0)
     a = r1
     r2 = box(int, n)
-    r3 = r2 += a
+    r3 = PyNumber_InPlaceAdd(r2, a)
     r4 = unbox(int, r3)
     n = r4
-    r5 = None
-    return r5
+    return 1
 
 [case testCoerceAnyInConditionalExpr]
 from typing import Any
@@ -150,7 +149,6 @@ def f4(a, n, b):
     b :: bool
     r0, r1, r2, r3 :: object
     r4 :: int
-    r5 :: None
 L0:
     if b goto L1 else goto L2 :: bool
 L1:
@@ -171,5 +169,5 @@ L5:
 L6:
     r4 = unbox(int, r2)
     n = r4
-    r5 = None
-    return r5
+    return 1
+

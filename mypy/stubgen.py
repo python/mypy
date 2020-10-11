@@ -327,16 +327,21 @@ class ImportTracker:
         #     'from pkg.m import f as foo' ==> module_for['foo'] == 'pkg.m'
         #     'from m import f' ==> module_for['f'] == 'm'
         #     'import m' ==> module_for['m'] == None
+        #     'import pkg.m' ==> module_for['pkg.m'] == None
+        #                    ==> module_for['pkg'] == None
         self.module_for = {}  # type: Dict[str, Optional[str]]
 
         # direct_imports['foo'] is the module path used when the name 'foo' was added to the
         # namespace.
         #   import foo.bar.baz  ==> direct_imports['foo'] == 'foo.bar.baz'
+        #                       ==> direct_imports['foo.bar'] == 'foo.bar.baz'
+        #                       ==> direct_imports['foo.bar.baz'] == 'foo.bar.baz'
         self.direct_imports = {}  # type: Dict[str, str]
 
         # reverse_alias['foo'] is the name that 'foo' had originally when imported with an
         # alias; examples
         #     'import numpy as np' ==> reverse_alias['np'] == 'numpy'
+        #     'import foo.bar as bar' ==> reverse_alias['bar'] == 'foo.bar'
         #     'from decimal import Decimal as D' ==> reverse_alias['D'] == 'Decimal'
         self.reverse_alias = {}  # type: Dict[str, str]
 
@@ -348,16 +353,30 @@ class ImportTracker:
 
     def add_import_from(self, module: str, names: List[Tuple[str, Optional[str]]]) -> None:
         for name, alias in names:
-            self.module_for[alias or name] = module
             if alias:
+                # 'from {module} import {name} as {alias}'
+                self.module_for[alias] = module
                 self.reverse_alias[alias] = name
+            else:
+                # 'from {module} import {name}'
+                self.module_for[name] = module
+                self.reverse_alias.pop(name, None)
+            self.direct_imports.pop(alias or name, None)
 
     def add_import(self, module: str, alias: Optional[str] = None) -> None:
-        name = module.split('.')[0]
-        self.module_for[alias or name] = None
-        self.direct_imports[name] = module
         if alias:
-            self.reverse_alias[alias] = name
+            # 'import {module} as {alias}'
+            self.module_for[alias] = None
+            self.reverse_alias[alias] = module
+        else:
+            # 'import {module}'
+            name = module
+            # add module and its parent packages
+            while name:
+                self.module_for[name] = None
+                self.direct_imports[name] = module
+                self.reverse_alias.pop(name, None)
+                name = name.rpartition('.')[0]
 
     def require_name(self, name: str) -> None:
         self.required_names.add(name.split('.')[0])
@@ -398,9 +417,8 @@ class ImportTracker:
                 # This name was found in an import ...
                 # We can already generate the import line
                 if name in self.reverse_alias:
-                    name, alias = self.reverse_alias[name], name
-                    source = self.direct_imports.get(name, 'FIXME')
-                    result.append("import {} as {}\n".format(source, alias))
+                    source = self.reverse_alias[name]
+                    result.append("import {} as {}\n".format(source, name))
                 elif name in self.reexports:
                     assert '.' not in name  # Because reexports only has nonqualified names
                     result.append("import {} as {}\n".format(name, name))
@@ -1191,7 +1209,7 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
         try:
             source_list = create_source_list(options.files, mypy_opts)
         except InvalidSourceList as e:
-            raise SystemExit(str(e))
+            raise SystemExit(str(e)) from e
         py_modules = [StubSource(m.module, m.path) for m in source_list]
         c_modules = []
 
@@ -1362,7 +1380,7 @@ def generate_asts_for_modules(py_modules: List[StubSource],
     try:
         res = build(list(py_modules), mypy_options)
     except CompileError as e:
-        raise SystemExit("Critical error during semantic analysis: {}".format(e))
+        raise SystemExit("Critical error during semantic analysis: {}".format(e)) from e
 
     for mod in py_modules:
         mod.ast = res.graph[mod.module].tree

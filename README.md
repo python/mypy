@@ -3,7 +3,7 @@
 Mypy: Optional Static Typing for Python
 =======================================
 
-[![Build Status](https://api.travis-ci.org/python/mypy.svg?branch=master)](https://travis-ci.org/python/mypy)
+[![Build Status](https://api.travis-ci.com/python/mypy.svg?branch=master)](https://travis-ci.com/python/mypy)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
@@ -47,7 +47,7 @@ def fib(n: int) -> Iterator[int]:
         yield a
         a, b = b, a + b
 ```
-See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
+See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
 For Python 2.7, the standard annotations are written as comments:
 ```python
@@ -56,7 +56,7 @@ def is_palindrome(s):
     return s == s[::-1]
 ```
 
-See [the documentation for Python 2 support](http://mypy.readthedocs.io/en/latest/python2.html).
+See [the documentation for Python 2 support](https://mypy.readthedocs.io/en/latest/python2.html).
 
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
@@ -73,7 +73,7 @@ In Ubuntu, Mint and Debian you can install Python 3 like this:
 
 For other Linux flavors, macOS and Windows, packages are available at
 
-  http://www.python.org/getit/
+  https://www.python.org/getit/
 
 
 Quick start
@@ -122,11 +122,8 @@ Mypy can be integrated into popular IDEs:
   [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
 * VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
 
-Mypy can also be integrated into [Flake8] using [flake8-mypy], or
-can be set up as a pre-commit hook using [pre-commit mirrors-mypy].
+Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 
-[Flake8]: http://flake8.pycqa.org/
-[flake8-mypy]: https://github.com/ambv/flake8-mypy
 [pre-commit mirrors-mypy]: https://github.com/pre-commit/mirrors-mypy
 
 Web site and documentation
@@ -138,7 +135,7 @@ Documentation and additional information is available at the web site:
 
 Or you can jump straight to the documentation:
 
-  http://mypy.readthedocs.io/
+  https://mypy.readthedocs.io/
 
 
 Troubleshooting
@@ -218,7 +215,7 @@ see "Troubleshooting" above.
 Working with the git version of mypy
 ------------------------------------
 
-mypy contains a submodule, "typeshed". See http://github.com/python/typeshed.
+mypy contains a submodule, "typeshed". See https://github.com/python/typeshed.
 This submodule contains types for the Python standard library.
 
 Due to the way git submodules work, you'll have to do
@@ -256,7 +253,7 @@ future.
 Changelog
 ---------
 
-Follow mypy's updates on the blog: http://mypy-lang.blogspot.com/
+Follow mypy's updates on the blog: https://mypy-lang.blogspot.com/
 
 
 Issue tracker

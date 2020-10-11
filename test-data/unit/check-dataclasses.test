@@ -376,58 +376,6 @@ Application.COUNTER = 1
 
 [builtins fixtures/dataclasses.pyi]
 
-[case testDataclassEquality]
-# flags: --python-version 3.6
-from dataclasses import dataclass
-
-@dataclass
-class Application:
-  name: str
-  rating: int
-
-app1 = Application("example-1", 5)
-app2 = Application("example-2", 5)
-app1 == app2
-app1 != app2
-app1 == None
-reveal_type(app1.__eq__)  # N: Revealed type is 'def (builtins.object) -> builtins.bool'
-
-[builtins fixtures/dataclasses.pyi]
-
-[case testDataclassCustomEquality]
-# flags: --python-version 3.6
-from dataclasses import dataclass
-
-@dataclass
-class Application:
-  name: str
-  rating: int
-
-  def __eq__(self, other: 'Application') -> bool:
-     ...
-
-app1 = Application("example-1", 5)
-app2 = Application("example-2", 5)
-app1 == app2
-app1 != app2
-app1 == None
-
-class SpecializedApplication(Application):
-  ...
-
-app1 == SpecializedApplication("example-3", 5)
-
-[builtins fixtures/dataclasses.pyi]
-
-[out1]
-main:9: error: Argument 1 of "__eq__" is incompatible with supertype "object"; supertype defines the argument type as "object"
-main:9: note: It is recommended for "__eq__" to work with arbitrary objects, for example:
-main:9: note:     def __eq__(self, other: object) -> bool:
-main:9: note:         if not isinstance(other, Application):
-main:9: note:             return NotImplemented
-main:9: note:         return <logic to compare two Application instances>
-main:16: error: Unsupported operand types for == ("Application" and "None")
-
 [case testDataclassOrdering]
 # flags: --python-version 3.6
 from dataclasses import dataclass

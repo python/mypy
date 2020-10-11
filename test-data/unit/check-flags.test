@@ -1084,6 +1084,15 @@ always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
+[case testDisableErrorCodeConfigFile]
+# flags: --config-file tmp/mypy.ini --disallow-untyped-defs
+import foo
+def bar():
+    pass
+[file mypy.ini]
+\[mypy]
+disable_error_code = import, no-untyped-def
+
 [case testCheckDisallowAnyGenericsNamedTuple]
 # flags: --disallow-any-generics
 from typing import NamedTuple
@@ -1171,6 +1180,22 @@ def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
 strict = True
 [out]
 
+[case testStrictFalseInConfigAnyGeneric]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:
+    pass
+[file mypy.ini]
+\[mypy]
+strict = False
+[out]
+
 [case testStrictAndStrictEquality]
 # flags: --strict
 x = 0
@@ -1200,7 +1225,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import a
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1214,7 +1239,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportStarConsideredImplicit]
 # flags: --no-implicit-reexport
@@ -1224,7 +1249,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import *
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportStarCanBeReexportedWithAll]
 # flags: --no-implicit-reexport
@@ -1238,7 +1263,19 @@ from other_module_1 import *
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case textNoImplicitReexportSuggestions]
+# flags: --no-implicit-reexport
+from other_module_2 import attr_1
+
+[file other_module_1.py]
+attr_1 = 5
+attr_2 = 6
+[file other_module_2.py]
+from other_module_1 import attr_1, attr_2
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'attr_1'; implicit reexport disabled
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1491,3 +1528,86 @@ class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
 disallow_subclassing_any = True
 \[mypy-m]
 disallow_subclassing_any = False
+
+[case testNoImplicitOptionalPerModule]
+# flags: --config-file tmp/mypy.ini
+import m
+
+[file m.py]
+def f(a: str = None) -> int:
+    return 0
+
+[file mypy.ini]
+\[mypy]
+no_implicit_optional = True
+\[mypy-m]
+no_implicit_optional = False
+
+[case testNoImplicitOptionalPerModulePython2]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+import m
+
+[file m.py]
+def f(a = None):
+    # type: (str) -> int
+    return 0
+
+[file mypy.ini]
+\[mypy]
+no_implicit_optional = True
+\[mypy-m]
+no_implicit_optional = False
+
+[case testDisableErrorCode]
+# flags: --disable-error-code attr-defined
+x = 'should be fine'
+x.trim()
+
+[case testDisableDifferentErrorCode]
+# flags: --disable-error-code name-defined --show-error-code
+x = 'should not be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+[case testDisableMultipleErrorCode]
+# flags: --disable-error-code attr-defined --disable-error-code return-value --show-error-code
+x = 'should be fine'
+x.trim()
+
+def bad_return_type() -> str:
+    return None
+
+bad_return_type('no args taken!')  # E: Too many arguments for "bad_return_type"  [call-arg]
+
+[case testEnableErrorCode]
+# flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-code
+x = 'should be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+[case testEnableDifferentErrorCode]
+# flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
+x = 'should not be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+[case testEnableMultipleErrorCode]
+# flags: \
+    --disable-error-code attr-defined \
+    --disable-error-code return-value \
+    --disable-error-code call-arg \
+    --enable-error-code attr-defined \
+    --enable-error-code return-value --show-error-code
+x = 'should be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+def bad_return_type() -> str:
+    return None  # E: Incompatible return value type (got "None", expected "str")  [return-value]
+
+bad_return_type('no args taken!')
+
+[case testDisallowUntypedCallsArgType]
+# flags: --disallow-untyped-calls
+def f(x):
+    pass
+
+y = 1
+f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
+                  # N: Revealed type is 'builtins.int'

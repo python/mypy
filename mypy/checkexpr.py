@@ -1,10 +1,10 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 from contextlib import contextmanager
 import itertools
 from typing import (
-    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
+    Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
 from typing_extensions import ClassVar, Final, overload
 
@@ -31,6 +31,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
+    ParamSpecExpr,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
@@ -227,6 +228,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.alias_type_in_runtime_context(node, node.no_args, e,
                                                         alias_definition=e.is_alias_rvalue
                                                         or lvalue)
+        elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
+            result = self.object_type()
         else:
             if isinstance(node, PlaceholderNode):
                 assert False, 'PlaceholderNode %r leaked to checker' % node.fullname
@@ -314,7 +317,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
-            return self.msg.untyped_function_call(callee_type, e)
+            self.msg.untyped_function_call(callee_type, e)
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
         member = None
@@ -903,8 +906,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.check_call(callee.upper_bound, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TypeType):
-            # Pass the original Type[] as context since that's where errors should go.
-            item = self.analyze_type_type_callee(callee.item, callee)
+            item = self.analyze_type_type_callee(callee.item, context)
             return self.check_call(item, args, arg_kinds, context, arg_names,
                                    callable_node, arg_messages)
         elif isinstance(callee, TupleType):
@@ -1518,7 +1520,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Record if we succeeded. Next we need to see if maybe normal procedure
                 # gives a narrower type.
                 if unioned_return:
-                    returns, inferred_types = zip(*unioned_return)
+                    # TODO: fix signature of zip() in typeshed.
+                    returns, inferred_types = cast(Any, zip)(*unioned_return)
                     # Note that we use `combine_function_signatures` instead of just returning
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
@@ -2306,6 +2309,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
                 return not is_overlapping_types(left.args[0], right.args[0])
+        if isinstance(left, LiteralType) and isinstance(right, LiteralType):
+            if isinstance(left.value, bool) and isinstance(right.value, bool):
+                # Comparing different booleans is not dangerous.
+                return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def get_operator_method(self, op: str) -> str:
@@ -2680,12 +2687,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if msg.is_errors():
                 self.msg.add_errors(msg)
+                # Point any notes to the same location as an existing message.
+                recent_context = msg.most_recent_context()
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
-                    self.msg.warn_both_operands_are_from_unions(context)
+                    self.msg.warn_both_operands_are_from_unions(recent_context)
                 elif len(left_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Left", base_type, context=right_expr)
+                    self.msg.warn_operand_was_from_union(
+                        "Left", base_type, context=recent_context)
                 elif len(right_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Right", right_type, context=right_expr)
+                    self.msg.warn_operand_was_from_union(
+                        "Right", right_type, context=recent_context)
 
             # See the comment in 'check_overload_call' for more details on why
             # we call 'combine_function_signature' instead of just unioning the inferred
@@ -2732,6 +2743,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 
+        # If left_map is None then we know mypy considers the left expression
+        # to be redundant.
+        #
+        # Note that we perform these checks *before* we take into account
+        # the analysis from the semanal phase below. We assume that nodes
+        # marked as unreachable during semantic analysis were done so intentionally.
+        # So, we shouldn't report an error.
+        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
+            if left_map is None:
+                self.msg.redundant_left_operand(e.op, e.left)
+
         # If right_map is None then we know mypy considers the right branch
         # to be unreachable and therefore any errors found in the right branch
         # should be suppressed.
@@ -2741,10 +2763,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
         if self.chk.options.warn_unreachable:
-            if left_map is None:
-                self.msg.redundant_left_operand(e.op, e.left)
             if right_map is None:
-                self.msg.redundant_right_operand(e.op, e.right)
+                self.msg.unreachable_right_operand(e.op, e.right)
 
         if e.right_unreachable:
             right_map = None
@@ -2972,7 +2992,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(key_type, Instance) and key_type.last_known_value is not None:
                     key_type = key_type.last_known_value
 
-                if isinstance(key_type, LiteralType) and isinstance(key_type.value, str):
+                if (isinstance(key_type, LiteralType)
+                        and isinstance(key_type.value, str)
+                        and key_type.fallback.type.fullname != 'builtins.bytes'):
                     key_names.append(key_type.value)
                 else:
                     self.msg.typeddict_key_must_be_string_literal(td_type, index)
@@ -3017,7 +3039,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a reveal_type expression."""
         if expr.kind == REVEAL_TYPE:
             assert expr.expr is not None
-            revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
+            revealed_type = self.accept(expr.expr, type_context=self.type_context[-1],
+                                        allow_none_return=True)
             if not self.chk.current_node_deferred:
                 self.msg.reveal_type(revealed_type, expr.expr)
                 if not self.chk.in_checked_function():
@@ -3125,11 +3148,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
-            # This type is invalid in most runtime contexts.
-            self.msg.alias_invalid_in_runtime_context(item, ctx)
-            return AnyType(TypeOfAny.from_error)
+            # This type is invalid in most runtime contexts, give it an 'object' type.
+            return self.named_type('builtins.object')
 
-    def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
+    def apply_type_arguments_to_callable(
+        self, tp: Type, args: Sequence[Type], ctx: Context
+    ) -> Type:
         """Apply type arguments to a generic callable type coming from a type object.
 
         This will first perform type arguments count checks, report the
@@ -3368,12 +3392,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
             ret_type = self.chk.type_map[e.expr()]
-            if isinstance(get_proper_type(ret_type), NoneType):
-                # For "lambda ...: None", just use type from the context.
-                # Important when the context is Callable[..., None] which
-                # really means Void. See #1425.
-                self.chk.return_types.pop()
-                return inferred_type
             self.chk.return_types.pop()
             return replace_callable_return_type(inferred_type, ret_type)
 
@@ -3456,6 +3474,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             index = mro.index(type_info)
         except ValueError:
             self.chk.fail(message_registry.SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1, e)
+            return AnyType(TypeOfAny.from_error)
+
+        if len(mro) == index + 1:
+            self.chk.fail(message_registry.TARGET_CLASS_HAS_NO_BASE_CLASS, e)
             return AnyType(TypeOfAny.from_error)
 
         for base in mro[index+1:]:
@@ -3663,29 +3685,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     for var, type in true_map.items():
                         self.chk.binder.put(var, type)
 
-                if self.chk.options.warn_unreachable:
+                if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
                     if true_map is None:
                         self.msg.redundant_condition_in_comprehension(False, condition)
                     elif false_map is None:
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
-    def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
+    def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
         self.accept(e.cond)
         ctx = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
         # but only for the current expression
         if_map, else_map = self.chk.find_isinstance_check(e.cond)
-        if self.chk.options.warn_unreachable:
+        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
             if if_map is None:
                 self.msg.redundant_condition_in_if(False, e.cond)
             elif else_map is None:
                 self.msg.redundant_condition_in_if(True, e.cond)
 
-        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx)
+        if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx,
+                                           allow_none_return=allow_none_return)
 
         # Analyze the right branch using full type context and store the type
-        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx)
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx,
+                                                          allow_none_return=allow_none_return)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
@@ -3696,12 +3720,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: If it's possible that the previous analysis of
                 # the left branch produced errors that are avoided
                 # using this context, suppress those errors.
-                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type)
+                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type,
+                                                   allow_none_return=allow_none_return)
 
         else:
             # Analyze the right branch in the context of the left
             # branch's type.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
+            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type,
+                                                 allow_none_return=allow_none_return)
 
         # Only create a union type if the type context is a union, to be mostly
         # compatible with older mypy versions where we always did a join.
@@ -3715,15 +3741,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return res
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
-                            node: Expression, context: Optional[Type]) -> Type:
+                            node: Expression, context: Optional[Type],
+                            allow_none_return: bool = False) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
-                self.accept(node, type_context=context)
+                self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
             self.chk.push_type_map(map)
-            return self.accept(node, type_context=context)
+            return self.accept(node, type_context=context, allow_none_return=allow_none_return)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
         self.accept(e.expr)
@@ -3751,6 +3778,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typ = self.visit_call_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, YieldFromExpr):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, ConditionalExpr):
+                typ = self.visit_conditional_expr(node, allow_none_return=True)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -3760,6 +3789,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.type_context.pop()
         assert typ is not None
         self.chk.store_type(node, typ)
+
+        if isinstance(node, AssignmentExpr) and not has_uninhabited_component(typ):
+            self.chk.store_type(node.target, typ)
 
         if (self.chk.options.disallow_any_expr and
                 not always_allow_any and
@@ -3954,6 +3986,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return e.type
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> Type:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
@@ -4290,6 +4325,8 @@ def merge_typevars_in_callables_by_name(
             for tvdef in target.variables:
                 name = tvdef.fullname
                 if name not in unique_typevars:
+                    # TODO(shantanu): fix for ParamSpecDef
+                    assert isinstance(tvdef, TypeVarDef)
                     unique_typevars[name] = TypeVarType(tvdef)
                     variables.append(tvdef)
                 rename[tvdef.id] = unique_typevars[name]

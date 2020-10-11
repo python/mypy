@@ -37,7 +37,7 @@ from mypy.util import write_junit_xml
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
-from mypyc.common import shared_lib_name
+from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.ir.module_ir import format_modules
 
 from mypyc.codegen import emitmodule
@@ -536,7 +536,7 @@ def mypycify(
     # compiler invocations.
     shared_cfilenames = []
     if not compiler_options.include_runtime_files:
-        for name in ['CPy.c', 'getargs.c']:
+        for name in RUNTIME_C_FILES:
             rt_file = os.path.join(build_dir, name)
             with open(os.path.join(include_dir(), name), encoding='utf-8') as f:
                 write_file(rt_file, f.read())

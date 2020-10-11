@@ -1818,6 +1818,7 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 
 [case testNoReExportFromStubs]
 from stub import Iterable  # E: Module 'stub' has no attribute 'Iterable'
+from stub import D  # E: Module 'stub' has no attribute 'D'
 from stub import C
 
 c = C()
@@ -1828,6 +1829,7 @@ reveal_type(it)  # N: Revealed type is 'Any'
 [file stub.pyi]
 from typing import Iterable
 from substub import C as C
+from substub import C as D
 
 def fun(x: Iterable[str]) -> Iterable[int]: pass
 
@@ -2810,3 +2812,16 @@ CustomDict = TypedDict(
 )
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+
+[case testNoReExportFromMissingStubs]
+from stub import a  # E: Module 'stub' has no attribute 'a'
+from stub import b
+from stub import c  # E: Module 'stub' has no attribute 'c'
+from stub import d  # E: Module 'stub' has no attribute 'd'
+
+[file stub.pyi]
+from mystery import a, b as b, c as d
+
+[out]
+tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named 'mystery'
+tmp/stub.pyi:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports

@@ -32,6 +32,7 @@
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
 typedef size_t CPyTagged;
+typedef size_t CPyPtr;
 
 #define CPY_INT_BITS (CHAR_BIT * sizeof(CPyTagged))
 

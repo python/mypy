@@ -223,7 +223,9 @@ def _build(sources: List[BuildSource],
                     options.show_error_codes,
                     options.pretty,
                     lambda path: read_py_file(path, cached_read, options.python_version),
-                    options.show_absolute_path)
+                    options.show_absolute_path,
+                    options.enabled_error_codes,
+                    options.disabled_error_codes)
     plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
 
     # Add catch-all .gitignore to cache dir if we created it
@@ -762,13 +764,14 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module_simple(id, self) is not None
 
-    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool,
+                   options: Options) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
-        tree = parse(source, path, id, self.errors, options=self.options)
+        tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
@@ -1955,45 +1958,6 @@ class State:
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
-    def fix_suppressed_dependencies(self, graph: Graph) -> None:
-        """Corrects whether dependencies are considered stale in silent mode.
-
-        This method is a hack to correct imports in silent mode + incremental mode.
-        In particular, the problem is that when running mypy with a cold cache, the
-        `parse_file(...)` function is called *at the start* of the `load_graph(...)` function.
-        Note that load_graph will mark some dependencies as suppressed if they weren't specified
-        on the command line in silent mode.
-
-        However, if the interface for a module is changed, parse_file will be called within
-        `process_stale_scc` -- *after* load_graph is finished, wiping out the changes load_graph
-        previously made.
-
-        This method is meant to be run after parse_file finishes in process_stale_scc and will
-        recompute what modules should be considered suppressed in silent mode.
-        """
-        # TODO: See if it's possible to move this check directly into parse_file in some way.
-        # TODO: Find a way to write a test case for this fix.
-        # TODO: I suspect that splitting compute_dependencies() out from parse_file
-        # obviates the need for this but lacking a test case for the problem this fixed...
-        silent_mode = (self.options.ignore_missing_imports or
-                       self.options.follow_imports == 'skip')
-        if not silent_mode:
-            return
-
-        new_suppressed = []
-        new_dependencies = []
-        entry_points = self.manager.source_set.source_modules
-        for dep in self.dependencies + self.suppressed:
-            ignored = dep in self.suppressed_set and dep not in entry_points
-            if ignored or dep not in graph:
-                new_suppressed.append(dep)
-            else:
-                new_dependencies.append(dep)
-        self.dependencies = new_dependencies
-        self.dependencies_set = set(new_dependencies)
-        self.suppressed = new_suppressed
-        self.suppressed_set = set(new_suppressed)
-
     # Methods for processing modules from source code.
 
     def parse_file(self) -> None:
@@ -2027,20 +1991,21 @@ class State:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(
                             self.path, os.strerror(ioerr.errno))],
-                        module_with_blocker=self.id)
+                        module_with_blocker=self.id) from ioerr
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     if self.path.endswith('.pyd'):
                         err = "mypy: stubgen does not support .pyd files: '{}'".format(self.path)
                     else:
                         err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
-                    raise CompileError([err], module_with_blocker=self.id)
+                    raise CompileError([err], module_with_blocker=self.id) from decodeerr
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors)
+                                           self.ignore_all or self.options.ignore_errors,
+                                           self.options)
 
         modules[self.id] = self.tree
 
@@ -2560,14 +2525,29 @@ def log_configuration(manager: BuildManager) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
     manager.log()
-    configuration_vars = (
+    configuration_vars = [
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
-        ("Configured Executable", manager.options.python_executable),
+    ]
+
+    src_pth_str = "Source Path"
+    src_pths = list(manager.source_set.source_paths.copy())
+    src_pths.sort()
+
+    if len(src_pths) > 1:
+        src_pth_str += "s"
+        configuration_vars.append((src_pth_str, " ".join(src_pths)))
+    elif len(src_pths) == 1:
+        configuration_vars.append((src_pth_str, src_pths.pop()))
+    else:
+        configuration_vars.append((src_pth_str, "None"))
+
+    configuration_vars.extend([
+        ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
-    )
+    ])
 
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
@@ -2775,6 +2755,11 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         graph[st.id] = st
         new.append(st)
         entry_points.add(bs.module)
+
+    # Note: Running this each time could be slow in the daemon. If it's a problem, we
+    # can do more work to maintain this incrementally.
+    seen_files = {st.path: st for st in graph.values() if st.path}
+
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
     for st in new:
@@ -2820,6 +2805,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     if dep in st.dependencies_set:
                         st.suppress_dependency(dep)
                 else:
+                    if newst.path in seen_files:
+                        manager.errors.report(
+                            -1, 0,
+                            "Source file found twice under different module names: '{}' and '{}'".
+                            format(seen_files[newst.path].id, newst.id),
+                            blocker=True)
+                        manager.errors.raise_error()
+
+                    if newst.path:
+                        seen_files[newst.path] = newst
+
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
@@ -3040,7 +3036,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
-        graph[id].fix_suppressed_dependencies(graph)
     if 'typing' in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of

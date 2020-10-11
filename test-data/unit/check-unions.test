@@ -303,9 +303,9 @@ from typing import Union
 class A: pass
 def f(x: Union[int, str, A]):
     x + object() # E: Unsupported left operand type for + ("A") \
+                 # N: Left operand is of type "Union[int, str, A]" \
                  # E: Unsupported operand types for + ("int" and "object") \
-                 # E: Unsupported operand types for + ("str" and "object") \
-                 # N: Left operand is of type "Union[int, str, A]"
+                 # E: Unsupported operand types for + ("str" and "object")
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownNamedTupleUnion]
@@ -695,9 +695,23 @@ from typing import Union
 bad: Union[int, str]
 
 x, y = bad # E: 'builtins.int' object is not iterable \
-           # E: 'builtins.str' object is not iterable
+           # E: Unpacking a string is disallowed
 reveal_type(x) # N: Revealed type is 'Any'
 reveal_type(y) # N: Revealed type is 'Any'
+[out]
+
+[case testStringDisallowedUnpacking]
+from typing import Dict
+
+d: Dict[str, str]
+
+for a, b in d: # E: Unpacking a string is disallowed
+    pass
+
+s = "foo"
+a, b = s # E: Unpacking a string is disallowed
+
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testUnionAlwaysTooMany]
@@ -960,7 +974,7 @@ x: Union[ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[int],
 
 def takes_int(arg: int) -> None: pass
 
-takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type <union: 6 items>; expected "int"
+takes_int(x)  # E: Argument 1 to "takes_int" has incompatible type "Union[ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[int], ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[object], ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[float], ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[str], ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[Any], ExtremelyLongTypeNameWhichIsGenericSoWeCanUseItMultipleTimes[bytes]]"; expected "int"
 
 [case testRecursiveForwardReferenceInUnion]
 
@@ -1034,3 +1048,14 @@ def foo(a: T2, b: T2) -> T2:
 def bar(a: T4, b: T4) -> T4:  # test multi-level alias
     return a + b
 [builtins fixtures/ops.pyi]
+
+[case testJoinUnionWithUnionAndAny]
+# flags: --strict-optional
+from typing import TypeVar, Union, Any
+T = TypeVar("T")
+def f(x: T, y: T) -> T:
+    return x
+x: Union[None, Any]
+y: Union[int, None]
+reveal_type(f(x, y)) # N: Revealed type is 'Union[None, Any, builtins.int]'
+reveal_type(f(y, x)) # N: Revealed type is 'Union[builtins.int, None, Any]'

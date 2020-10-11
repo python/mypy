@@ -1,73 +1,59 @@
 """Miscellaneous primitive ops."""
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
 from mypyc.ir.rtypes import (
-    RTuple, none_rprimitive, bool_rprimitive, object_rprimitive, str_rprimitive,
-    int_rprimitive, dict_rprimitive
+    RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
+    int_rprimitive, dict_rprimitive, c_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    name_ref_op, simple_emit, unary_op, func_op, custom_op, call_emit, name_emit,
-    call_negative_magic_emit
+    simple_emit, func_op, custom_op,
+    c_function_op, c_custom_op, load_address_op
 )
 
 
-none_object_op = custom_op(result_type=object_rprimitive,
-                           arg_types=[],
-                           error_kind=ERR_NEVER,
-                           format_str='{dest} = builtins.None :: object',
-                           emit=name_emit('Py_None'),
-                           is_borrowed=True)
+# Get the boxed Python 'None' object
+none_object_op = load_address_op(
+    name='Py_None',
+    type=object_rprimitive,
+    src='_Py_NoneStruct')
 
-none_op = name_ref_op('builtins.None',
-                      result_type=none_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = 1; /* None */'))
+# Get the boxed object '...'
+ellipsis_op = load_address_op(
+    name='...',
+    type=object_rprimitive,
+    src='_Py_EllipsisObject')
 
-true_op = name_ref_op('builtins.True',
-                      result_type=bool_rprimitive,
-                      error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = 1;'))
+# Get the boxed NotImplemented object
+not_implemented_op = load_address_op(
+    name='builtins.NotImplemented',
+    type=object_rprimitive,
+    src='_Py_NotImplementedStruct')
 
-false_op = name_ref_op('builtins.False',
-                       result_type=bool_rprimitive,
-                       error_kind=ERR_NEVER,
-                       emit=simple_emit('{dest} = 0;'))
+# id(obj)
+c_function_op(
+    name='builtins.id',
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyTagged_Id',
+    error_kind=ERR_NEVER)
 
-ellipsis_op = custom_op(name='...',
-                        arg_types=[],
-                        result_type=object_rprimitive,
-                        error_kind=ERR_NEVER,
-                        emit=name_emit('Py_Ellipsis'),
-                        is_borrowed=True)
+# Return the result of obj.__await()__ or obj.__iter__() (if no __await__ exists)
+coro_op = c_custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPy_GetCoro',
+    error_kind=ERR_MAGIC)
 
-not_implemented_op = name_ref_op(name='builtins.NotImplemented',
-                                 result_type=object_rprimitive,
-                                 error_kind=ERR_NEVER,
-                                 emit=name_emit('Py_NotImplemented'),
-                                 is_borrowed=True)
-
-func_op(name='builtins.id',
-        arg_types=[object_rprimitive],
-        result_type=int_rprimitive,
-        error_kind=ERR_NEVER,
-        emit=call_emit('CPyTagged_Id'))
-
-coro_op = custom_op(name='get_coroutine_obj',
-                    arg_types=[object_rprimitive],
-                    result_type=object_rprimitive,
-                    error_kind=ERR_MAGIC,
-                    emit=call_emit('CPy_GetCoro'))
-
-# Do a send, or a next if second arg is None.
+# Do obj.send(value), or a next(obj) if second arg is None.
 # (This behavior is to match the PEP 380 spec for yield from.)
 # Like next_raw_op, don't swallow StopIteration,
 # but also don't propagate an error.
 # Can return NULL: see next_op.
-send_op = custom_op(name='send',
-                    arg_types=[object_rprimitive, object_rprimitive],
-                    result_type=object_rprimitive,
-                    error_kind=ERR_NEVER,
-                    emit=call_emit('CPyIter_Send'))
+send_op = c_custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyIter_Send',
+    error_kind=ERR_NEVER)
 
 # This is sort of unfortunate but oh well: yield_from_except performs most of the
 # error handling logic in `yield from` operations. It returns a bool and a value.
@@ -77,6 +63,8 @@ send_op = custom_op(name='send',
 # propagated.
 yield_from_rtuple = RTuple([bool_rprimitive, object_rprimitive])
 
+# Op used for "yield from" error handling.
+# See comment in CPy_YieldFromErrorHandle for more information.
 yield_from_except_op = custom_op(
     name='yield_from_except',
     arg_types=[object_rprimitive],
@@ -84,29 +72,24 @@ yield_from_except_op = custom_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest}.f0 = CPy_YieldFromErrorHandle({args[0]}, &{dest}.f1);'))
 
-method_new_op = custom_op(name='method_new',
-                          arg_types=[object_rprimitive, object_rprimitive],
-                          result_type=object_rprimitive,
-                          error_kind=ERR_MAGIC,
-                          emit=call_emit('PyMethod_New'))
+# Create method object from a callable object and self.
+method_new_op = c_custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='PyMethod_New',
+    error_kind=ERR_MAGIC)
 
 # Check if the current exception is a StopIteration and return its value if so.
 # Treats "no exception" as StopIteration with a None value.
 # If it is a different exception, re-reraise it.
-check_stop_op = custom_op(name='check_stop_iteration',
-                          arg_types=[],
-                          result_type=object_rprimitive,
-                          error_kind=ERR_MAGIC,
-                          emit=call_emit('CPy_FetchStopIterationValue'))
+check_stop_op = c_custom_op(
+    arg_types=[],
+    return_type=object_rprimitive,
+    c_function_name='CPy_FetchStopIterationValue',
+    error_kind=ERR_MAGIC)
 
-unary_op(op='not',
-         arg_type=bool_rprimitive,
-         result_type=bool_rprimitive,
-         error_kind=ERR_NEVER,
-         format_str='{dest} = !{args[0]}',
-         emit=simple_emit('{dest} = !{args[0]};'),
-         priority=1)
-
+# Determine the most derived metaclass and check for metaclass conflicts.
+# Arguments are (metaclass, bases).
 py_calc_meta_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
@@ -117,30 +100,33 @@ py_calc_meta_op = custom_op(
     is_borrowed=True
 )
 
-import_op = custom_op(
-    name='import',
+# Import a module
+import_op = c_custom_op(
     arg_types=[str_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PyImport_Import'))
+    return_type=object_rprimitive,
+    c_function_name='PyImport_Import',
+    error_kind=ERR_MAGIC)
 
-
-get_module_dict_op = custom_op(
-    name='get_module_dict',
+# Get the sys.modules dictionary
+get_module_dict_op = c_custom_op(
     arg_types=[],
-    result_type=dict_rprimitive,
+    return_type=dict_rprimitive,
+    c_function_name='PyImport_GetModuleDict',
     error_kind=ERR_NEVER,
-    emit=call_emit('PyImport_GetModuleDict'),
     is_borrowed=True)
 
-func_op('builtins.isinstance',
-        arg_types=[object_rprimitive, object_rprimitive],
-        result_type=bool_rprimitive,
-        error_kind=ERR_MAGIC,
-        emit=call_negative_magic_emit('PyObject_IsInstance'))
+# isinstance(obj, cls)
+c_function_op(
+    name='builtins.isinstance',
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_IsInstance',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive
+)
 
-# Faster isinstance() that only works with native classes and doesn't perform type checking
-# of the type argument.
+# Faster isinstance(obj, cls) that only works with native classes and doesn't perform
+# type checking of the type argument.
 fast_isinstance_op = func_op(
     'builtins.isinstance',
     arg_types=[object_rprimitive, object_rprimitive],
@@ -149,54 +135,49 @@ fast_isinstance_op = func_op(
     emit=simple_emit('{dest} = PyObject_TypeCheck({args[0]}, (PyTypeObject *){args[1]});'),
     priority=0)
 
-type_is_op = custom_op(
-    name='type_is',
-    arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=simple_emit('{dest} = Py_TYPE({args[0]}) == (PyTypeObject *){args[1]};'))
-
-bool_op = func_op(
-    'builtins.bool',
+# bool(obj) with unboxed result
+bool_op = c_function_op(
+    name='builtins.bool',
     arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_negative_magic_emit('PyObject_IsTrue'))
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_IsTrue',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive)
 
-new_slice_op = func_op(
-    'builtins.slice',
+# slice(start, stop, step)
+new_slice_op = c_function_op(
+    name='builtins.slice',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySlice_New'))
+    c_function_name='PySlice_New',
+    return_type=object_rprimitive,
+    error_kind=ERR_MAGIC)
 
-type_op = func_op(
-    'builtins.type',
+# type(obj)
+type_op = c_function_op(
+    name='builtins.type',
     arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=call_emit('PyObject_Type'))
+    c_function_name='PyObject_Type',
+    return_type=object_rprimitive,
+    error_kind=ERR_NEVER)
 
-type_object_op = name_ref_op(
-    'builtins.type',
-    result_type=object_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=name_emit('(PyObject*) &PyType_Type'),
-    is_borrowed=True)
+# Get 'builtins.type' (base class of all classes)
+type_object_op = load_address_op(
+    name='builtins.type',
+    type=object_rprimitive,
+    src='PyType_Type')
 
-pytype_from_template_op = custom_op(
+# Create a heap type based on a template non-heap type.
+# See CPyType_FromTemplate for more docs.
+pytype_from_template_op = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, str_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    format_str='{dest} = pytype_from_template({comma_args})',
-    emit=simple_emit(
-        '{dest} = CPyType_FromTemplate((PyTypeObject *){args[0]}, {args[1]}, {args[2]});'))
+    return_type=object_rprimitive,
+    c_function_name='CPyType_FromTemplate',
+    error_kind=ERR_MAGIC)
 
 # Create a dataclass from an extension class. See
 # CPyDataclass_SleightOfHand for more docs.
-dataclass_sleight_of_hand = custom_op(
+dataclass_sleight_of_hand = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive, dict_rprimitive, dict_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str='{dest} = dataclass_sleight_of_hand({comma_args})',
-    emit=call_emit('CPyDataclass_SleightOfHand'))
+    return_type=bool_rprimitive,
+    c_function_name='CPyDataclass_SleightOfHand',
+    error_kind=ERR_FALSE)

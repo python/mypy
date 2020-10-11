@@ -1,114 +1,95 @@
-"""Primitive set ops."""
+"""Primitive set (and frozenset) ops."""
+
 from mypyc.primitives.registry import (
-    func_op, method_op, binary_op,
-    simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
+    c_function_op, c_method_op, c_binary_op
 )
-from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEVER, EmitterInterface
-from mypyc.ir.rtypes import object_rprimitive, bool_rprimitive, set_rprimitive, int_rprimitive
-from typing import List
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
+from mypyc.ir.rtypes import (
+    object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive, pointer_rprimitive
+)
 
 
-new_set_op = func_op(
+# Construct an empty set.
+new_set_op = c_function_op(
     name='builtins.set',
     arg_types=[],
-    result_type=set_rprimitive,
+    return_type=set_rprimitive,
+    c_function_name='PySet_New',
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PySet_New(NULL);')
-)
+    extra_int_constants=[(0, pointer_rprimitive)])
 
-func_op(
+# set(obj)
+c_function_op(
     name='builtins.set',
     arg_types=[object_rprimitive],
-    result_type=set_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySet_New')
-)
+    return_type=set_rprimitive,
+    c_function_name='PySet_New',
+    error_kind=ERR_MAGIC)
 
-func_op(
+# frozenset(obj)
+c_function_op(
     name='builtins.frozenset',
     arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PyFrozenSet_New')
-)
+    return_type=object_rprimitive,
+    c_function_name='PyFrozenSet_New',
+    error_kind=ERR_MAGIC)
 
-
-def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_line('%s = PySet_GET_SIZE(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
-
-
-func_op(
-    name='builtins.len',
-    arg_types=[set_rprimitive],
-    result_type=int_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=emit_len,
-)
-
-
-binary_op(
-    op='in',
+# item in set
+c_binary_op(
+    name='in',
     arg_types=[object_rprimitive, set_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_MAGIC,
-    format_str='{dest} = {args[0]} in {args[1]} :: set',
-    emit=negative_int_emit('{dest} = PySet_Contains({args[1]}, {args[0]});')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PySet_Contains',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0])
 
-
-method_op(
+# set.remove(obj)
+c_method_op(
     name='remove',
     arg_types=[set_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_emit('CPySet_Remove')
-)
+    return_type=bool_rprimitive,
+    c_function_name='CPySet_Remove',
+    error_kind=ERR_FALSE)
 
-
-method_op(
+# set.discard(obj)
+c_method_op(
     name='discard',
     arg_types=[set_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PySet_Discard')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PySet_Discard',
+    error_kind=ERR_NEG_INT)
 
-
-set_add_op = method_op(
+# set.add(obj)
+set_add_op = c_method_op(
     name='add',
     arg_types=[set_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PySet_Add')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PySet_Add',
+    error_kind=ERR_NEG_INT)
 
-
+# set.update(obj)
+#
 # This is not a public API but looks like it should be fine.
-set_update_op = method_op(
+set_update_op = c_method_op(
     name='update',
     arg_types=[set_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('_PySet_Update')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='_PySet_Update',
+    error_kind=ERR_NEG_INT)
 
-
-method_op(
+# set.clear()
+c_method_op(
     name='clear',
     arg_types=[set_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PySet_Clear')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PySet_Clear',
+    error_kind=ERR_NEG_INT)
 
-
-method_op(
+# set.pop()
+c_method_op(
     name='pop',
     arg_types=[set_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySet_Pop')
-)
+    return_type=object_rprimitive,
+    c_function_name='PySet_Pop',
+    error_kind=ERR_MAGIC)

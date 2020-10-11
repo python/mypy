@@ -8,7 +8,8 @@ from mypyc.ir.ops import (
     Value, ControlOp,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
-    LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError,
+    LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError, CallC, LoadGlobal,
+    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
 
 
@@ -30,7 +31,7 @@ class CFG:
 
     def __str__(self) -> str:
         lines = []
-        lines.append('exits: %s' % sorted(self.exits))
+        lines.append('exits: %s' % sorted(self.exits, key=lambda e: e.label))
         lines.append('succ: %s' % self.succ)
         lines.append('pred: %s' % self.pred)
         return '\n'.join(lines)
@@ -150,6 +151,10 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_assign(self, op: Assign) -> GenAndKill:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        raise NotImplementedError
+
     def visit_call(self, op: Call) -> GenAndKill:
         return self.visit_register_op(op)
 
@@ -195,6 +200,30 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_raise_standard_error(self, op: RaiseStandardError) -> GenAndKill:
         return self.visit_register_op(op)
 
+    def visit_call_c(self, op: CallC) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_truncate(self, op: Truncate) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_binary_int_op(self, op: BinaryIntOp) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_mem(self, op: LoadMem) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_address(self, op: LoadAddress) -> GenAndKill:
+        return self.visit_register_op(op)
+
 
 class DefinedVisitor(BaseAnalysisVisitor):
     """Visitor for finding defined registers.
@@ -222,6 +251,9 @@ class DefinedVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         else:
             return {op.dest}, set()
+
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        return set(), set()
 
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],
@@ -283,6 +315,9 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         return set(), set()
 
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        return set(), set()
+
 
 def analyze_borrowed_arguments(
         blocks: List[BasicBlock],
@@ -316,6 +351,9 @@ class UndefinedVisitor(BaseAnalysisVisitor):
 
     def visit_assign(self, op: Assign) -> GenAndKill:
         return set(), {op.dest}
+
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        return set(), set()
 
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
@@ -355,6 +393,9 @@ class LivenessVisitor(BaseAnalysisVisitor):
 
     def visit_assign(self, op: Assign) -> GenAndKill:
         return set(op.sources()), {op.dest}
+
+    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        return set(op.sources()), set()
 
 
 def analyze_live_regs(blocks: List[BasicBlock],

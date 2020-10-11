@@ -120,6 +120,7 @@ if USE_MYPYC:
     mypyc_targets = [x for x in mypyc_targets
                      if not x.startswith((os.path.join('mypy', 'test') + os.sep,
                                           os.path.join('mypyc', 'test') + os.sep,
+                                          os.path.join('mypyc', 'doc') + os.sep,
                                           os.path.join('mypyc', 'test-data') + os.sep,
                                           ))]
     # ... and add back in the one test module we need
@@ -146,7 +147,7 @@ if USE_MYPYC:
     ext_modules = mypycify(
         mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
-        # Use multi-file compliation mode on windows because without it
+        # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
     )
@@ -179,7 +180,8 @@ setup(name='mypy',
       ext_modules=ext_modules,
       packages=[
           'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
-          'mypyc', 'mypyc.test',
+          'mypyc', 'mypyc.test', 'mypyc.codegen', 'mypyc.ir', 'mypyc.irbuild',
+          'mypyc.primitives', 'mypyc.transform'
       ],
       package_data={'mypy': package_data},
       scripts=['scripts/mypyc'],
@@ -199,4 +201,7 @@ setup(name='mypy',
       extras_require={'dmypy': 'psutil >= 4.0'},
       python_requires=">=3.5",
       include_package_data=True,
+      project_urls={
+          'News': 'http://mypy-lang.org/news.html',
+      },
       )

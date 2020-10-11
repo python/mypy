@@ -12,8 +12,8 @@ other modules refer to them.
 """
 
 from abc import abstractmethod
-from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set
+from mypy.ordered_dict import OrderedDict
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
 from mypy_extensions import trait
 
 T = TypeVar('T')
@@ -21,7 +21,7 @@ T = TypeVar('T')
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
     RawExpressionType, Instance, NoneType, TypeType,
-    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeDef,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
     PlaceholderType, TypeAliasType, get_proper_type
 )
@@ -134,7 +134,6 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
 
-@trait
 class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
@@ -219,7 +218,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return [t.accept(self) for t in types]
 
     def translate_variables(self,
-                            variables: List[TypeVarDef]) -> List[TypeVarDef]:
+                            variables: Sequence[TypeVarLikeDef]) -> Sequence[TypeVarLikeDef]:
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
@@ -242,7 +241,6 @@ class TypeTranslator(TypeVisitor[Type]):
         pass
 
 
-@trait
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 

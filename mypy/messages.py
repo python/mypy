@@ -9,7 +9,7 @@ Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
 
-from collections import OrderedDict
+from mypy.ordered_dict import OrderedDict
 import re
 import difflib
 from textwrap import dedent
@@ -21,7 +21,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType, TypeVarDef,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
     get_proper_types
 )
@@ -31,7 +31,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, SymbolTable
+    CallExpr, SymbolTable, TempNode
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -144,6 +144,14 @@ class MessageBuilder:
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
+
+    def most_recent_context(self) -> Context:
+        """Return a dummy context matching the most recent generated error in current file."""
+        line, column = self.errors.most_recent_error_location()
+        node = TempNode(NoneType())
+        node.line = line
+        node.column = column
+        return node
 
     def report(self,
                msg: str,
@@ -265,7 +273,8 @@ class MessageBuilder:
                     format_type(original_type)), context, code=codes.INDEX)
         elif member == '__setitem__':
             # Indexed set.
-            self.fail('Unsupported target for indexed assignment', context, code=codes.INDEX)
+            self.fail('Unsupported target for indexed assignment ({})'.format(
+                format_type(original_type)), context, code=codes.INDEX)
         elif member == '__call__':
             if isinstance(original_type, Instance) and \
                     (original_type.type.fullname == 'builtins.function'):
@@ -732,6 +741,9 @@ class MessageBuilder:
             self.fail('Too many values to unpack ({} expected, {} provided)'.format(
                 expected, provided), context)
 
+    def unpacking_strings_disallowed(self, context: Context) -> None:
+        self.fail("Unpacking a string is disallowed", context)
+
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail('\'{}\' object is not iterable'.format(type), context)
 
@@ -768,6 +780,14 @@ class MessageBuilder:
                   .format(arg_num, name, target, arg_type_in_supertype_f),
                   context,
                   code=codes.OVERRIDE)
+        self.note(
+            'This violates the Liskov substitution principle',
+            context,
+            code=codes.OVERRIDE)
+        self.note(
+            'See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides',
+            context,
+            code=codes.OVERRIDE)
 
         if name == "__eq__" and type_name:
             multiline_msg = self.comparison_method_example_msg(class_name=type_name)
@@ -813,14 +833,6 @@ class MessageBuilder:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
 
-    def alias_invalid_in_runtime_context(self, item: ProperType, ctx: Context) -> None:
-        kind = (' to Callable' if isinstance(item, CallableType) else
-                ' to Tuple' if isinstance(item, TupleType) else
-                ' to Union' if isinstance(item, UnionType) else
-                ' to Literal' if isinstance(item, LiteralType) else
-                '')
-        self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
-
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
         callee_name = callable_name(callee_type)
@@ -842,7 +854,7 @@ class MessageBuilder:
                 suffix = ', not {}'.format(format_type(typ))
             self.fail(
                 'Argument after ** must be a mapping{}'.format(suffix),
-                context)
+                context, code=codes.ARG_TYPE)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
         self.fail('"{}" undefined in superclass'.format(member), context)
@@ -855,7 +867,8 @@ class MessageBuilder:
             type_str = 'a non-type instance'
         else:
             type_str = format_type(actual)
-        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context)
+        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context,
+                  code=codes.ARG_TYPE)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not enough arguments for format string', context,
@@ -1054,7 +1067,7 @@ class MessageBuilder:
             self.note(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
-        self.fail('Unsupported type Type[{}]'.format(format_type(item)), context)
+        self.fail('Cannot instantiate type "Type[{}]"'.format(format_type_bare(item)), context)
 
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.fail('Redundant cast to {}'.format(format_type(typ)), context,
@@ -1176,7 +1189,8 @@ class MessageBuilder:
             expected: Type,
             context: Context) -> None:
         msg = 'Argument 2 to "setdefault" of "TypedDict" has incompatible type {}; expected {}'
-        self.fail(msg.format(format_type(default), format_type(expected)), context)
+        self.fail(msg.format(format_type(default), format_type(expected)), context,
+                  code=codes.ARG_TYPE)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
@@ -1266,7 +1280,7 @@ class MessageBuilder:
         """
         self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
 
-    def redundant_right_operand(self, op_name: str, context: Context) -> None:
+    def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the right operand of a boolean expression is redundant:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
@@ -1285,7 +1299,7 @@ class MessageBuilder:
 
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
-                  context, code=codes.UNREACHABLE)
+                  context, code=codes.REDUNDANT_EXPR)
 
     def impossible_intersection(self,
                                 formatted_base_class_list: str,
@@ -1583,7 +1597,7 @@ def format_type_inner(typ: Type,
             base_str = itype.type.fullname
         else:
             base_str = itype.type.name
-        if itype.args == []:
+        if not itype.args:
             # No type arguments, just return the type name
             return base_str
         elif itype.type.fullname == 'builtins.tuple':
@@ -1612,10 +1626,7 @@ def format_type_inner(typ: Type,
         for t in typ.items:
             items.append(format(t))
         s = 'Tuple[{}]'.format(', '.join(items))
-        if len(s) < 400:
-            return s
-        else:
-            return '<tuple: {} items>'.format(len(items))
+        return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
         if not typ.is_anonymous():
@@ -1647,10 +1658,7 @@ def format_type_inner(typ: Type,
             for t in typ.items:
                 items.append(format(t))
             s = 'Union[{}]'.format(', '.join(items))
-            if len(s) < 400:
-                return s
-            else:
-                return '<union: {} items>'.format(len(items))
+            return s
     elif isinstance(typ, NoneType):
         return 'None'
     elif isinstance(typ, AnyType):
@@ -1854,16 +1862,20 @@ def pretty_callable(tp: CallableType) -> str:
     if tp.variables:
         tvars = []
         for tvar in tp.variables:
-            upper_bound = get_proper_type(tvar.upper_bound)
-            if (isinstance(upper_bound, Instance) and
-                    upper_bound.type.fullname != 'builtins.object'):
-                tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
-            elif tvar.values:
-                tvars.append('{} in ({})'
-                             .format(tvar.name, ', '.join([format_type_bare(tp)
-                                                           for tp in tvar.values])))
+            if isinstance(tvar, TypeVarDef):
+                upper_bound = get_proper_type(tvar.upper_bound)
+                if (isinstance(upper_bound, Instance) and
+                        upper_bound.type.fullname != 'builtins.object'):
+                    tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
+                elif tvar.values:
+                    tvars.append('{} in ({})'
+                                 .format(tvar.name, ', '.join([format_type_bare(tp)
+                                                               for tp in tvar.values])))
+                else:
+                    tvars.append(tvar.name)
             else:
-                tvars.append(tvar.name)
+                # For other TypeVarLikeDefs, just use the repr
+                tvars.append(repr(tvar))
         s = '[{}] {}'.format(', '.join(tvars), s)
     return 'def {}'.format(s)
 

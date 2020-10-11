@@ -16,7 +16,7 @@ from mypy.nodes import (
     FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
-    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr
+    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, ParamSpecExpr
 )
 
 from mypyc.ir.ops import Value
@@ -307,6 +307,9 @@ class IRBuilderVisitor(IRVisitor):
         assert False, "can't compile analysis-only expressions"
 
     def visit_type_var_expr(self, o: TypeVarExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_paramspec_expr(self, o: ParamSpecExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
     def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:
