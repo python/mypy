@@ -165,12 +165,12 @@ class NamedTupleAnalyzer:
             is_typed = True
         else:
             return None, None
-        typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         result = self.parse_namedtuple_args(call, fullname)
         if result:
             items, types, defaults, ok = result
         else:
             # This is a valid named tuple but some types are not ready.
+            typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
             return typename, None
         if not ok:
             # Error. Construct dummy return value.
@@ -182,6 +182,7 @@ class NamedTupleAnalyzer:
             self.store_namedtuple_info(info, name, call, is_typed)
             return name, info
 
+        typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         # We use the variable name as the class name if it exists. If
         # it doesn't, we use the name passed as an argument. We prefer
         # the variable name because it should be unique inside a
