@@ -7,6 +7,7 @@ recursive-include mypy/typeshed *.py *.pyi
 recursive-include mypy/xml *.xsd *.xslt *.css
 recursive-include mypyc/lib-rt *.c *.h *.tmpl *.py *.cc
 recursive-include mypyc/ir *.py
+recursive-include mypyc/analysis *.py
 recursive-include mypyc/codegen *.py
 recursive-include mypyc/irbuild *.py
 recursive-include mypyc/primitives *.py
