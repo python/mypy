@@ -93,7 +93,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType)
 from mypy.typeops import function_type
-from mypy.type_visitor import TypeQueryBool, TypeQuery
+from mypy.type_visitor import TypeQueryBool
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,

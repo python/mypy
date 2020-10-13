@@ -14,8 +14,8 @@ from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
-    CallableArgument, TypeQuery, TypeQueryBool, union_items, TypeOfAny, LiteralType, RawExpressionType,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
+    TypeQuery, TypeQueryBool, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef, ParamSpecDef
 )
 

@@ -456,16 +456,15 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
         Skip type aliases already visited types to avoid infinite recursion.
         Return
         """
-        res = []  # type: List[bool]
         for t in types:
             if isinstance(t, TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.
                 if t in self.seen_aliases:
                     continue
                 self.seen_aliases.add(t)
-            accept = t.accept(self)
-            if accept and self.strategy == self.STRATEGY_ANY:
+            res = t.accept(self)
+            if res and self.strategy == self.STRATEGY_ANY:
                 return True
-            elif not accept and self.strategy == self.STRATEGY_ALL:
+            elif not res and self.strategy == self.STRATEGY_ALL:
                 return False
         return self.strategy == self.STRATEGY_ALL
