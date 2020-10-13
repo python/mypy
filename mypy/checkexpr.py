@@ -4073,7 +4073,7 @@ def has_any_type(t: Type) -> bool:
 
 class HasAnyType(types.TypeQueryBool):
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(types.TypeQueryBool.STRATEGY_ANY)
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
@@ -4136,7 +4136,7 @@ class ArgInferSecondPassQuery(types.TypeQueryBool):
     a type variable.
     """
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(types.TypeQueryBool.STRATEGY_ANY)
 
     def visit_callable_type(self, t: CallableType) -> bool:
         return self.query_types(t.arg_types) or t.accept(HasTypeVarQuery())
@@ -4145,7 +4145,7 @@ class ArgInferSecondPassQuery(types.TypeQueryBool):
 class HasTypeVarQuery(types.TypeQueryBool):
     """Visitor for querying whether a type has a type variable component."""
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(types.TypeQueryBool.STRATEGY_ANY)
 
     def visit_type_var(self, t: TypeVarType) -> bool:
         return True
@@ -4158,7 +4158,7 @@ def has_erased_component(t: Optional[Type]) -> bool:
 class HasErasedComponentsQuery(types.TypeQueryBool):
     """Visitor for querying whether a type has an erased component."""
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(types.TypeQueryBool.STRATEGY_ANY)
 
     def visit_erased_type(self, t: ErasedType) -> bool:
         return True
@@ -4171,7 +4171,7 @@ def has_uninhabited_component(t: Optional[Type]) -> bool:
 class HasUninhabitedComponentsQuery(types.TypeQueryBool):
     """Visitor for querying whether a type has an UninhabitedType component."""
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(types.TypeQueryBool.STRATEGY_ANY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return True

@@ -425,7 +425,7 @@ def is_imprecise(t: Type) -> bool:
 
 class HasAnyQuery(TypeQueryBool):
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(TypeQueryBool.STRATEGY_ANY)
 
     def visit_any(self, t: AnyType) -> bool:
         return not is_special_form_any(t)

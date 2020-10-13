@@ -4973,7 +4973,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
 class HasPlaceholders(TypeQueryBool):
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(TypeQueryBool.STRATEGY_ANY)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
         return True

@@ -1192,7 +1192,7 @@ def has_explicit_any(t: Type) -> bool:
 
 class HasExplicitAny(TypeQueryBool):
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(TypeQueryBool.STRATEGY_ANY)
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any == TypeOfAny.explicit
@@ -1213,7 +1213,7 @@ def has_any_from_unimported_type(t: Type) -> bool:
 
 class HasAnyFromUnimportedType(TypeQueryBool):
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(TypeQueryBool.STRATEGY_ANY)
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any == TypeOfAny.from_unimported_type

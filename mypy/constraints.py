@@ -257,7 +257,7 @@ def is_complete_type(typ: Type) -> bool:
 
 class CompleteTypeVisitor(TypeQueryBool):
     def __init__(self) -> None:
-        super().__init__(1)
+        super().__init__(TypeQueryBool.STRATEGY_ALL)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return False

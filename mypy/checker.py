@@ -5445,7 +5445,7 @@ class NothingSeeker(TypeQueryBool):
     """Find any <nothing> types resulting from failed (ambiguous) type inference."""
 
     def __init__(self) -> None:
-        super().__init__(0)
+        super().__init__(TypeQueryBool.STRATEGY_ANY)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return t.ambiguous
