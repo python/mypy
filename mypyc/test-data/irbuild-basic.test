@@ -3624,3 +3624,45 @@ L0:
     r0 = PyObject_IsTrue(x)
     r1 = truncate r0: int32 to builtins.bool
     return r1
+
+[case testMultipleAssignment]
+from typing import Tuple
+
+def f(x: int, y: int) -> Tuple[int, int]:
+    x, y = y, x
+    return (x, y)
+
+def f2(x: int, y: str, z: float) -> Tuple[float, str, int]:
+    a, b, c = x, y, z
+    return (c, b, a)
+[out]
+def f(x, y):
+    x, y, r0, r1 :: int
+    r2 :: tuple[int, int]
+L0:
+    r0 = y
+    r1 = x
+    x = r0
+    y = r1
+    r2 = (x, y)
+    return r2
+def f2(x, y, z):
+    x :: int
+    y :: str
+    z :: float
+    r0 :: int
+    r1 :: str
+    r2 :: float
+    a :: int
+    b :: str
+    c :: float
+    r3 :: tuple[float, str, int]
+L0:
+    r0 = x
+    r1 = y
+    r2 = z
+    a = r0
+    b = r1
+    c = r2
+    r3 = (c, b, a)
+    return r3
