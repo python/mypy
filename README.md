@@ -196,6 +196,9 @@ Either way you should now have a subdirectory `typeshed` inside your mypy repo,
 your folders tree should be like `mypy/mypy/typeshed`, containing a
 clone of the typeshed repo (`https://github.com/python/typeshed`).
 
+What is Typeshed?
+Typeshed contains external type annotations for the Python standard library and Python builtins, 
+as well as third party packages as contributed by people external to those projects.This data can e.g. be used for static analysis, type checking.
 From the mypy directory, use pip to install mypy:
 
     $ cd mypy
