@@ -137,12 +137,14 @@ reverse_builtin_aliases = {
 }  # type: Final
 
 _nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.enumerate': ''}  # type: Final
+                    'builtins.enumerate': ''}  # type: Final
 _nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
-def get_nongen_builtins(python_version):
+
+def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:
     # After 3.9 with pep585 generic builtins are allowed.
     return _nongen_builtins if python_version < (3, 9) else {}
+
 
 RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
                           'typing_extensions.runtime',
