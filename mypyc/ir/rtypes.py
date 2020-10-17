@@ -265,13 +265,15 @@ pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
 float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
-# An unboxed boolean value. This actually has three possible values
-# (0 -> False, 1 -> True, 2 -> error).
+# An unboxed Python bool value. This actually has three possible values
+# (0 -> False, 1 -> True, 2 -> error). If you only need True/False, use
+# bit_rprimitive instead.
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
                              ctype='char', size=1)  # type: Final
 
 # A low-level boolean value with two possible values: 0 and 1. Any
-# other value results in undefined behavior.
+# other value results in undefined behavior. Undefined or error values
+# are not supported.
 bit_rprimitive = RPrimitive('bit', is_unboxed=True, is_refcounted=False,
                             ctype='char', size=1)  # type: Final
 
