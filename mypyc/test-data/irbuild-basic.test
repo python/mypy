@@ -509,35 +509,29 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6, r7, r8, r9, r10 :: int
+    r0 :: int64
+    r1, r2, r3 :: bit
+    r4, r5, r6, r7, r8 :: int
 L0:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 2 & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
+    r2 = CPyTagged_IsLt_(2, n)
+    if r2 goto L4 else goto L3 :: bool
 L2:
-    r4 = CPyTagged_IsLt_(2, n)
-    if r4 goto L5 else goto L4 :: bool
+    r3 = n <= 2 :: signed
+    if r3 goto L3 else goto L4 :: bool
 L3:
-    r5 = n <= 2 :: signed
-    if r5 goto L4 else goto L5 :: bool
-L4:
     return 2
-L5:
-    r6 = CPyTagged_Subtract(n, 2)
+L4:
+    r4 = CPyTagged_Subtract(n, 2)
+    r5 = f(r4)
+    r6 = CPyTagged_Subtract(n, 4)
     r7 = f(r6)
-    r8 = CPyTagged_Subtract(n, 4)
-    r9 = f(r8)
-    r10 = CPyTagged_Add(r7, r9)
-    return r10
-L6:
+    r8 = CPyTagged_Add(r5, r7)
+    return r8
+L5:
     unreachable
 
 [case testReportTypeCheckError]
@@ -564,39 +558,33 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: int64
+    r1, r2, r3 :: bit
     x :: int
-    r6 :: bit
+    r4 :: bit
 L0:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 0 & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
+    r2 = CPyTagged_IsLt_(n, 0)
+    if r2 goto L3 else goto L4 :: bool
 L2:
-    r4 = CPyTagged_IsLt_(n, 0)
-    if r4 goto L4 else goto L5 :: bool
+    r3 = n < 0 :: signed
+    if r3 goto L3 else goto L4 :: bool
 L3:
-    r5 = n < 0 :: signed
-    if r5 goto L4 else goto L5 :: bool
-L4:
-    x = 2
-    goto L9
-L5:
-    r6 = n == 0
-    if r6 goto L6 else goto L7 :: bool
-L6:
     x = 2
     goto L8
-L7:
+L4:
+    r4 = n == 0
+    if r4 goto L5 else goto L6 :: bool
+L5:
+    x = 2
+    goto L7
+L6:
     x = 4
+L7:
 L8:
-L9:
     return x
 
 [case testUnaryMinus]
@@ -1138,33 +1126,27 @@ def call_callable_type() -> float:
 [out]
 def absolute_value(x):
     x :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6, r7 :: int
+    r0 :: int64
+    r1, r2, r3 :: bit
+    r4, r5 :: int
 L0:
     r0 = x & 1
     r1 = r0 != 0
-    if r1 goto L2 else goto L1 :: bool
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 0 & 1
-    r3 = r2 != 0
-    if r3 goto L2 else goto L3 :: bool
+    r2 = CPyTagged_IsLt_(0, x)
+    if r2 goto L3 else goto L4 :: bool
 L2:
-    r4 = CPyTagged_IsLt_(0, x)
-    if r4 goto L4 else goto L5 :: bool
+    r3 = x > 0 :: signed
+    if r3 goto L3 else goto L4 :: bool
 L3:
-    r5 = x > 0 :: signed
-    if r5 goto L4 else goto L5 :: bool
+    r4 = x
+    goto L5
 L4:
-    r6 = x
-    goto L6
+    r5 = CPyTagged_Negate(x)
+    r4 = r5
 L5:
-    r7 = CPyTagged_Negate(x)
-    r6 = r7
-L6:
-    return r6
+    return r4
 def call_native_function(x):
     x, r0 :: int
 L0:

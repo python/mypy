@@ -590,7 +590,10 @@ class LowLevelIRBuilder:
         return target
 
     def check_tagged_short_int(self, val: Value, line: int, negated: bool = False) -> Value:
-        """Check if a tagged integer is a short integer"""
+        """Check if a tagged integer is a short integer.
+
+        Return the result of the check (value of type 'bit').
+        """
         int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
         bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, val,
                                          int_tag, BinaryIntOp.AND, line)
@@ -657,16 +660,17 @@ class LowLevelIRBuilder:
         if ((is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type))
             or (is_eq and (is_short_int_rprimitive(lhs.type) or
                            is_short_int_rprimitive(rhs.type)))):
+            # We can skip the tag check
             check = self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
             self.add(Branch(check, true, false, Branch.BOOL))
             return
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         int_block, short_int_block = BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line, negated=True)
-        if is_eq:
+        if is_eq or is_short_int_rprimitive(rhs.type):
             self.add(Branch(check_lhs, int_block, short_int_block, Branch.BOOL))
         else:
-            # for non-equality logical ops (less/greater than, etc.), need to check both sides
+            # For non-equality logical ops (less/greater than, etc.), need to check both sides
             rhs_block = BasicBlock()
             self.add(Branch(check_lhs, int_block, rhs_block, Branch.BOOL))
             self.activate_block(rhs_block)

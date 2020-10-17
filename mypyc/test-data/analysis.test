@@ -180,32 +180,26 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6, m :: int
+    r0 :: int64
+    r1, r2, r3 :: bit
+    r4, m :: int
 L0:
 L1:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 10 & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L5 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(n, 10)
-    if r4 goto L5 else goto L6 :: bool
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r5 = n < 10 :: signed
-    if r5 goto L5 else goto L6 :: bool
-L5:
-    r6 = CPyTagged_Add(n, 2)
-    n = r6
+    r4 = CPyTagged_Add(n, 2)
+    n = r4
     m = n
     goto L1
-L6:
+L5:
     return 1
 (0, 0)   {n}                     {n}
 (1, 0)   {n}                     {n}
@@ -216,20 +210,15 @@ L6:
 (1, 5)   {n}                     {n}
 (2, 0)   {n}                     {n}
 (2, 1)   {n}                     {n}
-(2, 2)   {n}                     {n}
-(2, 3)   {n}                     {n}
-(2, 4)   {n}                     {n}
 (3, 0)   {n}                     {n}
 (3, 1)   {n}                     {n}
 (4, 0)   {n}                     {n}
 (4, 1)   {n}                     {n}
+(4, 2)   {n}                     {n}
+(4, 3)   {n}                     {m, n}
+(4, 4)   {m, n}                  {m, n}
 (5, 0)   {n}                     {n}
 (5, 1)   {n}                     {n}
-(5, 2)   {n}                     {n}
-(5, 3)   {n}                     {m, n}
-(5, 4)   {m, n}                  {m, n}
-(6, 0)   {n}                     {n}
-(6, 1)   {n}                     {n}
 
 [case testMultiPass_Liveness]
 def f(n: int) -> None:
@@ -243,54 +232,42 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n, x, y :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0 :: int64
+    r1, r2, r3 :: bit
+    r4 :: int64
+    r5, r6, r7 :: bit
 L0:
     x = 2
     y = 2
 L1:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 2 & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_IsLt_(n, 2)
+    if r2 goto L4 else goto L10 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(n, 2)
-    if r4 goto L5 else goto L12 :: bool
+    r3 = n < 2 :: signed
+    if r3 goto L4 else goto L10 :: bool
 L4:
-    r5 = n < 2 :: signed
-    if r5 goto L5 else goto L12 :: bool
-L5:
     n = y
+L5:
+    r4 = n & 1
+    r5 = r4 != 0
+    if r5 goto L6 else goto L7 :: bool
 L6:
-    r6 = n & 1
-    r7 = r6 != 0
-    if r7 goto L8 else goto L7 :: bool
+    r6 = CPyTagged_IsLt_(n, 4)
+    if r6 goto L8 else goto L9 :: bool
 L7:
-    r8 = 4 & 1
-    r9 = r8 != 0
-    if r9 goto L8 else goto L9 :: bool
+    r7 = n < 4 :: signed
+    if r7 goto L8 else goto L9 :: bool
 L8:
-    r10 = CPyTagged_IsLt_(n, 4)
-    if r10 goto L10 else goto L11 :: bool
-L9:
-    r11 = n < 4 :: signed
-    if r11 goto L10 else goto L11 :: bool
-L10:
     n = 2
     n = x
-    goto L6
-L11:
+    goto L5
+L9:
     goto L1
-L12:
+L10:
     return 1
 (0, 0)   {n}                     {i0, n}
 (0, 1)   {i0, n}                 {n, x}
@@ -303,39 +280,29 @@ L12:
 (1, 3)   {i2, n, r0, x, y}       {i2, i4, n, r0, x, y}
 (1, 4)   {i2, i4, n, r0, x, y}   {i2, n, r1, x, y}
 (1, 5)   {i2, n, r1, x, y}       {i2, n, x, y}
-(2, 0)   {i2, n, x, y}           {i2, i5, n, x, y}
-(2, 1)   {i2, i5, n, x, y}       {i2, n, r2, x, y}
-(2, 2)   {i2, n, r2, x, y}       {i2, i6, n, r2, x, y}
-(2, 3)   {i2, i6, n, r2, x, y}   {i2, n, r3, x, y}
-(2, 4)   {i2, n, r3, x, y}       {i2, n, x, y}
-(3, 0)   {i2, n, x, y}           {r4, x, y}
-(3, 1)   {r4, x, y}              {x, y}
-(4, 0)   {i2, n, x, y}           {r5, x, y}
-(4, 1)   {r5, x, y}              {x, y}
-(5, 0)   {x, y}                  {n, x, y}
-(5, 1)   {n, x, y}               {n, x, y}
-(6, 0)   {n, x, y}               {i7, n, x, y}
-(6, 1)   {i7, n, x, y}           {i7, i8, n, x, y}
-(6, 2)   {i7, i8, n, x, y}       {i7, n, r6, x, y}
-(6, 3)   {i7, n, r6, x, y}       {i7, i9, n, r6, x, y}
-(6, 4)   {i7, i9, n, r6, x, y}   {i7, n, r7, x, y}
-(6, 5)   {i7, n, r7, x, y}       {i7, n, x, y}
-(7, 0)   {i7, n, x, y}           {i10, i7, n, x, y}
-(7, 1)   {i10, i7, n, x, y}      {i7, n, r8, x, y}
-(7, 2)   {i7, n, r8, x, y}       {i11, i7, n, r8, x, y}
-(7, 3)   {i11, i7, n, r8, x, y}  {i7, n, r9, x, y}
-(7, 4)   {i7, n, r9, x, y}       {i7, n, x, y}
-(8, 0)   {i7, n, x, y}           {n, r10, x, y}
-(8, 1)   {n, r10, x, y}          {n, x, y}
-(9, 0)   {i7, n, x, y}           {n, r11, x, y}
-(9, 1)   {n, r11, x, y}          {n, x, y}
-(10, 0)  {x, y}                  {i12, x, y}
-(10, 1)  {i12, x, y}             {x, y}
-(10, 2)  {x, y}                  {n, x, y}
-(10, 3)  {n, x, y}               {n, x, y}
-(11, 0)  {n, x, y}               {n, x, y}
-(12, 0)  {}                      {i13}
-(12, 1)  {i13}                   {}
+(2, 0)   {i2, n, x, y}           {r2, x, y}
+(2, 1)   {r2, x, y}              {x, y}
+(3, 0)   {i2, n, x, y}           {r3, x, y}
+(3, 1)   {r3, x, y}              {x, y}
+(4, 0)   {x, y}                  {n, x, y}
+(4, 1)   {n, x, y}               {n, x, y}
+(5, 0)   {n, x, y}               {i5, n, x, y}
+(5, 1)   {i5, n, x, y}           {i5, i6, n, x, y}
+(5, 2)   {i5, i6, n, x, y}       {i5, n, r4, x, y}
+(5, 3)   {i5, n, r4, x, y}       {i5, i7, n, r4, x, y}
+(5, 4)   {i5, i7, n, r4, x, y}   {i5, n, r5, x, y}
+(5, 5)   {i5, n, r5, x, y}       {i5, n, x, y}
+(6, 0)   {i5, n, x, y}           {n, r6, x, y}
+(6, 1)   {n, r6, x, y}           {n, x, y}
+(7, 0)   {i5, n, x, y}           {n, r7, x, y}
+(7, 1)   {n, r7, x, y}           {n, x, y}
+(8, 0)   {x, y}                  {i8, x, y}
+(8, 1)   {i8, x, y}              {x, y}
+(8, 2)   {x, y}                  {n, x, y}
+(8, 3)   {n, x, y}               {n, x, y}
+(9, 0)   {n, x, y}               {n, x, y}
+(10, 0)  {}                      {i9}
+(10, 1)  {i9}                    {}
 
 [case testCall_Liveness]
 def f(x: int) -> int:

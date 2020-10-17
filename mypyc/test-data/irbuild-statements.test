@@ -62,28 +62,22 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: int64
+    r1, r2, r3 :: bit
 L0:
     n = 0
 L1:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 10 & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L5 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(n, 10)
-    if r4 goto L5 else goto L6 :: bool
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r5 = n < 10 :: signed
-    if r5 goto L5 else goto L6 :: bool
 L5:
-L6:
     return 1
 
 [case testBreakFor]
@@ -122,48 +116,36 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0 :: int64
+    r1, r2, r3 :: bit
+    r4 :: int64
+    r5, r6, r7 :: bit
 L0:
     n = 0
 L1:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 10 & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L10 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(n, 10)
-    if r4 goto L5 else goto L12 :: bool
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L10 :: bool
 L4:
-    r5 = n < 10 :: signed
-    if r5 goto L5 else goto L12 :: bool
 L5:
+    r4 = n & 1
+    r5 = r4 != 0
+    if r5 goto L6 else goto L7 :: bool
 L6:
-    r6 = n & 1
-    r7 = r6 != 0
-    if r7 goto L8 else goto L7 :: bool
+    r6 = CPyTagged_IsLt_(n, 8)
+    if r6 goto L8 else goto L9 :: bool
 L7:
-    r8 = 8 & 1
-    r9 = r8 != 0
-    if r9 goto L8 else goto L9 :: bool
+    r7 = n < 8 :: signed
+    if r7 goto L8 else goto L9 :: bool
 L8:
-    r10 = CPyTagged_IsLt_(n, 8)
-    if r10 goto L10 else goto L11 :: bool
 L9:
-    r11 = n < 8 :: signed
-    if r11 goto L10 else goto L11 :: bool
 L10:
-L11:
-L12:
     return 1
 
 [case testContinue]
@@ -174,29 +156,23 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
+    r0 :: int64
+    r1, r2, r3 :: bit
 L0:
     n = 0
 L1:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 10 & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L5 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(n, 10)
-    if r4 goto L5 else goto L6 :: bool
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r5 = n < 10 :: signed
-    if r5 goto L5 else goto L6 :: bool
-L5:
     goto L1
-L6:
+L5:
     return 1
 
 [case testContinueFor]
@@ -234,50 +210,38 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: native_int
-    r1 :: bit
-    r2 :: native_int
-    r3, r4, r5 :: bit
-    r6 :: native_int
-    r7 :: bit
-    r8 :: native_int
-    r9, r10, r11 :: bit
+    r0 :: int64
+    r1, r2, r3 :: bit
+    r4 :: int64
+    r5, r6, r7 :: bit
 L0:
     n = 0
 L1:
     r0 = n & 1
     r1 = r0 != 0
-    if r1 goto L3 else goto L2 :: bool
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r2 = 10 & 1
-    r3 = r2 != 0
-    if r3 goto L3 else goto L4 :: bool
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L10 :: bool
 L3:
-    r4 = CPyTagged_IsLt_(n, 10)
-    if r4 goto L5 else goto L12 :: bool
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L10 :: bool
 L4:
-    r5 = n < 10 :: signed
-    if r5 goto L5 else goto L12 :: bool
 L5:
+    r4 = n & 1
+    r5 = r4 != 0
+    if r5 goto L6 else goto L7 :: bool
 L6:
-    r6 = n & 1
-    r7 = r6 != 0
-    if r7 goto L8 else goto L7 :: bool
+    r6 = CPyTagged_IsLt_(n, 8)
+    if r6 goto L8 else goto L9 :: bool
 L7:
-    r8 = 8 & 1
-    r9 = r8 != 0
-    if r9 goto L8 else goto L9 :: bool
+    r7 = n < 8 :: signed
+    if r7 goto L8 else goto L9 :: bool
 L8:
-    r10 = CPyTagged_IsLt_(n, 8)
-    if r10 goto L10 else goto L11 :: bool
+    goto L5
 L9:
-    r11 = n < 8 :: signed
-    if r11 goto L10 else goto L11 :: bool
-L10:
-    goto L6
-L11:
     goto L1
-L12:
+L10:
     return 1
 
 [case testForList]
