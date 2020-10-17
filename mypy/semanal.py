@@ -3792,7 +3792,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # ...or directly.
         else:
             n = self.lookup_type_node(base)
-            if n and n.fullname in nongen_builtins:
+            if n and n.fullname in nongen_builtins and not self.is_future_flag_set("annotations"):
                 self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> Optional[List[Type]]:
