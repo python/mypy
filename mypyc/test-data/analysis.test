@@ -11,8 +11,9 @@ def f(a: int) -> None:
 def f(a):
     a, x :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
     y, z :: int
 L0:
     x = 2
@@ -69,8 +70,9 @@ def f(a: int) -> int:
 def f(a):
     a, x :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
 L0:
     x = 2
     r1 = x & 1
@@ -165,8 +167,9 @@ def f(a: int) -> None:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
     y, x :: int
 L0:
     r1 = a & 1
@@ -232,10 +235,11 @@ def f(n: int) -> None:
 def f(n):
     n :: int
     r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r1 :: int64
+    r2 :: bit
+    r3 :: int64
+    r4, r5, r6 :: bit
+    r7 :: bool
     r8, m :: int
 L0:
 L1:
@@ -301,14 +305,16 @@ def f(n: int) -> None:
 def f(n):
     n, x, y :: int
     r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
-    r9 :: native_int
-    r10 :: bool
-    r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r1 :: int64
+    r2 :: bit
+    r3 :: int64
+    r4, r5, r6 :: bit
+    r7, r8 :: bool
+    r9 :: int64
+    r10 :: bit
+    r11 :: int64
+    r12, r13, r14 :: bit
+    r15 :: bool
 L0:
     x = 2
     y = 2
@@ -793,4 +799,3 @@ L11:
 (10, 2)  {r8}                    {}
 (11, 0)  {}                      {r9}
 (11, 1)  {r9}                    {}
-

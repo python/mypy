@@ -64,8 +64,9 @@ def f() -> int:
 def f():
     x, y :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
 L0:
     x = 2
     y = 4
@@ -198,8 +199,9 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
     x, r5, y :: int
 L0:
     r1 = a & 1
@@ -242,8 +244,9 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
     x, r5, y :: int
 L0:
     r1 = a & 1
@@ -282,8 +285,9 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
 L0:
     r1 = a & 1
     r2 = r1 == 0
@@ -463,8 +467,9 @@ def f() -> int:
 def f():
     x, y, z :: int
     r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r1 :: int64
+    r2, r3 :: bit
+    r4 :: bool
     a, r5, r6 :: int
 L0:
     x = 2
@@ -513,10 +518,11 @@ def f(a: int) -> int:
 def f(a):
     a, sum, i :: int
     r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r1 :: int64
+    r2 :: bit
+    r3 :: int64
+    r4, r5, r6 :: bit
+    r7, r8 :: bool
     r9, r10 :: int
 L0:
     sum = 0
@@ -601,7 +607,7 @@ def f(a, b):
     r0 :: object
     r1 :: int
     r2 :: object
-    r3 :: bool
+    r3 :: bit
 L0:
     r0 = CPyList_GetItemShort(b, 0)
     r1 = unbox(int, r0)
@@ -734,11 +740,13 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
+    r2 :: bit
 L0:
     inc_ref x :: int
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
     dec_ref r0
+    r2 = r1 >= 0 :: signed
     return 1
 
 [case testForDict]
@@ -751,7 +759,7 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0 :: short_int
-    r1 :: native_int
+    r1 :: int64
     r2 :: short_int
     r3 :: object
     r4 :: tuple[bool, int, object]
@@ -761,7 +769,7 @@ def f(d):
     key, r8 :: int
     r9, r10 :: object
     r11 :: int
-    r12, r13 :: bool
+    r12, r13 :: bit
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
