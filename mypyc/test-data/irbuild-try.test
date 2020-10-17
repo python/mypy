@@ -14,7 +14,7 @@ def g():
     r6 :: object
     r7 :: str
     r8, r9 :: object
-    r10 :: bool
+    r10 :: bit
 L0:
 L1:
     r0 = builtins :: module
@@ -60,7 +60,7 @@ def g(b):
     r8 :: object
     r9 :: str
     r10, r11 :: object
-    r12 :: bool
+    r12 :: bit
 L0:
 L1:
     if b goto L2 else goto L3 :: bool
@@ -114,19 +114,19 @@ def g():
     r10 :: object
     r11 :: str
     r12 :: object
-    r13 :: bool
+    r13 :: bit
     e, r14 :: object
     r15 :: str
     r16 :: object
     r17 :: str
     r18, r19 :: object
-    r20 :: bool
+    r20 :: bit
     r21 :: tuple[object, object, object]
     r22 :: str
     r23 :: object
     r24 :: str
     r25, r26 :: object
-    r27 :: bool
+    r27 :: bit
 L0:
 L1:
     r0 = load_global CPyStatic_unicode_1 :: static  ('a')
@@ -199,19 +199,19 @@ def g():
     r1 :: object
     r2 :: str
     r3 :: object
-    r4 :: bool
+    r4 :: bit
     r5 :: str
     r6 :: object
     r7 :: str
     r8, r9, r10 :: object
     r11 :: str
     r12 :: object
-    r13 :: bool
+    r13 :: bit
     r14 :: str
     r15 :: object
     r16 :: str
     r17, r18 :: object
-    r19 :: bool
+    r19 :: bit
 L0:
 L1:
     goto L9
@@ -274,7 +274,7 @@ def a(b):
     r9 :: object
     r10 :: str
     r11, r12 :: object
-    r13 :: bool
+    r13 :: bit
 L0:
 L1:
     if b goto L2 else goto L3 :: bool
@@ -338,10 +338,12 @@ def foo(x):
     r13, r14 :: tuple[object, object, object]
     r15, r16, r17, r18 :: object
     r19 :: int32
-    r20, r21 :: bool
-    r22, r23, r24 :: tuple[object, object, object]
-    r25, r26 :: object
-    r27 :: bool
+    r20 :: bit
+    r21 :: bool
+    r22 :: bit
+    r23, r24, r25 :: tuple[object, object, object]
+    r26, r27 :: object
+    r28 :: bit
 L0:
     r0 = PyObject_CallFunctionObjArgs(x, 0)
     r1 = PyObject_Type(r0)
@@ -369,8 +371,9 @@ L3: (handler for L2)
     r17 = r14[2]
     r18 = PyObject_CallFunctionObjArgs(r3, r0, r15, r16, r17, 0)
     r19 = PyObject_IsTrue(r18)
-    r20 = truncate r19: int32 to builtins.bool
-    if r20 goto L5 else goto L4 :: bool
+    r20 = r19 >= 0 :: signed
+    r21 = truncate r19: int32 to builtins.bool
+    if r21 goto L5 else goto L4 :: bool
 L4:
     CPy_Reraise()
     unreachable
@@ -380,35 +383,35 @@ L6:
     goto L8
 L7: (handler for L3, L4, L5)
     CPy_RestoreExcInfo(r13)
-    r21 = CPy_KeepPropagating()
+    r22 = CPy_KeepPropagating()
     unreachable
 L8:
 L9:
 L10:
-    r23 = <error> :: tuple[object, object, object]
-    r22 = r23
+    r24 = <error> :: tuple[object, object, object]
+    r23 = r24
     goto L12
 L11: (handler for L1, L6, L7, L8)
-    r24 = CPy_CatchError()
-    r22 = r24
+    r25 = CPy_CatchError()
+    r23 = r25
 L12:
     if r7 goto L13 else goto L14 :: bool
 L13:
-    r25 = load_address _Py_NoneStruct
-    r26 = PyObject_CallFunctionObjArgs(r3, r0, r25, r25, r25, 0)
+    r26 = load_address _Py_NoneStruct
+    r27 = PyObject_CallFunctionObjArgs(r3, r0, r26, r26, r26, 0)
 L14:
-    if is_error(r22) goto L16 else goto L15
+    if is_error(r23) goto L16 else goto L15
 L15:
     CPy_Reraise()
     unreachable
 L16:
     goto L20
 L17: (handler for L12, L13, L14, L15)
-    if is_error(r22) goto L19 else goto L18
+    if is_error(r23) goto L19 else goto L18
 L18:
-    CPy_RestoreExcInfo(r22)
+    CPy_RestoreExcInfo(r23)
 L19:
-    r27 = CPy_KeepPropagating()
+    r28 = CPy_KeepPropagating()
     unreachable
 L20:
     return 1

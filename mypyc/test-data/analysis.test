@@ -12,7 +12,7 @@ def f(a):
     a, x :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4 :: bool
+    r2, r3, r4 :: bit
     y, z :: int
 L0:
     x = 2
@@ -70,7 +70,7 @@ def f(a):
     a, x :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4 :: bool
+    r2, r3, r4 :: bit
 L0:
     x = 2
     r1 = x & 1
@@ -166,7 +166,7 @@ def f(a):
     a :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4 :: bool
+    r2, r3, r4 :: bit
     y, x :: int
 L0:
     r1 = a & 1
@@ -233,9 +233,9 @@ def f(n):
     n :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
     r8, m :: int
 L0:
 L1:
@@ -302,13 +302,14 @@ def f(n):
     n, x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7 :: bit
+    r8 :: bool
     r9 :: native_int
-    r10 :: bool
+    r10 :: bit
     r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r12, r13, r14, r15 :: bit
 L0:
     x = 2
     y = 2
@@ -447,13 +448,14 @@ def f(a):
     a :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7 :: bit
+    r8 :: bool
     r9 :: native_int
-    r10 :: bool
+    r10 :: bit
     r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r12, r13, r14, r15 :: bit
     y, x :: int
 L0:
 L1:
@@ -580,7 +582,7 @@ def f(a):
     a :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4 :: bool
+    r2, r3, r4 :: bit
     x :: int
 L0:
     r1 = a & 1
@@ -638,9 +640,9 @@ def f(a):
     a, sum, i :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7, r8 :: bit
     r9, r10 :: int
 L0:
     sum = 0
@@ -721,9 +723,9 @@ def lol(x):
     r2 :: object
     r3 :: str
     r4 :: object
-    r5 :: bool
+    r5 :: bit
     r6 :: int
-    r7 :: bool
+    r7 :: bit
     r8, r9 :: int
 L0:
 L1:

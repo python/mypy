@@ -35,25 +35,27 @@ def f(x, y, z):
     y, z :: int
     r0 :: object
     r1 :: int32
-    r2 :: object
-    r3 :: bool
-    r4 :: None
+    r2 :: bit
+    r3 :: object
+    r4 :: bit
+    r5 :: None
 L0:
     inc_ref y :: int
     r0 = box(int, y)
     r1 = PyList_Append(x, r0)
     dec_ref r0
-    if r1 < 0 goto L3 (error at f:3) else goto L1
+    r2 = r1 >= 0 :: signed
+    if not r2 goto L3 (error at f:3) else goto L1 :: bool
 L1:
     inc_ref z :: int
-    r2 = box(int, z)
-    r3 = CPyList_SetItem(x, y, r2)
-    if not r3 goto L3 (error at f:4) else goto L2 :: bool
+    r3 = box(int, z)
+    r4 = CPyList_SetItem(x, y, r3)
+    if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
     return 1
 L3:
-    r4 = <error> :: None
-    return r4
+    r5 = <error> :: None
+    return r5
 
 [case testOptionalHandling]
 from typing import Optional
@@ -70,10 +72,10 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: __main__.A
     r3 :: object
-    r4, r5 :: bool
+    r4, r5 :: bit
     r6 :: int
 L0:
     r0 = box(None, 1)
@@ -114,9 +116,9 @@ def sum(a, l):
     l, sum, i :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
     r8 :: object
     r9, r10, r11, r12 :: int
 L0:
@@ -183,7 +185,7 @@ def g():
     r6 :: object
     r7 :: str
     r8, r9 :: object
-    r10 :: bool
+    r10 :: bit
     r11 :: None
 L0:
 L1:
@@ -251,7 +253,7 @@ def a():
     r12 :: object
     r13 :: str
     r14, r15 :: object
-    r16 :: bool
+    r16 :: bit
     r17 :: str
 L0:
 L1:
@@ -353,7 +355,7 @@ def lol(x):
     r1, st :: object
     r2 :: tuple[object, object, object]
     r3 :: str
-    r4 :: bool
+    r4 :: bit
     r5 :: object
 L0:
 L1:
@@ -391,7 +393,7 @@ def lol(x):
     r2 :: str
     r3, b :: object
     r4 :: tuple[object, object, object]
-    r5 :: bool
+    r5 :: bit
     r6 :: object
     r7, r8 :: bool
     r9 :: object
@@ -462,7 +464,7 @@ def f(b: bool) -> None:
 def f(b):
     b :: bool
     r0, u, r1, v :: str
-    r2, r3 :: bool
+    r2, r3 :: bit
     r4 :: object
     r5 :: str
     r6, r7 :: object

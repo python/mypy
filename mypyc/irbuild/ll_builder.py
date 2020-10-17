@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
     LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
@@ -30,7 +30,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, PyListObject
+    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -40,7 +40,7 @@ from mypyc.common import (
 )
 from mypyc.primitives.registry import (
     func_ops, c_method_call_ops, CFunctionDescription, c_function_ops,
-    c_binary_ops, c_unary_ops
+    c_binary_ops, c_unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, new_list_op
@@ -612,9 +612,9 @@ class LowLevelIRBuilder:
         else:
             # for non-equal logical ops(less than, greater than, etc.), need to check both side
             check_rhs = self.check_tagged_short_int(rhs, line)
-            check = self.binary_int_op(bool_rprimitive, check_lhs,
+            check = self.binary_int_op(bit_rprimitive, check_lhs,
                                        check_rhs, BinaryIntOp.AND, line)
-        branch = Branch(check, short_int_block, int_block, Branch.BOOL_EXPR)
+        branch = Branch(check, short_int_block, int_block, Branch.BOOL)
         branch.negated = False
         self.add(branch)
         self.activate_block(short_int_block)
@@ -643,7 +643,7 @@ class LowLevelIRBuilder:
         compare_error_check = self.add(ComparisonOp(compare_result,
                                                     error_constant, ComparisonOp.EQ, line))
         exception_check, propagate, final_compare = BasicBlock(), BasicBlock(), BasicBlock()
-        branch = Branch(compare_error_check, exception_check, final_compare, Branch.BOOL_EXPR)
+        branch = Branch(compare_error_check, exception_check, final_compare, Branch.BOOL)
         branch.negated = False
         self.add(branch)
         self.activate_block(exception_check)
@@ -651,7 +651,7 @@ class LowLevelIRBuilder:
         null = self.add(LoadInt(0, line, pointer_rprimitive))
         compare_error_check = self.add(ComparisonOp(check_error_result,
                                                     null, ComparisonOp.NEQ, line))
-        branch = Branch(compare_error_check, propagate, final_compare, Branch.BOOL_EXPR)
+        branch = Branch(compare_error_check, propagate, final_compare, Branch.BOOL)
         branch.negated = False
         self.add(branch)
         self.activate_block(propagate)
@@ -698,9 +698,9 @@ class LowLevelIRBuilder:
             if not is_bool_rprimitive(compare.type):
                 compare = self.call_c(bool_op, [compare], line)
             if i < len(lhs.type.types) - 1:
-                branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL_EXPR)
+                branch = Branch(compare, early_stop, check_blocks[i + 1], Branch.BOOL)
             else:
-                branch = Branch(compare, early_stop, final, Branch.BOOL_EXPR)
+                branch = Branch(compare, early_stop, final, Branch.BOOL)
             # if op is ==, we branch on false, else branch on true
             branch.negated = equal
             self.add(branch)
@@ -726,14 +726,14 @@ class LowLevelIRBuilder:
     def unary_not(self,
                   value: Value,
                   line: int) -> Value:
-        mask = self.add(LoadInt(1, line, rtype=bool_rprimitive))
-        return self.binary_int_op(bool_rprimitive, value, mask, BinaryIntOp.XOR, line)
+        mask = self.add(LoadInt(1, line, rtype=value.type))
+        return self.binary_int_op(value.type, value, mask, BinaryIntOp.XOR, line)
 
     def unary_op(self,
                  lreg: Value,
                  expr_op: str,
                  line: int) -> Value:
-        if is_bool_rprimitive(lreg.type) and expr_op == 'not':
+        if (is_bool_rprimitive(lreg.type) or is_bit_rprimitive(lreg.type)) and expr_op == 'not':
             return self.unary_not(lreg, line)
         call_c_ops_candidates = c_unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
@@ -841,7 +841,7 @@ class LowLevelIRBuilder:
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_runtime_subtype(value.type, int_rprimitive):
-            zero = self.add(LoadInt(0))
+            zero = self.add(LoadInt(0, rtype=value.type))
             value = self.binary_op(value, zero, '!=', value.line)
         elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
@@ -855,7 +855,7 @@ class LowLevelIRBuilder:
             value_type = optional_value_type(value.type)
             if value_type is not None:
                 is_none = self.translate_is_op(value, self.none_object(), 'is not', value.line)
-                branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
+                branch = Branch(is_none, true, false, Branch.BOOL)
                 self.add(branch)
                 always_truthy = False
                 if isinstance(value_type, RInstance):
@@ -873,28 +873,29 @@ class LowLevelIRBuilder:
                     remaining = self.unbox_or_cast(value, value_type, value.line)
                     self.add_bool_branch(remaining, true, false)
                 return
-            elif not is_same_type(value.type, bool_rprimitive):
+            elif not is_bool_rprimitive(value.type) and not is_bit_rprimitive(value.type):
                 value = self.call_c(bool_op, [value], value.line)
-        self.add(Branch(value, true, false, Branch.BOOL_EXPR))
+        self.add(Branch(value, true, false, Branch.BOOL))
 
     def call_c(self,
                desc: CFunctionDescription,
                args: List[Value],
                line: int,
                result_type: Optional[RType] = None) -> Value:
-        # handle void function via singleton RVoid instance
+        """Call function using C/native calling convention (not a Python callable)."""
+        # Handle void function via singleton RVoid instance
         coerced = []
-        # coerce fixed number arguments
+        # Coerce fixed number arguments
         for i in range(min(len(args), len(desc.arg_types))):
             formal_type = desc.arg_types[i]
             arg = args[i]
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
-        # reorder args if necessary
+        # Reorder args if necessary
         if desc.ordering is not None:
             assert desc.var_arg_type is None
             coerced = [coerced[i] for i in desc.ordering]
-        # coerce any var_arg
+        # Coerce any var_arg
         var_arg_idx = -1
         if desc.var_arg_type is not None:
             var_arg_idx = len(desc.arg_types)
@@ -902,13 +903,25 @@ class LowLevelIRBuilder:
                 arg = args[i]
                 arg = self.coerce(arg, desc.var_arg_type, line)
                 coerced.append(arg)
-        # add extra integer constant if any
+        # Add extra integer constant if any
         for item in desc.extra_int_constants:
             val, typ = item
             extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
             coerced.append(extra_int_constant)
+        error_kind = desc.error_kind
+        if error_kind == ERR_NEG_INT:
+            # Handled with an explicit comparison
+            error_kind = ERR_NEVER
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.is_borrowed, desc.error_kind, line, var_arg_idx))
+                                desc.is_borrowed, error_kind, line, var_arg_idx))
+        if desc.error_kind == ERR_NEG_INT:
+            comp = ComparisonOp(target,
+                                self.add(LoadInt(0, line, desc.return_type)),
+                                ComparisonOp.SGE,
+                                line)
+            comp.error_kind = ERR_FALSE
+            self.add(comp)
+
         if desc.truncated_type is None:
             result = target
         else:

@@ -78,9 +78,9 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -114,9 +114,9 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -153,13 +153,14 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7 :: bit
+    r8 :: bool
     r9 :: native_int
-    r10 :: bool
+    r10 :: bit
     r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r12, r13, r14, r15 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -208,19 +209,21 @@ def f(x, y):
     x, y :: object
     r0, r1 :: str
     r2 :: int32
-    r3 :: bool
-    r4 :: str
+    r3 :: bit
+    r4 :: bool
+    r5 :: str
 L0:
     r1 = PyObject_Str(x)
     r2 = PyObject_IsTrue(r1)
-    r3 = truncate r2: int32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r3 = r2 >= 0 :: signed
+    r4 = truncate r2: int32 to builtins.bool
+    if r4 goto L1 else goto L2 :: bool
 L1:
     r0 = r1
     goto L3
 L2:
-    r4 = PyObject_Str(y)
-    r0 = r4
+    r5 = PyObject_Str(y)
+    r0 = r5
 L3:
     return r0
 
@@ -236,13 +239,14 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7 :: bit
+    r8 :: bool
     r9 :: native_int
-    r10 :: bool
+    r10 :: bit
     r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r12, r13, r14, r15 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -291,19 +295,21 @@ def f(x, y):
     x, y :: object
     r0, r1 :: str
     r2 :: int32
-    r3 :: bool
-    r4 :: str
+    r3 :: bit
+    r4 :: bool
+    r5 :: str
 L0:
     r1 = PyObject_Str(x)
     r2 = PyObject_IsTrue(r1)
-    r3 = truncate r2: int32 to builtins.bool
-    if r3 goto L2 else goto L1 :: bool
+    r3 = r2 >= 0 :: signed
+    r4 = truncate r2: int32 to builtins.bool
+    if r4 goto L2 else goto L1 :: bool
 L1:
     r0 = r1
     goto L3
 L2:
-    r4 = PyObject_Str(y)
-    r0 = r4
+    r5 = PyObject_Str(y)
+    r0 = r5
 L3:
     return r0
 
@@ -317,9 +323,9 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -351,13 +357,14 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7 :: bit
+    r8 :: bool
     r9 :: native_int
-    r10 :: bool
+    r10 :: bit
     r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r12, r13, r14, r15 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -405,9 +412,9 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
     r8 :: int
 L0:
 L1:
@@ -444,9 +451,9 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
     r8 :: int
 L0:
     x = 2
@@ -502,9 +509,9 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -540,9 +547,9 @@ def f(n):
     n :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
+    r4, r5, r6, r7, r8 :: bit
     r9, r10, r11, r12, r13 :: int
 L0:
     r1 = n & 1
@@ -599,13 +606,13 @@ def f(n):
     n :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
     x :: int
     r8 :: bool
     r9 :: native_int
-    r10, r11, r12 :: bool
+    r10, r11, r12 :: bit
 L0:
     r1 = n & 1
     r2 = r1 == 0
@@ -665,7 +672,7 @@ def f(n):
     n :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4 :: bool
+    r2, r3, r4 :: bit
     r5 :: int
 L0:
     r1 = n & 1
@@ -914,7 +921,7 @@ def g(y):
     a :: list
     r5 :: tuple[int, int]
     r6 :: object
-    r7 :: bool
+    r7 :: bit
     r8, r9 :: object
 L0:
     r0 = box(short_int, 2)
@@ -1070,8 +1077,10 @@ def f(x: Any, y: Any, z: Any) -> None:
 def f(x, y, z):
     x, y, z :: object
     r0 :: int32
+    r1 :: bit
 L0:
     r0 = PyObject_SetItem(x, y, z)
+    r1 = r0 >= 0 :: signed
     return 1
 
 [case testLoadFloatSum]
@@ -1198,9 +1207,9 @@ def absolute_value(x):
     x :: int
     r0 :: bool
     r1 :: native_int
-    r2 :: bool
+    r2 :: bit
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6, r7 :: bit
     r8, r9 :: int
 L0:
     r1 = x & 1
@@ -1357,11 +1366,13 @@ def lst(x: List[int]) -> int:
 def obj(x):
     x :: object
     r0 :: int32
-    r1 :: bool
+    r1 :: bit
+    r2 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
-    r1 = truncate r0: int32 to builtins.bool
-    if r1 goto L1 else goto L2 :: bool
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: int32 to builtins.bool
+    if r2 goto L1 else goto L2 :: bool
 L1:
     return 2
 L2:
@@ -1372,7 +1383,7 @@ def num(x):
     x :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4, r5 :: bool
+    r2, r3, r4, r5 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0
@@ -1398,7 +1409,7 @@ def lst(x):
     r0 :: ptr
     r1 :: native_int
     r2 :: short_int
-    r3 :: bool
+    r3 :: bit
 L0:
     r0 = get_element_ptr x ob_size :: PyVarObject
     r1 = load_mem r0, x :: native_int*
@@ -1438,11 +1449,11 @@ def opt_o(x: Optional[object]) -> int:
 def opt_int(x):
     x :: union[int, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: int
     r3 :: bool
     r4 :: native_int
-    r5, r6, r7, r8 :: bool
+    r5, r6, r7, r8 :: bit
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -1471,7 +1482,7 @@ L7:
 def opt_a(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -1485,10 +1496,11 @@ L3:
 def opt_o(x):
     x :: union[object, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
     r3 :: int32
-    r4 :: bool
+    r4 :: bit
+    r5 :: bool
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -1496,8 +1508,9 @@ L0:
 L1:
     r2 = cast(object, x)
     r3 = PyObject_IsTrue(r2)
-    r4 = truncate r3: int32 to builtins.bool
-    if r4 goto L2 else goto L3 :: bool
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    if r5 goto L2 else goto L3 :: bool
 L2:
     return 2
 L3:
@@ -1562,20 +1575,21 @@ L0:
     return 1
 def __top_level__():
     r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: str
     r4 :: object
     r5 :: dict
     r6 :: str
     r7 :: object
     r8 :: int32
-    r9 :: dict
-    r10 :: str
-    r11 :: object
-    r12 :: int
-    r13 :: object
-    r14 :: str
-    r15, r16, r17 :: object
+    r9 :: bit
+    r10 :: dict
+    r11 :: str
+    r12 :: object
+    r13 :: int
+    r14 :: object
+    r15 :: str
+    r16, r17, r18 :: object
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -1590,15 +1604,16 @@ L2:
     r6 = load_global CPyStatic_unicode_1 :: static  ('x')
     r7 = box(short_int, 2)
     r8 = CPyDict_SetItem(r5, r6, r7)
-    r9 = __main__.globals :: static
-    r10 = load_global CPyStatic_unicode_1 :: static  ('x')
-    r11 = CPyDict_GetItem(r9, r10)
-    r12 = unbox(int, r11)
-    r13 = builtins :: module
-    r14 = load_global CPyStatic_unicode_2 :: static  ('print')
-    r15 = CPyObject_GetAttr(r13, r14)
-    r16 = box(int, r12)
-    r17 = PyObject_CallFunctionObjArgs(r15, r16, 0)
+    r9 = r8 >= 0 :: signed
+    r10 = __main__.globals :: static
+    r11 = load_global CPyStatic_unicode_1 :: static  ('x')
+    r12 = CPyDict_GetItem(r10, r11)
+    r13 = unbox(int, r12)
+    r14 = builtins :: module
+    r15 = load_global CPyStatic_unicode_2 :: static  ('print')
+    r16 = CPyObject_GetAttr(r14, r15)
+    r17 = box(int, r13)
+    r18 = PyObject_CallFunctionObjArgs(r16, r17, 0)
     return 1
 
 [case testCallOverloaded]
@@ -1682,20 +1697,22 @@ def foo(x):
     x :: union[int, str]
     r0 :: object
     r1 :: int32
-    r2 :: bool
-    r3 :: __main__.B
-    r4 :: __main__.A
+    r2 :: bit
+    r3 :: bool
+    r4 :: __main__.B
+    r5 :: __main__.A
 L0:
     r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
-    r2 = truncate r1: int32 to builtins.bool
-    if r2 goto L1 else goto L2 :: bool
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r3 = B()
-    return r3
-L2:
-    r4 = A()
+    r4 = B()
     return r4
+L2:
+    r5 = A()
+    return r5
 def main():
     r0 :: object
     r1 :: __main__.A
@@ -1852,8 +1869,9 @@ def g():
     r10 :: tuple
     r11 :: dict
     r12 :: int32
-    r13 :: object
-    r14 :: tuple[int, int, int]
+    r13 :: bit
+    r14 :: object
+    r15 :: tuple[int, int, int]
 L0:
     r0 = load_global CPyStatic_unicode_3 :: static  ('a')
     r1 = load_global CPyStatic_unicode_4 :: static  ('b')
@@ -1868,9 +1886,10 @@ L0:
     r10 = PyTuple_Pack(0)
     r11 = PyDict_New()
     r12 = CPyDict_UpdateInDisplay(r11, r6)
-    r13 = PyObject_Call(r9, r10, r11)
-    r14 = unbox(tuple[int, int, int], r13)
-    return r14
+    r13 = r12 >= 0 :: signed
+    r14 = PyObject_Call(r9, r10, r11)
+    r15 = unbox(tuple[int, int, int], r14)
+    return r15
 def h():
     r0, r1 :: str
     r2, r3 :: object
@@ -1880,8 +1899,9 @@ def h():
     r9 :: tuple
     r10 :: dict
     r11 :: int32
-    r12 :: object
-    r13 :: tuple[int, int, int]
+    r12 :: bit
+    r13 :: object
+    r14 :: tuple[int, int, int]
 L0:
     r0 = load_global CPyStatic_unicode_4 :: static  ('b')
     r1 = load_global CPyStatic_unicode_5 :: static  ('c')
@@ -1895,9 +1915,10 @@ L0:
     r9 = PyTuple_Pack(1, r8)
     r10 = PyDict_New()
     r11 = CPyDict_UpdateInDisplay(r10, r4)
-    r12 = PyObject_Call(r7, r9, r10)
-    r13 = unbox(tuple[int, int, int], r12)
-    return r13
+    r12 = r11 >= 0 :: signed
+    r13 = PyObject_Call(r7, r9, r10)
+    r14 = unbox(tuple[int, int, int], r13)
+    return r14
 
 [case testFunctionCallWithDefaultArgs]
 def f(x: int, y: int = 3, z: str = "test") -> None:
@@ -1991,18 +2012,20 @@ def f():
     r10 :: ptr
     r11 :: native_int
     r12 :: short_int
-    r13 :: bool
+    r13 :: bit
     r14 :: object
     x, r15 :: int
     r16 :: bool
     r17 :: native_int
-    r18, r19, r20, r21, r22 :: bool
+    r18, r19, r20, r21 :: bit
+    r22 :: bool
     r23 :: native_int
-    r24, r25, r26, r27 :: bool
+    r24, r25, r26, r27 :: bit
     r28 :: int
     r29 :: object
     r30 :: int32
-    r31 :: short_int
+    r31 :: bit
+    r32 :: short_int
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
@@ -2062,9 +2085,10 @@ L12:
     r28 = CPyTagged_Multiply(x, x)
     r29 = box(int, r28)
     r30 = PyList_Append(r0, r29)
+    r31 = r30 >= 0 :: signed
 L13:
-    r31 = r9 + 2
-    r9 = r31
+    r32 = r9 + 2
+    r9 = r32
     goto L1
 L14:
     return r0
@@ -2083,18 +2107,20 @@ def f():
     r10 :: ptr
     r11 :: native_int
     r12 :: short_int
-    r13 :: bool
+    r13 :: bit
     r14 :: object
     x, r15 :: int
     r16 :: bool
     r17 :: native_int
-    r18, r19, r20, r21, r22 :: bool
+    r18, r19, r20, r21 :: bit
+    r22 :: bool
     r23 :: native_int
-    r24, r25, r26, r27 :: bool
+    r24, r25, r26, r27 :: bit
     r28 :: int
     r29, r30 :: object
     r31 :: int32
-    r32 :: short_int
+    r32 :: bit
+    r33 :: short_int
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
@@ -2155,9 +2181,10 @@ L12:
     r29 = box(int, x)
     r30 = box(int, r28)
     r31 = CPyDict_SetItem(r0, r29, r30)
+    r32 = r31 >= 0 :: signed
 L13:
-    r32 = r9 + 2
-    r9 = r32
+    r33 = r9 + 2
+    r9 = r33
     goto L1
 L14:
     return r0
@@ -2175,7 +2202,7 @@ def f(l):
     r1 :: ptr
     r2 :: native_int
     r3 :: short_int
-    r4 :: bool
+    r4 :: bit
     r5 :: object
     x, y, z :: int
     r6 :: tuple[int, int, int]
@@ -2186,14 +2213,15 @@ def f(l):
     r13 :: ptr
     r14 :: native_int
     r15 :: short_int
-    r16 :: bool
+    r16 :: bit
     r17 :: object
     x0, y0, z0 :: int
     r18 :: tuple[int, int, int]
     r19, r20, r21, r22, r23 :: int
     r24 :: object
     r25 :: int32
-    r26 :: short_int
+    r26 :: bit
+    r27 :: short_int
 L0:
     r0 = 0
 L1:
@@ -2237,9 +2265,10 @@ L6:
     r23 = CPyTagged_Add(r22, z0)
     r24 = box(int, r23)
     r25 = PyList_Append(r11, r24)
+    r26 = r25 >= 0 :: signed
 L7:
-    r26 = r12 + 2
-    r12 = r26
+    r27 = r12 + 2
+    r12 = r27
     goto L5
 L8:
     return r11
@@ -2567,10 +2596,10 @@ y = Bar([1,2,3])
 [out]
 def __top_level__():
     r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: str
     r4, r5, r6 :: object
-    r7 :: bool
+    r7 :: bit
     r8 :: str
     r9, r10 :: object
     r11 :: dict
@@ -2578,63 +2607,71 @@ def __top_level__():
     r13 :: object
     r14 :: str
     r15 :: int32
-    r16 :: str
-    r17 :: object
-    r18 :: str
-    r19 :: int32
-    r20 :: str
-    r21 :: object
+    r16 :: bit
+    r17 :: str
+    r18 :: object
+    r19 :: str
+    r20 :: int32
+    r21 :: bit
     r22 :: str
-    r23 :: int32
-    r24, r25 :: str
-    r26 :: object
-    r27 :: tuple[str, object]
-    r28 :: object
-    r29 :: str
-    r30 :: object
-    r31 :: tuple[str, object]
-    r32 :: object
-    r33 :: tuple[object, object]
-    r34 :: object
-    r35 :: dict
-    r36 :: str
-    r37, r38 :: object
-    r39 :: dict
-    r40 :: str
-    r41 :: int32
-    r42 :: str
-    r43 :: dict
-    r44 :: str
-    r45, r46, r47 :: object
-    r48 :: tuple
-    r49 :: dict
-    r50 :: str
-    r51 :: int32
-    r52 :: dict
-    r53 :: str
-    r54, r55, r56 :: object
+    r23 :: object
+    r24 :: str
+    r25 :: int32
+    r26 :: bit
+    r27, r28 :: str
+    r29 :: object
+    r30 :: tuple[str, object]
+    r31 :: object
+    r32 :: str
+    r33 :: object
+    r34 :: tuple[str, object]
+    r35 :: object
+    r36 :: tuple[object, object]
+    r37 :: object
+    r38 :: dict
+    r39 :: str
+    r40, r41 :: object
+    r42 :: dict
+    r43 :: str
+    r44 :: int32
+    r45 :: bit
+    r46 :: str
+    r47 :: dict
+    r48 :: str
+    r49, r50, r51 :: object
+    r52 :: tuple
+    r53 :: dict
+    r54 :: str
+    r55 :: int32
+    r56 :: bit
     r57 :: dict
     r58 :: str
-    r59 :: int32
-    r60 :: str
-    r61 :: dict
-    r62 :: str
-    r63 :: object
-    r64 :: dict
-    r65 :: str
-    r66, r67 :: object
-    r68 :: dict
-    r69 :: str
-    r70 :: int32
-    r71 :: list
-    r72, r73, r74 :: object
-    r75, r76, r77, r78 :: ptr
-    r79 :: dict
-    r80 :: str
-    r81, r82 :: object
-    r83 :: dict
-    r84 :: str
-    r85 :: int32
+    r59, r60, r61 :: object
+    r62 :: dict
+    r63 :: str
+    r64 :: int32
+    r65 :: bit
+    r66 :: str
+    r67 :: dict
+    r68 :: str
+    r69 :: object
+    r70 :: dict
+    r71 :: str
+    r72, r73 :: object
+    r74 :: dict
+    r75 :: str
+    r76 :: int32
+    r77 :: bit
+    r78 :: list
+    r79, r80, r81 :: object
+    r82, r83, r84, r85 :: ptr
+    r86 :: dict
+    r87 :: str
+    r88, r89 :: object
+    r90 :: dict
+    r91 :: str
+    r92 :: int32
+    r93 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2660,79 +2697,87 @@ L4:
     r13 = CPyObject_GetAttr(r10, r12)
     r14 = load_global CPyStatic_unicode_2 :: static  ('List')
     r15 = CPyDict_SetItem(r11, r14, r13)
-    r16 = load_global CPyStatic_unicode_3 :: static  ('NewType')
-    r17 = CPyObject_GetAttr(r10, r16)
-    r18 = load_global CPyStatic_unicode_3 :: static  ('NewType')
-    r19 = CPyDict_SetItem(r11, r18, r17)
-    r20 = load_global CPyStatic_unicode_4 :: static  ('NamedTuple')
-    r21 = CPyObject_GetAttr(r10, r20)
+    r16 = r15 >= 0 :: signed
+    r17 = load_global CPyStatic_unicode_3 :: static  ('NewType')
+    r18 = CPyObject_GetAttr(r10, r17)
+    r19 = load_global CPyStatic_unicode_3 :: static  ('NewType')
+    r20 = CPyDict_SetItem(r11, r19, r18)
+    r21 = r20 >= 0 :: signed
     r22 = load_global CPyStatic_unicode_4 :: static  ('NamedTuple')
-    r23 = CPyDict_SetItem(r11, r22, r21)
-    r24 = load_global CPyStatic_unicode_5 :: static  ('Lol')
-    r25 = load_global CPyStatic_unicode_6 :: static  ('a')
-    r26 = load_address PyLong_Type
-    r27 = (r25, r26)
-    r28 = box(tuple[str, object], r27)
-    r29 = load_global CPyStatic_unicode_7 :: static  ('b')
-    r30 = load_address PyUnicode_Type
-    r31 = (r29, r30)
-    r32 = box(tuple[str, object], r31)
-    r33 = (r28, r32)
-    r34 = box(tuple[object, object], r33)
-    r35 = __main__.globals :: static
-    r36 = load_global CPyStatic_unicode_4 :: static  ('NamedTuple')
-    r37 = CPyDict_GetItem(r35, r36)
-    r38 = PyObject_CallFunctionObjArgs(r37, r24, r34, 0)
-    r39 = __main__.globals :: static
-    r40 = load_global CPyStatic_unicode_5 :: static  ('Lol')
-    r41 = CPyDict_SetItem(r39, r40, r38)
-    r42 = load_global CPyStatic_unicode_8 :: static
-    r43 = __main__.globals :: static
-    r44 = load_global CPyStatic_unicode_5 :: static  ('Lol')
-    r45 = CPyDict_GetItem(r43, r44)
-    r46 = box(short_int, 2)
-    r47 = PyObject_CallFunctionObjArgs(r45, r46, r42, 0)
-    r48 = cast(tuple, r47)
-    r49 = __main__.globals :: static
-    r50 = load_global CPyStatic_unicode_9 :: static  ('x')
-    r51 = CPyDict_SetItem(r49, r50, r48)
-    r52 = __main__.globals :: static
-    r53 = load_global CPyStatic_unicode_2 :: static  ('List')
-    r54 = CPyDict_GetItem(r52, r53)
-    r55 = load_address PyLong_Type
-    r56 = PyObject_GetItem(r54, r55)
+    r23 = CPyObject_GetAttr(r10, r22)
+    r24 = load_global CPyStatic_unicode_4 :: static  ('NamedTuple')
+    r25 = CPyDict_SetItem(r11, r24, r23)
+    r26 = r25 >= 0 :: signed
+    r27 = load_global CPyStatic_unicode_5 :: static  ('Lol')
+    r28 = load_global CPyStatic_unicode_6 :: static  ('a')
+    r29 = load_address PyLong_Type
+    r30 = (r28, r29)
+    r31 = box(tuple[str, object], r30)
+    r32 = load_global CPyStatic_unicode_7 :: static  ('b')
+    r33 = load_address PyUnicode_Type
+    r34 = (r32, r33)
+    r35 = box(tuple[str, object], r34)
+    r36 = (r31, r35)
+    r37 = box(tuple[object, object], r36)
+    r38 = __main__.globals :: static
+    r39 = load_global CPyStatic_unicode_4 :: static  ('NamedTuple')
+    r40 = CPyDict_GetItem(r38, r39)
+    r41 = PyObject_CallFunctionObjArgs(r40, r27, r37, 0)
+    r42 = __main__.globals :: static
+    r43 = load_global CPyStatic_unicode_5 :: static  ('Lol')
+    r44 = CPyDict_SetItem(r42, r43, r41)
+    r45 = r44 >= 0 :: signed
+    r46 = load_global CPyStatic_unicode_8 :: static
+    r47 = __main__.globals :: static
+    r48 = load_global CPyStatic_unicode_5 :: static  ('Lol')
+    r49 = CPyDict_GetItem(r47, r48)
+    r50 = box(short_int, 2)
+    r51 = PyObject_CallFunctionObjArgs(r49, r50, r46, 0)
+    r52 = cast(tuple, r51)
+    r53 = __main__.globals :: static
+    r54 = load_global CPyStatic_unicode_9 :: static  ('x')
+    r55 = CPyDict_SetItem(r53, r54, r52)
+    r56 = r55 >= 0 :: signed
     r57 = __main__.globals :: static
-    r58 = load_global CPyStatic_unicode_10 :: static  ('Foo')
-    r59 = CPyDict_SetItem(r57, r58, r56)
-    r60 = load_global CPyStatic_unicode_11 :: static  ('Bar')
-    r61 = __main__.globals :: static
-    r62 = load_global CPyStatic_unicode_10 :: static  ('Foo')
-    r63 = CPyDict_GetItem(r61, r62)
-    r64 = __main__.globals :: static
-    r65 = load_global CPyStatic_unicode_3 :: static  ('NewType')
-    r66 = CPyDict_GetItem(r64, r65)
-    r67 = PyObject_CallFunctionObjArgs(r66, r60, r63, 0)
-    r68 = __main__.globals :: static
-    r69 = load_global CPyStatic_unicode_11 :: static  ('Bar')
-    r70 = CPyDict_SetItem(r68, r69, r67)
-    r71 = PyList_New(3)
-    r72 = box(short_int, 2)
-    r73 = box(short_int, 4)
-    r74 = box(short_int, 6)
-    r75 = get_element_ptr r71 ob_item :: PyListObject
-    r76 = load_mem r75, r71 :: ptr*
-    set_mem r76, r72, r71 :: builtins.object*
-    r77 = r76 + WORD_SIZE*1
-    set_mem r77, r73, r71 :: builtins.object*
-    r78 = r76 + WORD_SIZE*2
-    set_mem r78, r74, r71 :: builtins.object*
-    r79 = __main__.globals :: static
-    r80 = load_global CPyStatic_unicode_11 :: static  ('Bar')
-    r81 = CPyDict_GetItem(r79, r80)
-    r82 = PyObject_CallFunctionObjArgs(r81, r71, 0)
-    r83 = __main__.globals :: static
-    r84 = load_global CPyStatic_unicode_12 :: static  ('y')
-    r85 = CPyDict_SetItem(r83, r84, r82)
+    r58 = load_global CPyStatic_unicode_2 :: static  ('List')
+    r59 = CPyDict_GetItem(r57, r58)
+    r60 = load_address PyLong_Type
+    r61 = PyObject_GetItem(r59, r60)
+    r62 = __main__.globals :: static
+    r63 = load_global CPyStatic_unicode_10 :: static  ('Foo')
+    r64 = CPyDict_SetItem(r62, r63, r61)
+    r65 = r64 >= 0 :: signed
+    r66 = load_global CPyStatic_unicode_11 :: static  ('Bar')
+    r67 = __main__.globals :: static
+    r68 = load_global CPyStatic_unicode_10 :: static  ('Foo')
+    r69 = CPyDict_GetItem(r67, r68)
+    r70 = __main__.globals :: static
+    r71 = load_global CPyStatic_unicode_3 :: static  ('NewType')
+    r72 = CPyDict_GetItem(r70, r71)
+    r73 = PyObject_CallFunctionObjArgs(r72, r66, r69, 0)
+    r74 = __main__.globals :: static
+    r75 = load_global CPyStatic_unicode_11 :: static  ('Bar')
+    r76 = CPyDict_SetItem(r74, r75, r73)
+    r77 = r76 >= 0 :: signed
+    r78 = PyList_New(3)
+    r79 = box(short_int, 2)
+    r80 = box(short_int, 4)
+    r81 = box(short_int, 6)
+    r82 = get_element_ptr r78 ob_item :: PyListObject
+    r83 = load_mem r82, r78 :: ptr*
+    set_mem r83, r79, r78 :: builtins.object*
+    r84 = r83 + WORD_SIZE*1
+    set_mem r84, r80, r78 :: builtins.object*
+    r85 = r83 + WORD_SIZE*2
+    set_mem r85, r81, r78 :: builtins.object*
+    r86 = __main__.globals :: static
+    r87 = load_global CPyStatic_unicode_11 :: static  ('Bar')
+    r88 = CPyDict_GetItem(r86, r87)
+    r89 = PyObject_CallFunctionObjArgs(r88, r78, 0)
+    r90 = __main__.globals :: static
+    r91 = load_global CPyStatic_unicode_12 :: static  ('y')
+    r92 = CPyDict_SetItem(r90, r91, r89)
+    r93 = r92 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
@@ -2749,15 +2794,15 @@ def f(x, y, z):
     x, y, z, r0, r1 :: int
     r2, r3 :: bool
     r4 :: native_int
-    r5 :: bool
+    r5 :: bit
     r6 :: native_int
-    r7, r8, r9, r10 :: bool
+    r7, r8, r9, r10 :: bit
     r11 :: int
     r12 :: bool
     r13 :: native_int
-    r14 :: bool
+    r14 :: bit
     r15 :: native_int
-    r16, r17, r18, r19 :: bool
+    r16, r17, r18, r19 :: bit
 L0:
     r0 = g(x)
     r1 = g(y)
@@ -2813,10 +2858,11 @@ L0:
 def A.__ne__(self, rhs):
     self :: __main__.A
     rhs, r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: int32
-    r4 :: bool
-    r5 :: object
+    r4 :: bit
+    r5 :: bool
+    r6 :: object
 L0:
     r0 = self.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
@@ -2824,9 +2870,10 @@ L0:
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = PyObject_Not(r0)
-    r4 = truncate r3: int32 to builtins.bool
-    r5 = box(bool, r4)
-    return r5
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    r6 = box(bool, r5)
+    return r6
 L2:
     return r1
 
@@ -2860,7 +2907,7 @@ def c() -> None:
 [out]
 def g_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -2917,7 +2964,7 @@ L0:
     return r5
 def g_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -2974,7 +3021,7 @@ L0:
     return r5
 def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -3041,10 +3088,10 @@ L0:
     return 1
 def __top_level__():
     r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: str
     r4, r5, r6 :: object
-    r7 :: bool
+    r7 :: bit
     r8 :: str
     r9, r10 :: object
     r11 :: dict
@@ -3052,18 +3099,20 @@ def __top_level__():
     r13 :: object
     r14 :: str
     r15 :: int32
-    r16 :: dict
-    r17 :: str
-    r18 :: object
-    r19 :: dict
-    r20 :: str
-    r21, r22 :: object
-    r23 :: dict
-    r24 :: str
-    r25, r26 :: object
-    r27 :: dict
-    r28 :: str
-    r29 :: int32
+    r16 :: bit
+    r17 :: dict
+    r18 :: str
+    r19 :: object
+    r20 :: dict
+    r21 :: str
+    r22, r23 :: object
+    r24 :: dict
+    r25 :: str
+    r26, r27 :: object
+    r28 :: dict
+    r29 :: str
+    r30 :: int32
+    r31 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -3089,20 +3138,22 @@ L4:
     r13 = CPyObject_GetAttr(r10, r12)
     r14 = load_global CPyStatic_unicode_2 :: static  ('Callable')
     r15 = CPyDict_SetItem(r11, r14, r13)
-    r16 = __main__.globals :: static
-    r17 = load_global CPyStatic_unicode_11 :: static  ('__mypyc_c_decorator_helper__')
-    r18 = CPyDict_GetItem(r16, r17)
-    r19 = __main__.globals :: static
-    r20 = load_global CPyStatic_unicode_8 :: static  ('b')
-    r21 = CPyDict_GetItem(r19, r20)
-    r22 = PyObject_CallFunctionObjArgs(r21, r18, 0)
-    r23 = __main__.globals :: static
-    r24 = load_global CPyStatic_unicode_9 :: static  ('a')
-    r25 = CPyDict_GetItem(r23, r24)
-    r26 = PyObject_CallFunctionObjArgs(r25, r22, 0)
-    r27 = __main__.globals :: static
-    r28 = load_global CPyStatic_unicode_10 :: static  ('c')
-    r29 = CPyDict_SetItem(r27, r28, r26)
+    r16 = r15 >= 0 :: signed
+    r17 = __main__.globals :: static
+    r18 = load_global CPyStatic_unicode_11 :: static  ('__mypyc_c_decorator_helper__')
+    r19 = CPyDict_GetItem(r17, r18)
+    r20 = __main__.globals :: static
+    r21 = load_global CPyStatic_unicode_8 :: static  ('b')
+    r22 = CPyDict_GetItem(r20, r21)
+    r23 = PyObject_CallFunctionObjArgs(r22, r19, 0)
+    r24 = __main__.globals :: static
+    r25 = load_global CPyStatic_unicode_9 :: static  ('a')
+    r26 = CPyDict_GetItem(r24, r25)
+    r27 = PyObject_CallFunctionObjArgs(r26, r23, 0)
+    r28 = __main__.globals :: static
+    r29 = load_global CPyStatic_unicode_10 :: static  ('c')
+    r30 = CPyDict_SetItem(r28, r29, r27)
+    r31 = r30 >= 0 :: signed
     return 1
 
 [case testDecoratorsSimple_toplevel]
@@ -3118,7 +3169,7 @@ def a(f: Callable[[], None]) -> Callable[[], None]:
 [out]
 def g_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -3175,10 +3226,10 @@ L0:
     return r5
 def __top_level__():
     r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: str
     r4, r5, r6 :: object
-    r7 :: bool
+    r7 :: bit
     r8 :: str
     r9, r10 :: object
     r11 :: dict
@@ -3186,6 +3237,7 @@ def __top_level__():
     r13 :: object
     r14 :: str
     r15 :: int32
+    r16 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -3211,6 +3263,7 @@ L4:
     r13 = CPyObject_GetAttr(r10, r12)
     r14 = load_global CPyStatic_unicode_2 :: static  ('Callable')
     r15 = CPyDict_SetItem(r11, r14, r13)
+    r16 = r15 >= 0 :: signed
     return 1
 
 [case testAnyAllG]
@@ -3230,7 +3283,7 @@ def call_any(l):
     r3, i :: int
     r4 :: bool
     r5 :: native_int
-    r6, r7, r8, r9 :: bool
+    r6, r7, r8, r9 :: bit
 L0:
     r0 = 0
     r1 = PyObject_GetIter(l)
@@ -3270,7 +3323,9 @@ def call_all(l):
     r3, i :: int
     r4 :: bool
     r5 :: native_int
-    r6, r7, r8, r9, r10 :: bool
+    r6, r7, r8 :: bit
+    r9 :: bool
+    r10 :: bit
 L0:
     r0 = 1
     r1 = PyObject_GetIter(l)
@@ -3315,13 +3370,15 @@ def lol(x):
     x :: object
     r0, r1 :: str
     r2 :: int32
-    r3 :: object
+    r3 :: bit
+    r4 :: object
 L0:
     r0 = load_global CPyStatic_unicode_5 :: static  ('x')
     r1 = load_global CPyStatic_unicode_6 :: static  ('5')
     r2 = PyObject_SetAttr(x, r0, r1)
-    r3 = box(None, 1)
-    return r3
+    r3 = r2 >= 0 :: signed
+    r4 = box(None, 1)
+    return r4
 
 [case testFinalModuleInt]
 from typing import Final
@@ -3619,11 +3676,13 @@ def f(x: object) -> bool:
 def f(x):
     x :: object
     r0 :: int32
-    r1 :: bool
+    r1 :: bit
+    r2 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
-    r1 = truncate r0: int32 to builtins.bool
-    return r1
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: int32 to builtins.bool
+    return r2
 
 [case testMultipleAssignment]
 from typing import Tuple

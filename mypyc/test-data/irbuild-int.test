@@ -6,7 +6,7 @@ def f(x, y):
     x, y :: int
     r0 :: bool
     r1 :: native_int
-    r2, r3, r4, r5 :: bool
+    r2, r3, r4, r5 :: bit
 L0:
     r1 = x & 1
     r2 = r1 == 0

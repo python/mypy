@@ -10,7 +10,7 @@ from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, RType
+    str_rprimitive, bit_rprimitive, RType
 )
 from mypyc.primitives.registry import (
     load_address_op, c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
@@ -138,13 +138,13 @@ IntLogicalOpDescrption = NamedTuple(
 # description for equal operation on two boxed tagged integers
 int_equal_ = c_custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsEq_',
     error_kind=ERR_NEVER)
 
 int_less_than_ = c_custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsLt_',
     error_kind=ERR_NEVER)
 
