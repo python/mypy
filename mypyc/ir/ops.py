@@ -415,11 +415,13 @@ class Goto(ControlOp):
 
 
 class Branch(ControlOp):
-    """Check a condition and branch.
+    """Branch based on a value.
 
-    There are two forms:
-       if [not] r1 goto L1 else goto L2  (BOOL)
-       if [not] is_error(r1) goto L1 else goto L2  (IS_ERROR)
+    If op is BOOL, branch based on a bit/bool value:
+       if [not] r1 goto L1 else goto L2
+
+    If op is IS_ERROR, branch based on whether there is an error value:
+       if [not] is_error(r1) goto L1 else goto L2
     """
 
     # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
