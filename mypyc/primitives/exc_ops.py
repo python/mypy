@@ -1,9 +1,7 @@
 """Exception-related primitive ops."""
 
 from mypyc.ir.ops import ERR_NEVER, ERR_FALSE, ERR_ALWAYS
-from mypyc.ir.rtypes import (
-    bool_rprimitive, object_rprimitive, void_rtype, exc_rtuple, bit_rprimitive
-)
+from mypyc.ir.rtypes import object_rprimitive, void_rtype, exc_rtuple, bit_rprimitive
 from mypyc.primitives.registry import c_custom_op
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
@@ -79,7 +77,7 @@ restore_exc_info_op = c_custom_op(
 # Checks whether the exception currently being handled matches a particular type.
 exc_matches_op = c_custom_op(
     arg_types=[object_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPy_ExceptionMatches',
     error_kind=ERR_NEVER)
 

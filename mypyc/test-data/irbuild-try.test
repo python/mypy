@@ -114,7 +114,7 @@ def g():
     r10 :: object
     r11 :: str
     r12 :: object
-    r13 :: bool
+    r13 :: bit
     e, r14 :: object
     r15 :: str
     r16 :: object
@@ -199,14 +199,14 @@ def g():
     r1 :: object
     r2 :: str
     r3 :: object
-    r4 :: bool
+    r4 :: bit
     r5 :: str
     r6 :: object
     r7 :: str
     r8, r9, r10 :: object
     r11 :: str
     r12 :: object
-    r13 :: bool
+    r13 :: bit
     r14 :: str
     r15 :: object
     r16 :: str
