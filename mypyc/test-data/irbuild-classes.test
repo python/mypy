@@ -113,24 +113,25 @@ class Node:
 [out]
 def Node.length(self):
     self :: __main__.Node
-    r0 :: union[__main__.Node, None]
-    r1 :: object
-    r2, r3 :: bit
-    r4 :: union[__main__.Node, None]
-    r5 :: __main__.Node
-    r6, r7 :: int
+    r0, r1 :: union[__main__.Node, None]
+    r2 :: object
+    r3, r4 :: bit
+    r5 :: union[__main__.Node, None]
+    r6 :: __main__.Node
+    r7, r8 :: int
 L0:
     r0 = self.next
-    r1 = box(None, 1)
-    r2 = r0 == r1
-    r3 = r2 ^ 1
-    if r3 goto L1 else goto L2 :: bool
+    r1 = self.next
+    r2 = box(None, 1)
+    r3 = r1 == r2
+    r4 = r3 ^ 1
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r4 = self.next
-    r5 = cast(__main__.Node, r4)
-    r6 = r5.length()
-    r7 = CPyTagged_Add(2, r6)
-    return r7
+    r5 = self.next
+    r6 = cast(__main__.Node, r5)
+    r7 = r6.length()
+    r8 = CPyTagged_Add(2, r7)
+    return r8
 L2:
     return 2
 
