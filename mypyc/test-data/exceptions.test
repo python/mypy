@@ -115,9 +115,9 @@ def sum(a, l):
     a :: list
     l, sum, i :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8 :: object
     r9, r10, r11, r12 :: int

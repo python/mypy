@@ -158,7 +158,7 @@ def increment(l: List[int]) -> List[int]:
 def increment(l):
     l :: list
     r0 :: ptr
-    r1 :: int64
+    r1 :: native_int
     r2, r3 :: short_int
     i :: int
     r4 :: bit
@@ -167,7 +167,7 @@ def increment(l):
     r9 :: short_int
 L0:
     r0 = get_element_ptr l ob_size :: PyVarObject
-    r1 = load_mem r0, l :: int64*
+    r1 = load_mem r0, l :: native_int*
     r2 = r1 << 1
     r3 = 0
     i = r3

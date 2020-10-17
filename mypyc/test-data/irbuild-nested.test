@@ -706,7 +706,7 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     r0 :: __main__.f_env
     r1, baz :: object
     r2 :: bool
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6 :: bit
     r7 :: int
     r8, r9 :: object
@@ -860,7 +860,7 @@ def baz(n: int) -> int:
 def baz(n):
     n :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2, r3, r4 :: bit
     r5, r6, r7 :: int
 L0:

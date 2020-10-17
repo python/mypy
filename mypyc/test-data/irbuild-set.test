@@ -67,7 +67,7 @@ def f():
     r8 :: int32
     r9 :: bit
     r10 :: ptr
-    r11 :: int64
+    r11 :: native_int
     r12 :: short_int
 L0:
     r0 = PySet_New(0)
@@ -81,7 +81,7 @@ L0:
     r8 = PySet_Add(r0, r7)
     r9 = r8 >= 0 :: signed
     r10 = get_element_ptr r0 used :: PySetObject
-    r11 = load_mem r10, r0 :: int64*
+    r11 = load_mem r10, r0 :: native_int*
     r12 = r11 << 1
     return r12
 

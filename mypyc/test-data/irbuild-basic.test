@@ -77,9 +77,9 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
@@ -113,9 +113,9 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
@@ -152,14 +152,14 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8 :: bool
-    r9 :: int64
+    r9 :: native_int
     r10 :: bit
-    r11 :: int64
+    r11 :: native_int
     r12, r13, r14, r15 :: bit
 L0:
     r1 = x & 1
@@ -238,14 +238,14 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8 :: bool
-    r9 :: int64
+    r9 :: native_int
     r10 :: bit
-    r11 :: int64
+    r11 :: native_int
     r12, r13, r14, r15 :: bit
 L0:
     r1 = x & 1
@@ -322,9 +322,9 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
@@ -356,14 +356,14 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8 :: bool
-    r9 :: int64
+    r9 :: native_int
     r10 :: bit
-    r11 :: int64
+    r11 :: native_int
     r12, r13, r14, r15 :: bit
 L0:
     r1 = x & 1
@@ -411,9 +411,9 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8 :: int
 L0:
@@ -450,9 +450,9 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8 :: int
 L0:
@@ -508,9 +508,9 @@ def f(x: int, y: int) -> None:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
 L0:
     r1 = x & 1
@@ -546,9 +546,9 @@ def f(n: int) -> int:
 def f(n):
     n :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7, r8 :: bit
     r9, r10, r11, r12, r13 :: int
 L0:
@@ -605,13 +605,13 @@ def f(n: int) -> int:
 def f(n):
     n :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     x :: int
     r8 :: bool
-    r9 :: int64
+    r9 :: native_int
     r10, r11, r12 :: bit
 L0:
     r1 = n & 1
@@ -671,7 +671,7 @@ def f(n: int) -> int:
 def f(n):
     n :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2, r3, r4 :: bit
     r5 :: int
 L0:
@@ -1206,9 +1206,9 @@ def call_callable_type() -> float:
 def absolute_value(x):
     x :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2 :: bit
-    r3 :: int64
+    r3 :: native_int
     r4, r5, r6, r7 :: bit
     r8, r9 :: int
 L0:
@@ -1382,7 +1382,7 @@ L3:
 def num(x):
     x :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2, r3, r4, r5 :: bit
 L0:
     r1 = x & 1
@@ -1407,12 +1407,12 @@ L6:
 def lst(x):
     x :: list
     r0 :: ptr
-    r1 :: int64
+    r1 :: native_int
     r2 :: short_int
     r3 :: bit
 L0:
     r0 = get_element_ptr x ob_size :: PyVarObject
-    r1 = load_mem r0, x :: int64*
+    r1 = load_mem r0, x :: native_int*
     r2 = r1 << 1
     r3 = r2 != 0
     if r3 goto L1 else goto L2 :: bool
@@ -1452,7 +1452,7 @@ def opt_int(x):
     r1 :: bit
     r2 :: int
     r3 :: bool
-    r4 :: int64
+    r4 :: native_int
     r5, r6, r7, r8 :: bit
 L0:
     r0 = load_address _Py_NoneStruct
@@ -2010,16 +2010,16 @@ def f():
     r5, r6, r7, r8 :: ptr
     r9 :: short_int
     r10 :: ptr
-    r11 :: int64
+    r11 :: native_int
     r12 :: short_int
     r13 :: bit
     r14 :: object
     x, r15 :: int
     r16 :: bool
-    r17 :: int64
+    r17 :: native_int
     r18, r19, r20, r21 :: bit
     r22 :: bool
-    r23 :: int64
+    r23 :: native_int
     r24, r25, r26, r27 :: bit
     r28 :: int
     r29 :: object
@@ -2042,7 +2042,7 @@ L0:
     r9 = 0
 L1:
     r10 = get_element_ptr r1 ob_size :: PyVarObject
-    r11 = load_mem r10, r1 :: int64*
+    r11 = load_mem r10, r1 :: native_int*
     r12 = r11 << 1
     r13 = r9 < r12 :: signed
     if r13 goto L2 else goto L14 :: bool
@@ -2105,16 +2105,16 @@ def f():
     r5, r6, r7, r8 :: ptr
     r9 :: short_int
     r10 :: ptr
-    r11 :: int64
+    r11 :: native_int
     r12 :: short_int
     r13 :: bit
     r14 :: object
     x, r15 :: int
     r16 :: bool
-    r17 :: int64
+    r17 :: native_int
     r18, r19, r20, r21 :: bit
     r22 :: bool
-    r23 :: int64
+    r23 :: native_int
     r24, r25, r26, r27 :: bit
     r28 :: int
     r29, r30 :: object
@@ -2137,7 +2137,7 @@ L0:
     r9 = 0
 L1:
     r10 = get_element_ptr r1 ob_size :: PyVarObject
-    r11 = load_mem r10, r1 :: int64*
+    r11 = load_mem r10, r1 :: native_int*
     r12 = r11 << 1
     r13 = r9 < r12 :: signed
     if r13 goto L2 else goto L14 :: bool
@@ -2200,7 +2200,7 @@ def f(l):
     l :: list
     r0 :: short_int
     r1 :: ptr
-    r2 :: int64
+    r2 :: native_int
     r3 :: short_int
     r4 :: bit
     r5 :: object
@@ -2211,7 +2211,7 @@ def f(l):
     r11 :: list
     r12 :: short_int
     r13 :: ptr
-    r14 :: int64
+    r14 :: native_int
     r15 :: short_int
     r16 :: bit
     r17 :: object
@@ -2226,7 +2226,7 @@ L0:
     r0 = 0
 L1:
     r1 = get_element_ptr l ob_size :: PyVarObject
-    r2 = load_mem r1, l :: int64*
+    r2 = load_mem r1, l :: native_int*
     r3 = r2 << 1
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
@@ -2248,7 +2248,7 @@ L4:
     r12 = 0
 L5:
     r13 = get_element_ptr l ob_size :: PyVarObject
-    r14 = load_mem r13, l :: int64*
+    r14 = load_mem r13, l :: native_int*
     r15 = r14 << 1
     r16 = r12 < r15 :: signed
     if r16 goto L6 else goto L8 :: bool
@@ -2793,15 +2793,15 @@ L0:
 def f(x, y, z):
     x, y, z, r0, r1 :: int
     r2, r3 :: bool
-    r4 :: int64
+    r4 :: native_int
     r5 :: bit
-    r6 :: int64
+    r6 :: native_int
     r7, r8, r9, r10 :: bit
     r11 :: int
     r12 :: bool
-    r13 :: int64
+    r13 :: native_int
     r14 :: bit
-    r15 :: int64
+    r15 :: native_int
     r16, r17, r18, r19 :: bit
 L0:
     r0 = g(x)
@@ -3282,7 +3282,7 @@ def call_any(l):
     r1, r2 :: object
     r3, i :: int
     r4 :: bool
-    r5 :: int64
+    r5 :: native_int
     r6, r7, r8, r9 :: bit
 L0:
     r0 = 0
@@ -3322,7 +3322,7 @@ def call_all(l):
     r1, r2 :: object
     r3, i :: int
     r4 :: bool
-    r5 :: int64
+    r5 :: native_int
     r6, r7, r8 :: bit
     r9 :: bool
     r10 :: bit

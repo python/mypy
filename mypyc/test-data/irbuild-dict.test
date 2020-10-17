@@ -138,7 +138,7 @@ def increment(d: Dict[str, int]) -> Dict[str, int]:
 def increment(d):
     d :: dict
     r0 :: short_int
-    r1 :: int64
+    r1 :: native_int
     r2 :: short_int
     r3 :: object
     r4 :: tuple[bool, int, object]
@@ -216,7 +216,7 @@ def print_dict_methods(d1: Dict[int, int], d2: Dict[int, int]) -> None:
 def print_dict_methods(d1, d2):
     d1, d2 :: dict
     r0 :: short_int
-    r1 :: int64
+    r1 :: native_int
     r2 :: short_int
     r3 :: object
     r4 :: tuple[bool, int, object]
@@ -230,7 +230,7 @@ def print_dict_methods(d1, d2):
     r12 :: bool
     r13, r14 :: bit
     r15 :: short_int
-    r16 :: int64
+    r16 :: native_int
     r17 :: short_int
     r18 :: object
     r19 :: tuple[bool, int, object, object]

@@ -218,7 +218,7 @@ def f(y):
     x :: union[int, None]
     r0 :: object
     r1 :: bool
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6, r7 :: object
     r8, r9 :: bit

@@ -5,7 +5,7 @@ def f(x: int, y: int) -> bool:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int64
+    r1 :: native_int
     r2, r3, r4, r5 :: bit
 L0:
     r1 = x & 1
