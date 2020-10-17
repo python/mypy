@@ -2035,9 +2035,9 @@ L0:
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5, r1 :: ptr*
     set_mem r6, r2, r1 :: builtins.object*
-    r7 = r6 + 8
+    r7 = r6 + WORD_SIZE*1
     set_mem r7, r3, r1 :: builtins.object*
-    r8 = r6 + 16
+    r8 = r6 + WORD_SIZE*2
     set_mem r8, r4, r1 :: builtins.object*
     r9 = 0
 L1:
@@ -2130,9 +2130,9 @@ L0:
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5, r1 :: ptr*
     set_mem r6, r2, r1 :: builtins.object*
-    r7 = r6 + 8
+    r7 = r6 + WORD_SIZE*1
     set_mem r7, r3, r1 :: builtins.object*
-    r8 = r6 + 16
+    r8 = r6 + WORD_SIZE*2
     set_mem r8, r4, r1 :: builtins.object*
     r9 = 0
 L1:
@@ -2766,9 +2766,9 @@ L4:
     r82 = get_element_ptr r78 ob_item :: PyListObject
     r83 = load_mem r82, r78 :: ptr*
     set_mem r83, r79, r78 :: builtins.object*
-    r84 = r83 + 8
+    r84 = r83 + WORD_SIZE*1
     set_mem r84, r80, r78 :: builtins.object*
-    r85 = r83 + 16
+    r85 = r83 + WORD_SIZE*2
     set_mem r85, r81, r78 :: builtins.object*
     r86 = __main__.globals :: static
     r87 = load_global CPyStatic_unicode_11 :: static  ('Bar')

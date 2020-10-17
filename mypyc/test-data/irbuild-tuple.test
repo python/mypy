@@ -111,7 +111,7 @@ L0:
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3, r0 :: ptr*
     set_mem r4, r1, r0 :: builtins.object*
-    r5 = r4 + 8
+    r5 = r4 + WORD_SIZE*1
     set_mem r5, r2, r0 :: builtins.object*
     r6 = CPyList_Extend(r0, x)
     r7 = CPyList_Extend(r0, y)
@@ -249,4 +249,3 @@ L14:
     r0 = r12
 L15:
     return r0
-

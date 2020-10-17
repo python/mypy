@@ -124,7 +124,7 @@ L0:
     r13 = get_element_ptr r11 ob_item :: PyListObject
     r14 = load_mem r13, r11 :: ptr*
     set_mem r14, a, r11 :: builtins.object*
-    r15 = r14 + 8
+    r15 = r14 + WORD_SIZE*1
     set_mem r15, r12, r11 :: builtins.object*
     return 1
 def f3(a, n):
@@ -175,4 +175,3 @@ L6:
     r4 = unbox(int, r2)
     n = r4
     return 1
-
