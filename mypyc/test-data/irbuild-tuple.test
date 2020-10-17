@@ -193,14 +193,13 @@ def f(i):
     i :: int
     r0, r1, r2 :: bool
     r3 :: int64
-    r4, r5 :: bit
-    r6, r7 :: bool
+    r4, r5, r6 :: bit
+    r7 :: bool
     r8 :: int64
-    r9, r10 :: bit
-    r11, r12 :: bool
+    r9, r10, r11 :: bit
+    r12 :: bool
     r13 :: int64
-    r14, r15 :: bit
-    r16 :: bool
+    r14, r15, r16 :: bit
 L0:
     r3 = i & 1
     r4 = r3 == 0

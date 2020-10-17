@@ -219,8 +219,7 @@ def f(y):
     r0 :: object
     r1 :: bool
     r2 :: int64
-    r3, r4 :: bit
-    r5 :: bool
+    r3, r4, r5 :: bit
     r6, r7 :: object
     r8, r9 :: bit
     r10 :: int
