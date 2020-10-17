@@ -10,7 +10,7 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a, x :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     y, z :: int
 L0:
@@ -180,9 +180,9 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6, m :: int
 L0:
@@ -243,13 +243,13 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n, x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: native_int
     r7 :: bit
-    r8 :: int64
+    r8 :: native_int
     r9, r10, r11 :: bit
 L0:
     x = 2
@@ -377,13 +377,13 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: native_int
     r7 :: bit
-    r8 :: int64
+    r8 :: native_int
     r9, r10, r11 :: bit
     y, x :: int
 L0:
@@ -499,7 +499,7 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     x :: int
 L0:
@@ -550,9 +550,9 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a, sum, i :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6, r7 :: int
 L0:

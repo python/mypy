@@ -121,9 +121,9 @@ def sum(a: List[int], l: int) -> int:
 def sum(a, l):
     a :: list
     l, sum, i :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6 :: object
     r7, r8, r9, r10 :: int

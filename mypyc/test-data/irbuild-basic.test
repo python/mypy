@@ -76,9 +76,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
 L0:
     r0 = x & 1
@@ -109,9 +109,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
 L0:
     r0 = x & 1
@@ -145,13 +145,13 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: native_int
     r7 :: bit
-    r8 :: int64
+    r8 :: native_int
     r9, r10, r11 :: bit
 L0:
     r0 = x & 1
@@ -225,13 +225,13 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: native_int
     r7 :: bit
-    r8 :: int64
+    r8 :: native_int
     r9, r10, r11 :: bit
 L0:
     r0 = x & 1
@@ -303,9 +303,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
 L0:
     r0 = x & 1
@@ -334,13 +334,13 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
-    r6 :: int64
+    r6 :: native_int
     r7 :: bit
-    r8 :: int64
+    r8 :: native_int
     r9, r10, r11 :: bit
 L0:
     r0 = x & 1
@@ -383,9 +383,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6 :: int
 L0:
@@ -419,9 +419,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6 :: int
 L0:
@@ -474,9 +474,9 @@ def f(x: int, y: int) -> None:
 [out]
 def f(x, y):
     x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
 L0:
     r0 = x & 1
@@ -509,9 +509,9 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6, r7, r8, r9, r10 :: int
 L0:
@@ -564,9 +564,9 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     x :: int
     r6 :: bit
@@ -1138,9 +1138,9 @@ def call_callable_type() -> float:
 [out]
 def absolute_value(x):
     x :: int
-    r0 :: int64
+    r0 :: native_int
     r1 :: bit
-    r2 :: int64
+    r2 :: native_int
     r3, r4, r5 :: bit
     r6, r7 :: int
 L0:
