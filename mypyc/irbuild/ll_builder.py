@@ -642,7 +642,17 @@ class LowLevelIRBuilder:
                                  true: BasicBlock,
                                  false: BasicBlock,
                                  line: int) -> None:
-        """Compare two tagged integers using given operator (conditional context)."""
+        """Compare two tagged integers using given operator (conditional context).
+
+        Assume lhs and and rhs are tagged integers.
+
+        Args:
+            lhs: Left operand
+            rhs: Right operand
+            op: Operation, one of '==', '!=', '<', '<=', '>', '<='
+            true: Branch target if comparison is true
+            false: Branch target if comparison is false
+        """
         is_eq = op in ("==", "!=")
         if ((is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type))
             or (is_eq and (is_short_int_rprimitive(lhs.type) or

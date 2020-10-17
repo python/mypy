@@ -825,10 +825,15 @@ class IRBuilder:
                                              e: Expression,
                                              true: BasicBlock,
                                              false: BasicBlock) -> bool:
-        """Transform some comparison expressions in a conditional context.
+        """Transform simple tagged integer comparisons in a conditional context.
 
-        Return True if the operation is supported. Otherwise, do nothing
-        and return False.
+        Return True if the operation is supported (and was transformed). Otherwise,
+        do nothing and return False.
+
+        Args:
+            e: Arbitrary expression
+            true: Branch target if comparison is true
+            false: Branch target if comparison is false
         """
         if not isinstance(e, ComparisonExpr) or len(e.operands) != 2:
             return False
