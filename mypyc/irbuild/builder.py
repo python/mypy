@@ -837,13 +837,15 @@ class IRBuilder:
         """
         if not isinstance(e, ComparisonExpr) or len(e.operands) != 2:
             return False
-        left = self.accept(e.operands[0])
-        right = self.accept(e.operands[1])
-        op = e.operators[0]
-        if not is_tagged(left.type) or not is_tagged(right.type):
+        ltype = self.node_type(e.operands[0])
+        rtype = self.node_type(e.operands[1])
+        if not is_tagged(ltype) or not is_tagged(rtype):
             return False
+        op = e.operators[0]
         if op not in ('==', '!=', '<', '<=', '>', '>='):
             return False
+        left = self.accept(e.operands[0])
+        right = self.accept(e.operands[1])
         # "left op right" for two tagged integers
         self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
         return True
