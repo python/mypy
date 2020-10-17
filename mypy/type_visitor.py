@@ -454,7 +454,6 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
 
         Use the strategy to combine the results.
         Skip type aliases already visited types to avoid infinite recursion.
-        Return
         """
         for t in types:
             if isinstance(t, TypeAliasType):
