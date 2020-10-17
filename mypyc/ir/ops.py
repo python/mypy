@@ -1319,13 +1319,20 @@ class BinaryIntOp(RegisterOp):
 
 
 class ComparisonOp(RegisterOp):
-    """Comparison ops.
+    """Low-level comparison op.
 
-    The result type will always be a bit.
+    Both unsigned and signed comparisons are supported.
 
-    Supports comparisons between fixed-width integer types and pointer types.
+    The operands are assumed to be fixed-width integers/pointers. Python
+    semantics, such as calling __eq__, are not supported.
+
+    The result is always a bit.
+
+    Supports comparisons between fixed-width integer types and pointer
+    types.
     """
-    # ERR_NEVER or ERR_FALSE
+    # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
+    # indicates that an exception has been raised and should be propagated.
     error_kind = ERR_NEVER
 
     # S for signed and U for unsigned
