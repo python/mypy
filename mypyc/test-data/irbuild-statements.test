@@ -62,7 +62,7 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
 L0:
     n = 0
@@ -116,9 +116,9 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
-    r4 :: int64
+    r4 :: native_int
     r5, r6, r7 :: bit
 L0:
     n = 0
@@ -156,7 +156,7 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
 L0:
     n = 0
@@ -210,9 +210,9 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
-    r4 :: int64
+    r4 :: native_int
     r5, r6, r7 :: bit
 L0:
     n = 0

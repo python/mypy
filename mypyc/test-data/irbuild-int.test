@@ -39,7 +39,7 @@ def f(x: int) -> int:
 def f(x):
     x :: int
     r0, r1, r2, r3 :: bit
-    r4 :: int64
+    r4 :: native_int
     r5, r6, r7 :: bit
 L0:
     r0 = x == 6

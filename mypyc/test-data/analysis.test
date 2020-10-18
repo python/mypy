@@ -180,7 +180,7 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     r4, m :: int
 L0:
@@ -232,9 +232,9 @@ def f(n: int) -> None:
 [out]
 def f(n):
     n, x, y :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
-    r4 :: int64
+    r4 :: native_int
     r5, r6, r7 :: bit
 L0:
     x = 2

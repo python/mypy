@@ -509,7 +509,7 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     r4, r5, r6, r7, r8 :: int
 L0:
@@ -558,7 +558,7 @@ def f(n: int) -> int:
 [out]
 def f(n):
     n :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     x :: int
     r4 :: bit
@@ -1126,7 +1126,7 @@ def call_callable_type() -> float:
 [out]
 def absolute_value(x):
     x :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     r4, r5 :: int
 L0:
