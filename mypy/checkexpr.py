@@ -682,34 +682,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return None
 
-    def apply_function_signature_hook(
-            self, callee: FunctionLike, args: List[Expression],
-            arg_kinds: List[int], context: Context,
-            arg_names: Optional[Sequence[Optional[str]]],
-            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
-        """Apply a plugin hook that may infer a more precise signature for a function."""
-        if isinstance(callee, CallableType):
-            num_formals = len(callee.arg_kinds)
-            formal_to_actual = map_actuals_to_formals(
-                arg_kinds, arg_names,
-                callee.arg_kinds, callee.arg_names,
-                lambda i: self.accept(args[i]))
-            formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
-            for formal, actuals in enumerate(formal_to_actual):
-                for actual in actuals:
-                    formal_arg_exprs[formal].append(args[actual])
-            return signature_hook(
-                FunctionSigContext(formal_arg_exprs, callee, context, self.chk))
-        else:
-            assert isinstance(callee, Overloaded)
-            items = []
-            for item in callee.items():
-                adjusted = self.apply_function_signature_hook(
-                    item, args, arg_kinds, context, arg_names, signature_hook)
-                assert isinstance(adjusted, CallableType)
-                items.append(adjusted)
-            return Overloaded(items)
-
     def apply_function_plugin(self,
                               callee: CallableType,
                               arg_kinds: List[int],
@@ -761,6 +733,34 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 MethodContext(object_type, formal_arg_types, formal_arg_kinds,
                               callee.arg_names, formal_arg_names,
                               callee.ret_type, formal_arg_exprs, context, self.chk))
+
+    def apply_function_signature_hook(
+            self, callee: FunctionLike, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]],
+            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
+        """Apply a plugin hook that may infer a more precise signature for a function."""
+        if isinstance(callee, CallableType):
+            num_formals = len(callee.arg_kinds)
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds, arg_names,
+                callee.arg_kinds, callee.arg_names,
+                lambda i: self.accept(args[i]))
+            formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
+            for formal, actuals in enumerate(formal_to_actual):
+                for actual in actuals:
+                    formal_arg_exprs[formal].append(args[actual])
+            return signature_hook(
+                FunctionSigContext(formal_arg_exprs, callee, context, self.chk))
+        else:
+            assert isinstance(callee, Overloaded)
+            items = []
+            for item in callee.items():
+                adjusted = self.apply_function_signature_hook(
+                    item, args, arg_kinds, context, arg_names, signature_hook)
+                assert isinstance(adjusted, CallableType)
+                items.append(adjusted)
+            return Overloaded(items)
 
     def apply_method_signature_hook(
             self, callee: FunctionLike, args: List[Expression],
