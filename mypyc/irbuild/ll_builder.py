@@ -589,17 +589,21 @@ class LowLevelIRBuilder:
         assert target, 'Unsupported binary operation: %s' % op
         return target
 
-    def check_tagged_short_int(self, val: Value, line: int) -> Value:
-        """Check if a tagged integer is a short integer"""
+    def check_tagged_short_int(self, val: Value, line: int, negated: bool = False) -> Value:
+        """Check if a tagged integer is a short integer.
+
+        Return the result of the check (value of type 'bit').
+        """
         int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
         bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, val,
                                          int_tag, BinaryIntOp.AND, line)
         zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
-        check = self.comparison_op(bitwise_and, zero, ComparisonOp.EQ, line)
+        op = ComparisonOp.NEQ if negated else ComparisonOp.EQ
+        check = self.comparison_op(bitwise_and, zero, op, line)
         return check
 
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
-        """Compare two tagged integers using given op"""
+        """Compare two tagged integers using given operator (value context)."""
         # generate fast binary logic ops on short ints
         if is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type):
             return self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
@@ -610,13 +614,11 @@ class LowLevelIRBuilder:
         if op in ("==", "!="):
             check = check_lhs
         else:
-            # for non-equal logical ops(less than, greater than, etc.), need to check both side
+            # for non-equality logical ops (less/greater than, etc.), need to check both sides
             check_rhs = self.check_tagged_short_int(rhs, line)
             check = self.binary_int_op(bit_rprimitive, check_lhs,
                                        check_rhs, BinaryIntOp.AND, line)
-        branch = Branch(check, short_int_block, int_block, Branch.BOOL)
-        branch.negated = False
-        self.add(branch)
+        self.add(Branch(check, short_int_block, int_block, Branch.BOOL))
         self.activate_block(short_int_block)
         eq = self.comparison_op(lhs, rhs, op_type, line)
         self.add(Assign(result, eq, line))
@@ -635,6 +637,60 @@ class LowLevelIRBuilder:
         self.add(Assign(result, call_result, line))
         self.goto_and_activate(out)
         return result
+
+    def compare_tagged_condition(self,
+                                 lhs: Value,
+                                 rhs: Value,
+                                 op: str,
+                                 true: BasicBlock,
+                                 false: BasicBlock,
+                                 line: int) -> None:
+        """Compare two tagged integers using given operator (conditional context).
+
+        Assume lhs and and rhs are tagged integers.
+
+        Args:
+            lhs: Left operand
+            rhs: Right operand
+            op: Operation, one of '==', '!=', '<', '<=', '>', '<='
+            true: Branch target if comparison is true
+            false: Branch target if comparison is false
+        """
+        is_eq = op in ("==", "!=")
+        if ((is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type))
+            or (is_eq and (is_short_int_rprimitive(lhs.type) or
+                           is_short_int_rprimitive(rhs.type)))):
+            # We can skip the tag check
+            check = self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
+            self.add(Branch(check, true, false, Branch.BOOL))
+            return
+        op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
+        int_block, short_int_block = BasicBlock(), BasicBlock()
+        check_lhs = self.check_tagged_short_int(lhs, line, negated=True)
+        if is_eq or is_short_int_rprimitive(rhs.type):
+            self.add(Branch(check_lhs, int_block, short_int_block, Branch.BOOL))
+        else:
+            # For non-equality logical ops (less/greater than, etc.), need to check both sides
+            rhs_block = BasicBlock()
+            self.add(Branch(check_lhs, int_block, rhs_block, Branch.BOOL))
+            self.activate_block(rhs_block)
+            check_rhs = self.check_tagged_short_int(rhs, line, negated=True)
+            self.add(Branch(check_rhs, int_block, short_int_block, Branch.BOOL))
+        # Arbitrary integers (slow path)
+        self.activate_block(int_block)
+        if swap_op:
+            args = [rhs, lhs]
+        else:
+            args = [lhs, rhs]
+        call = self.call_c(c_func_desc, args, line)
+        if negate_result:
+            self.add(Branch(call, false, true, Branch.BOOL))
+        else:
+            self.add(Branch(call, true, false, Branch.BOOL))
+        # Short integers (fast path)
+        self.activate_block(short_int_block)
+        eq = self.comparison_op(lhs, rhs, op_type, line)
+        self.add(Branch(eq, true, false, Branch.BOOL))
 
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
