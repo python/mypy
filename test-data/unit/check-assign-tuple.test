@@ -1,7 +1,0 @@
-[case testAssignEmptyPy36]
-# flags: --python-version 3.6
-() = []
-
-[case testAssignEmptyPy27]
-# flags: --python-version 2.7
-() = []  # E: can't assign to ()
