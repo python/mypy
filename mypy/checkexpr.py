@@ -3178,6 +3178,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def fast_container_type(
             self, items: List[Expression], container_fullname: str
     ) -> Optional[Type]:
+        """
+        Fast path to determine the type of a list or set literal,
+        based on the list of entries. This mostly impacts large
+        module-level constant definitions.
+
+        Limitations:
+         - no active type context
+         - no star expressions
+         - the joined type of all entries must be an Instance type
+        """
         ctx = self.type_context[-1]
         if ctx:
             return None
@@ -3283,6 +3293,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
     def fast_dict_type(self, e: DictExpr) -> Optional[Type]:
+        """
+        Fast path to determine the type of a dict literal,
+        based on the list of entries. This mostly impacts large
+        module-level constant definitions.
+
+        Limitations:
+         - no active type context
+         - only supported star expressions are other dict instances
+         - the joined types of all keys and values must be Instance types
+        """
         ctx = self.type_context[-1]
         if ctx:
             return None
