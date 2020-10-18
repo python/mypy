@@ -6225,7 +6225,7 @@ class A:
     def __rxor__(self, other: Any) -> 'A': return NotImplemented
     def __ror__(self, other: Any) -> 'A': return NotImplemented
 [builtins fixtures/notimplemented.pyi]
-=======
+
 [case testAttributeDefOrder1]
 import a
 
