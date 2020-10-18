@@ -734,12 +734,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               callee.arg_names, formal_arg_names,
                               callee.ret_type, formal_arg_exprs, context, self.chk))
 
-    def apply_function_signature_hook(
+    def apply_signature_hook(
             self, callee: FunctionLike, args: List[Expression],
-            arg_kinds: List[int], context: Context,
+            arg_kinds: List[int],
             arg_names: Optional[Sequence[Optional[str]]],
-            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
-        """Apply a plugin hook that may infer a more precise signature for a function."""
+            hook: Callable[
+                [List[List[Expression]], CallableType],
+                CallableType,
+            ]) -> FunctionLike:
+        """Helper to apply a signature hook for either a function or method"""
         if isinstance(callee, CallableType):
             num_formals = len(callee.arg_kinds)
             formal_to_actual = map_actuals_to_formals(
@@ -750,17 +753,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for formal, actuals in enumerate(formal_to_actual):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
-            return signature_hook(
-                FunctionSigContext(formal_arg_exprs, callee, context, self.chk))
+            return hook(formal_arg_exprs, callee)
         else:
             assert isinstance(callee, Overloaded)
             items = []
             for item in callee.items():
-                adjusted = self.apply_function_signature_hook(
-                    item, args, arg_kinds, context, arg_names, signature_hook)
+                adjusted = self.apply_signature_hook(
+                    item, args, arg_kinds, arg_names, hook)
                 assert isinstance(adjusted, CallableType)
                 items.append(adjusted)
             return Overloaded(items)
+
+    def apply_function_signature_hook(
+            self, callee: FunctionLike, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]],
+            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
+        """Apply a plugin hook that may infer a more precise signature for a function."""
+        return self.apply_signature_hook(
+            callee, args, arg_kinds, arg_names,
+            (lambda args, sig:
+             signature_hook(FunctionSigContext(args, sig, context, self.chk))))
 
     def apply_method_signature_hook(
             self, callee: FunctionLike, args: List[Expression],
@@ -768,28 +781,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
             signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a method."""
-        if isinstance(callee, CallableType):
-            num_formals = len(callee.arg_kinds)
-            formal_to_actual = map_actuals_to_formals(
-                arg_kinds, arg_names,
-                callee.arg_kinds, callee.arg_names,
-                lambda i: self.accept(args[i]))
-            formal_arg_exprs = [[] for _ in range(num_formals)]  # type: List[List[Expression]]
-            for formal, actuals in enumerate(formal_to_actual):
-                for actual in actuals:
-                    formal_arg_exprs[formal].append(args[actual])
-            object_type = get_proper_type(object_type)
-            return signature_hook(
-                MethodSigContext(object_type, formal_arg_exprs, callee, context, self.chk))
-        else:
-            assert isinstance(callee, Overloaded)
-            items = []
-            for item in callee.items():
-                adjusted = self.apply_method_signature_hook(
-                    item, args, arg_kinds, context, arg_names, object_type, signature_hook)
-                assert isinstance(adjusted, CallableType)
-                items.append(adjusted)
-            return Overloaded(items)
+        pobject_type = get_proper_type(object_type)
+        return self.apply_signature_hook(
+            callee, args, arg_kinds, arg_names,
+            (lambda args, sig:
+             signature_hook(MethodSigContext(pobject_type, args, sig, context, self.chk))))
 
     def transform_callee_type(
             self, callable_name: Optional[str], callee: Type, args: List[Expression],
