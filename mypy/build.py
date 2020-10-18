@@ -269,6 +269,7 @@ def _build(sources: List[BuildSource],
             reports.finish()
         if not cache_dir_existed and os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
+            exclude_from_backups(options.cache_dir)
 
 
 def default_data_dir() -> str:
@@ -1113,6 +1114,22 @@ def add_catch_all_gitignore(target_dir: str) -> None:
         with open(gitignore, "x") as f:
             print("# Automatically created by mypy", file=f)
             print("*", file=f)
+    except FileExistsError:
+        pass
+
+
+def exclude_from_backups(target_dir: str) -> None:
+    """Exclude the directory from various archives and backups supporting CACHEDIR.TAG.
+
+    If the CACHEDIR.TAG file exists the function is a no-op.
+    """
+    cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
+    try:
+        with open(cachedir_tag, "x") as f:
+            f.write("""Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag automtically created by mypy.
+# For information about cache directory tags see https://bford.info/cachedir/
+""")
     except FileExistsError:
         pass
 
