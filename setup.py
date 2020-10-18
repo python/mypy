@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 # This requires setuptools when building; setuptools is not needed
 # when installing from a wheel file (though it is still neeeded for
 # alternative forms of installing, as suggested by README.md).
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
 from mypy import git
@@ -178,11 +178,7 @@ setup(name='mypy',
       license='MIT License',
       py_modules=[],
       ext_modules=ext_modules,
-      packages=[
-          'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
-          'mypyc', 'mypyc.test', 'mypyc.codegen', 'mypyc.ir', 'mypyc.irbuild',
-          'mypyc.primitives', 'mypyc.transform', 'mypyc.analysis'
-      ],
+      packages=find_packages(),
       package_data={'mypy': package_data},
       scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
