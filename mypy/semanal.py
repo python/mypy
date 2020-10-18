@@ -2640,9 +2640,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.fail('Unexpected type declaration', lval)
             lval.accept(self)
         elif isinstance(lval, TupleExpr):
-            items = lval.items
-            if len(items) == 0 and isinstance(lval, TupleExpr):
-                self.fail("can't assign to ()", lval)
             self.analyze_tuple_or_list_lvalue(lval, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
