@@ -123,7 +123,7 @@ T4 = TypeVar('T4')
 def f(a: T1, b: T2, c: T3, d: T4) -> Tuple[T1, T2, T3, T4]: ...
 x: Tuple[int, str]
 y: Tuple[float, bool]
-reveal_type(f(*x, *y)) # E: Revealed type is 'Tuple[builtins.int*, builtins.str*, builtins.float*, builtins.bool*]'
+reveal_type(f(*x, *y)) # N: Revealed type is 'Tuple[builtins.int*, builtins.str*, builtins.float*, builtins.bool*]'
 [builtins fixtures/list.pyi]
 
 [case testCallVarargsFunctionWithIterableAndPositional]
@@ -353,7 +353,7 @@ class CC(C): pass
 from typing import Any
 d, a = None, None # type: (Any, A)
 f(a, a, *d) # Fail
-f(a, *d)    # Fail
+f(a, *d)    # Ok
 f(*d)       # Ok
 
 g(*d)
@@ -366,7 +366,6 @@ class A: pass
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: Too many arguments for "f"
-main:4: error: Too many arguments for "f"
 
 [case testListVarArgsAndSubtyping]
 from typing import List
@@ -448,6 +447,22 @@ def f(x: int, *, y: str) -> None: pass
 f(y='x', *(1,))
 [builtins fixtures/list.pyi]
 
+[case testVarArgsEmptyList]
+from typing import List
+
+def foo() -> None:
+    pass
+
+lst: List[int] = []
+foo(*lst)
+[builtins fixtures/list.pyi]
+
+[case testVarArgsEmptyTuple]
+def foo() -> None:
+    pass
+
+foo(*())
+[builtins fixtures/tuple.pyi]
 
 -- Overloads + varargs
 -- -------------------
@@ -586,18 +601,29 @@ ab = None # type: List[B]
 if int():
     a, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[A]", variable has type "A") \
-      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]")
+      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
+
 if int():
     aa, a = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "A")
 if int():
     ab, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant \
       # E: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
 
 if int():
-    ao, ao = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[object]")
+    ao, ao = G().f(*[a]) \
+      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[object]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
 if int():
-    aa, aa = G().f(*[a]) # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]")
+    aa, aa = G().f(*[a]) \
+      # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
 
 class G(Generic[T]):
     def f(self, *a: S) -> Tuple[List[S], List[T]]:
@@ -614,9 +640,9 @@ from typing import TypeVar
 T = TypeVar('T')
 
 def f(*args: T) -> T: ...
-reveal_type(f(*(1, None)))  # E: Revealed type is 'Union[builtins.int, None]'
-reveal_type(f(1, *(None, 1)))  # E: Revealed type is 'Union[builtins.int, None]'
-reveal_type(f(1, *(1, None)))  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(f(*(1, None)))  # N: Revealed type is 'Union[Literal[1]?, None]'
+reveal_type(f(1, *(None, 1)))  # N: Revealed type is 'Union[Literal[1]?, None]'
+reveal_type(f(1, *(1, None)))  # N: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/tuple.pyi]
 
 
@@ -682,7 +708,7 @@ g(d) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "Di
 h(c) # E: Argument 1 to "h" has incompatible type "Dict[str, float]"; expected "Dict[str, int]"
 h(d)
 [builtins fixtures/dict.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testInvariantListArgNote]
 from typing import List, Union

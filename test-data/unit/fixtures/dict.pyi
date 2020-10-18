@@ -10,6 +10,8 @@ VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
+    def __init_subclass__(cls) -> None: pass
+    def __eq__(self, other: object) -> bool: pass
 
 class type: pass
 
@@ -34,16 +36,19 @@ class int: # for convenience
 
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
+class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases
     def __getitem__(self, x: int) -> T: pass
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
+    def __contains__(self, item: object) -> bool: pass
+    def append(self, item: T) -> None: pass
 
 class tuple(Generic[T]): pass
 class function: pass
 class float: pass
-class bool: pass
+class bool(int): pass
 
 class ellipsis: pass
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass

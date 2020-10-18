@@ -1,16 +1,18 @@
 """Generic node traverser visitor"""
 
+from typing import List
+
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
-    Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
+    Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
-    UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
+    TryStmt, WithStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
+    UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr, AssignmentExpr,
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
 )
 
 
@@ -62,6 +64,10 @@ class TraverserVisitor(NodeVisitor[None]):
             d.accept(self)
         for base in o.base_type_exprs:
             base.accept(self)
+        if o.metaclass:
+            o.metaclass.accept(self)
+        for v in o.keywords.values():
+            v.accept(self)
         o.defs.accept(self)
         if o.analyzed:
             o.analyzed.accept(self)
@@ -192,6 +198,10 @@ class TraverserVisitor(NodeVisitor[None]):
             # RevealLocalsExpr doesn't have an inner expression
             pass
 
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        o.target.accept(self)
+        o.value.accept(self)
+
     def visit_unary_expr(self, o: UnaryExpr) -> None:
         o.expr.accept(self)
 
@@ -285,3 +295,44 @@ class TraverserVisitor(NodeVisitor[None]):
             o.globals.accept(self)
         if o.locals:
             o.locals.accept(self)
+
+
+class ReturnSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
+            return
+        self.found = True
+
+
+def has_return_statement(fdef: FuncBase) -> bool:
+    """Find if a function has a non-trivial return statement.
+
+    Plain 'return' and 'return None' don't count.
+    """
+    seeker = ReturnSeeker()
+    fdef.accept(seeker)
+    return seeker.found
+
+
+class ReturnCollector(TraverserVisitor):
+    def __init__(self) -> None:
+        self.return_statements = []  # type: List[ReturnStmt]
+        self.inside_func = False
+
+    def visit_func_def(self, defn: FuncDef) -> None:
+        if not self.inside_func:
+            self.inside_func = True
+            super().visit_func_def(defn)
+            self.inside_func = False
+
+    def visit_return_stmt(self, stmt: ReturnStmt) -> None:
+        self.return_statements.append(stmt)
+
+
+def all_return_statements(node: Node) -> List[ReturnStmt]:
+    v = ReturnCollector()
+    node.accept(v)
+    return v.return_statements

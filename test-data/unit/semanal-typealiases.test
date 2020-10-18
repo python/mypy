@@ -171,6 +171,7 @@ MypyFile:1(
 from typing import Tuple
 T = Tuple[int, str]
 def f(x: T) -> None: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple])
@@ -400,14 +401,18 @@ MypyFile:1(
     Union[builtins.int, builtins.str]))
 
 [case testListTypeDoesNotGenerateAlias]
+
 import typing
 A = [int, str]
-a = 1 # type: A  # E: Invalid type "__main__.A"
+a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type \
+                 # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testCantUseStringLiteralAsTypeAlias]
+
 from typing import Union
 A = 'Union[int, str]'
-a = 1 # type: A  # E: Invalid type "__main__.A"
+a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type \
+                 # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testStringLiteralTypeAsAliasComponent]
 from typing import Union
@@ -428,6 +433,7 @@ MypyFile:1(
 from typing import Union, Tuple, Any
 A = Union['int', Tuple[int, Any]]
 a = 1 # type: A
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Union, Tuple, Any])

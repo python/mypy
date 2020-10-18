@@ -10,8 +10,6 @@ in places where efficient access to properties is not important.
 For those cases some other technique should be used.
 """
 
-import sys
-
 from mypy_extensions import FlexibleAlias
 from typing import TypeVar, Any
 
@@ -19,7 +17,8 @@ T = TypeVar('T')
 
 # This won't ever be true at runtime, but we consider it true during
 # mypyc compilations.
-if sys.platform == 'mypyc':
+MYPYC = False
+if MYPYC:
     Bogus = FlexibleAlias[T, Any]
 else:
     Bogus = FlexibleAlias[T, T]

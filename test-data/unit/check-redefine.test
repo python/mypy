@@ -1,0 +1,476 @@
+-- Test cases for the redefinition of variable with a different type.
+
+
+-- Redefine local variable
+-- -----------------------
+
+
+[case testRedefineLocalWithDifferentType]
+# flags: --allow-redefinition
+def f() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    x = ''
+    reveal_type(x) # N: Revealed type is 'builtins.str'
+
+[case testCannotConditionallyRedefineLocalWithDifferentType]
+# flags: --allow-redefinition
+def f() -> None:
+    y = 0
+    reveal_type(y) # N: Revealed type is 'builtins.int'
+    if int():
+        y = ''  \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        reveal_type(y)  # N: Revealed type is 'builtins.int'
+    reveal_type(y) # N: Revealed type is 'builtins.int'
+
+[case testRedefineFunctionArg]
+# flags: --allow-redefinition
+def f(x: int) -> None:
+    g(x)
+    x = ''
+    reveal_type(x) # N: Revealed type is 'builtins.str'
+def g(x: int) -> None:
+    if int():
+        x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        reveal_type(x) # N: Revealed type is 'builtins.int'
+
+[case testRedefineAnnotationOnly]
+# flags: --allow-redefinition
+def f() -> None:
+    x: int
+    x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+def g() -> None:
+    x: int
+    x = 1
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    x = ''
+    reveal_type(x) # N: Revealed type is 'builtins.str'
+
+[case testRedefineLocalUsingOldValue]
+# flags: --allow-redefinition
+from typing import TypeVar, Union
+
+T = TypeVar('T')
+
+def f(x: int) -> None:
+    x = g(x)
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int*, builtins.str]'
+    y = 1
+    y = g(y)
+    reveal_type(y)  # N: Revealed type is 'Union[builtins.int*, builtins.str]'
+
+def g(x: T) -> Union[T, str]: pass
+
+[case testRedefineLocalForLoopIndexVariable]
+# flags: --allow-redefinition
+from typing import Iterable
+def f(a: Iterable[int], b: Iterable[str]) -> None:
+    for x in a:
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # N: Revealed type is 'builtins.int*'
+    for x in b:
+        x = 1 \
+        # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(x) # N: Revealed type is 'builtins.str*'
+
+def g(a: Iterable[int]) -> None:
+    for x in a: pass
+    x = ''
+
+def h(a: Iterable[int]) -> None:
+    x = ''
+    reveal_type(x)  # N: Revealed type is 'builtins.str'
+    for x in a: pass
+
+[case testCannotRedefineLocalWithinTry]
+# flags: --allow-redefinition
+def f() -> None:
+    try:
+        x = 0
+        x
+        g()  # Might raise an exception
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    except:
+        pass
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    y = 0
+    y
+    y = ''
+
+def g(): pass
+
+[case testRedefineLocalWithinWith]
+# flags: --allow-redefinition
+def f() -> None:
+    with g():
+        x = 0
+        x
+        g()  # Might raise an exception, but we ignore this
+        x = ''
+    reveal_type(x) # N: Revealed type is 'builtins.str'
+    y = 0
+    y
+    y = ''
+
+def g(): pass
+
+[case testCannotRedefineAcrossNestedFunction]
+# flags: --allow-redefinition
+def f() -> None:
+    x = 0
+    x
+    def g() -> None:
+        x
+    g()
+    x = '' \
+    # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    g()
+    y = 0
+    y
+    y = ''
+
+[case testCannotRedefineAcrossNestedDecoratedFunction]
+# flags: --allow-redefinition
+def dec(f): return f
+
+def f() -> None:
+    x = 0
+    x
+    @dec
+    def g() -> None:
+        x
+    g()
+    x = '' \
+    # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    g()
+    y = 0
+    y
+    y = ''
+
+[case testCannotRedefineAcrossNestedOverloadedFunction]
+# flags: --allow-redefinition
+from typing import overload
+
+def f() -> None:
+    x = 0
+    x
+    @overload
+    def g() -> None: pass
+    @overload
+    def g(x: int) -> None: pass
+    def g(x=0):
+        pass
+    g()
+    x = '' \
+    # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    g()
+    y = 0
+    y
+    y = ''
+
+[case testRedefineLocalInMultipleAssignment]
+# flags: --allow-redefinition
+def f() -> None:
+    x, x = 1, ''
+    reveal_type(x) # N: Revealed type is 'builtins.str'
+    x = object()
+    reveal_type(x) # N: Revealed type is 'builtins.object'
+
+def g() -> None:
+    x = 1
+    if 1:
+        x, x = '', 1 \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRedefineUnderscore]
+# flags: --allow-redefinition
+def f() -> None:
+    _, _ = 1, ''
+    if 1:
+        _, _ = '', 1
+        reveal_type(_) # N: Revealed type is 'Any'
+
+[case testRedefineWithBreakAndContinue]
+# flags: --allow-redefinition
+def f() -> None:
+    y = 0
+    y
+    while int():
+        z = 0
+        z
+        z = ''
+        x = 0
+        if int():
+            break
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    y = ''
+
+def g() -> None:
+    y = 0
+    y
+    for a in h():
+        z = 0
+        z
+        z = ''
+        x = 0
+        if int():
+            continue
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    y = ''
+
+def h(): pass
+
+[case testRedefineLocalAndNestedLoops]
+# flags: --allow-redefinition
+def f() -> None:
+    z = 0
+    z
+    while int():
+        x = 0
+        x
+        while int():
+            if 1:
+                y = 1
+                y
+                if int():
+                    break
+                y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        x = ''
+    z = ''
+
+[case testCannotRedefineVarAsFunction]
+# flags: --allow-redefinition
+def f() -> None:
+    def x(): pass
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+    reveal_type(x) # N: Revealed type is 'def () -> Any'
+    y = 1
+    def y(): pass # E: Name 'y' already defined on line 6
+
+[case testCannotRedefineVarAsClass]
+# flags: --allow-redefinition
+def f() -> None:
+    class x: pass
+    x = 1 # E: Cannot assign to a type \
+          # E: Incompatible types in assignment (expression has type "int", variable has type "Type[x]")
+    y = 1
+    class y: pass # E: Name 'y' already defined on line 5
+
+[case testRedefineVarAsTypeVar]
+# flags: --allow-redefinition
+from typing import TypeVar
+def f() -> None:
+    x = TypeVar('x')
+    x = 1  # E: Invalid assignment target
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    y = 1
+    # NOTE: '"int" not callable' is due to test stubs
+    y = TypeVar('y')  # E: Cannot redefine 'y' as a type variable \
+                      # E: "int" not callable
+    def h(a: y) -> y: return a # E: Variable "y" is not valid as a type \
+                               # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+
+[case testCannotRedefineVarAsModule]
+# flags: --allow-redefinition
+def f() -> None:
+    import typing as m
+    m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+    n = 1
+    import typing as n # E: Name 'n' already defined on line 5
+[builtins fixtures/module.pyi]
+
+[case testRedefineLocalWithTypeAnnotation]
+# flags: --allow-redefinition
+def f() -> None:
+    x = 1
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    x = ''  # type: object
+    reveal_type(x) # N: Revealed type is 'builtins.object'
+def g() -> None:
+    x = 1
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    x: object = ''
+    reveal_type(x) # N: Revealed type is 'builtins.object'
+def h() -> None:
+    x: int
+    x = 1
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+    x: object
+    x: object = '' # E: Name 'x' already defined on line 16
+def farg(x: int) -> None:
+    x: str = '' # E: Name 'x' already defined on line 18
+def farg2(x: int) -> None:
+    x: str = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testRedefineLocalWithTypeAnnotationSpecialCases]
+# flags: --allow-redefinition
+def f() -> None:
+    x: object
+    x = 1
+    if int():
+        x = ''
+    reveal_type(x) # N: Revealed type is 'builtins.object'
+    x = ''
+    reveal_type(x) # N: Revealed type is 'builtins.str'
+    if int():
+        x = 2 \
+        # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+[case testCannotRedefineSelf]
+# flags: --allow-redefinition
+class A:
+    x = 0
+
+    def f(self) -> None:
+        reveal_type(self.x) # N: Revealed type is 'builtins.int'
+        self = f()
+        self.y: str = ''
+        reveal_type(self.y) # N: Revealed type is 'builtins.str'
+
+def f() -> A: return A()
+
+
+-- Redefine global variable
+-- ------------------------
+
+
+[case testRedefineGlobalWithDifferentType]
+# flags: --allow-redefinition
+import m
+reveal_type(m.x)
+[file m.py]
+x = 0
+reveal_type(x)
+x = object()
+reveal_type(x)
+x = ''
+reveal_type(x)
+[out]
+tmp/m.py:2: note: Revealed type is 'builtins.int'
+tmp/m.py:4: note: Revealed type is 'builtins.object'
+tmp/m.py:6: note: Revealed type is 'builtins.str'
+main:3: note: Revealed type is 'builtins.str'
+
+[case testRedefineGlobalForIndex]
+# flags: --allow-redefinition
+import m
+reveal_type(m.x)
+[file m.py]
+from typing import Iterable
+def f(): pass
+it1: Iterable[int] = f()
+it2: Iterable[str] = f()
+for x in it1:
+    reveal_type(x)
+for x in it2:
+    reveal_type(x)
+reveal_type(x)
+[out]
+tmp/m.py:6: note: Revealed type is 'builtins.int*'
+tmp/m.py:8: note: Revealed type is 'builtins.str*'
+tmp/m.py:9: note: Revealed type is 'builtins.str*'
+main:3: note: Revealed type is 'builtins.str*'
+
+[case testRedefineGlobalBasedOnPreviousValues]
+# flags: --allow-redefinition
+from typing import TypeVar, Iterable
+T = TypeVar('T')
+def f(x: T) -> Iterable[T]: pass
+a = 0
+a = f(a)
+reveal_type(a) # N: Revealed type is 'typing.Iterable[builtins.int*]'
+
+[case testRedefineGlobalWithSeparateDeclaration]
+# flags: --allow-redefinition
+x = ''
+reveal_type(x) # N: Revealed type is 'builtins.str'
+x: int
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(x) # N: Revealed type is 'builtins.int'
+x: object
+x = 1
+reveal_type(x) # N: Revealed type is 'builtins.int'
+if int():
+    x = object()
+
+[case testRedefineGlobalUsingForLoop]
+# flags: --allow-redefinition
+from typing import Iterable, TypeVar, Union
+T = TypeVar('T')
+def f(x: T) -> Iterable[Union[T, str]]: pass
+x = 0
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+for x in f(x):
+    pass
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int*, builtins.str]'
+
+[case testNoRedefinitionIfOnlyInitialized]
+# flags: --allow-redefinition --no-strict-optional
+x = None  # type: int
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+x  # Reference to variable
+x = ''
+
+y = 0
+y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testNoRedefinitionIfNoValueAssigned]
+# flags: --allow-redefinition
+x: int
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(x) # N: Revealed type is 'builtins.int'
+x: object
+
+[case testNoRedefinitionIfExplicitlyDisallowed]
+# flags: --disallow-redefinition
+x = 0
+x = 2
+x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+def f() -> None:
+    y = 0
+    y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+class C:
+    y = 0
+    y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+def g() -> None:
+    # _ is a special case
+    _ = 0
+    _ = ''
+    x, _ = 0, C()
+[builtins fixtures/tuple.pyi]
+
+[case testRedefineAsException]
+# flags: --allow-redefinition
+e = 1
+reveal_type(e) # N: Revealed type is 'builtins.int'
+try:
+    pass
+except Exception as e:
+    reveal_type(e) # N: Revealed type is 'builtins.Exception'
+e = ''
+reveal_type(e) # N: Revealed type is 'builtins.str'
+[builtins fixtures/exception.pyi]
+
+[case testRedefineUsingWithStatement]
+# flags: --allow-redefinition
+class A:
+    def __enter__(self) -> int: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> str: ...
+    def __exit__(self, x, y, z) -> None: ...
+with A() as x:
+    reveal_type(x) # N: Revealed type is 'builtins.int'
+with B() as x:
+    x = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "str")

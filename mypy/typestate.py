@@ -3,15 +3,13 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, Set, Tuple, Optional
+from typing import Dict, Set, Tuple, Optional, List
+from typing_extensions import ClassVar, Final
 
-MYPY = False
-if MYPY:
-    from typing import ClassVar
-    from typing_extensions import Final
 from mypy.nodes import TypeInfo
-from mypy.types import Instance
+from mypy.types import Instance, TypeAliasType, get_proper_type, Type
 from mypy.server.trigger import make_trigger
+from mypy import state
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship = Tuple[Instance, Instance]
@@ -36,8 +34,9 @@ class TypeState:
     not needed any more (e.g. during daemon shutdown).
     """
     # '_subtype_caches' keeps track of (subtype, supertype) pairs where supertypes are
-    # instances of the given TypeInfo. The cache also keeps track of the specific
-    # *kind* of subtyping relationship, which we represent as an arbitrary hashable tuple.
+    # instances of the given TypeInfo. The cache also keeps track of whether the check
+    # was done in strict optional mode and of the specific *kind* of subtyping relationship,
+    # which we represent as an arbitrary hashable tuple.
     # We need the caches, since subtype checks for structural types are very slow.
     _subtype_caches = {}  # type: Final[SubtypeCache]
 
@@ -76,10 +75,35 @@ class TypeState:
     # a re-checked target) during the update.
     _rechecked_types = set()  # type: Final[Set[TypeInfo]]
 
+    # The two attributes below are assumption stacks for subtyping relationships between
+    # recursive type aliases. Normally, one would pass type assumptions as an additional
+    # arguments to is_subtype(), but this would mean updating dozens of related functions
+    # threading this through all callsites (see also comment for TypeInfo.assuming).
+    _assuming = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    _assuming_proper = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    # Ditto for inference of generic constraints against recursive type aliases.
+    _inferring = []  # type: Final[List[TypeAliasType]]
+
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
     # via the cls parameter, since mypyc can optimize accesses to
     # Final attributes of a directly referenced type.
+
+    @staticmethod
+    def is_assumed_subtype(left: Type, right: Type) -> bool:
+        for (l, r) in reversed(TypeState._assuming):
+            if (get_proper_type(l) == get_proper_type(left)
+                    and get_proper_type(r) == get_proper_type(right)):
+                return True
+        return False
+
+    @staticmethod
+    def is_assumed_proper_subtype(left: Type, right: Type) -> bool:
+        for (l, r) in reversed(TypeState._assuming_proper):
+            if (get_proper_type(l) == get_proper_type(left)
+                    and get_proper_type(r) == get_proper_type(right)):
+                return True
+        return False
 
     @staticmethod
     def reset_all_subtype_caches() -> None:
@@ -104,15 +128,16 @@ class TypeState:
         if info not in TypeState._subtype_caches:
             return False
         cache = TypeState._subtype_caches[info]
-        if kind not in cache:
+        key = (state.strict_optional,) + kind
+        if key not in cache:
             return False
-        return (left, right) in cache[kind]
+        return (left, right) in cache[key]
 
     @staticmethod
     def record_subtype_cache_entry(kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
         cache = TypeState._subtype_caches.setdefault(right.type, dict())
-        cache.setdefault(kind, set()).add((left, right))
+        cache.setdefault((state.strict_optional,) + kind, set()).add((left, right))
 
     @staticmethod
     def reset_protocol_deps() -> None:
@@ -127,9 +152,9 @@ class TypeState:
         assert right_type.is_protocol
         TypeState._rechecked_types.add(left_type)
         TypeState._attempted_protocols.setdefault(
-            left_type.fullname(), set()).add(right_type.fullname())
+            left_type.fullname, set()).add(right_type.fullname)
         TypeState._checked_against_members.setdefault(
-            left_type.fullname(),
+            left_type.fullname,
             set()).update(right_type.protocol_members)
 
     @staticmethod
@@ -164,18 +189,18 @@ class TypeState:
         """
         deps = {}  # type: Dict[str, Set[str]]
         for info in TypeState._rechecked_types:
-            for attr in TypeState._checked_against_members[info.fullname()]:
+            for attr in TypeState._checked_against_members[info.fullname]:
                 # The need for full MRO here is subtle, during an update, base classes of
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
                 for base_info in info.mro[:-1]:
-                    trigger = make_trigger('%s.%s' % (base_info.fullname(), attr))
+                    trigger = make_trigger('%s.%s' % (base_info.fullname, attr))
                     if 'typing' in trigger or 'builtins' in trigger:
                         # TODO: avoid everything from typeshed
                         continue
-                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            for proto in TypeState._attempted_protocols[info.fullname()]:
-                trigger = make_trigger(info.fullname())
+                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname))
+            for proto in TypeState._attempted_protocols[info.fullname]:
+                trigger = make_trigger(info.fullname)
                 if 'typing' in trigger or 'builtins' in trigger:
                     continue
                 # If any class that was checked against a protocol changes,
@@ -211,15 +236,13 @@ class TypeState:
     def add_all_protocol_deps(deps: Dict[str, Set[str]]) -> None:
         """Add all known protocol dependencies to deps.
 
-        This is used by tests and debug output, and also when passing
-        all collected or loaded dependencies on to FineGrainedBuildManager
-        in its __init__.
+        This is used by tests and debug output, and also when collecting
+        all collected or loaded dependencies as part of build.
         """
         TypeState.update_protocol_deps()  # just in case
-        assert TypeState.proto_deps is not None, (
-            "This should not be called after failed cache load")
-        for trigger, targets in TypeState.proto_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
+        if TypeState.proto_deps is not None:
+            for trigger, targets in TypeState.proto_deps.items():
+                deps.setdefault(trigger, set()).update(targets)
 
 
 def reset_global_state() -> None:

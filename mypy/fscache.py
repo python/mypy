@@ -28,10 +28,10 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
-import hashlib
 import os
 import stat
 from typing import Dict, List, Set
+from mypy.util import hash_digest
 
 
 class FileSystemCache:
@@ -137,16 +137,14 @@ class FileSystemCache:
         st = self.stat(dirname)  # May raise OSError
         # Get stat result as a sequence so we can modify it.
         # (Alas, typeshed's os.stat_result is not a sequence yet.)
-        tpl = tuple(st)  # type: ignore
+        tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
         seq = list(tpl)  # type: List[float]
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
         tpl = tuple(seq)
-        # FIXME: this works around typeshed claiming stat_result is from posix
-        # (typeshed #2683)
-        st = getattr(os, 'stat_result')(tpl)
+        st = os.stat_result(tpl)
         self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)
@@ -181,14 +179,19 @@ class FileSystemCache:
             return False
         return stat.S_ISREG(st.st_mode)
 
-    def isfile_case(self, path: str) -> bool:
+    def isfile_case(self, path: str, prefix: str) -> bool:
         """Return whether path exists and is a file.
 
         On case-insensitive filesystems (like Mac or Windows) this returns
-        False if the case of the path's last component does not exactly
-        match the case found in the filesystem.
-        TODO: We should maybe check the case for some directory components also,
-        to avoid permitting wrongly-cased *packages*.
+        False if the case of path's last component does not exactly match
+        the case found in the filesystem.
+
+        We check also the case of other path components up to prefix.
+        For example, if path is 'user-stubs/pack/mod.pyi' and prefix is 'user-stubs',
+        we check that the case of 'pack' and 'mod.py' matches exactly, 'user-stubs' will be
+        case insensitive on case insensitive filesystems.
+
+        The caller must ensure that prefix is a valid file system prefix of path.
         """
         if path in self.isfile_case_cache:
             return self.isfile_case_cache[path]
@@ -198,9 +201,21 @@ class FileSystemCache:
         else:
             try:
                 names = self.listdir(head)
+                # This allows one to check file name case sensitively in
+                # case-insensitive filesystems.
                 res = tail in names and self.isfile(path)
             except OSError:
                 res = False
+
+        # Also check the other path components in case sensitive way.
+        head, dir = os.path.split(head)
+        while res and head and dir and head.startswith(prefix):
+            try:
+                res = dir in self.listdir(head)
+            except OSError:
+                res = False
+            head, dir = os.path.split(head)
+
         self.isfile_case_cache[path] = res
         return res
 
@@ -241,12 +256,11 @@ class FileSystemCache:
                 self.read_error_cache[path] = err
                 raise
 
-        md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
-        self.hash_cache[path] = md5hash
+        self.hash_cache[path] = hash_digest(data)
         return data
 
-    def md5(self, path: str) -> str:
+    def hash_digest(self, path: str) -> str:
         if path not in self.hash_cache:
             self.read(path)
         return self.hash_cache[path]
@@ -254,7 +268,7 @@ class FileSystemCache:
     def samefile(self, f1: str, f2: str) -> bool:
         s1 = self.stat(f1)
         s2 = self.stat(f2)
-        return os.path.samestat(s1, s2)  # type: ignore
+        return os.path.samestat(s1, s2)
 
 
 def copy_os_error(e: OSError) -> OSError:

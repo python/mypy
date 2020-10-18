@@ -92,7 +92,7 @@ class StrConv(NodeVisitor[str]):
         # Omit path to special file with name "main". This is used to simplify
         # test case descriptions; the file "main" is used by default in many
         # test cases.
-        if o.path is not None and o.path != 'main':
+        if o.path != 'main':
             # Insert path. Normalize directory separators to / to unify test
             # case# output in all platforms.
             a.insert(0, o.path.replace(os.sep, '/'))
@@ -126,7 +126,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> str:
         a = self.func_helper(o)
-        a.insert(0, o.name())
+        a.insert(0, o.name)
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
@@ -158,7 +158,9 @@ class StrConv(NodeVisitor[str]):
         # (in this case base_type_exprs is empty).
         if o.base_type_exprs:
             if o.info and o.info.bases:
-                a.insert(1, ('BaseType', o.info.bases))
+                if (len(o.info.bases) != 1
+                        or o.info.bases[0].type.fullname != 'builtins.object'):
+                    a.insert(1, ('BaseType', o.info.bases))
             else:
                 a.insert(1, ('BaseTypeExpr', o.base_type_exprs))
         if o.type_vars:
@@ -181,7 +183,7 @@ class StrConv(NodeVisitor[str]):
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
             lst = ':nil'
-        return 'Var' + lst + '(' + o.name() + ')'
+        return 'Var' + lst + '(' + o.name + ')'
 
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> str:
         return self.dump([o.names], o)
@@ -294,8 +296,8 @@ class StrConv(NodeVisitor[str]):
             a.append(('Expr', [o.expr[i]]))
             if o.target[i]:
                 a.append(('Target', [o.target[i]]))
-        if o.target_type:
-            a.append(o.target_type)
+        if o.unanalyzed_type:
+            a.append(o.unanalyzed_type)
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> str:
@@ -343,7 +345,9 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> str:
-        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname,
+                                  o.is_inferred_def or o.is_special_form,
+                                  o.node)
         if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
             pretty += ' = {}'.format(o.node.final_value)
         return short_type(o) + '(' + pretty + ')'
@@ -357,8 +361,10 @@ class StrConv(NodeVisitor[str]):
             id = self.format_id(target_node)
         else:
             id = ''
-        if kind == mypy.nodes.GDEF or (fullname != name and
-                                       fullname is not None):
+        if isinstance(target_node, mypy.nodes.MypyFile) and name == fullname:
+            n += id
+        elif kind == mypy.nodes.GDEF or (fullname != name and
+                                         fullname is not None):
             # Append fully qualified name for global references.
             n += ' [{}{}]'.format(fullname, id)
         elif kind == mypy.nodes.LDEF:
@@ -419,6 +425,9 @@ class StrConv(NodeVisitor[str]):
             # REVEAL_LOCALS
             return self.dump([o.local_nodes], o)
 
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> str:
+        return self.dump([o.target, o.value], o)
+
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> str:
         return self.dump([o.op, o.expr], o)
 
@@ -458,20 +467,31 @@ class StrConv(NodeVisitor[str]):
             a += ['UpperBound({})'.format(o.upper_bound)]
         return self.dump(a, o)
 
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
+        import mypy.types
+        a = []  # type: List[Any]
+        if o.variance == mypy.nodes.COVARIANT:
+            a += ['Variance(COVARIANT)']
+        if o.variance == mypy.nodes.CONTRAVARIANT:
+            a += ['Variance(CONTRAVARIANT)']
+        if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
+            a += ['UpperBound({})'.format(o.upper_bound)]
+        return self.dump(a, o)
+
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> str:
         return 'TypeAliasExpr({})'.format(o.type)
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> str:
         return 'NamedTupleExpr:{}({}, {})'.format(o.line,
-                                                  o.info.name(),
+                                                  o.info.name,
                                                   o.info.tuple_type)
 
     def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> str:
-        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name(), o.items)
+        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name, o.items)
 
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
         return 'TypedDictExpr:{}({})'.format(o.line,
-                                             o.info.name())
+                                             o.info.name)
 
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
         return 'PromoteExpr:{}({})'.format(o.line, o.type)

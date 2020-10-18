@@ -2,9 +2,10 @@
 
 from abc import abstractmethod
 from typing import TypeVar, Generic
+from typing_extensions import TYPE_CHECKING
 from mypy_extensions import trait
 
-if False:
+if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.nodes
 
@@ -91,6 +92,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_list_expr(self, o: 'mypy.nodes.ListExpr') -> T:
         pass
 
@@ -148,6 +153,10 @@ class ExpressionVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
+        pass
+
+    @abstractmethod
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> T:
         pass
 
     @abstractmethod
@@ -225,10 +234,6 @@ class StatementVisitor(Generic[T]):
 
     @abstractmethod
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
-        pass
-
-    @abstractmethod
-    def visit_var(self, o: 'mypy.nodes.Var') -> T:
         pass
 
     # Module structure
@@ -320,6 +325,12 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> T:
         pass
 
+    # TODO: We have a visit_var method, but no visit_typeinfo or any
+    # other non-Statement SymbolNode (accepting those will raise a
+    # runtime error). Maybe this should be resolved in some direction.
+    def visit_var(self, o: 'mypy.nodes.Var') -> T:
+        pass
+
     # Module structure
 
     def visit_import(self, o: 'mypy.nodes.Import') -> T:
@@ -352,10 +363,10 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_decorator(self, o: 'mypy.nodes.Decorator') -> T:
         pass
 
-    def visit_var(self, o: 'mypy.nodes.Var') -> T:
+    def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
         pass
 
-    def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
+    def visit_placeholder_node(self, o: 'mypy.nodes.PlaceholderNode') -> T:
         pass
 
     # Statements
@@ -471,6 +482,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:
         pass
 
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> T:
+        pass
+
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> T:
         pass
 
@@ -517,6 +531,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
+        pass
+
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> T:
         pass
 
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:

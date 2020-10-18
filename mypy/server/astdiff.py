@@ -54,12 +54,12 @@ from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
-    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
+    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
 )
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, LiteralType,
+    UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
 )
 from mypy.util import get_prefix
 
@@ -132,29 +132,28 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     for name, symbol in table.items():
         node = symbol.node
         # TODO: cross_ref?
-        fullname = node.fullname() if node else None
+        fullname = node.fullname if node else None
         common = (fullname, symbol.kind, symbol.module_public)
-        if symbol.kind == MODULE_REF:
+        if isinstance(node, MypyFile):
             # This is a cross-reference to another module.
             # If the reference is busted because the other module is missing,
             # the node will be a "stale_info" TypeInfo produced by fixup,
             # but that doesn't really matter to us here.
             result[name] = ('Moduleref', common)
-        elif symbol.kind == TVAR:
-            assert isinstance(node, TypeVarExpr)
+        elif isinstance(node, TypeVarExpr):
             result[name] = ('TypeVar',
                             node.variance,
                             [snapshot_type(value) for value in node.values],
                             snapshot_type(node.upper_bound))
-        elif isinstance(symbol.node, TypeAlias):
+        elif isinstance(node, TypeAlias):
             result[name] = ('TypeAlias',
-                            symbol.node.alias_tvars,
-                            symbol.node.normalized,
-                            symbol.node.no_args,
-                            snapshot_optional_type(symbol.node.target))
+                            node.alias_tvars,
+                            node.normalized,
+                            node.no_args,
+                            snapshot_optional_type(node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
-            if node and get_prefix(node.fullname()) != name_prefix:
+            if node and get_prefix(node.fullname) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
                 result[name] = ('CrossRef', common)
             else:
@@ -205,7 +204,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  snapshot_optional_type(node.metaclass_type),
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
-                 [base.fullname() for base in node.mro],
+                 [base.fullname for base in node.mro],
                  # Note that the structure of type variables is a part of the external interface,
                  # since creating instances might fail, for example:
                  #     T = TypeVar('T', bound=int)
@@ -217,7 +216,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
-        prefix = node.fullname()
+        prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)
         # Special dependency for abstract attribute handling.
         symbol_table['(abstract)'] = ('Abstract', tuple(sorted(node.abstract_attributes)))
@@ -247,6 +246,13 @@ def snapshot_simple_type(typ: Type) -> SnapshotItem:
     return (type(typ).__name__,)
 
 
+def encode_optional_str(s: Optional[str]) -> str:
+    if s is None:
+        return '<None>'
+    else:
+        return s
+
+
 class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     """Creates a read-only, self-contained snapshot of a type object.
 
@@ -257,6 +263,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     - Has no references to mutable or non-primitive objects.
     - Two snapshots represent the same object if and only if they are
       equal.
+    - Results must be sortable. It's important that tuples have
+      consistent types and can't arbitrarily mix str and None values,
+      for example, since they can't be compared.
     """
 
     def visit_unbound_type(self, typ: UnboundType) -> SnapshotItem:
@@ -269,7 +278,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
     def visit_any(self, typ: AnyType) -> SnapshotItem:
         return snapshot_simple_type(typ)
 
-    def visit_none_type(self, typ: NoneTyp) -> SnapshotItem:
+    def visit_none_type(self, typ: NoneType) -> SnapshotItem:
         return snapshot_simple_type(typ)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> SnapshotItem:
@@ -283,8 +292,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_instance(self, typ: Instance) -> SnapshotItem:
         return ('Instance',
-                typ.type.fullname(),
-                snapshot_types(typ.args))
+                encode_optional_str(typ.type.fullname),
+                snapshot_types(typ.args),
+                ('None',) if typ.last_known_value is None else snapshot_type(typ.last_known_value))
 
     def visit_type_var(self, typ: TypeVarType) -> SnapshotItem:
         return ('TypeVar',
@@ -301,7 +311,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('CallableType',
                 snapshot_types(typ.arg_types),
                 snapshot_type(typ.ret_type),
-                tuple(typ.arg_names),
+                tuple([encode_optional_str(name) for name in typ.arg_names]),
                 tuple(typ.arg_kinds),
                 typ.is_type_obj(),
                 typ.is_ellipsis_args)
@@ -316,7 +326,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('TypedDictType', items, required)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
-        return ('LiteralType', typ.value, snapshot_type(typ.fallback))
+        return ('LiteralType', snapshot_type(typ.fallback), typ.value)
 
     def visit_union_type(self, typ: UnionType) -> SnapshotItem:
         # Sort and remove duplicates so that we can use equality to test for
@@ -335,6 +345,10 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
 
     def visit_type_type(self, typ: TypeType) -> SnapshotItem:
         return ('TypeType', snapshot_type(typ.item))
+
+    def visit_type_alias_type(self, typ: TypeAliasType) -> SnapshotItem:
+        assert typ.alias is not None
+        return ('TypeAliasType', typ.alias.fullname, snapshot_types(typ.args))
 
 
 def snapshot_untyped_signature(func: Union[OverloadedFuncDef, FuncItem]) -> Tuple[object, ...]:

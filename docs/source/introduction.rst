@@ -8,8 +8,7 @@ annotations are just hints for mypy and don't interfere when running your progra
 You run your program with a standard Python interpreter, and the annotations
 are treated effectively as comments.
 
-Using the Python 3 function annotation syntax (using the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ notation) or
+Using the Python 3 function annotation syntax (using the :pep:`484` notation) or
 a comment-based annotation syntax for Python 2 code, you will be able to
 efficiently annotate your code and use mypy to check the code for common
 errors. Mypy has a powerful and easy-to-use type system with modern features

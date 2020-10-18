@@ -11,7 +11,7 @@ from typing import List, Tuple
 
 from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 
 # Files containing test cases descriptions.
 daemon_files = [
@@ -40,6 +40,7 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
         cmd = cmd.replace('{python}', sys.executable)
         sts, output = run_cmd(cmd)
         output_lines = output.splitlines()
+        output_lines = normalize_error_messages(output_lines)
         if sts:
             output_lines.append('== Return code: %d' % sts)
         assert_string_arrays_equal(expected_lines,
@@ -72,6 +73,8 @@ def parse_script(input: List[str]) -> List[List[str]]:
 def run_cmd(input: str) -> Tuple[int, str]:
     if input.startswith('dmypy '):
         input = sys.executable + ' -m mypy.' + input
+    if input.startswith('mypy '):
+        input = sys.executable + ' -m' + input
     env = os.environ.copy()
     env['PYTHONPATH'] = PREFIX
     try:

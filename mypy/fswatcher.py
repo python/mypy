@@ -1,19 +1,19 @@
 """Watch parts of the file system for changes."""
 
 from mypy.fscache import FileSystemCache
-from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set
+from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 
 FileData = NamedTuple('FileData', [('st_mtime', float),
                                    ('st_size', int),
-                                   ('md5', str)])
+                                   ('hash', str)])
 
 
 class FileSystemWatcher:
     """Watcher for file system changes among specific paths.
 
     All file system access is performed using FileSystemCache. We
-    detect changed files by stat()ing them all and comparing md5 hashes
+    detect changed files by stat()ing them all and comparing hashes
     of potentially changed files. If a file has both size and mtime
     unmodified, the file is assumed to be unchanged.
 
@@ -31,6 +31,9 @@ class FileSystemWatcher:
         self.fs = fs
         self._paths = set()  # type: Set[str]
         self._file_data = {}  # type: Dict[str, Optional[FileData]]
+
+    def dump_file_data(self) -> Dict[str, Tuple[float, int, str]]:
+        return {k: v for k, v in self._file_data.items() if v is not None}
 
     def set_file_data(self, path: str, data: FileData) -> None:
         self._file_data[path] = data
@@ -51,8 +54,8 @@ class FileSystemWatcher:
 
     def _update(self, path: str) -> None:
         st = self.fs.stat(path)
-        md5 = self.fs.md5(path)
-        self._file_data[path] = FileData(st.st_mtime, st.st_size, md5)
+        hash_digest = self.fs.hash_digest(path)
+        self._file_data[path] = FileData(st.st_mtime, st.st_size, hash_digest)
 
     def _find_changed(self, paths: Iterable[str]) -> AbstractSet[str]:
         changed = set()
@@ -73,10 +76,10 @@ class FileSystemWatcher:
                 # Round mtimes down, to match the mtimes we write to meta files
                 elif st.st_size != old.st_size or int(st.st_mtime) != int(old.st_mtime):
                     # Only look for changes if size or mtime has changed as an
-                    # optimization, since calculating md5 is expensive.
-                    new_md5 = self.fs.md5(path)
+                    # optimization, since calculating hash is expensive.
+                    new_hash = self.fs.hash_digest(path)
                     self._update(path)
-                    if st.st_size != old.st_size or new_md5 != old.md5:
+                    if st.st_size != old.st_size or new_hash != old.hash:
                         # Changed file.
                         changed.add(path)
         return changed

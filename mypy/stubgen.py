@@ -1,34 +1,44 @@
+#!/usr/bin/env python3
 """Generator of dynamically typed draft stubs for arbitrary modules.
+
+The logic of this script can be split in three steps:
+* parsing options and finding sources:
+  - use runtime imports be default (to find also C modules)
+  - or use mypy's mechanisms, if importing is prohibited
+* (optionally) semantically analysing the sources using mypy (as a single set)
+* emitting the stubs text:
+  - for Python modules: from ASTs using StubGenerator
+  - for C modules using runtime introspection and (optionally) Sphinx docs
+
+During first and third steps some problematic files can be skipped, but any
+blocking error during second step will cause the whole program to stop.
 
 Basic usage:
 
-  $ mkdir out
-  $ stubgen urllib.parse
+  $ stubgen foo.py bar.py some_directory
+  => Generate out/foo.pyi, out/bar.pyi, and stubs for some_directory (recursively).
 
+  $ stubgen -m urllib.parse
   => Generate out/urllib/parse.pyi.
+
+  $ stubgen -p urllib
+  => Generate stubs for whole urlib package (recursively).
 
 For Python 2 mode, use --py2:
 
-  $ stubgen --py2 textwrap
+  $ stubgen --py2 -m textwrap
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --doc-dir option:
 
-  $ scripts/stubgen --doc-dir <DIR>/Python-3.4.2/Doc/library curses
+  $ stubgen --doc-dir <DIR>/Python-3.4.2/Doc/library -m curses
 
-  => Generate out/curses.py.
-
-Use "stubgen -h" for more help.
-
-Note: You should verify the generated stubs manually.
+Note: The generated stubs should be verified manually.
 
 TODO:
-
  - support stubs for C modules in Python 2 mode
- - support non-default Python interpreters in Python 3 mode
- - if using --no-import, look for __all__ in the AST
- - infer some return types, such as no return statement with value -> None
  - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
+ - maybe use .rst docs also for Python modules
  - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
    - a quick and dirty heuristic would be to turn this on if a module has something like
      'from x import y as _y'
@@ -36,207 +46,163 @@ TODO:
 """
 
 import glob
-import importlib
-import json
 import os
 import os.path
-import pkgutil
-import inspect
-import subprocess
 import sys
-import textwrap
 import traceback
 import argparse
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, cast
+    List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast,
 )
+from typing_extensions import Final
 
 import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
+import mypy.mixedtraverser
 import mypy.util
 from mypy import defaults
-from mypy.modulefinder import FindModuleCache, SearchPaths
+from mypy.modulefinder import (
+    ModuleNotFoundReason, FindModuleCache, SearchPaths, BuildSource, default_lib_path
+)
 from mypy.nodes import (
-    Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
-    ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
-    ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
-    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
+    TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
+    ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
+    Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header, parse_all_signatures, find_unique_signatures
+from mypy.stubutil import (
+    default_py2_interpreter, CantImport, generate_guarded,
+    walk_packages, find_module_path_and_all_py2, find_module_path_and_all_py3,
+    report_missing, fail_missing, remove_misplaced_type_comments, common_dir_prefix
+)
+from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, CallableType,
-    UnboundType, NoneTyp, TupleType, TypeList,
+    Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance,
+    AnyType
 )
 from mypy.visitor import NodeVisitor
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
-                                 ('no_import', bool),
-                                 ('doc_dir', str),
-                                 ('search_path', List[str]),
-                                 ('interpreter', str),
-                                 ('modules', List[str]),
-                                 ('ignore_errors', bool),
-                                 ('recursive', bool),
-                                 ('include_private', bool),
-                                 ('output_dir', str),
-                                 ])
+from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.build import build
+from mypy.errors import CompileError, Errors
+from mypy.traverser import has_return_statement
+from mypy.moduleinspect import ModuleInspect
 
 
-class CantImport(Exception):
-    pass
+# Common ways of naming package containing vendored modules.
+VENDOR_PACKAGES = [
+    'packages',
+    'vendor',
+    'vendored',
+    '_vendor',
+    '_vendored_packages',
+]  # type: Final
+
+# Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
+BLACKLIST = [
+    '/six.py\n',  # Likely vendored six; too dynamic for us to handle
+    '/vendored/',  # Vendored packages
+    '/vendor/',  # Vendored packages
+    '/_vendor/',
+    '/_vendored_packages/',
+]  # type: Final
+
+# Special-cased names that are implicitly exported from the stub (from m import y as y).
+EXTRA_EXPORTED = {
+    'pyasn1_modules.rfc2437.univ',
+    'pyasn1_modules.rfc2459.char',
+    'pyasn1_modules.rfc2459.univ',
+}  # type: Final
+
+# These names should be omitted from generated stubs.
+IGNORED_DUNDERS = {
+    '__all__',
+    '__author__',
+    '__version__',
+    '__about__',
+    '__copyright__',
+    '__email__',
+    '__license__',
+    '__summary__',
+    '__title__',
+    '__uri__',
+    '__str__',
+    '__repr__',
+    '__getstate__',
+    '__setstate__',
+    '__slots__',
+}  # type: Final
+
+# These methods are expected to always return a non-trivial value.
+METHODS_WITH_RETURN_VALUE = {
+    '__ne__',
+    '__eq__',
+    '__lt__',
+    '__le__',
+    '__gt__',
+    '__ge__',
+    '__hash__',
+    '__iter__',
+}  # type: Final
 
 
-def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
-                             add_header: bool = False, sigs: Dict[str, str] = {},
-                             class_sigs: Dict[str, str] = {},
-                             pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                             no_import: bool = False,
-                             search_path: List[str] = [],
-                             interpreter: str = sys.executable,
-                             include_private: bool = False) -> None:
-    target = module.replace('.', '/')
-    try:
-        result = find_module_path_and_all(module=module,
-                                          pyversion=pyversion,
-                                          no_import=no_import,
-                                          search_path=search_path,
-                                          interpreter=interpreter)
-    except CantImport:
-        if not quiet:
-            traceback.print_exc()
-        print('Failed to import %s; skipping it' % module)
-        return
+class Options:
+    """Represents stubgen options.
 
-    if not result:
-        # C module
-        target = os.path.join(output_dir, target + '.pyi')
-        generate_stub_for_c_module(module_name=module,
-                                   target=target,
-                                   add_header=add_header,
-                                   sigs=sigs,
-                                   class_sigs=class_sigs)
-    else:
-        # Python module
-        module_path, module_all = result
-        if os.path.basename(module_path) == '__init__.py':
-            target += '/__init__.pyi'
-        else:
-            target += '.pyi'
-        target = os.path.join(output_dir, target)
-
-        generate_stub(module_path, output_dir, module_all,
-                      target=target, add_header=add_header, module=module,
-                      pyversion=pyversion, include_private=include_private)
-    if not quiet:
-        print('Created %s' % target)
-
-
-def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
-                             no_import: bool,
-                             search_path: List[str],
-                             interpreter: str) -> Optional[Tuple[str,
-                                                                 Optional[List[str]]]]:
-    """Find module and determine __all__.
-
-    Return None if the module is a C module. Return (module_path, __all__) if
-    Python module. Raise an exception or exit if failed.
+    This class is mutable to simplify testing.
     """
-    module_path = None  # type: Optional[str]
-    if not no_import:
-        if pyversion[0] == 2:
-            module_path, module_all = load_python_module_info(module, interpreter)
-        else:
-            # TODO: Support custom interpreters.
-            try:
-                mod = importlib.import_module(module)
-            except Exception:
-                raise CantImport(module)
-            if is_c_module(mod):
-                return None
-            module_path = mod.__file__
-            module_all = getattr(mod, '__all__', None)
-    else:
-        # Find module by going through search path.
-        search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
-        module_path = FindModuleCache(search_paths).find_module(module)
-        if not module_path:
-            raise SystemExit(
-                "Can't find module '{}' (consider using --search-path)".format(module))
-        module_all = None
-    return module_path, module_all
+    def __init__(self,
+                 pyversion: Tuple[int, int],
+                 no_import: bool,
+                 doc_dir: str,
+                 search_path: List[str],
+                 interpreter: str,
+                 parse_only: bool,
+                 ignore_errors: bool,
+                 include_private: bool,
+                 output_dir: str,
+                 modules: List[str],
+                 packages: List[str],
+                 files: List[str],
+                 verbose: bool,
+                 quiet: bool,
+                 export_less: bool) -> None:
+        # See parse_options for descriptions of the flags.
+        self.pyversion = pyversion
+        self.no_import = no_import
+        self.doc_dir = doc_dir
+        self.search_path = search_path
+        self.interpreter = interpreter
+        self.decointerpreter = interpreter
+        self.parse_only = parse_only
+        self.ignore_errors = ignore_errors
+        self.include_private = include_private
+        self.output_dir = output_dir
+        self.modules = modules
+        self.packages = packages
+        self.files = files
+        self.verbose = verbose
+        self.quiet = quiet
+        self.export_less = export_less
 
 
-def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
-    """Return tuple (module path, module __all__) for a Python 2 module.
+class StubSource(BuildSource):
+    """A single source for stub: can be a Python or C module.
 
-    The path refers to the .py/.py[co] file. The second tuple item is
-    None if the module doesn't define __all__.
-
-    Exit if the module can't be imported or if it's a C extension module.
+    A simple extension of BuildSource that also carries the AST and
+    the value of __all__ detected at runtime.
     """
-    cmd_template = '{interpreter} -c "%s"'.format(interpreter=interpreter)
-    code = ("import importlib, json; mod = importlib.import_module('%s'); "
-            "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
-    try:
-        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
-    except subprocess.CalledProcessError:
-        print("Can't import module %s" % module, file=sys.stderr)
-        sys.exit(1)
-    output = output_bytes.decode('ascii').strip().splitlines()
-    module_path = output[0]
-    if not module_path.endswith(('.py', '.pyc', '.pyo')):
-        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
-                         module)
-    if module_path.endswith(('.pyc', '.pyo')):
-        module_path = module_path[:-1]
-    module_all = json.loads(output[1])
-    return module_path, module_all
-
-
-def generate_stub(path: str,
-                  output_dir: str,
-                  _all_: Optional[List[str]] = None,
-                  target: Optional[str] = None,
-                  add_header: bool = False,
-                  module: Optional[str] = None,
-                  pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
-                  include_private: bool = False
-                  ) -> None:
-    with open(path, 'rb') as f:
-        data = f.read()
-    source = mypy.util.decode_python_encoding(data, pyversion)
-    options = MypyOptions()
-    options.python_version = pyversion
-    try:
-        ast = mypy.parse.parse(source, fnam=path, module=module, errors=None, options=options)
-    except mypy.errors.CompileError as e:
-        # Syntax error!
-        for m in e.messages:
-            sys.stderr.write('%s\n' % m)
-        sys.exit(1)
-
-    gen = StubGenerator(_all_, pyversion=pyversion, include_private=include_private)
-    ast.accept(gen)
-    if not target:
-        target = os.path.join(output_dir, os.path.basename(path))
-    subdir = os.path.dirname(target)
-    if subdir and not os.path.isdir(subdir):
-        os.makedirs(subdir)
-    with open(target, 'w') as file:
-        if add_header:
-            write_header(file, module, pyversion=pyversion)
-        file.write(''.join(gen.output()))
+    def __init__(self, module: str, path: Optional[str] = None,
+                 runtime_all: Optional[List[str]] = None) -> None:
+        super().__init__(path, module, None)
+        self.runtime_all = runtime_all
+        self.ast = None  # type: Optional[MypyFile]
 
 
 # What was generated previously in the stub file. We keep track of these to generate
@@ -248,22 +214,44 @@ EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
 VAR = 'VAR'  # type: Final
 NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
+# Indicates that we failed to generate a reasonable output
+# for a given node. These should be manually replaced by a user.
+
+ERROR_MARKER = '<ERROR>'  # type: Final
+
 
 class AnnotationPrinter(TypeStrVisitor):
+    """Visitor used to print existing annotations in a file.
 
+    The main difference from TypeStrVisitor is a better treatment of
+    unbound types.
+
+    Notes:
+    * This visitor doesn't add imports necessary for annotations, this is done separately
+      by ImportTracker.
+    * It can print all kinds of types, but the generated strings may not be valid (notably
+      callable types) since it prints the same string that reveal_type() does.
+    * For Instance types it prints the fully qualified names.
+    """
+    # TODO: Generate valid string representation for callable types.
+    # TODO: Use short names for Instances.
     def __init__(self, stubgen: 'StubGenerator') -> None:
         super().__init__()
         self.stubgen = stubgen
 
+    def visit_any(self, t: AnyType) -> str:
+        s = super().visit_any(t)
+        self.stubgen.import_tracker.require_name(s)
+        return s
+
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name
-        base = s.split('.')[0]
-        self.stubgen.import_tracker.require_name(base)
-        if t.args != []:
+        self.stubgen.import_tracker.require_name(s)
+        if t.args:
             s += '[{}]'.format(self.list_str(t.args))
         return s
 
-    def visit_none_type(self, t: NoneTyp) -> str:
+    def visit_none_type(self, t: NoneType) -> str:
         return "None"
 
     def visit_type_list(self, t: TypeList) -> str:
@@ -271,7 +259,10 @@ class AnnotationPrinter(TypeStrVisitor):
 
 
 class AliasPrinter(NodeVisitor[str]):
+    """Visitor used to collect type aliases _and_ type variable definitions.
 
+    Visit r.h.s of the definition to get the string representation of type alias.
+    """
     def __init__(self, stubgen: 'StubGenerator') -> None:
         self.stubgen = stubgen
         super().__init__()
@@ -298,6 +289,17 @@ class AliasPrinter(NodeVisitor[str]):
         self.stubgen.import_tracker.require_name(node.name)
         return node.name
 
+    def visit_member_expr(self, o: MemberExpr) -> str:
+        node = o  # type: Expression
+        trailer = ''
+        while isinstance(node, MemberExpr):
+            trailer = '.' + node.name + trailer
+            node = node.expr
+        if not isinstance(node, NameExpr):
+            return ERROR_MARKER
+        self.stubgen.import_tracker.require_name(node.name)
+        return node.name + trailer
+
     def visit_str_expr(self, node: StrExpr) -> str:
         return repr(node.value)
 
@@ -317,6 +319,7 @@ class AliasPrinter(NodeVisitor[str]):
 
 
 class ImportTracker:
+    """Record necessary imports during stub generation."""
 
     def __init__(self) -> None:
         # module_for['foo'] has the module name where 'foo' was imported from, or None if
@@ -324,16 +327,21 @@ class ImportTracker:
         #     'from pkg.m import f as foo' ==> module_for['foo'] == 'pkg.m'
         #     'from m import f' ==> module_for['f'] == 'm'
         #     'import m' ==> module_for['m'] == None
+        #     'import pkg.m' ==> module_for['pkg.m'] == None
+        #                    ==> module_for['pkg'] == None
         self.module_for = {}  # type: Dict[str, Optional[str]]
 
         # direct_imports['foo'] is the module path used when the name 'foo' was added to the
         # namespace.
         #   import foo.bar.baz  ==> direct_imports['foo'] == 'foo.bar.baz'
+        #                       ==> direct_imports['foo.bar'] == 'foo.bar.baz'
+        #                       ==> direct_imports['foo.bar.baz'] == 'foo.bar.baz'
         self.direct_imports = {}  # type: Dict[str, str]
 
         # reverse_alias['foo'] is the name that 'foo' had originally when imported with an
         # alias; examples
         #     'import numpy as np' ==> reverse_alias['np'] == 'numpy'
+        #     'import foo.bar as bar' ==> reverse_alias['bar'] == 'foo.bar'
         #     'from decimal import Decimal as D' ==> reverse_alias['D'] == 'Decimal'
         self.reverse_alias = {}  # type: Dict[str, str]
 
@@ -345,34 +353,45 @@ class ImportTracker:
 
     def add_import_from(self, module: str, names: List[Tuple[str, Optional[str]]]) -> None:
         for name, alias in names:
-            self.module_for[alias or name] = module
             if alias:
+                # 'from {module} import {name} as {alias}'
+                self.module_for[alias] = module
                 self.reverse_alias[alias] = name
+            else:
+                # 'from {module} import {name}'
+                self.module_for[name] = module
+                self.reverse_alias.pop(name, None)
+            self.direct_imports.pop(alias or name, None)
 
     def add_import(self, module: str, alias: Optional[str] = None) -> None:
-        name = module.split('.')[0]
-        self.module_for[alias or name] = None
-        self.direct_imports[name] = module
         if alias:
-            self.reverse_alias[alias] = name
+            # 'import {module} as {alias}'
+            self.module_for[alias] = None
+            self.reverse_alias[alias] = module
+        else:
+            # 'import {module}'
+            name = module
+            # add module and its parent packages
+            while name:
+                self.module_for[name] = None
+                self.direct_imports[name] = module
+                self.reverse_alias.pop(name, None)
+                name = name.rpartition('.')[0]
 
     def require_name(self, name: str) -> None:
         self.required_names.add(name.split('.')[0])
 
     def reexport(self, name: str) -> None:
-        """
-        Mark a given non qualified name as needed in __all__. This means that in case it
-        comes from a module, it should be imported with an alias even is the alias is the same
-        as the name.
+        """Mark a given non qualified name as needed in __all__.
 
+        This means that in case it comes from a module, it should be
+        imported with an alias even is the alias is the same as the name.
         """
         self.require_name(name)
         self.reexports.add(name)
 
     def import_lines(self) -> List[str]:
-        """
-        The list of required import lines (as strings with python code)
-        """
+        """The list of required import lines (as strings with python code)."""
         result = []
 
         # To summarize multiple names imported from a same module, we collect those
@@ -398,8 +417,8 @@ class ImportTracker:
                 # This name was found in an import ...
                 # We can already generate the import line
                 if name in self.reverse_alias:
-                    name, alias = self.reverse_alias[name], name
-                    result.append("import {} as {}\n".format(self.direct_imports[name], alias))
+                    source = self.reverse_alias[name]
+                    result.append("import {} as {}\n".format(source, name))
                 elif name in self.reexports:
                     assert '.' not in name  # Because reexports only has nonqualified names
                     result.append("import {} as {}\n".format(name, name))
@@ -412,28 +431,124 @@ class ImportTracker:
         return result
 
 
+def find_defined_names(file: MypyFile) -> Set[str]:
+    finder = DefinitionFinder()
+    file.accept(finder)
+    return finder.names
+
+
+class DefinitionFinder(mypy.traverser.TraverserVisitor):
+    """Find names of things defined at the top level of a module."""
+
+    # TODO: Assignment statements etc.
+
+    def __init__(self) -> None:
+        # Short names of things defined at the top level.
+        self.names = set()  # type: Set[str]
+
+    def visit_class_def(self, o: ClassDef) -> None:
+        # Don't recurse into classes, as we only keep track of top-level definitions.
+        self.names.add(o.name)
+
+    def visit_func_def(self, o: FuncDef) -> None:
+        # Don't recurse, as we only keep track of top-level definitions.
+        self.names.add(o.name)
+
+
+def find_referenced_names(file: MypyFile) -> Set[str]:
+    finder = ReferenceFinder()
+    file.accept(finder)
+    return finder.refs
+
+
+class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
+    """Find all name references (both local and global)."""
+
+    # TODO: Filter out local variable and class attribute references
+
+    def __init__(self) -> None:
+        # Short names of things defined at the top level.
+        self.refs = set()  # type: Set[str]
+
+    def visit_block(self, block: Block) -> None:
+        if not block.is_unreachable:
+            super().visit_block(block)
+
+    def visit_name_expr(self, e: NameExpr) -> None:
+        self.refs.add(e.name)
+
+    def visit_instance(self, t: Instance) -> None:
+        self.add_ref(t.type.fullname)
+        super().visit_instance(t)
+
+    def visit_unbound_type(self, t: UnboundType) -> None:
+        if t.name:
+            self.add_ref(t.name)
+
+    def visit_tuple_type(self, t: TupleType) -> None:
+        # Ignore fallback
+        for item in t.items:
+            item.accept(self)
+
+    def visit_callable_type(self, t: CallableType) -> None:
+        # Ignore fallback
+        for arg in t.arg_types:
+            arg.accept(self)
+        t.ret_type.accept(self)
+
+    def add_ref(self, fullname: str) -> None:
+        self.refs.add(fullname.split('.')[-1])
+
+
 class StubGenerator(mypy.traverser.TraverserVisitor):
-    def __init__(self, _all_: Optional[List[str]], pyversion: Tuple[int, int],
-                 include_private: bool = False) -> None:
+    """Generate stub text from a mypy AST."""
+
+    def __init__(self,
+                 _all_: Optional[List[str]], pyversion: Tuple[int, int],
+                 include_private: bool = False,
+                 analyzed: bool = False,
+                 export_less: bool = False) -> None:
+        # Best known value of __all__.
         self._all_ = _all_
         self._output = []  # type: List[str]
+        self._decorators = []  # type: List[str]
         self._import_lines = []  # type: List[str]
+        # Current indent level (indent is hardcoded to 4 spaces).
         self._indent = ''
+        # Stack of defined variables (per scope).
         self._vars = [[]]  # type: List[List[str]]
+        # What was generated previously in the stub file.
         self._state = EMPTY
         self._toplevel_names = []  # type: List[str]
         self._pyversion = pyversion
         self._include_private = include_private
         self.import_tracker = ImportTracker()
+        # Was the tree semantically analysed before?
+        self.analyzed = analyzed
+        # Disable implicit exports of package-internal imports?
+        self.export_less = export_less
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("collections", [("namedtuple", None)])
-        typing_imports = "Any Optional TypeVar".split()
-        self.import_tracker.add_import_from("typing", [(t, None) for t in typing_imports])
         # Names in __all__ are required
         for name in _all_ or ():
-            self.import_tracker.reexport(name)
+            if name not in IGNORED_DUNDERS:
+                self.import_tracker.reexport(name)
+        self.defined_names = set()  # type: Set[str]
+        # Short names of methods defined in the body of the current class
+        self.method_names = set()  # type: Set[str]
 
     def visit_mypy_file(self, o: MypyFile) -> None:
+        self.module = o.fullname  # Current module being processed
+        self.path = o.path
+        self.defined_names = find_defined_names(o)
+        self.referenced_names = find_referenced_names(o)
+        typing_imports = ["Any", "Optional", "TypeVar"]
+        for t in typing_imports:
+            if t not in self.defined_names:
+                alias = None
+            else:
+                alias = '_' + t
+            self.import_tracker.add_import_from("typing", [(t, alias)])
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or []
                            if name not in self._toplevel_names]
@@ -444,29 +559,38 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             for name in sorted(undefined_names):
                 self.add('#   %s\n' % name)
 
-    def visit_func_def(self, o: FuncDef) -> None:
-        if self.is_private_name(o.name()):
-            return
-        if self.is_not_in_all(o.name()):
-            return
-        if self.is_recorded_name(o.name()):
+    def visit_func_def(self, o: FuncDef, is_abstract: bool = False) -> None:
+        if (self.is_private_name(o.name, o.fullname)
+                or self.is_not_in_all(o.name)
+                or self.is_recorded_name(o.name)):
+            self.clear_decorators()
             return
         if not self._indent and self._state not in (EMPTY, FUNC) and not o.is_awaitable_coroutine:
             self.add('\n')
         if not self.is_top_level():
             self_inits = find_self_initializers(o)
             for init, value in self_inits:
+                if init in self.method_names:
+                    # Can't have both an attribute and a method/property with the same name.
+                    continue
                 init_code = self.get_init(init, value)
                 if init_code:
                     self.add(init_code)
-        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name()))
-        self.record_name(o.name())
+        # dump decorators, just before "def ..."
+        for s in self._decorators:
+            self.add(s)
+        self.clear_decorators()
+        self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name))
+        self.record_name(o.name)
         args = []  # type: List[str]
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
             kind = arg_.kind
-            name = var.name()
-            annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
+            name = var.name
+            annotated_type = (o.unanalyzed_type.arg_types[i]
+                              if isinstance(o.unanalyzed_type, CallableType) else None)
+            # I think the name check is incorrect: there are libraries which
+            # name their 0th argument other than self/cls
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
             if (annotated_type is None
@@ -474,7 +598,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     and not is_self_arg
                     and not is_cls_arg):
                 self.add_typing_import("Any")
-                annotation = ": Any"
+                annotation = ": {}".format(self.typing_name("Any"))
             elif annotated_type and not is_self_arg:
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
@@ -498,9 +622,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 arg = name + annotation
             args.append(arg)
         retname = None
-        if isinstance(o.type, CallableType):
-            retname = self.print_annotation(o.type.ret_type)
-        elif o.name() == '__init__' or not has_return_statement(o):
+        if o.name != '__init__' and isinstance(o.unanalyzed_type, CallableType):
+            retname = self.print_annotation(o.unanalyzed_type.ret_type)
+        elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
+            # Always assume abstract methods return Any unless explicitly annotated. Also
+            # some dunder methods should not have a None return type.
+            retname = self.typing_name('Any')
+            self.add_typing_import("Any")
+        elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -511,42 +640,93 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._state = FUNC
 
     def visit_decorator(self, o: Decorator) -> None:
-        if self.is_private_name(o.func.name()):
+        if self.is_private_name(o.func.name, o.func.fullname):
             return
-        for decorator in o.decorators:
+        is_abstract = False
+        for decorator in o.original_decorators:
             if isinstance(decorator, NameExpr):
-                if decorator.name in ('property',
-                                      'staticmethod',
-                                      'classmethod'):
-                    self.add('%s@%s\n' % (self._indent, decorator.name))
-                elif self.import_tracker.module_for.get(decorator.name) in ('asyncio',
-                                                                            'asyncio.coroutines',
-                                                                            'types'):
-                    self.add_coroutine_decorator(o.func, decorator.name, decorator.name)
+                if self.process_name_expr_decorator(decorator, o):
+                    is_abstract = True
             elif isinstance(decorator, MemberExpr):
-                if decorator.name == 'setter' and isinstance(decorator.expr, NameExpr):
-                    self.add('%s@%s.setter\n' % (self._indent, decorator.expr.name))
-                elif decorator.name == 'coroutine':
-                    if (isinstance(decorator.expr, MemberExpr) and
-                        decorator.expr.name == 'coroutines' and
-                        isinstance(decorator.expr.expr, NameExpr) and
-                            (decorator.expr.expr.name == 'asyncio' or
-                             self.import_tracker.reverse_alias.get(decorator.expr.expr.name) ==
-                                'asyncio')):
-                        self.add_coroutine_decorator(o.func,
-                                                     '%s.coroutines.coroutine' %
-                                                     (decorator.expr.expr.name,),
-                                                     decorator.expr.expr.name)
-                    elif (isinstance(decorator.expr, NameExpr) and
-                          (decorator.expr.name in ('asyncio', 'types') or
-                           self.import_tracker.reverse_alias.get(decorator.expr.name) in
-                            ('asyncio', 'asyncio.coroutines', 'types'))):
-                        self.add_coroutine_decorator(o.func,
-                                                     decorator.expr.name + '.coroutine',
-                                                     decorator.expr.name)
-        super().visit_decorator(o)
+                if self.process_member_expr_decorator(decorator, o):
+                    is_abstract = True
+        self.visit_func_def(o.func, is_abstract=is_abstract)
+
+    def process_name_expr_decorator(self, expr: NameExpr, context: Decorator) -> bool:
+        """Process a function decorator of form @foo.
+
+        Only preserve certain special decorators such as @abstractmethod.
+
+        Return True if the decorator makes a method abstract.
+        """
+        is_abstract = False
+        name = expr.name
+        if name in ('property', 'staticmethod', 'classmethod'):
+            self.add_decorator(name)
+        elif self.import_tracker.module_for.get(name) in ('asyncio',
+                                                          'asyncio.coroutines',
+                                                          'types'):
+            self.add_coroutine_decorator(context.func, name, name)
+        elif self.refers_to_fullname(name, 'abc.abstractmethod'):
+            self.add_decorator(name)
+            self.import_tracker.require_name(name)
+            is_abstract = True
+        elif self.refers_to_fullname(name, 'abc.abstractproperty'):
+            self.add_decorator('property')
+            self.add_decorator('abc.abstractmethod')
+            is_abstract = True
+        return is_abstract
+
+    def refers_to_fullname(self, name: str, fullname: str) -> bool:
+        module, short = fullname.rsplit('.', 1)
+        return (self.import_tracker.module_for.get(name) == module and
+                (name == short or
+                 self.import_tracker.reverse_alias.get(name) == short))
+
+    def process_member_expr_decorator(self, expr: MemberExpr, context: Decorator) -> bool:
+        """Process a function decorator of form @foo.bar.
+
+        Only preserve certain special decorators such as @abstractmethod.
+
+        Return True if the decorator makes a method abstract.
+        """
+        is_abstract = False
+        if expr.name == 'setter' and isinstance(expr.expr, NameExpr):
+            self.add_decorator('%s.setter' % expr.expr.name)
+        elif (isinstance(expr.expr, NameExpr) and
+              (expr.expr.name == 'abc' or
+               self.import_tracker.reverse_alias.get('abc')) and
+              expr.name in ('abstractmethod', 'abstractproperty')):
+            if expr.name == 'abstractproperty':
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s' % ('property'))
+                self.add_decorator('%s.%s' % (expr.expr.name, 'abstractmethod'))
+            else:
+                self.import_tracker.require_name(expr.expr.name)
+                self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
+            is_abstract = True
+        elif expr.name == 'coroutine':
+            if (isinstance(expr.expr, MemberExpr) and
+                expr.expr.name == 'coroutines' and
+                isinstance(expr.expr.expr, NameExpr) and
+                    (expr.expr.expr.name == 'asyncio' or
+                     self.import_tracker.reverse_alias.get(expr.expr.expr.name) ==
+                        'asyncio')):
+                self.add_coroutine_decorator(context.func,
+                                             '%s.coroutines.coroutine' %
+                                             (expr.expr.expr.name,),
+                                             expr.expr.expr.name)
+            elif (isinstance(expr.expr, NameExpr) and
+                  (expr.expr.name in ('asyncio', 'types') or
+                   self.import_tracker.reverse_alias.get(expr.expr.name) in
+                    ('asyncio', 'asyncio.coroutines', 'types'))):
+                self.add_coroutine_decorator(context.func,
+                                             expr.expr.name + '.coroutine',
+                                             expr.expr.name)
+        return is_abstract
 
     def visit_class_def(self, o: ClassDef) -> None:
+        self.method_names = find_method_names(o.defs.body)
         sep = None  # type: Optional[int]
         if not self._indent and self._state != EMPTY:
             sep = len(self._output)
@@ -555,9 +735,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.record_name(o.name)
         base_types = self.get_base_types(o)
         if base_types:
-            self.add('(%s)' % ', '.join(base_types))
             for base in base_types:
                 self.import_tracker.require_name(base)
+        if isinstance(o.metaclass, (NameExpr, MemberExpr)):
+            meta = o.metaclass.accept(AliasPrinter(self))
+            base_types.append('metaclass=' + meta)
+        elif self.analyzed and o.info.is_abstract:
+            base_types.append('metaclass=abc.ABCMeta')
+            self.import_tracker.add_import('abc')
+            self.import_tracker.require_name('abc')
+        if base_types:
+            self.add('(%s)' % ', '.join(base_types))
         self.add(':\n')
         n = len(self._output)
         self._indent += '    '
@@ -573,8 +761,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self._state = EMPTY_CLASS
         else:
             self._state = CLASS
+        self.method_names = set()
 
     def get_base_types(self, cdef: ClassDef) -> List[str]:
+        """Get list of base classes for a class."""
         base_types = []  # type: List[str]
         for base in cdef.base_type_exprs:
             if isinstance(base, NameExpr):
@@ -588,6 +778,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 base_types.append(base.accept(p))
         return base_types
 
+    def visit_block(self, o: Block) -> None:
+        # Unreachable statements may be partially uninitialized and that may
+        # cause trouble.
+        if not o.is_unreachable:
+            super().visit_block(o)
+
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         foundl = []
 
@@ -597,18 +793,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.process_namedtuple(lvalue, o.rvalue)
                 continue
             if (self.is_top_level() and
-                    isinstance(lvalue, NameExpr) and self.is_type_expression(o.rvalue)):
+                    isinstance(lvalue, NameExpr) and not self.is_private_name(lvalue.name) and
+                    # it is never an alias with explicit annotation
+                    not o.unanalyzed_type and self.is_alias_expression(o.rvalue)):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
-                if isinstance(o.type, TupleType):
-                    annotations = o.type.items  # type: Iterable[Optional[Type]]
+                if isinstance(o.unanalyzed_type, TupleType):  # type: ignore
+                    annotations = o.unanalyzed_type.items  # type: Iterable[Optional[Type]]
                 else:
                     annotations = [None] * len(items)
             else:
                 items = [lvalue]
-                annotations = [o.type]
+                annotations = [o.unanalyzed_type]
             sep = False
             found = False
             for item, annotation in zip(items, annotations):
@@ -635,24 +833,27 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 (isinstance(callee, MemberExpr) and callee.name == 'namedtuple'))
 
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
-        self.import_tracker.require_name('namedtuple')
         if self._state != EMPTY:
             self.add('\n')
-        name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
+        name = repr(getattr(rvalue.args[0], 'value', ERROR_MARKER))
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
-            items = '<ERROR>'
-        self.add('%s = namedtuple(%s, %s)\n' % (lvalue.name, name, items))
+            self.add('%s%s: Any' % (self._indent, lvalue.name))
+            self.import_tracker.require_name('Any')
+            return
+        self.import_tracker.require_name('namedtuple')
+        self.add('%s%s = namedtuple(%s, %s)\n' % (self._indent, lvalue.name, name, items))
         self._state = CLASS
 
-    def is_type_expression(self, expr: Expression, top_level: bool = True) -> bool:
-        """Return True for things that look like type expressions
+    def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
+        """Return True for things that look like target for an alias.
 
-        Used to know if assignments look like typealiases
+        Used to know if assignments look like type aliases, function alias,
+        or module alias.
         """
         # Assignment of TypeVar(...) are passed through
         if (isinstance(expr, CallExpr) and
@@ -667,8 +868,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             elif expr.name == 'None':
                 return not top_level
             else:
-                return True
-        elif isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr):
+                return not self.is_private_name(expr.name)
+        elif isinstance(expr, MemberExpr) and self.analyzed:
+            # Also add function and module aliases.
+            return ((top_level and isinstance(expr.node, (FuncDef, Decorator, MypyFile))
+                     or isinstance(expr.node, TypeInfo)) and
+                    not self.is_private_member(expr.node.fullname))
+        elif (isinstance(expr, IndexExpr) and isinstance(expr.base, NameExpr) and
+              not self.is_private_name(expr.base.name)):
             if isinstance(expr.index, TupleExpr):
                 indices = expr.index.items
             else:
@@ -681,7 +888,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     indices = args.items + [ret]
                 else:
                     return False
-            return all(self.is_type_expression(i, top_level=False) for i in indices)
+            return all(self.is_alias_expression(i, top_level=False) for i in indices)
         else:
             return False
 
@@ -707,25 +914,62 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_import_from(self, o: ImportFrom) -> None:
         exported_names = set()  # type: Set[str]
-        self.import_tracker.add_import_from('.' * o.relative + o.id, o.names)
-        self._vars[-1].extend(alias or name for name, alias in o.names)
-        for name, alias in o.names:
+        import_names = []
+        module, relative = translate_module_name(o.id, o.relative)
+        if self.module:
+            full_module, ok = mypy.util.correct_relative_import(
+                self.module, relative, module, self.path.endswith('.__init__.py')
+            )
+            if not ok:
+                full_module = module
+        else:
+            full_module = module
+        if module == '__future__':
+            return  # Not preserved
+        for name, as_name in o.names:
+            if name == 'six':
+                # Vendored six -- translate into plain 'import six'.
+                self.visit_import(Import([('six', None)]))
+                continue
+            exported = False
+            if as_name is None and self.module and (self.module + '.' + name) in EXTRA_EXPORTED:
+                # Special case certain names that should be exported, against our general rules.
+                exported = True
+            is_private = self.is_private_name(name, full_module + '.' + name)
+            if (as_name is None
+                    and name not in self.referenced_names
+                    and (not self._all_ or name in IGNORED_DUNDERS)
+                    and not is_private
+                    and module not in ('abc', 'typing', 'asyncio')):
+                # An imported name that is never referenced in the module is assumed to be
+                # exported, unless there is an explicit __all__. Note that we need to special
+                # case 'abc' since some references are deleted during semantic analysis.
+                exported = True
+            top_level = full_module.split('.')[0]
+            if (as_name is None
+                    and not self.export_less
+                    and (not self._all_ or name in IGNORED_DUNDERS)
+                    and self.module
+                    and not is_private
+                    and top_level in (self.module.split('.')[0],
+                                      '_' + self.module.split('.')[0])):
+                # Export imports from the same package, since we can't reliably tell whether they
+                # are part of the public API.
+                exported = True
+            if exported:
+                self.import_tracker.reexport(name)
+                as_name = name
+            import_names.append((name, as_name))
+        self.import_tracker.add_import_from('.' * relative + module, import_names)
+        self._vars[-1].extend(alias or name for name, alias in import_names)
+        for name, alias in import_names:
             self.record_name(alias or name)
 
         if self._all_:
             # Include import froms that import names defined in __all__.
             names = [name for name, alias in o.names
-                     if name in self._all_ and alias is None]
+                     if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)
-        else:
-            # Include import from targets that import from a submodule of a package.
-            if o.relative:
-                sub_names = [name for name, alias in o.names
-                             if alias is None]
-                exported_names.update(sub_names)
-                if o.id:
-                    for name in sub_names:
-                        self.import_tracker.require_name(name)
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -752,6 +996,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self._vars[-1].append(lvalue)
         if annotation is not None:
             typename = self.print_annotation(annotation)
+            if (isinstance(annotation, UnboundType) and not annotation.args and
+                    annotation.name == 'Final' and
+                    self.import_tracker.module_for.get('Final') in ('typing',
+                                                                    'typing_extensions')):
+                # Final without type argument is invalid in stubs.
+                final_arg = self.get_str_type_of_node(rvalue)
+                typename += '[{}]'.format(final_arg)
         else:
             typename = self.get_str_type_of_node(rvalue)
         has_rhs = not (isinstance(rvalue, TempNode) and rvalue.no_rhs)
@@ -762,11 +1013,27 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         """Add text to generated stub."""
         self._output.append(string)
 
+    def add_decorator(self, name: str) -> None:
+        if not self._indent and self._state not in (EMPTY, FUNC):
+            self._decorators.append('\n')
+        self._decorators.append('%s@%s\n' % (self._indent, name))
+
+    def clear_decorators(self) -> None:
+        self._decorators.clear()
+
+    def typing_name(self, name: str) -> str:
+        if name in self.defined_names:
+            # Avoid name clash between name from typing and a name defined in stub.
+            return '_' + name
+        else:
+            return name
+
     def add_typing_import(self, name: str) -> None:
         """Add a name to be imported from typing, unless it's imported already.
 
         The import will be internal to the stub.
         """
+        name = self.typing_name(name)
         self.import_tracker.require_name(name)
 
     def add_import_line(self, line: str) -> None:
@@ -776,9 +1043,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def add_coroutine_decorator(self, func: FuncDef, name: str, require_name: str) -> None:
         func.is_awaitable_coroutine = True
-        if not self._indent and self._state not in (EMPTY, FUNC):
-            self.add('\n')
-        self.add('%s@%s\n' % (self._indent, name))
+        self.add_decorator(name)
         self.import_tracker.require_name(require_name)
 
     def output(self) -> str:
@@ -798,18 +1063,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return self.is_top_level() and name not in self._all_
         return False
 
-    def is_private_name(self, name: str) -> bool:
+    def is_private_name(self, name: str, fullname: Optional[str] = None) -> bool:
         if self._include_private:
             return False
+        if fullname in EXTRA_EXPORTED:
+            return False
         return name.startswith('_') and (not name.endswith('__')
-                                         or name in ('__all__',
-                                                     '__author__',
-                                                     '__version__',
-                                                     '__str__',
-                                                     '__repr__',
-                                                     '__getstate__',
-                                                     '__setstate__',
-                                                     '__slots__'))
+                                         or name in IGNORED_DUNDERS)
+
+    def is_private_member(self, fullname: str) -> bool:
+        parts = fullname.split('.')
+        for part in parts:
+            if self.is_private_name(part):
+                return True
+        return False
 
     def get_str_type_of_node(self, rvalue: Expression,
                              can_infer_optional: bool = False) -> str:
@@ -829,9 +1096,10 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 isinstance(rvalue, NameExpr) and rvalue.name == 'None':
             self.add_typing_import('Optional')
             self.add_typing_import('Any')
-            return 'Optional[Any]'
+            return '{}[{}]'.format(self.typing_name('Optional'),
+                                   self.typing_name('Any'))
         self.add_typing_import('Any')
-        return 'Any'
+        return self.typing_name('Any')
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)
@@ -854,6 +1122,20 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
+def find_method_names(defs: List[Statement]) -> Set[str]:
+    # TODO: Traverse into nested definitions
+    result = set()
+    for defn in defs:
+        if isinstance(defn, FuncDef):
+            result.add(defn.name)
+        elif isinstance(defn, Decorator):
+            result.add(defn.func.name)
+        elif isinstance(defn, OverloadedFuncDef):
+            for item in defn.items:
+                result.update(find_method_names([item]))
+    return result
+
+
 class SelfTraverser(mypy.traverser.TraverserVisitor):
     def __init__(self) -> None:
         self.results = []  # type: List[Tuple[str, Expression]]
@@ -867,23 +1149,13 @@ class SelfTraverser(mypy.traverser.TraverserVisitor):
 
 
 def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
+    """Find attribute initializers in a method.
+
+    Return a list of pairs (attribute name, r.h.s. expression).
+    """
     traverser = SelfTraverser()
     fdef.accept(traverser)
     return traverser.results
-
-
-class ReturnSeeker(mypy.traverser.TraverserVisitor):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        self.found = True
-
-
-def has_return_statement(fdef: FuncBase) -> bool:
-    seeker = ReturnSeeker()
-    fdef.accept(seeker)
-    return seeker.found
 
 
 def get_qualified_name(o: Expression) -> str:
@@ -892,86 +1164,326 @@ def get_qualified_name(o: Expression) -> str:
     elif isinstance(o, MemberExpr):
         return '%s.%s' % (get_qualified_name(o.expr), o.name)
     else:
-        return '<ERROR>'
+        return ERROR_MARKER
 
 
-def walk_packages(packages: List[str]) -> Iterator[str]:
-    """Iterates through all packages and sub-packages in the given list.
+def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
+    return [module for module in modules
+            if module.path is None or not is_blacklisted_path(module.path)]
 
-    Python packages have a __path__ attribute defined, which pkgutil uses to determine
-    the package hierarchy.  However, packages in C extensions do not have this attribute,
-    so we have to roll out our own.
+
+def is_blacklisted_path(path: str) -> bool:
+    return any(substr in (normalize_path_separators(path) + '\n')
+               for substr in BLACKLIST)
+
+
+def normalize_path_separators(path: str) -> str:
+    if sys.platform == 'win32':
+        return path.replace('\\', '/')
+    return path
+
+
+def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[List[StubSource],
+                                                                             List[StubSource]]:
+    """Collect files for which we need to generate stubs.
+
+    Return list of Python modules and C modules.
     """
-    for package_name in packages:
-        package = importlib.import_module(package_name)
-        yield package.__name__
-        # get the path of the object (needed by pkgutil)
-        path = getattr(package, '__path__', None)
-        if path is None:
-            # object has no path; this means it's either a module inside a package
-            # (and thus no sub-packages), or it could be a C extension package.
-            if is_c_module(package):
-                # This is a C extension module, now get the list of all sub-packages
-                # using the inspect module
-                subpackages = [package.__name__ + "." + name
-                               for name, val in inspect.getmembers(package)
-                               if inspect.ismodule(val)
-                               and val.__name__ == package.__name__ + "." + name]
-                # recursively iterate through the subpackages
-                for submodule in walk_packages(subpackages):
-                    yield submodule
-            # It's a module inside a package.  There's nothing else to walk/yield.
+    if options.packages or options.modules:
+        if options.no_import:
+            py_modules = find_module_paths_using_search(options.modules,
+                                                        options.packages,
+                                                        options.search_path,
+                                                        options.pyversion)
+            c_modules = []  # type: List[StubSource]
         else:
-            all_packages = pkgutil.walk_packages(path, prefix=package.__name__ + ".",
-                                                 onerror=lambda r: None)
-            for importer, qualified_name, ispkg in all_packages:
-                yield qualified_name
-
-
-def main() -> None:
-    # Make sure that the current directory is in sys.path so that
-    # stubgen can be run on packages in the current directory.
-    if '' not in sys.path:
-        sys.path.insert(0, '')
-
-    options = parse_options(sys.argv[1:])
-    if not os.path.isdir(options.output_dir):
-        raise SystemExit('Directory "{}" does not exist'.format(options.output_dir))
-    if options.recursive and options.no_import:
-        raise SystemExit('recursive stub generation without importing is not currently supported')
-    sigs = {}  # type: Any
-    class_sigs = {}  # type: Any
-    if options.doc_dir:
-        all_sigs = []  # type: Any
-        all_class_sigs = []  # type: Any
-        for path in glob.glob('%s/*.rst' % options.doc_dir):
-            with open(path) as f:
-                func_sigs, class_sigs = parse_all_signatures(f.readlines())
-            all_sigs += func_sigs
-            all_class_sigs += class_sigs
-        sigs = dict(find_unique_signatures(all_sigs))
-        class_sigs = dict(find_unique_signatures(all_class_sigs))
-    for module in (options.modules if not options.recursive else walk_packages(options.modules)):
+            # Using imports is the default, since we can also find C modules.
+            py_modules, c_modules = find_module_paths_using_imports(options.modules,
+                                                                    options.packages,
+                                                                    options.interpreter,
+                                                                    options.pyversion,
+                                                                    options.verbose,
+                                                                    options.quiet)
+    else:
+        # Use mypy native source collection for files and directories.
         try:
-            generate_stub_for_module(module,
-                                     output_dir=options.output_dir,
-                                     add_header=True,
-                                     sigs=sigs,
-                                     class_sigs=class_sigs,
-                                     pyversion=options.pyversion,
-                                     no_import=options.no_import,
-                                     search_path=options.search_path,
-                                     interpreter=options.interpreter,
-                                     include_private=options.include_private)
-        except Exception as e:
-            if not options.ignore_errors:
-                raise e
+            source_list = create_source_list(options.files, mypy_opts)
+        except InvalidSourceList as e:
+            raise SystemExit(str(e)) from e
+        py_modules = [StubSource(m.module, m.path) for m in source_list]
+        c_modules = []
+
+    py_modules = remove_blacklisted_modules(py_modules)
+
+    return py_modules, c_modules
+
+
+def find_module_paths_using_imports(modules: List[str],
+                                    packages: List[str],
+                                    interpreter: str,
+                                    pyversion: Tuple[int, int],
+                                    verbose: bool,
+                                    quiet: bool) -> Tuple[List[StubSource],
+                                                          List[StubSource]]:
+    """Find path and runtime value of __all__ (if possible) for modules and packages.
+
+    This function uses runtime Python imports to get the information.
+    """
+    with ModuleInspect() as inspect:
+        py_modules = []  # type: List[StubSource]
+        c_modules = []  # type: List[StubSource]
+        found = list(walk_packages(inspect, packages, verbose))
+        modules = modules + found
+        modules = [mod
+                   for mod in modules
+                   if not is_non_library_module(mod)]  # We don't want to run any tests or scripts
+        for mod in modules:
+            try:
+                if pyversion[0] == 2:
+                    result = find_module_path_and_all_py2(mod, interpreter)
+                else:
+                    result = find_module_path_and_all_py3(inspect, mod, verbose)
+            except CantImport as e:
+                tb = traceback.format_exc()
+                if verbose:
+                    sys.stdout.write(tb)
+                if not quiet:
+                    report_missing(mod, e.message, tb)
+                continue
+            if not result:
+                c_modules.append(StubSource(mod))
             else:
-                print("Stub generation failed for", module, file=sys.stderr)
+                path, runtime_all = result
+                py_modules.append(StubSource(mod, path, runtime_all))
+        return py_modules, c_modules
 
 
-HEADER = """%(prog)s [--py2] [--no-import] [--doc-dir PATH]
-                     [--search-path PATH] [--python-executable PATH] [-o PATH] MODULE ..."""
+def is_non_library_module(module: str) -> bool:
+    """Does module look like a test module or a script?"""
+    if module.endswith((
+            '.tests',
+            '.test',
+            '.testing',
+            '_tests',
+            '_test_suite',
+            'test_util',
+            'test_utils',
+            'test_base',
+            '.__main__',
+            '.conftest',  # Used by pytest
+            '.setup',  # Typically an install script
+    )):
+        return True
+    if module.split('.')[-1].startswith('test_'):
+        return True
+    if ('.tests.' in module
+            or '.test.' in module
+            or '.testing.' in module
+            or '.SelfTest.' in module):
+        return True
+    return False
+
+
+def translate_module_name(module: str, relative: int) -> Tuple[str, int]:
+    for pkg in VENDOR_PACKAGES:
+        for alt in 'six.moves', 'six':
+            substr = '{}.{}'.format(pkg, alt)
+            if (module.endswith('.' + substr)
+                    or (module == substr and relative)):
+                return alt, 0
+            if '.' + substr + '.' in module:
+                return alt + '.' + module.partition('.' + substr + '.')[2], 0
+    return module, relative
+
+
+def find_module_paths_using_search(modules: List[str], packages: List[str],
+                                   search_path: List[str],
+                                   pyversion: Tuple[int, int]) -> List[StubSource]:
+    """Find sources for modules and packages requested.
+
+    This function just looks for source files at the file system level.
+    This is used if user passes --no-import, and will not find C modules.
+    Exit if some of the modules or packages can't be found.
+    """
+    result = []  # type: List[StubSource]
+    typeshed_path = default_lib_path(mypy.build.default_data_dir(), pyversion, None)
+    search_paths = SearchPaths(('.',) + tuple(search_path), (), (), tuple(typeshed_path))
+    cache = FindModuleCache(search_paths)
+    for module in modules:
+        m_result = cache.find_module(module)
+        if isinstance(m_result, ModuleNotFoundReason):
+            fail_missing(module, m_result)
+            module_path = None
+        else:
+            module_path = m_result
+        result.append(StubSource(module, module_path))
+    for package in packages:
+        p_result = cache.find_modules_recursive(package)
+        if p_result:
+            fail_missing(package, ModuleNotFoundReason.NOT_FOUND)
+        sources = [StubSource(m.module, m.path) for m in p_result]
+        result.extend(sources)
+
+    result = [m for m in result if not is_non_library_module(m.module)]
+
+    return result
+
+
+def mypy_options(stubgen_options: Options) -> MypyOptions:
+    """Generate mypy options using the flag passed by user."""
+    options = MypyOptions()
+    options.follow_imports = 'skip'
+    options.incremental = False
+    options.ignore_errors = True
+    options.semantic_analysis_only = True
+    options.python_version = stubgen_options.pyversion
+    options.show_traceback = True
+    options.transform_source = remove_misplaced_type_comments
+    return options
+
+
+def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
+    """Parse a source file.
+
+    On success, store AST in the corresponding attribute of the stub source.
+    If there are syntax errors, print them and exit.
+    """
+    assert mod.path is not None, "Not found module was not skipped"
+    with open(mod.path, 'rb') as f:
+        data = f.read()
+    source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
+    errors = Errors()
+    mod.ast = mypy.parse.parse(source, fnam=mod.path, module=mod.module,
+                               errors=errors, options=mypy_options)
+    mod.ast._fullname = mod.module
+    if errors.is_blockers():
+        # Syntax error!
+        for m in errors.new_messages():
+            sys.stderr.write('%s\n' % m)
+        sys.exit(1)
+
+
+def generate_asts_for_modules(py_modules: List[StubSource],
+                              parse_only: bool,
+                              mypy_options: MypyOptions,
+                              verbose: bool) -> None:
+    """Use mypy to parse (and optionally analyze) source files."""
+    if not py_modules:
+        return  # Nothing to do here, but there may be C modules
+    if verbose:
+        print('Processing %d files...' % len(py_modules))
+    if parse_only:
+        for mod in py_modules:
+            parse_source_file(mod, mypy_options)
+        return
+    # Perform full semantic analysis of the source set.
+    try:
+        res = build(list(py_modules), mypy_options)
+    except CompileError as e:
+        raise SystemExit("Critical error during semantic analysis: {}".format(e)) from e
+
+    for mod in py_modules:
+        mod.ast = res.graph[mod.module].tree
+        # Use statically inferred __all__ if there is no runtime one.
+        if mod.runtime_all is None:
+            mod.runtime_all = res.manager.semantic_analyzer.export_map[mod.module]
+
+
+def generate_stub_from_ast(mod: StubSource,
+                           target: str,
+                           parse_only: bool = False,
+                           pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
+                           include_private: bool = False,
+                           export_less: bool = False) -> None:
+    """Use analysed (or just parsed) AST to generate type stub for single file.
+
+    If directory for target doesn't exist it will created. Existing stub
+    will be overwritten.
+    """
+    gen = StubGenerator(mod.runtime_all,
+                        pyversion=pyversion,
+                        include_private=include_private,
+                        analyzed=not parse_only,
+                        export_less=export_less)
+    assert mod.ast is not None, "This function must be used only with analyzed modules"
+    mod.ast.accept(gen)
+
+    # Write output to file.
+    subdir = os.path.dirname(target)
+    if subdir and not os.path.isdir(subdir):
+        os.makedirs(subdir)
+    with open(target, 'w') as file:
+        file.write(''.join(gen.output()))
+
+
+def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """Gather all function and class signatures in the docs.
+
+    Return a tuple (function signatures, class signatures).
+    Currently only used for C modules.
+    """
+    all_sigs = []  # type: List[Sig]
+    all_class_sigs = []  # type: List[Sig]
+    for path in glob.glob('%s/*.rst' % doc_dir):
+        with open(path) as f:
+            loc_sigs, loc_class_sigs = parse_all_signatures(f.readlines())
+        all_sigs += loc_sigs
+        all_class_sigs += loc_class_sigs
+    sigs = dict(find_unique_signatures(all_sigs))
+    class_sigs = dict(find_unique_signatures(all_class_sigs))
+    return sigs, class_sigs
+
+
+def generate_stubs(options: Options) -> None:
+    """Main entry point for the program."""
+    mypy_opts = mypy_options(options)
+    py_modules, c_modules = collect_build_targets(options, mypy_opts)
+
+    # Collect info from docs (if given):
+    sigs = class_sigs = None  # type: Optional[Dict[str, str]]
+    if options.doc_dir:
+        sigs, class_sigs = collect_docs_signatures(options.doc_dir)
+
+    # Use parsed sources to generate stubs for Python modules.
+    generate_asts_for_modules(py_modules, options.parse_only, mypy_opts, options.verbose)
+    files = []
+    for mod in py_modules:
+        assert mod.path is not None, "Not found module was not skipped"
+        target = mod.module.replace('.', '/')
+        if os.path.basename(mod.path) == '__init__.py':
+            target += '/__init__.pyi'
+        else:
+            target += '.pyi'
+        target = os.path.join(options.output_dir, target)
+        files.append(target)
+        with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
+            generate_stub_from_ast(mod, target,
+                                   options.parse_only, options.pyversion,
+                                   options.include_private,
+                                   options.export_less)
+
+    # Separately analyse C modules using different logic.
+    for mod in c_modules:
+        if any(py_mod.module.startswith(mod.module + '.')
+               for py_mod in py_modules + c_modules):
+            target = mod.module.replace('.', '/') + '/__init__.pyi'
+        else:
+            target = mod.module.replace('.', '/') + '.pyi'
+        target = os.path.join(options.output_dir, target)
+        files.append(target)
+        with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
+            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
+    num_modules = len(py_modules) + len(c_modules)
+    if not options.quiet and num_modules > 0:
+        print('Processed %d modules' % num_modules)
+        if len(files) == 1:
+            print('Generated %s' % files[0])
+        else:
+            print('Generated files under %s' % common_dir_prefix(files) + os.sep)
+
+
+HEADER = """%(prog)s [-h] [--py2] [more options, see -h]
+                     [-m MODULE] [-p PACKAGE] [files ...]"""
 
 DESCRIPTION = """
 Generate draft stubs for modules.
@@ -988,17 +1500,25 @@ def parse_options(args: List[str]) -> Options:
 
     parser.add_argument('--py2', action='store_true',
                         help="run in Python 2 mode (default: Python 3 mode)")
-    parser.add_argument('--recursive', action='store_true',
-                        help="traverse listed modules to generate inner package modules as well")
     parser.add_argument('--ignore-errors', action='store_true',
                         help="ignore errors when trying to generate stubs for modules")
     parser.add_argument('--no-import', action='store_true',
                         help="don't import the modules, just parse and analyze them "
-                             "(doesn't work with C extension modules and doesn't "
+                             "(doesn't work with C extension modules and might not "
                              "respect __all__)")
+    parser.add_argument('--parse-only', action='store_true',
+                        help="don't perform semantic analysis of sources, just parse them "
+                             "(only applies to Python modules, might affect quality of stubs)")
     parser.add_argument('--include-private', action='store_true',
                         help="generate stubs for objects and members considered private "
                              "(single leading underscore and no trailing underscores)")
+    parser.add_argument('--export-less', action='store_true',
+                        help=("don't implicitly export all names imported from other modules "
+                              "in the same package"))
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="show more verbose messages")
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help="show fewer messages")
     parser.add_argument('--doc-dir', metavar='PATH', default='',
                         help="use .rst documentation in PATH (this may result in "
                              "better stubs in some cases; consider setting this to "
@@ -1009,40 +1529,57 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument('--python-executable', metavar='PATH', dest='interpreter', default='',
                         help="use Python interpreter at PATH (only works for "
                              "Python 2 right now)")
-    parser.add_argument('-o', metavar='PATH', dest='output_dir', default='out',
-                        help="Change the output folder [default: %(default)s]")
-    parser.add_argument(metavar='modules', nargs='+', dest='modules')
+    parser.add_argument('-o', '--output', metavar='PATH', dest='output_dir', default='out',
+                        help="change the output directory [default: %(default)s]")
+    parser.add_argument('-m', '--module', action='append', metavar='MODULE',
+                        dest='modules', default=[],
+                        help="generate stub for module; can repeat for more modules")
+    parser.add_argument('-p', '--package', action='append', metavar='PACKAGE',
+                        dest='packages', default=[],
+                        help="generate stubs for package recursively; can be repeated")
+    parser.add_argument(metavar='files', nargs='*', dest='files',
+                        help="generate stubs for given files or directories")
 
     ns = parser.parse_args(args)
 
     pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
     if not ns.interpreter:
-        ns.interpreter = sys.executable if pyversion[0] == 3 else default_python2_interpreter()
+        ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
+    if ns.modules + ns.packages and ns.files:
+        parser.error("May only specify one of: modules/packages or files.")
+    if ns.quiet and ns.verbose:
+        parser.error('Cannot specify both quiet and verbose messages')
+
     # Create the output folder if it doesn't already exist.
     if not os.path.exists(ns.output_dir):
         os.makedirs(ns.output_dir)
+
     return Options(pyversion=pyversion,
                    no_import=ns.no_import,
                    doc_dir=ns.doc_dir,
                    search_path=ns.search_path.split(':'),
                    interpreter=ns.interpreter,
-                   modules=ns.modules,
                    ignore_errors=ns.ignore_errors,
-                   recursive=ns.recursive,
+                   parse_only=ns.parse_only,
                    include_private=ns.include_private,
-                   output_dir=ns.output_dir)
+                   output_dir=ns.output_dir,
+                   modules=ns.modules,
+                   packages=ns.packages,
+                   files=ns.files,
+                   verbose=ns.verbose,
+                   quiet=ns.quiet,
+                   export_less=ns.export_less)
 
 
-def default_python2_interpreter() -> str:
-    # TODO: Make this do something reasonable in Windows.
-    for candidate in ('/usr/bin/python2', '/usr/bin/python'):
-        if not os.path.exists(candidate):
-            continue
-        output = subprocess.check_output([candidate, '--version'],
-                                         stderr=subprocess.STDOUT).strip()
-        if b'Python 2' in output:
-            return candidate
-    raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
+def main() -> None:
+    mypy.util.check_python_version('stubgen')
+    # Make sure that the current directory is in sys.path so that
+    # stubgen can be run on packages in the current directory.
+    if not ('' in sys.path or '.' in sys.path):
+        sys.path.insert(0, '')
+
+    options = parse_options(sys.argv[1:])
+    generate_stubs(options)
 
 
 if __name__ == '__main__':

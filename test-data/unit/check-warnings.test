@@ -10,7 +10,7 @@ a = 1
 b = cast(str, a)
 c = cast(int, a)
 [out]
-main:5: note: Redundant cast to "int"
+main:5: error: Redundant cast to "int"
 
 [case testRedundantCastWithIsinstance]
 # flags: --warn-redundant-casts
@@ -20,7 +20,7 @@ if isinstance(x, str):
     cast(str, x)
 [builtins fixtures/isinstance.pyi]
 [out]
-main:5: note: Redundant cast to "str"
+main:5: error: Redundant cast to "str"
 
 [case testCastToSuperclassNotRedundant]
 # flags: --warn-redundant-casts
@@ -35,6 +35,12 @@ b = B()
 c = add([cast(A, b)], [a])
 [builtins fixtures/list.pyi]
 
+[case testCastToAnyTypeNotRedundant]
+# flags: --warn-redundant-casts
+from typing import cast, Any
+a: Any
+b = cast(Any, a)
+[builtins fixtures/list.pyi]
 
 -- Unused 'type: ignore' comments
 -- ------------------------------
@@ -45,7 +51,7 @@ a = 1
 if int():
     a = 'a' # type: ignore
 if int():
-    a = 2 # type: ignore # N: unused 'type: ignore' comment
+    a = 2 # type: ignore # E: unused 'type: ignore' comment
 if int():
     a = 'b' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -57,8 +63,8 @@ from m import * # type: ignore
 [file m.py]
 pass
 [out]
-main:3: note: unused 'type: ignore' comment
-main:4: note: unused 'type: ignore' comment
+main:3: error: unused 'type: ignore' comment
+main:4: error: unused 'type: ignore' comment
 
 
 -- No return
@@ -144,7 +150,7 @@ from typing import Any
 def g() -> Any: pass
 def f() -> int: return g()
 [out]
-main:4: warning: Returning Any from function declared to return "int"
+main:4: error: Returning Any from function declared to return "int"
 
 [case testReturnAnyForNotImplementedInBinaryMagicMethods]
 # flags: --warn-return-any
@@ -159,7 +165,7 @@ class A:
     def some(self) -> bool: return NotImplemented
 [builtins fixtures/notimplemented.pyi]
 [out]
-main:3: warning: Returning Any from function declared to return "bool"
+main:3: error: Returning Any from function declared to return "bool"
 
 [case testReturnAnyFromTypedFunctionWithSpecificFormatting]
 # flags: --warn-return-any
@@ -173,8 +179,9 @@ typ = Tuple[int, int, int, int, int, int, int, int, int, int, int, int, int,
             int, int, int, int, int, int, int, int, int, int, int, int, int]
 def g() -> Any: pass
 def f() -> typ: return g()
+[builtins fixtures/tuple.pyi]
 [out]
-main:11: warning: Returning Any from function declared to return <tuple: 91 items>
+main:11: error: Returning Any from function declared to return "Tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int]"
 
 [case testReturnAnySilencedFromTypedFunction]
 # flags: --warn-return-any

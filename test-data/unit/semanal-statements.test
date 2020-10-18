@@ -157,24 +157,26 @@ MypyFile:1(
         NameExpr(x [l])))))
 
 [case testReusingForLoopIndexVariable]
+# flags: --allow-redefinition
 for x in None:
     pass
 for x in None:
     pass
 [out]
 MypyFile:1(
-  ForStmt:1(
+  ForStmt:2(
+    NameExpr(x'* [__main__.x'])
+    NameExpr(None [builtins.None])
+    Block:2(
+      PassStmt:3()))
+  ForStmt:4(
     NameExpr(x* [__main__.x])
     NameExpr(None [builtins.None])
-    Block:1(
-      PassStmt:2()))
-  ForStmt:3(
-    NameExpr(x [__main__.x])
-    NameExpr(None [builtins.None])
-    Block:3(
-      PassStmt:4())))
+    Block:4(
+      PassStmt:5())))
 
 [case testReusingForLoopIndexVariable2]
+# flags: --allow-redefinition
 def f():
     for x in None:
         pass
@@ -182,19 +184,19 @@ def f():
         pass
 [out]
 MypyFile:1(
-  FuncDef:1(
+  FuncDef:2(
     f
-    Block:1(
-      ForStmt:2(
+    Block:2(
+      ForStmt:3(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])
-        Block:2(
-          PassStmt:3()))
-      ForStmt:4(
-        NameExpr(x [l])
+        Block:3(
+          PassStmt:4()))
+      ForStmt:5(
+        NameExpr(x'* [l])
         NameExpr(None [builtins.None])
-        Block:4(
-          PassStmt:5())))))
+        Block:5(
+          PassStmt:6())))))
 
 [case testLoopWithElse]
 for x in []:
@@ -310,12 +312,12 @@ MypyFile:1(
 
 [case testLvalues]
 x = y = 1
-x = 1
+xx = 1
 x.m = 1
 x[y] = 1
-x, y = 1
-[x, y] = 1
-(x, y) = 1
+x2, y2 = 1
+[x3, y3] = 1
+(x4, y4) = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
@@ -324,7 +326,7 @@ MypyFile:1(
       NameExpr(y* [__main__.y]))
     IntExpr(1))
   AssignmentStmt:2(
-    NameExpr(x [__main__.x])
+    NameExpr(xx* [__main__.xx])
     IntExpr(1))
   AssignmentStmt:3(
     MemberExpr:3(
@@ -338,64 +340,66 @@ MypyFile:1(
     IntExpr(1))
   AssignmentStmt:5(
     TupleExpr:5(
-      NameExpr(x [__main__.x])
-      NameExpr(y [__main__.y]))
+      NameExpr(x2* [__main__.x2])
+      NameExpr(y2* [__main__.y2]))
     IntExpr(1))
   AssignmentStmt:6(
     TupleExpr:6(
-      NameExpr(x [__main__.x])
-      NameExpr(y [__main__.y]))
+      NameExpr(x3* [__main__.x3])
+      NameExpr(y3* [__main__.y3]))
     IntExpr(1))
   AssignmentStmt:7(
     TupleExpr:7(
-      NameExpr(x [__main__.x])
-      NameExpr(y [__main__.y]))
+      NameExpr(x4* [__main__.x4])
+      NameExpr(y4* [__main__.y4]))
     IntExpr(1)))
 
 [case testStarLvalues]
+# flags: --allow-redefinition
 *x, y = 1
 *x, (y, *z) = 1
 *(x, q), r = 1
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
-    TupleExpr:1(
-      StarExpr:1(
-        NameExpr(x* [__main__.x]))
-      NameExpr(y* [__main__.y]))
-    IntExpr(1))
   AssignmentStmt:2(
     TupleExpr:2(
       StarExpr:2(
-        NameExpr(x [__main__.x]))
-      TupleExpr:2(
-        NameExpr(y [__main__.y])
-        StarExpr:2(
-          NameExpr(z* [__main__.z]))))
+        NameExpr(x'* [__main__.x']))
+      NameExpr(y'* [__main__.y']))
     IntExpr(1))
   AssignmentStmt:3(
     TupleExpr:3(
       StarExpr:3(
-        TupleExpr:3(
-          NameExpr(x [__main__.x])
+        NameExpr(x''* [__main__.x'']))
+      TupleExpr:3(
+        NameExpr(y* [__main__.y])
+        StarExpr:3(
+          NameExpr(z* [__main__.z]))))
+    IntExpr(1))
+  AssignmentStmt:4(
+    TupleExpr:4(
+      StarExpr:4(
+        TupleExpr:4(
+          NameExpr(x* [__main__.x])
           NameExpr(q* [__main__.q])))
       NameExpr(r* [__main__.r]))
     IntExpr(1)))
 
 [case testMultipleDefinition]
+# flags: --allow-redefinition
 x, y = 1
 x, y = 2
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
-    TupleExpr:1(
-      NameExpr(x* [__main__.x])
-      NameExpr(y* [__main__.y]))
-    IntExpr(1))
   AssignmentStmt:2(
     TupleExpr:2(
-      NameExpr(x [__main__.x])
-      NameExpr(y [__main__.y]))
+      NameExpr(x'* [__main__.x'])
+      NameExpr(y'* [__main__.y']))
+    IntExpr(1))
+  AssignmentStmt:3(
+    TupleExpr:3(
+      NameExpr(x* [__main__.x])
+      NameExpr(y* [__main__.y]))
     IntExpr(2)))
 
 [case testComplexDefinitions]
@@ -458,27 +462,32 @@ MypyFile:1(
 
 [case testMultipleDefOnlySomeNewNestedLists]
 x = 1
-y, [x, z] = 1
-[p, [x, r]] = 1
+if x:
+    y, [x, z] = 1
+    [p, [x, r]] = 1
 [out]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
-  AssignmentStmt:2(
-    TupleExpr:2(
-      NameExpr(y* [__main__.y])
-      TupleExpr:2(
-        NameExpr(x [__main__.x])
-        NameExpr(z* [__main__.z])))
-    IntExpr(1))
-  AssignmentStmt:3(
-    TupleExpr:3(
-      NameExpr(p* [__main__.p])
-      TupleExpr:3(
-        NameExpr(x [__main__.x])
-        NameExpr(r* [__main__.r])))
-    IntExpr(1)))
+  IfStmt:2(
+    If(
+      NameExpr(x [__main__.x]))
+    Then(
+      AssignmentStmt:3(
+        TupleExpr:3(
+          NameExpr(y* [__main__.y])
+          TupleExpr:3(
+            NameExpr(x [__main__.x])
+            NameExpr(z* [__main__.z])))
+        IntExpr(1))
+      AssignmentStmt:4(
+        TupleExpr:4(
+          NameExpr(p* [__main__.p])
+          TupleExpr:4(
+            NameExpr(x [__main__.x])
+            NameExpr(r* [__main__.r])))
+        IntExpr(1)))))
 
 [case testIndexedDel]
 x = y = 1
@@ -712,7 +721,8 @@ MypyFile:1(
 [case testVariableInBlock]
 while object:
   x = None
-  x = x
+  if x:
+    x = x
 [out]
 MypyFile:1(
   WhileStmt:1(
@@ -721,9 +731,13 @@ MypyFile:1(
       AssignmentStmt:2(
         NameExpr(x* [__main__.x])
         NameExpr(None [builtins.None]))
-      AssignmentStmt:3(
-        NameExpr(x [__main__.x])
-        NameExpr(x [__main__.x])))))
+      IfStmt:3(
+        If(
+          NameExpr(x [__main__.x]))
+        Then(
+          AssignmentStmt:4(
+            NameExpr(x [__main__.x])
+            NameExpr(x [__main__.x])))))))
 
 [case testVariableInExceptHandler]
 try:
@@ -804,20 +818,21 @@ MypyFile:1(
     PassStmt:8()))
 
 [case testMultipleAssignmentWithPartialNewDef]
+# flags: --allow-redefinition
 o = None
 x, o = o, o
 [out]
 MypyFile:1(
-  AssignmentStmt:1(
-    NameExpr(o* [__main__.o])
-    NameExpr(None [builtins.None]))
   AssignmentStmt:2(
-    TupleExpr:2(
+    NameExpr(o'* [__main__.o'])
+    NameExpr(None [builtins.None]))
+  AssignmentStmt:3(
+    TupleExpr:3(
       NameExpr(x* [__main__.x])
-      NameExpr(o [__main__.o]))
-    TupleExpr:2(
-      NameExpr(o [__main__.o])
-      NameExpr(o [__main__.o]))))
+      NameExpr(o* [__main__.o]))
+    TupleExpr:3(
+      NameExpr(o' [__main__.o'])
+      NameExpr(o' [__main__.o']))))
 
 [case testFunctionDecorator]
 def decorate(f): pass
@@ -927,3 +942,117 @@ MypyFile:1(
             TupleExpr:5(
               NameExpr(a [l])
               NameExpr(b [l]))))))))
+
+[case testRenameGlobalVariable]
+# flags: --allow-redefinition
+def f(a): pass
+x = 0
+f(x)
+x = ''
+f(x)
+[out]
+MypyFile:1(
+  FuncDef:2(
+    f
+    Args(
+      Var(a))
+    Block:2(
+      PassStmt:2()))
+  AssignmentStmt:3(
+    NameExpr(x'* [__main__.x'])
+    IntExpr(0))
+  ExpressionStmt:4(
+    CallExpr:4(
+      NameExpr(f [__main__.f])
+      Args(
+        NameExpr(x' [__main__.x']))))
+  AssignmentStmt:5(
+    NameExpr(x* [__main__.x])
+    StrExpr())
+  ExpressionStmt:6(
+    CallExpr:6(
+      NameExpr(f [__main__.f])
+      Args(
+        NameExpr(x [__main__.x])))))
+
+[case testNoRenameGlobalVariable]
+# flags: --disallow-redefinition
+def f(a): pass
+x = 0
+f(x)
+x = ''
+f(x)
+[out]
+MypyFile:1(
+  FuncDef:2(
+    f
+    Args(
+      Var(a))
+    Block:2(
+      PassStmt:2()))
+  AssignmentStmt:3(
+    NameExpr(x* [__main__.x])
+    IntExpr(0))
+  ExpressionStmt:4(
+    CallExpr:4(
+      NameExpr(f [__main__.f])
+      Args(
+        NameExpr(x [__main__.x]))))
+  AssignmentStmt:5(
+    NameExpr(x [__main__.x])
+    StrExpr())
+  ExpressionStmt:6(
+    CallExpr:6(
+      NameExpr(f [__main__.f])
+      Args(
+        NameExpr(x [__main__.x])))))
+
+[case testRenameLocalVariable]
+# flags: --allow-redefinition
+def f(a):
+    f(a)
+    a = ''
+    f(a)
+[out]
+MypyFile:1(
+  FuncDef:2(
+    f
+    Args(
+      Var(a))
+    Block:2(
+      ExpressionStmt:3(
+        CallExpr:3(
+          NameExpr(f [__main__.f])
+          Args(
+            NameExpr(a [l]))))
+      AssignmentStmt:4(
+        NameExpr(a'* [l])
+        StrExpr())
+      ExpressionStmt:5(
+        CallExpr:5(
+          NameExpr(f [__main__.f])
+          Args(
+            NameExpr(a' [l])))))))
+
+[case testCannotRenameExternalVarWithinClass]
+# flags: --allow-redefinition
+x = 0
+x
+class A:
+    x = 1
+x = ''
+[out]
+MypyFile:1(
+  AssignmentStmt:2(
+    NameExpr(x* [__main__.x])
+    IntExpr(0))
+  ExpressionStmt:3(
+    NameExpr(x [__main__.x]))
+  ClassDef:4(
+    A
+    AssignmentStmt:5(
+      NameExpr(x* [m])
+      IntExpr(1)))
+  AssignmentStmt:6(
+    NameExpr(x [__main__.x])
+    StrExpr()))

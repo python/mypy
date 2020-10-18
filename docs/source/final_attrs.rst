@@ -1,9 +1,11 @@
+.. _final_attrs:
+
 Final names, methods and classes
 ================================
 
 This section introduces these related features:
 
-1. *Final names* are variables or attributes that should not reassigned after
+1. *Final names* are variables or attributes that should not be reassigned after
    initialization. They are useful for declaring constants.
 2. *Final methods* should not be overridden in a subclass.
 3. *Final classes* should not be subclassed.
@@ -13,14 +15,15 @@ They is no runtime enforcement by the Python runtime.
 
 .. note::
 
-   These are experimental features. They might change in later
-   versions of mypy. The *final* qualifiers are available through the
-   ``typing_extensions`` package on PyPI.
+    The examples in this page import ``Final`` and ``final`` from the
+    ``typing`` module. These types were added to ``typing`` in Python 3.8,
+    but are also available for use in Python 2.7 and 3.4 - 3.7 via the
+    ``typing_extensions`` package.
 
 Final names
 -----------
 
-You can use the ``typing_extensions.Final`` qualifier to indicate that
+You can use the ``typing.Final`` qualifier to indicate that
 a name or attribute should not be reassigned, redefined, or
 overridden.  This is often useful for module and class level constants
 as a way to prevent unintended modification.  Mypy will prevent
@@ -28,7 +31,7 @@ further assignments to final names in type-checked code:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    RATE: Final = 3000
 
@@ -43,7 +46,7 @@ from being overridden in a subclass:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    class Window:
        BORDER_WIDTH: Final = 2.5
@@ -52,7 +55,7 @@ from being overridden in a subclass:
    class ListView(Window):
        BORDER_WIDTH = 3  # Error: can't override a final attribute
 
-You can use ``@property`` to make an attribute read-only, but unlike ``Final``,
+You can use :py:class:`@property <property>` to make an attribute read-only, but unlike ``Final``,
 it doesn't work with module attributes, and it doesn't prevent overriding in
 subclasses.
 
@@ -81,11 +84,11 @@ You can use ``Final`` in one of these forms:
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in
-  ``__init__`` methods, so that the final instance attribute is
+  :py:meth:`__init__ <object.__init__>` methods, so that the final instance attribute is
   assigned only once when an instance is created.
 
-Details of using Final
-**********************
+Details of using ``Final``
+**************************
 
 These are the two main rules for defining a final name:
 
@@ -96,7 +99,7 @@ These are the two main rules for defining a final name:
 * There must be *exactly one* assignment to a final name.
 
 A final attribute declared in a class body without an initializer must
-be initialized in the ``__init__`` method (you can skip the
+be initialized in the :py:meth:`__init__ <object.__init__>` method (you can skip the
 initializer in stub files):
 
 .. code-block:: python
@@ -119,9 +122,9 @@ annotations. Using it in any other position is an error. In particular,
    def fun(x: Final[List[int]]) ->  None:  # Error!
        ...
 
-``Final`` and ``ClassVar`` should not be used together. Mypy will infer
+``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer
 the scope of a final declaration automatically depending on whether it was
-initialized in the class body or in ``__init__``.
+initialized in the class body or in :py:meth:`__init__ <object.__init__>`.
 
 A final attribute can't be overridden by a subclass (even with another
 explicit final declaration). Note however that a final attribute can
@@ -136,7 +139,7 @@ override a read-only property:
    class Derived(Base):
        ID: Final = 1  # OK
 
-Declaring a name as final only guarantees that the name wll not be re-bound
+Declaring a name as final only guarantees that the name will not be re-bound
 to another value. It doesn't make the value immutable. You can use immutable ABCs
 and containers to prevent mutating such values:
 
@@ -153,12 +156,11 @@ Final methods
 -------------
 
 Like with attributes, sometimes it is useful to protect a method from
-overriding. You can use the ``typing_extensions.final``
-decorator for this purpose:
+overriding. You can use the ``typing.final`` decorator for this purpose:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    class Base:
        @final
@@ -191,12 +193,12 @@ to make it final (or on the first overload in stubs):
 Final classes
 -------------
 
-You can apply the ``typing_extensions.final`` decorator to a class to indicate
+You can apply the ``typing.final`` decorator to a class to indicate
 to mypy that it should not be subclassed:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    @final
    class Leaf:
@@ -217,3 +219,17 @@ Here are some situations where using a final class may be useful:
   base classes and subclasses.
 * You want to retain the freedom to arbitrarily change the class implementation
   in the future, and these changes might break subclasses.
+
+An abstract class that defines at least one abstract method or
+property and has ``@final`` decorator will generate an error from
+mypy, since those attributes could never be implemented.
+
+.. code-block:: python
+
+    from abc import ABCMeta, abstractmethod
+    from typing import final
+
+    @final
+    class A(metaclass=ABCMeta):  # error: Final class A has abstract attributes "f"
+        @abstractmethod
+        def f(self, x: int) -> None: pass

@@ -88,9 +88,9 @@ the scope of the mypy project.
 How do I type check my Python 2 code?
 *************************************
 
-You can use a `comment-based function annotation syntax
-<https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code>`_
-and use the ``--py2`` command-line option to type check your Python 2 code.
+You can use a :pep:`comment-based function annotation syntax
+<484#suggested-syntax-for-python-2-7-and-straddling-code>`
+and use the :option:`--py2 <mypy --py2>` command-line option to type check your Python 2 code.
 You'll also need to install ``typing`` for Python 2 via ``pip install typing``.
 
 Is mypy free?
@@ -110,17 +110,16 @@ Structural subtyping can be thought of as "static duck typing".
 Some argue that structural subtyping is better suited for languages with duck
 typing such as Python. Mypy however primarily uses nominal subtyping,
 leaving structural subtyping mostly opt-in (except for built-in protocols
-such as ``Iterable`` that always support structural subtyping). Here are some
+such as :py:class:`~typing.Iterable` that always support structural subtyping). Here are some
 reasons why:
 
 1. It is easy to generate short and informative error messages when
    using a nominal type system. This is especially important when
    using type inference.
 
-2. Python provides built-in support for nominal ``isinstance()`` tests and
+2. Python provides built-in support for nominal :py:func:`isinstance` tests and
    they are widely used in programs. Only limited support for structural
-   ``isinstance()`` is available, and it's less type safe than
-   nominal type tests.
+   :py:func:`isinstance` is available, and it's less type safe than nominal type tests.
 
 3. Many programmers are already familiar with static, nominal subtyping and it
    has been successfully used in languages such as Java, C++ and
@@ -131,8 +130,7 @@ may be more flexible if it is typed with protocols. Also, using protocol types
 removes the necessity to explicitly declare implementations of ABCs.
 As a rule of thumb, we recommend using nominal classes where possible, and
 protocols where necessary. For more details about protocol types and structural
-subtyping see :ref:`protocol-types` and
-`PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_.
+subtyping see :ref:`protocol-types` and :pep:`544`.
 
 I like Python and I have no need for static typing
 **************************************************
@@ -165,7 +163,7 @@ monkey patching of methods.
 How is mypy different from Cython?
 **********************************
 
-`Cython <http://cython.org/>`_ is a variant of Python that supports
+:doc:`Cython <cython:index>` is a variant of Python that supports
 compilation to CPython C modules. It can give major speedups to
 certain classes of programs compared to CPython, and it provides
 static typing (though this is different from mypy). Mypy differs in

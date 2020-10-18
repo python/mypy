@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 2)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 language represents various common types in Python 2.
 
 .. note::
@@ -58,7 +57,7 @@ Functions
 
 .. code-block:: python
 
-   from typing import Callable, Iterable, Union, Optional, List
+   from typing import Callable, Iterator, Union, Optional, List
 
    # This is how you annotate a function definition
    def stringify(num):
@@ -95,9 +94,9 @@ Functions
    x = f  # type: Callable[[int, float], float]
 
    # A generator function that yields ints is secretly just a function that
-   # returns an iterable (see below) of ints, so that's how we annotate it
-   def f(n):
-       # type: (int) -> Iterable[int]
+   # returns an iterator of ints, so that's how we annotate it
+   def g(n):
+       # type: (int) -> Iterator[int]
        i = 0
        while i < n:
            yield i
@@ -113,7 +112,6 @@ Functions
                   ):
        # type: (...) -> bool
        <code>
-
 
 When you're puzzled or when things are complicated
 **************************************************
@@ -257,3 +255,22 @@ Miscellaneous
            return sys.stdin
        else:
            return sys.stdout
+
+
+Decorators
+**********
+
+Decorator functions can be expressed via generics. See
+:ref:`declaring-decorators` for the more details.
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def bare_decorator(func):  # type: (F) -> F
+        ...
+
+    def decorator_args(url):  # type: (str) -> Callable[[F], F]
+        ...

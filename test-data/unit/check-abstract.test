@@ -38,6 +38,7 @@ class J(metaclass=ABCMeta):
 class A(I, J): pass
 class B(A): pass
 class C(I): pass
+[builtins fixtures/tuple.pyi]
 
 [case testAbstractClassSubtypingViaExtension]
 
@@ -67,6 +68,7 @@ class I(metaclass=ABCMeta):
   def f(self): pass
 class J(I): pass
 class A(J): pass
+[builtins fixtures/tuple.pyi]
 
 [case testInheritingAbstractClassInSubclass]
 from abc import abstractmethod, ABCMeta
@@ -134,6 +136,7 @@ if int():
     i = cast(I, o)
 if int():
     i = cast(I, a)
+[builtins fixtures/tuple.pyi]
 
 [case testInstantiatingClassThatImplementsAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -308,7 +311,9 @@ class A(metaclass=ABCMeta):
     def g(self, x: int) -> int: pass
 class B(A):
     def f(self, x: str) -> int: \
-            # E: Argument 1 of "f" incompatible with supertype "A"
+            # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+            # N: This violates the Liskov substitution principle \
+            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         pass
     def g(self, x: int) -> int: pass
 [out]
@@ -324,9 +329,11 @@ class J(metaclass=ABCMeta):
     def g(self, x: str) -> str: pass
 class A(I, J):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" incompatible with supertype "I"
+        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, x: str) -> int: pass \
-        # E: Return type of "g" incompatible with supertype "J"
+        # E: Return type "int" of "g" incompatible with return type "str" in supertype "J"
     def h(self) -> int: pass # Not related to any base class
 [out]
 
@@ -339,7 +346,9 @@ class J(metaclass=ABCMeta):
 class I(J): pass
 class A(I):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" incompatible with supertype "J"
+        # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "int" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [out]
 
 [case testInvalidOverridingAbstractMethod]
@@ -350,7 +359,9 @@ class J(metaclass=ABCMeta):
     def f(self, x: 'J') -> None: pass
 class I(J):
     @abstractmethod
-    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" incompatible with supertype "J"
+    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "J" \
+                                      # N: This violates the Liskov substitution principle \
+                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [out]
 
 [case testAbstractClassCoAndContraVariance]
@@ -371,8 +382,10 @@ class A(I):
     def g(self, a: 'A') -> 'A':
         pass
 [out]
-main:11: error: Argument 1 of "h" incompatible with supertype "I"
-main:11: error: Return type of "h" incompatible with supertype "I"
+main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
+main:11: note: This violates the Liskov substitution principle
+main:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 
 
 -- Accessing abstract members
@@ -396,6 +409,7 @@ i.g()      # E: "I" has no attribute "g"
 
 if int():
     b = i.f(a)
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingInheritedAbstractMethod]
 from abc import abstractmethod, ABCMeta
@@ -415,6 +429,7 @@ if int():
 
 -- Any (dynamic) types
 -- -------------------
+[builtins fixtures/tuple.pyi]
 
 
 [case testAbstractClassWithAllDynamicTypes]
@@ -770,7 +785,7 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: pass
 class B(A):
     @property
-    def x(self) -> str: pass # E: Return type of "x" incompatible with supertype "A"
+    def x(self) -> str: pass # E: Return type "str" of "x" incompatible with return type "int" in supertype "A"
 b = B()
 b.x() # E: "str" not callable
 [builtins fixtures/property.pyi]
@@ -870,3 +885,132 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x): pass
 [out]
+
+[case testMixinTypedAbstractProperty]
+from abc import ABCMeta, abstractproperty
+class A(metaclass=ABCMeta):
+    @abstractproperty
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(Mixin, A):
+    pass
+[out]
+
+[case testMixinTypedProperty]
+class A:
+    @property
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(Mixin, A):
+    pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testMixinSubtypedProperty]
+class X:
+    pass
+class Y(X):
+    pass
+class A:
+    @property
+    def foo(cls) -> X:
+        pass
+class Mixin:
+    foo = Y()
+class C(Mixin, A):
+    pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testMixinTypedPropertyReversed]
+class A:
+    @property
+    def foo(cls) -> str:
+        pass
+class Mixin:
+    foo = "foo"
+class C(A, Mixin): # E: Definition of "foo" in base class "A" is incompatible with definition in base class "Mixin"
+    pass
+[builtins fixtures/property.pyi]
+[out]
+
+-- Special cases
+-- -------------
+
+
+[case testNestedAbstractClass]
+from abc import abstractmethod, ABCMeta
+
+class A:
+    class B(metaclass=ABCMeta):
+        @abstractmethod
+        def f(self) -> None: pass
+
+    class C(B): pass
+
+A.B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
+A.C()  # E: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+
+[case testAbstractNewTypeAllowed]
+from typing import NewType, Mapping
+
+Config = NewType('Config', Mapping[str, str])
+
+bad = Mapping[str, str]()  # E: Cannot instantiate abstract class 'Mapping' with abstract attribute '__iter__'
+default = Config({'cannot': 'modify'})  # OK
+
+default[1] = 2  # E: Unsupported target for indexed assignment ("Config")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testSubclassOfABCFromDictionary]
+from abc import abstractmethod, ABCMeta
+
+class MyAbstractType(metaclass=ABCMeta):
+  @abstractmethod
+  def do(self): pass
+
+class MyConcreteA(MyAbstractType):
+  def do(self):
+    print('A')
+
+class MyConcreteB(MyAbstractType):
+  def do(self):
+    print('B')
+
+class MyAbstractA(MyAbstractType):
+  @abstractmethod
+  def do(self): pass
+
+class MyAbstractB(MyAbstractType):
+  @abstractmethod
+  def do(self): pass
+
+my_concrete_types = {
+  'A': MyConcreteA,
+  'B': MyConcreteB,
+}
+
+my_abstract_types = {
+  'A': MyAbstractA,
+  'B': MyAbstractB,
+}
+
+reveal_type(my_concrete_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
+reveal_type(my_abstract_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
+
+a = my_concrete_types['A']()
+a.do()
+b = my_concrete_types['B']()
+b.do()
+
+c = my_abstract_types['A']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+c.do()
+d = my_abstract_types['B']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+d.do()
+
+[builtins fixtures/dict.pyi]

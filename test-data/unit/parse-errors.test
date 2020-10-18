@@ -14,12 +14,6 @@ def f()
 [out]
 file:1: error: invalid syntax
 
-[case testMissingIndent]
-if x:
-1
-[out]
-file:2: error: invalid syntax
-
 [case testUnexpectedIndent]
 1
  2
@@ -49,12 +43,6 @@ file:1: error: invalid syntax
 
 [case testDoubleStar]
 **a
-[out]
-file:1: error: invalid syntax
-
-[case testInvalidSuperClass]
-class A(C[):
-  pass
 [out]
 file:1: error: invalid syntax
 
@@ -125,86 +113,117 @@ file:1: error: invalid syntax
 0
 x = 0 # type: A A
 [out]
-file:2: error: syntax error in type comment
+file:2: error: syntax error in type comment 'A A'
 
 [case testInvalidTypeComment2]
 0
 x = 0 # type: A[
 [out]
-file:2: error: syntax error in type comment
+file:2: error: syntax error in type comment 'A['
 
 [case testInvalidTypeComment3]
 0
 x = 0 # type:
 [out]
-file:2: error: syntax error in type comment
+file:2: error: syntax error in type comment ''
 
 [case testInvalidTypeComment4]
 0
 x = 0 # type: *
 [out]
-file:2: error: syntax error in type comment
+file:2: error: syntax error in type comment '*'
+
+[case testInvalidTypeComment5]
+0
+x = 0 # type:# some comment
+[out]
+file:2: error: syntax error in type comment ''
+
+[case testInvalidTypeComment6]
+0
+x = 0 # type: *# comment #6
+[out]
+file:2: error: syntax error in type comment '*'
+
+[case testInvalidTypeComment7]
+0
+x = 0 # type: A B #comment #7
+[out]
+file:2: error: syntax error in type comment 'A B'
 
 [case testInvalidSignatureInComment1]
 def f(): # type: x
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment 'x'
 file:1: note: Suggestion: wrap argument types in parentheses
 
 [case testInvalidSignatureInComment2]
 def f(): # type:
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment ''
 
 [case testInvalidSignatureInComment3]
 def f(): # type: (
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '('
 
 [case testInvalidSignatureInComment4]
 def f(): # type: (.
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(.'
 
 [case testInvalidSignatureInComment5]
 def f(): # type: (x
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(x'
 
 [case testInvalidSignatureInComment6]
 def f(): # type: (x)
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(x)'
 
 [case testInvalidSignatureInComment7]
 def f(): # type: (x) -
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(x) -'
 
 [case testInvalidSignatureInComment8]
 def f(): # type: (x) ->
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(x) ->'
 
 [case testInvalidSignatureInComment9]
 def f(): # type: (x) -> .
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(x) -> .'
 
 [case testInvalidSignatureInComment10]
 def f(): # type: (x) -> x x
   pass
 [out]
-file:1: error: syntax error in type comment
+file:1: error: syntax error in type comment '(x) -> x x'
+
+[case testInvalidSignatureInComment11]
+def f(): # type: # abc comment
+  pass
+[out]
+file:1: error: syntax error in type comment ''
+
+[case testInvalidSignatureInComment12]
+def f(): # type: (x) -> x x # comment #2
+  pass
+[out]
+file:1: error: syntax error in type comment '(x) -> x x'
+
 
 [case testDuplicateSignatures1]
 def f() -> None: # type: () -> None
@@ -254,10 +273,17 @@ file:3: error: syntax error in type comment
 file:3: error: Inconsistent use of '*' in function signature
 file:3: error: Inconsistent use of '**' in function signature
 
-[case testPrintStatementInPython3-skip]
+[case testPrintStatementInPython35]
+# flags: --python-version 3.5
 print 1
 [out]
-file:1: error: Missing parentheses in call to 'print'
+file:2: error: Missing parentheses in call to 'print'
+
+[case testPrintStatementInPython37]
+# flags: --python-version 3.7
+print 1
+[out]
+file:2: error: Missing parentheses in call to 'print'. Did you mean print(1)?
 
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4
@@ -348,11 +374,6 @@ x[:,:
 [out]
 file:1: error: unexpected EOF while parsing
 
-[case testPython2OctalIntLiteralInPython3]
-0377
-[out]
-file:1: error: invalid token
-
 [case testInvalidEncoding]
 # foo
 # coding: uft-8
@@ -422,9 +443,3 @@ except KeyError, IndexError:
     pass
 [out]
 file:3: error: invalid syntax
-
-[case testLocalVarWithTypeOnNextLine]
-x = 0
-  # type: int
-[out]
-file:2: error: misplaced type annotation

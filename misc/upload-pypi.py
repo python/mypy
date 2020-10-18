@@ -52,15 +52,16 @@ class Builder:
         self.install_dependencies()
         self.make_wheel()
         self.make_sdist()
+        self.download_compiled_wheels()
         if not self.no_upload:
-            self.upload_wheel()
+            self.upload_wheels()
             self.upload_sdist()
             self.heading('Successfully uploaded wheel and sdist for mypy {}'.format(self.version))
             print("<< All done! >>")
         else:
             self.heading('Successfully built wheel and sdist for mypy {}'.format(self.version))
             dist_dir = os.path.join(self.repo_dir, 'dist')
-            print('Generated packages:'.format(dist_dir))
+            print('Generated packages:')
             for fnam in sorted(os.listdir(dist_dir)):
                 print('  {}'.format(os.path.join(dist_dir, fnam)))
 
@@ -69,7 +70,7 @@ class Builder:
             return
         extra = '' if self.no_upload else ' and upload'
         print('This will build{} PyPI packages for mypy {}.'.format(extra, self.version))
-        response = input('Proceed? [yN] '.format(self.version))
+        response = input('Proceed? [yN] ')
         if response.lower() != 'y':
             sys.exit('Exiting')
 
@@ -103,7 +104,7 @@ class Builder:
         tag = 'v{}'.format(self.version)
         self.heading('Check out {}'.format(tag))
         self.run('cd mypy && git checkout {}'.format(tag))
-        self.run('cd mypy && git submodule update --init'.format(tag))
+        self.run('cd mypy && git submodule update --init')
 
     def make_virtualenv(self) -> None:
         self.heading('Creating a fresh virtualenv')
@@ -121,9 +122,21 @@ class Builder:
         self.heading('Building sdist')
         self.run_in_virtualenv('python3 setup.py sdist')
 
-    def upload_wheel(self) -> None:
-        self.heading('Uploading wheel')
-        self.run_in_virtualenv('twine upload dist/mypy-{}-py3-none-any.whl'.format(self.version))
+    def download_compiled_wheels(self) -> None:
+        self.heading('Downloading wheels compiled with mypyc')
+        # N.B: We run the version in the current checkout instead of
+        # the one in the version we are releasing, in case we needed
+        # to fix the script.
+        self.run_in_virtualenv(
+            '%s %s' %
+            (os.path.abspath('misc/download-mypyc-wheels.py'), self.version))
+
+    def upload_wheels(self) -> None:
+        self.heading('Uploading wheels')
+        for name in os.listdir(os.path.join(self.target_dir, 'mypy', 'dist')):
+            if name.startswith('mypy-{}-'.format(self.version)) and name.endswith('.whl'):
+                self.run_in_virtualenv(
+                    'twine upload dist/{}'.format(name))
 
     def upload_sdist(self) -> None:
         self.heading('Uploading sdist')
@@ -137,7 +150,7 @@ class Builder:
             sys.exit(1)
 
     def run_in_virtualenv(self, cmd: str) -> None:
-        self.run('source mypy-venv/bin/activate && cd mypy &&' + cmd)
+        self.run('. mypy-venv/bin/activate && cd mypy &&' + cmd)
 
     def heading(self, heading: str) -> None:
         print()

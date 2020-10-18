@@ -10,7 +10,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
-from typing import Any
 from mypy.metastore import FilesystemMetadataStore, SqliteMetadataStore
 
 
@@ -22,7 +21,7 @@ def main() -> None:
                         help="Output cache location (default: same as input)")
     parser.add_argument('input_dir',
                         help="Input directory for the cache")
-    args parser.parse_args()
+    args = parser.parse_args()
 
     input_dir = args.input_dir
     output_dir = args.output_dir or input_dir

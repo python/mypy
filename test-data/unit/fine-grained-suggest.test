@@ -1,0 +1,1168 @@
+[case testSuggestCallsites1]
+# suggest: --callsites foo.foo
+[file foo.py]
+def foo(arg):
+    return 12
+var = 0
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(arg='xyz')
+    args = ['']
+    foo(*args)
+    kwds = {'arg': ''}
+    foo(**kwds)
+[builtins fixtures/dict.pyi]
+[out]
+bar.py:3: (str)
+bar.py:4: (arg=str)
+bar.py:6: (*typing.List[str])
+bar.py:8: (**typing.Dict[str, str])
+==
+
+[case testSuggestCallsitesStep2]
+# suggest2: --callsites foo.foo
+[file foo.py]
+def foo(arg):
+    return 12
+var = 0
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(arg='xyz')
+    args = ['']
+    foo(*args)
+    kwds = {'arg': ''}
+    foo(**kwds)
+[builtins fixtures/dict.pyi]
+[out]
+==
+bar.py:3: (str)
+bar.py:4: (arg=str)
+bar.py:6: (*typing.List[str])
+bar.py:8: (**typing.Dict[str, str])
+
+[case testMaxGuesses]
+# suggest: foo.foo
+# suggest: --max-guesses=2 foo.foo
+[file foo.py]
+# The idea here is that we can only find the union type with more guesses.
+def foo(x, y):
+    if not isinstance(x, int):
+        x+'1'
+
+foo(1, 2)
+foo('3', '4')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[int, str], object) -> None
+(object, object) -> None
+==
+
+[case testSuggestInferFunc1]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def foo(arg, lol=None):
+    if isinstance(arg, int):
+        arg+1
+    else:
+        assert arg
+        arg+'1'
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+    foo(lol=10, arg=10)
+    foo(None)
+def untyped(x) -> None:
+    foo(x)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Optional[int]) -> None
+==
+
+[case testSuggestInferFunc2]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def thing() -> str:
+    return ''
+def bar() -> None:
+    # We stick it in a list so that the argument type is marked as "inferred",
+    # which we want to make sure doesn't show up.
+    x = ['hello']
+    foo(x[0])
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncAny1]
+# suggest: foo.foo
+# suggest: foo.bar
+[file foo.py]
+def foo(arg):
+    return arg.x
+def bar(arg):
+    pass
+[file bar.py]
+from foo import bar
+bar(None)
+[out]
+(Any) -> Any
+(Optional[Any]) -> None
+==
+
+[case testSuggestInferFuncAny2]
+# suggest: --no-any foo.foo
+# suggest: --no-any foo.bar
+[file foo.py]
+def foo(arg):
+    return arg.x
+def bar(arg):
+    pass
+[file bar.py]
+from foo import bar
+bar(None)
+[out]
+No guesses that match criteria!
+No guesses that match criteria!
+==
+
+[case testSuggestInferTuple]
+# suggest: --no-any foo.foo
+[file foo.py]
+def foo():
+    return 1, "1"
+[builtins fixtures/tuple.pyi]
+[out]
+() -> Tuple[int, str]
+==
+
+[case testSuggestInferNamedTuple]
+# suggest: foo.foo
+[file foo.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+def foo():
+    return N(1)
+[builtins fixtures/tuple.pyi]
+[out]
+() -> foo.N
+==
+
+[case testSuggestInferTypedDict]
+# suggest: foo.foo
+[file foo.py]
+from typing_extensions import TypedDict
+TD = TypedDict('TD', {'x': int})
+def foo():
+    return bar()
+
+def bar() -> TD: ...
+[builtins fixtures/dict.pyi]
+[out]
+() -> foo.TD
+==
+
+[case testSuggestWithNested]
+# suggest: foo.foo
+[file foo.py]
+def foo():
+    def bar():
+        return 1
+    return 'lol'
+
+[out]
+() -> str
+==
+
+[case testSuggestReexportNaming]
+# suggest: foo.foo
+[file foo.py]
+from bar import A
+def foo(x):
+    return A(), A.C()
+[file bar.py]
+from baz import A
+[file baz.py]
+class A:
+    class C:
+        ...
+class B: ...
+
+[file caller.py]
+from foo import foo
+from baz import B
+foo(B())
+[builtins fixtures/tuple.pyi]
+
+[out]
+(baz.B) -> Tuple[foo.A, foo:A.C]
+==
+
+[case testSuggestInferInit]
+# suggest: foo.Foo.__init__
+[file foo.py]
+class Foo:
+    def __init__(self, arg):
+        self.arg = arg
+[file bar.py]
+from foo import Foo
+Foo('lol')
+[out]
+(str) -> None
+==
+
+[case testSuggestTryText]
+# flags: --py2
+# suggest: --try-text foo.foo
+[file foo.py]
+def foo(s):
+    return s
+[file bar.py]
+from foo import foo
+foo('lol')
+[out]
+(Text) -> Text
+==
+
+[case testSuggestInferMethod1]
+# flags: --strict-optional
+# suggest: --no-any foo.Foo.foo
+[file foo.py]
+class Foo:
+    def __init__(self) -> None:
+        self.y = '10'
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return arg+1
+        else:
+            assert arg
+            return arg+self.y
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Optional[int]) -> object
+==
+
+[case testSuggestInferMethod2]
+# flags: --strict-optional
+# suggest: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def i(self, x: int) -> int: return x
+    def s(self, x: str) -> str: return x
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return self.i(arg)
+        else:
+            assert arg
+            return self.s(arg)
+[file bar.py]
+from typing import Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    a: Union[str, int] = x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Optional[int]) -> Union[int, str]
+==
+
+[case testSuggestInferMethod3]
+# flags: --strict-optional
+# suggest2: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def foo(self, lol = None):
+        pass
+
+    def lol(self) -> None:
+        self.foo('lol')
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+==
+(Optional[str]) -> None
+
+[case testSuggestBackflow]
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: foo.baz
+# suggest: foo.Cls.spam
+# suggest: foo.method
+# suggest: foo.meet
+# suggest: foo.has_nested
+[file foo.py]
+from typing import Any, List, Optional
+
+class A: pass
+class B(A):
+    def test(self, x: A) -> None:
+        pass
+
+def take_optional_a(x: Optional[A]) -> None:
+    pass
+
+def take_a(x: A) -> None:
+    pass
+
+def take_b(x: B) -> None:
+    pass
+
+def take_any(x: Any) -> None:
+    pass
+
+def take_kws(a: A, b: B) -> None:
+    pass
+
+def take_star(*a: A) -> None:
+    pass
+
+def foo(x):
+    take_b(x)
+
+def bar(x):
+    take_b(x)
+
+bar(A())
+
+def baz(x, y):
+    take_kws(a=y, b=x)
+
+class Cls:
+    def spam(self, x, y):
+        take_star(x, y)
+
+def method(x):
+    b = B()
+    b.test(x)
+
+def meet(x, y):
+    take_a(x)
+    take_b(x)
+
+    take_a(y)
+    take_optional_a(y)
+    take_any(y)
+    foo(y)  # unannotated
+
+def has_nested(x):
+    def nested():
+        take_b(x)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(foo.B) -> None
+(foo.A) -> None
+(foo.B, foo.A) -> None
+(foo.A, foo.A) -> None
+(foo.A) -> None
+(foo.B, foo.A) -> None
+(foo.B) -> None
+==
+
+[case testSuggestInferFunctionUnreachable]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+import sys
+def foo(lol):
+    if sys.platform == 'nothing':
+        return lol
+    else:
+        return lol + lol
+[file bar.py]
+from foo import foo
+foo('test')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferMethodStep2]
+# flags: --strict-optional
+# suggest2: foo.Foo.foo
+[file foo.py]
+class Foo:
+    def i(self, x: int) -> int: return x
+    def s(self, x: str) -> str: return x
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return self.i(arg)
+        else:
+            assert arg
+            return self.s(arg)
+[file bar.py]
+from typing import Union
+from foo import Foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    a: Union[str, int] = x.foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+==
+(Union[str, int, None], Optional[int]) -> Union[int, str]
+
+[case testSuggestInferNestedMethod]
+# flags: --strict-optional
+# suggest: foo.Foo.Bar.baz
+[file foo.py]
+class Foo:
+    class Bar:
+        def baz(self, lol):
+            return lol
+[file bar.py]
+from foo import Foo
+def bar() -> None:
+    x = Foo.Bar()
+    x.baz('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestCallable]
+# flags: --strict-optional
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: --flex-any=0.9 foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+[file foo.py]
+def foo(f):
+    return f(0, "lol")
+def bar(f):
+    return f(0, "lol", 100)
+def baz(f):
+    return f(y=1) + f(x=10, y=1)
+def quux(f):
+    return f(1)
+[file bar.py]
+from typing import Any
+from foo import foo, bar, baz, quux
+
+def whatever(x: int, y: str) -> int:
+    return 0
+
+def starargs(*args: Any) -> int:
+    return 0
+
+def named(*, x: int = 0, y: int) -> str:
+    return '0'
+
+# we don't properly handle default really. we just assume it is
+# actually required.
+def default(x: int = 0) -> str:
+    return '0'
+
+def test() -> None:
+    foo(whatever)
+    bar(starargs)
+    baz(named)
+    quux(default)
+[builtins fixtures/primitives.pyi]
+[out]
+(Callable[[int, str], int]) -> int
+(Callable[..., int]) -> int
+No guesses that match criteria!
+(Callable[..., str]) -> str
+(Callable[[int], str]) -> str
+==
+
+[case testSuggestNewSemanal]
+# flags: --strict-optional
+# suggest: foo.Foo.foo
+# suggest: foo.foo
+[file foo.py]
+class Foo:
+    def __init__(self) -> None:
+        self.y = '10'
+
+    def foo(self, arg, lol=None):
+        if isinstance(arg, int):
+            return arg+1
+        else:
+            assert arg
+            return arg+self.y
+def foo(arg, lol=None):
+    if isinstance(arg, int):
+        arg+1
+    else:
+        assert arg
+        arg+'1'
+[file bar.py]
+from foo import Foo, foo
+def bar() -> None:
+    x = Foo()
+    x.foo('abc')
+    x.foo(lol=10, arg=10)
+    x.foo(None)
+def baz() -> None:
+    foo('abc')
+    foo(lol=10, arg=10)
+    foo(None)
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Union[str, int, None], Optional[int]) -> object
+(Union[str, int, None], Optional[int]) -> None
+==
+
+[case testSuggestInferFuncDecorator1]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+from typing import TypeVar
+F = TypeVar('F')
+
+def dec(x: F) -> F:
+    return x
+
+@dec
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator2]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(x: F) -> F:
+    return x
+
+@dec
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator3]
+# flags: --strict-optional
+# suggest: foo.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(s: str) -> Callable[[F], F]:
+    def f(x: F) -> F:
+        return x
+    return f
+
+@dec('lol')
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestInferFuncDecorator4]
+# flags: --strict-optional
+# suggest: foo.foo
+[file dec.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+
+def dec(s: str) -> Callable[[F], F]:
+    def f(x: F) -> F:
+        return x
+    return f
+
+[file foo.py]
+import dec
+
+@dec.dec('lol')
+def foo(arg):
+    return arg
+[file bar.py]
+from foo import foo
+def bar() -> None:
+    foo('abc')
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(str) -> str
+==
+
+[case testSuggestFlexAny1]
+# flags: --strict-optional
+# suggest: --flex-any=0.4 m.foo
+# suggest: --flex-any=0.7 m.foo
+# suggest: --flex-any=0.4 m.bar
+# suggest: --flex-any=0.6 m.bar
+# suggest2: --flex-any=0.4 m.foo
+# suggest2: --flex-any=0.7 m.foo
+[file m.py]
+from typing import Any
+any: Any
+
+def foo(arg):
+    return 0
+def bar(x, y):
+    return any
+
+[file n.py]
+from typing import Any
+any: Any
+
+from m import foo, bar
+def wtvr() -> None:
+    foo(any)
+    bar(1, 2)
+
+[file n.py.2]
+from typing import Any
+any: Any
+
+from m import foo, bar
+def wtvr() -> None:
+    foo([any])
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Any) -> int
+No guesses that match criteria!
+(int, int) -> Any
+No guesses that match criteria!
+==
+(typing.List[Any]) -> int
+(typing.List[Any]) -> int
+
+
+[case testSuggestFlexAny2]
+# flags: --strict-optional
+# suggest: --flex-any=0.5 m.baz
+# suggest: --flex-any=0.0 m.baz
+# suggest: --flex-any=0.5 m.F.foo
+# suggest: --flex-any=0.7 m.F.foo
+# suggest: --flex-any=0.7 m.noargs
+[file m.py]
+# Test mostly corner cases
+
+# Test that a None return doesn't get counted
+def baz(x):
+    pass
+
+class F:
+    # Test that self doesn't get counted
+    def foo(self, x):
+        return 0
+
+# Make sure we don't crash on noarg functions
+def noargs():
+    pass
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+No guesses that match criteria!
+(Any) -> None
+(Any) -> int
+No guesses that match criteria!
+() -> None
+==
+
+[case testSuggestClassMethod]
+# flags: --strict-optional
+# suggest: foo.F.bar
+# suggest: foo.F.baz
+# suggest: foo.F.eggs
+[file foo.py]
+class F:
+    @classmethod
+    def bar(cls, x, y):
+        return x
+
+    @staticmethod
+    def baz(x, y):
+        return x
+
+    @classmethod
+    def spam(cls):
+        # type: () -> None
+        cls.eggs(4)
+
+    @classmethod
+    def eggs(cls, x):
+        pass
+
+[file bar.py]
+from foo import F
+def bar(iany) -> None:
+    F.bar(0, iany)
+    F().bar(0, 5)
+    F.baz('lol', iany)
+    F().baz('lol', 10)
+[builtins fixtures/classmethod.pyi]
+[out]
+(int, int) -> int
+(str, int) -> str
+(int) -> None
+==
+
+[case testSuggestColonBasic]
+# suggest: tmp/foo.py:1
+# suggest: tmp/bar/baz.py:2
+[file foo.py]
+def func(arg):
+    return 0
+func('test')
+from bar.baz import C
+C().method('test')
+[file bar/__init__.py]
+[file bar/baz.py]
+class C:
+    def method(self, x):
+        return 0
+[out]
+(str) -> int
+(str) -> int
+==
+
+[case testSuggestColonAfter]
+# suggest: tmp/foo.py:6
+# suggest: tmp/foo.py:15
+# suggest: tmp/foo.py:16
+# suggest: tmp/foo.py:18
+[file foo.py]
+from typing import TypeVar
+F = TypeVar('F')
+
+def foo():
+    # hi
+    return 1
+
+def dec(x: F) -> F:
+    return x
+
+class A:
+    @dec
+    def bar(self):
+        return 1.0
+
+@dec
+def baz():
+    return 'test'
+
+[out]
+() -> int
+() -> float
+() -> str
+() -> str
+==
+
+[case testSuggestParent]
+# suggest: foo.B.foo
+# suggest: foo.B.bar
+# suggest: foo.C.foo
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+def deco(f: F) -> F: ...
+
+class A:
+    def foo(self, x: int) -> float:
+        return 0.0
+
+    @deco
+    def bar(self, x: int) -> float:
+        return 0.0
+
+
+class B(A):
+    def foo(self, x):
+        return 0.0
+
+    @deco
+    def bar(self, x):
+        return 0.0
+
+class C(B):
+    def foo(self, x):
+        return 0.0
+
+[out]
+(int) -> float
+(int) -> float
+(int) -> float
+==
+
+[case testSuggestColonBadLocation]
+# suggest: tmp/foo.py:7:8:9
+[file foo.py]
+[out]
+Malformed location for function: tmp/foo.py:7:8:9. Must be either package.module.Class.method or path/to/file.py:line
+==
+
+[case testSuggestColonBadLine]
+# suggest: tmp/foo.py:bad
+[file foo.py]
+[out]
+Line number must be a number. Got bad
+==
+
+[case testSuggestColonBadFile]
+# suggest: tmp/foo.txt:1
+[file foo.txt]
+def f(): pass
+[out]
+Source file is not a Python file
+==
+
+[case testSuggestColonClass]
+# suggest: tmp/foo.py:1
+[file foo.py]
+class C:
+    pass
+[out]
+Cannot find a function at line 1
+==
+
+[case testSuggestColonDecorator]
+# suggest: tmp/foo.py:6
+[file foo.py]
+from typing import TypeVar, Callable, Any
+F = TypeVar('F', bound=Callable[..., Any])
+def deco(f: F) -> F: ...
+
+@deco
+def func(arg):
+    return 0
+func('test')
+[out]
+(str) -> int
+==
+
+[case testSuggestColonMethod]
+# suggest: tmp/foo.py:3
+[file foo.py]
+class Out:
+    class In:
+        def method(self, x):
+            return Out()
+x: Out.In
+x.method(x)
+[out]
+(foo:Out.In) -> foo.Out
+==
+
+[case testSuggestColonMethodJSON]
+# suggest: --json tmp/foo.py:3
+[file foo.py]
+class Out:
+    class In:
+        def method(self, x):
+            return Out()
+x: Out.In
+x.method(x)
+[out]
+\[{"func_name": "Out.In.method", "line": 3, "path": "tmp/foo.py", "samples": 0, "signature": {"arg_types": ["foo:Out.In"], "return_type": "foo.Out"}}]
+==
+
+[case testSuggestColonNonPackageDir]
+# cmd: mypy foo/bar/baz.py
+# suggest: tmp/foo/bar/baz.py:1
+[file foo/bar/baz.py]
+def func(arg):
+    return 0
+func('test')
+[out]
+(str) -> int
+==
+
+[case testSuggestUseFixmeBasic]
+# suggest: --use-fixme=UNKNOWN foo.foo
+# suggest: --use-fixme=UNKNOWN foo.bar
+[file foo.py]
+
+def foo():
+    return g()
+
+def bar(x):
+    return None
+
+def g(): ...
+x = bar(g())
+[out]
+() -> UNKNOWN
+(UNKNOWN) -> None
+==
+
+[case testSuggestUseFixmeNoNested]
+# suggest: --use-fixme=UNKNOWN foo.foo
+[file foo.py]
+from typing import List, Any
+
+def foo(x, y):
+    return x, y
+
+def f() -> List[Any]: ...
+def g(): ...
+
+z = foo(f(), g())
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(foo.List[Any], UNKNOWN) -> Tuple[foo.List[Any], Any]
+==
+
+[case testSuggestBadImport]
+# suggest: foo.foo
+[file foo.py]
+from nothing import Foo  # type: ignore
+
+def foo(x: Foo):
+    return 10
+[out]
+(foo.Foo) -> int
+==
+
+[case testSuggestDict]
+# suggest: foo.foo
+# suggest: foo.bar
+# suggest: foo.baz
+# suggest: foo.quux
+# suggest: foo.spam
+[file foo.py]
+from typing import List, Any
+
+def foo():
+    return {'x': 5}
+
+def bar():
+    return {}
+
+def baz() -> List[Any]:
+    return [{'x': 5}]
+
+def quux() -> List[Any]:
+    return [1]
+
+def spam(x):
+    pass
+
+spam({'x': 5})
+
+[builtins fixtures/dict.pyi]
+[out]
+() -> typing.Dict[str, int]
+() -> typing.Dict[Any, Any]
+() -> foo:List[typing.Dict[str, int]]
+() -> foo.List[int]
+(typing.Dict[str, int]) -> None
+==
+
+[case testSuggestWithErrors]
+# suggest: foo.foo
+[file foo.py]
+1+'no'
+
+def foo():
+    return 10
+[out]
+foo.py:1: error: Unsupported operand types for + ("int" and "str")
+() -> int
+==
+foo.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testSuggestWithBlockingError]
+# suggest: foo.foo
+[file foo.py]
+def foo():
+    return 10
+
+(
+[out]
+foo.py:4: error: unexpected EOF while parsing
+Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
+==
+foo.py:4: error: unexpected EOF while parsing
+-- )
+
+[case testSuggestRefine]
+# suggest: foo.foo
+# suggest: foo.spam
+# suggest: foo.eggs
+# suggest: foo.take_l
+# suggest: foo.union
+# suggest: foo.callable1
+# suggest: foo.callable2
+# suggest: foo.optional1
+# suggest: foo.optional2
+# suggest: foo.optional3
+# suggest: foo.optional4
+# suggest: foo.optional5
+# suggest: foo.optional_any
+# suggest: foo.dict1
+# suggest: foo.tuple1
+[file foo.py]
+from typing import Any, List, Union, Callable, Optional, Set, Dict, Tuple
+
+def bar():
+    return 10
+
+def foo(x: int, y):
+    return x + y
+
+foo(bar(), 10)
+
+def spam(x: int, y: Any) -> Any:
+    return x + y
+
+spam(bar(), 20)
+
+def eggs(x: int) -> List[Any]:
+    a = [x]
+    return a
+
+def take_l(x: List[Any]) -> Any:
+    return x[0]
+
+test = [10, 20]
+take_l(test)
+
+def union(x: Union[int, str]):
+    pass
+
+union(10)
+
+def add1(x: float) -> int:
+    pass
+
+def callable1(f: Callable[[int], Any]):
+    return f(10)
+
+callable1(add1)
+
+def callable2(f: Callable[..., Any]):
+    return f(10)
+
+callable2(add1)
+
+def optional1(x: Optional[Any]):
+    pass
+
+optional1(10)
+
+def optional2(x: Union[None, int, Any]):
+    if x is None:
+        pass
+    elif isinstance(x, str):
+        pass
+    else:
+        add1(x)
+
+optional2(10)
+optional2('test')
+
+def optional3(x: Optional[List[Any]]):
+    assert not x
+    return x[0]
+
+optional3(test)
+
+set_test = {1, 2}
+
+def optional4(x: Union[Set[Any], List[Any]]):
+    pass
+
+optional4(test)
+optional4(set_test)
+
+def optional5(x: Optional[Any]):
+    pass
+
+optional5(10)
+optional5(None)
+
+def optional_any(x: Optional[Any] = None):
+    pass
+
+def dict1(d: Dict[int, Any]):
+    pass
+
+d: Dict[Any, int]
+dict1(d)
+
+def tuple1(d: Tuple[int, Any]):
+    pass
+
+t: Tuple[Any, int]
+tuple1(t)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(int, int) -> int
+(int, int) -> int
+(int) -> foo.List[int]
+(foo.List[int]) -> int
+(Union[int, str]) -> None
+(Callable[[int], int]) -> int
+(Callable[[float], int]) -> int
+(Optional[int]) -> None
+(Union[None, int, str]) -> None
+(Optional[foo.List[int]]) -> int
+(Union[foo.Set[int], foo.List[int]]) -> None
+(Optional[int]) -> None
+(Optional[Any]) -> None
+(foo.Dict[int, int]) -> None
+(Tuple[int, int]) -> None
+==
+
+[case testSuggestRefine2]
+# suggest: foo.optional5
+[file foo.py]
+from typing import Optional, Any
+
+def optional5(x: Optional[Any]):
+    pass
+
+optional5(10)
+optional5(None)
+
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(Optional[int]) -> None
+==

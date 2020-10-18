@@ -2,7 +2,7 @@ from typing import Dict, List
 
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny
+from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny, ProperType
 
 
 def map_instance_to_supertype(instance: Instance,
@@ -80,6 +80,7 @@ def map_instance_to_direct_supertypes(instance: Instance,
         if b.type == supertype:
             env = instance_to_type_environment(instance)
             t = expand_type(b, env)
+            assert isinstance(t, ProperType)
             assert isinstance(t, Instance)
             result.append(t)
 

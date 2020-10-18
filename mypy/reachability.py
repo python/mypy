@@ -1,6 +1,7 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
 
 from typing import Tuple, TypeVar, Union, Optional
+from typing_extensions import Final
 
 from mypy.nodes import (
     Expression, IfStmt, Block, AssertStmt, NameExpr, UnaryExpr, MemberExpr, OpExpr, ComparisonExpr,
@@ -10,11 +11,6 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.literals import literal
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 
 # Inferred truth value of an expression.
 ALWAYS_TRUE = 1  # type: Final

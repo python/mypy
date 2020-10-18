@@ -1,8 +1,10 @@
 from typing import Optional, Callable
 
 from mypy.plugin import Plugin, AnalyzeTypeContext
-from mypy.types import Type, UnboundType, TypeList, AnyType, NoneTyp, CallableType, TypeOfAny
-
+from mypy.types import Type, UnboundType, TypeList, AnyType, CallableType, TypeOfAny
+# The official name changed to NoneType but we have an alias for plugin compat reasons
+# so we'll keep testing that here.
+from mypy.types import NoneTyp
 
 class TypeAnalyzePlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str

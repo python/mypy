@@ -1,14 +1,11 @@
 """Find all objects reachable from a root object."""
 
 from collections.abc import Iterable
-from typing import List, Dict, Iterator, Tuple, Mapping
 import weakref
 import types
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
+from typing import List, Dict, Iterator, Tuple, Mapping
+from typing_extensions import Final
 
 method_descriptor_type = type(object.__dir__)  # type: Final
 method_wrapper_type = type(object().__ne__)  # type: Final
@@ -57,12 +54,18 @@ def isproperty(o: object, attr: str) -> bool:
 
 
 def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
+    # use getattr because mypyc expects dict, not mappingproxy
+    if '__getattribute__' in getattr(type(o), '__dict__'):  # noqa
+        return
     if type(o) not in COLLECTION_TYPE_BLACKLIST:
         for attr in dir(o):
-            if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
-                e = getattr(o, attr)
-                if not type(e) in ATOMIC_TYPE_BLACKLIST:
-                    yield attr, e
+            try:
+                if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
+                    e = getattr(o, attr)
+                    if not type(e) in ATOMIC_TYPE_BLACKLIST:
+                        yield attr, e
+            except AssertionError:
+                pass
     if isinstance(o, Mapping):
         for k, v in o.items():
             yield k, v
@@ -78,11 +81,11 @@ def get_edges(o: object) -> Iterator[Tuple[object, object]]:
             # in closures and self pointers to other objects
 
             if hasattr(e, '__closure__'):
-                yield (s, '__closure__'), getattr(e, '__closure__')
+                yield (s, '__closure__'), e.__closure__  # type: ignore
             if hasattr(e, '__self__'):
-                se = getattr(e, '__self__')
-                if se is not o and se is not type(o):
-                    yield (s, '__self__'), se
+                se = e.__self__  # type: ignore
+                if se is not o and se is not type(o) and hasattr(s, '__self__'):
+                    yield s.__self__, se  # type: ignore
         else:
             if not type(e) in TYPE_BLACKLIST:
                 yield s, e
@@ -103,17 +106,6 @@ def get_reachable_graph(root: object) -> Tuple[Dict[int, object],
             worklist.append(e)
 
     return seen, parents
-
-
-def find_all_reachable(root: object) -> List[object]:
-    return list(get_reachable_graph(root)[0].values())
-
-
-def aggregate_by_type(objs: List[object]) -> Dict[type, List[object]]:
-    m = {}  # type: Dict[type, List[object]]
-    for o in objs:
-        m.setdefault(type(o), []).append(o)
-    return m
 
 
 def get_path(o: object,

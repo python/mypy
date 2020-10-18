@@ -32,7 +32,7 @@ x = 1
 [out]
 __main__:
   SymbolTable(
-    m : ModuleRef/MypyFile (m))
+    m : Gdef/MypyFile (m))
 m:
   SymbolTable(
     x : Gdef/Var (m.x))

@@ -4,12 +4,14 @@ from typing import (
 
 class object:
     def __init__(self) -> None: pass
+    def __eq__(self, other: object) -> bool: pass
 
 class type:
     def __init__(self, x) -> None: pass
 
 class function: pass
 class ellipsis: pass
+class classmethod: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
@@ -35,6 +37,7 @@ class list(Sequence[T]):
     def __setitem__(self, x: int, v: T) -> None: pass
     def __getitem__(self, x: int) -> T: pass
     def __add__(self, x: List[T]) -> T: pass
+    def __contains__(self, item: object) -> bool: pass
 
 class dict(Mapping[KT, VT]):
     @overload
@@ -50,3 +53,4 @@ class set(Generic[T]):
     def add(self, x: T) -> None: pass
     def discard(self, x: T) -> None: pass
     def update(self, x: Set[T]) -> None: pass
+    def pop(self) -> T: pass

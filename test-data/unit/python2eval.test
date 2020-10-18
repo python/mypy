@@ -303,7 +303,7 @@ print 4j / 2.0
 from typing import Dict, Any
 class MyType(type):
     def __new__(cls, name, bases, namespace):
-        # type: (str, tuple, Dict[str, Any]) -> type
+        # type: (str, tuple, Dict[str, Any]) -> Any
         return super(MyType, cls).__new__(cls, name + 'x', bases, namespace)
 class A(object):
     __metaclass__ = MyType
@@ -419,3 +419,12 @@ if MYPY:
 [file lib.pyi]
 x = b'abc'
 [out]
+
+[case testDefaultDictInference]
+from collections import defaultdict
+def foo() -> None:
+    x = defaultdict(list)
+    x['lol'].append(10)
+    reveal_type(x)
+[out]
+_testDefaultDictInference.py:5: note: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'

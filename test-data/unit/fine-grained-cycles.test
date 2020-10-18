@@ -175,6 +175,7 @@ def h() -> None:
 a.py:1: error: Module 'b' has no attribute 'C'
 
 [case testReferenceToTypeThroughCycleAndReplaceWithFunction]
+
 import a
 
 [file a.py]
@@ -203,8 +204,9 @@ def h() -> None:
 
 [out]
 ==
-a.py:3: error: Invalid type "b.C"
-b.py:6: error: Need type annotation for 'c'
+a.py:3: error: Function "b.C" is not valid as a type
+a.py:3: note: Perhaps you need "Callable[...]" or a callback protocol?
+b.py:7: error: C? has no attribute "g"
 
 -- TODO: More import cycle:
 --

@@ -8,7 +8,7 @@ from mypy import build
 from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
+    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion, parse_options
 )
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
@@ -35,8 +35,8 @@ semanal_files = ['semanal-basic.test',
                  'semanal-python2.test']
 
 
-def get_semanal_options() -> Options:
-    options = Options()
+def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
+    options = parse_options(program_text, testcase, 1)
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
     options.show_traceback = True
@@ -61,7 +61,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
     try:
         src = '\n'.join(testcase.input)
-        options = get_semanal_options()
+        options = get_semanal_options(src, testcase)
         options.python_version = testfile_pyversion(testcase.file)
         result = build.build(sources=[BuildSource('main', None, src)],
                              options=options,
@@ -112,7 +112,7 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
     try:
         src = '\n'.join(testcase.input)
         res = build.build(sources=[BuildSource('main', None, src)],
-                          options=get_semanal_options(),
+                          options=get_semanal_options(src, testcase),
                           alt_lib_path=test_temp_dir)
         a = res.errors
         assert a, 'No errors reported in {}, line {}'.format(testcase.file, testcase.line)
@@ -139,7 +139,7 @@ class SemAnalSymtableSuite(DataSuite):
             # Build test case input.
             src = '\n'.join(testcase.input)
             result = build.build(sources=[BuildSource('main', None, src)],
-                                 options=get_semanal_options(),
+                                 options=get_semanal_options(src, testcase),
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
             a = result.errors
@@ -169,7 +169,7 @@ class SemAnalTypeInfoSuite(DataSuite):
             # Build test case input.
             src = '\n'.join(testcase.input)
             result = build.build(sources=[BuildSource('main', None, src)],
-                                 options=get_semanal_options(),
+                                 options=get_semanal_options(src, testcase),
                                  alt_lib_path=test_temp_dir)
             a = result.errors
             if a:

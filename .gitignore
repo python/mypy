@@ -4,11 +4,12 @@ __pycache__
 *~
 @*
 /build
-/env
+/env*/
 docs/build/
+docs/source/_build
 *.iml
 /out/
-.venv/
+.venv*/
 .mypy_cache/
 .incremental_checker_cache.json
 .cache
@@ -22,8 +23,11 @@ dmypy.json
 
 # IDEs
 .idea
-*.swp
 .vscode
+
+# vim temporary files
+.*.sw?
+*.sw?
 
 # Operating Systems
 .DS_Store
@@ -35,4 +39,20 @@ htmlcov
 # pytest cache
 .pytest_cache/
 
+# virtualenv
+.Python
+bin/
+lib/
+include/
+
 .tox
+pip-wheel-metadata
+
+
+test_capi
+*.o
+*.a
+test_capi
+/.mypyc-flake8-cache.json
+/mypyc/lib-rt/build/
+/mypyc/lib-rt/*.so

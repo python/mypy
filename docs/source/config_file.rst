@@ -4,30 +4,35 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with fallback to ``setup.cfg`` in the current
-directory, or ``.mypy.ini`` in the user home directory if none of them are
-found; the ``--config-file`` command-line flag can be used to read a different
-file instead (see :ref:`--config-file <config-file-flag>`).
+it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
+the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
+if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
+to read a different file instead (see :ref:`config-file-flag`).
 
 It is important to understand that there is no merging of configuration
-files, as it would lead to ambiguity.  The ``--config-file`` flag
+files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
 has the highest precedence and must be correct; otherwise mypy will report
 an error and exit.  Without command line option, mypy will look for defaults,
 but will use only one of them.  The first one to read is ``mypy.ini``,
-and then ``setup.cfg``.
+then ``.mypy.ini``, and finally ``setup.cfg``.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
 flags may take a different value based on the module being processed.
 
+Some flags support user home directory and environment variable expansion.
+To refer to the user home directory, use ``~`` at the beginning of the path.
+To expand environment variables use ``$VARNAME`` or ``${VARNAME}``.
+
+
 Config file format
 ******************
 
 The configuration file format is the usual
-`ini file <https://docs.python.org/3.6/library/configparser.html>`_
-format.  It should contain section names in square brackets and flag
-settings of the form `NAME = VALUE`.  Comments start with ``#``
-characters.
+:doc:`ini file <python:library/configparser>` format. It should contain
+section names in square brackets and flag settings of the form
+`NAME = VALUE`. Comments start with ``#`` characters.
 
 - A section named ``[mypy]`` must be present.  This specifies
   the global flags. The ``setup.cfg`` file is an exception to this.
@@ -40,7 +45,7 @@ characters.
   whose name matches at least one of the patterns.
 
   A pattern of the form ``qualified_module_name`` matches only the named module,
-  while ``qualified_module_name.*`` matches ``dotted_module_name`` and any
+  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
@@ -51,15 +56,17 @@ characters.
 
   .. _config-precedence:
 
-  When options conflict, the precedence order for the configuration sections is:
-    1. Sections with concrete module names (``foo.bar``)
-    2. Sections with "unstructured" wildcard patterns (``foo.*.baz``),
+  When options conflict, the precedence order for configuration is:
+
+    1. :ref:`Inline configuration <inline-config>` in the source file
+    2. Sections with concrete module names (``foo.bar``)
+    3. Sections with "unstructured" wildcard patterns (``foo.*.baz``),
        with sections later in the configuration file overriding
        sections earlier.
-    3. Sections with "well-structured" wildcard patterns
+    4. Sections with "well-structured" wildcard patterns
        (``foo.bar.*``), with more specific overriding more general.
-    4. Command line options.
-    5. Top-level configuration file options.
+    5. Command line options.
+    6. Top-level configuration file options.
 
 The difference in precedence order between "structured" patterns (by
 specificity) and "unstructured" patterns (by order in the file) is
@@ -67,12 +74,35 @@ unfortunate, and is subject to change in future versions.
 
 .. note::
 
-   The ``warn_unused_configs`` flag may be useful to debug misspelled
+   The :confval:`warn_unused_configs` flag may be useful to debug misspelled
    section names.
 
 .. note::
 
    Configuration flags are liable to change between releases.
+
+
+Per-module and global options
+*****************************
+
+Some of the config options may be set either globally (in the ``[mypy]`` section)
+or on a per-module basis (in sections like ``[mypy-foo.bar]``).
+
+If you set an option both globally and for a specific module, the module configuration
+options take precedence. This lets you set global defaults and override them on a
+module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
+most specific section are used where they disagree <config-precedence>`.
+
+Some other options, as specified in their description,
+may only be set in the global section (``[mypy]``).
+
+
+Inverting option values
+***********************
+
+Options that take a boolean value may be inverted by adding ``no_`` to
+their name or by (when applicable) swapping their prefix from
+``disallow`` to ``allow`` (and vice versa).
 
 
 Examples
@@ -105,7 +135,7 @@ This config file specifies three global options in the ``[mypy]`` section. These
 options will:
 
 1.  Type-check your entire project assuming it will be run using Python 2.7.
-    (This is equivalent to using the ``--python-version 2.7`` or ``--2`` flag).
+    (This is equivalent to using the :option:`--python-version 2.7 <mypy --python-version>` or :option:`-2 <mypy -2>` flag).
 
 2.  Report an error whenever a function returns a value that is inferred
     to have type ``Any``.
@@ -121,134 +151,291 @@ assume here is some 3rd party library you've installed and are importing. These 
 1.  Selectively disallow untyped function definitions only within the ``mycode.foo``
     package -- that is, only for function definitions defined in the
     ``mycode/foo`` directory.
-    
-2.  Selectively *disable* the "function is returning any" warnings within 
+
+2.  Selectively *disable* the "function is returning any" warnings within
     ``mycode.bar`` only. This overrides the global default we set earlier.
 
 3.  Suppress any error messages generated when your codebase tries importing the
     module ``somelibrary``. This is useful if ``somelibrary`` is some 3rd party library
     missing type hints.
 
-.. _per-module-flags:
 
-Per-module and global options
-*****************************
-
-The following config options may be set either globally (in the ``[mypy]`` section)
-or on a per-module basis (in sections like ``[mypy-foo.bar]``).
-
-If you set an option both globally and for a specific module, the module configuration
-options take precedence. This lets you set global defaults and override them on a
-module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
-most specific section are used where they disagree <config-precedence>`.
-
-.. _config-file-import-discovery-per-module:
+.. _config-file-import-discovery:
 
 Import discovery
-----------------
+****************
 
-For more information, see the :ref:`import discovery <import-discovery>`
+For more information, see the :ref:`Import discovery <import-discovery>`
 section of the command line docs.
 
-Note: this section describes options that can be used both globally and per-module.
-See below for a list of import discovery options that may be used
-:ref:`only globally <config-file-import-discovery-global>`.
+.. confval:: mypy_path
 
-``ignore_missing_imports`` (bool, default False) 
+    :type: string
+
+    Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
+    variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
+    Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
+    User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
+
+    **Note:** On Windows, use UNC paths to avoid using ``:`` (e.g. ``\\127.0.0.1\X$\MyDir`` where ``X`` is the drive letter).
+
+.. confval:: files
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of paths which should be checked by mypy if none are given on the command
+    line. Supports recursive file globbing using :py:mod:`glob`, where ``*`` (e.g. ``*.py``) matches
+    files in the current directory and ``**/`` (e.g. ``**/*.py``) matches files in any directories below
+    the current one. User home directory and environment variables will be expanded.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: namespace_packages
+
+    :type: boolean
+    :default: False
+
+    Enables :pep:`420` style namespace packages.  See the
+    corresponding flag :option:`--namespace-packages <mypy --namespace-packages>` for more information.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: ignore_missing_imports
+
+    :type: boolean
+    :default: False
+
     Suppresses error messages about imports that cannot be resolved.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
 
-``follow_imports`` (string, default ``normal``) 
+.. confval:: follow_imports
+
+    :type: string
+    :default: ``normal``
+
     Directs what to do with imports when the imported module is found
-    as a ``.py`` file and not part of the files, modules and packages 
+    as a ``.py`` file and not part of the files, modules and packages
     provided on the command line.
 
     The four possible values are ``normal``, ``silent``, ``skip`` and
     ``error``.  For explanations see the discussion for the
-    :ref:`--follow-imports <follow-imports>` command line flag. 
-    
+    :option:`--follow-imports <mypy --follow-imports>` command line flag.
+
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
 
-``follow_imports_for_stubs`` (bool, default False)
-    Determines whether to respect the ``follow_imports`` setting even for
+.. confval:: follow_imports_for_stubs
+
+    :type: boolean
+    :default: False
+
+    Determines whether to respect the :confval:`follow_imports` setting even for
     stub (``.pyi``) files.
 
-    Used in conjunction with ``follow_imports=skip``, this can be used
+    Used in conjunction with :confval:`follow_imports=skip <follow_imports>`, this can be used
     to suppress the import of a module from ``typeshed``, replacing it
-    with `Any`.
+    with ``Any``.
 
-    Used in conjunction with ``follow_imports=error``, this can be used
+    Used in conjunction with :confval:`follow_imports=error <follow_imports>`, this can be used
     to make any use of a particular ``typeshed`` module an error.
 
-Disallow dynamic typing
------------------------
+.. confval:: python_executable
 
-For more information, see the :ref:`disallowing dynamic typing <disallow-dynamic-typing>`
+    :type: string
+
+    Specifies the path to the Python executable to inspect to collect
+    a list of available :ref:`PEP 561 packages <installed-packages>`. User
+    home directory and environment variables will be expanded. Defaults to
+    the executable used to run mypy.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: no_site_packages
+
+    :type: bool
+    :default: False
+
+    Disables using type information in installed packages (see :pep:`561`).
+    This will also disable searching for a usable Python executable. This acts
+    the same as :option:`--no-site-packages <mypy --no-site-packages>` command
+    line flag.
+
+.. confval:: no_silence_site_packages
+
+    :type: boolean
+    :default: False
+
+    Enables reporting error messages generated within installed packages (see
+    :pep:`561` for more details on distributing type information). Those error
+    messages are suppressed by default, since you are usually not able to
+    control errors in 3rd party code.
+
+    This option may only be set in the global section (``[mypy]``).
+
+
+Platform configuration
+**********************
+
+.. confval:: python_version
+
+    :type: string
+
+    Specifies the Python version used to parse and check the target
+    program.  The string should be in the format ``DIGIT.DIGIT`` --
+    for example ``2.7``.  The default is the version of the Python
+    interpreter used to run mypy.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: platform
+
+    :type: string
+
+    Specifies the OS platform for the target program, for example
+    ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
+    The default is the current platform as revealed by Python's
+    :py:data:`sys.platform` variable.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: always_true
+
+    :type: comma-separated list of strings
+
+    Specifies a list of variables that mypy will treat as
+    compile-time constants that are always true.
+
+.. confval:: always_false
+
+    :type: comma-separated list of strings
+
+    Specifies a list of variables that mypy will treat as
+    compile-time constants that are always false.
+
+
+Disallow dynamic typing
+***********************
+
+For more information, see the :ref:`Disallow dynamic typing <disallow-dynamic-typing>`
 section of the command line docs.
 
-``disallow_any_unimported`` (bool, default False)
+.. confval:: disallow_any_unimported
+
+    :type: boolean
+    :default: False
+
     Disallows usage of types that come from unfollowed imports (anything imported from
     an unfollowed import is automatically given a type of ``Any``).
 
-``disallow_any_expr`` (bool, default False)
+.. confval:: disallow_any_expr
+
+    :type: boolean
+    :default: False
+
     Disallows all expressions in the module that have type ``Any``.
 
-``disallow_any_decorated`` (bool, default False)
+.. confval:: disallow_any_decorated
+
+    :type: boolean
+    :default: False
+
     Disallows functions that have ``Any`` in their signature after decorator transformation.
 
-``disallow_any_explicit`` (bool, default False)
+.. confval:: disallow_any_explicit
+
+    :type: boolean
+    :default: False
+
     Disallows explicit ``Any`` in type positions such as type annotations and generic
     type parameters.
 
-``disallow_any_generics`` (bool, default False)
+.. confval:: disallow_any_generics
+
+    :type: boolean
+    :default: False
+
     Disallows usage of generic types that do not specify explicit type parameters.
 
-``disallow_subclassing_any`` (bool, default False)
+.. confval:: disallow_subclassing_any
+
+    :type: boolean
+    :default: False
+
     Disallows subclassing a value of type ``Any``.
 
 
 Untyped definitions and calls
------------------------------
+*****************************
 
-For more information, see the :ref:`untyped definitions and calls <untyped-definitions-and-calls>`
+For more information, see the :ref:`Untyped definitions and calls <untyped-definitions-and-calls>`
 section of the command line docs.
 
-``disallow_untyped_calls`` (bool, default False)
+.. confval:: disallow_untyped_calls
+
+    :type: boolean
+    :default: False
+
     Disallows calling functions without type annotations from functions with type
     annotations.
 
-``disallow_untyped_defs`` (bool, default False)
+.. confval:: disallow_untyped_defs
+
+    :type: boolean
+    :default: False
+
     Disallows defining functions without type annotations or with incomplete type
     annotations.
 
-``disallow_incomplete_defs`` (bool, default False)
-    Disallows defining functions with incomplete type annotations. 
+.. confval:: disallow_incomplete_defs
 
-``check_untyped_defs`` (bool, default False)
+    :type: boolean
+    :default: False
+
+    Disallows defining functions with incomplete type annotations.
+
+.. confval:: check_untyped_defs
+
+    :type: boolean
+    :default: False
+
     Type-checks the interior of functions without type annotations.
 
-``disallow_untyped_decorators`` (bool, default False)
+.. confval:: disallow_untyped_decorators
+
+    :type: boolean
+    :default: False
+
     Reports an error whenever a function with type annotations is decorated with a
     decorator without annotations.
 
+
 .. _config-file-none-and-optional-handling:
 
-None and optional handling
---------------------------
+None and Optional handling
+**************************
 
-For more information, see the :ref:`None and optional handling <none-and-optional-handling>`
+For more information, see the :ref:`None and Optional handling <none-and-optional-handling>`
 section of the command line docs.
 
-``no_implicit_optional`` (bool, default False)
-    Changes the treatment of arguments with a default value of None by not implicitly
-    making their type Optional.
+.. confval:: no_implicit_optional
 
-``strict_optional`` (bool, default True)
+    :type: boolean
+    :default: False
+
+    Changes the treatment of arguments with a default value of ``None`` by not implicitly
+    making their type :py:data:`~typing.Optional`.
+
+.. confval:: strict_optional
+
+    :type: boolean
+    :default: True
+
     Enables or disables strict Optional checks. If False, mypy treats ``None``
     as compatible with every type.
 
@@ -256,173 +443,402 @@ section of the command line docs.
 
 
 Configuring warnings
---------------------
+********************
 
-For more information, see the :ref:`configuring warnings <configuring-warnings>`
+For more information, see the :ref:`Configuring warnings <configuring-warnings>`
 section of the command line docs.
 
-``warn_unused_ignores`` (bool, default False)
+.. confval:: warn_redundant_casts
+
+    :type: boolean
+    :default: False
+
+    Warns about casting an expression to its inferred type.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: warn_unused_ignores
+
+    :type: boolean
+    :default: False
+
     Warns about unneeded ``# type: ignore`` comments.
 
-``warn_no_return`` (bool, default True) 
+.. confval:: warn_no_return
+
+    :type: boolean
+    :default: True
+
     Shows errors for missing return statements on some execution paths.
 
-``warn_return_any`` (bool, default False)
+.. confval:: warn_return_any
+
+    :type: boolean
+    :default: False
+
     Shows a warning when returning a value with type ``Any`` from a function
     declared with a non- ``Any`` return type.
 
-.. _config-file-suppressing-errors:
+.. confval:: warn_unreachable
+
+    :type: boolean
+    :default: False
+
+    Shows a warning when encountering any code inferred to be unreachable or
+    redundant after performing type analysis.
+
 
 Suppressing errors
-------------------
+******************
 
 Note: these configuration options are available in the config file only. There is
 no analog available via the command line options.
 
-``show_none_errors`` (bool, default True)
-    Shows errors related to strict ``None`` checking, if the global ``strict_optional``
+.. confval:: show_none_errors
+
+    :type: boolean
+    :default: True
+
+    Shows errors related to strict ``None`` checking, if the global :confval:`strict_optional`
     flag is enabled.
 
-``ignore_errors`` (bool, default False)
+.. confval:: ignore_errors
+
+    :type: boolean
+    :default: False
+
     Ignores all non-fatal errors.
 
 
-Global-only options
-*******************
+Miscellaneous strictness flags
+******************************
 
-The following options may only be set in the global section (``[mypy]``).
+.. confval:: allow_untyped_globals
 
-.. _config-file-import-discovery-global:
+    :type: boolean
+    :default: False
 
-Import discovery
-----------------
+    Causes mypy to suppress errors caused by not being able to fully
+    infer the types of global and class variables.
 
-For more information, see the :ref:`import discovery <import-discovery>`
+.. confval:: allow_redefinition
+
+    :type: boolean
+    :default: False
+
+    Allows variables to be redefined with an arbitrary type, as long as the redefinition
+    is in the same block and nesting level as the original definition.
+
+.. confval:: disable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows disabling one or multiple error codes globally.
+
+.. confval:: implicit_reexport
+
+    :type: boolean
+    :default: True
+
+    By default, imported values to a module are treated as exported and mypy allows
+    other modules to import them. When false, mypy will not re-export unless
+    the item is imported using from-as or is included in ``__all__``. Note that mypy
+    treats stub files as if this is always disabled. For example:
+
+    .. code-block:: python
+
+       # This won't re-export the value
+       from foo import bar
+       # This will re-export it as bar and allow other modules to import it
+       from foo import bar as bar
+       # This will also re-export bar
+       from foo import bar
+       __all__ = ['bar']
+
+.. confval:: strict_equality
+
+    :type: boolean
+    :default: False
+
+   Prohibit equality checks, identity checks, and container checks between
+   non-overlapping types.
+
+
+Configuring error messages
+**************************
+
+For more information, see the :ref:`Configuring error messages <configuring-error-messages>`
 section of the command line docs.
 
-Note: this section describes only global-only import discovery options. See above for
-a list of import discovery options that may be used 
-:ref:`both per-module and globally <config-file-import-discovery-per-module>`.
+These options may only be set in the global section (``[mypy]``).
 
-``namespace_packages`` (bool, default False)
-    Enables PEP 420 style namespace packages.  See :ref:`the
-    corresponding flag <import-discovery>` for more information.
+.. confval:: show_error_context
 
-``python_executable`` (string)
-    Specifies the path to the Python executable to inspect to collect
-    a list of available :ref:`PEP 561 packages <installed-packages>`. Defaults to
-    the executable used to run mypy.
+    :type: boolean
+    :default: False
 
-``no_silence_site_packages`` (bool, default False)
-    Enables reporting error messages generated within PEP 561 compliant packages.
-    Those error messages are suppressed by default, since you are usually
-    not able to control errors in 3rd party code.
+    Prefixes each error with the relevant context.
 
-``mypy_path`` (string)
-    Specifies the paths to use, after trying the paths from ``MYPYPATH`` environment
-    variable.  Useful if you'd like to keep stubs in your repo, along with the config file.
+.. confval:: show_column_numbers
 
+    :type: boolean
+    :default: False
 
-Platform configuration
-----------------------
+    Shows column numbers in error messages.
 
-For more information, see the :ref:`platform configuration <platform-configuration>`
-section of the command line docs.
+.. confval:: show_error_codes
 
-``python_version`` (string) 
-    Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
-    for example ``2.7``.  The default is the version of the Python
-    interpreter used to run mypy.
+    :type: boolean
+    :default: False
 
-``platform`` (string)
-    Specifies the OS platform for the target program, for example
-    ``darwin`` or ``win32`` (meaning OS X or Windows, respectively).
-    The default is the current platform as revealed by Python's
-    ``sys.platform`` variable.
+    Shows error codes in error messages. See :ref:`error-codes` for more information.
 
-``always_true`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as 
-    compile-time constants that are always true.
-    
-``always_false`` (comma-separated list of strings) 
-    Specifies a list of variables that mypy will treat as 
-    compile-time constants that are always false.
+.. confval:: pretty
+
+    :type: boolean
+    :default: False
+
+    Use visually nicer output in error messages: use soft word wrap,
+    show source code snippets, and show error location markers.
+
+.. confval:: color_output
+
+    :type: boolean
+    :default: True
+
+    Shows error messages with color enabled.
+
+.. confval:: error_summary
+
+    :type: boolean
+    :default: True
+
+    Shows a short summary line after error messages.
+
+.. confval:: show_absolute_path
+
+    :type: boolean
+    :default: False
+
+    Show absolute paths to files.
 
 
 Incremental mode
-----------------
+****************
 
-For more information, see the :ref:`incremental mode <incremental>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
-``incremental`` (bool, default True) 
+.. confval:: incremental
+
+    :type: boolean
+    :default: True
+
     Enables :ref:`incremental mode <incremental>`.
 
-``cache_dir`` (string, default ``.mypy_cache``) 
+.. confval:: cache_dir
+
+    :type: string
+    :default: ``.mypy_cache``
+
     Specifies the location where mypy stores incremental cache info.
+    User home directory and environment variables will be expanded.
+    This setting will be overridden by the ``MYPY_CACHE_DIR`` environment
+    variable.
+
     Note that the cache is only read when incremental mode is enabled
-    but is always written to, unless the value is set to ``/dev/nul``
+    but is always written to, unless the value is set to ``/dev/null``
     (UNIX) or ``nul`` (Windows).
 
-``skip_version_check`` (bool, default False)
+.. confval:: sqlite_cache
+
+    :type: boolean
+    :default: False
+
+    Use an `SQLite`_ database to store the cache.
+
+.. confval:: cache_fine_grained
+
+    :type: boolean
+    :default: False
+
+    Include fine-grained dependency information in the cache for the mypy daemon.
+
+.. confval:: skip_version_check
+
+    :type: boolean
+    :default: False
+
     Makes mypy use incremental cache data even if it was generated by a
     different version of mypy. (By default, mypy will perform a version
     check and regenerate the cache if it was written by older versions of mypy.)
 
+.. confval:: skip_cache_mtime_checks
 
-Configuring error messages
---------------------------
+    :type: boolean
+    :default: False
 
-For more information, see the :ref:`configuring error messages <configuring-error-messages>`
-section of the command line docs.
-
-``show_error_context`` (bool, default False) 
-    Prefixes each error with the relevant context.
-
-``show_column_numbers`` (bool, default False)
-    Shows column numbers in error messages.
+    Skip cache internal consistency checks based on mtime.
 
 
 Advanced options
-----------------
+****************
 
-For more information, see the :ref:`advanced flags <advanced-flags>`
-section of the command line docs.
+These options may only be set in the global section (``[mypy]``).
 
-``pdb`` (bool, default False)
-    Invokes pdb on fatal error.
+.. confval:: plugins
 
-``show_traceback`` (bool, default False)
+    :type: comma-separated list of strings
+
+    A comma-separated list of mypy plugins. See :ref:`extending-mypy-using-plugins`.
+
+.. confval:: pdb
+
+    :type: boolean
+    :default: False
+
+    Invokes :mod:`pdb` on fatal error.
+
+.. confval:: show_traceback
+
+    :type: boolean
+    :default: False
+
     Shows traceback on fatal error.
 
-``custom_typing_module`` (string) 
-    Specifies a custom module to use as a substitute for the ``typing`` module.
+.. confval:: raise_exceptions
 
-``custom_typeshed_dir`` (string)
+    :type: boolean
+    :default: False
+
+    Raise exception on fatal error.
+
+.. confval:: custom_typing_module
+
+    :type: string
+
+    Specifies a custom module to use as a substitute for the :py:mod:`typing` module.
+
+.. confval:: custom_typeshed_dir
+
+    :type: string
+
     Specifies an alternative directory to look for stubs instead of the
-    default ``typeshed`` directory.
+    default ``typeshed`` directory. User home directory and environment
+    variables will be expanded.
 
-``warn_incomplete_stub`` (bool, default False)
+.. confval:: warn_incomplete_stub
+
+    :type: boolean
+    :default: False
+
     Warns about missing type annotations in typeshed.  This is only relevant
-    in combination with ``disallow_untyped_defs`` or ``disallow_incomplete_defs``.
+    in combination with :confval:`disallow_untyped_defs` or :confval:`disallow_incomplete_defs`.
+
+
+Report generation
+*****************
+
+If these options are set, mypy will generate a report in the specified
+format into the specified directory.
+
+.. confval:: any_exprs_report
+
+    :type: string
+
+    Causes mypy to generate a text file report documenting how many
+    expressions of type ``Any`` are present within your codebase.
+
+.. confval:: cobertura_xml_report
+
+    :type: string
+
+    Causes mypy to generate a Cobertura XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+.. confval:: html_report / xslt_html_report
+
+    :type: string
+
+    Causes mypy to generate an HTML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+.. confval:: linecount_report
+
+    :type: string
+
+    Causes mypy to generate a text file report documenting the functions
+    and lines that are typed and untyped within your codebase.
+
+.. confval:: linecoverage_report
+
+    :type: string
+
+    Causes mypy to generate a JSON file that maps each source file's
+    absolute filename to a list of line numbers that belong to typed
+    functions in that file.
+
+.. confval:: lineprecision_report
+
+    :type: string
+
+    Causes mypy to generate a flat text file report with per-module
+    statistics of how many lines are typechecked etc.
+
+.. confval:: txt_report / xslt_txt_report
+
+    :type: string
+
+    Causes mypy to generate a text file type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
+
+.. confval:: xml_report
+
+    :type: string
+
+    Causes mypy to generate an XML type checking coverage report.
+
+    You must install the `lxml`_ library to generate this report.
 
 
 Miscellaneous
--------------
+*************
 
-``warn_redundant_casts`` (bool, default False)
-    Warns about casting an expression to its inferred type.
+These options may only be set in the global section (``[mypy]``).
 
-``scripts_are_modules`` (bool, default False)
+.. confval:: junit_xml
+
+    :type: string
+
+    Causes mypy to generate a JUnit XML test result document with
+    type checking results. This can make it easier to integrate mypy
+    with continuous integration (CI) tools.
+
+.. confval:: scripts_are_modules
+
+    :type: boolean
+    :default: False
+
     Makes script ``x`` become module ``x`` instead of ``__main__``.  This is
     useful when checking multiple scripts in a single run.
 
-``warn_unused_configs`` (bool, default False)
+.. confval:: warn_unused_configs
+
+    :type: boolean
+    :default: False
+
     Warns about per-module sections in the config file that do not
     match any files processed when invoking mypy.
+    (This requires turning off incremental mode using :confval:`incremental = False <incremental>`.)
 
-``verbosity`` (integer, default 0)
+.. confval:: verbosity
+
+    :type: integer
+    :default: 0
+
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
-
+.. _lxml: https://pypi.org/project/lxml/
+.. _SQLite: https://www.sqlite.org/

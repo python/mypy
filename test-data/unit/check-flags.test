@@ -37,21 +37,36 @@ lambda x: x
 def f():
     1 + "str"
 [out]
-main:2: error: Function is missing a type annotation
+main:2: error: Function is missing a return type annotation
+main:2: note: Use "-> None" if function does not return a value
+
+[case testUnannotatedReturnWithOnlySelfArgument]
+# flags: --disallow-untyped-defs
+def f(self): pass
+[out]
+main:2: error: Function is missing a return type annotation
+main:2: note: Use "-> None" if function does not return a value
+
+[case testUnannotatedReturnWithNontrivialReturn]
+# flags: --disallow-untyped-defs
+def f(): return 1
+[out]
+main:2: error: Function is missing a return type annotation
 
 [case testUntypedAsyncDef]
 # flags: --disallow-untyped-defs
-async def f():  # E: Function is missing a type annotation
+async def f():  # E: Function is missing a return type annotation \
+                # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testAsyncUnannotatedArgument]
 # flags: --disallow-untyped-defs
 async def f(x) -> None:  # E: Function is missing a type annotation for one or more arguments
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testAsyncUnannotatedReturn]
 # flags: --disallow-untyped-defs
@@ -62,7 +77,7 @@ async def f(x: int):  # E: Function is missing a return type annotation
 async def g(x: int) -> Any:
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testDisallowUntypedDefsUntypedDecorator]
 # flags: --disallow-untyped-decorators
@@ -158,10 +173,10 @@ def h() -> None: pass
 @TypedDecorator()
 def i() -> None: pass
 
-reveal_type(f)  # E: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(g)  # E: Revealed type is 'Any'
-reveal_type(h)  # E: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(i)  # E: Revealed type is 'Any'
+reveal_type(f)  # N: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(g)  # N: Revealed type is 'Any'
+reveal_type(h)  # N: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(i)  # N: Revealed type is 'Any'
 
 [case testDisallowUntypedDecoratorsNonCallableInstance]
 # flags: --disallow-untyped-decorators
@@ -286,7 +301,7 @@ def f() -> NoReturn:
 # flags: --warn-no-return
 from mypy_extensions import NoReturn
 
-def f() -> NoReturn:  # N: Implicit return in function which does not return
+def f() -> NoReturn:  # E: Implicit return in function which does not return
   non_trivial_function = 1
 [builtins fixtures/dict.pyi]
 
@@ -309,7 +324,7 @@ from mypy_extensions import NoReturn
 def no_return() -> NoReturn: pass
 def f() -> int:
   return 0
-reveal_type(f() or no_return())  # E: Revealed type is 'builtins.int'
+reveal_type(f() or no_return())  # N: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnVariable]
@@ -432,13 +447,13 @@ x + ""
 [file mod.py]
 deliberate syntax error
 [out]
-main:2: note: Import of 'mod' ignored
+main:2: error: Import of 'mod' ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIgnoreMissingImportsFalse]
 from mod import x
 [out]
-main:1: error: Cannot find module named 'mod'
+main:1: error: Cannot find implementation or library stub for module named 'mod'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIgnoreMissingImportsTrue]
@@ -457,9 +472,9 @@ def incomplete(x) -> int:
 def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
     return 0
 [file mypy.ini]
-[[mypy]
+\[mypy]
 disallow_incomplete_defs = False
-[[mypy-incomplete]
+\[mypy-incomplete]
 disallow_incomplete_defs = True
 
 
@@ -477,9 +492,9 @@ if int():
     x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 
@@ -504,9 +519,9 @@ f(standard.an_int)  # ints can be used as ints
 f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; expected "int"
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 
@@ -527,9 +542,9 @@ x = 0  # type: Optional[int]
 y = None  # type: None
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 [case testPerFileStrictOptionalListItemImportOptional]
@@ -550,9 +565,9 @@ x = []  # type: List[Optional[int]]
 y = []  # type: List[int]
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 [builtins fixtures/list.pyi]
 
@@ -576,9 +591,9 @@ def f(x: int = None) -> None: pass
 standard.f(None)
 
 [file mypy.ini]
-[[mypy]
+\[mypy]
 strict_optional = False
-[[mypy-optional]
+\[mypy-optional]
 strict_optional = True
 
 [case testDisallowImplicitTypesIgnoreMissingTypes]
@@ -595,7 +610,7 @@ from missing import MyType
 def f(x: MyType) -> None:
     pass
 [out]
-main:2: error: Cannot find module named 'missing'
+main:2: error: Cannot find implementation or library stub for module named 'missing'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 
@@ -711,6 +726,7 @@ from missing import Unchecked
 foo: Unchecked = ""
 foo = ""
 x, y = 1, 2  # type: Unchecked, Unchecked
+[builtins fixtures/tuple.pyi]
 [out]
 main:4: error: Type of variable becomes "Any" due to an unfollowed import
 main:6: error: A type on this line becomes "Any" due to an unfollowed import
@@ -1014,6 +1030,31 @@ def f(i: int, s):
 main:3: error: Function is missing a return type annotation
 main:3: error: Function is missing a type annotation for one or more arguments
 
+[case testDisallowIncompleteDefsAttrsNoAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class Unannotated:
+    foo = attr.ib()
+
+[case testDisallowIncompleteDefsAttrsWithAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class Annotated:
+    bar: int = attr.ib()
+
+[case testDisallowIncompleteDefsAttrsPartialAnnotations]
+# flags: --disallow-incomplete-defs
+import attr
+
+@attr.s()
+class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
+    bar: int = attr.ib()
+    baz = attr.ib()
+
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
 from somewhere import YOLO, BLAH
@@ -1031,11 +1072,20 @@ if not YOLO:
 if BLAH:
     1+()
 [file mypy.ini]
-[[mypy]
+\[mypy]
 ignore_missing_imports = True
 always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
+
+[case testDisableErrorCodeConfigFile]
+# flags: --config-file tmp/mypy.ini --disallow-untyped-defs
+import foo
+def bar():
+    pass
+[file mypy.ini]
+\[mypy]
+disable_error_code = import, no-untyped-def
 
 [case testCheckDisallowAnyGenericsNamedTuple]
 # flags: --disallow-any-generics
@@ -1043,6 +1093,7 @@ from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)])  # type: ignore
 n: N
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testCheckDisallowAnyGenericsTypedDict]
@@ -1053,15 +1104,14 @@ from mypy_extensions import TypedDict
 VarsDict = Dict[str, Any]
 HostsDict = Dict[str, Optional[VarsDict]]
 
-GroupDataDict = TypedDict(  # type: ignore
-    "GroupDataDict", {"children": "GroupsDict",
+GroupDataDict = TypedDict(
+    "GroupDataDict", {"children": "GroupsDict",  # type: ignore
                       "vars": VarsDict,
                       "hosts": HostsDict}, total=False
 )
 
 GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCheckDefaultAllowAnyGeneric]
 from typing import TypeVar, Callable
@@ -1091,7 +1141,7 @@ from typing import TypeVar, Callable
 T = TypeVar('T')
 C = Callable[[], T]
 
-def f(c: C):  # E: Missing type parameters for generic type
+def f(c: C):  # E: Missing type parameters for generic type "C"
     pass
 [out]
 
@@ -1104,6 +1154,454 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-def f(c: A) -> None:  # E: Missing type parameters for generic type
+def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
     pass
 [out]
+
+[case testStrictInConfigAnyGeneric]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
+    pass
+[file mypy.ini]
+\[mypy]
+strict = True
+[out]
+
+[case testStrictFalseInConfigAnyGeneric]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:
+    pass
+[file mypy.ini]
+\[mypy]
+strict = False
+[out]
+
+[case testStrictAndStrictEquality]
+# flags: --strict
+x = 0
+y = ''
+if x == y:  # E: Non-overlapping equality check (left operand type: "int", right operand type: "str")
+    int()
+[builtins fixtures/ops.pyi]
+
+[case testStrictEqualityPerFile]
+# flags: --config-file tmp/mypy.ini
+import b
+42 == 'no'  # E: Non-overlapping equality check (left operand type: "Literal[42]", right operand type: "Literal['no']")
+[file b.py]
+42 == 'no'
+[file mypy.ini]
+\[mypy]
+strict_equality = True
+\[mypy-b]
+strict_equality = False
+[builtins fixtures/bool.pyi]
+
+[case testNoImplicitReexport]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+[file other_module_1.py]
+a = 5
+[file other_module_2.py]
+from other_module_1 import a
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case testNoImplicitReexportRespectsAll]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+from other_module_2 import b
+[file other_module_1.py]
+a = 5
+b = 6
+[file other_module_2.py]
+from other_module_1 import a, b
+__all__ = ('b',)
+[builtins fixtures/tuple.pyi]
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case testNoImplicitReexportStarConsideredImplicit]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+[file other_module_1.py]
+a = 5
+[file other_module_2.py]
+from other_module_1 import *
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case testNoImplicitReexportStarCanBeReexportedWithAll]
+# flags: --no-implicit-reexport
+from other_module_2 import a
+from other_module_2 import b
+[file other_module_1.py]
+a = 5
+b = 6
+[file other_module_2.py]
+from other_module_1 import *
+__all__ = ('b',)
+[builtins fixtures/tuple.pyi]
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case textNoImplicitReexportSuggestions]
+# flags: --no-implicit-reexport
+from other_module_2 import attr_1
+
+[file other_module_1.py]
+attr_1 = 5
+attr_2 = 6
+[file other_module_2.py]
+from other_module_1 import attr_1, attr_2
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'attr_1'; implicit reexport disabled
+
+[case testNoImplicitReexportMypyIni]
+# flags: --config-file tmp/mypy.ini
+from other_module_2 import a
+
+[file other_module_1.py]
+a = 5
+
+[file other_module_2.py]
+from other_module_1 import a
+
+[file mypy.ini]
+\[mypy]
+implicit_reexport = True
+\[mypy-other_module_2]
+implicit_reexport = False
+[out]
+main:2: error: Module 'other_module_2' has no attribute 'a'
+
+[case testImplicitAnyOKForNoArgs]
+# flags: --disallow-any-generics --show-column-numbers
+from typing import List
+
+A = List  # OK
+B = List[A]  # E:10: Missing type parameters for generic type "A"
+x: A  # E:4: Missing type parameters for generic type "A"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitDefSignature]
+# flags: --disallow-any-explicit
+
+from typing import Any, List
+
+def f(x: Any) -> None:  # E: Explicit "Any" is not allowed
+    pass
+
+def g() -> Any:  # E: Explicit "Any" is not allowed
+    pass
+
+def h() -> List[Any]:  # E: Explicit "Any" is not allowed
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitVarDeclaration]
+# flags: --python-version 3.6 --disallow-any-explicit
+from typing import Any
+v: Any = ''  # E: Explicit "Any" is not allowed
+w = ''  # type: Any  # E: Explicit "Any" is not allowed
+class X:
+    y = ''  # type: Any  # E: Explicit "Any" is not allowed
+
+[case testDisallowAnyExplicitGenericVarDeclaration]
+# flags: --python-version 3.6 --disallow-any-explicit
+from typing import Any, List
+v: List[Any] = []  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitInheritance]
+# flags: --disallow-any-explicit
+from typing import Any, List
+
+class C(Any):  # E: Explicit "Any" is not allowed
+    pass
+
+class D(List[Any]):  # E: Explicit "Any" is not allowed
+    pass
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitAlias]
+# flags: --disallow-any-explicit
+from typing import Any, List
+
+X = Any  # E: Explicit "Any" is not allowed
+Y = List[Any]  # E: Explicit "Any" is not allowed
+
+def foo(x: X) -> Y:  # no error
+    x.nonexistent()  # no error
+    return x
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitGenericAlias]
+# flags: --disallow-any-explicit
+from typing import Any, TypeVar, Tuple
+
+T = TypeVar('T')
+
+TupleAny = Tuple[Any, T]  # E: Explicit "Any" is not allowed
+
+def foo(x: TupleAny[str]) -> None:  # no error
+    pass
+
+def goo(x: TupleAny[Any]) -> None:  # E: Explicit "Any" is not allowed
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testDisallowAnyExplicitCast]
+# flags: --disallow-any-explicit
+from typing import Any, List, cast
+
+x = 1
+y = cast(Any, x)  # E: Explicit "Any" is not allowed
+z = cast(List[Any], x)  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitNamedTuple]
+# flags: --disallow-any-explicit
+from typing import Any, List, NamedTuple
+
+Point = NamedTuple('Point', [('x', List[Any]), ('y', Any)])  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitTypeVarConstraint]
+# flags: --disallow-any-explicit
+from typing import Any, List, TypeVar
+
+T = TypeVar('T', Any, List[Any])  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitNewType]
+# flags: --disallow-any-explicit
+from typing import Any, List, NewType
+
+# this error does not come from `--disallow-any-explicit` flag
+Baz = NewType('Baz', Any)  # E: Argument 2 to NewType(...) must be subclassable (got "Any")
+Bar = NewType('Bar', List[Any])  # E: Explicit "Any" is not allowed
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyExplicitTypedDictSimple]
+# flags: --disallow-any-explicit
+from mypy_extensions import TypedDict
+from typing import Any
+
+M = TypedDict('M', {'x': str, 'y': Any})  # E: Explicit "Any" is not allowed
+M(x='x', y=2)  # no error
+def f(m: M) -> None: pass  # no error
+[builtins fixtures/dict.pyi]
+
+[case testDisallowAnyExplicitTypedDictGeneric]
+# flags: --disallow-any-explicit
+from mypy_extensions import TypedDict
+from typing import Any, List
+
+M = TypedDict('M', {'x': str, 'y': List[Any]})  # E: Explicit "Any" is not allowed
+N = TypedDict('N', {'x': str, 'y': List})  # no error
+[builtins fixtures/dict.pyi]
+
+[case testDisallowAnyGenericsTupleNoTypeParams]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import Tuple
+
+def f(s: Tuple) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def g(s) -> Tuple:  # E: Missing type parameters for generic type "Tuple"
+    return 'a', 'b'
+def h(s) -> Tuple[str, str]:  # no error
+    return 'a', 'b'
+x: Tuple = ()  # E: Missing type parameters for generic type "Tuple"
+[builtins fixtures/tuple.pyi]
+
+[case testDisallowAnyGenericsTupleWithNoTypeParamsGeneric]
+# flags: --disallow-any-generics
+from typing import Tuple, List
+
+def f(s: List[Tuple]) -> None: pass  # E: Missing type parameters for generic type "Tuple"
+def g(s: List[Tuple[str, str]]) -> None: pass  # no error
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsTypeType]
+# flags: --disallow-any-generics
+from typing import Type, Any
+
+def f(s: Type[Any]) -> None: pass  # no error
+def g(s) -> Type:  # E: Missing type parameters for generic type "Type"
+    return s
+def h(s) -> Type[str]:  # no error
+    return s
+x: Type = g(0)  # E: Missing type parameters for generic type "Type"
+
+[case testDisallowAnyGenericsAliasGenericType]
+# flags: --disallow-any-generics
+from typing import List
+
+L = List  # no error
+
+def f(l: L) -> None: pass  # E: Missing type parameters for generic type "L"
+def g(l: L[str]) -> None: pass  # no error
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsGenericAlias]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import TypeVar, Tuple
+
+T = TypeVar('T')
+A = Tuple[T, str, T]
+
+def f(s: A) -> None: pass  # E: Missing type parameters for generic type "A"
+def g(s) -> A:  # E: Missing type parameters for generic type "A"
+    return 'a', 'b', 1
+def h(s) -> A[str]:  # no error
+    return 'a', 'b', 'c'
+x: A = ('a', 'b', 1)  # E: Missing type parameters for generic type "A"
+[builtins fixtures/tuple.pyi]
+
+[case testDisallowAnyGenericsPlainList]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import List
+
+def f(l: List) -> None: pass  # E: Missing type parameters for generic type "List"
+def g(l: List[str]) -> None: pass  # no error
+def h(l: List[List]) -> None: pass   # E: Missing type parameters for generic type "List"
+def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type parameters for generic type "List"
+
+x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+y: List = []  # E: Missing type parameters for generic type "List"
+[builtins fixtures/list.pyi]
+
+[case testDisallowAnyGenericsCustomGenericClass]
+# flags: --python-version 3.6 --disallow-any-generics
+from typing import Generic, TypeVar, Any
+
+T = TypeVar('T')
+class G(Generic[T]): pass
+
+def f() -> G:  # E: Missing type parameters for generic type "G"
+    return G()
+
+x: G[Any] = G()  # no error
+y: G = x  # E: Missing type parameters for generic type "G"
+
+[case testDisallowSubclassingAny]
+# flags: --config-file tmp/mypy.ini
+import m
+import y
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
+
+[file mypy.ini]
+\[mypy]
+disallow_subclassing_any = True
+\[mypy-m]
+disallow_subclassing_any = False
+
+[case testNoImplicitOptionalPerModule]
+# flags: --config-file tmp/mypy.ini
+import m
+
+[file m.py]
+def f(a: str = None) -> int:
+    return 0
+
+[file mypy.ini]
+\[mypy]
+no_implicit_optional = True
+\[mypy-m]
+no_implicit_optional = False
+
+[case testNoImplicitOptionalPerModulePython2]
+# flags: --config-file tmp/mypy.ini --python-version 2.7
+import m
+
+[file m.py]
+def f(a = None):
+    # type: (str) -> int
+    return 0
+
+[file mypy.ini]
+\[mypy]
+no_implicit_optional = True
+\[mypy-m]
+no_implicit_optional = False
+
+[case testDisableErrorCode]
+# flags: --disable-error-code attr-defined
+x = 'should be fine'
+x.trim()
+
+[case testDisableDifferentErrorCode]
+# flags: --disable-error-code name-defined --show-error-code
+x = 'should not be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+[case testDisableMultipleErrorCode]
+# flags: --disable-error-code attr-defined --disable-error-code return-value --show-error-code
+x = 'should be fine'
+x.trim()
+
+def bad_return_type() -> str:
+    return None
+
+bad_return_type('no args taken!')  # E: Too many arguments for "bad_return_type"  [call-arg]
+
+[case testEnableErrorCode]
+# flags: --disable-error-code attr-defined --enable-error-code attr-defined --show-error-code
+x = 'should be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+[case testEnableDifferentErrorCode]
+# flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
+x = 'should not be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+[case testEnableMultipleErrorCode]
+# flags: \
+    --disable-error-code attr-defined \
+    --disable-error-code return-value \
+    --disable-error-code call-arg \
+    --enable-error-code attr-defined \
+    --enable-error-code return-value --show-error-code
+x = 'should be fine'
+x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+
+def bad_return_type() -> str:
+    return None  # E: Incompatible return value type (got "None", expected "str")  [return-value]
+
+bad_return_type('no args taken!')
+
+[case testDisallowUntypedCallsArgType]
+# flags: --disallow-untyped-calls
+def f(x):
+    pass
+
+y = 1
+f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
+                  # N: Revealed type is 'builtins.int'

@@ -86,44 +86,6 @@ MypyFile:1(
   ExpressionStmt:3(
     StrExpr(foobar)))
 
-[case testTripleQuotedStr]
-''''''
-'''foo'''
-'''foo\
-bar'''
-'''\nfoo
-bar'''
-'''fo''bar'''
-""""""
-"""foo"""
-"""foo\
-bar"""
-"""\nfoo
-bar"""
-"""fo""bar"""
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    StrExpr())
-  ExpressionStmt:2(
-    StrExpr(foo))
-  ExpressionStmt:3(
-    StrExpr(foobar))
-  ExpressionStmt:5(
-    StrExpr(\u000afoo\u000abar))
-  ExpressionStmt:6(
-    StrExpr(fo''bar))
-  ExpressionStmt:7(
-    StrExpr())
-  ExpressionStmt:8(
-    StrExpr(foo))
-  ExpressionStmt:9(
-    StrExpr(foobar))
-  ExpressionStmt:11(
-    StrExpr(\u000afoo\u000abar))
-  ExpressionStmt:12(
-    StrExpr(fo""bar)))
-
 [case testRawStr]
 r'x\n\''
 r"x\n\""
@@ -1245,25 +1207,25 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:1(
         IntExpr(1)
         IntExpr(2))))
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:2(
         <empty>
         IntExpr(1))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:3(
         IntExpr(1)
         <empty>)))
   ExpressionStmt:4(
     IndexExpr:4(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:4(
         <empty>
         <empty>))))
 
@@ -1278,35 +1240,35 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:1(
         IntExpr(1)
         IntExpr(2)
         IntExpr(3))))
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:2(
         IntExpr(1)
         <empty>
         IntExpr(2))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:3(
         <empty>
         IntExpr(1)
         IntExpr(2))))
   ExpressionStmt:4(
     IndexExpr:4(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:4(
         <empty>
         <empty>
         IntExpr(2))))
   ExpressionStmt:5(
     IndexExpr:5(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:5(
         IntExpr(1)
         IntExpr(2)))))
 
@@ -2816,12 +2778,12 @@ class X: pass
 class Z: pass
 [out]
 MypyFile:1(
-  ClassDef:1(
+  ClassDef:2(
     X
     Decorators(
       NameExpr(foo))
     PassStmt:2())
-  ClassDef:3(
+  ClassDef:5(
     Z
     Decorators(
       CallExpr:3(
@@ -3189,7 +3151,7 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:-1(
+      TupleExpr:1(
         SliceExpr:-1(
           <empty>
           <empty>)
@@ -3204,7 +3166,7 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:-1(
+      TupleExpr:1(
         SliceExpr:-1(
           IntExpr(1)
           IntExpr(2))
@@ -3219,7 +3181,7 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(a)
-      TupleExpr:-1(
+      TupleExpr:1(
         SliceExpr:-1(
           IntExpr(1)
           IntExpr(2)
@@ -3267,19 +3229,6 @@ y ## type: ignore
 [out]
 MypyFile:1(
   ExpressionStmt:1(
-    NameExpr(y)))
-
-[case testInvalidIgnoreAnnotations]
-y # type: ignored
-y # type: IGNORE
-y # type : ignore
-[out]
-MypyFile:1(
-  ExpressionStmt:1(
-    NameExpr(y))
-  ExpressionStmt:2(
-    NameExpr(y))
-  ExpressionStmt:3(
     NameExpr(y)))
 
 [case testSpaceInIgnoreAnnotations]
@@ -3374,3 +3323,143 @@ MypyFile:1(
     Block:1(
       ExpressionStmt:2(
         YieldExpr:2()))))
+
+[case testFStringSimple]
+x = 'mypy'
+f'Hello {x}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    CallExpr:2(
+      MemberExpr:2(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:2(
+          StrExpr(Hello )
+          CallExpr:2(
+            MemberExpr:2(
+              StrExpr({:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr())))))))
+
+[case testFStringWithConversion]
+x = 'mypy'
+F'Hello {x!r}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    CallExpr:2(
+      MemberExpr:2(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:2(
+          StrExpr(Hello )
+          CallExpr:2(
+            MemberExpr:2(
+              StrExpr({!r:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr())))))))
+
+[case testFStringWithOnlyFormatSpecifier]
+x = 'mypy'
+f'Hello {x:<30}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    CallExpr:2(
+      MemberExpr:2(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:2(
+          StrExpr(Hello )
+          CallExpr:2(
+            MemberExpr:2(
+              StrExpr({:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr(<30))))))))
+
+[case testFStringWithFormatSpecifierAndConversion]
+x = 'mypy'
+f'Hello {x!s:<30}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  ExpressionStmt:2(
+    CallExpr:2(
+      MemberExpr:2(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:2(
+          StrExpr(Hello )
+          CallExpr:2(
+            MemberExpr:2(
+              StrExpr({!s:{}})
+              format)
+            Args(
+              NameExpr(x)
+              StrExpr(<30))))))))
+
+[case testFStringWithFormatSpecifierExpression]
+x = 'mypy'
+y = 30
+f'Hello {x!s:<{y+y}}'
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    StrExpr(mypy))
+  AssignmentStmt:2(
+    NameExpr(y)
+    IntExpr(30))
+  ExpressionStmt:3(
+    CallExpr:3(
+      MemberExpr:3(
+        StrExpr()
+        join)
+      Args(
+        ListExpr:3(
+          StrExpr(Hello )
+          CallExpr:3(
+            MemberExpr:3(
+              StrExpr({!s:{}})
+              format)
+            Args(
+              NameExpr(x)
+              CallExpr:3(
+                MemberExpr:3(
+                  StrExpr()
+                  join)
+                Args(
+                  ListExpr:3(
+                    StrExpr(<)
+                    CallExpr:3(
+                      MemberExpr:3(
+                        StrExpr({:{}})
+                        format)
+                      Args(
+                        OpExpr:3(
+                          +
+                          NameExpr(y)
+                          NameExpr(y))
+                        StrExpr()))))))))))))

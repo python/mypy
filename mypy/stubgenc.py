@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Stub generator for C modules.
 
 The public interface is via the mypy.stubgen module.
@@ -10,18 +11,38 @@ import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
 
-from mypy.stubutil import (
-    is_c_module, write_header, infer_sig_from_docstring,
-    infer_prop_type_from_docstring
+from mypy.moduleinspect import is_c_module
+from mypy.stubdoc import (
+    infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
+    infer_arg_sig_from_anon_docstring, infer_ret_type_sig_from_anon_docstring, FunctionSig
+)
+
+
+# Members of the typing module to consider for importing by default.
+_DEFAULT_TYPING_IMPORTS = (
+    'Any'
+    'Dict',
+    'Iterable',
+    'Iterator',
+    'List',
+    'Optional',
+    'Tuple',
+    'Union',
 )
 
 
 def generate_stub_for_c_module(module_name: str,
                                target: str,
-                               add_header: bool = True,
-                               sigs: Dict[str, str] = {},
-                               class_sigs: Dict[str, str] = {},
-                               ) -> None:
+                               sigs: Optional[Dict[str, str]] = None,
+                               class_sigs: Optional[Dict[str, str]] = None) -> None:
+    """Generate stub for C module.
+
+    This combines simple runtime introspection (looking for docstrings and attributes
+    with simple builtin types) and signatures inferred from .rst documentation (if given).
+
+    If directory for target doesn't exist it will be created. Existing stub
+    will be overwritten.
+    """
     module = importlib.import_module(module_name)
     assert is_c_module(module), '%s is not a C module' % module_name
     subdir = os.path.dirname(target)
@@ -67,15 +88,14 @@ def generate_stub_for_c_module(module_name: str,
         output.append(line)
     output = add_typing_import(output)
     with open(target, 'w') as file:
-        if add_header:
-            write_header(file, module_name)
         for line in output:
             file.write('%s\n' % line)
 
 
 def add_typing_import(output: List[str]) -> List[str]:
+    """Add typing imports for collections/types that occur in the generated stub."""
     names = []
-    for name in ['Any', 'Union', 'Tuple', 'Optional', 'List', 'Dict']:
+    for name in _DEFAULT_TYPING_IMPORTS:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
@@ -103,8 +123,8 @@ def is_c_property(obj: object) -> bool:
     return inspect.isdatadescriptor(obj) and hasattr(obj, 'fget')
 
 
-def is_c_property_readonly(prop: object) -> bool:
-    return getattr(prop, 'fset') is None
+def is_c_property_readonly(prop: Any) -> bool:
+    return prop.fset is None
 
 
 def is_c_type(obj: object) -> bool:
@@ -117,86 +137,122 @@ def generate_c_function_stub(module: ModuleType,
                              output: List[str],
                              imports: List[str],
                              self_var: Optional[str] = None,
-                             sigs: Dict[str, str] = {},
+                             sigs: Optional[Dict[str, str]] = None,
                              class_name: Optional[str] = None,
-                             class_sigs: Dict[str, str] = {},
-                             ) -> None:
+                             class_sigs: Optional[Dict[str, str]] = None) -> None:
+    """Generate stub for a single function or method.
+
+    The result (always a single line) will be appended to 'output'.
+    If necessary, any required names will be added to 'imports'.
+    The 'class_name' is used to find signature of __init__ or __new__ in
+    'class_sigs'.
+    """
+    if sigs is None:
+        sigs = {}
+    if class_sigs is None:
+        class_sigs = {}
+
     ret_type = 'None' if name == '__init__' and class_name else 'Any'
 
-    if self_var:
-        self_arg = '%s, ' % self_var
-    else:
-        self_arg = ''
     if (name in ('__new__', '__init__') and name not in sigs and class_name and
             class_name in class_sigs):
-        sig = class_sigs[class_name]
+        inferred = [FunctionSig(name=name,
+                                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
+                                ret_type=ret_type)]  # type: Optional[List[FunctionSig]]
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
-        if inferred:
-            sig, ret_type = inferred
-        else:
+        if not inferred:
             if class_name and name not in sigs:
-                sig = infer_method_sig(name)
+                inferred = [FunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
             else:
-                sig = sigs.get(name, '(*args, **kwargs)')
-    # strip away parenthesis
-    sig = sig[1:-1]
-    if sig:
-        if self_var:
-            # remove annotation on self from signature if present
-            groups = sig.split(',', 1)
-            if groups[0] == self_var or groups[0].startswith(self_var + ':'):
-                self_arg = ''
-                sig = '{},{}'.format(self_var, groups[1]) if len(groups) > 1 else self_var
-    else:
-        self_arg = self_arg.replace(', ', '')
+                inferred = [FunctionSig(name=name,
+                                        args=infer_arg_sig_from_anon_docstring(
+                                            sigs.get(name, '(*args, **kwargs)')),
+                                        ret_type=ret_type)]
 
-    if sig:
-        sig_types = []
-        # convert signature in form of "self: TestClass, arg0: str" to
-        # list [[self, TestClass], [arg0, str]]
-        for arg in sig.split(','):
-            arg_type = arg.split(':', 1)
-            if len(arg_type) == 1:
-                # there is no type provided in docstring
-                sig_types.append(arg_type[0].strip())
-            else:
-                arg_type_name = strip_or_import(arg_type[1].strip(), module, imports)
-                sig_types.append('%s: %s' % (arg_type[0].strip(), arg_type_name))
-        sig = ", ".join(sig_types)
+    is_overloaded = len(inferred) > 1 if inferred else False
+    if is_overloaded:
+        imports.append('from typing import overload')
+    if inferred:
+        for signature in inferred:
+            sig = []
+            for arg in signature.args:
+                if arg.name == self_var:
+                    arg_def = self_var
+                else:
+                    arg_def = arg.name
+                    if arg_def == 'None':
+                        arg_def = '_none'  # None is not a valid argument name
 
-    ret_type = strip_or_import(ret_type, module, imports)
-    output.append('def %s(%s%s) -> %s: ...' % (name, self_arg, sig, ret_type))
+                    if arg.type:
+                        arg_def += ": " + strip_or_import(arg.type, module, imports)
+
+                    if arg.default:
+                        arg_def += " = ..."
+
+                sig.append(arg_def)
+
+            if is_overloaded:
+                output.append('@overload')
+            output.append('def {function}({args}) -> {ret}: ...'.format(
+                function=name,
+                args=", ".join(sig),
+                ret=strip_or_import(signature.ret_type, module, imports)
+            ))
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
-    """
-    Strips unnecessary module names from typ.
+    """Strips unnecessary module names from typ.
 
-    If typ represents a type that is inside module or is a type comming from builtins, remove
-    module declaration from it
+    If typ represents a type that is inside module or is a type coming from builtins, remove
+    module declaration from it. Return stripped name of the type.
 
-    :param typ: name of the type
-    :param module: in which this type is used
-    :param imports: list of import statements. May be modified during the call
-    :return: stripped name of the type
+    Arguments:
+        typ: name of the type
+        module: in which this type is used
+        imports: list of import statements (may be modified during the call)
     """
-    arg_type = typ
-    if module and typ.startswith(module.__name__):
-        arg_type = typ[len(module.__name__) + 1:]
+    stripped_type = typ
+    if any(c in typ for c in '[,'):
+        for subtyp in re.split(r'[\[,\]]', typ):
+            strip_or_import(subtyp.strip(), module, imports)
+        if module:
+            stripped_type = re.sub(
+                r'(^|[\[, ]+)' + re.escape(module.__name__ + '.'),
+                r'\1',
+                typ,
+            )
+    elif module and typ.startswith(module.__name__ + '.'):
+        stripped_type = typ[len(module.__name__) + 1:]
     elif '.' in typ:
-        arg_module = arg_type[:arg_type.rindex('.')]
+        arg_module = typ[:typ.rindex('.')]
         if arg_module == 'builtins':
-            arg_type = arg_type[len('builtins') + 1:]
+            stripped_type = typ[len('builtins') + 1:]
         else:
             imports.append('import %s' % (arg_module,))
-    return arg_type
+    return stripped_type
 
 
 def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool) -> None:
-    docstr = getattr(obj, '__doc__', None)
-    inferred = infer_prop_type_from_docstring(docstr)
+    """Generate property stub using introspection of 'obj'.
+
+    Try to infer type from docstring, append resulting lines to 'output'.
+    """
+    def infer_prop_type(docstr: Optional[str]) -> Optional[str]:
+        """Infer property type from docstring or docstring signature."""
+        if docstr is not None:
+            inferred = infer_ret_type_sig_from_anon_docstring(docstr)
+            if not inferred:
+                inferred = infer_prop_type_from_docstring(docstr)
+            return inferred
+        else:
+            return None
+
+    inferred = infer_prop_type(getattr(obj, '__doc__', None))
+    if not inferred:
+        fget = getattr(obj, 'fget', None)
+        inferred = infer_prop_type(getattr(fget, '__doc__', None))
     if not inferred:
         inferred = 'Any'
 
@@ -212,12 +268,16 @@ def generate_c_type_stub(module: ModuleType,
                          obj: type,
                          output: List[str],
                          imports: List[str],
-                         sigs: Dict[str, str] = {},
-                         class_sigs: Dict[str, str] = {},
-                         ) -> None:
+                         sigs: Optional[Dict[str, str]] = None,
+                         class_sigs: Optional[Dict[str, str]] = None) -> None:
+    """Generate stub for a single class using runtime introspection.
+
+    The result lines will be appended to 'output'. If necessary, any
+    required names will be added to 'imports'.
+    """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
+    obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]  # noqa
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods = []  # type: List[str]
     properties = []  # type: List[str]
@@ -226,11 +286,6 @@ def generate_c_type_stub(module: ModuleType,
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
             if not is_skipped_attribute(attr):
-                if is_c_classmethod(value):
-                    methods.append('@classmethod')
-                    self_var = 'cls'
-                else:
-                    self_var = 'self'
                 if attr == '__new__':
                     # TODO: We should support __new__.
                     if '__init__' in obj_dict:
@@ -239,6 +294,11 @@ def generate_c_type_stub(module: ModuleType,
                         # better signature than __init__() ?
                         continue
                     attr = '__init__'
+                if is_c_classmethod(value):
+                    methods.append('@classmethod')
+                    self_var = 'cls'
+                else:
+                    self_var = 'self'
                 generate_c_function_stub(module, attr, value, methods, imports=imports,
                                          self_var=self_var, sigs=sigs, class_name=class_name,
                                          class_sigs=class_sigs)
@@ -270,7 +330,7 @@ def generate_c_type_stub(module: ModuleType,
     if bases:
         bases_str = '(%s)' % ', '.join(
             strip_or_import(
-                '%s.%s' % (base.__module__, base.__name__),
+                get_type_fullname(base),
                 module,
                 imports
             ) for base in bases
@@ -289,12 +349,20 @@ def generate_c_type_stub(module: ModuleType,
             output.append('    %s' % prop)
 
 
+def get_type_fullname(typ: type) -> str:
+    return '%s.%s' % (typ.__module__, typ.__name__)
+
+
 def method_name_sort_key(name: str) -> Tuple[int, str]:
+    """Sort methods in classes in a typical order.
+
+    I.e.: constructor, normal methods, special methods.
+    """
     if name in ('__new__', '__init__'):
-        return (0, name)
+        return 0, name
     if name.startswith('__') and name.endswith('__'):
-        return (2, name)
-    return (1, name)
+        return 2, name
+    return 1, name
 
 
 def is_skipped_attribute(attr: str) -> bool:
@@ -307,29 +375,53 @@ def is_skipped_attribute(attr: str) -> bool:
                     '__weakref__')  # For pickling
 
 
-def infer_method_sig(name: str) -> str:
+def infer_method_sig(name: str) -> List[ArgSig]:
+    args = None  # type: Optional[List[ArgSig]]
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
         if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',
-                    'int', 'float', 'trunc', 'complex', 'bool'):
-            return '()'
-        if name == 'getitem':
-            return '(index)'
-        if name == 'setitem':
-            return '(index, object)'
-        if name in ('delattr', 'getattr'):
-            return '(name)'
-        if name == 'setattr':
-            return '(name, value)'
-        if name == 'getstate':
-            return '()'
-        if name == 'setstate':
-            return '(state)'
-        if name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
-                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
-                    'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
-                    'divmod', 'rdivmod', 'pow', 'rpow'):
-            return '(other)'
-        if name in ('neg', 'pos'):
-            return '()'
-    return '(*args, **kwargs)'
+                    'int', 'float', 'trunc', 'complex', 'bool', 'abs', 'bytes', 'dir', 'len',
+                    'reversed', 'round', 'index', 'enter'):
+            args = []
+        elif name == 'getitem':
+            args = [ArgSig(name='index')]
+        elif name == 'setitem':
+            args = [ArgSig(name='index'),
+                    ArgSig(name='object')]
+        elif name in ('delattr', 'getattr'):
+            args = [ArgSig(name='name')]
+        elif name == 'setattr':
+            args = [ArgSig(name='name'),
+                    ArgSig(name='value')]
+        elif name == 'getstate':
+            args = []
+        elif name == 'setstate':
+            args = [ArgSig(name='state')]
+        elif name in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
+                      'add', 'radd', 'sub', 'rsub', 'mul', 'rmul',
+                      'mod', 'rmod', 'floordiv', 'rfloordiv', 'truediv', 'rtruediv',
+                      'divmod', 'rdivmod', 'pow', 'rpow',
+                      'xor', 'rxor', 'or', 'ror', 'and', 'rand', 'lshift', 'rlshift',
+                      'rshift', 'rrshift',
+                      'contains', 'delitem',
+                      'iadd', 'iand', 'ifloordiv', 'ilshift', 'imod', 'imul', 'ior',
+                      'ipow', 'irshift', 'isub', 'itruediv', 'ixor'):
+            args = [ArgSig(name='other')]
+        elif name in ('neg', 'pos', 'invert'):
+            args = []
+        elif name == 'get':
+            args = [ArgSig(name='instance'),
+                    ArgSig(name='owner')]
+        elif name == 'set':
+            args = [ArgSig(name='instance'),
+                    ArgSig(name='value')]
+        elif name == 'reduce_ex':
+            args = [ArgSig(name='protocol')]
+        elif name == 'exit':
+            args = [ArgSig(name='type'),
+                    ArgSig(name='value'),
+                    ArgSig(name='traceback')]
+    if args is None:
+        args = [ArgSig(name='*args'),
+                ArgSig(name='**kwargs')]
+    return [ArgSig(name='self')] + args

@@ -19,7 +19,10 @@ o = [object()]
 if int():
     i = f(1)
     s = f('')
-    o = f(1) # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]")
+    o = f(1) \
+      # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[object]") \
+      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
@@ -175,20 +178,37 @@ def f(x: T) -> T:
 [out]
 
 [case testIsinstanceWithUserDefinedTypeAndTypeVarValues]
+# flags: --warn-unreachable
 from typing import TypeVar
 class A: pass
 class B: pass
-T = TypeVar('T', A, B)
-def f(x: T) -> None:
+T1 = TypeVar('T1', A, B)
+def f1(x: T1) -> None:
     y = x
     if isinstance(x, A):
-        # This is only checked when x is A, since A and B are not considered overlapping.
         x = y
-        x = A()
+        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     else:
         x = B()
         x = y
         x.foo() # E: "B" has no attribute "foo"
+
+class C:
+    field: int
+class D:
+    field: str
+T2 = TypeVar('T2', C, D)
+def f2(x: T2) -> None:
+    y = x
+    if isinstance(x, C):
+        # C and D are non-overlapping, so this branch is never checked
+        x = y
+        x = C()
+    else:
+        x = D()
+        x = y
+        x.foo() # E: "D" has no attribute "foo"
+
 S = TypeVar('S', int, str)
 def g(x: S) -> None:
     y = x
@@ -324,8 +344,8 @@ class C(Generic[X]):
         self.x = x  # type: X
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # E: Revealed type is 'builtins.int*'
-reveal_type(cs.x) # E: Revealed type is 'builtins.str*'
+reveal_type(ci.x) # N: Revealed type is 'builtins.int*'
+reveal_type(cs.x) # N: Revealed type is 'builtins.str*'
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference1]
 from typing import TypeVar, Generic
@@ -335,8 +355,8 @@ class C(Generic[X]):
         self.x = x # E: Need type annotation for 'x'
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # E: Revealed type is 'Any'
-reveal_type(cs.x) # E: Revealed type is 'Any'
+reveal_type(ci.x) # N: Revealed type is 'Any'
+reveal_type(cs.x) # N: Revealed type is 'Any'
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference2]
 from typing import TypeVar, Generic
@@ -344,11 +364,11 @@ X = TypeVar('X', int, str)
 class C(Generic[X]):
     def f(self, x: X) -> None:
         self.x = 1
-        reveal_type(self.x) # E: Revealed type is 'builtins.int'
+        reveal_type(self.x) # N: Revealed type is 'builtins.int'
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # E: Revealed type is 'builtins.int'
-reveal_type(cs.x) # E: Revealed type is 'builtins.int'
+reveal_type(ci.x) # N: Revealed type is 'builtins.int'
+reveal_type(cs.x) # N: Revealed type is 'builtins.int'
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference3]
 from typing import TypeVar, Generic
@@ -359,8 +379,8 @@ class C(Generic[X]):
         self.y = self.x # E: Need type annotation for 'y'
 ci: C[int]
 cs: C[str]
-reveal_type(ci.y) # E: Revealed type is 'Any'
-reveal_type(cs.y) # E: Revealed type is 'Any'
+reveal_type(ci.y) # N: Revealed type is 'Any'
+reveal_type(cs.y) # N: Revealed type is 'Any'
 
 [case testInferredAttributeInGenericClassBodyWithTypevarValues]
 from typing import TypeVar, Generic
@@ -462,9 +482,9 @@ class A:
         self.x = x # E: Need type annotation for 'x'
         self.y = [x] # E: Need type annotation for 'y'
         self.z = 1
-reveal_type(A().x)  # E: Revealed type is 'Any'
-reveal_type(A().y)  # E: Revealed type is 'Any'
-reveal_type(A().z)  # E: Revealed type is 'builtins.int'
+reveal_type(A().x)  # N: Revealed type is 'Any'
+reveal_type(A().y)  # N: Revealed type is 'Any'
+reveal_type(A().z)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/list.pyi]
 
 
@@ -484,7 +504,7 @@ class B(A[str]):
     def f(self) -> 'B': pass
 class C(A[str]):
     @abstractmethod
-    def f(self) -> int: # E: Return type of "f" incompatible with supertype "A"
+    def f(self) -> int: # E: Return type "int" of "f" incompatible with return type "A[str]" in supertype "A"
         pass
 [out]
 
@@ -578,11 +598,24 @@ class C:
 
 [builtins fixtures/list.pyi]
 
+[case testTypeVarWithAnyTypeBound]
+# flags: --follow-imports=skip
+from typing import Type, TypeVar
+from a import A
+T = TypeVar('T', bound=A)
+def method(t: Type[T]) -> None:
+    t.a
+[file a.py]
+class A:
+    a: int = 7
+[out]
+
 [case testParameterLessGenericAsRestriction]
 from typing import Sequence, Iterable, TypeVar
 S = TypeVar('S', Sequence, Iterable)
 def my_len(s: S) -> None: pass
 def crash() -> None: my_len((0,))
+[builtins fixtures/tuple.pyi]
 
 [case testReferenceToDecoratedFunctionAndTypeVarValues]
 from typing import TypeVar, Callable

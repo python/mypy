@@ -824,7 +824,7 @@ def main() -> None:
         loop = asyncio.SelectorEventLoop()  # type: ignore
         asyncio.set_event_loop(loop)
     else:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()  # type: ignore
 
     roots = {fix_url(root) for root in args.roots}
 

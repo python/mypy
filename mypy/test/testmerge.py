@@ -13,13 +13,12 @@ from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
     UNBOUND_IMPORTED
 )
-from mypy.options import Options
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
+from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages, parse_options
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
 
@@ -38,6 +37,7 @@ NOT_DUMPED_MODULES = (
     'contextlib',
     'sys',
     'mypy_extensions',
+    'typing_extensions',
     'enum',
 )
 
@@ -66,7 +66,7 @@ class ASTMergeSuite(DataSuite):
             kind = AST
 
         main_src = '\n'.join(testcase.input)
-        result = self.build(main_src)
+        result = self.build(main_src, testcase)
         assert result is not None, 'cases where CompileError occurred should not be run'
         result.manager.fscache.flush()
         fine_grained_manager = FineGrainedBuildManager(result)
@@ -101,11 +101,12 @@ class ASTMergeSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Optional[BuildResult]:
-        options = Options()
+    def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
+        options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
+        options.export_types = True
         options.show_traceback = True
         options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
@@ -180,7 +181,7 @@ class ASTMergeSuite(DataSuite):
         else:
             s = '? ({})'.format(type(node.node))
         if (isinstance(node.node, Var) and node.node.type and
-                not node.node.fullname().startswith('typing.')):
+                not node.node.fullname.startswith('typing.')):
             typestr = self.format_type(node.node.type)
             s += '({})'.format(typestr)
         return s
@@ -202,7 +203,7 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_typeinfo(self, info: TypeInfo) -> List[str]:
-        if info.fullname() == 'enum.Enum':
+        if info.fullname == 'enum.Enum':
             # Avoid noise
             return []
         s = info.dump(str_conv=self.str_conv,
@@ -216,7 +217,13 @@ class ASTMergeSuite(DataSuite):
         for module_id in sorted(manager.manager.modules):
             if not is_dumped_module(module_id):
                 continue
-            type_map = manager.graph[module_id].type_map()
+            all_types = manager.manager.all_types
+            # Compute a module type map from the global type map
+            tree = manager.graph[module_id].tree
+            assert tree is not None
+            type_map = {node: all_types[node]
+                        for node in get_subexpressions(tree)
+                        if node in all_types}
             if type_map:
                 a.append('## {}'.format(module_id))
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),

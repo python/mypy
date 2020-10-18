@@ -21,12 +21,11 @@ print(list(reversed([1,2,3])))
 print(list(reversed('abc')))
 print(list(reversed(A())))
 [out]
--- Duplicate [ at line beginning.
-[[4, 3, 2, 1, 0]
-[[3, 2, 1]
-[['c', 'b', 'a']
-[['f', 'o', 'o']
--- ]]]]]
+-- Escape bracket at line beginning
+\[4, 3, 2, 1, 0]
+\[3, 2, 1]
+\['c', 'b', 'a']
+\['f', 'o', 'o']
 
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
@@ -90,8 +89,7 @@ x2
 import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
-[[1, 2, 3, 4]
--- ]
+\[1, 2, 3, 4]
 
 [case testInheritedClassAttribute]
 import typing
@@ -121,11 +119,12 @@ math
 
 [case testSpecialAttributes]
 import typing
-class A: pass
-print(object().__doc__)
+class A:
+    """A docstring!"""
+print(A().__doc__)
 print(A().__class__)
 [out]
-The most base type
+A docstring!
 <class '__main__.A'>
 
 [case testFunctionAttributes]
@@ -242,6 +241,7 @@ import typing
 cast(int, 2)
 [out]
 _program.py:2: error: Name 'cast' is not defined
+_program.py:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
 
 [case testBinaryIOType]
 from typing import BinaryIO
@@ -281,23 +281,46 @@ reveal_type(open('x', 'rb'))
 mode = 'rb'
 reveal_type(open('x', mode))
 [out]
-_program.py:1: error: Revealed type is 'typing.TextIO'
-_program.py:2: error: Revealed type is 'typing.TextIO'
-_program.py:3: error: Revealed type is 'typing.BinaryIO'
-_program.py:5: error: Revealed type is 'typing.IO[Any]'
+_program.py:1: note: Revealed type is 'typing.TextIO'
+_program.py:2: note: Revealed type is 'typing.TextIO'
+_program.py:3: note: Revealed type is 'typing.BinaryIO'
+_program.py:5: note: Revealed type is 'typing.IO[Any]'
 
 [case testOpenReturnTypeInferenceSpecialCases]
-reveal_type(open())
 reveal_type(open(mode='rb', file='x'))
 reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: Revealed type is 'typing.TextIO'
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
-_testOpenReturnTypeInferenceSpecialCases.py:2: error: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:3: error: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:5: error: Revealed type is 'typing.IO[Any]'
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
+_testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInference]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open())
+reveal_type(p.open('r'))
+reveal_type(p.open('rb'))
+mode = 'rb'
+reveal_type(p.open(mode))
+[out]
+_program.py:3: note: Revealed type is 'typing.TextIO'
+_program.py:4: note: Revealed type is 'typing.TextIO'
+_program.py:5: note: Revealed type is 'typing.BinaryIO'
+_program.py:7: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInferenceSpecialCases]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open(mode='rb', errors='replace'))
+reveal_type(p.open(errors='replace', mode='rb'))
+mode = 'rb'
+reveal_type(p.open(mode=mode, errors='replace'))
+[out]
+_program.py:3: note: Revealed type is 'typing.BinaryIO'
+_program.py:4: note: Revealed type is 'typing.BinaryIO'
+_program.py:6: note: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -599,8 +622,7 @@ f(tuple())
 [out]
 ()
 
-[case testMapWithLambdaSpecialCase-skip]
-# TODO: Fix this; this was broken at some point but not sure why.
+[case testMapWithLambdaSpecialCase]
 from typing import List, Iterator
 a = [[1], [3]]
 b = map(lambda y: y[0], a)
@@ -691,7 +713,7 @@ _program.py:6: error: Incompatible types in assignment (expression has type "str
 [case testSuperNew]
 from typing import Dict, Any
 class MyType(type):
-    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> type:
+    def __new__(cls, name: str, bases: tuple, namespace: Dict[str, Any]) -> Any:
         return super().__new__(cls, name + 'x', bases, namespace)
 class A(metaclass=MyType): pass
 print(type(A()).__name__)
@@ -772,14 +794,20 @@ n = 4
 t = ('',) * n
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
 t = n * ('',)
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -872,13 +900,13 @@ o6 = t.Deque[int]()
 reveal_type(o6)
 
 [out]
-_testCollectionsAliases.py:5: error: Revealed type is 'collections.Counter[builtins.int]'
+_testCollectionsAliases.py:5: note: Revealed type is 'collections.Counter[builtins.int]'
 _testCollectionsAliases.py:6: error: Invalid index type "str" for "Counter[int]"; expected type "int"
-_testCollectionsAliases.py:9: error: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
-_testCollectionsAliases.py:12: error: Revealed type is 'collections.deque[builtins.int]'
-_testCollectionsAliases.py:15: error: Revealed type is 'collections.Counter[builtins.int*]'
-_testCollectionsAliases.py:18: error: Revealed type is 'collections.ChainMap[builtins.int*, builtins.str*]'
-_testCollectionsAliases.py:21: error: Revealed type is 'collections.deque[builtins.int*]'
+_testCollectionsAliases.py:9: note: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
+_testCollectionsAliases.py:12: note: Revealed type is 'collections.deque[builtins.int]'
+_testCollectionsAliases.py:15: note: Revealed type is 'collections.Counter[builtins.int*]'
+_testCollectionsAliases.py:18: note: Revealed type is 'collections.ChainMap[builtins.int*, builtins.str*]'
+_testCollectionsAliases.py:21: note: Revealed type is 'collections.deque[builtins.int*]'
 
 [case testChainMapUnimported]
 ChainMap[int, str]()
@@ -894,8 +922,8 @@ collections.Deque()
 typing.deque()
 
 [out]
-_testDequeWrongCase.py:4: error: Module has no attribute "Deque"
-_testDequeWrongCase.py:5: error: Module has no attribute "deque"
+_testDequeWrongCase.py:4: error: Module has no attribute "Deque"; maybe "deque"?
+_testDequeWrongCase.py:5: error: Module has no attribute "deque"; maybe "Deque"?
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
@@ -911,8 +939,10 @@ class A:
 _program.py:4: error: Argument 1 to "__setattr__" of "object" has incompatible type "int"; expected "str"
 
 [case testMetaclassAndSuper]
+from typing import Any
+
 class A(type):
-    def __new__(cls, name, bases, namespace) -> 'type':
+    def __new__(cls, name, bases, namespace) -> Any:
         return super().__new__(cls, '', (object,), {'x': 7})
 
 class B(metaclass=A):
@@ -1029,10 +1059,10 @@ reveal_type(g)
 with f('') as s:
     reveal_type(s)
 [out]
-_program.py:13: error: Revealed type is 'def (x: builtins.int) -> contextlib.GeneratorContextManager[builtins.str*]'
-_program.py:14: error: Revealed type is 'def (*x: builtins.str) -> contextlib.GeneratorContextManager[builtins.int*]'
+_program.py:13: note: Revealed type is 'def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str*]'
+_program.py:14: note: Revealed type is 'def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int*]'
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-_program.py:17: error: Revealed type is 'builtins.str*'
+_program.py:17: note: Revealed type is 'builtins.str*'
 
 [case testTypedDictGet]
 # Test that TypedDict get plugin works with typeshed stubs
@@ -1048,14 +1078,14 @@ d.get()
 s = ''
 reveal_type(d.get(s))
 [out]
-_testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
-_testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
+_testTypedDictGet.py:7: note: Revealed type is 'builtins.int'
+_testTypedDictGet.py:8: note: Revealed type is 'builtins.str'
 _testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, k: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object
-_testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
+_testTypedDictGet.py:10: note:     def get(self, key: str) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
+_testTypedDictGet.py:12: note: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]
 from mypy_extensions import TypedDict
@@ -1080,18 +1110,18 @@ Cell2 = TypedDict('Cell2', {'value': int}, total=False)
 c2 = Cell2()
 reveal_type(c2.pop('value'))
 [out]
-_testTypedDictMappingMethods.py:5: error: Revealed type is 'builtins.str*'
-_testTypedDictMappingMethods.py:6: error: Revealed type is 'typing.Iterator[builtins.str*]'
-_testTypedDictMappingMethods.py:7: error: Revealed type is 'builtins.int'
-_testTypedDictMappingMethods.py:8: error: Revealed type is 'builtins.bool'
-_testTypedDictMappingMethods.py:9: error: Revealed type is 'typing.AbstractSet[builtins.str*]'
-_testTypedDictMappingMethods.py:10: error: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.object*]]'
-_testTypedDictMappingMethods.py:11: error: Revealed type is 'typing.ValuesView[builtins.object*]'
-_testTypedDictMappingMethods.py:12: error: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
-_testTypedDictMappingMethods.py:13: error: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:5: note: Revealed type is 'builtins.str*'
+_testTypedDictMappingMethods.py:6: note: Revealed type is 'typing.Iterator[builtins.str*]'
+_testTypedDictMappingMethods.py:7: note: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:8: note: Revealed type is 'builtins.bool'
+_testTypedDictMappingMethods.py:9: note: Revealed type is 'typing.KeysView[builtins.str]'
+_testTypedDictMappingMethods.py:10: note: Revealed type is 'typing.ItemsView[builtins.str, builtins.object]'
+_testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[builtins.object]'
+_testTypedDictMappingMethods.py:12: note: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
+_testTypedDictMappingMethods.py:13: note: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key 'invalid'
 _testTypedDictMappingMethods.py:16: error: Key 'value' of TypedDict "Cell" cannot be deleted
-_testTypedDictMappingMethods.py:21: error: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:21: note: Revealed type is 'builtins.int'
 
 [case testCrashOnComplexCheckWithNamedTupleNext]
 from typing import NamedTuple
@@ -1134,9 +1164,9 @@ async def main() -> None:
     reveal_type(a_y)
 reveal_type(asyncio.gather(*[asyncio.sleep(1), asyncio.sleep(1)]))
 [out]
-_testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
-_testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'
-_testAsyncioGatherPreciseType.py:11: error: Revealed type is 'asyncio.futures.Future[builtins.tuple[Any]]'
+_testAsyncioGatherPreciseType.py:9: note: Revealed type is 'builtins.str'
+_testAsyncioGatherPreciseType.py:10: note: Revealed type is 'builtins.str'
+_testAsyncioGatherPreciseType.py:11: note: Revealed type is 'asyncio.futures.Future[builtins.list[Any]]'
 
 [case testMultipleInheritanceWorksWithTupleTypeGeneric]
 from typing import SupportsAbs, NamedTuple
@@ -1167,12 +1197,12 @@ for a, b in x.items():
     reveal_type(a)
     reveal_type(b)
 [out]
-_testNoCrashOnGenericUnionUnpacking.py:6: error: Revealed type is 'builtins.str'
-_testNoCrashOnGenericUnionUnpacking.py:7: error: Revealed type is 'builtins.str'
-_testNoCrashOnGenericUnionUnpacking.py:10: error: Revealed type is 'Union[builtins.str, builtins.int]'
-_testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builtins.str, builtins.int]'
-_testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
-_testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
+_testNoCrashOnGenericUnionUnpacking.py:6: note: Revealed type is 'builtins.str'
+_testNoCrashOnGenericUnionUnpacking.py:7: note: Revealed type is 'builtins.str'
+_testNoCrashOnGenericUnionUnpacking.py:10: note: Revealed type is 'Union[builtins.str, builtins.int]'
+_testNoCrashOnGenericUnionUnpacking.py:11: note: Revealed type is 'Union[builtins.str, builtins.int]'
+_testNoCrashOnGenericUnionUnpacking.py:15: note: Revealed type is 'Union[builtins.int*, builtins.str*]'
+_testNoCrashOnGenericUnionUnpacking.py:16: note: Revealed type is 'Union[builtins.int*, builtins.str*]'
 
 [case testMetaclassOpAccess]
 from typing import Type
@@ -1198,8 +1228,8 @@ other = 4 + get_c_type() + 5
 reveal_type(res)
 reveal_type(other)
 [out]
-_testMetaclassOpAccess.py:21: error: Revealed type is 'Type[_testMetaclassOpAccess.A]'
-_testMetaclassOpAccess.py:22: error: Revealed type is 'Type[_testMetaclassOpAccess.C]'
+_testMetaclassOpAccess.py:21: note: Revealed type is 'Type[_testMetaclassOpAccess.A]'
+_testMetaclassOpAccess.py:22: note: Revealed type is 'Type[_testMetaclassOpAccess.C]'
 
 [case testMetaclassOpAccessUnion]
 from typing import Type, Union
@@ -1219,7 +1249,7 @@ bar: Type[Union[A, B]]
 res = bar * 4
 reveal_type(res)
 [out]
-_testMetaclassOpAccessUnion.py:16: error: Revealed type is 'Union[builtins.str, builtins.int]'
+_testMetaclassOpAccessUnion.py:16: note: Revealed type is 'Union[builtins.str, builtins.int]'
 
 [case testMetaclassOpAccessAny]
 from typing import Type
@@ -1228,7 +1258,7 @@ bar: Type[C]
 
 bar * 4 + bar + 3  # should not produce more errors
 [out]
-_testMetaclassOpAccessAny.py:2: error: Cannot find module named 'nonexistent'
+_testMetaclassOpAccessAny.py:2: error: Cannot find implementation or library stub for module named 'nonexistent'
 _testMetaclassOpAccessAny.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testEnumIterationAndPreciseElementType]
@@ -1240,8 +1270,8 @@ class E(Enum):
 for e in E:
     reveal_type(e)
 [out]
-_testEnumIterationAndPreciseElementType.py:5: error: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
-_testEnumIterationAndPreciseElementType.py:7: error: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
+_testEnumIterationAndPreciseElementType.py:5: note: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
+_testEnumIterationAndPreciseElementType.py:7: note: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
 
 [case testEnumIterable]
 from enum import Enum
@@ -1265,7 +1295,7 @@ f(N)
 g(N)
 reveal_type(list(N))
 [out]
-_testIntEnumIterable.py:11: error: Revealed type is 'builtins.list[_testIntEnumIterable.N*]'
+_testIntEnumIterable.py:11: note: Revealed type is 'builtins.list[_testIntEnumIterable.N*]'
 
 [case testDerivedEnumIterable]
 from enum import Enum
@@ -1325,7 +1355,7 @@ def print_custom_table() -> None:
     for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
         reveal_type(row)
 [out]
-_testLoadsOfOverloads.py:24: error: Revealed type is 'builtins.str*'
+_testLoadsOfOverloads.py:24: note: Revealed type is 'builtins.str*'
 
 [case testReduceWithAnyInstance]
 from typing import Iterable
@@ -1357,4 +1387,123 @@ X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 
 [out]
-_testNamedTupleNew.py:12: error: Revealed type is 'Tuple[builtins.int, fallback=_testNamedTupleNew.Child]'
+_testNamedTupleNew.py:12: note: Revealed type is 'Tuple[builtins.int, fallback=_testNamedTupleNew.Child]'
+
+[case testNewAnalyzerBasicTypeshed_newsemanal]
+from typing import Dict, List, Tuple
+
+x: Dict[str, List[int]]
+reveal_type(x['test'][0])
+[out]
+_testNewAnalyzerBasicTypeshed_newsemanal.py:4: note: Revealed type is 'builtins.int*'
+
+[case testNewAnalyzerTypedDictInStub_newsemanal]
+import stub
+reveal_type(stub.thing)
+
+[file stub.pyi]
+from typing_extensions import TypedDict
+
+class StuffDict(TypedDict):
+    foo: str
+    bar: int
+
+def thing(stuff: StuffDict) -> int: ...
+
+[out]
+_testNewAnalyzerTypedDictInStub_newsemanal.py:2: note: Revealed type is 'def (stuff: TypedDict('stub.StuffDict', {'foo': builtins.str, 'bar': builtins.int})) -> builtins.int'
+
+[case testStrictEqualityWhitelist]
+# mypy: strict-equality
+{1} == frozenset({1})
+frozenset({1}) == {1}
+
+frozenset({1}) == [1]  # Error
+
+{1: 2}.keys() == {1}
+{1: 2}.keys() == frozenset({1})
+{1: 2}.items() == {(1, 2)}
+
+{1: 2}.keys() == {'no'}  # Error
+{1: 2}.values() == {2}  # Error
+{1: 2}.keys() == [1]  # Error
+[out]
+_testStrictEqualityWhitelist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
+_testStrictEqualityWhitelist.py:11: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "Set[str]")
+_testStrictEqualityWhitelist.py:12: error: Non-overlapping equality check (left operand type: "ValuesView[int]", right operand type: "Set[int]")
+_testStrictEqualityWhitelist.py:13: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "List[int]")
+
+[case testUnreachableWithStdlibContextManagers]
+# mypy: warn-unreachable, strict-optional
+
+from contextlib import suppress
+
+# This test overlaps with some of the warn-unreachable tests in check-unreachable-code,
+# but 'open(...)' is a very common function so we want to make sure we don't regress
+# against it specifically
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# contextlib.suppress is less common, but it's a fairly prominent example of an
+# exception-suppressing context manager, so it'd be good to double-check.
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagers.py:11: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagers.py:15: error: Missing return statement
+
+[case testUnreachableWithStdlibContextManagersNoStrictOptional]
+# mypy: warn-unreachable, no-strict-optional
+
+from contextlib import suppress
+
+# When strict-optional is disabled, 'open' should still behave in the same way as before
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# ...but unfortunately, we can't
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
+
+[case testIsInstanceAdHocIntersectionWithStrAndBytes]
+# mypy: warn-unreachable
+x: str
+if isinstance(x, bytes):
+    reveal_type(x)
+y: str
+if isinstance(x, int):
+    reveal_type(x)
+[out]
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
+
+[case testAsyncioFutureWait]
+# mypy: strict-optional
+from asyncio import Future, wait
+from typing import List
+
+async def foo() -> None:
+    f = []  # type: List[Future[None]]
+    await wait(f)
+
+[case testShadowTypingModule]
+1 + ''
+[file typing.py]
+x = 0
+1 + ''
+[out]
+mypy: "tmp/typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported

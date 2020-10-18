@@ -1,25 +1,26 @@
 import os
 import re
-import subprocess
 import sys
 import time
 import shutil
+import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
 
 from mypy import defaults
-from mypy.test.config import test_temp_dir
 import mypy.api as api
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
-from unittest import TestCase as Suite
+from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename
+from mypy.test.config import test_temp_dir
+import mypy.version
 
 skip = pytest.mark.skip
 
@@ -43,10 +44,15 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
                                msg: str) -> None:
     """Assert that two string arrays are equal.
 
+    We consider "can't" and "cannot" equivalent, by replacing the
+    former with the latter before comparing.
+
     Display any differences in a human-readable form.
     """
 
     actual = clean_up(actual)
+    actual = [line.replace("can't", "cannot") for line in actual]
+    expected = [line.replace("can't", "cannot") for line in expected]
 
     if actual != expected:
         num_skip_start = num_skipped_prefix_lines(expected, actual)
@@ -93,14 +99,14 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
                 if len(a) > width:
                     sys.stderr.write('...')
             sys.stderr.write('\n')
-        if actual == []:
+        if not actual:
             sys.stderr.write('  (empty)\n')
         if num_skip_end > 0:
             sys.stderr.write('  ...\n')
 
         sys.stderr.write('\n')
 
-        if first_diff >= 0 and first_diff < len(actual) and (
+        if 0 <= first_diff < len(actual) and (
                 len(expected[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT
                 or len(actual[first_diff]) >= MIN_LINE_LENGTH_FOR_ALIGNMENT):
             # Display message that helps visualize the differences between two
@@ -111,18 +117,30 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
 
 def assert_module_equivalence(name: str,
-                              expected: Optional[Iterable[str]], actual: Iterable[str]) -> None:
-    if expected is not None:
-        expected_normalized = sorted(expected)
-        actual_normalized = sorted(set(actual).difference({"__main__"}))
-        assert_string_arrays_equal(
-            expected_normalized,
-            actual_normalized,
-            ('Actual modules ({}) do not match expected modules ({}) '
-             'for "[{} ...]"').format(
-                 ', '.join(actual_normalized),
-                 ', '.join(expected_normalized),
-                 name))
+                              expected: Iterable[str], actual: Iterable[str]) -> None:
+    expected_normalized = sorted(expected)
+    actual_normalized = sorted(set(actual).difference({"__main__"}))
+    assert_string_arrays_equal(
+        expected_normalized,
+        actual_normalized,
+        ('Actual modules ({}) do not match expected modules ({}) '
+         'for "[{} ...]"').format(
+             ', '.join(actual_normalized),
+             ', '.join(expected_normalized),
+             name))
+
+
+def assert_target_equivalence(name: str,
+                              expected: List[str], actual: List[str]) -> None:
+    """Compare actual and expected targets (order sensitive)."""
+    assert_string_arrays_equal(
+        expected,
+        actual,
+        ('Actual targets ({}) do not match expected targets ({}) '
+         'for "[{} ...]"').format(
+             ', '.join(actual),
+             ', '.join(expected),
+             name))
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
@@ -215,6 +233,8 @@ def clean_up(a: List[str]) -> List[str]:
     remove trailing carriage returns.
     """
     res = []
+    pwd = os.getcwd()
+    driver = pwd + '/driver.py'
     for s in a:
         prefix = os.sep
         ss = s
@@ -223,8 +243,26 @@ def clean_up(a: List[str]) -> List[str]:
                 ss = ss.replace(p, '')
         # Ignore spaces at end of line.
         ss = re.sub(' +$', '', ss)
+        # Remove pwd from driver.py's path
+        ss = ss.replace(driver, 'driver.py')
         res.append(re.sub('\\r$', '', ss))
     return res
+
+
+@contextlib.contextmanager
+def local_sys_path_set() -> Iterator[None]:
+    """Temporary insert current directory into sys.path.
+
+    This can be used by test cases that do runtime imports, for example
+    by the stubgen tests.
+    """
+    old_sys_path = sys.path[:]
+    if not ('' in sys.path or '.' in sys.path):
+        sys.path.insert(0, '')
+    try:
+        yield
+    finally:
+        sys.path = old_sys_path
 
 
 def num_skipped_prefix_lines(a1: List[str], a2: List[str]) -> int:
@@ -341,7 +379,6 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         if flags2:
             flags = flags2
 
-    flag_list = None
     if flags:
         flag_list = flags.group(1).split()
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
@@ -350,13 +387,14 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
+        flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
+        options.error_summary = False
 
-    # Allow custom python version to override testcase_pyversion
-    if (not flag_list or
-            all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
+    # Allow custom python version to override testcase_pyversion.
+    if all(flag.split('=')[0] not in ['--python-version', '-2', '--py2'] for flag in flag_list):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     if testcase.config.getoption('--mypy-verbose'):
@@ -374,29 +412,11 @@ def split_lines(*streams: bytes) -> List[str]:
     ]
 
 
-def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
-                timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
-    """A poor man's subprocess.run() for 3.4 compatibility."""
-    process = subprocess.Popen(
-        cmdline,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=cwd,
-    )
-    try:
-        out, err = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        out = err = b''
-        process.kill()
-    return process.returncode, split_lines(out, err)
-
-
 def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
     # In some systems, mtime has a resolution of 1 second which can
     # cause annoying-to-debug issues when a file has the same size
     # after a change. We manually set the mtime to circumvent this.
-    # Note that we increment the old file's mtime, which guarentees a
+    # Note that we increment the old file's mtime, which guarantees a
     # different value, rather than incrementing the mtime after the
     # copy, which could leave the mtime unchanged if the old file had
     # a similarly fudged mtime.
@@ -409,3 +429,43 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
+
+
+def check_test_output_files(testcase: DataDrivenTestCase,
+                            step: int,
+                            strip_prefix: str = '') -> None:
+    for path, expected_content in testcase.output_files:
+        if path.startswith(strip_prefix):
+            path = path[len(strip_prefix):]
+        if not os.path.exists(path):
+            raise AssertionError(
+                'Expected file {} was not produced by test case{}'.format(
+                    path, ' on step %d' % step if testcase.output2 else ''))
+        with open(path, 'r', encoding='utf8') as output_file:
+            actual_output_content = output_file.read().splitlines()
+        normalized_output = normalize_file_output(actual_output_content,
+                                                  os.path.abspath(test_temp_dir))
+        # We always normalize things like timestamp, but only handle operating-system
+        # specific things if requested.
+        if testcase.normalize_output:
+            if testcase.suite.native_sep and os.path.sep == '\\':
+                normalized_output = [fix_cobertura_filename(line)
+                                     for line in normalized_output]
+            normalized_output = normalize_error_messages(normalized_output)
+        assert_string_arrays_equal(expected_content.splitlines(), normalized_output,
+                                   'Output file {} did not match its expected output{}'.format(
+                                       path, ' on step %d' % step if testcase.output2 else ''))
+
+
+def normalize_file_output(content: List[str], current_abs_path: str) -> List[str]:
+    """Normalize file output for comparison."""
+    timestamp_regex = re.compile(r'\d{10}')
+    result = [x.replace(current_abs_path, '$PWD') for x in content]
+    version = mypy.version.__version__
+    result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
+    # We generate a new mypy.version when building mypy wheels that
+    # lacks base_version, so handle that case.
+    base_version = getattr(mypy.version, 'base_version', version)
+    result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
+    result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
+    return result

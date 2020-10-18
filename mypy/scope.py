@@ -30,7 +30,7 @@ class Scope:
         """Return the current target (non-class; for a class return enclosing module)."""
         assert self.module
         if self.function:
-            fullname = self.function.fullname()
+            fullname = self.function.fullname
             return fullname or ''
         return self.module
 
@@ -38,18 +38,18 @@ class Scope:
         """Return the current target (may be a class)."""
         assert self.module
         if self.function:
-            return self.function.fullname()
+            return self.function.fullname
         if self.classes:
-            return self.classes[-1].fullname()
+            return self.classes[-1].fullname
         return self.module
 
     def current_type_name(self) -> Optional[str]:
         """Return the current type's short name if it exists"""
-        return self.classes[-1].name() if self.classes else None
+        return self.classes[-1].name if self.classes else None
 
     def current_function_name(self) -> Optional[str]:
         """Return the current function's short name if it exists"""
-        return self.function.name() if self.function else None
+        return self.function.name if self.function else None
 
     def enter_file(self, prefix: str) -> None:
         self.module = prefix
