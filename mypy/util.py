@@ -26,13 +26,6 @@ T = TypeVar('T')
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
-# This works in most default terminals works (because it is ANSI standard). The problem
-# this tries to solve is that although it is a basic ANSI "feature", terminfo files
-# for most default terminals don't have dim termcap entry, so curses doesn't report it.
-# Potentially, we can choose a grey color that would look good on both white and black
-# background, but it is not easy, and again most default terminals are 8-color, not 256-color,
-# so we can't get the color code from curses.
-
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
 
 # At least this number of columns will be shown on each side of
