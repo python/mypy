@@ -705,37 +705,25 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     n :: int
     r0 :: __main__.f_env
     r1, baz :: object
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6 :: bit
-    r7 :: int
-    r8, r9 :: object
-    r10, r11 :: int
+    r2 :: bit
+    r3 :: int
+    r4, r5 :: object
+    r6, r7 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.baz
     baz = r1
-    r3 = n & 1
-    r4 = r3 == 0
-    if r4 goto L1 else goto L2 :: bool
+    r2 = n == 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r5 = n == 0
-    r2 = r5
-    goto L3
-L2:
-    r6 = CPyTagged_IsEq_(n, 0)
-    r2 = r6
-L3:
-    if r2 goto L4 else goto L5 :: bool
-L4:
     return 0
-L5:
-    r7 = CPyTagged_Subtract(n, 2)
-    r8 = box(int, r7)
-    r9 = PyObject_CallFunctionObjArgs(baz, r8, 0)
-    r10 = unbox(int, r9)
-    r11 = CPyTagged_Add(n, r10)
-    return r11
+L2:
+    r3 = CPyTagged_Subtract(n, 2)
+    r4 = box(int, r3)
+    r5 = PyObject_CallFunctionObjArgs(baz, r4, 0)
+    r6 = unbox(int, r5)
+    r7 = CPyTagged_Add(n, r6)
+    return r7
 def f(a):
     a :: int
     r0 :: __main__.f_env
@@ -859,28 +847,16 @@ def baz(n: int) -> int:
 [out]
 def baz(n):
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bit
-    r5, r6, r7 :: int
+    r0 :: bit
+    r1, r2, r3 :: int
 L0:
-    r1 = n & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = n == 0
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r3 = n == 0
-    r0 = r3
-    goto L3
-L2:
-    r4 = CPyTagged_IsEq_(n, 0)
-    r0 = r4
-L3:
-    if r0 goto L4 else goto L5 :: bool
-L4:
     return 0
-L5:
-    r5 = CPyTagged_Subtract(n, 2)
-    r6 = baz(r5)
-    r7 = CPyTagged_Add(n, r6)
-    return r7
+L2:
+    r1 = CPyTagged_Subtract(n, 2)
+    r2 = baz(r1)
+    r3 = CPyTagged_Add(n, r2)
+    return r3
 
