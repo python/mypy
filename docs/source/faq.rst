@@ -198,14 +198,12 @@ the following aspects, among others:
   Python semantics, and mypy does not deal with accessing C library
   functionality.
   
-Doest it run on PyPy?
+Does it run on PyPy?
 *********************
 
-No it doesn't. MyPy relies on `typed-ast 
-<https://github.com/python/typed_ast>`_ and uses internal CPython API. 
-It might be possible once PyPy targets Python 3.8. See also this `comment 
-<https://github.com/python/typed_ast/issues/97#issuecomment-484337454>`_ 
-by Guido.
+No. MyPy relies on `typed-ast 
+<https://github.com/python/typed_ast>`_, which uses several APIs that
+PyPy does not support (including some internal CPython APIs).
 
 Mypy is a cool project. Can I help?
 ***********************************
