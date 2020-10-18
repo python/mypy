@@ -35,6 +35,7 @@ files = [
     'run-integers.test',
     'run-bools.test',
     'run-strings.test',
+    'run-bytes.test',
     'run-tuples.test',
     'run-lists.test',
     'run-dicts.test',
