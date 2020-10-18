@@ -2758,7 +2758,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
 
     # Note: Running this each time could be slow in the daemon. If it's a problem, we
     # can do more work to maintain this incrementally.
-    seen_files = {st.path: st for st in graph.values() if st.path}
+    seen_files = {os.path.abspath(st.path): st for st in graph.values() if st.path}
 
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
@@ -2806,26 +2806,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         st.suppress_dependency(dep)
                 else:
                     if newst.path:
-                        newst_path = newst.path
-                        seen_state = seen_files.get(newst_path)
+                        newst_path = os.path.abspath(newst.path)
 
-                        if seen_state is None:
-                            if os.path.isabs(newst_path):
-                                newst_path = os.path.relpath(newst_path)
-                            else:
-                                newst_path = os.path.abspath(newst_path)
-
-                            seen_state = seen_files.get(newst_path)
-
-                        if seen_state is not None:
+                        if newst_path in seen_files:
                             manager.errors.report(
                                 -1, 0,
                                 "Source file found twice under different module names: "
-                                "'{}' and '{}'".format(seen_state.id, newst.id),
+                                "'{}' and '{}'".format(seen_files[newst_path].id, newst.id),
                                 blocker=True)
                             manager.errors.raise_error()
 
-                        seen_files[newst.path] = newst
+                        seen_files[newst_path] = newst
 
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
