@@ -26,14 +26,6 @@ T = TypeVar('T')
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
-# This works in most default terminals works (because it is ANSI standard). The problem
-# this tries to solve is that although it is a basic ANSI "feature", terminfo files
-# for most default terminals don't have dim termcap entry, so curses doesn't report it.
-# Potentially, we can choose a grey color that would look good on both white and black
-# background, but it is not easy, and again most default terminals are 8-color, not 256-color,
-# so we can't get the color code from curses.
-PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
-
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
 
 # At least this number of columns will be shown on each side of
@@ -476,6 +468,13 @@ def hash_digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def parse_gray_color(cup: bytes) -> str:
+    """Reproduce a gray color in ANSI escape sequence"""
+    set_color = ''.join([cup[:-1].decode(), 'm'])
+    gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
+    return gray
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 
@@ -553,16 +552,15 @@ class FancyFormatter:
         bold = curses.tigetstr('bold')
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
-        if not (bold and under and set_color):
+        set_eseq = curses.tigetstr('cup')
+
+        if not (bold and under and set_color and set_eseq):
             return False
 
         self.NORMAL = curses.tigetstr('sgr0').decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
-        dim = curses.tigetstr('dim')
-        # TODO: more reliable way to get gray color good for both dark and light schemes.
-        self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
-
+        self.DIM = parse_gray_color(set_eseq)
         self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
