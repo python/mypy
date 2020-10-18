@@ -21,12 +21,11 @@ print(list(reversed([1,2,3])))
 print(list(reversed('abc')))
 print(list(reversed(A())))
 [out]
--- Duplicate [ at line beginning.
-[[4, 3, 2, 1, 0]
-[[3, 2, 1]
-[['c', 'b', 'a']
-[['f', 'o', 'o']
--- ]]]]]
+-- Escape bracket at line beginning
+\[4, 3, 2, 1, 0]
+\[3, 2, 1]
+\['c', 'b', 'a']
+\['f', 'o', 'o']
 
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
@@ -90,8 +89,7 @@ x2
 import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
-[[1, 2, 3, 4]
--- ]
+\[1, 2, 3, 4]
 
 [case testInheritedClassAttribute]
 import typing
@@ -121,11 +119,12 @@ math
 
 [case testSpecialAttributes]
 import typing
-class A: pass
-print(object().__doc__)
+class A:
+    """A docstring!"""
+print(A().__doc__)
 print(A().__class__)
 [out]
-The most base type
+A docstring!
 <class '__main__.A'>
 
 [case testFunctionAttributes]
@@ -288,17 +287,40 @@ _program.py:3: note: Revealed type is 'typing.BinaryIO'
 _program.py:5: note: Revealed type is 'typing.IO[Any]'
 
 [case testOpenReturnTypeInferenceSpecialCases]
-reveal_type(open())
 reveal_type(open(mode='rb', file='x'))
 reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.TextIO'
-_testOpenReturnTypeInferenceSpecialCases.py:1: error: Too few arguments for "open"
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.BinaryIO'
 _testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:3: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:5: note: Revealed type is 'typing.IO[Any]'
+_testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInference]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open())
+reveal_type(p.open('r'))
+reveal_type(p.open('rb'))
+mode = 'rb'
+reveal_type(p.open(mode))
+[out]
+_program.py:3: note: Revealed type is 'typing.TextIO'
+_program.py:4: note: Revealed type is 'typing.TextIO'
+_program.py:5: note: Revealed type is 'typing.BinaryIO'
+_program.py:7: note: Revealed type is 'typing.IO[Any]'
+
+[case testPathOpenReturnTypeInferenceSpecialCases]
+from pathlib import Path
+p = Path("x")
+reveal_type(p.open(mode='rb', errors='replace'))
+reveal_type(p.open(errors='replace', mode='rb'))
+mode = 'rb'
+reveal_type(p.open(mode=mode, errors='replace'))
+[out]
+_program.py:3: note: Revealed type is 'typing.BinaryIO'
+_program.py:4: note: Revealed type is 'typing.BinaryIO'
+_program.py:6: note: Revealed type is 'typing.IO[Any]'
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -600,8 +622,7 @@ f(tuple())
 [out]
 ()
 
-[case testMapWithLambdaSpecialCase-skip]
-# TODO: Fix this; this was broken at some point but not sure why.
+[case testMapWithLambdaSpecialCase]
 from typing import List, Iterator
 a = [[1], [3]]
 b = map(lambda y: y[0], a)
@@ -773,14 +794,20 @@ n = 4
 t = ('',) * n
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
 t = n * ('',)
 t + 1
 [out]
-_program.py:3: error: Unsupported operand types for + ("Tuple[str, ...]" and "int")
+_program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
+_program.py:3: note: Possible overload variants:
+_program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
+_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -895,8 +922,8 @@ collections.Deque()
 typing.deque()
 
 [out]
-_testDequeWrongCase.py:4: error: Module has no attribute "Deque"
-_testDequeWrongCase.py:5: error: Module has no attribute "deque"
+_testDequeWrongCase.py:4: error: Module has no attribute "Deque"; maybe "deque"?
+_testDequeWrongCase.py:5: error: Module has no attribute "deque"; maybe "Deque"?
 
 [case testDictUpdateInference]
 from typing import Dict, Optional
@@ -1056,8 +1083,8 @@ _testTypedDictGet.py:8: note: Revealed type is 'builtins.str'
 _testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, k: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object
+_testTypedDictGet.py:10: note:     def get(self, key: str) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
 _testTypedDictGet.py:12: note: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]
@@ -1087,9 +1114,9 @@ _testTypedDictMappingMethods.py:5: note: Revealed type is 'builtins.str*'
 _testTypedDictMappingMethods.py:6: note: Revealed type is 'typing.Iterator[builtins.str*]'
 _testTypedDictMappingMethods.py:7: note: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:8: note: Revealed type is 'builtins.bool'
-_testTypedDictMappingMethods.py:9: note: Revealed type is 'typing.AbstractSet[builtins.str*]'
-_testTypedDictMappingMethods.py:10: note: Revealed type is 'typing.AbstractSet[Tuple[builtins.str*, builtins.object*]]'
-_testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[builtins.object*]'
+_testTypedDictMappingMethods.py:9: note: Revealed type is 'typing.KeysView[builtins.str]'
+_testTypedDictMappingMethods.py:10: note: Revealed type is 'typing.ItemsView[builtins.str, builtins.object]'
+_testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[builtins.object]'
 _testTypedDictMappingMethods.py:12: note: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
 _testTypedDictMappingMethods.py:13: note: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key 'invalid'
@@ -1139,7 +1166,7 @@ reveal_type(asyncio.gather(*[asyncio.sleep(1), asyncio.sleep(1)]))
 [out]
 _testAsyncioGatherPreciseType.py:9: note: Revealed type is 'builtins.str'
 _testAsyncioGatherPreciseType.py:10: note: Revealed type is 'builtins.str'
-_testAsyncioGatherPreciseType.py:11: note: Revealed type is 'asyncio.futures.Future[builtins.tuple[Any]]'
+_testAsyncioGatherPreciseType.py:11: note: Revealed type is 'asyncio.futures.Future[builtins.list[Any]]'
 
 [case testMultipleInheritanceWorksWithTupleTypeGeneric]
 from typing import SupportsAbs, NamedTuple
@@ -1231,7 +1258,7 @@ bar: Type[C]
 
 bar * 4 + bar + 3  # should not produce more errors
 [out]
-_testMetaclassOpAccessAny.py:2: error: Cannot find module named 'nonexistent'
+_testMetaclassOpAccessAny.py:2: error: Cannot find implementation or library stub for module named 'nonexistent'
 _testMetaclassOpAccessAny.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testEnumIterationAndPreciseElementType]
@@ -1385,3 +1412,98 @@ def thing(stuff: StuffDict) -> int: ...
 
 [out]
 _testNewAnalyzerTypedDictInStub_newsemanal.py:2: note: Revealed type is 'def (stuff: TypedDict('stub.StuffDict', {'foo': builtins.str, 'bar': builtins.int})) -> builtins.int'
+
+[case testStrictEqualityWhitelist]
+# mypy: strict-equality
+{1} == frozenset({1})
+frozenset({1}) == {1}
+
+frozenset({1}) == [1]  # Error
+
+{1: 2}.keys() == {1}
+{1: 2}.keys() == frozenset({1})
+{1: 2}.items() == {(1, 2)}
+
+{1: 2}.keys() == {'no'}  # Error
+{1: 2}.values() == {2}  # Error
+{1: 2}.keys() == [1]  # Error
+[out]
+_testStrictEqualityWhitelist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
+_testStrictEqualityWhitelist.py:11: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "Set[str]")
+_testStrictEqualityWhitelist.py:12: error: Non-overlapping equality check (left operand type: "ValuesView[int]", right operand type: "Set[int]")
+_testStrictEqualityWhitelist.py:13: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "List[int]")
+
+[case testUnreachableWithStdlibContextManagers]
+# mypy: warn-unreachable, strict-optional
+
+from contextlib import suppress
+
+# This test overlaps with some of the warn-unreachable tests in check-unreachable-code,
+# but 'open(...)' is a very common function so we want to make sure we don't regress
+# against it specifically
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# contextlib.suppress is less common, but it's a fairly prominent example of an
+# exception-suppressing context manager, so it'd be good to double-check.
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagers.py:11: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagers.py:15: error: Missing return statement
+
+[case testUnreachableWithStdlibContextManagersNoStrictOptional]
+# mypy: warn-unreachable, no-strict-optional
+
+from contextlib import suppress
+
+# When strict-optional is disabled, 'open' should still behave in the same way as before
+def f_open() -> str:
+    with open("foo.txt", "r") as f:
+        return f.read()
+    print("noop")
+
+# ...but unfortunately, we can't
+def f_suppresses() -> int:
+    with suppress(Exception):
+        return 3
+    print("noop")
+[out]
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:9: error: Statement is unreachable
+_testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statement is unreachable
+
+[case testIsInstanceAdHocIntersectionWithStrAndBytes]
+# mypy: warn-unreachable
+x: str
+if isinstance(x, bytes):
+    reveal_type(x)
+y: str
+if isinstance(x, int):
+    reveal_type(x)
+[out]
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:6: error: Subclass of "str" and "int" cannot exist: would have incompatible method signatures
+_testIsInstanceAdHocIntersectionWithStrAndBytes.py:7: error: Statement is unreachable
+
+[case testAsyncioFutureWait]
+# mypy: strict-optional
+from asyncio import Future, wait
+from typing import List
+
+async def foo() -> None:
+    f = []  # type: List[Future[None]]
+    await wait(f)
+
+[case testShadowTypingModule]
+1 + ''
+[file typing.py]
+x = 0
+1 + ''
+[out]
+mypy: "tmp/typing.py" shadows library module "typing"
+note: A user-defined top-level module with name "typing" is not supported

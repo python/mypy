@@ -78,7 +78,7 @@ else:
     import pow123 # E
 [builtins fixtures/bool.pyi]
 [out]
-main:6: error: Cannot find module named 'pow123'
+main:6: error: Cannot find implementation or library stub for module named 'pow123'
 main:6: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMypyConditional]
@@ -96,8 +96,9 @@ if typing.TYPE_CHECKING:
     import pow123 # E
 else:
     import xyz753
+[typing fixtures/typing-medium.pyi]
 [out]
-main:3: error: Cannot find module named 'pow123'
+main:3: error: Cannot find implementation or library stub for module named 'pow123'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testTypeCheckingConditionalFromImport]
@@ -106,8 +107,9 @@ if TYPE_CHECKING:
     import pow123 # E
 else:
     import xyz753
+[typing fixtures/typing-medium.pyi]
 [out]
-main:3: error: Cannot find module named 'pow123'
+main:3: error: Cannot find implementation or library stub for module named 'pow123'
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testNegatedTypeCheckingConditional]
@@ -117,8 +119,9 @@ if not typing.TYPE_CHECKING:
 else:
     import xyz753
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
-main:5: error: Cannot find module named 'xyz753'
+main:5: error: Cannot find implementation or library stub for module named 'xyz753'
 main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testUndefinedTypeCheckingConditional]
@@ -129,7 +132,7 @@ else:
 [builtins fixtures/bool.pyi]
 [out]
 main:1: error: Name 'TYPE_CHECKING' is not defined
-main:4: error: Cannot find module named 'xyz753'
+main:4: error: Cannot find implementation or library stub for module named 'xyz753'
 main:4: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testConditionalClassDefPY3]
@@ -437,7 +440,7 @@ x = 1
 
 
 [case testSysPlatformInMethodImport2]
-# flags: --new-semantic-analyzer
+
 import sys
 class A:
     def foo(self) -> None:
@@ -618,6 +621,7 @@ if typing.TYPE_CHECKING:
 reveal_type(x)  # N: Revealed type is '__main__.B'
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableWhenSuperclassIsAny]
 # flags: --strict-optional
@@ -662,20 +666,20 @@ class Child(Parent):
 
 [case testUnreachableAfterToplevelAssert]
 import sys
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 assert sys.platform == 'lol'
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert2]
 import sys
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 assert sys.version_info[0] == 1
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert3]
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 MYPY = False
 assert not MYPY
 reveal_type('')  # No error here :-)
@@ -683,7 +687,7 @@ reveal_type('')  # No error here :-)
 
 [case testUnreachableAfterToplevelAssert4]
 # flags: --always-false NOPE
-reveal_type(0)  # N: Revealed type is 'builtins.int'
+reveal_type(0)  # N: Revealed type is 'Literal[0]?'
 NOPE = False
 assert NOPE
 reveal_type('')  # No error here :-)
@@ -712,8 +716,8 @@ def bar() -> None: pass
 import sys
 if sys.version_info[0] >= 2:
     assert sys.platform == 'lol'
-    reveal_type('')  # N: Revealed type is 'builtins.str'
-reveal_type('')  # N: Revealed type is 'builtins.str'
+    reveal_type('')  # N: Revealed type is 'Literal['']?'
+reveal_type('')  # N: Revealed type is 'Literal['']?'
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagWithBadControlFlow]
@@ -834,6 +838,7 @@ if FOOBAR:
 else:
     reveal_type(x)  # N: Revealed type is 'builtins.int'
 [builtins fixtures/ops.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagIgnoresSemanticAnalysisExprUnreachable]
 # flags: --warn-unreachable --always-false FOOBAR
@@ -851,6 +856,7 @@ b = (not FOOBAR) or foo()
 c = 1 if FOOBAR else 2
 d = [x for x in lst if FOOBAR]
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testUnreachableFlagOkWithDeadStatements]
 # flags: --warn-unreachable
@@ -892,18 +898,11 @@ def foo() -> bool: ...
 lst = [1, 2, 3, 4]
 
 a = True or foo()                        # E: Right operand of 'or' is never evaluated
-b = False or foo()                       # E: Left operand of 'or' is always false
-c = True and foo()                       # E: Left operand of 'and' is always true
 d = False and foo()                      # E: Right operand of 'and' is never evaluated
 e = True or (True or (True or foo()))    # E: Right operand of 'or' is never evaluated
 f = (True or foo()) or (True or foo())   # E: Right operand of 'or' is never evaluated
-g = 3 if True else 4                     # E: If condition is always true
-h = 3 if False else 4                    # E: If condition is always false
-i = [x for x in lst if True]             # E: If condition in comprehension is always true
-j = [x for x in lst if False]            # E: If condition in comprehension is always false
 
-k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true \
-                                                     # E: Right operand of 'or' is never evaluated
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of 'or' is never evaluated
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagMiscTestCaseMissingMethod]
@@ -926,6 +925,7 @@ from typing import TypeVar, Generic
 
 T1 = TypeVar('T1', bound=int)
 T2 = TypeVar('T2', int, str)
+T3 = TypeVar('T3', None, str)
 
 def test1(x: T1) -> T1:
     if isinstance(x, int):
@@ -962,4 +962,336 @@ class Test3(Generic[T2]):
             # Same issue as above
             reveal_type(self.x)
 
+
+class Test4(Generic[T3]):
+    def __init__(self, x: T3):
+        # https://github.com/python/mypy/issues/9456
+        # On TypeVars with value restrictions, we currently have no way
+        # of checking a statement for all the type expansions.
+        # Thus unreachable warnings are disabled
+        if x and False:
+            pass
+        # This test should fail after this limitation is removed.
+        if False and x:
+            pass
+
 [builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachableFlagContextManagersNoSuppress]
+# flags: --warn-unreachable
+from contextlib import contextmanager
+from typing import Optional, Iterator, Any
+from typing_extensions import Literal
+class DoesNotSuppress1:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Optional[bool]: ...
+
+class DoesNotSuppress2:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Literal[False]: ...
+
+class DoesNotSuppress3:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Any: ...
+
+class DoesNotSuppress4:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> None: ...
+
+@contextmanager
+def simple() -> Iterator[int]:
+    yield 3
+
+def cond() -> bool: ...
+
+def noop() -> None: ...
+
+def f_no_suppress_1a() -> int:
+    with DoesNotSuppress1():
+        return 3
+    noop()              # E: Statement is unreachable
+
+def f_no_suppress_1b() -> int:
+    with DoesNotSuppress1():
+        if cond():
+            return 3
+        else:
+            return 3
+    noop()                  # E: Statement is unreachable
+
+def f_no_suppress_2() -> int:
+    with DoesNotSuppress2():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+def f_no_suppress_3() -> int:
+    with DoesNotSuppress3():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+def f_no_suppress_4() -> int:
+    with DoesNotSuppress4():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+def f_no_suppress_5() -> int:
+    with simple():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testUnreachableFlagContextManagersSuppressed]
+# flags: --warn-unreachable
+from contextlib import contextmanager
+from typing import Optional, Iterator, Any
+from typing_extensions import Literal
+
+class DoesNotSuppress:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Optional[bool]: ...
+
+class Suppresses1:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+class Suppresses2:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Literal[True]: ...
+
+def cond() -> bool: ...
+
+def noop() -> None: ...
+
+def f_suppress_1a() -> int:  # E: Missing return statement
+    with Suppresses1():
+        return 3
+    noop()
+
+def f_suppress_1b() -> int:  # E: Missing return statement
+    with Suppresses1():
+        if cond():
+            return 3
+        else:
+            return 3
+    noop()
+
+def f_suppress_2() -> int:  # E: Missing return statement
+    with Suppresses2():
+        return 3
+    noop()
+
+def f_mix() -> int:         # E: Missing return statement
+    with DoesNotSuppress(), Suppresses1(), DoesNotSuppress():
+        return 3
+    noop()
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testUnreachableFlagContextManagersSuppressedNoStrictOptional]
+# flags: --warn-unreachable --no-strict-optional
+from contextlib import contextmanager
+from typing import Optional, Iterator, Any
+from typing_extensions import Literal
+
+class DoesNotSuppress1:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Optional[bool]: ...
+
+# Normally, this should suppress. But when strict-optional mode is disabled, we can't
+# necessarily distinguish between bool and Optional[bool]. So we default to assuming
+# no suppression, since that's what most context managers will do.
+class DoesNotSuppress2:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+# But if we see Literal[True], it's pretty unlikely the return type is actually meant to
+# be 'Optional[Literal[True]]'. So, we optimistically assume this is meant to be suppressing.
+class Suppresses:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> Literal[True]: ...
+
+def noop() -> None: ...
+
+def f_no_suppress_1() -> int:
+    with DoesNotSuppress1():
+        return 3
+    noop()  # E: Statement is unreachable
+
+def f_no_suppress_2() -> int:
+    with DoesNotSuppress1():
+        return 3
+    noop()  # E: Statement is unreachable
+
+def f_suppress() -> int:  # E: Missing return statement
+    with Suppresses():
+        return 3
+    noop()
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testUnreachableFlagContextAsyncManagersNoSuppress]
+# flags: --warn-unreachable --python-version 3.7
+from contextlib import asynccontextmanager
+from typing import Optional, AsyncIterator, Any
+from typing_extensions import Literal
+
+class DoesNotSuppress1:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> Optional[bool]: ...
+
+class DoesNotSuppress2:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> Literal[False]: ...
+
+class DoesNotSuppress3:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> Any: ...
+
+class DoesNotSuppress4:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> None: ...
+
+@asynccontextmanager
+async def simple() -> AsyncIterator[int]:
+    yield 3
+
+def cond() -> bool: ...
+
+def noop() -> None: ...
+
+async def f_no_suppress_1a() -> int:
+    async with DoesNotSuppress1():
+        return 3
+    noop()              # E: Statement is unreachable
+
+async def f_no_suppress_1b() -> int:
+    async with DoesNotSuppress1():
+        if cond():
+            return 3
+        else:
+            return 3
+    noop()                  # E: Statement is unreachable
+
+async def f_no_suppress_2() -> int:
+    async with DoesNotSuppress2():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+async def f_no_suppress_3() -> int:
+    async with DoesNotSuppress3():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+async def f_no_suppress_4() -> int:
+    async with DoesNotSuppress4():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+async def f_no_suppress_5() -> int:
+    async with simple():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testUnreachableFlagContextAsyncManagersSuppressed]
+# flags: --warn-unreachable --python-version 3.7
+from contextlib import asynccontextmanager
+from typing import Optional, AsyncIterator, Any
+from typing_extensions import Literal
+
+class DoesNotSuppress:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> Optional[bool]: ...
+
+class Suppresses1:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+class Suppresses2:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> Literal[True]: ...
+
+def cond() -> bool: ...
+
+def noop() -> None: ...
+
+async def f_suppress_1() -> int:  # E: Missing return statement
+    async with Suppresses1():
+        return 3
+    noop()
+
+async def f_suppress_2() -> int:  # E: Missing return statement
+    async with Suppresses1():
+        if cond():
+            return 3
+        else:
+            return 3
+    noop()
+
+async def f_suppress_3() -> int:  # E: Missing return statement
+    async with Suppresses2():
+        return 3
+    noop()
+
+async def f_mix() -> int:         # E: Missing return statement
+    async with DoesNotSuppress(), Suppresses1(), DoesNotSuppress():
+        return 3
+    noop()
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testUnreachableFlagContextAsyncManagersAbnormal]
+# flags: --warn-unreachable --python-version 3.7
+from contextlib import asynccontextmanager
+from typing import Optional, AsyncIterator, Any
+from typing_extensions import Literal
+
+class RegularManager:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+class AsyncManager:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> bool: ...
+
+def noop() -> None: ...
+
+async def f_bad_1() -> int:
+    async with RegularManager():  # E: "RegularManager" has no attribute "__aenter__"; maybe "__enter__"? \
+                                  # E: "RegularManager" has no attribute "__aexit__"; maybe "__exit__"?
+        return 3
+    noop()                        # E: Statement is unreachable
+
+def f_bad_2() -> int:
+    with AsyncManager():  # E: "AsyncManager" has no attribute "__enter__"; maybe "__aenter__"? \
+                          # E: "AsyncManager" has no attribute "__exit__"; maybe "__aexit__"?
+        return 3
+    noop()                # E: Statement is unreachable
+
+# TODO: We should consider reporting an error when the user tries using
+# context manager with malformed signatures instead of silently continuing.
+
+class RegularManagerMalformedSignature:
+    def __enter__(self) -> int: ...
+    def __exit__(self, exctype: object, excvalue: object, traceback: object) -> object: ...
+
+class AsyncManagerMalformedSignature:
+    async def __aenter__(self) -> int: ...
+    async def __aexit__(self, exctype: object, excvalue: object, traceback: object) -> object: ...
+
+def f_malformed_1() -> int:
+    with RegularManagerMalformedSignature():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+async def f_malformed_2() -> int:
+    async with AsyncManagerMalformedSignature():
+        return 3
+    noop()                  # E: Statement is unreachable
+
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/tuple.pyi]

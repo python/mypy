@@ -13,7 +13,7 @@ or module outside its definition -- but only if this is visible to the
 type checker. This only affects static checking, as mypy performs no
 additional type checking at runtime. You can easily work around
 this. For example, you can use dynamically typed code or values with
-``Any`` types, or you can use ``setattr`` or other introspection
+``Any`` types, or you can use :py:func:`setattr` or other introspection
 features. However, you need to be careful if you decide to do this. If
 used indiscriminately, you may have difficulty using static typing
 effectively, since the type checker cannot see functions defined at

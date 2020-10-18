@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, TextIO
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, TextIO
 from typing_extensions import Final
 
 from mypy import defaults
@@ -34,6 +34,14 @@ def parse_version(v: str) -> Tuple[int, int]:
     return major, minor
 
 
+def expand_path(path: str) -> str:
+    """Expand the user home directory and any environment variables contained within
+    the provided path.
+    """
+
+    return os.path.expandvars(os.path.expanduser(path))
+
+
 def split_and_match_files(paths: str) -> List[str]:
     """Take a string representing a list of files/directories (with support for globbing
     through the glob library).
@@ -45,7 +53,7 @@ def split_and_match_files(paths: str) -> List[str]:
     expanded_paths = []
 
     for path in paths.split(','):
-        path = path.strip()
+        path = expand_path(path.strip())
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
             expanded_paths.extend(globbed_files)
@@ -53,6 +61,16 @@ def split_and_match_files(paths: str) -> List[str]:
             expanded_paths.append(path)
 
     return expanded_paths
+
+
+def check_follow_imports(choice: str) -> str:
+    choices = ['normal', 'silent', 'skip', 'error']
+    if choice not in choices:
+        raise argparse.ArgumentTypeError(
+            "invalid choice '{}' (choose from {})".format(
+                choice,
+                ', '.join("'{}'".format(x) for x in choices)))
+    return choice
 
 
 # For most options, the type of the default value set in options.py is
@@ -63,22 +81,30 @@ config_types = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
-    'custom_typeshed_dir': str,
-    'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
+    'custom_typeshed_dir': expand_path,
+    'mypy_path': lambda s: [expand_path(p.strip()) for p in re.split('[,:]', s)],
     'files': split_and_match_files,
-    'quickstart_file': str,
-    'junit_xml': str,
+    'quickstart_file': expand_path,
+    'junit_xml': expand_path,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
+    'follow_imports': check_follow_imports,
+    'no_site_packages': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'disable_error_code': lambda s: [p.strip() for p in s.split(',')],
+    'enable_error_code': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
+    'cache_dir': expand_path,
+    'python_executable': expand_path,
+    'strict': bool,
 }  # type: Final
 
 
-def parse_config_file(options: Options, filename: Optional[str],
+def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
+                      filename: Optional[str],
                       stdout: Optional[TextIO] = None,
                       stderr: Optional[TextIO] = None) -> None:
     """Parse a config file into an Options object.
@@ -105,11 +131,16 @@ def parse_config_file(options: Options, filename: Optional[str],
         except configparser.Error as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
+            if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
+                continue
             file_read = config_file
             options.config_file = file_read
             break
     else:
         return
+
+    os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
+            os.path.abspath(config_file))
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
@@ -117,7 +148,7 @@ def parse_config_file(options: Options, filename: Optional[str],
     else:
         section = parser['mypy']
         prefix = '%s: [%s]: ' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, section, stderr)
+        updates, report_dirs = parse_section(prefix, options, set_strict_flags, section, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
@@ -125,7 +156,8 @@ def parse_config_file(options: Options, filename: Optional[str],
     for name, section in parser.items():
         if name.startswith('mypy-'):
             prefix = '%s: [%s]: ' % (file_read, name)
-            updates, report_dirs = parse_section(prefix, options, section, stderr)
+            updates, report_dirs = parse_section(
+                prefix, options, set_strict_flags, section, stderr)
             if report_dirs:
                 print("%sPer-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
@@ -153,6 +185,7 @@ def parse_config_file(options: Options, filename: Optional[str],
 
 
 def parse_section(prefix: str, template: Options,
+                  set_strict_flags: Callable[[], None],
                   section: Mapping[str, str],
                   stderr: TextIO = sys.stderr
                   ) -> Tuple[Dict[str, object], Dict[str, str]]:
@@ -168,7 +201,12 @@ def parse_section(prefix: str, template: Options,
         if key in config_types:
             ct = config_types[key]
         else:
-            dv = getattr(template, key, None)
+            dv = None
+            # We have to keep new_semantic_analyzer in Options
+            # for plugin compatibility but it is not a valid option anymore.
+            assert hasattr(template, 'new_semantic_analyzer')
+            if key != 'new_semantic_analyzer':
+                dv = getattr(template, key, None)
             if dv is None:
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
@@ -190,9 +228,7 @@ def parse_section(prefix: str, template: Options,
                     options_key = key[3:]
                     invert = True
                 elif key == 'strict':
-                    print("%sStrict mode is not supported in configuration files: specify "
-                          "individual flags instead (see 'mypy -h' for the list of flags enabled "
-                          "in strict mode)" % prefix, file=stderr)
+                    pass  # Special handling below
                 else:
                     print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=stderr)
@@ -204,7 +240,7 @@ def parse_section(prefix: str, template: Options,
         v = None  # type: Any
         try:
             if ct is bool:
-                v = section.getboolean(key)  # type: ignore  # Until better stub
+                v = section.getboolean(key)  # type: ignore[attr-defined]  # Until better stub
                 if invert:
                     v = not v
             elif callable(ct):
@@ -223,8 +259,10 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s%s: %s" % (prefix, key, err), file=stderr)
             continue
-        if key == 'cache_dir':
-            v = os.path.expanduser(v)
+        if key == 'strict':
+            if v:
+                set_strict_flags()
+            continue
         if key == 'silent_imports':
             print("%ssilent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=stderr)
@@ -317,10 +355,23 @@ def parse_mypy_comments(
         errors.extend((lineno, x) for x in parse_errors)
 
         stderr = StringIO()
-        new_sections, reports = parse_section('', template, parser['dummy'], stderr=stderr)
+        strict_found = False
+
+        def set_strict_flags() -> None:
+            nonlocal strict_found
+            strict_found = True
+
+        new_sections, reports = parse_section(
+            '', template, set_strict_flags, parser['dummy'], stderr=stderr)
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split('\n') if x)
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
+        if strict_found:
+            errors.append((lineno,
+                           "Setting 'strict' not supported in inline configuration: specify it in "
+                           "a configuration file instead, or set individual inline flags "
+                           "(see 'mypy -h' for the list of flags enabled in strict mode)"))
+
         sections.update(new_sections)
 
     return sections, errors

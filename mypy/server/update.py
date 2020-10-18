@@ -112,9 +112,11 @@ This is module is tested using end-to-end fine-grained incremental mode
 test cases (test-data/unit/fine-grained*.test).
 """
 
+import os
+import sys
 import time
 from typing import (
-    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Callable, Sequence
+    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Sequence, Callable
 )
 from typing_extensions import Final
 
@@ -128,25 +130,27 @@ from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
-    OverloadedFuncDef, SymbolTable
+    OverloadedFuncDef, SymbolTable, ImportFrom
 )
 from mypy.options import Options
 from mypy.fscache import FileSystemCache
-from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc, semantic_analysis_for_targets
+from mypy.semanal_main import (
+    semantic_analysis_for_scc, semantic_analysis_for_targets, core_modules
+)
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststrip import strip_target
-from mypy.server.aststripnew import strip_target_new, SavedAttributes
-from mypy.server.deps import get_dependencies_of_target
+from mypy.server.aststrip import strip_target, SavedAttributes
+from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
 
 MAX_ITER = 1000  # type: Final
+
+SENSITIVE_INTERNAL_MODULES = tuple(core_modules) + ("mypy_extensions", "typing_extensions")
 
 
 class FineGrainedBuildManager:
@@ -163,7 +167,9 @@ class FineGrainedBuildManager:
         self.manager = manager
         self.graph = result.graph
         self.previous_modules = get_module_to_path_map(self.graph)
-        self.deps = get_all_dependencies(manager, self.graph)
+        self.deps = manager.fg_deps
+        # Merge in any root dependencies that may not have been loaded
+        merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), self.deps)
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
@@ -340,6 +346,12 @@ class FineGrainedBuildManager:
         self.manager.log_fine_grained('--- update single %r ---' % module)
         self.updated_modules.append(module)
 
+        # builtins and friends could potentially get triggered because
+        # of protocol stuff, but nothing good could possibly come from
+        # actually updating them.
+        if module in SENSITIVE_INTERNAL_MODULES:
+            return [], (module, path), None
+
         manager = self.manager
         previous_modules = self.previous_modules
         graph = self.graph
@@ -378,7 +390,8 @@ class FineGrainedBuildManager:
             self.manager.log_fine_grained('triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         if module in graph:
-            merge_dependencies(graph[module].compute_fine_grained_deps(), self.deps)
+            graph[module].update_fine_grained_deps(self.deps)
+            graph[module].free_state()
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
@@ -453,15 +466,11 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
         process_fresh_modules(graph, to_process, manager)
 
 
-def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
-    """Return the fine-grained dependency map for an entire build."""
-    # Deps for each module were computed during build() or loaded from the cache.
-    deps = manager.load_fine_grained_deps(FAKE_ROOT_MODULE)  # type: Dict[str, Set[str]]
-    for id in graph:
-        if graph[id].tree is not None:
-            merge_dependencies(graph[id].compute_fine_grained_deps(), deps)
-    TypeState.add_all_protocol_deps(deps)
-    return deps
+def fix_fg_dependencies(manager: BuildManager, deps: Dict[str, Set[str]]) -> None:
+    """Populate the dependencies with stuff that build may have missed"""
+    # This means the root module and typestate
+    merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), deps)
+    # TypeState.add_all_protocol_deps(deps)
 
 
 # The result of update_module_isolated when no blockers, with these items:
@@ -577,26 +586,12 @@ def update_module_isolated(module: str,
     state.parse_file()
     assert state.tree is not None, "file must be at least parsed"
     t0 = time.time()
-    # TODO: state.fix_suppressed_dependencies()?
-    if not manager.options.new_semantic_analyzer:
-        if module == 'typing':
-            # We need to manually add typing aliases to builtins, like we
-            # do in process_stale_scc. Because this can't be done until
-            # builtins is also loaded, there isn't an obvious way to
-            # refactor this.
-            manager.semantic_analyzer.add_builtin_aliases(state.tree)
     try:
-        if not manager.options.new_semantic_analyzer:
-            state.semantic_analysis()
-        else:
-            semantic_analysis_for_scc(graph, [state.id], manager.errors)
+        semantic_analysis_for_scc(graph, [state.id], manager.errors)
     except CompileError as err:
         # There was a blocking error, so module AST is incomplete. Restore old modules.
         restore([module])
         return BlockedUpdate(module, path, remaining_modules, err.messages)
-    if not manager.options.new_semantic_analyzer:
-        state.semantic_analysis_pass_three()
-        state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
     new_modules_dict = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
@@ -608,15 +603,12 @@ def update_module_isolated(module: str,
     state.type_check_first_pass()
     state.type_check_second_pass()
     t2 = time.time()
-    state.compute_fine_grained_deps()
-    t3 = time.time()
     state.finish_passes()
-    t4 = time.time()
+    t3 = time.time()
     manager.add_stats(
         semanal_time=t1 - t0,
         typecheck_time=t2 - t1,
-        deps_time=t3 - t2,
-        finish_passes_time=t4 - t3)
+        finish_passes_time=t3 - t2)
 
     graph[module] = state
 
@@ -698,14 +690,6 @@ def get_sources(fscache: FileSystemCache,
         if fscache.isfile(path):
             sources.append(BuildSource(path, id, None))
     return sources
-
-
-def merge_dependencies(new_deps: Dict[str, Set[str]],
-                       deps: Dict[str, Set[str]]) -> None:
-    for trigger, targets in new_deps.items():
-        deps.setdefault(trigger, set()).update(targets)
-    # Merge also the newly added protocol deps.
-    TypeState.update_protocol_deps(deps)
 
 
 def calculate_active_triggers(manager: BuildManager,
@@ -916,9 +900,9 @@ def reprocess_nodes(manager: BuildManager,
         return set()
 
     file_node = manager.modules[module_id]
-    old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    old_symbols = find_symbol_tables_recursive(file_node.fullname, file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
-    old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
+    old_symbols_snapshot = snapshot_symbol_table(file_node.fullname, file_node.names)
 
     def key(node: FineGrainedDeferredNode) -> int:
         # Unlike modules which are sorted by name within SCC,
@@ -949,19 +933,13 @@ def reprocess_nodes(manager: BuildManager,
     # Strip semantic analysis information.
     saved_attrs = {}  # type: SavedAttributes
     for deferred in nodes:
-        processed_targets.append(deferred.node.fullname())
-        if not manager.options.new_semantic_analyzer:
-            strip_target(deferred.node)
-        else:
-            strip_target_new(deferred.node, saved_attrs)
-    if not options.new_semantic_analyzer:
-        re_analyze_nodes(file_node, nodes, manager, options)
-    else:
-        semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
+        processed_targets.append(deferred.node.fullname)
+        strip_target(deferred.node, saved_attrs)
+    semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
-    new_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
+    new_symbols = find_symbol_tables_recursive(file_node.fullname, file_node.names)
     for name in old_symbols:
         if name in new_symbols:
             merge_asts(file_node, old_symbols[name], file_node, new_symbols[name])
@@ -981,9 +959,9 @@ def reprocess_nodes(manager: BuildManager,
     if manager.options.export_types:
         manager.all_types.update(graph[module_id].type_map())
 
-    new_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
+    new_symbols_snapshot = snapshot_symbol_table(file_node.fullname, file_node.names)
     # Check if any attribute types were changed and need to be propagated further.
-    changed = compare_symbol_table_snapshots(file_node.fullname(),
+    changed = compare_symbol_table_snapshots(file_node.fullname,
                                              old_symbols_snapshot,
                                              new_symbols_snapshot)
     new_triggered = {make_trigger(name) for name in changed}
@@ -994,44 +972,9 @@ def reprocess_nodes(manager: BuildManager,
     # Report missing imports.
     graph[module_id].verify_dependencies()
 
+    graph[module_id].free_state()
+
     return new_triggered
-
-
-def re_analyze_nodes(file_node: MypyFile, nodes: List[FineGrainedDeferredNode],
-                     manager: BuildManager, options: Options) -> None:
-    """Perform semantic analysis of targets in a given file.
-
-    This uses the old semantic analyzer.
-    """
-    semantic_analyzer = manager.semantic_analyzer
-    patches = []  # type: List[Tuple[int, Callable[[], None]]]
-
-    # Second pass of semantic analysis. We don't redo the first pass, because it only
-    # does local things that won't go stale.
-    for deferred in nodes:
-        with semantic_analyzer.file_context(
-                file_node=file_node,
-                fnam=file_node.path,
-                options=options,
-                active_type=deferred.active_typeinfo):
-            manager.semantic_analyzer.refresh_partial(deferred.node, patches)
-
-    # Third pass of semantic analysis.
-    for deferred in nodes:
-        with semantic_analyzer.file_context(
-                file_node=file_node,
-                fnam=file_node.path,
-                options=options,
-                active_type=deferred.active_typeinfo,
-                scope=manager.semantic_analyzer_pass3.scope):
-            manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
-
-    with semantic_analyzer.file_context(
-            file_node=file_node,
-            fnam=file_node.path,
-            options=options,
-            active_type=None):
-        apply_semantic_analyzer_patches(patches)
 
 
 def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str, SymbolTable]:
@@ -1047,7 +990,7 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str,
     result = {}
     result[prefix] = symbols
     for name, node in symbols.items():
-        if isinstance(node.node, TypeInfo) and node.node.fullname().startswith(prefix + '.'):
+        if isinstance(node.node, TypeInfo) and node.node.fullname.startswith(prefix + '.'):
             more = find_symbol_tables_recursive(prefix + '.' + name, node.node.names)
             result.update(more)
     return result
@@ -1096,11 +1039,9 @@ def lookup_target(manager: BuildManager,
     node = modules[module]  # type: Optional[SymbolNode]
     file = None  # type: Optional[MypyFile]
     active_class = None
-    active_class_name = None
     for c in components:
         if isinstance(node, TypeInfo):
             active_class = node
-            active_class_name = node.name()
         if isinstance(node, MypyFile):
             file = node
         if (not isinstance(node, (MypyFile, TypeInfo))
@@ -1119,13 +1060,13 @@ def lookup_target(manager: BuildManager,
         # typically a module top-level, since we don't support processing class
         # bodies as separate entitites for simplicity.
         assert file is not None
-        if node.fullname() != target:
+        if node.fullname != target:
             # This is a reference to a different TypeInfo, likely due to a stale dependency.
             # Processing them would spell trouble -- for example, we could be refreshing
             # a deserialized TypeInfo with missing attributes.
             not_found()
             return [], None
-        result = [FineGrainedDeferredNode(file, None, None)]
+        result = [FineGrainedDeferredNode(file, None)]
         stale_info = None  # type: Optional[TypeInfo]
         if node.is_protocol:
             stale_info = node
@@ -1145,12 +1086,12 @@ def lookup_target(manager: BuildManager,
         # changed to another type and we have a stale dependency pointing to it.
         not_found()
         return [], None
-    if node.fullname() != target:
+    if node.fullname != target:
         # Stale reference points to something unexpected. We shouldn't process since the
         # context will be wrong and it could be a partially initialized deserialized node.
         not_found()
         return [], None
-    return [FineGrainedDeferredNode(node, active_class_name, active_class)], None
+    return [FineGrainedDeferredNode(node, active_class)], None
 
 
 def is_verbose(manager: BuildManager) -> bool:
@@ -1169,12 +1110,92 @@ def target_from_node(module: str,
     module (for example, if it's actually defined in another module).
     """
     if isinstance(node, MypyFile):
-        if module != node.fullname():
+        if module != node.fullname:
             # Actually a reference to another module -- likely a stale dependency.
             return None
         return module
     else:  # OverloadedFuncDef or FuncDef
         if node.info:
-            return '%s.%s' % (node.info.fullname(), node.name())
+            return '%s.%s' % (node.info.fullname, node.name)
         else:
-            return '%s.%s' % (module, node.name())
+            return '%s.%s' % (module, node.name)
+
+
+if sys.platform != 'win32':
+    INIT_SUFFIXES = ('/__init__.py', '/__init__.pyi')  # type: Final
+else:
+    INIT_SUFFIXES = (
+        os.sep + '__init__.py',
+        os.sep + '__init__.pyi',
+        os.altsep + '__init__.py',
+        os.altsep + '__init__.pyi',
+    )  # type: Final
+
+
+def refresh_suppressed_submodules(
+        module: str,
+        path: Optional[str],
+        deps: Dict[str, Set[str]],
+        graph: Graph,
+        fscache: FileSystemCache,
+        refresh_file: Callable[[str, str], List[str]]) -> Optional[List[str]]:
+    """Look for submodules that are now suppressed in target package.
+
+    If a submodule a.b gets added, we need to mark it as suppressed
+    in modules that contain "from a import b". Previously we assumed
+    that 'a.b' is not a module but a regular name.
+
+    This is only relevant when following imports normally.
+
+    Args:
+        module: target package in which to look for submodules
+        path: path of the module
+        refresh_file: function that reads the AST of a module (returns error messages)
+
+    Return a list of errors from refresh_file() if it was called. If the
+    return value is None, we didn't call refresh_file().
+    """
+    messages = None
+    if path is None or not path.endswith(INIT_SUFFIXES):
+        # Only packages have submodules.
+        return None
+    # Find any submodules present in the directory.
+    pkgdir = os.path.dirname(path)
+    for fnam in fscache.listdir(pkgdir):
+        if (not fnam.endswith(('.py', '.pyi'))
+                or fnam.startswith("__init__.")
+                or fnam.count('.') != 1):
+            continue
+        shortname = fnam.split('.')[0]
+        submodule = module + '.' + shortname
+        trigger = make_trigger(submodule)
+
+        # We may be missing the required fine-grained deps.
+        ensure_deps_loaded(module, deps, graph)
+
+        if trigger in deps:
+            for dep in deps[trigger]:
+                # We can ignore <...> deps since a submodule can't trigger any.
+                state = graph.get(dep)
+                if not state:
+                    # Maybe it's a non-top-level target. We only care about the module.
+                    dep_module = module_prefix(graph, dep)
+                    if dep_module is not None:
+                        state = graph.get(dep_module)
+                if state:
+                    # Is the file may missing an AST in case it's read from cache?
+                    if state.tree is None:
+                        # Create AST for the file. This may produce some new errors
+                        # that we need to propagate.
+                        assert state.path is not None
+                        messages = refresh_file(state.id, state.path)
+                    tree = state.tree
+                    assert tree  # Will be fine, due to refresh_file() above
+                    for imp in tree.imports:
+                        if isinstance(imp, ImportFrom):
+                            if (imp.id == module
+                                    and any(name == shortname for name, _ in imp.names)
+                                    and submodule not in state.suppressed_set):
+                                state.suppressed.append(submodule)
+                                state.suppressed_set.add(submodule)
+    return messages

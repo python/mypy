@@ -13,7 +13,6 @@ The function build() is the main interface to this module.
 import contextlib
 import errno
 import gc
-import hashlib
 import json
 import os
 import pathlib
@@ -23,42 +22,45 @@ import sys
 import time
 import types
 
-from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
+from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
-from mypy.semanal_pass1 import SemanticAnalyzerPass1
-from mypy.newsemanal.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
-from mypy.semanal_pass3 import SemanticAnalyzerPass3
-from mypy.newsemanal.semanal import NewSemanticAnalyzer
-from mypy.newsemanal.semanal_main import semantic_analysis_for_scc
+from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
+from mypy.semanal import SemanticAnalyzer
+import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
-    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix
+    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
+    read_py_file, hash_digest, is_typeshed_file
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
-from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
+from mypy.modulefinder import (
+    BuildSource, compute_search_paths, FindModuleCache, SearchPaths, ModuleSearchResult,
+    ModuleNotFoundReason
+)
 from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, ChainedPlugin, plugin_types
+from mypy.plugin import Plugin, ChainedPlugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
+from mypy.freetree import free_tree
+from mypy import errorcodes as codes
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -66,6 +68,18 @@ from mypy.config_parser import parse_mypy_comments
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
 DEBUG_FINE_GRAINED = False  # type: Final
+
+# These modules are special and should always come from typeshed.
+CORE_BUILTIN_MODULES = {
+    'builtins',
+    'typing',
+    'types',
+    'typing_extensions',
+    'mypy_extensions',
+    '_importlib_modulespec',
+    'sys',
+    'abc',
+}
 
 
 Graph = Dict[str, 'State']
@@ -126,6 +140,7 @@ def build(sources: List[BuildSource],
           fscache: Optional[FileSystemCache] = None,
           stdout: Optional[TextIO] = None,
           stderr: Optional[TextIO] = None,
+          extra_plugins: Optional[Sequence[Plugin]] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -159,9 +174,12 @@ def build(sources: List[BuildSource],
     flush_errors = flush_errors or default_flush_errors
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
+    extra_plugins = extra_plugins or []
 
     try:
-        result = _build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
+        result = _build(
+            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
+        )
         result.errors = messages
         return result
     except CompileError as e:
@@ -182,6 +200,7 @@ def _build(sources: List[BuildSource],
            fscache: Optional[FileSystemCache],
            stdout: TextIO,
            stderr: TextIO,
+           extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(150 * 1000)
@@ -198,8 +217,19 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
-    errors = Errors(options.show_error_context, options.show_column_numbers)
-    plugin, snapshot = load_plugins(options, errors, stdout)
+    cached_read = fscache.read
+    errors = Errors(options.show_error_context,
+                    options.show_column_numbers,
+                    options.show_error_codes,
+                    options.pretty,
+                    lambda path: read_py_file(path, cached_read, options.python_version),
+                    options.show_absolute_path,
+                    options.enabled_error_codes,
+                    options.disabled_error_codes)
+    plugin, snapshot = load_plugins(options, errors, stdout, extra_plugins)
+
+    # Add catch-all .gitignore to cache dir if we created it
+    cache_dir_existed = os.path.isdir(options.cache_dir)
 
     # Construct a build manager object to hold state during the build.
     #
@@ -237,11 +267,29 @@ def _build(sources: List[BuildSource],
         if reports is not None:
             # Finish the HTML or XML reports even if CompileError was raised.
             reports.finish()
+        if not cache_dir_existed and os.path.isdir(options.cache_dir):
+            add_catch_all_gitignore(options.cache_dir)
+            exclude_from_backups(options.cache_dir)
 
 
 def default_data_dir() -> str:
     """Returns directory containing typeshed directory."""
     return os.path.dirname(__file__)
+
+
+def normpath(path: str, options: Options) -> str:
+    """Convert path to absolute; but to relative in bazel mode.
+
+    (Bazel's distributed cache doesn't like filesystem metadata to
+    end up in output files.)
+    """
+    # TODO: Could we always use relpath?  (A worry in non-bazel
+    # mode would be that a moved file may change its full module
+    # name without changing its size, mtime or hash.)
+    if options.bazel:
+        return os.path.relpath(path)
+    else:
+        return os.path.abspath(path)
 
 
 CacheMeta = NamedTuple('CacheMeta',
@@ -254,7 +302,6 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', int),  # mtime of data_json
                         ('data_json', str),  # path of <id>.data.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
-                        ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
                         # dep_prios and dep_lines are in parallel with
                         # dependencies + suppressed.
@@ -263,6 +310,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
                         ('ignore_all', bool),  # if errors were ignored
+                        ('plugin_data', Any),  # config data from plugins
                         ])
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
@@ -290,13 +338,13 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
         data_json,
         meta.get('suppressed', []),
-        meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
         meta.get('dep_lines', []),
         meta.get('interface_hash', ''),
         meta.get('version_id', sentinel),
         meta.get('ignore_all', True),
+        meta.get('plugin_data', None),
     )
 
 
@@ -323,23 +371,20 @@ def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
     return toplevel_priority
 
 
-def load_plugins(options: Options,
-                 errors: Errors,
-                 stdout: TextIO,
-                 ) -> Tuple[Plugin, Dict[str, str]]:
+def load_plugins_from_config(
+    options: Options, errors: Errors, stdout: TextIO
+) -> Tuple[List[Plugin], Dict[str, str]]:
     """Load all configured plugins.
 
-    Return a plugin that encapsulates all plugins chained together. Always
-    at least include the default plugin (it's last in the chain).
+    Return a list of all the loaded plugins from the config file.
     The second return value is a snapshot of versions/hashes of loaded user
     plugins (for cache validation).
     """
     import importlib
     snapshot = {}  # type: Dict[str, str]
 
-    default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
-        return default_plugin, snapshot
+        return [], snapshot
 
     line = find_config_file_line_number(options.config_file, 'mypy', 'plugins')
     if line == -1:
@@ -347,7 +392,7 @@ def load_plugins(options: Options,
 
     def plugin_error(message: str) -> None:
         errors.report(line, 0, message)
-        errors.raise_error()
+        errors.raise_error(use_stdout=False)
 
     custom_plugins = []  # type: List[Plugin]
     errors.set_file(options.config_file, None)
@@ -376,8 +421,8 @@ def load_plugins(options: Options,
 
         try:
             module = importlib.import_module(module_name)
-        except Exception:
-            plugin_error("Error importing plugin '{}'".format(plugin_path))
+        except Exception as exc:
+            plugin_error("Error importing plugin '{}': {}".format(plugin_path, exc))
         finally:
             if plugin_dir is not None:
                 assert sys.path[0] == plugin_dir
@@ -398,7 +443,7 @@ def load_plugins(options: Options,
             plugin_error(
                 'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
                     plugin_type, plugin_path))
-        if not issubclass(plugin_type, plugin_types):
+        if not issubclass(plugin_type, Plugin):
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))
@@ -409,6 +454,30 @@ def load_plugins(options: Options,
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
                   file=stdout)
             raise  # Propagate to display traceback
+
+    return custom_plugins, snapshot
+
+
+def load_plugins(options: Options,
+                 errors: Errors,
+                 stdout: TextIO,
+                 extra_plugins: Sequence[Plugin],
+                 ) -> Tuple[Plugin, Dict[str, str]]:
+    """Load all configured plugins.
+
+    Return a plugin that encapsulates all plugins chained together. Always
+    at least include the default plugin (it's last in the chain).
+    The second return value is a snapshot of versions/hashes of loaded user
+    plugins (for cache validation).
+    """
+    custom_plugins, snapshot = load_plugins_from_config(options, errors, stdout)
+
+    custom_plugins += extra_plugins
+
+    default_plugin = DefaultPlugin(options)  # type: Plugin
+    if not custom_plugins:
+        return default_plugin, snapshot
+
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin]), snapshot
 
@@ -421,7 +490,7 @@ def take_module_snapshot(module: types.ModuleType) -> str:
     """
     if hasattr(module, '__file__'):
         with open(module.__file__, 'rb') as f:
-            digest = hashlib.md5(f.read()).hexdigest()
+            digest = hash_digest(f.read())
     else:
         digest = 'unknown'
     ver = getattr(module, '__version__', 'none')
@@ -471,6 +540,7 @@ class BuildManager:
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
       fg_deps_meta:    Metadata for fine-grained dependencies caches associated with modules
+      fg_deps:         A fine-grained dependency map
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       plugins_snapshot:
@@ -523,25 +593,24 @@ class BuildManager:
         self.modules = {}  # type: Dict[str, MypyFile]
         self.missing_modules = set()  # type: Set[str]
         self.fg_deps_meta = {}  # type: Dict[str, FgDepMeta]
+        # fg_deps holds the dependencies of every module that has been
+        # processed. We store this in BuildManager so that we can compute
+        # dependencies as we go, which allows us to free ASTs and type information,
+        # saving a ton of memory on net.
+        self.fg_deps = {}  # type: Dict[str, Set[str]]
         # Always convert the plugin to a ChainedPlugin so that it can be manipulated if needed
         if not isinstance(plugin, ChainedPlugin):
             plugin = ChainedPlugin(options, [plugin])
         self.plugin = plugin
-        if options.new_semantic_analyzer:
-            # Set of namespaces (module or class) that are being populated during semantic
-            # analysis and may have missing definitions.
-            self.incomplete_namespaces = set()  # type: Set[str]
-            self.new_semantic_analyzer = NewSemanticAnalyzer(
-                self.modules,
-                self.missing_modules,
-                self.incomplete_namespaces,
-                self.errors,
-                self.plugin)
-        else:
-            self.semantic_analyzer = SemanticAnalyzerPass2(self.modules, self.missing_modules,
-                                                           self.errors, self.plugin)
-            self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
-                                                                 self.semantic_analyzer)
+        # Set of namespaces (module or class) that are being populated during semantic
+        # analysis and may have missing definitions.
+        self.incomplete_namespaces = set()  # type: Set[str]
+        self.semantic_analyzer = SemanticAnalyzer(
+            self.modules,
+            self.missing_modules,
+            self.incomplete_namespaces,
+            self.errors,
+            self.plugin)
         self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
@@ -554,10 +623,7 @@ class BuildManager:
                               and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
-        if options.sqlite_cache:
-            self.metastore = SqliteMetadataStore(_cache_dir_prefix(self))  # type: MetadataStore
-        else:
-            self.metastore = FilesystemMetadataStore(_cache_dir_prefix(self))
+        self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -578,9 +644,10 @@ class BuildManager:
         self.processed_targets = []  # type: List[str]
 
     def dump_stats(self) -> None:
-        self.log("Stats:")
-        for key, value in sorted(self.stats_summary().items()):
-            self.log("{:24}{}".format(key + ":", value))
+        if self.options.dump_build_stats:
+            print("Stats:")
+            for key, value in sorted(self.stats_summary().items()):
+                print("{:24}{}".format(key + ":", value))
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -589,7 +656,7 @@ class BuildManager:
         if not self.shadow_map:
             return path
 
-        path = self.normpath(path)
+        path = normpath(path, self.options)
 
         previously_checked = path in self.shadow_equivalence_map
         if not previously_checked:
@@ -617,20 +684,6 @@ class BuildManager:
         else:
             return int(self.metastore.getmtime(path))
 
-    def normpath(self, path: str) -> str:
-        """Convert path to absolute; but to relative in bazel mode.
-
-        (Bazel's distributed cache doesn't like filesystem metadata to
-        end up in output files.)
-        """
-        # TODO: Could we always use relpath?  (A worry in non-bazel
-        # mode would be that a moved file may change its full module
-        # name without changing its size, mtime or hash.)
-        if self.options.bazel:
-            return os.path.relpath(path)
-        else:
-            return os.path.abspath(path)
-
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
         """Find all reachable import statements in a file.
@@ -643,7 +696,7 @@ class BuildManager:
 
         def correct_rel_imp(imp: Union[ImportFrom, ImportAll]) -> str:
             """Function to correct for relative imports."""
-            file_id = file.fullname()
+            file_id = file.fullname
             rel = imp.relative
             if rel == 0:
                 return imp.id
@@ -654,7 +707,7 @@ class BuildManager:
             new_id = file_id + "." + imp.id if imp.id else file_id
 
             if not new_id:
-                self.errors.set_file(file.path, file.name())
+                self.errors.set_file(file.path, file.name)
                 self.errors.report(imp.line, 0,
                                    "No parent module -- cannot perform relative import",
                                    blocker=True)
@@ -712,13 +765,14 @@ class BuildManager:
         """Is there a file in the file system corresponding to module id?"""
         return find_module_simple(id, self) is not None
 
-    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
+    def parse_file(self, id: str, path: str, source: str, ignore_errors: bool,
+                   options: Options) -> MypyFile:
         """Parse the source of a file with the given name.
 
         Raise CompileError if there is a parse error.
         """
         t0 = time.time()
-        tree = parse(source, path, id, self.errors, options=self.options)
+        tree = parse(source, path, id, self.errors, options=options)
         tree._fullname = id
         self.add_stats(files_parsed=1,
                        modules_parsed=int(not tree.is_stub),
@@ -748,7 +802,7 @@ class BuildManager:
                     type_map: Dict[Expression, Type],
                     options: Options) -> None:
         if self.reports is not None and self.source_set.is_source(file):
-            self.reports.file(file, type_map, options)
+            self.reports.file(file, self.modules, type_map, options)
 
     def verbosity(self) -> int:
         return self.options.verbosity
@@ -832,7 +886,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
 
     for id in rdeps:
         if id != FAKE_ROOT_MODULE:
-            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager)
+            _, _, deps_json = get_cache_names(id, graph[id].xpath, manager.options)
         else:
             deps_json = DEPS_ROOT_FILE
         assert deps_json
@@ -862,7 +916,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
         error = True
 
     if error:
-        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
         manager.errors.report(0, 0, "Error writing fine-grained dependencies cache",
                               blocker=True)
 
@@ -894,15 +948,13 @@ def invert_deps(deps: Dict[str, Set[str]],
     return rdeps
 
 
-def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
-                            manager: BuildManager,
+def generate_deps_for_cache(manager: BuildManager,
                             graph: Graph) -> Dict[str, Dict[str, Set[str]]]:
     """Generate fine-grained dependencies into a form suitable for serializing.
 
-    This does a few things:
-    1. Computes all fine grained deps from modules that were processed
-    2. Splits fine-grained deps based on the module of the trigger
-    3. For each module we generated fine-grained deps for, load any previous
+    This does a couple things:
+    1. Splits fine-grained deps based on the module of the trigger
+    2. For each module we generated fine-grained deps for, load any previous
        deps and merge them in.
 
     Returns a dictionary from module ids to all dependencies on that
@@ -910,16 +962,10 @@ def generate_deps_for_cache(proto_deps: Dict[str, Set[str]],
     associated with the nearest parent module that is in the build, or the
     fake module FAKE_ROOT_MODULE if none are.
     """
-    from mypy.server.update import merge_dependencies  # Lazy import to speed up startup
-
-    # Compute the full set of dependencies from everything we've processed.
-    deps = {}  # type: Dict[str, Set[str]]
-    things = [st.compute_fine_grained_deps() for st in graph.values() if st.tree] + [proto_deps]
-    for st_deps in things:
-        merge_dependencies(st_deps, deps)
+    from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
 
     # Split the dependencies out into based on the module that is depended on.
-    rdeps = invert_deps(deps, graph)
+    rdeps = invert_deps(manager.fg_deps, graph)
 
     # We can't just clobber existing dependency information, so we
     # load the deps for every module we've generated new dependencies
@@ -937,7 +983,7 @@ PLUGIN_SNAPSHOT_FILE = '@plugins_snapshot.json'  # type: Final
 def write_plugins_snapshot(manager: BuildManager) -> None:
     """Write snapshot of versions and hashes of currently active plugins."""
     if not manager.metastore.write(PLUGIN_SNAPSHOT_FILE, json.dumps(manager.plugins_snapshot)):
-        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.set_file(_cache_dir_prefix(manager.options), None)
         manager.errors.report(0, 0, "Error writing plugins snapshot",
                               blocker=True)
 
@@ -945,7 +991,7 @@ def write_plugins_snapshot(manager: BuildManager) -> None:
 def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     """Read cached snapshot of versions and hashes of plugins from previous run."""
     snapshot = _load_json_file(PLUGIN_SNAPSHOT_FILE, manager,
-                               log_sucess='Plugins snapshot ',
+                               log_success='Plugins snapshot ',
                                log_error='Could not load plugins snapshot: ')
     if snapshot is None:
         return None
@@ -986,7 +1032,7 @@ def read_deps_cache(manager: BuildManager,
     Returns None if the cache was invalid in some way.
     """
     deps_meta = _load_json_file(DEPS_META_FILE, manager,
-                                log_sucess='Deps meta ',
+                                log_success='Deps meta ',
                                 log_error='Could not load fine-grained dependency metadata: ')
     if deps_meta is None:
         return None
@@ -1018,7 +1064,7 @@ def read_deps_cache(manager: BuildManager,
 
 
 def _load_json_file(file: str, manager: BuildManager,
-                    log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
+                    log_success: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
     t0 = time.time()
     try:
@@ -1029,7 +1075,7 @@ def _load_json_file(file: str, manager: BuildManager,
     manager.add_stats(metastore_read_time=time.time() - t0)
     # Only bother to compute the log message if we are logging it, since it could be big
     if manager.verbosity() >= 2:
-        manager.trace(log_sucess + data.rstrip())
+        manager.trace(log_success + data.rstrip())
     try:
         result = json.loads(data)
     except ValueError:  # TODO: JSONDecodeError in 3.5
@@ -1047,18 +1093,57 @@ def _load_json_file(file: str, manager: BuildManager,
         return result
 
 
-def _cache_dir_prefix(manager: BuildManager) -> str:
+def _cache_dir_prefix(options: Options) -> str:
     """Get current cache directory (or file if id is given)."""
-    if manager.options.bazel:
+    if options.bazel:
         # This is needed so the cache map works.
         return os.curdir
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
+    cache_dir = options.cache_dir
+    pyversion = options.python_version
     base = os.path.join(cache_dir, '%d.%d' % pyversion)
     return base
 
 
-def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
+def add_catch_all_gitignore(target_dir: str) -> None:
+    """Add catch-all .gitignore to an existing directory.
+
+    No-op if the .gitignore already exists.
+    """
+    gitignore = os.path.join(target_dir, ".gitignore")
+    try:
+        with open(gitignore, "x") as f:
+            print("# Automatically created by mypy", file=f)
+            print("*", file=f)
+    except FileExistsError:
+        pass
+
+
+def exclude_from_backups(target_dir: str) -> None:
+    """Exclude the directory from various archives and backups supporting CACHEDIR.TAG.
+
+    If the CACHEDIR.TAG file exists the function is a no-op.
+    """
+    cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
+    try:
+        with open(cachedir_tag, "x") as f:
+            f.write("""Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag automtically created by mypy.
+# For information about cache directory tags see https://bford.info/cachedir/
+""")
+    except FileExistsError:
+        pass
+
+
+def create_metastore(options: Options) -> MetadataStore:
+    """Create the appropriate metadata store."""
+    if options.sqlite_cache:
+        mds = SqliteMetadataStore(_cache_dir_prefix(options))  # type: MetadataStore
+    else:
+        mds = FilesystemMetadataStore(_cache_dir_prefix(options))
+    return mds
+
+
+def get_cache_names(id: str, path: str, options: Options) -> Tuple[str, str, Optional[str]]:
     """Return the file names for the cache files.
 
     Args:
@@ -1071,8 +1156,8 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON, the
       data JSON, and the fine-grained deps JSON, respectively.
     """
-    if manager.options.cache_map:
-        pair = manager.options.cache_map.get(manager.normpath(path))
+    if options.cache_map:
+        pair = options.cache_map.get(normpath(path, options))
     else:
         pair = None
     if pair is not None:
@@ -1081,7 +1166,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
         # prefix directory.
         # Solve this by rewriting the paths as relative to the root dir.
         # This only makes sense when using the filesystem backed cache.
-        root = _cache_dir_prefix(manager)
+        root = _cache_dir_prefix(options)
         return (os.path.relpath(pair[0], root), os.path.relpath(pair[1], root), None)
     prefix = os.path.join(*id.split('.'))
     is_package = os.path.basename(path).startswith('__init__.py')
@@ -1089,7 +1174,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
         prefix = os.path.join(prefix, '__init__')
 
     deps_json = None
-    if manager.options.cache_fine_grained:
+    if options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
@@ -1107,11 +1192,11 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
-                           log_sucess='Meta {} '.format(id),
+                           log_success='Meta {} '.format(id),
                            log_error='Could not load cache for {}: '.format(id))
     t1 = time.time()
     if meta is None:
@@ -1164,6 +1249,15 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
             manager.log('Metadata abandoned for {}: plugins differ'.format(id))
             return None
+    # So that plugins can return data with tuples in it without
+    # things silently always invalidating modules, we round-trip
+    # the config data. This isn't beautiful.
+    plugin_data = json.loads(json.dumps(
+        manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True))
+    ))
+    if m.plugin_data != plugin_data:
+        manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
+        return None
 
     manager.add_stats(fresh_metas=1)
     return m
@@ -1204,7 +1298,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
-        path = manager.normpath(path)
+        path = normpath(path, manager.options)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1222,9 +1316,9 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
     #
-    # We still *do* the mtime/md5 checks, however, to enable
+    # We still *do* the mtime/hash checks, however, to enable
     # fine-grained mode to take advantage of the mtime-updating
-    # optimization when mtimes differ but md5s match.  There is
+    # optimization when mtimes differ but hashes match.  There is
     # essentially no extra time cost to computing the hash here, since
     # it will be cached and will be needed for finding changed files
     # later anyways.
@@ -1252,7 +1346,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
         t0 = time.time()
         try:
-            source_hash = manager.fscache.md5(path)
+            source_hash = manager.fscache.hash_digest(path)
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         manager.add_stats(validate_hash_time=time.time() - t0)
@@ -1278,7 +1372,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'data_mtime': meta.data_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
-                'child_modules': meta.child_modules,
                 'options': (manager.options.clone_for_module(id)
                             .select_options_affecting_cache()),
                 'dep_prios': meta.dep_prios,
@@ -1286,12 +1379,13 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'interface_hash': meta.interface_hash,
                 'version_id': manager.version_id,
                 'ignore_all': meta.ignore_all,
+                'plugin_data': meta.plugin_data,
             }
             if manager.options.debug_cache:
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
                 meta_str = json.dumps(meta_dict)
-            meta_json, _, _ = get_cache_names(id, path, manager)
+            meta_json, _, _ = get_cache_names(id, path, manager.options)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
             t1 = time.time()
@@ -1306,10 +1400,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
 
 def compute_hash(text: str) -> str:
-    # We use md5 instead of the builtin hash(...) function because the output of hash(...)
-    # can differ between runs due to hash randomization (enabled by default in Python 3.3).
-    # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
-    return hashlib.md5(text.encode('utf-8')).hexdigest()
+    # We use a crypto hash instead of the builtin hash(...) function
+    # because the output of hash(...)  can differ between runs due to
+    # hash randomization (enabled by default in Python 3.3).  See the
+    # note in
+    # https://docs.python.org/3/reference/datamodel.html#object.__hash__.
+    return hash_digest(text.encode('utf-8'))
 
 
 def json_dumps(obj: Any, debug_cache: bool) -> str:
@@ -1321,7 +1417,7 @@ def json_dumps(obj: Any, debug_cache: bool) -> str:
 
 def write_cache(id: str, path: str, tree: MypyFile,
                 dependencies: List[str], suppressed: List[str],
-                child_modules: List[str], dep_prios: List[int], dep_lines: List[int],
+                dep_prios: List[int], dep_lines: List[int],
                 old_interface_hash: str, source_hash: str,
                 ignore_all: bool, manager: BuildManager) -> Tuple[str, Optional[CacheMeta]]:
     """Write cache files for a module.
@@ -1336,7 +1432,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
       tree: the fully checked module data
       dependencies: module IDs on which this module depends
       suppressed: module IDs which were suppressed as dependencies
-      child_modules: module IDs which are this package's direct submodules
       dep_prios: priorities (parallel array to dependencies)
       dep_lines: import line locations (parallel array to dependencies)
       old_interface_hash: the hash from the previous version of the data cache file
@@ -1354,7 +1449,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     bazel = manager.options.bazel
 
     # Obtain file paths.
-    meta_json, data_json, _ = get_cache_names(id, path, manager)
+    meta_json, data_json, _ = get_cache_names(id, path, manager.options)
     manager.log('Writing {} {} {} {}'.format(
         id, path, meta_json, data_json))
 
@@ -1367,6 +1462,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
     data = tree.serialize()
     data_str = json_dumps(data, manager.options.debug_cache)
     interface_hash = compute_hash(data_str)
+
+    plugin_data = manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=False))
 
     # Obtain and set up metadata
     try:
@@ -1424,13 +1521,13 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'data_mtime': data_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
-            'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
             'dep_lines': dep_lines,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
+            'plugin_data': plugin_data,
             }
 
     # Write meta cache file
@@ -1454,7 +1551,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     # We don't delete .deps files on errors, since the dependencies
     # are mostly generated from other files and the metadata is
     # tracked separately.
-    meta_path, data_path, _ = get_cache_names(id, path, manager)
+    meta_path, data_path, _ = get_cache_names(id, path, manager.options)
     cache_paths = [meta_path, data_path]
     manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 
@@ -1619,6 +1716,7 @@ class State:
     order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
+    abspath = None  # type: Optional[str]  # Absolute path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
     source_hash = None  # type: Optional[str]  # Hash calculated based on the source code
@@ -1641,9 +1739,6 @@ class State:
 
     # Parent package, its parent, etc.
     ancestors = None  # type: Optional[List[str]]
-
-    # A list of all direct submodules of a given module
-    child_modules = None  # type: Set[str]
 
     # List of (path, line number) tuples giving context for import
     import_context = None  # type: List[Tuple[str, int]]
@@ -1723,6 +1818,8 @@ class State:
             if follow_imports == 'silent':
                 self.ignore_all = True
         self.path = path
+        if path:
+            self.abspath = os.path.abspath(path)
         self.xpath = path or '<string>'
         if path and source is None and self.manager.fscache.isdir(path):
             source = ''
@@ -1751,7 +1848,6 @@ class State:
             assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
-            self.child_modules = set(self.meta.child_modules)
             if temporary:
                 self.load_tree(temporary=True)
             if not manager.use_fine_grained_cache():
@@ -1778,7 +1874,6 @@ class State:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
             self.compute_dependencies()
-            self.child_modules = set()
 
     @property
     def xmeta(self) -> CacheMeta:
@@ -1809,8 +1904,7 @@ class State:
         # dependency is added back we find out later in the process.
         return (self.meta is not None
                 and self.is_interface_fresh()
-                and self.dependencies == self.meta.dependencies
-                and self.child_modules == set(self.meta.child_modules))
+                and self.dependencies == self.meta.dependencies)
 
     def is_interface_fresh(self) -> bool:
         return self.externally_same
@@ -1838,8 +1932,8 @@ class State:
         Also report an internal error if an unexpected exception was raised
         and raise an exception on a blocking error, unless
         check_blockers is False. Skipping blocking error reporting is used
-        in the new semantic analyzer so that we can report all blocking
-        errors for a file (across multiple targets) to maintain backward
+        in the semantic analyzer so that we can report all blocking errors
+        for a file (across multiple targets) to maintain backward
         compatibility.
         """
         save_import_context = self.manager.errors.import_context()
@@ -1884,65 +1978,6 @@ class State:
         fixup_module(self.tree, self.manager.modules,
                      self.options.use_fine_grained_cache)
 
-    def patch_dependency_parents(self) -> None:
-        """
-        In Python, if a and a.b are both modules, running `import a.b` will
-        modify not only the current module's namespace, but a's namespace as
-        well -- see SemanticAnalyzerPass2.add_submodules_to_parent_modules for more
-        details.
-
-        However, this patching process can occur after `a` has been parsed and
-        serialized during incremental mode. Consequently, we need to repeat this
-        patch when deserializing a cached file.
-
-        This function should be called only when processing fresh SCCs -- the
-        semantic analyzer will perform this patch for us when processing stale
-        SCCs.
-        """
-        if not self.manager.options.new_semantic_analyzer:
-            analyzer = self.manager.semantic_analyzer
-            for dep in self.dependencies:
-                analyzer.add_submodules_to_parent_modules(dep, True)
-
-    def fix_suppressed_dependencies(self, graph: Graph) -> None:
-        """Corrects whether dependencies are considered stale in silent mode.
-
-        This method is a hack to correct imports in silent mode + incremental mode.
-        In particular, the problem is that when running mypy with a cold cache, the
-        `parse_file(...)` function is called *at the start* of the `load_graph(...)` function.
-        Note that load_graph will mark some dependencies as suppressed if they weren't specified
-        on the command line in silent mode.
-
-        However, if the interface for a module is changed, parse_file will be called within
-        `process_stale_scc` -- *after* load_graph is finished, wiping out the changes load_graph
-        previously made.
-
-        This method is meant to be run after parse_file finishes in process_stale_scc and will
-        recompute what modules should be considered suppressed in silent mode.
-        """
-        # TODO: See if it's possible to move this check directly into parse_file in some way.
-        # TODO: Find a way to write a test case for this fix.
-        # TODO: I suspect that splitting compute_dependencies() out from parse_file
-        # obviates the need for this but lacking a test case for the problem this fixed...
-        silent_mode = (self.options.ignore_missing_imports or
-                       self.options.follow_imports == 'skip')
-        if not silent_mode:
-            return
-
-        new_suppressed = []
-        new_dependencies = []
-        entry_points = self.manager.source_set.source_modules
-        for dep in self.dependencies + self.suppressed:
-            ignored = dep in self.suppressed_set and dep not in entry_points
-            if ignored or dep not in graph:
-                new_suppressed.append(dep)
-            else:
-                new_dependencies.append(dep)
-        self.dependencies = new_dependencies
-        self.dependencies_set = set(new_dependencies)
-        self.suppressed = new_suppressed
-        self.suppressed_set = set(new_suppressed)
-
     # Methods for processing modules from source code.
 
     def parse_file(self) -> None:
@@ -1967,7 +2002,7 @@ class State:
                     path = manager.maybe_swap_for_shadow_path(self.path)
                     source = decode_python_encoding(manager.fscache.read(path),
                                                     manager.options.python_version)
-                    self.source_hash = manager.fscache.md5(path)
+                    self.source_hash = manager.fscache.hash_digest(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
                     # other systems, but os.strerror(ioerr.errno) does not, so we use that.
@@ -1976,18 +2011,21 @@ class State:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(
                             self.path, os.strerror(ioerr.errno))],
-                        module_with_blocker=self.id)
+                        module_with_blocker=self.id) from ioerr
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
-                    raise CompileError([
-                        "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))],
-                        module_with_blocker=self.id)
+                    if self.path.endswith('.pyd'):
+                        err = "mypy: stubgen does not support .pyd files: '{}'".format(self.path)
+                    else:
+                        err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
+                    raise CompileError([err], module_with_blocker=self.id) from decodeerr
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors)
+                                           self.ignore_all or self.options.ignore_errors,
+                                           self.options)
 
         modules[self.id] = self.tree
 
@@ -1997,12 +2035,6 @@ class State:
         self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
 
         self.semantic_analysis_pass1()
-
-        if not self.options.new_semantic_analyzer:
-            # Initialize module symbol table, which was populated by the
-            # semantic analyzer.
-            # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
-            self.tree.names = manager.semantic_analyzer.globals
 
         self.check_blockers()
 
@@ -2023,31 +2055,21 @@ class State:
         """
         options = self.options
         assert self.tree is not None
-        if options.new_semantic_analyzer:
-            # Do the first pass of semantic analysis: analyze the reachability
-            # of blocks and import statements. We must do this before
-            # processing imports, since this may mark some import statements as
-            # unreachable.
-            #
-            # TODO: Once we remove the old semantic analyzer, this no longer should
-            #     be considered as a semantic analysis pass -- it's an independent
-            #     pass.
-            analyzer = SemanticAnalyzerPreAnalysis()
-            with self.wrap_context():
-                analyzer.visit_file(self.tree, self.xpath, self.id, options)
-            # TODO: Do this while contructing the AST?
-            self.tree.names = SymbolTable()
-            if options.allow_redefinition:
-                # Perform renaming across the AST to allow variable redefinitions
-                self.tree.accept(VariableRenameVisitor())
-        else:
-            # Do the first pass of semantic analysis: add top-level
-            # definitions in the file to the symbol table.  We must do
-            # this before processing imports, since this may mark some
-            # import statements as unreachable.
-            first = SemanticAnalyzerPass1(self.manager.semantic_analyzer)
-            with self.wrap_context():
-                first.visit_file(self.tree, self.xpath, self.id, options)
+        # Do the first pass of semantic analysis: analyze the reachability
+        # of blocks and import statements. We must do this before
+        # processing imports, since this may mark some import statements as
+        # unreachable.
+        #
+        # TODO: This should not be considered as a semantic analysis
+        #     pass -- it's an independent pass.
+        analyzer = SemanticAnalyzerPreAnalysis()
+        with self.wrap_context():
+            analyzer.visit_file(self.tree, self.xpath, self.id, options)
+        # TODO: Do this while contructing the AST?
+        self.tree.names = SymbolTable()
+        if options.allow_redefinition:
+            # Perform renaming across the AST to allow variable redefinitions
+            self.tree.accept(VariableRenameVisitor())
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
@@ -2102,30 +2124,6 @@ class State:
 
         self.check_blockers()  # Can fail due to bogus relative imports
 
-    def semantic_analysis(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        self.manager.semantic_analyzer.imports.clear()
-        with self.wrap_context():
-            self.manager.semantic_analyzer.visit_file(self.tree, self.xpath, self.options, patches)
-        self.patches = patches
-        for dep in self.manager.semantic_analyzer.imports:
-            self.add_dependency(dep)
-            self.priorities[dep] = PRI_LOW
-
-    def semantic_analysis_pass_three(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        patches = []  # type: List[Tuple[int, Callable[[], None]]]
-        with self.wrap_context():
-            self.manager.semantic_analyzer_pass3.visit_file(self.tree, self.xpath,
-                                                            self.options, patches)
-            if self.options.dump_type_stats:
-                dump_type_stats(self.tree, self.xpath)
-        self.patches = patches + self.patches
-
-    def semantic_analysis_apply_patches(self) -> None:
-        apply_semantic_analyzer_patches(self.patches)
-
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
             return
@@ -2165,9 +2163,22 @@ class State:
             self._patch_indirect_dependencies(self.type_checker().module_refs, self.type_map())
 
             if self.options.dump_inference_stats:
-                dump_type_stats(self.tree, self.xpath, inferred=True,
+                dump_type_stats(self.tree,
+                                self.xpath,
+                                modules=self.manager.modules,
+                                inferred=True,
                                 typemap=self.type_map())
             manager.report_file(self.tree, self.type_map(), self.options)
+
+            self.update_fine_grained_deps(self.manager.fg_deps)
+            self.free_state()
+            if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
+                free_tree(self.tree)
+
+    def free_state(self) -> None:
+        if self._type_checker:
+            self._type_checker.reset()
+            self._type_checker = None
 
     def _patch_indirect_dependencies(self,
                                      module_refs: Set[str],
@@ -2203,6 +2214,13 @@ class State:
                                 python_version=self.options.python_version,
                                 options=self.manager.options)
 
+    def update_fine_grained_deps(self, deps: Dict[str, Set[str]]) -> None:
+        options = self.manager.options
+        if options.cache_fine_grained or options.fine_grained_incremental:
+            from mypy.server.deps import merge_dependencies  # Lazy import to speed up startup
+            merge_dependencies(self.compute_fine_grained_deps(), deps)
+            TypeState.update_protocol_deps(deps)
+
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
         valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
@@ -2233,7 +2251,7 @@ class State:
             "Duplicates in dependencies list for {} ({})".format(self.id, self.dependencies))
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
-            list(self.dependencies), list(self.suppressed), list(self.child_modules),
+            list(self.dependencies), list(self.suppressed),
             dep_prios, dep_lines, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
         if new_interface_hash == self.interface_hash:
@@ -2340,40 +2358,48 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = find_module_simple(file_id, manager)
-    if path:
+    result = find_module_with_reason(file_id, manager)
+    if isinstance(result, str):
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
         # - silent -> analyze but silence errors
         # - skip -> don't analyze, make the type Any
         follow_imports = options.follow_imports
         if (root_source  # Honor top-level modules
-                or (not path.endswith('.py')  # Stubs are always normal
+                or (not result.endswith('.py')  # Stubs are always normal
                     and not options.follow_imports_for_stubs)  # except when they aren't
-                or id == 'builtins'):  # Builtins is always normal
+                or id in mypy.semanal_main.core_modules):  # core is always normal
             follow_imports = 'normal'
         if skip_diagnose:
             pass
         elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
-            manager.log("Silencing %s (%s)" % (path, id))
+            manager.log("Silencing %s (%s)" % (result, id))
         elif follow_imports == 'skip' or follow_imports == 'error':
             # In 'error' mode, produce special error messages.
             if id not in manager.missing_modules:
-                manager.log("Skipping %s (%s)" % (path, id))
+                manager.log("Skipping %s (%s)" % (result, id))
             if follow_imports == 'error':
                 if ancestor_for:
-                    skipping_ancestor(manager, id, path, ancestor_for)
+                    skipping_ancestor(manager, id, result, ancestor_for)
                 else:
                     skipping_module(manager, caller_line, caller_state,
-                                    id, path)
+                                    id, result)
             raise ModuleNotFound
         if not manager.options.no_silence_site_packages:
             for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-                if is_sub_path(path, dir):
+                if is_sub_path(result, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = 'silent'
-        return (path, follow_imports)
+        if (id in CORE_BUILTIN_MODULES
+                and not is_typeshed_file(result)
+                and not options.use_builtins_fixtures
+                and not options.custom_typeshed_dir):
+            raise CompileError([
+                'mypy: "%s" shadows library module "%s"' % (result, id),
+                'note: A user-defined top-level module with name "%s" is not supported' % id
+            ])
+        return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
@@ -2382,7 +2408,7 @@ def find_module_and_diagnose(manager: BuildManager,
             raise ModuleNotFound
         if caller_state:
             if not (options.ignore_missing_imports or in_partial_package(id, manager)):
-                module_not_found(manager, caller_line, caller_state, id)
+                module_not_found(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
         elif root_source:
             # If we can't find a root source it's always fatal.
@@ -2394,7 +2420,7 @@ def find_module_and_diagnose(manager: BuildManager,
 
 
 def exist_added_packages(suppressed: List[str],
-                        manager: BuildManager, options: Options) -> bool:
+                         manager: BuildManager, options: Options) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
     Exclude everything not in build for follow-imports=skip.
@@ -2419,10 +2445,17 @@ def exist_added_packages(suppressed: List[str],
 
 def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
     """Find a filesystem path for module `id` or `None` if not found."""
+    x = find_module_with_reason(id, manager)
+    if isinstance(x, ModuleNotFoundReason):
+        return None
+    return x
+
+
+def find_module_with_reason(id: str, manager: BuildManager) -> ModuleSearchResult:
+    """Find a filesystem path for module `id` or the reason it can't be found."""
     t0 = time.time()
     x = manager.find_module_cache.find_module(id)
     manager.add_stats(find_module_time=time.time() - t0, find_module_calls=1)
-
     return x
 
 
@@ -2456,29 +2489,24 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
 
 
 def module_not_found(manager: BuildManager, line: int, caller_state: State,
-                     target: str) -> None:
+                     target: str, reason: ModuleNotFoundReason) -> None:
     errors = manager.errors
     save_import_context = errors.import_context()
     errors.set_import_context(caller_state.import_context)
     errors.set_file(caller_state.xpath, caller_state.id)
-    stub_msg = "(Stub files are from https://github.com/python/typeshed)"
     if target == 'builtins':
         errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
                       blocker=True)
         errors.raise_error()
-    elif ((manager.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target))
-          or (manager.options.python_version[0] >= 3
-              and moduleinfo.is_py3_std_lib_module(target))):
-        errors.report(
-            line, 0, "No library stub file for standard library module '{}'".format(target))
-        errors.report(line, 0, stub_msg, severity='note', only_once=True)
-    elif moduleinfo.is_third_party_module(target):
-        errors.report(line, 0, "No library stub file for module '{}'".format(target))
-        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+    elif moduleinfo.is_std_lib_module(manager.options.python_version, target):
+        msg = "No library stub file for standard library module '{}'".format(target)
+        note = "(Stub files are from https://github.com/python/typeshed)"
+        errors.report(line, 0, msg, code=codes.IMPORT)
+        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     else:
-        note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
-        errors.report(line, 0, "Cannot find module named '{}'".format(target))
-        errors.report(line, 0, note, severity='note', only_once=True)
+        msg, note = reason.error_message_templates()
+        errors.report(line, 0, msg.format(target), code=codes.IMPORT)
+        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     errors.set_import_context(save_import_context)
 
 
@@ -2517,13 +2545,29 @@ def log_configuration(manager: BuildManager) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
     manager.log()
-    configuration_vars = (
+    configuration_vars = [
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
-        ("Configured Executable", manager.options.python_executable),
+    ]
+
+    src_pth_str = "Source Path"
+    src_pths = list(manager.source_set.source_paths.copy())
+    src_pths.sort()
+
+    if len(src_pths) > 1:
+        src_pth_str += "s"
+        configuration_vars.append((src_pth_str, " ".join(src_pths)))
+    elif len(src_pths) == 1:
+        configuration_vars.append((src_pth_str, src_pths.pop()))
+    else:
+        configuration_vars.append((src_pth_str, "None"))
+
+    configuration_vars.extend([
+        ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
-    )
+        ("Compiled", str(not __file__.endswith(".py"))),
+    ])
 
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
@@ -2612,10 +2656,9 @@ def dispatch(sources: List[BuildSource],
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            TypeState.update_protocol_deps()
+            TypeState.add_all_protocol_deps(manager.fg_deps)
             if not manager.options.fine_grained_incremental:
-                proto_deps = TypeState.proto_deps or {}
-                rdeps = generate_deps_for_cache(proto_deps, manager, graph)
+                rdeps = generate_deps_for_cache(manager, graph)
                 write_deps_cache(rdeps, manager, graph)
 
     if manager.options.dump_deps:
@@ -2732,6 +2775,11 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         graph[st.id] = st
         new.append(st)
         entry_points.add(bs.module)
+
+    # Note: Running this each time could be slow in the daemon. If it's a problem, we
+    # can do more work to maintain this incrementally.
+    seen_files = {st.abspath: st for st in graph.values() if st.path}
+
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
     for st in new:
@@ -2777,11 +2825,22 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     if dep in st.dependencies_set:
                         st.suppress_dependency(dep)
                 else:
+                    if newst.path:
+                        newst_path = os.path.abspath(newst.path)
+
+                        if newst_path in seen_files:
+                            manager.errors.report(
+                                -1, 0,
+                                "Source file found twice under different module names: "
+                                "'{}' and '{}'".format(seen_files[newst_path].id, newst.id),
+                                blocker=True)
+                            manager.errors.raise_error()
+
+                        seen_files[newst_path] = newst
+
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
-            if dep in st.ancestors and dep in graph:
-                graph[dep].child_modules.add(st.id)
             if dep in graph and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
                 st.add_dependency(dep)
@@ -2985,8 +3044,6 @@ def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManage
     t1 = time.time()
     for id in modules:
         graph[id].fix_cross_refs()
-    for id in modules:
-        graph[id].patch_dependency_parents()
     t2 = time.time()
     manager.add_stats(process_fresh_time=t2 - t0, load_tree_time=t1 - t0)
 
@@ -3001,41 +3058,36 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
-        graph[id].fix_suppressed_dependencies(graph)
     if 'typing' in scc:
         # For historical reasons we need to manually add typing aliases
         # for built-in generic collections, see docstring of
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-        if not manager.options.new_semantic_analyzer:
-            manager.semantic_analyzer.add_builtin_aliases(typing_mod)
-    if manager.options.new_semantic_analyzer:
-        semantic_analysis_for_scc(graph, scc, manager.errors)
-    else:
-        for id in stale:
-            graph[id].semantic_analysis()
-        for id in stale:
-            graph[id].semantic_analysis_pass_three()
-        for id in stale:
-            graph[id].semantic_analysis_apply_patches()
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
+
+    # Track what modules aren't yet done so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
     for id in stale:
         graph[id].type_check_first_pass()
-    more = True
-    while more:
-        more = False
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+
+    while unfinished_modules:
         for id in stale:
-            if graph[id].type_check_second_pass():
-                more = True
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+                graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        graph[id].finish_passes()
-        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            graph[id].compute_fine_grained_deps()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()

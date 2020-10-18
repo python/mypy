@@ -194,7 +194,7 @@ def func() -> None:
     A = NewType('A', str)
     B = NewType('B', str)
 
-    a = A(3)  # E: Argument 1 to "A" has incompatible type "int"; expected "str"
+    a = A(3)  # E: Argument 1 to "A@6" has incompatible type "int"; expected "str"
     a = A('xyz')
     b = B('xyz')
 
@@ -296,7 +296,7 @@ a = Foo(type(3))
 [out]
 
 [case testNewTypeWithTypeVarsFails]
-# flags: --new-semantic-analyzer
+
 from typing import NewType, TypeVar, List
 T = TypeVar('T')
 A = NewType('A', T)
@@ -312,7 +312,7 @@ main:5: note: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" in
 main:5: note: (Hint: Use "T" in function signature to bind "T" inside a function)
 
 [case testNewTypeRedefiningVariablesFails]
-# flags: --new-semantic-analyzer
+
 from typing import NewType
 
 a = 3
@@ -366,13 +366,13 @@ Any(5)
 from typing import NewType
 T = NewType('T', int)
 d: object
-if isinstance(d, T):   # E: Cannot use isinstance() with a NewType type
+if isinstance(d, T):   # E: Cannot use isinstance() with NewType type
     reveal_type(d)     # N: Revealed type is '__main__.T'
-issubclass(object, T)  # E: Cannot use issubclass() with a NewType type
+issubclass(object, T)  # E: Cannot use issubclass() with NewType type
 [builtins fixtures/isinstancelist.pyi]
 
 [case testInvalidNewTypeCrash]
-# flags: --new-semantic-analyzer
+
 from typing import List, NewType, Union
 N = NewType('N', XXX)  # E: Argument 2 to NewType(...) must be subclassable (got "Any") \
                        # E: Name 'XXX' is not defined

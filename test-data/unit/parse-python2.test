@@ -109,8 +109,7 @@ MypyFile:1(
   ExpressionStmt:3(
     IntExpr(255)))
 
-[case testLongLiteral-skip]
-# see typed_ast issue #26
+[case testLongLiteral]
 0L
 123L
 012L
@@ -594,19 +593,19 @@ MypyFile:1(
   ExpressionStmt:1(
     IndexExpr:1(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:1(
         NameExpr(y)
         <empty>)))
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:2(
         NameExpr(y)
         NameExpr(z))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x)
-      SliceExpr:-1(
+      SliceExpr:3(
         <empty>
         <empty>
         NameExpr(y)))))

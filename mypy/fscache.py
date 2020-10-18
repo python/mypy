@@ -28,10 +28,10 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
-import hashlib
 import os
 import stat
 from typing import Dict, List, Set
+from mypy.util import hash_digest
 
 
 class FileSystemCache:
@@ -137,7 +137,7 @@ class FileSystemCache:
         st = self.stat(dirname)  # May raise OSError
         # Get stat result as a sequence so we can modify it.
         # (Alas, typeshed's os.stat_result is not a sequence yet.)
-        tpl = tuple(st)  # type: ignore
+        tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
         seq = list(tpl)  # type: List[float]
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
@@ -201,7 +201,7 @@ class FileSystemCache:
         else:
             try:
                 names = self.listdir(head)
-                # This allows to check file name case sensitively in
+                # This allows one to check file name case sensitively in
                 # case-insensitive filesystems.
                 res = tail in names and self.isfile(path)
             except OSError:
@@ -256,12 +256,11 @@ class FileSystemCache:
                 self.read_error_cache[path] = err
                 raise
 
-        md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
-        self.hash_cache[path] = md5hash
+        self.hash_cache[path] = hash_digest(data)
         return data
 
-    def md5(self, path: str) -> str:
+    def hash_digest(self, path: str) -> str:
         if path not in self.hash_cache:
             self.read(path)
         return self.hash_cache[path]

@@ -16,10 +16,10 @@ from mypy.test.data import (
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime, assert_target_equivalence
+    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
 )
 from mypy.errors import CompileError
-from mypy.newsemanal.semanal_main import core_modules
+from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
@@ -46,6 +46,7 @@ typecheck_files = [
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-narrowing.test',
     'check-typeddict.test',
     'check-type-aliases.test',
     'check-ignore.test',
@@ -64,6 +65,7 @@ typecheck_files = [
     'check-selftype.test',
     'check-python2.test',
     'check-columns.test',
+    'check-future.test',
     'check-functions.test',
     'check-tuples.test',
     'check-expressions.test',
@@ -85,11 +87,17 @@ typecheck_files = [
     'check-literal.test',
     'check-newsemanal.test',
     'check-inline-config.test',
+    'check-reports.test',
+    'check-errorcodes.test',
+    'check-annotated.test',
+    'check-parameter-specification.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info >= (3, 8):
     typecheck_files.append('check-python38.test')
+if sys.version_info >= (3, 9):
+    typecheck_files.append('check-python39.test')
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
@@ -106,7 +114,6 @@ class TypeCheckSuite(DataSuite):
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
@@ -162,10 +169,10 @@ class TypeCheckSuite(DataSuite):
         # Enable some options automatically based on test file name.
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if 'newsemanal' in testcase.file:
-            options.new_semantic_analyzer = True
         if 'columns' in testcase.file:
             options.show_column_numbers = True
+        if 'errorcodes' in testcase.file:
+            options.show_error_codes = True
 
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
@@ -223,18 +230,17 @@ class TypeCheckSuite(DataSuite):
             if options.cache_dir != os.devnull:
                 self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
-            if options.new_semantic_analyzer:
-                name = 'targets'
-                if incremental_step:
-                    name += str(incremental_step + 1)
-                expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
-                actual = res.manager.processed_targets
-                # Skip the initial builtin cycle.
-                actual = [t for t in actual
-                          if not any(t.startswith(mod)
-                                     for mod in core_modules + ['mypy_extensions'])]
-                if expected is not None:
-                    assert_target_equivalence(name, expected, actual)
+            name = 'targets'
+            if incremental_step:
+                name += str(incremental_step + 1)
+            expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
+            actual = res.manager.processed_targets
+            # Skip the initial builtin cycle.
+            actual = [t for t in actual
+                      if not any(t.startswith(mod)
+                                 for mod in core_modules + ['mypy_extensions'])]
+            if expected is not None:
+                assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
                 expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)
@@ -247,6 +253,9 @@ class TypeCheckSuite(DataSuite):
                     assert_module_equivalence(
                         'stale' + suffix,
                         expected_stale, res.manager.stale_modules)
+
+        if testcase.output_files:
+            check_test_output_files(testcase, incremental_step, strip_prefix='tmp/')
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:
@@ -267,6 +276,11 @@ class TypeCheckSuite(DataSuite):
         if not missing_paths == busted_paths:
             raise AssertionError("cache data discrepancy %s != %s" %
                                  (missing_paths, busted_paths))
+        assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
+        cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
+        assert os.path.isfile(cachedir_tag)
+        with open(cachedir_tag) as f:
+            assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
 
     def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()
@@ -330,7 +344,7 @@ class TypeCheckSuite(DataSuite):
             cache = FindModuleCache(search_paths)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert path is not None, "Can't find ad hoc case file"
+                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

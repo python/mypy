@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 2)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 language represents various common types in Python 2.
 
 .. note::
@@ -112,8 +111,7 @@ Functions
                   body=None    # type: List[str]
                   ):
        # type: (...) -> bool
-       <code>
-
+       ...
 
 When you're puzzled or when things are complicated
 **************************************************
@@ -257,3 +255,22 @@ Miscellaneous
            return sys.stdin
        else:
            return sys.stdout
+
+
+Decorators
+**********
+
+Decorator functions can be expressed via generics. See
+:ref:`declaring-decorators` for the more details.
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def bare_decorator(func):  # type: (F) -> F
+        ...
+
+    def decorator_args(url):  # type: (str) -> Callable[[F], F]
+        ...

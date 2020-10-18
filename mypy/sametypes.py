@@ -4,12 +4,14 @@ from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-)
-from mypy.typeops import tuple_fallback
+    ProperType, get_proper_type, TypeAliasType)
+from mypy.typeops import tuple_fallback, make_simplified_union
 
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+    left = get_proper_type(left)
+    right = get_proper_type(right)
 
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
@@ -29,9 +31,10 @@ def is_same_type(left: Type, right: Type) -> bool:
         return left.accept(SameTypeVisitor(right))
 
 
-def simplify_union(t: Type) -> Type:
+def simplify_union(t: Type) -> ProperType:
+    t = get_proper_type(t)
     if isinstance(t, UnionType):
-        return UnionType.make_simplified_union(t.items)
+        return make_simplified_union(t.items)
     return t
 
 
@@ -47,7 +50,7 @@ def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:
 class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
 
-    def __init__(self, right: Type) -> None:
+    def __init__(self, right: ProperType) -> None:
         self.right = right
 
     # visit_x(left) means: is left (which is an instance of X) the same type as
@@ -80,6 +83,13 @@ class SameTypeVisitor(TypeVisitor[bool]):
                 left.type == self.right.type and
                 is_same_types(left.args, self.right.args) and
                 left.last_known_value == self.right.last_known_value)
+
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        # Similar to protocols, two aliases with the same targets return False here,
+        # but both is_subtype(t, s) and is_subtype(s, t) return True.
+        return (isinstance(self.right, TypeAliasType) and
+                left.alias == self.right.alias and
+                is_same_types(left.args, self.right.args))
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and

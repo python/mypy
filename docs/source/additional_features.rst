@@ -9,9 +9,10 @@ of the previous sections.
 Dataclasses
 ***********
 
-In Python 3.7, a new ``dataclasses`` module has been added to the standard library.
+In Python 3.7, a new :py:mod:`dataclasses` module has been added to the standard library.
 This module allows defining and customizing simple boilerplate-free classes.
-They can be defined using the ``@dataclasses.dataclass`` decorator:
+They can be defined using the :py:func:`@dataclasses.dataclass
+<python:dataclasses.dataclass>` decorator:
 
 .. code-block:: python
 
@@ -25,7 +26,7 @@ They can be defined using the ``@dataclasses.dataclass`` decorator:
     test = Application("Testing...")  # OK
     bad = Application("Testing...", "with plugin")  # Error: List[str] expected
 
-Mypy will detect special methods (such as ``__lt__``) depending on the flags used to
+Mypy will detect special methods (such as :py:meth:`__lt__ <object.__lt__>`) depending on the flags used to
 define dataclasses. For example:
 
 .. code-block:: python
@@ -65,16 +66,16 @@ class can be used:
 
     val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
 
-For more information see `official docs <https://docs.python.org/3/library/dataclasses.html>`_
-and `PEP 557 <https://www.python.org/dev/peps/pep-0557/>`_.
+For more information see :doc:`official docs <python:library/dataclasses>`
+and :pep:`557`.
 
 Caveats/Known Issues
 ====================
 
-Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
+Some functions in the :py:mod:`dataclasses` module, such as :py:func:`~dataclasses.replace` and :py:func:`~dataclasses.asdict`,
 have imprecise (too permissive) types. This will be fixed in future releases.
 
-Mypy does not yet recognize aliases of ``dataclasses.dataclass``, and will
+Mypy does not yet recognize aliases of :py:func:`dataclasses.dataclass <dataclasses.dataclass>`, and will
 probably never recognize dynamically computed decorators. The following examples
 do **not** work:
 
@@ -110,7 +111,7 @@ do **not** work:
 The attrs package
 *****************
 
-`attrs <http://www.attrs.org/en/stable>`_ is a package that lets you define
+:doc:`attrs <attrs:index>` is a package that lets you define
 classes without writing boilerplate code. Mypy can detect uses of the
 package and will generate the necessary method definitions for decorated
 classes using the type annotations it finds.
@@ -139,7 +140,7 @@ If you're using ``auto_attribs=True`` you must use variable annotations.
         three: int = attr.ib(8)
 
 Typeshed has a couple of "white lie" annotations to make type checking
-easier. ``attr.ib`` and ``attr.Factory`` actually return objects, but the
+easier. :py:func:`attr.ib` and :py:class:`attr.Factory` actually return objects, but the
 annotation says these return the types that they expect to be assigned to.
 That enables this to work:
 
@@ -174,9 +175,9 @@ Caveats/Known Issues
 
 * Currently, ``converter`` only supports named functions.  If mypy finds something else it
   will complain about not understanding the argument and the type annotation in
-  ``__init__`` will be replaced by ``Any``.
+  :py:meth:`__init__ <object.__init__>` will be replaced by ``Any``.
 
-* `Validator decorators <http://www.attrs.org/en/stable/examples.html#validators>`_
+* :ref:`Validator decorators <attrs:examples_validators>`
   and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
   are not type-checked against the attribute they are setting/validating.
 
@@ -285,7 +286,7 @@ run after starting or restarting the daemon.
 
 The mypy daemon requires extra fine-grained dependency data in
 the cache files which aren't included by default. To use caching with
-the mypy daemon, use the ``--cache-fine-grained`` option in your CI
+the mypy daemon, use the :option:`--cache-fine-grained <mypy --cache-fine-grained>` option in your CI
 build::
 
     $ mypy --cache-fine-grained <args...>
@@ -325,7 +326,7 @@ at least if your codebase is hundreds of thousands of lines or more:
   network), the script can still fall back to a normal incremental build.
 
 * You can have multiple local cache directories for different local branches
-  using the ``--cache-dir`` option. If the user switches to an existing
+  using the :option:`--cache-dir <mypy --cache-dir>` option. If the user switches to an existing
   branch where downloaded cache data is already available, you can continue
   to use the existing cache data instead of redownloading the data.
 
@@ -347,16 +348,16 @@ Extended Callable types
    This feature is deprecated.  You can use
    :ref:`callback protocols <callback_protocols>` as a replacement.
 
-As an experimental mypy extension, you can specify ``Callable`` types
+As an experimental mypy extension, you can specify :py:data:`~typing.Callable` types
 that support keyword arguments, optional arguments, and more.  When
-you specify the arguments of a Callable, you can choose to supply just
+you specify the arguments of a :py:data:`~typing.Callable`, you can choose to supply just
 the type of a nameless positional argument, or an "argument specifier"
 representing a more complicated form of argument.  This allows one to
 more closely emulate the full range of possibilities given by the
 ``def`` statement in Python.
 
 As an example, here's a complicated function definition and the
-corresponding ``Callable``:
+corresponding :py:data:`~typing.Callable`:
 
 .. code-block:: python
 
@@ -433,7 +434,7 @@ purpose:
 In all cases, the ``type`` argument defaults to ``Any``, and if the
 ``name`` argument is omitted the argument has no name (the name is
 required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
-``Callable`` such as
+:py:data:`~typing.Callable` such as
 
 .. code-block:: python
 
@@ -445,7 +446,7 @@ is equivalent to the following:
 
    MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
 
-A ``Callable`` with unspecified argument types, such as
+A :py:data:`~typing.Callable` with unspecified argument types, such as
 
 .. code-block:: python
 

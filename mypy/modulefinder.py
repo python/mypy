@@ -9,8 +9,9 @@ import functools
 import os
 import subprocess
 import sys
+from enum import Enum
 
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
 
 from mypy.defaults import PYTHON3_VERSION_MIN
@@ -34,20 +35,61 @@ PackageDirs = List[OnePackageDir]
 PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
 
 
+# TODO: Consider adding more reasons here?
+# E.g. if we deduce a module would likely be found if the user were
+# to set the --namespace-packages flag.
+class ModuleNotFoundReason(Enum):
+    # The module was not found: we found neither stubs nor a plausible code
+    # implementation (with or without a py.typed file).
+    NOT_FOUND = 0
+
+    # The implementation for this module plausibly exists (e.g. we
+    # found a matching folder or *.py file), but either the parent package
+    # did not contain a py.typed file or we were unable to find a
+    # corresponding *-stubs package.
+    FOUND_WITHOUT_TYPE_HINTS = 1
+
+    # The module was not found in the current working directory, but
+    # was able to be found in the parent directory.
+    WRONG_WORKING_DIRECTORY = 2
+
+    def error_message_templates(self) -> Tuple[str, str]:
+        if self is ModuleNotFoundReason.NOT_FOUND:
+            msg = "Cannot find implementation or library stub for module named '{}'"
+            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+        elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
+            msg = "Cannot find implementation or library stub for module named '{}'"
+            note = ("You may be running mypy in a subpackage, "
+                    "mypy should be run on the package root")
+        elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+            msg = "Skipping analyzing '{}': found module but no type hints or library stubs"
+            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+        else:
+            assert False
+        return msg, note
+
+
+# If we found the module, returns the path to the module as a str.
+# Otherwise, returns the reason why the module wasn't found.
+ModuleSearchResult = Union[str, ModuleNotFoundReason]
+
+
 class BuildSource:
     """A single source file."""
 
     def __init__(self, path: Optional[str], module: Optional[str],
-                 text: Optional[str], base_dir: Optional[str] = None) -> None:
+                 text: Optional[str] = None, base_dir: Optional[str] = None) -> None:
         self.path = path  # File where it's found (e.g. 'xxx/yyy/foo/bar.py')
         self.module = module or '__main__'  # Module name (e.g. 'foo.bar')
         self.text = text  # Source code, if initially supplied, else None
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
-                                                                self.module,
-                                                                self.text is not None)
+        return '<BuildSource path=%r module=%r has_text=%s base_dir=%s>' % (
+            self.path,
+            self.module,
+            self.text is not None,
+            self.base_dir)
 
 
 class FindModuleCache:
@@ -72,7 +114,7 @@ class FindModuleCache:
         # search_paths -> (toplevel_id -> list(package_dirs))
         self.initial_components = {}  # type: Dict[Tuple[str, ...], Dict[str, List[str]]]
         # Cache find_module: id -> result
-        self.results = {}  # type: Dict[str, Optional[str]]
+        self.results = {}  # type: Dict[str, ModuleSearchResult]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
         self.ns_packages = ns_packages or []  # type: List[str]
@@ -128,20 +170,30 @@ class FindModuleCache:
         self.initial_components[lib_path] = components
         return components.get(id, [])
 
-    def find_module(self, id: str) -> Optional[str]:
-        """Return the path of the module source file, or None if not found."""
+    def find_module(self, id: str) -> ModuleSearchResult:
+        """Return the path of the module source file or why it wasn't found."""
         if id not in self.results:
             self.results[id] = self._find_module(id)
+            if (self.results[id] is ModuleNotFoundReason.NOT_FOUND
+                    and self._can_find_module_in_parent_dir(id)):
+                self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
         return self.results[id]
 
     def _find_module_non_stub_helper(self, components: List[str],
-                                     pkg_dir: str) -> Optional[OnePackageDir]:
+                                     pkg_dir: str) -> Union[OnePackageDir, ModuleNotFoundReason]:
+        plausible_match = False
         dir_path = pkg_dir
         for index, component in enumerate(components):
             dir_path = os.path.join(dir_path, component)
             if self.fscache.isfile(os.path.join(dir_path, 'py.typed')):
                 return os.path.join(pkg_dir, *components[:-1]), index == 0
-        return None
+            elif not plausible_match and (self.fscache.isdir(dir_path)
+                                          or self.fscache.isfile(dir_path + ".py")):
+                plausible_match = True
+        if plausible_match:
+            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+        else:
+            return ModuleNotFoundReason.NOT_FOUND
 
     def _update_ns_ancestors(self, components: List[str], match: Tuple[str, bool]) -> None:
         path, verify = match
@@ -151,7 +203,21 @@ class FindModuleCache:
                 self.ns_ancestors[pkg_id] = path
             path = os.path.dirname(path)
 
-    def _find_module(self, id: str) -> Optional[str]:
+    def _can_find_module_in_parent_dir(self, id: str) -> bool:
+        """Test if a module can be found by checking the parent directories
+        of the current working directory.
+        """
+        working_dir = os.getcwd()
+        parent_search = FindModuleCache(SearchPaths((), (), (), ()))
+        while any(file.endswith(("__init__.py", "__init__.pyi"))
+                  for file in os.listdir(working_dir)):
+            working_dir = os.path.dirname(working_dir)
+            parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
+            if not isinstance(parent_search._find_module(id), ModuleNotFoundReason):
+                return True
+        return False
+
+    def _find_module(self, id: str) -> ModuleSearchResult:
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -166,6 +232,7 @@ class FindModuleCache:
         # put them in the front of the search path
         third_party_inline_dirs = []  # type: PackageDirs
         third_party_stubs_dirs = []  # type: PackageDirs
+        found_possible_third_party_missing_type_hints = False
         # Third-party stub/typed packages
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
@@ -193,13 +260,17 @@ class FindModuleCache:
                     else:
                         third_party_stubs_dirs.append((path, True))
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
-            if non_stub_match:
+            if isinstance(non_stub_match, ModuleNotFoundReason):
+                if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
+                    found_possible_third_party_missing_type_hints = True
+            else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
             third_party_stubs_dirs.clear()
+            found_possible_third_party_missing_type_hints = False
         python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
         candidate_base_dirs = self.find_lib_path_dirs(id, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
@@ -279,11 +350,18 @@ class FindModuleCache:
         # installed package with a py.typed marker that is a
         # subpackage of a namespace package.  We only fess up to these
         # if we would otherwise return "not found".
-        return self.ns_ancestors.get(id)
+        ancestor = self.ns_ancestors.get(id)
+        if ancestor is not None:
+            return ancestor
+
+        if found_possible_third_party_missing_type_hints:
+            return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
+        else:
+            return ModuleNotFoundReason.NOT_FOUND
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)
-        if not module_path:
+        if isinstance(module_path, ModuleNotFoundReason):
             return []
         result = [BuildSource(module_path, module, None)]
         if module_path.endswith(('__init__.py', '__init__.pyi')):
@@ -401,16 +479,10 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
     This runs a subprocess call, which generates a list of the egg directories, and the site
     package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
     lru_cache the results."""
-    def make_abspath(path: str, root: str) -> str:
-        """Take a path and make it absolute relative to root if not already absolute."""
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        else:
-            return os.path.join(root, os.path.normpath(path))
 
     if python_executable is None:
         return [], []
-    if python_executable == sys.executable:
+    elif python_executable == sys.executable:
         # Use running Python's package dirs
         site_packages = sitepkgs.getsitepackages()
     else:
@@ -419,13 +491,51 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
         site_packages = ast.literal_eval(
             subprocess.check_output([python_executable, sitepkgs.__file__],
             stderr=subprocess.PIPE).decode())
-    egg_dirs = []
+    return expand_site_packages(site_packages)
+
+
+def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]]:
+    """Expands .pth imports in site-packages directories"""
+    egg_dirs = []  # type: List[str]
     for dir in site_packages:
-        pth = os.path.join(dir, 'easy-install.pth')
-        if os.path.isfile(pth):
-            with open(pth) as f:
-                egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
+        if not os.path.isdir(dir):
+            continue
+        pth_filenames = sorted(name for name in os.listdir(dir) if name.endswith(".pth"))
+        for pth_filename in pth_filenames:
+            egg_dirs.extend(_parse_pth_file(dir, pth_filename))
+
     return egg_dirs, site_packages
+
+
+def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
+    """
+    Mimics a subset of .pth import hook from Lib/site.py
+    See https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
+    """
+
+    pth_file = os.path.join(dir, pth_filename)
+    try:
+        f = open(pth_file, "r")
+    except OSError:
+        return
+    with f:
+        for line in f.readlines():
+            if line.startswith("#"):
+                # Skip comment lines
+                continue
+            if line.startswith(("import ", "import\t")):
+                # import statements in .pth files are not supported
+                continue
+
+            yield _make_abspath(line.rstrip(), dir)
+
+
+def _make_abspath(path: str, root: str) -> str:
+    """Take a path and make it absolute relative to root if not already absolute."""
+    if os.path.isabs(path):
+        return os.path.normpath(path)
+    else:
+        return os.path.join(root, os.path.normpath(path))
 
 
 def compute_search_paths(sources: List[BuildSource],
@@ -493,8 +603,12 @@ def compute_search_paths(sources: List[BuildSource],
     egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
     for site_dir in site_packages:
         assert site_dir not in lib_path
-        if site_dir in mypypath:
+        if (site_dir in mypypath or
+                any(p.startswith(site_dir + os.path.sep) for p in mypypath) or
+                os.path.altsep and any(p.startswith(site_dir + os.path.altsep) for p in mypypath)):
             print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+            print("See https://mypy.readthedocs.io/en/latest/running_mypy.html"
+                  "#how-mypy-handles-imports for more info", file=sys.stderr)
             sys.exit(1)
         elif site_dir in python_path:
             print("{} is in the PYTHONPATH. Please change directory"

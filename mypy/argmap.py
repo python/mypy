@@ -2,7 +2,9 @@
 
 from typing import List, Optional, Sequence, Callable, Set
 
-from mypy.types import Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType
+from mypy.types import (
+    Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, get_proper_type
+)
 from mypy import nodes
 
 
@@ -22,6 +24,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
     """
     nformals = len(formal_kinds)
     formal_to_actual = [[] for i in range(nformals)]  # type: List[List[int]]
+    ambiguous_actual_kwargs = []  # type: List[int]
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
@@ -34,7 +37,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
                     formal_to_actual[fi].append(ai)
         elif actual_kind == nodes.ARG_STAR:
             # We need to know the actual type to map varargs.
-            actualt = actual_arg_type(ai)
+            actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TupleType):
                 # A tuple actual maps to a fixed number of formals.
                 for _ in range(len(actualt.items)):
@@ -65,7 +68,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
         else:
             assert actual_kind == nodes.ARG_STAR2
-            actualt = actual_arg_type(ai)
+            actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TypedDictType):
                 for name, value in actualt.items.items():
                     if name in formal_names:
@@ -74,18 +77,25 @@ def map_actuals_to_formals(actual_kinds: List[int],
                         formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
             else:
                 # We don't exactly know which **kwargs are provided by the
-                # caller. Assume that they will fill the remaining arguments.
-                for fi in range(nformals):
-                    # TODO: If there are also tuple varargs, we might be missing some potential
-                    #       matches if the tuple was short enough to not match everything.
-                    no_certain_match = (
-                        not formal_to_actual[fi]
-                        or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
-                    if ((formal_names[fi]
-                            and no_certain_match
-                            and formal_kinds[fi] != nodes.ARG_STAR) or
-                            formal_kinds[fi] == nodes.ARG_STAR2):
-                        formal_to_actual[fi].append(ai)
+                # caller, so we'll defer until all the other unambiguous
+                # actuals have been processed
+                ambiguous_actual_kwargs.append(ai)
+
+    if ambiguous_actual_kwargs:
+        # Assume the ambiguous kwargs will fill the remaining arguments.
+        #
+        # TODO: If there are also tuple varargs, we might be missing some potential
+        #       matches if the tuple was short enough to not match everything.
+        unmatched_formals = [fi for fi in range(nformals)
+                             if (formal_names[fi]
+                                 and (not formal_to_actual[fi]
+                                      or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
+                                 and formal_kinds[fi] != nodes.ARG_STAR)
+                             or formal_kinds[fi] == nodes.ARG_STAR2]
+        for ai in ambiguous_actual_kwargs:
+            for fi in unmatched_formals:
+                formal_to_actual[fi].append(ai)
+
     return formal_to_actual
 
 
@@ -153,9 +163,10 @@ class ArgTypeExpander:
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
         """
+        actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance):
-                if actual_type.type.fullname() == 'builtins.list':
+                if actual_type.type.fullname == 'builtins.list':
                     # List *arg.
                     return actual_type.args[0]
                 elif actual_type.args:
@@ -184,7 +195,7 @@ class ArgTypeExpander:
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
             elif (isinstance(actual_type, Instance)
-                  and (actual_type.type.fullname() == 'builtins.dict')):
+                  and (actual_type.type.fullname == 'builtins.dict')):
                 # Dict **arg.
                 # TODO: Handle arbitrary Mapping
                 return actual_type.args[1]

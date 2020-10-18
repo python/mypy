@@ -169,6 +169,19 @@ def f(x: T) -> int:
 [builtins fixtures/classmethod.pyi]
 
 
+[case testBoundClassMethodWithNamedTupleBase]
+from typing import NamedTuple, Type, TypeVar
+class A(NamedTuple):
+    @classmethod
+    def foo(cls) -> None: ...
+
+T = TypeVar('T', bound=A)
+def f(x: Type[T]) -> None:
+    reveal_type(x.foo)  # N: Revealed type is 'def ()'
+    x.foo()
+[builtins fixtures/classmethod.pyi]
+
+
 [case testBoundStaticMethod]
 from typing import TypeVar
 class A0:

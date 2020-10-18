@@ -4,10 +4,13 @@ from collections import defaultdict
 from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict
 
-from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType
+from mypy.types import (
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
+)
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
+from mypy.erasetype import remove_instance_last_known_values
 from mypy.nodes import Expression, Var, RefExpr
 from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
@@ -191,7 +194,7 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             assert type is not None
-            declaration_type = self.declarations.get(key)
+            declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
                 if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
@@ -246,6 +249,13 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Optional[Type],
                     restrict_any: bool = False) -> None:
+        # We should erase last known value in binder, because if we are using it,
+        # it means that the target is not final, and therefore can't hold a literal.
+        type = remove_instance_last_known_values(type)
+
+        type = get_proper_type(type)
+        declared_type = get_proper_type(declared_type)
+
         if self.type_assignments is not None:
             # We are in a multiassign from union, defer the actual binding,
             # just collect the types.
@@ -270,7 +280,7 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        enclosing_type = self.most_recent_enclosing_type(expr, type)
+        enclosing_type = get_proper_type(self.most_recent_enclosing_type(expr, type))
         if isinstance(enclosing_type, AnyType) and not restrict_any:
             # If x is Any and y is int, after x = y we do not infer that x is int.
             # This could be changed.
@@ -286,15 +296,17 @@ class ConditionalTypeBinder:
         # (See discussion in #3526)
         elif (isinstance(type, AnyType)
               and isinstance(declared_type, UnionType)
-              and any(isinstance(item, NoneType) for item in declared_type.items)
-              and isinstance(self.most_recent_enclosing_type(expr, NoneType()), NoneType)):
+              and any(isinstance(get_proper_type(item), NoneType) for item in declared_type.items)
+              and isinstance(get_proper_type(self.most_recent_enclosing_type(expr, NoneType())),
+                             NoneType)):
             # Replace any Nones in the union type with Any
-            new_items = [type if isinstance(item, NoneType) else item
+            new_items = [type if isinstance(get_proper_type(item), NoneType) else item
                          for item in declared_type.items]
             self.put(expr, UnionType(new_items))
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
-                       and any(isinstance(item, AnyType) for item in declared_type.items))):
+                       and any(isinstance(get_proper_type(item), AnyType)
+                               for item in declared_type.items))):
             # Assigning an Any value doesn't affect the type to avoid false negatives, unless
             # there is an Any item in a declared union type.
             self.put(expr, declared_type)
@@ -320,6 +332,7 @@ class ConditionalTypeBinder:
             self._cleanse_key(dep)
 
     def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
+        type = get_proper_type(type)
         if isinstance(type, AnyType):
             return get_declaration(expr)
         key = literal_hash(expr)
@@ -412,7 +425,7 @@ class ConditionalTypeBinder:
 
 def get_declaration(expr: BindableExpression) -> Optional[Type]:
     if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-        type = expr.node.type
+        type = get_proper_type(expr.node.type)
         if not isinstance(type, PartialType):
             return type
     return None

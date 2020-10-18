@@ -14,6 +14,7 @@ f(1)
 f('')
 f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
 [targets __main__, __main__.f]
+[builtins fixtures/tuple.pyi]
 
 [case testTupleTypeAlias]
 from typing import Tuple
@@ -22,6 +23,7 @@ def f(x: T) -> None: pass
 f((1, 'x'))
 f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
 [targets __main__, __main__.f]
+[builtins fixtures/tuple.pyi]
 
 [case testCallableTypeAlias]
 from typing import Callable
@@ -86,18 +88,21 @@ if int():
     A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
                    # E: Value of type "int" is not indexable
                    # the second error is because of `Union = 0` in lib-stub/typing.pyi
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Sequence, Type
 T = TypeVar('T')
 
 A: Type[float] = int
 if int():
     A = float  # OK
-x: A  # E: Variable "__main__.A" is not valid as a type
-def bad(tp: A) -> None:  # E: Variable "__main__.A" is not valid as a type
+x: A  # E: Variable "__main__.A" is not valid as a type \
+      # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+def bad(tp: A) -> None:  # E: Variable "__main__.A" is not valid as a type \
+                         # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
     pass
 
 Alias = int
@@ -180,10 +185,11 @@ def f(p: 'Alias[str]') -> None:
 reveal_type(f) # N: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])'
 T = TypeVar('T')
 Alias = Tuple[int, T]
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testRecursiveAliasesErrors1]
-# flags: --new-semantic-analyzer
+
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -192,7 +198,7 @@ B = Callable[[B], int] # E: Cannot resolve name "B" (possible cyclic definition)
 C = Type[C] # E: Cannot resolve name "C" (possible cyclic definition)
 
 [case testRecursiveAliasesErrors2]
-# flags: --new-semantic-analyzer
+
 # Recursive aliases are not supported yet.
 from typing import Type, Callable, Union
 
@@ -229,7 +235,7 @@ reveal_type(x[0].x) # N: Revealed type is 'builtins.str'
 [out]
 
 [case testJSONAliasApproximation]
-# flags: --new-semantic-analyzer
+
 # Recursive aliases are not supported yet.
 from typing import List, Union, Dict
 x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
@@ -241,7 +247,7 @@ if isinstance(x, list):
 [out]
 
 [case testForwardRefToTypeVar]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, List
 reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.int]'
 a: A[int]
@@ -251,7 +257,7 @@ T = TypeVar('T')
 [out]
 
 [case testFunctionForwardRefAlias]
-# flags: --new-semantic-analyzer
+
 from typing import List, TypeVar
 
 T = TypeVar('T')
@@ -266,7 +272,7 @@ A = List[T]
 [out]
 
 [case testFunctionForwardRefAlias2]
-# flags: --new-semantic-analyzer
+
 from typing import List, TypeVar
 
 def f() -> None:
@@ -484,7 +490,7 @@ class Parameter:
 
 [case testAliasInImportCycle3]
 # cmd: mypy -m t t2
-# flags: --new-semantic-analyzer
+
 [file t.py]
 MYPY = False
 if MYPY:
@@ -620,7 +626,7 @@ class C:
 [out]
 
 [case testConditionalExceptionAlias]
-# flags: --no-new-semantic-analyzer
+
 try:
     E = E
 except BaseException:
@@ -632,3 +638,24 @@ except E as e:
     reveal_type(e)  # N: Revealed type is '__main__.E'
 [builtins fixtures/exception.pyi]
 [out]
+
+[case testNestedClassOnAliasAsType]
+class Out:
+    class In:
+        class Inner:
+            pass
+
+O = Out
+I = Out.In
+OI = O.In
+A = Out
+B = A
+
+w: O.In
+x: I.Inner
+y: OI.Inner
+z: B.In
+reveal_type(w)  # N: Revealed type is '__main__.Out.In'
+reveal_type(x)  # N: Revealed type is '__main__.Out.In.Inner'
+reveal_type(y)  # N: Revealed type is '__main__.Out.In.Inner'
+reveal_type(z)  # N: Revealed type is '__main__.Out.In'

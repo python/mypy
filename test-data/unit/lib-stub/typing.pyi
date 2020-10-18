@@ -1,5 +1,12 @@
 # Stub for typing module. Many of the definitions have special handling in
 # the type checker, so they can just be initialized to anything.
+#
+# DO NOT ADD TO THIS FILE UNLESS YOU HAVE A GOOD REASON! Additional definitions
+# will slow down tests.
+#
+# Use [typing fixtures/typing-{medium,full,async,...}.pyi] in a test case for
+# a more complete stub for typing. If you need to add things, add to one of
+# the stubs under fixtures/.
 
 cast = 0
 overload = 0
@@ -17,6 +24,7 @@ ClassVar = 0
 Final = 0
 NoReturn = 0
 NewType = 0
+ParamSpec = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -35,10 +43,6 @@ class Generator(Iterator[T], Generic[T, U, V]):
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
 
-class Mapping(Generic[T, T_co]):
-    def __getitem__(self, key: T) -> T_co: pass
+class Mapping(Generic[T, T_co]): pass
 
-# This is an unofficial extension.
 def final(meth: T) -> T: pass
-
-TYPE_CHECKING = 1

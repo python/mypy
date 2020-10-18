@@ -1,7 +1,12 @@
 import os
 
 from mypy.options import Options
-from mypy.modulefinder import FindModuleCache, SearchPaths
+from mypy.modulefinder import (
+    FindModuleCache,
+    SearchPaths,
+    ModuleNotFoundReason,
+    expand_site_packages
+)
 
 from mypy.test.helpers import Suite, assert_equal
 from mypy.test.config import package_path
@@ -38,14 +43,14 @@ class ModuleFinderSuite(Suite):
         If namespace_packages is False, we shouldn't find nsx
         """
         found_module = self.fmc_nons.find_module("nsx")
-        self.assertIsNone(found_module)
+        assert_equal(ModuleNotFoundReason.NOT_FOUND, found_module)
 
     def test__no_namespace_packages__nsx_a(self) -> None:
         """
         If namespace_packages is False, we shouldn't find nsx.a.
         """
         found_module = self.fmc_nons.find_module("nsx.a")
-        self.assertIsNone(found_module)
+        assert_equal(ModuleNotFoundReason.NOT_FOUND, found_module)
 
     def test__no_namespace_packages__find_a_in_pkg1(self) -> None:
         """
@@ -133,4 +138,142 @@ class ModuleFinderSuite(Suite):
 
     def test__find_d_nowhere(self) -> None:
         found_module = self.fmc_ns.find_module("d")
-        self.assertIsNone(found_module)
+        assert_equal(ModuleNotFoundReason.NOT_FOUND, found_module)
+
+
+class ModuleFinderSitePackagesSuite(Suite):
+
+    def setUp(self) -> None:
+        self.package_dir = os.path.relpath(os.path.join(
+            package_path,
+            "modulefinder-site-packages",
+        ))
+
+        egg_dirs, site_packages = expand_site_packages([self.package_dir])
+
+        self.search_paths = SearchPaths(
+            python_path=(),
+            mypy_path=(os.path.join(data_path, "pkg1"),),
+            package_path=tuple(egg_dirs + site_packages),
+            typeshed_path=(),
+        )
+        options = Options()
+        options.namespace_packages = True
+        self.fmc_ns = FindModuleCache(self.search_paths, options=options)
+
+        options = Options()
+        options.namespace_packages = False
+        self.fmc_nons = FindModuleCache(self.search_paths, options=options)
+
+    def path(self, *parts: str) -> str:
+        return os.path.join(self.package_dir, *parts)
+
+    def test__packages_with_ns(self) -> None:
+        cases = [
+            # Namespace package with py.typed
+            ("ns_pkg_typed", self.path("ns_pkg_typed")),
+            ("ns_pkg_typed.a", self.path("ns_pkg_typed", "a.py")),
+            ("ns_pkg_typed.b", self.path("ns_pkg_typed", "b")),
+            ("ns_pkg_typed.b.c", self.path("ns_pkg_typed", "b", "c.py")),
+            ("ns_pkg_typed.a.a_var", ModuleNotFoundReason.NOT_FOUND),
+
+            # Namespace package without py.typed
+            ("ns_pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.a", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.b", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Regular package with py.typed
+            ("pkg_typed", self.path("pkg_typed", "__init__.py")),
+            ("pkg_typed.a", self.path("pkg_typed", "a.py")),
+            ("pkg_typed.b", self.path("pkg_typed", "b", "__init__.py")),
+            ("pkg_typed.b.c", self.path("pkg_typed", "b", "c.py")),
+            ("pkg_typed.a.a_var", ModuleNotFoundReason.NOT_FOUND),
+
+            # Regular package without py.typed
+            ("pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.a", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.b", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Top-level Python file in site-packages
+            ("standalone", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("standalone.standalone_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Packages found by following .pth files
+            ("baz_pkg", self.path("baz", "baz_pkg", "__init__.py")),
+            ("ns_baz_pkg.a", self.path("baz", "ns_baz_pkg", "a.py")),
+            ("neighbor_pkg", self.path("..", "modulefinder-src", "neighbor_pkg", "__init__.py")),
+            ("ns_neighbor_pkg.a", self.path("..", "modulefinder-src", "ns_neighbor_pkg", "a.py")),
+
+            # Something that doesn't exist
+            ("does_not_exist", ModuleNotFoundReason.NOT_FOUND),
+
+            # A regular package with an installed set of stubs
+            ("foo.bar", self.path("foo-stubs", "bar.pyi")),
+
+            # A regular, non-site-packages module
+            ("a", os.path.join(data_path, "pkg1", "a.py")),
+        ]
+        for module, expected in cases:
+            template = "Find(" + module + ") got {}; expected {}"
+
+            actual = self.fmc_ns.find_module(module)
+            assert_equal(actual, expected, template)
+
+    def test__packages_without_ns(self) -> None:
+        cases = [
+            # Namespace package with py.typed
+            ("ns_pkg_typed", ModuleNotFoundReason.NOT_FOUND),
+            ("ns_pkg_typed.a", ModuleNotFoundReason.NOT_FOUND),
+            ("ns_pkg_typed.b", ModuleNotFoundReason.NOT_FOUND),
+            ("ns_pkg_typed.b.c", ModuleNotFoundReason.NOT_FOUND),
+            ("ns_pkg_typed.a.a_var", ModuleNotFoundReason.NOT_FOUND),
+
+            # Namespace package without py.typed
+            ("ns_pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.a", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.b", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Regular package with py.typed
+            ("pkg_typed", self.path("pkg_typed", "__init__.py")),
+            ("pkg_typed.a", self.path("pkg_typed", "a.py")),
+            ("pkg_typed.b", self.path("pkg_typed", "b", "__init__.py")),
+            ("pkg_typed.b.c", self.path("pkg_typed", "b", "c.py")),
+            ("pkg_typed.a.a_var", ModuleNotFoundReason.NOT_FOUND),
+
+            # Regular package without py.typed
+            ("pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.a", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.b", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Top-level Python file in site-packages
+            ("standalone", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("standalone.standalone_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Packages found by following .pth files
+            ("baz_pkg", self.path("baz", "baz_pkg", "__init__.py")),
+            ("ns_baz_pkg.a", ModuleNotFoundReason.NOT_FOUND),
+            ("neighbor_pkg", self.path("..", "modulefinder-src", "neighbor_pkg", "__init__.py")),
+            ("ns_neighbor_pkg.a", ModuleNotFoundReason.NOT_FOUND),
+
+            # Something that doesn't exist
+            ("does_not_exist", ModuleNotFoundReason.NOT_FOUND),
+
+            # A regular package with an installed set of stubs
+            ("foo.bar", self.path("foo-stubs", "bar.pyi")),
+
+            # A regular, non-site-packages module
+            ("a", os.path.join(data_path, "pkg1", "a.py")),
+        ]
+        for module, expected in cases:
+            template = "Find(" + module + ") got {}; expected {}"
+
+            actual = self.fmc_nons.find_module(module)
+            assert_equal(actual, expected, template)

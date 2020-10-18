@@ -88,9 +88,9 @@ MODULE_LEVEL_GETATTRIBUTE = '__getattribute__ is not valid at the module level' 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
+GENERIC_CLASS_VAR_ACCESS = \
+    'Access to generic class variables is ambiguous'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type {}'  # type: Final
-# TODO: remove when the old semantic analyzer is gone
-BARE_GENERIC_OLD = 'Missing type parameters for generic type'  # type: Final
 IMPLICIT_GENERIC_ANY_BUILTIN = \
     'Implicit generic "Any". Use "{}" and specify generic parameters'  # type: Final
 
@@ -109,6 +109,7 @@ SUPER_VARARGS_NOT_SUPPORTED = 'Varargs not supported with "super"'  # type: Fina
 SUPER_POSITIONAL_ARGS_REQUIRED = '"super" only accepts positional arguments'  # type: Final
 SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1 = \
     'Argument 2 for "super" not an instance of argument 1'  # type: Final
+TARGET_CLASS_HAS_NO_BASE_CLASS = 'Target class has no base class'  # type: Final
 SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED = \
     'super() outside of a method is not supported'  # type: Final
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED = \

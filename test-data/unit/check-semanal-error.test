@@ -18,7 +18,7 @@ m.foo()
 m.x = m.y
 1() # E
 [out]
-main:1: error: Cannot find module named 'm'
+main:1: error: Cannot find implementation or library stub for module named 'm'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: "int" not callable
 
@@ -28,7 +28,7 @@ x.foo()
 x.a = x.b
 1() # E
 [out]
-main:1: error: Cannot find module named 'm'
+main:1: error: Cannot find implementation or library stub for module named 'm'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: "int" not callable
 
@@ -37,7 +37,7 @@ from m import * # E
 x # E
 1() # E
 [out]
-main:1: error: Cannot find module named 'm'
+main:1: error: Cannot find implementation or library stub for module named 'm'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'x' is not defined
 main:3: error: "int" not callable
@@ -49,7 +49,7 @@ A().foo(1)
 A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testInvalidBaseClass2]
-# flags: --new-semantic-analyzer
+
 X = 1
 class A(X): # E
     x = 1
@@ -57,6 +57,7 @@ A().foo(1)
 A().x = '' # E
 [out]
 main:3: error: Variable "__main__.X" is not valid as a type
+main:3: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 main:3: error: Invalid base class "X"
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -82,7 +83,7 @@ x = 1
 yield from x # E: 'yield from' outside function
 
 [case testImportFuncDup]
-# flags: --new-semantic-analyzer
+
 import m
 def m() -> None: ...  # E: Name 'm' already defined (by an import)
 
@@ -90,10 +91,27 @@ def m() -> None: ...  # E: Name 'm' already defined (by an import)
 [out]
 
 [case testIgnoredImportDup]
-# flags: --new-semantic-analyzer
+
 import m # type: ignore
 from m import f # type: ignore
 def m() -> None: ...  # E: Name 'm' already defined (possibly by an import)
 def f() -> None: ...  # E: Name 'f' already defined (possibly by an import)
 
+[out]
+
+[case testRuntimeProtoTwoBases]
+from typing_extensions import Protocol, runtime_checkable
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+@runtime_checkable
+class P(Protocol, Generic[T]):
+    attr: T
+
+class C:
+    attr: int
+
+x: P[int] = C()
+[builtins fixtures/tuple.pyi]
 [out]

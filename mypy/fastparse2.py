@@ -15,9 +15,10 @@ different class hierarchies, which made it difficult to write a shared visitor b
 two in a typesafe way.
 """
 import sys
+import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, Set
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 from typing_extensions import Final, Literal
 
 from mypy.sharedparse import (
@@ -40,10 +41,14 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
+    ProperType
 )
-from mypy import message_registry
+from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
-from mypy.fastparse import TypeConverter, parse_type_comment, bytes_to_human_readable_repr
+from mypy.fastparse import (
+    TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
+    TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
+)
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
 
@@ -60,7 +65,7 @@ try:
     from mypy.fastparse import ast3, ast3_parse
 except ImportError:
     try:
-        from typed_ast import ast35  # type: ignore  # noqa: F401
+        from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
               'You can install it with `python3 -m pip install typed-ast`.',
@@ -103,7 +108,10 @@ def parse(source: Union[str, bytes],
     is_stub_file = fnam.endswith('.pyi')
     try:
         assert options.python_version[0] < 3 and not is_stub_file
-        ast = ast27.parse(source, fnam, 'exec')
+        # Disable deprecation warnings about <>.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            ast = ast27.parse(source, fnam, 'exec')
         tree = ASTConverter(options=options,
                             errors=errors,
                             ).visit(ast)
@@ -111,8 +119,9 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True)
-        tree = MypyFile([], [], False, set())
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+                      code=codes.SYNTAX)
+        tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
         errors.raise_error()
@@ -162,11 +171,11 @@ class ASTConverter:
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
-        self.type_ignores = set()  # type: Set[int]
+        self.type_ignores = {}  # type: Dict[int, List[str]]
 
     def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker)
+            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
 
     def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
         if node is None:
@@ -179,7 +188,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt, ast27.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         return node
@@ -215,6 +224,21 @@ class ASTConverter:
             assert isinstance(node, Statement)
             res.append(node)
         return res
+
+    def translate_type_comment(self, n: ast27.stmt,
+                               type_comment: Optional[str]) -> Optional[ProperType]:
+        if type_comment is None:
+            return None
+        else:
+            lineno = n.lineno
+            extra_ignore, typ = parse_type_comment(type_comment,
+                                                   lineno,
+                                                   n.col_offset,
+                                                   self.errors,
+                                                   assume_str_is_unicode=self.unicode_literals)
+            if extra_ignore is not None:
+                self.type_ignores[lineno] = extra_ignore
+            return typ
 
     op_map = {
         ast27.Add: '+',
@@ -280,7 +304,7 @@ class ASTConverter:
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
-                    and stmt.name() == current_overload_name):
+                    and stmt.name == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -290,7 +314,7 @@ class ASTConverter:
 
                 if isinstance(stmt, Decorator):
                     current_overload = [stmt]
-                    current_overload_name = stmt.name()
+                    current_overload_name = stmt.name
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -319,8 +343,14 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast27.Module) -> MypyFile:
-        self.type_ignores = {ti.lineno for ti in mod.type_ignores}
-        body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
+        self.type_ignores = {}
+        for ti in mod.type_ignores:
+            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            if parsed is not None:
+                self.type_ignores[ti.lineno] = parsed
+            else:
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, module=True))
         return MypyFile(body,
                         self.imports,
                         False,
@@ -340,7 +370,7 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, lineno)
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
+        arg_names = [arg.variable.name for arg in args]  # type: List[Optional[str]]
         arg_names = [None if argument_elide_name(name) else name for name in arg_names]
         if special_function_elide_names(n.name):
             arg_names = [None] * len(arg_names)
@@ -387,7 +417,8 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
                           "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
@@ -419,7 +450,7 @@ class ASTConverter:
             func_type.line = lineno
 
         if n.decorator_list:
-            var = Var(func_def.name())
+            var = Var(func_def.name)
             var.is_ready = False
             var.set_line(n.decorator_list[0].lineno)
 
@@ -516,12 +547,23 @@ class ASTConverter:
             raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
         return Var(v)
 
-    def get_type(self, i: int, type_comments: Sequence[Optional[str]],
+    def get_type(self,
+                 i: int,
+                 type_comments: Sequence[Optional[str]],
                  converter: TypeConverter) -> Optional[Type]:
         if i < len(type_comments):
             comment = type_comments[i]
             if comment is not None:
-                return converter.visit_raw_str(comment)
+                typ = converter.visit_raw_str(comment)
+                extra_ignore = TYPE_IGNORE_PATTERN.match(comment)
+                if extra_ignore:
+                    tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
+                    ignored = parse_type_ignore_tag(tag)
+                    if ignored is None:
+                        self.fail(INVALID_TYPE_IGNORE, converter.line, -1)
+                    else:
+                        self.type_ignores[converter.line] = ignored
+                return typ
         return None
 
     def stringify_name(self, n: AST) -> str:
@@ -569,16 +611,7 @@ class ASTConverter:
 
     # Assign(expr* targets, expr value, string? type_comment)
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
-        typ = None
-        if n.type_comment:
-            extra_ignore, typ = parse_type_comment(n.type_comment,
-                                                   n.lineno,
-                                                   n.col_offset,
-                                                   self.errors,
-                                                   assume_str_is_unicode=self.unicode_literals)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-
+        typ = self.translate_type_comment(n, n.type_comment)
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
                               type=typ)
@@ -593,16 +626,7 @@ class ASTConverter:
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast27.For) -> ForStmt:
-        if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment,
-                                                   n.lineno,
-                                                   n.col_offset,
-                                                   self.errors,
-                                                   assume_str_is_unicode=self.unicode_literals)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            typ = None
+        typ = self.translate_type_comment(n, n.type_comment)
         stmt = ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_required_block(n.body, n.lineno),
@@ -626,16 +650,7 @@ class ASTConverter:
 
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast27.With) -> WithStmt:
-        if n.type_comment is not None:
-            extra_ignore, typ = parse_type_comment(n.type_comment,
-                                                   n.lineno,
-                                                   n.col_offset,
-                                                   self.errors,
-                                                   assume_str_is_unicode=self.unicode_literals)
-            if extra_ignore:
-                self.type_ignores.add(n.lineno)
-        else:
-            typ = None
+        typ = self.translate_type_comment(n, n.type_comment)
         stmt = WithStmt([self.visit(n.context_expr)],
                         [self.visit(n.optional_vars)],
                         self.as_required_block(n.body, n.lineno),
@@ -680,7 +695,7 @@ class ASTConverter:
             if item.name is None:
                 vs.append(None)
             elif isinstance(item.name, Name):
-                vs.append(NameExpr(item.name.id))
+                vs.append(self.set_line(NameExpr(item.name.id), item))
             else:
                 self.fail("Sorry, `except <expr>, <anything but a name>` is not supported",
                           item.lineno, item.col_offset)
@@ -828,8 +843,8 @@ class ASTConverter:
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
         n_body = ast27.Return(n.body)
-        n_body.lineno = n.lineno
-        n_body.col_offset = n.col_offset
+        n_body.lineno = n.body.lineno
+        n_body.col_offset = n.body.col_offset
         body = self.as_required_block([n_body], n.lineno)
         if decompose_stmts:
             body.body = decompose_stmts + body.body
@@ -1003,7 +1018,12 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast27.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        return self.set_line(e, n)
+        self.set_line(e, n)
+        if isinstance(e.index, SliceExpr):
+            # Slice has no line/column in the raw ast.
+            e.index.line = e.line
+            e.index.column = e.column
+        return e
 
     # Name(identifier id, expr_context ctx)
     def visit_Name(self, n: Name) -> NameExpr:

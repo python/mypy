@@ -6,6 +6,7 @@ __pycache__
 /build
 /env*/
 docs/build/
+docs/source/_build
 *.iml
 /out/
 .venv*/
@@ -22,8 +23,11 @@ dmypy.json
 
 # IDEs
 .idea
-*.swp
 .vscode
+
+# vim temporary files
+.*.sw?
+*.sw?
 
 # Operating Systems
 .DS_Store
@@ -43,3 +47,12 @@ include/
 
 .tox
 pip-wheel-metadata
+
+
+test_capi
+*.o
+*.a
+test_capi
+/.mypyc-flake8-cache.json
+/mypyc/lib-rt/build/
+/mypyc/lib-rt/*.so

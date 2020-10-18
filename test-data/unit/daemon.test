@@ -11,7 +11,9 @@ Daemon stopped
 $ dmypy start -- --follow-imports=error
 Daemon started
 $ dmypy check -- foo.py
+Success: no issues found in 1 source file
 $ dmypy recheck
+Success: no issues found in 1 source file
 $ dmypy stop
 Daemon stopped
 [file foo.py]
@@ -20,15 +22,25 @@ def f(): pass
 [case testDaemonRun]
 $ dmypy run -- foo.py --follow-imports=error
 Daemon started
+Success: no issues found in 1 source file
 $ dmypy stop
 Daemon stopped
 [file foo.py]
 def f(): pass
 
+[case testDaemonIgnoreConfigFiles]
+$ dmypy start -- --follow-imports=error
+Daemon started
+[file mypy.ini]
+\[mypy]
+files = ./foo.py
+
 [case testDaemonRunRestart]
 $ dmypy run -- foo.py --follow-imports=error
 Daemon started
+Success: no issues found in 1 source file
 $ dmypy run -- foo.py --follow-imports=error
+Success: no issues found in 1 source file
 $ {python} -c "print('[mypy]')" >mypy.ini
 $ {python} -c "print('disallow_untyped_defs = True')" >>mypy.ini
 $ dmypy run -- foo.py --follow-imports=error
@@ -37,26 +49,54 @@ Daemon stopped
 Daemon started
 foo.py:1: error: Function is missing a return type annotation
 foo.py:1: note: Use "-> None" if function does not return a value
+Found 1 error in 1 file (checked 1 source file)
 == Return code: 1
 $ {python} -c "print('def f() -> None: pass')" >foo.py
 $ dmypy run -- foo.py --follow-imports=error
+Success: no issues found in 1 source file
+$ dmypy stop
+Daemon stopped
+[file foo.py]
+def f(): pass
+
+[case testDaemonRunRestartPretty]
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Daemon started
+Success: no issues found in 1 source file
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Success: no issues found in 1 source file
+$ {python} -c "print('[mypy]')" >mypy.ini
+$ {python} -c "print('disallow_untyped_defs = True')" >>mypy.ini
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Restarting: configuration changed
+Daemon stopped
+Daemon started
+foo.py:1: error: Function is missing a return type annotation
+    def f(): pass
+    ^
+foo.py:1: note: Use "-> None" if function does not return a value
+Found 1 error in 1 file (checked 1 source file)
+== Return code: 1
+$ {python} -c "print('def f() -> None: pass')" >foo.py
+$ dmypy run -- foo.py --follow-imports=error --pretty
+Success: no issues found in 1 source file
 $ dmypy stop
 Daemon stopped
 [file foo.py]
 def f(): pass
 
 [case testDaemonRunRestartPluginVersion]
-$ dmypy run -- foo.py
+$ dmypy run -- foo.py --no-error-summary
 Daemon started
 $ {python} -c "print(' ')" >> plug.py
-$ dmypy run -- foo.py
+$ dmypy run -- foo.py --no-error-summary
 Restarting: plugins changed
 Daemon stopped
 Daemon started
 $ dmypy stop
 Daemon stopped
 [file mypy.ini]
-[[mypy]
+\[mypy]
 follow_imports = error
 plugins = plug.py
 [file foo.py]
@@ -65,6 +105,39 @@ pass
 from mypy.plugin import Plugin
 class Dummy(Plugin): pass
 def plugin(version): return Dummy
+
+[case testDaemonRunRestartGlobs]
+-- Ensure dmypy is not restarted if the configuration doesn't change and it contains globs
+-- Note: Backslash path separator in output is replaced with forward slash so the same test succeeds on Windows as well
+$ dmypy run -- foo --follow-imports=error --python-version=3.6
+Daemon started
+foo/lol.py:1: error: Name 'fail' is not defined
+Found 1 error in 1 file (checked 3 source files)
+== Return code: 1
+$ dmypy run -- foo --follow-imports=error --python-version=3.6
+foo/lol.py:1: error: Name 'fail' is not defined
+Found 1 error in 1 file (checked 3 source files)
+== Return code: 1
+$ {python} -c "print('[mypy]')" >mypy.ini
+$ {python} -c "print('ignore_errors=True')" >>mypy.ini
+$ dmypy run -- foo --follow-imports=error --python-version=3.6
+Restarting: configuration changed
+Daemon stopped
+Daemon started
+Success: no issues found in 3 source files
+$ dmypy stop
+Daemon stopped
+[file mypy.ini]
+\[mypy]
+ignore_errors = True
+\[mypy-*.lol]
+ignore_errors = False
+
+[file foo/__init__.py]
+[file foo/lol.py]
+fail
+[file foo/ok.py]
+a: int = 1
 
 [case testDaemonStatusKillRestartRecheck]
 $ dmypy status
@@ -79,14 +152,14 @@ No status file found
 $ dmypy recheck
 No status file found
 == Return code: 2
-$ dmypy start --  --follow-imports=error
+$ dmypy start --  --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy status
 Daemon is up and running
 $ dmypy start
 Daemon is still alive
 == Return code: 2
-$ dmypy restart --  --follow-imports=error
+$ dmypy restart --  --follow-imports=error --no-error-summary
 Daemon stopped
 Daemon started
 $ dmypy stop
@@ -94,7 +167,7 @@ Daemon stopped
 $ dmypy status
 No status file found
 == Return code: 2
-$ dmypy restart --  --follow-imports=error
+$ dmypy restart --  --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy recheck
 Command 'recheck' is only valid after a 'check' command
@@ -106,7 +179,7 @@ Daemon has died
 == Return code: 2
 
 [case testDaemonRecheck]
-$ dmypy start -- --follow-imports=error
+$ dmypy start -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy check foo.py bar.py
 $ dmypy recheck
@@ -146,12 +219,14 @@ Daemon stopped
 $ {python} -c "print('x=1')" >foo.py
 $ {python} -c "print('x=1')" >bar.py
 $ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.6 -- foo.py bar.py
+Success: no issues found in 2 source files
 $ {python} -c "import shutil; shutil.copy('.mypy_cache/3.6/bar.meta.json', 'asdf.json')"
 -- update bar's timestamp but don't change the file
 $ {python} -c "import time;time.sleep(1)"
 $ {python} -c "print('x=1')" >bar.py
 $ dmypy run -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6
 Daemon started
+Success: no issues found in 2 source files
 $ dmypy status --fswatcher-dump-file test.json
 Daemon is up and running
 $ dmypy stop
@@ -164,6 +239,7 @@ $ {python} -c "print('lol')" >foo.py
 $ dmypy run --log-file=log -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6 --quickstart-file test.json
 Daemon started
 foo.py:1: error: Name 'lol' is not defined
+Found 1 error in 1 file (checked 2 source files)
 == Return code: 1
 -- make sure no errors made it to the log file
 $ {python} -c "import sys; sys.stdout.write(open('log').read())"
@@ -172,10 +248,10 @@ $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 $ {python} -c "x = open('.mypy_cache/3.6/bar.meta.json').read(); y = open('asdf.json').read(); assert x == y"
 
 [case testDaemonSuggest]
-$ dmypy start --log-file log.txt -- --follow-imports=error
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy suggest foo:foo
-Command 'suggest' is only valid after a 'check' command
+Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
 == Return code: 2
 $ dmypy check foo.py bar.py
 $ dmypy suggest foo.bar

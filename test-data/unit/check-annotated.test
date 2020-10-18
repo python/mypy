@@ -1,0 +1,118 @@
+[case testAnnotated0]
+from typing_extensions import Annotated
+x: Annotated[int, ...]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotated1]
+from typing import Union
+from typing_extensions import Annotated
+x: Annotated[Union[int, str], ...]
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotated2]
+from typing_extensions import Annotated
+x: Annotated[int, THESE, ARE, IGNORED, FOR, NOW]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotated3]
+from typing_extensions import Annotated
+x: Annotated[int, -+~12.3, "som"[e], more(anno+a+ions, that=[are]), (b"ignored",), 4, N.O.W, ...]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedBadType]
+from typing_extensions import Annotated
+x: Annotated[XXX, ...]  # E: Name 'XXX' is not defined
+reveal_type(x)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedBadNoArgs]
+from typing_extensions import Annotated
+x: Annotated  # E: Annotated[...] must have exactly one type argument and at least one annotation
+reveal_type(x)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedBadOneArg]
+from typing_extensions import Annotated
+x: Annotated[int]  # E: Annotated[...] must have exactly one type argument and at least one annotation
+reveal_type(x)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNested0]
+from typing_extensions import Annotated
+x: Annotated[Annotated[int, ...], ...]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNested1]
+from typing import Union
+from typing_extensions import Annotated
+x: Annotated[Annotated[Union[int, str], ...], ...]
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNestedBadType]
+from typing_extensions import Annotated
+x: Annotated[Annotated[XXX, ...], ...]  # E: Name 'XXX' is not defined
+reveal_type(x)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNestedBadNoArgs]
+from typing_extensions import Annotated
+x: Annotated[Annotated, ...]  # E: Annotated[...] must have exactly one type argument and at least one annotation
+reveal_type(x)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNestedBadOneArg]
+from typing_extensions import Annotated
+x: Annotated[Annotated[int], ...]  # E: Annotated[...] must have exactly one type argument and at least one annotation
+reveal_type(x)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedNoImport]
+x: Annotated[int, ...]  # E: Name 'Annotated' is not defined
+reveal_type(x)  # N: Revealed type is 'Any'
+
+[case testAnnotatedDifferentName]
+from typing_extensions import Annotated as An
+x: An[int, ...]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedAliasSimple]
+from typing import Tuple
+from typing_extensions import Annotated
+Alias = Annotated[Tuple[int, ...], ...]
+x: Alias
+reveal_type(x)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedAliasTypeVar]
+from typing import TypeVar
+from typing_extensions import Annotated
+T = TypeVar('T')
+Alias = Annotated[T, ...]
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is 'builtins.int'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedAliasGenericTuple]
+from typing import TypeVar, Tuple
+from typing_extensions import Annotated
+T = TypeVar('T')
+Alias = Annotated[Tuple[T, T], ...]
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedAliasGenericUnion]
+from typing import TypeVar, Union
+from typing_extensions import Annotated
+T = TypeVar('T')
+Alias = Annotated[Union[T, str], ...]
+x: Alias[int]
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]

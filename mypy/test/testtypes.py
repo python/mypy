@@ -8,15 +8,17 @@ from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types, narrow_declared_type
 from mypy.sametypes import is_same_type
+from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, true_only, false_only, TypeVarId, TypeOfAny,
-    LiteralType,
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
+    LiteralType, get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 from mypy.state import strict_optional_set
+from mypy.typeops import true_only, false_only
 
 
 class TypesSuite(Suite):
@@ -91,6 +93,39 @@ class TypesSuite(Suite):
         c2 = CallableType([], [], [], NoneType(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
+    def test_type_alias_expand_once(self) -> None:
+        A, target = self.fx.def_alias_1(self.fx.a)
+        assert get_proper_type(A) == target
+        assert get_proper_type(target) == target
+
+        A, target = self.fx.def_alias_2(self.fx.a)
+        assert get_proper_type(A) == target
+        assert get_proper_type(target) == target
+
+    def test_type_alias_expand_all(self) -> None:
+        A, _ = self.fx.def_alias_1(self.fx.a)
+        assert A.expand_all_if_possible() is None
+        A, _ = self.fx.def_alias_2(self.fx.a)
+        assert A.expand_all_if_possible() is None
+
+        B = self.fx.non_rec_alias(self.fx.a)
+        C = self.fx.non_rec_alias(TupleType([B, B], Instance(self.fx.std_tuplei,
+                                                             [B])))
+        assert C.expand_all_if_possible() == TupleType([self.fx.a, self.fx.a],
+                                                       Instance(self.fx.std_tuplei,
+                                                                [self.fx.a]))
+
+    def test_indirection_no_infinite_recursion(self) -> None:
+        A, _ = self.fx.def_alias_1(self.fx.a)
+        visitor = TypeIndirectionVisitor()
+        modules = A.accept(visitor)
+        assert modules == {'__main__', 'builtins'}
+
+        A, _ = self.fx.def_alias_2(self.fx.a)
+        visitor = TypeIndirectionVisitor()
+        modules = A.accept(visitor)
+        assert modules == {'__main__', 'builtins'}
+
 
 class TypeOpsSuite(Suite):
     def setUp(self) -> None:
@@ -107,6 +142,12 @@ class TypeOpsSuite(Suite):
             self.assert_expand(t, [], t)
             self.assert_expand(t, [], t)
             self.assert_expand(t, [], t)
+
+    def test_trivial_expand_recursive(self) -> None:
+        A, _ = self.fx.def_alias_1(self.fx.a)
+        self.assert_expand(A, [], A)
+        A, _ = self.fx.def_alias_2(self.fx.a)
+        self.assert_expand(A, [], A)
 
     def test_expand_naked_type_var(self) -> None:
         self.assert_expand(self.fx.t, [(self.fx.t.id, self.fx.a)], self.fx.a)
@@ -147,6 +188,13 @@ class TypeOpsSuite(Suite):
         self.assert_erase(self.fx.ga, self.fx.gdyn)
         self.assert_erase(self.fx.hab,
                           Instance(self.fx.hi, [self.fx.anyt, self.fx.anyt]))
+
+    def test_erase_with_generic_type_recursive(self) -> None:
+        tuple_any = Instance(self.fx.std_tuplei, [AnyType(TypeOfAny.explicit)])
+        A, _ = self.fx.def_alias_1(self.fx.a)
+        self.assert_erase(A, tuple_any)
+        A, _ = self.fx.def_alias_2(self.fx.a)
+        self.assert_erase(A, UnionType([self.fx.a, tuple_any]))
 
     def test_erase_with_tuple_type(self) -> None:
         self.assert_erase(self.tuple(self.fx.a), self.fx.std_tuple)
@@ -278,6 +326,27 @@ class TypeOpsSuite(Suite):
 
         assert_true(is_subtype(lit1, fx.anyt))
         assert_true(is_subtype(fx.anyt, lit1))
+
+    def test_subtype_aliases(self) -> None:
+        A1, _ = self.fx.def_alias_1(self.fx.a)
+        AA1, _ = self.fx.def_alias_1(self.fx.a)
+        assert_true(is_subtype(A1, AA1))
+        assert_true(is_subtype(AA1, A1))
+
+        A2, _ = self.fx.def_alias_2(self.fx.a)
+        AA2, _ = self.fx.def_alias_2(self.fx.a)
+        assert_true(is_subtype(A2, AA2))
+        assert_true(is_subtype(AA2, A2))
+
+        B1, _ = self.fx.def_alias_1(self.fx.b)
+        B2, _ = self.fx.def_alias_2(self.fx.b)
+        assert_true(is_subtype(B1, A1))
+        assert_true(is_subtype(B2, A2))
+        assert_false(is_subtype(A1, B1))
+        assert_false(is_subtype(A2, B2))
+
+        assert_false(is_subtype(A2, A1))
+        assert_true(is_subtype(A1, A2))
 
     # can_be_true / can_be_false
 
@@ -432,10 +501,27 @@ class JoinSuite(Suite):
 
         self.assert_join(self.tuple(self.fx.a, self.fx.a),
                          self.fx.std_tuple,
-                         self.fx.o)
+                         self.var_tuple(self.fx.anyt))
         self.assert_join(self.tuple(self.fx.a),
                          self.tuple(self.fx.a, self.fx.a),
-                         self.fx.o)
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.tuple(self.fx.b),
+                         self.tuple(self.fx.a, self.fx.c),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.tuple(),
+                         self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+
+    def test_var_tuples(self) -> None:
+        self.assert_join(self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.var_tuple(self.fx.a),
+                         self.tuple(self.fx.a),
+                         self.var_tuple(self.fx.a))
+        self.assert_join(self.var_tuple(self.fx.a),
+                         self.tuple(),
+                         self.var_tuple(self.fx.a))
 
     def test_function_types(self) -> None:
         self.assert_join(self.callable(self.fx.a, self.fx.b),
@@ -650,10 +736,10 @@ class JoinSuite(Suite):
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
         self.assert_join(UnionType([lit1, lit2]), a, a)
         self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
-        self.assert_join(UnionType([d, lit3]), lit3, UnionType([d, lit3]))
+        self.assert_join(UnionType([d, lit3]), lit3, d)
         self.assert_join(UnionType([d, lit3]), d, UnionType([d, lit3]))
-        self.assert_join(UnionType([a, lit1]), lit1, UnionType([a, lit1]))
-        self.assert_join(UnionType([a, lit1]), lit2, UnionType([a, lit1]))
+        self.assert_join(UnionType([a, lit1]), lit1, a)
+        self.assert_join(UnionType([a, lit1]), lit2, a)
         self.assert_join(UnionType([lit1, lit2]),
                          UnionType([lit1, lit2]),
                          UnionType([lit1, lit2]))
@@ -690,6 +776,10 @@ class JoinSuite(Suite):
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
+
+    def var_tuple(self, t: Type) -> Instance:
+        """Construct a variable-length tuple type"""
+        return Instance(self.fx.std_tuplei, [t])
 
     def callable(self, *a: Type) -> CallableType:
         """callable(a1, ..., an, r) constructs a callable with argument types

@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 3)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 annotation notation represents various common types in Python 3.
 
 .. note::
@@ -18,9 +17,8 @@ annotation notation represents various common types in Python 3.
 Variables
 *********
 
-Python 3.6 introduced a syntax for annotating variables in
-`PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_ and
-we use it in most examples.
+Python 3.6 introduced a syntax for annotating variables in :pep:`526`
+and we use it in most examples.
 
 .. code-block:: python
 
@@ -67,8 +65,11 @@ Built-in types
    # For mappings, we need the types of both keys and values
    x: Dict[str, float] = {'field': 2.0}
 
-   # For tuples, we specify the types of all the elements
+   # For tuples of fixed size, we specify the types of all the elements
    x: Tuple[int, str, float] = (3, "yes", 7.5)
+   
+   # For tuples of variable size, we use one type and ellipsis
+   x: Tuple[int, ...] = (1, 2, 3)
 
    # Use Optional[] for values that could be None
    x: Optional[str] = some_function()
@@ -128,7 +129,6 @@ Python 3 supports an annotation syntax for function declarations.
 
    quux(3)  # Fine
    quux(__x=3)  # Error
-
 
 When you're puzzled or when things are complicated
 **************************************************
@@ -213,13 +213,14 @@ that are common in idiomatic Python are standardized.
 
    # Mapping describes a dict-like object (with "__getitem__") that we won't
    # mutate, and MutableMapping one (with "__setitem__") that we might
-   def f(my_dict: Mapping[int, str]) -> List[int]:
-       return list(my_dict.keys())
+   def f(my_mapping: Mapping[int, str]) -> List[int]:
+       my_mapping[5] = 'maybe'  # if we try this, mypy will throw an error...
+       return list(my_mapping.keys())
 
    f({3: 'yes', 4: 'no'})
 
    def f(my_mapping: MutableMapping[int, str]) -> Set[str]:
-       my_mapping[5] = 'maybe'
+       my_mapping[5] = 'maybe'  # ...but mypy is OK with this.
        return set(my_mapping.values())
 
    f({3: 'yes', 4: 'no'})
@@ -312,3 +313,22 @@ Miscellaneous
    # class of that name later on in the file
    def f(foo: 'A') -> int:  # Ok
        ...
+
+
+Decorators
+**********
+
+Decorator functions can be expressed via generics. See
+:ref:`declaring-decorators` for the more details.
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def bare_decorator(func: F) -> F:
+        ...
+
+    def decorator_args(url: str) -> Callable[[F], F]:
+        ...

@@ -116,6 +116,7 @@ def f() -> A[B[int]]: pass # E: "B" expects no type arguments, but 1 given
 from typing import Tuple
 class A: pass
 x = None # type: Tuple[A[int]] # E: "A" expects no type arguments, but 1 given
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testInvalidNumberOfGenericArgsInFunctionType]
@@ -126,7 +127,7 @@ y = None # type: Callable[[], A[int]]  # E: "A" expects no type arguments, but 1
 [out]
 
 [case testVarOrFuncAsType]
-# flags: --new-semantic-analyzer
+
 import typing
 def f(): pass
 x = 1
@@ -136,6 +137,7 @@ z = 0 # type: x
 main:5: error: Function "__main__.f" is not valid as a type
 main:5: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:6: error: Variable "__main__.x" is not valid as a type
+main:6: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 
 [case testGlobalVarRedefinition]
 import typing
@@ -199,21 +201,21 @@ main:2: error: Module 'm' has no attribute 'y'
 import typing
 import m
 [out]
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport]
@@ -222,7 +224,7 @@ import m
 [file m/__init__.py]
 from .x import y
 [out]
-tmp/m/__init__.py:1: error: Cannot find module named 'm.x'
+tmp/m/__init__.py:1: error: Cannot find implementation or library stub for module named 'm.x'
 tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport2]
@@ -232,7 +234,7 @@ import m.a
 [file m/a.py]
 from .x import y
 [out]
-tmp/m/a.py:1: error: Cannot find module named 'm.x'
+tmp/m/a.py:1: error: Cannot find implementation or library stub for module named 'm.x'
 tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleNotImported]
@@ -281,18 +283,18 @@ main:4: error: Name 'n' is not defined
 import typing
 import m.n
 [out]
-main:2: error: Cannot find module named 'm.n'
+main:2: error: Cannot find implementation or library stub for module named 'm.n'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 
 [case testMissingPackage2]
 import typing
 from m.n import x
 from a.b import *
 [out]
-main:2: error: Cannot find module named 'm.n'
+main:2: error: Cannot find implementation or library stub for module named 'm.n'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:3: error: Cannot find module named 'a.b'
+main:3: error: Cannot find implementation or library stub for module named 'a.b'
 
 [case testErrorInImportedModule]
 import m
@@ -320,9 +322,9 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: Cannot find module named 'm.n'
+main:2: error: Cannot find implementation or library stub for module named 'm.n'
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find module named 'm'
+main:2: error: Cannot find implementation or library stub for module named 'm'
 
 [case testBreakOutsideLoop]
 break
@@ -374,11 +376,6 @@ main:1: error: can't assign to literal
 [1, 1] = 1
 [out]
 main:1: error: can't assign to literal
-
-[case testInvalidLvalues5]
-() = 1
-[out]
-main:1: error: can't assign to ()
 
 [case testInvalidLvalues6]
 x = y = z = 1  # ok
@@ -491,7 +488,7 @@ del z     # E: Name 'z' is not defined
 [out]
 
 [case testFunctionTvarScope]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar
 t = TypeVar('t')
 def f(x: t) -> t: pass
@@ -502,7 +499,7 @@ main:5: note: (Hint: Use "Generic[t]" or "Protocol[t]" base class to bind "t" in
 main:5: note: (Hint: Use "t" in function signature to bind "t" inside a function)
 
 [case testClassTvarScope]
-# flags: --new-semantic-analyzer
+
 from typing import Generic, TypeVar
 t = TypeVar('t')
 class c(Generic[t]): pass
@@ -744,7 +741,7 @@ foo = 0 # type: A.x      # E: Name 'A.x' is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic
 t = TypeVar('t')
 s = TypeVar('s')
@@ -769,25 +766,14 @@ class D(str): pass # ok
 [out]
 
 [case testCyclicInheritance1]
-# flags: --new-semantic-analyzer
+
 class A(A): pass # E: Cannot resolve name "A" (possible cyclic definition)
 [out]
 
 [case testCyclicInheritance2]
-# flags: --new-semantic-analyzer
+
 class A(B): pass # E: Cannot resolve name "B" (possible cyclic definition)
 class B(A): pass
-[out]
-
-[case testCyclicInheritance1Old]
-# flags: --no-new-semantic-analyzer
-class A(A): pass # E: Cycle in inheritance hierarchy
-[out]
-
-[case testCyclicInheritance2Old]
-# flags: --no-new-semantic-analyzer
-class A(B): pass
-class B(A): pass # E: Cycle in inheritance hierarchy
 [out]
 
 [case testAssignToTypeDef]
@@ -797,7 +783,7 @@ A = None # E: Cannot assign to a type
 [out]
 
 [case testInvalidCastTargetSyntax]
-# flags: --new-semantic-analyzer
+
 from typing import cast, TypeVar, Generic
 t = TypeVar('t')
 class C(Generic[t]): pass
@@ -809,10 +795,11 @@ cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a typ
 [out]
 
 [case testInvalidCastTargetType]
-# flags: --new-semantic-analyzer
+
 from typing import cast
 x = 0
-cast(x, None)        # E: Variable "__main__.x" is not valid as a type
+cast(x, None)        # E: Variable "__main__.x" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 cast(t, None)        # E: Name 't' is not defined
 cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
 [out]
@@ -842,7 +829,7 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 [out]
 
 [case testTypeListAsType]
-# flags: --new-semantic-analyzer
+
 def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
                              # N: Did you mean "List[...]"?
     pass
@@ -903,11 +890,12 @@ class A:
 main:4: error: Type cannot be declared in assignment to non-self attribute
 
 [case testInvalidTypeInTypeApplication]
-# flags: --new-semantic-analyzer
+
 from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
-A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type
+A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type \
+           # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
 [out]
 
 [case testInvalidTypeInTypeApplication2]
@@ -919,26 +907,32 @@ A[1] # E: Invalid type: try using Literal[1] instead?
 
 [case testVariableDeclWithInvalidNumberOfTypes]
 x, y = 1, 2 # type: int, str, int # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested]
 x, (y, z) = 1, (2, 3) # type: int, (str, int, int) # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested2]
 x, (y, z) = 1, (2, 3) # type: int, (str, ) # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested3]
 x, (y, z) = 1, (2, 3) # type: int, str # E: Tuple type expected for multiple variables
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested4]
 x, (y, z) = 1, (2, 3) # type: int, str, int # E: Incompatible number of tuple items
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidNumberOfTypesNested5]
 x, (y, ) = 1, (2, ) # type: int, str # E: Tuple type expected for multiple variables
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testVariableDeclWithInvalidType]
@@ -963,6 +957,7 @@ a.y, a.x = None, None # type: int, int \
     # E: Type cannot be declared in assignment to non-self attribute
 a[1], a[2] = None, None # type: int, int \
     # E: Unexpected type declaration
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testMissingGenericImport]
@@ -1250,58 +1245,10 @@ def f() -> List[int]: pass
 main:2: error: Name 'List' is not defined
 main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
-[case testImportObsoleteTypingFunction]
-# flags: --no-new-semantic-analyzer
-from typing import Function # E: Module 'typing' has no attribute 'Function' (it's now called 'typing.Callable')
-from _m import Function # E: Module '_m' has no attribute 'Function'
-[file _m.py]
-[out]
-
-[case testTypeRefresToObsoleteTypingFunction]
-# flags: --no-new-semantic-analyzer
-import typing
-import _m
-def f(x: typing.Function[[], None]) -> None: pass
-def g(x: _m.Function[[], None]) -> None: pass
-[file _m.py]
-[out]
-main:4: error: Name 'typing.Function' is not defined (it's now called 'typing.Callable')
---'
-main:5: error: Name '_m.Function' is not defined
-
-[case testUnqualifiedNameRefersToObsoleteTypingFunction]
-# flags: --no-new-semantic-analyzer
-x = None # type: Function[[], None]
-[out]
-main:2: error: Name 'Function' is not defined
-main:2: note: (Did you mean 'typing.Callable'?)
-
 [case testInvalidWithTarget]
 def f(): pass
 with f() as 1: pass  # E: can't assign to literal
 [out]
-
-[case testUseObsoleteNameForTypeVar]
-# flags: --no-new-semantic-analyzer
-from typing import typevar
-t = typevar('t')
-[out]
-main:2: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
---' (this fixes syntax highlighting)
-
-[case testUseObsoleteNameForTypeVar2]
-# flags: --no-new-semantic-analyzer
-t = typevar('t')
-[out]
-main:2: error: Name 'typevar' is not defined
-main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
-
-[case testUseObsoleteNameForTypeVar3]
-# flags: --no-new-semantic-analyzer
-import typing
-t = typing.typevar('t')
-[out]
-main:3: error: Module 'typing' has no attribute 'typevar' (it's now called 'typing.TypeVar')
 
 [case testInvalidTypeAnnotation]
 import typing
@@ -1342,12 +1289,6 @@ x = 1
 y = 1
 [out]
 
-[case testMissingStubForThirdPartyModule]
-import __dummy_third_party1
-[out]
-main:1: error: No library stub file for module '__dummy_third_party1'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-
 [case testMissingStubForStdLibModule]
 import __dummy_stdlib1
 [out]
@@ -1377,6 +1318,7 @@ from typing import Tuple
 a = 1  # type: int
 a = 's'  # type: str
 a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
+[builtins fixtures/tuple.pyi]
 
 [out]
 main:3: error: Name 'a' already defined on line 2
@@ -1426,6 +1368,7 @@ N = NamedTuple('N', [('a', int),
 
 class N:  # E: Name 'N' already defined on line 2
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testDuplicateDefTypedDict]
@@ -1454,7 +1397,7 @@ class A: ... # E: Name 'A' already defined on line 2
 [out]
 
 [case testNoInvalidTypeInDynamicFunctions]
-# flags: --new-semantic-analyzer
+
 from typing import Dict, TypeVar
 T = TypeVar('T')
 
@@ -1470,4 +1413,13 @@ def g() -> None:
                           # N: (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class) \
                           # N: (Hint: Use "T" in function signature to bind "T" inside a function)
 [builtins fixtures/dict.pyi]
+[out]
+
+[case testParamSpec]
+from typing_extensions import ParamSpec
+
+TParams = ParamSpec('TParams')
+TP = ParamSpec('?')  # E: String argument 1 '?' to ParamSpec(...) does not match variable name 'TP'
+TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
+
 [out]
