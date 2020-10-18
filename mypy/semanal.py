@@ -2177,13 +2177,17 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
-                                                                          self.is_func_scope())
-        if not is_named_tuple:
+        internal_name, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
+                                                                         self.is_func_scope())
+        if internal_name is None:
             return False
         if isinstance(lvalue, MemberExpr):
             self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
+        if internal_name != name:
+            self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
+                name, internal_name), s.rvalue)
+            return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
@@ -4819,9 +4823,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                               allow_placeholder: bool = False) -> Optional[Type]:
         if isinstance(expr, CallExpr):
             expr.accept(self)
-            is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
-                                                                              self.is_func_scope())
-            if not is_named_tuple:
+            internal_name, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
+                                                                             self.is_func_scope())
+            if internal_name is None:
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()

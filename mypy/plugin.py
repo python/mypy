@@ -359,7 +359,7 @@ class SemanticAnalyzerPluginInterface:
 # A context for querying for configuration data about a module for
 # cache invalidation purposes.
 ReportConfigContext = NamedTuple(
-    'DynamicClassDefContext', [
+    'ReportConfigContext', [
         ('id', str),        # Module name
         ('path', str),      # Module file path
         ('is_check', bool)  # Is this invocation for checking whether the config matches
