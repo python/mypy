@@ -1336,7 +1336,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED, nodes.ARG_NAMED_OPT] and is_duplicate_mapping(
-                    formal_to_actual[i], actual_kinds):
+                    formal_to_actual[i], actual_types, actual_kinds):
                 if (self.chk.in_checked_function() or
                         isinstance(get_proper_type(actual_types[formal_to_actual[i][0]]),
                                    TupleType)):
@@ -4112,15 +4112,25 @@ def is_non_empty_tuple(t: Type) -> bool:
     return isinstance(t, TupleType) and bool(t.items)
 
 
-def is_duplicate_mapping(mapping: List[int], actual_kinds: List[int]) -> bool:
-    # Multiple actuals can map to the same formal only if they both come from
-    # varargs (*args and **kwargs); in this case at runtime it is possible that
-    # there are no duplicates. We need to allow this, as the convention
-    # f(..., *args, **kwargs) is common enough.
-    return len(mapping) > 1 and not (
-        len(mapping) == 2 and
-        actual_kinds[mapping[0]] == nodes.ARG_STAR and
-        actual_kinds[mapping[1]] == nodes.ARG_STAR2)
+def is_duplicate_mapping(mapping: List[int],
+                         actual_types: List[Type],
+                         actual_kinds: List[int]) -> bool:
+    return (
+        len(mapping) > 1
+        # Multiple actuals can map to the same formal if they both come from
+        # varargs (*args and **kwargs); in this case at runtime it is possible
+        # that here are no duplicates. We need to allow this, as the convention
+        # f(..., *args, **kwargs) is common enough.
+        and not (len(mapping) == 2
+                 and actual_kinds[mapping[0]] == nodes.ARG_STAR
+                 and actual_kinds[mapping[1]] == nodes.ARG_STAR2)
+        # Multiple actuals can map to the same formal if there are multiple
+        # **kwargs which cannot be mapped with certainty (non-TypedDict
+        # **kwargs).
+        and not all(actual_kinds[m] == nodes.ARG_STAR2 and
+                    not isinstance(get_proper_type(actual_types[m]), TypedDictType)
+                    for m in mapping)
+    )
 
 
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:
