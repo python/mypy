@@ -138,20 +138,22 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     if filename is not None:
         filename = os.path.expanduser(filename)
         if os.path.splitext(filename)[1] == '.toml':
-            parse_toml_config_file(options, set_strict_flags, filename, stdout, stderr)
+            parse_toml_config_file(
+                options, set_strict_flags, filename, stdout, stderr, explicit=True)
         else:
-            parse_ini_config_file(options, set_strict_flags, filename, stdout, stderr)
+            parse_ini_config_file(
+                options, set_strict_flags, filename, stdout, stderr, explicit=True)
     else:
         for filename in defaults.CONFIG_FILES:
             filename = os.path.expanduser(filename)
             if not os.path.isfile(filename):
                 continue
             if os.path.splitext(filename)[1] == '.toml':
-                parsed = parse_toml_config_file(options, set_strict_flags,
-                                                filename, stdout, stderr)
+                parsed = parse_toml_config_file(
+                    options, set_strict_flags, filename, stdout, stderr, explicit=False)
             else:
-                parsed = parse_ini_config_file(options, set_strict_flags,
-                                               filename, stdout, stderr)
+                parsed = parse_ini_config_file(
+                    options, set_strict_flags, filename, stdout, stderr, explicit=False)
             if parsed:
                 break
 
@@ -159,7 +161,9 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 def parse_toml_config_file(options: Options, set_strict_flags: Callable[[], None],
                            filename: str,
                            stdout: Optional[TextIO] = None,
-                           stderr: Optional[TextIO] = None) -> bool:
+                           stderr: Optional[TextIO] = None,
+                           *,
+                           explicit: bool) -> bool:
     stderr = stderr or sys.stderr
 
     # Load the toml config file.
@@ -172,7 +176,8 @@ def parse_toml_config_file(options: Options, set_strict_flags: Callable[[], None
         options.config_file = filename
 
     if 'tool' not in table or 'mypy' not in table['tool']:
-        print("%s: No 'tool.mypy' table in config file" % filename, file=stderr)
+        if explicit:
+            print("%s: No 'tool.mypy' table in config file" % filename, file=stderr)
         return False
 
     # Handle the mypy table.
@@ -228,7 +233,9 @@ def parse_toml_config_file(options: Options, set_strict_flags: Callable[[], None
 def parse_ini_config_file(options: Options, set_strict_flags: Callable[[], None],
                           filename: str,
                           stdout: Optional[TextIO] = None,
-                          stderr: Optional[TextIO] = None) -> bool:
+                          stderr: Optional[TextIO] = None,
+                          *,
+                          explicit: bool) -> bool:
     stderr = stderr or sys.stderr
     parser = configparser.RawConfigParser()
     retv = False
@@ -245,7 +252,7 @@ def parse_ini_config_file(options: Options, set_strict_flags: Callable[[], None]
             os.path.abspath(filename))
 
     if 'mypy' not in parser:
-        if filename not in defaults.SHARED_CONFIG_FILES:
+        if not explicit and filename not in defaults.SHARED_CONFIG_FILES:
             print("%s: No [mypy] section in config file" % filename, file=stderr)
     else:
         retv = True

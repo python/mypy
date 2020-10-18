@@ -180,14 +180,33 @@ warn_unused_ignores = true
 [out]
 main.py:1: error: unused 'type: ignore' comment
 
-[case testMissingMypySection]
+[case testMissingTomlMypySection1]
 # cmd: mypy main.py --config-file=pyproject.toml
 [file pyproject.toml]
 [file main.py]
-# type: ignore
 [out]
 pyproject.toml: No 'tool.mypy' table in config file
 == Return code: 0
+
+[case testMissingTomlMypySection2]
+# cmd: mypy main.py
+# We shouldn't complain if it wasn't specified as the config file
+[file pyproject.toml]
+[file main.py]
+[out]
+
+[case testMissingTomlMypySection3]
+# cmd: mypy main.py
+# We shouldn't complain if it wasn't specified as the config file
+# And we should pick up the setup.cfg
+[file pyproject.toml]
+[file setup.cfg]
+\[mypy]
+warn_unused_ignores = true
+[file main.py]
+# type: ignore
+[out]
+main.py:1: error: unused 'type: ignore' comment
 
 [case testPerFileConfigSection]
 # cmd: mypy x.py y.py z.py
