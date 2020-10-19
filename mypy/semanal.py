@@ -74,7 +74,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
+    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr
 )
@@ -307,12 +307,27 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         They will be replaced with real aliases when corresponding targets are ready.
         """
-        for stmt in file_node.defs.copy():
-            if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
-                    isinstance(stmt.lvalues[0], NameExpr)):
-                # Assignment to a simple name, remove it if it is a dummy alias.
-                if 'typing.' + stmt.lvalues[0].name in type_aliases:
-                    file_node.defs.remove(stmt)
+        # This is all pretty unfortunate. typeshed now has a
+        # sys.version_info check for OrderedDict, and we shouldn't
+        # take it out, because it is correct and a typechecker should
+        # use that as a source of truth. But instead we rummage
+        # through IfStmts to remove the info first.  (I tried to
+        # remove this whole machinery and ran into issues with the
+        # builtins/typing import cycle.)
+        def helper(defs: List[Statement]) -> None:
+            for stmt in defs.copy():
+                if isinstance(stmt, IfStmt):
+                    for body in stmt.body:
+                        helper(body.body)
+                    if stmt.else_body:
+                        helper(stmt.else_body.body)
+                if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
+                        isinstance(stmt.lvalues[0], NameExpr)):
+                    # Assignment to a simple name, remove it if it is a dummy alias.
+                    if 'typing.' + stmt.lvalues[0].name in type_aliases:
+                        defs.remove(stmt)
+
+        helper(file_node.defs)
 
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
         """Add certain special-cased definitions to the builtins module.
@@ -430,7 +445,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         assert tree.fullname == 'typing'
         for alias, target_name in type_aliases.items():
-            if type_aliases_target_versions[alias] > self.options.python_version:
+            if type_aliases_source_versions[alias] > self.options.python_version:
                 # This alias is not available on this Python version.
                 continue
             name = alias.split('.')[-1]

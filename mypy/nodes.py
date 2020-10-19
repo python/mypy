@@ -118,8 +118,8 @@ type_aliases = {
 }  # type: Final
 
 # This keeps track of the oldest supported Python version where the corresponding
-# alias _target_ is available.
-type_aliases_target_versions = {
+# alias source is available.
+type_aliases_source_versions = {
     'typing.List': (2, 7),
     'typing.Dict': (2, 7),
     'typing.Set': (2, 7),
@@ -128,7 +128,7 @@ type_aliases_target_versions = {
     'typing.Counter': (2, 7),
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
-    'typing.OrderedDict': (3, 1),
+    'typing.OrderedDict': (3, 7),
 }  # type: Final
 
 reverse_builtin_aliases = {
