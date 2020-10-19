@@ -905,7 +905,7 @@ def process_options(args: List[str],
 
     # Process --package-root.
     if options.package_root:
-        process_package_roots(fscache, parser, options)
+        process_package_roots(parser, options)
 
     # Process --cache-map.
     if special_opts.cache_map:
@@ -955,19 +955,12 @@ def process_options(args: List[str],
         return targets, options
 
 
-def process_package_roots(fscache: Optional[FileSystemCache],
-                          parser: argparse.ArgumentParser,
+def process_package_roots(parser: argparse.ArgumentParser,
                           options: Options) -> None:
     """Validate and normalize package_root."""
-    if fscache is None:
-        parser.error("--package-root does not work here (no fscache)")
-    assert fscache is not None  # Since mypy doesn't know parser.error() raises.
     # Do some stuff with drive letters to make Windows happy (esp. tests).
     current_drive, _ = os.path.splitdrive(os.getcwd())
-    dot = os.curdir
-    dotslash = os.curdir + os.sep
     dotdotslash = os.pardir + os.sep
-    trivial_paths = {dot, dotslash}
     package_root = []
     for root in options.package_root:
         if os.path.isabs(root):
@@ -975,19 +968,12 @@ def process_package_roots(fscache: Optional[FileSystemCache],
         drive, root = os.path.splitdrive(root)
         if drive and drive != current_drive:
             parser.error("Package root must be on current drive: %r" % (drive + root))
-        # Empty package root is always okay.
-        if root:
-            root = os.path.relpath(root)  # Normalize the heck out of it.
-            if root.startswith(dotdotslash):
-                parser.error("Package root cannot be above current directory: %r" % root)
-            if root in trivial_paths:
-                root = ''
-            elif not root.endswith(os.sep):
-                root = root + os.sep
+
+        root = util.normalise_package_root(root)
+        if root.startswith(dotdotslash):
+            parser.error("Package root cannot be above current directory: %r" % root)
         package_root.append(root)
     options.package_root = package_root
-    # Pass the package root on the the filesystem cache.
-    fscache.set_package_root(package_root)
 
 
 def process_cache_map(parser: argparse.ArgumentParser,

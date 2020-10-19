@@ -220,7 +220,9 @@ class SuggestionEngine:
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
         self.graph = fgmanager.graph
-        self.finder = SourceFinder(self.manager.fscache)
+        self.finder = SourceFinder(
+            self.manager.fscache, self.manager.options.package_root or None
+        )
 
         self.give_json = json
         self.no_errors = no_errors

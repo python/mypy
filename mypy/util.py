@@ -475,6 +475,22 @@ def parse_gray_color(cup: bytes) -> str:
     return gray
 
 
+def normalise_package_root(root: str) -> str:
+    # Empty package root is always okay.
+    if not root:
+        return ''
+
+    dot = os.curdir
+    dotslash = os.curdir + os.sep
+    trivial_paths = {dot, dotslash}
+    root = os.path.relpath(root)  # Normalize the heck out of it.
+    if root in trivial_paths:
+        return ''
+    if root.endswith(os.sep):
+        root = root[:-1]
+    return root
+
+
 class FancyFormatter:
     """Apply color and bold font to terminal output.
 

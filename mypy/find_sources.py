@@ -8,6 +8,7 @@ from typing_extensions import Final
 from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
+from mypy.util import normalise_package_root
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)  # type: Final
 
@@ -24,7 +25,7 @@ def create_source_list(paths: Sequence[str], options: Options,
     Raises InvalidSourceList on errors.
     """
     fscache = fscache or FileSystemCache()
-    finder = SourceFinder(fscache)
+    finder = SourceFinder(fscache, explicit_package_roots=options.package_root or None)
 
     sources = []
     for path in paths:
@@ -34,7 +35,7 @@ def create_source_list(paths: Sequence[str], options: Options,
             name, base_dir = finder.crawl_up(path)
             sources.append(BuildSource(path, name, None, base_dir))
         elif fscache.isdir(path):
-            sub_sources = finder.find_sources_in_dir(path, explicit_package_roots=None)
+            sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
                 raise InvalidSourceList(
                     "There are no .py[i] files in directory '{}'".format(path)
@@ -59,26 +60,22 @@ def keyfunc(name: str) -> Tuple[int, str]:
 
 
 class SourceFinder:
-    def __init__(self, fscache: FileSystemCache) -> None:
+    def __init__(self, fscache: FileSystemCache, explicit_package_roots: Optional[List[str]]) -> None:
         self.fscache = fscache
-        # A cache for package names, mapping from directory path to module id and base dir
-        self.package_cache = {}  # type: Dict[str, Tuple[str, str]]
+        self.explicit_package_roots = explicit_package_roots
 
-    def find_sources_in_dir(
-        self, path: str, explicit_package_roots: Optional[List[str]]
-    ) -> List[BuildSource]:
-        if explicit_package_roots is None:
-            mod_prefix, root_dir = self.crawl_up_dir(path)
-        else:
-            mod_prefix = os.path.basename(path)
-            root_dir = os.path.dirname(path) or "."
+    def is_package_root(self, path: str) -> bool:
+        assert self.explicit_package_roots
+        return normalise_package_root(path) in self.explicit_package_roots
+
+    def find_sources_in_dir(self, path: str) -> List[BuildSource]:
+        mod_prefix, root_dir = self.crawl_up_dir(path)
         if mod_prefix:
             mod_prefix += "."
-        return self.find_sources_in_dir_helper(path, mod_prefix, root_dir, explicit_package_roots)
+        return self.find_sources_in_dir_helper(path, mod_prefix, root_dir)
 
     def find_sources_in_dir_helper(
-        self, dir_path: str, mod_prefix: str, root_dir: str,
-        explicit_package_roots: Optional[List[str]]
+        self, dir_path: str, mod_prefix: str, root_dir: str
     ) -> List[BuildSource]:
         assert not mod_prefix or mod_prefix.endswith(".")
 
@@ -87,8 +84,8 @@ class SourceFinder:
         # Alternatively, if we aren't given explicit package roots and we don't have an __init__
         # file, recursively explore this directory as a new package root.
         if (
-            (explicit_package_roots is not None and dir_path in explicit_package_roots)
-            or (explicit_package_roots is None and init_file is None)
+            (self.explicit_package_roots is not None and self.is_package_root(dir_path))
+            or (self.explicit_package_roots is None and init_file is None)
         ):
             mod_prefix = ""
             root_dir = dir_path
@@ -109,7 +106,7 @@ class SourceFinder:
 
             if self.fscache.isdir(path):
                 sub_sources = self.find_sources_in_dir_helper(
-                    path, mod_prefix + name + '.', root_dir, explicit_package_roots
+                    path, mod_prefix + name + '.', root_dir
                 )
                 if sub_sources:
                     seen.add(name)
@@ -126,10 +123,12 @@ class SourceFinder:
         return sources
 
     def crawl_up(self, path: str) -> Tuple[str, str]:
-        """Given a .py[i] filename, return module and base directory
+        """Given a .py[i] filename, return module and base directory.
 
-        We crawl up the path until we find a directory without
-        __init__.py[i], or until we run out of path components.
+        If we are given explicit package roots, we crawl up until we find one (or run out of
+        path components).
+
+        Otherwise, we crawl up the path until we find an directory without __init__.py[i]
         """
         parent, filename = os.path.split(path)
         module_name = strip_py(filename) or os.path.basename(filename)
@@ -142,27 +141,30 @@ class SourceFinder:
         return module, base_dir
 
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
-        """Given a directory name, return the corresponding module name and base directory
-
-        Use package_cache to cache results.
-        """
-        if dir in self.package_cache:
-            return self.package_cache[dir]
-
+        """Given a directory name, return the corresponding module name and base directory."""
         parent_dir, base = os.path.split(dir)
-        if not dir or not self.get_init_file(dir) or not base:
+        if not dir or not base:
             module = ''
             base_dir = dir or '.'
-        else:
-            # Ensure that base is a valid python module name
-            if base.endswith('-stubs'):
-                base = base[:-6]  # PEP-561 stub-only directory
-            if not base.isidentifier():
-                raise InvalidSourceList('{} is not a valid Python package name'.format(base))
-            parent_module, base_dir = self.crawl_up_dir(parent_dir)
-            module = module_join(parent_module, base)
+            return module, base_dir
 
-        self.package_cache[dir] = module, base_dir
+        if self.explicit_package_roots is None and not self.get_init_file(dir):
+            module = ''
+            base_dir = dir or '.'
+            return module, base_dir
+
+        # Ensure that base is a valid python module name
+        if base.endswith('-stubs'):
+            base = base[:-6]  # PEP-561 stub-only directory
+        if not base.isidentifier():
+            raise InvalidSourceList('{} is not a valid Python package name'.format(base))
+
+        if self.explicit_package_roots is not None:
+            if self.is_package_root(parent_dir):
+                return base, parent_dir
+
+        parent_module, base_dir = self.crawl_up_dir(parent_dir)
+        module = module_join(parent_module, base)
         return module, base_dir
 
     def get_init_file(self, dir: str) -> Optional[str]:
@@ -175,8 +177,6 @@ class SourceFinder:
         for ext in PY_EXTENSIONS:
             f = os.path.join(dir, '__init__' + ext)
             if self.fscache.isfile(f):
-                return f
-            if ext == '.py' and self.fscache.init_under_package_root(f):
                 return f
         return None
 
