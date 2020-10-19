@@ -141,6 +141,8 @@ reverse_builtin_aliases = {
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+# Drop OrderedDict from this for backward compatibility
+del nongen_builtins['collections.OrderedDict']
 
 RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
                           'typing_extensions.runtime',
