@@ -371,8 +371,6 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
     STRATEGY_ALL = 1  # type: Final[int]
 
     def __init__(self, strategy: int) -> None:
-        # 0: any()
-        # 1: all()
         self.strategy = strategy
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
