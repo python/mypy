@@ -355,6 +355,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy(res)
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeQueryBool(SyntheticTypeVisitor[bool]):
     """Specialized visitor for boolean strategies
 
