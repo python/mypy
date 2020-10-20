@@ -377,7 +377,7 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
         self.seen_aliases = set()  # type: Set[TypeAliasType]
 
     def bool_strategy_empty(self) -> bool:
-        if self.strategy == self.STRATEGY_ALL:
+        if self.strategy == TypeQueryBool.STRATEGY_ALL:
             return True
         return False
 
@@ -464,8 +464,8 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
                     continue
                 self.seen_aliases.add(t)
             res = t.accept(self)
-            if res and self.strategy == self.STRATEGY_ANY:
+            if res and self.strategy == TypeQueryBool.STRATEGY_ANY:
                 return True
-            elif not res and self.strategy == self.STRATEGY_ALL:
+            elif not res and self.strategy == TypeQueryBool.STRATEGY_ALL:
                 return False
-        return self.strategy == self.STRATEGY_ALL
+        return self.strategy == TypeQueryBool.STRATEGY_ALL
