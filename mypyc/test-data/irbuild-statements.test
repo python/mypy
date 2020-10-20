@@ -8,7 +8,7 @@ def f():
     x :: int
     r0 :: short_int
     i :: int
-    r1 :: bool
+    r1 :: bit
     r2 :: int
     r3 :: short_int
 L0:
@@ -37,7 +37,7 @@ def f() -> None:
 def f():
     r0 :: short_int
     i :: int
-    r1 :: bool
+    r1 :: bit
     r2 :: short_int
 L0:
     r0 = 20
@@ -62,31 +62,22 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r0 :: native_int
+    r1, r2, r3 :: bit
 L0:
     n = 0
 L1:
-    r1 = n & 1
-    r2 = r1 == 0
-    r3 = 10 & 1
-    r4 = r3 == 0
-    r5 = r2 & r4
-    if r5 goto L2 else goto L3 :: bool
+    r0 = n & 1
+    r1 = r0 != 0
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r6 = n < 10 :: signed
-    r0 = r6
-    goto L4
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L5 :: bool
 L3:
-    r7 = CPyTagged_IsLt_(n, 10)
-    r0 = r7
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    if r0 goto L5 else goto L6 :: bool
 L5:
-L6:
     return 1
 
 [case testBreakFor]
@@ -97,7 +88,7 @@ def f() -> None:
 def f():
     r0 :: short_int
     n :: int
-    r1 :: bool
+    r1 :: bit
     r2 :: short_int
 L0:
     r0 = 0
@@ -125,53 +116,36 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
-    r9 :: native_int
-    r10 :: bool
-    r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6, r7 :: bit
 L0:
     n = 0
 L1:
-    r1 = n & 1
-    r2 = r1 == 0
-    r3 = 10 & 1
-    r4 = r3 == 0
-    r5 = r2 & r4
-    if r5 goto L2 else goto L3 :: bool
+    r0 = n & 1
+    r1 = r0 != 0
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r6 = n < 10 :: signed
-    r0 = r6
-    goto L4
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L10 :: bool
 L3:
-    r7 = CPyTagged_IsLt_(n, 10)
-    r0 = r7
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L10 :: bool
 L4:
-    if r0 goto L5 else goto L12 :: bool
 L5:
+    r4 = n & 1
+    r5 = r4 != 0
+    if r5 goto L6 else goto L7 :: bool
 L6:
-    r9 = n & 1
-    r10 = r9 == 0
-    r11 = 8 & 1
-    r12 = r11 == 0
-    r13 = r10 & r12
-    if r13 goto L7 else goto L8 :: bool
+    r6 = CPyTagged_IsLt_(n, 8)
+    if r6 goto L8 else goto L9 :: bool
 L7:
-    r14 = n < 8 :: signed
-    r8 = r14
-    goto L9
+    r7 = n < 8 :: signed
+    if r7 goto L8 else goto L9 :: bool
 L8:
-    r15 = CPyTagged_IsLt_(n, 8)
-    r8 = r15
 L9:
-    if r8 goto L10 else goto L11 :: bool
 L10:
-L11:
-L12:
     return 1
 
 [case testContinue]
@@ -182,32 +156,23 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r0 :: native_int
+    r1, r2, r3 :: bit
 L0:
     n = 0
 L1:
-    r1 = n & 1
-    r2 = r1 == 0
-    r3 = 10 & 1
-    r4 = r3 == 0
-    r5 = r2 & r4
-    if r5 goto L2 else goto L3 :: bool
+    r0 = n & 1
+    r1 = r0 != 0
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r6 = n < 10 :: signed
-    r0 = r6
-    goto L4
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L5 :: bool
 L3:
-    r7 = CPyTagged_IsLt_(n, 10)
-    r0 = r7
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    if r0 goto L5 else goto L6 :: bool
-L5:
     goto L1
-L6:
+L5:
     return 1
 
 [case testContinueFor]
@@ -218,7 +183,7 @@ def f() -> None:
 def f():
     r0 :: short_int
     n :: int
-    r1 :: bool
+    r1 :: bit
     r2 :: short_int
 L0:
     r0 = 0
@@ -245,55 +210,38 @@ def f() -> None:
 [out]
 def f():
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
-    r9 :: native_int
-    r10 :: bool
-    r11 :: native_int
-    r12, r13, r14, r15 :: bool
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6, r7 :: bit
 L0:
     n = 0
 L1:
-    r1 = n & 1
-    r2 = r1 == 0
-    r3 = 10 & 1
-    r4 = r3 == 0
-    r5 = r2 & r4
-    if r5 goto L2 else goto L3 :: bool
+    r0 = n & 1
+    r1 = r0 != 0
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r6 = n < 10 :: signed
-    r0 = r6
-    goto L4
+    r2 = CPyTagged_IsLt_(n, 10)
+    if r2 goto L4 else goto L10 :: bool
 L3:
-    r7 = CPyTagged_IsLt_(n, 10)
-    r0 = r7
+    r3 = n < 10 :: signed
+    if r3 goto L4 else goto L10 :: bool
 L4:
-    if r0 goto L5 else goto L12 :: bool
 L5:
+    r4 = n & 1
+    r5 = r4 != 0
+    if r5 goto L6 else goto L7 :: bool
 L6:
-    r9 = n & 1
-    r10 = r9 == 0
-    r11 = 8 & 1
-    r12 = r11 == 0
-    r13 = r10 & r12
-    if r13 goto L7 else goto L8 :: bool
+    r6 = CPyTagged_IsLt_(n, 8)
+    if r6 goto L8 else goto L9 :: bool
 L7:
-    r14 = n < 8 :: signed
-    r8 = r14
-    goto L9
+    r7 = n < 8 :: signed
+    if r7 goto L8 else goto L9 :: bool
 L8:
-    r15 = CPyTagged_IsLt_(n, 8)
-    r8 = r15
+    goto L5
 L9:
-    if r8 goto L10 else goto L11 :: bool
-L10:
-    goto L6
-L11:
     goto L1
-L12:
+L10:
     return 1
 
 [case testForList]
@@ -312,7 +260,7 @@ def f(ls):
     r1 :: ptr
     r2 :: native_int
     r3 :: short_int
-    r4 :: bool
+    r4 :: bit
     r5 :: object
     x, r6, r7 :: int
     r8 :: short_int
@@ -358,7 +306,7 @@ def f(d):
     key, r8 :: int
     r9, r10 :: object
     r11 :: int
-    r12, r13 :: bool
+    r12, r13 :: bit
 L0:
     r0 = 0
     r1 = PyDict_Size(d)
@@ -412,10 +360,10 @@ def sum_over_even_values(d):
     r11, r12 :: int
     r13 :: bool
     r14 :: native_int
-    r15, r16, r17, r18 :: bool
+    r15, r16, r17, r18 :: bit
     r19, r20 :: object
     r21, r22 :: int
-    r23, r24 :: bool
+    r23, r24 :: bit
 L0:
     s = 0
     r0 = 0
@@ -596,7 +544,7 @@ def multi_assign(t, a, l):
     r1 :: bool
     r2 :: tuple[str, object]
     r3 :: str
-    r4 :: bool
+    r4 :: bit
     r5 :: object
     r6 :: int
 L0:
@@ -636,11 +584,13 @@ L2:
 def literal_msg(x):
     x :: object
     r0 :: int32
-    r1, r2 :: bool
+    r1 :: bit
+    r2, r3 :: bool
 L0:
     r0 = PyObject_IsTrue(x)
-    r1 = truncate r0: int32 to builtins.bool
-    if r1 goto L2 else goto L1 :: bool
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: int32 to builtins.bool
+    if r2 goto L2 else goto L1 :: bool
 L1:
     raise AssertionError('message')
     unreachable
@@ -650,13 +600,14 @@ def complex_msg(x, s):
     x :: union[str, None]
     s :: str
     r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: str
     r3 :: int32
-    r4 :: bool
-    r5 :: object
-    r6 :: str
-    r7, r8 :: object
+    r4 :: bit
+    r5 :: bool
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -664,14 +615,15 @@ L0:
 L1:
     r2 = cast(str, x)
     r3 = PyObject_IsTrue(r2)
-    r4 = truncate r3: int32 to builtins.bool
-    if r4 goto L3 else goto L2 :: bool
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    if r5 goto L3 else goto L2 :: bool
 L2:
-    r5 = builtins :: module
-    r6 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
-    r7 = CPyObject_GetAttr(r5, r6)
-    r8 = PyObject_CallFunctionObjArgs(r7, s, 0)
-    CPy_Raise(r8)
+    r6 = builtins :: module
+    r7 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = PyObject_CallFunctionObjArgs(r8, s, 0)
+    CPy_Raise(r9)
     unreachable
 L3:
     return 1
@@ -691,6 +643,7 @@ def delList():
     l :: list
     r6 :: object
     r7 :: int32
+    r8 :: bit
 L0:
     r0 = PyList_New(2)
     r1 = box(short_int, 2)
@@ -703,6 +656,7 @@ L0:
     l = r0
     r6 = box(short_int, 2)
     r7 = PyObject_DelItem(l, r6)
+    r8 = r7 >= 0 :: signed
     return 1
 def delListMultiple():
     r0 :: list
@@ -711,10 +665,13 @@ def delListMultiple():
     l :: list
     r16 :: object
     r17 :: int32
-    r18 :: object
-    r19 :: int32
-    r20 :: object
-    r21 :: int32
+    r18 :: bit
+    r19 :: object
+    r20 :: int32
+    r21 :: bit
+    r22 :: object
+    r23 :: int32
+    r24 :: bit
 L0:
     r0 = PyList_New(7)
     r1 = box(short_int, 2)
@@ -742,10 +699,13 @@ L0:
     l = r0
     r16 = box(short_int, 2)
     r17 = PyObject_DelItem(l, r16)
-    r18 = box(short_int, 4)
-    r19 = PyObject_DelItem(l, r18)
-    r20 = box(short_int, 6)
-    r21 = PyObject_DelItem(l, r20)
+    r18 = r17 >= 0 :: signed
+    r19 = box(short_int, 4)
+    r20 = PyObject_DelItem(l, r19)
+    r21 = r20 >= 0 :: signed
+    r22 = box(short_int, 6)
+    r23 = PyObject_DelItem(l, r22)
+    r24 = r23 >= 0 :: signed
     return 1
 
 [case testDelDict]
@@ -762,6 +722,7 @@ def delDict():
     r4, d :: dict
     r5 :: str
     r6 :: int32
+    r7 :: bit
 L0:
     r0 = load_global CPyStatic_unicode_1 :: static  ('one')
     r1 = load_global CPyStatic_unicode_2 :: static  ('two')
@@ -771,13 +732,17 @@ L0:
     d = r4
     r5 = load_global CPyStatic_unicode_1 :: static  ('one')
     r6 = PyObject_DelItem(d, r5)
+    r7 = r6 >= 0 :: signed
     return 1
 def delDictMultiple():
     r0, r1, r2, r3 :: str
     r4, r5, r6, r7 :: object
     r8, d :: dict
     r9, r10 :: str
-    r11, r12 :: int32
+    r11 :: int32
+    r12 :: bit
+    r13 :: int32
+    r14 :: bit
 L0:
     r0 = load_global CPyStatic_unicode_1 :: static  ('one')
     r1 = load_global CPyStatic_unicode_2 :: static  ('two')
@@ -792,7 +757,9 @@ L0:
     r9 = load_global CPyStatic_unicode_1 :: static  ('one')
     r10 = load_global CPyStatic_unicode_4 :: static  ('four')
     r11 = PyObject_DelItem(d, r9)
-    r12 = PyObject_DelItem(d, r10)
+    r12 = r11 >= 0 :: signed
+    r13 = PyObject_DelItem(d, r10)
+    r14 = r13 >= 0 :: signed
     return 1
 
 [case testDelAttribute]
@@ -819,25 +786,31 @@ def delAttribute():
     r0, dummy :: __main__.Dummy
     r1 :: str
     r2 :: int32
+    r3 :: bit
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
     r1 = load_global CPyStatic_unicode_3 :: static  ('x')
     r2 = PyObject_DelAttr(dummy, r1)
+    r3 = r2 >= 0 :: signed
     return 1
 def delAttributeMultiple():
     r0, dummy :: __main__.Dummy
     r1 :: str
     r2 :: int32
-    r3 :: str
-    r4 :: int32
+    r3 :: bit
+    r4 :: str
+    r5 :: int32
+    r6 :: bit
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
     r1 = load_global CPyStatic_unicode_3 :: static  ('x')
     r2 = PyObject_DelAttr(dummy, r1)
-    r3 = load_global CPyStatic_unicode_4 :: static  ('y')
-    r4 = PyObject_DelAttr(dummy, r3)
+    r3 = r2 >= 0 :: signed
+    r4 = load_global CPyStatic_unicode_4 :: static  ('y')
+    r5 = PyObject_DelAttr(dummy, r4)
+    r6 = r5 >= 0 :: signed
     return 1
 
 [case testForEnumerate]
@@ -858,7 +831,7 @@ def f(a):
     r2 :: ptr
     r3 :: native_int
     r4 :: short_int
-    r5 :: bool
+    r5 :: bit
     r6 :: object
     x, r7, r8 :: int
     r9, r10 :: short_int
@@ -894,7 +867,7 @@ def g(x):
     r1, r2 :: object
     r3, n :: int
     r4 :: short_int
-    r5 :: bool
+    r5 :: bit
 L0:
     r0 = 0
     i = 0
@@ -935,14 +908,15 @@ def f(a, b):
     r2 :: ptr
     r3 :: native_int
     r4 :: short_int
-    r5 :: bool
+    r5 :: bit
     r6, r7 :: object
     x, r8 :: int
     r9, y :: bool
     r10 :: int32
-    r11 :: bool
-    r12 :: short_int
-    r13 :: bool
+    r11 :: bit
+    r12 :: bool
+    r13 :: short_int
+    r14 :: bit
 L0:
     r0 = 0
     r1 = PyObject_GetIter(b)
@@ -962,17 +936,18 @@ L3:
     r9 = unbox(bool, r6)
     y = r9
     r10 = PyObject_IsTrue(b)
-    r11 = truncate r10: int32 to builtins.bool
-    if r11 goto L4 else goto L5 :: bool
+    r11 = r10 >= 0 :: signed
+    r12 = truncate r10: int32 to builtins.bool
+    if r12 goto L4 else goto L5 :: bool
 L4:
     x = 2
 L5:
 L6:
-    r12 = r0 + 2
-    r0 = r12
+    r13 = r0 + 2
+    r0 = r13
     goto L1
 L7:
-    r13 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccured()
 L8:
     return 1
 def g(a, b):
@@ -985,11 +960,12 @@ def g(a, b):
     r4 :: ptr
     r5 :: native_int
     r6 :: short_int
-    r7, r8, r9, x :: bool
+    r7, r8 :: bit
+    r9, x :: bool
     r10 :: object
     y, r11 :: int
     r12, r13 :: short_int
-    r14 :: bool
+    r14 :: bit
 L0:
     r0 = PyObject_GetIter(a)
     r1 = 0

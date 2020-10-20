@@ -399,7 +399,7 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
         builder.translate_is_op(eqval, not_implemented, 'is', line),
         not_implemented_block,
         regular_block,
-        Branch.BOOL_EXPR))
+        Branch.BOOL))
 
     builder.activate_block(regular_block)
     retval = builder.coerce(

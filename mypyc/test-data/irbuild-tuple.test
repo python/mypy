@@ -102,7 +102,8 @@ def f(x, y):
     r3, r4, r5 :: ptr
     r6, r7, r8 :: object
     r9 :: int32
-    r10 :: tuple
+    r10 :: bit
+    r11 :: tuple
 L0:
     r0 = PyList_New(2)
     r1 = box(short_int, 2)
@@ -116,8 +117,9 @@ L0:
     r7 = CPyList_Extend(r0, y)
     r8 = box(short_int, 6)
     r9 = PyList_Append(r0, r8)
-    r10 = PyList_AsTuple(r0)
-    return r10
+    r10 = r9 >= 0 :: signed
+    r11 = PyList_AsTuple(r0)
+    return r11
 
 [case testTupleFor]
 from typing import Tuple, List
@@ -131,7 +133,7 @@ def f(xs):
     r1 :: ptr
     r2 :: native_int
     r3 :: short_int
-    r4 :: bool
+    r4 :: bit
     r5 :: object
     x, r6 :: str
     r7 :: short_int
@@ -191,11 +193,13 @@ def f(i):
     i :: int
     r0, r1, r2 :: bool
     r3 :: native_int
-    r4, r5, r6, r7 :: bool
+    r4, r5, r6 :: bit
+    r7 :: bool
     r8 :: native_int
-    r9, r10, r11, r12 :: bool
+    r9, r10, r11 :: bit
+    r12 :: bool
     r13 :: native_int
-    r14, r15, r16 :: bool
+    r14, r15, r16 :: bit
 L0:
     r3 = i & 1
     r4 = r3 == 0

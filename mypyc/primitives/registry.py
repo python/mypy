@@ -36,11 +36,17 @@ optimized implementations of all ops.
 """
 
 from typing import Dict, List, Optional, NamedTuple, Tuple
+from typing_extensions import Final
 
 from mypyc.ir.ops import (
     OpDescription, EmitterInterface, EmitCallback, StealsDescription, short_name
 )
 from mypyc.ir.rtypes import RType
+
+# Error kind for functions that return negative integer on exception. This
+# is only used for primitives. We translate it away during IR building.
+ERR_NEG_INT = 10  # type: Final
+
 
 CFunctionDescription = NamedTuple(
     'CFunctionDescription',  [('name', str),

@@ -52,7 +52,7 @@ def f(x: List[int]) -> None:
 def f(x):
     x :: list
     r0 :: object
-    r1 :: bool
+    r1 :: bit
 L0:
     r0 = box(short_int, 2)
     r1 = CPyList_SetItem(x, 0, r0)
@@ -141,9 +141,11 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
+    r2 :: bit
 L0:
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
+    r2 = r1 >= 0 :: signed
     return 1
 
 [case testIndexLvalue]
@@ -159,9 +161,9 @@ def increment(l):
     r1 :: native_int
     r2, r3 :: short_int
     i :: int
-    r4 :: bool
+    r4 :: bit
     r5, r6, r7 :: object
-    r8 :: bool
+    r8 :: bit
     r9 :: short_int
 L0:
     r0 = get_element_ptr l ob_size :: PyVarObject
@@ -196,6 +198,7 @@ def f(x, y):
     r3, r4, r5 :: ptr
     r6, r7, r8 :: object
     r9 :: int32
+    r10 :: bit
 L0:
     r0 = PyList_New(2)
     r1 = box(short_int, 2)
@@ -209,6 +212,7 @@ L0:
     r7 = CPyList_Extend(r0, y)
     r8 = box(short_int, 6)
     r9 = PyList_Append(r0, r8)
+    r10 = r9 >= 0 :: signed
     return r0
 
 [case testListIn]
@@ -221,9 +225,11 @@ def f(x, y):
     y :: int
     r0 :: object
     r1 :: int32
-    r2 :: bool
+    r2 :: bit
+    r3 :: bool
 L0:
     r0 = box(int, y)
     r1 = PySequence_Contains(x, r0)
-    r2 = truncate r1: int32 to builtins.bool
-    return r2
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    return r3

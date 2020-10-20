@@ -528,7 +528,7 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
         val = builder.add(TupleGet(res, 1, o.line))
 
         ok, stop = BasicBlock(), BasicBlock()
-        builder.add(Branch(to_stop, stop, ok, Branch.BOOL_EXPR))
+        builder.add(Branch(to_stop, stop, ok, Branch.BOOL))
 
         # The exception got swallowed. Continue, yielding the returned value
         builder.activate_block(ok)

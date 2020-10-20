@@ -245,7 +245,7 @@ def verify_typeinfo(
         return
 
     to_check = set(stub.names)
-    dunders_to_check = ("__init__", "__new__", "__call__")
+    dunders_to_check = ("__init__", "__new__", "__call__", "__class_getitem__")
     # cast to workaround mypyc complaints
     to_check.update(
         m for m in cast(Any, vars)(runtime) if m in dunders_to_check or not m.startswith("_")

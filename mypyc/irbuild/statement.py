@@ -12,7 +12,7 @@ import importlib.util
 from mypy.nodes import (
     Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, RaiseStmt, TryStmt, WithStmt, AssertStmt, DelStmt,
-    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll
+    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr
 )
 
 from mypyc.ir.ops import (
@@ -77,6 +77,20 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         # an assignment but we need to call get_assignment_target since it adds a
         # name binding as a side effect.
         builder.get_assignment_target(lvalue, stmt.line)
+        return
+
+    # multiple assignment
+    if (isinstance(lvalue, TupleExpr) and isinstance(stmt.rvalue, TupleExpr)
+            and len(lvalue.items) == len(stmt.rvalue.items)):
+        temps = []
+        for right in stmt.rvalue.items:
+            rvalue_reg = builder.accept(right)
+            temp = builder.alloc_temp(rvalue_reg.type)
+            builder.assign(temp, rvalue_reg, stmt.line)
+            temps.append(temp)
+        for (left, temp) in zip(lvalue.items, temps):
+            assignment_target = builder.get_assignment_target(left)
+            builder.assign(assignment_target, temp, stmt.line)
         return
 
     line = stmt.rvalue.line
@@ -291,7 +305,7 @@ def transform_try_except(builder: IRBuilder,
             matches = builder.call_c(
                 exc_matches_op, [builder.accept(type)], type.line
             )
-            builder.add(Branch(matches, body_block, next_block, Branch.BOOL_EXPR))
+            builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
             builder.activate_block(body_block)
         if var:
             target = builder.get_assignment_target(var)
@@ -564,7 +578,7 @@ def transform_with(builder: IRBuilder,
     def finally_body() -> None:
         out_block, exit_block = BasicBlock(), BasicBlock()
         builder.add(
-            Branch(builder.read(exc), exit_block, out_block, Branch.BOOL_EXPR)
+            Branch(builder.read(exc), exit_block, out_block, Branch.BOOL)
         )
         builder.activate_block(exit_block)
         none = builder.none_object()

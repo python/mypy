@@ -14,9 +14,9 @@ def do_split(s, sep, max_split):
     sep :: union[str, None]
     max_split :: union[int, None]
     r0, r1, r2 :: object
-    r3, r4 :: bool
+    r3, r4 :: bit
     r5 :: object
-    r6, r7 :: bool
+    r6, r7 :: bit
     r8 :: str
     r9 :: int
     r10 :: list
@@ -67,9 +67,9 @@ def neq(x: str, y: str) -> bool:
 def eq(x, y):
     x, y :: str
     r0 :: int32
-    r1 :: bool
+    r1 :: bit
     r2 :: object
-    r3, r4, r5 :: bool
+    r3, r4, r5 :: bit
 L0:
     r0 = PyUnicode_Compare(x, y)
     r1 = r0 == -1
@@ -86,9 +86,9 @@ L3:
 def neq(x, y):
     x, y :: str
     r0 :: int32
-    r1 :: bool
+    r1 :: bit
     r2 :: object
-    r3, r4, r5 :: bool
+    r3, r4, r5 :: bit
 L0:
     r0 = PyUnicode_Compare(x, y)
     r1 = r0 == -1
@@ -102,3 +102,4 @@ L2:
 L3:
     r5 = r0 != 0
     return r5
+

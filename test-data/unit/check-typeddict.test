@@ -1570,6 +1570,24 @@ f1(**c, **a) # E: "f1" gets multiple values for keyword argument "x" \
              # E: Argument "x" to "f1" has incompatible type "str"; expected "int"
 [builtins fixtures/tuple.pyi]
 
+[case testTypedDictAsStarStarAndDictAsStarStar]
+from mypy_extensions import TypedDict
+from typing import Any, Dict
+
+TD = TypedDict('TD', {'x': int, 'y': str})
+
+def f1(x: int, y: str, z: bytes) -> None: ...
+def f2(x: int, y: str) -> None: ...
+
+td: TD
+d = None # type: Dict[Any, Any]
+
+f1(**td, **d)
+f1(**d, **td)
+f2(**td, **d) # E: Too many arguments for "f2"
+f2(**d, **td) # E: Too many arguments for "f2"
+[builtins fixtures/dict.pyi]
+
 [case testTypedDictNonMappingMethods]
 from typing import List
 from mypy_extensions import TypedDict

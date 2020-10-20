@@ -1458,3 +1458,15 @@ x7, x8, y7, y8 = *points2, *points3 # E: Contiguous iterable with same type expe
 
 x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same type expected
 [builtins fixtures/tuple.pyi]
+
+[case testAssignEmptyPy36]
+# flags: --python-version 3.6
+() = []
+
+[case testAssignEmptyPy27]
+# flags: --python-version 2.7
+() = []  # E: can't assign to ()
+
+[case testAssignEmptyBogus]
+() = 1  # E: 'Literal[1]?' object is not iterable
+[builtins fixtures/tuple.pyi]

@@ -453,6 +453,8 @@ potentially problematic or redundant in some way.
         This limitation will be removed in future releases of mypy.
 
 
+.. _miscellaneous-strictness-flags:
+
 Miscellaneous strictness flags
 ******************************
 
