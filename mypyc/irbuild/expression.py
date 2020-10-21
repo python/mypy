@@ -11,6 +11,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
+    AssignmentExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 from mypy.types import TupleType, get_proper_type, Instance
@@ -682,3 +683,10 @@ def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line
     )
+
+
+def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
+    value = builder.accept(o.value)
+    target = builder.get_assignment_target(o.target)
+    builder.assign(target, value, o.line)
+    return value
