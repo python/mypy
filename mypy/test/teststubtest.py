@@ -56,6 +56,7 @@ def classmethod(f: T) -> T: ...
 def staticmethod(f: T) -> T: ...
 """
 
+
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
 ) -> str:
