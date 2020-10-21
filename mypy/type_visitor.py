@@ -368,8 +368,8 @@ class TypeQueryBool(SyntheticTypeVisitor[bool]):
 
     # TODO: check that we don't have existing violations of this rule.
     """
-    STRATEGY_ANY = 0  # type: Final[int]
-    STRATEGY_ALL = 1  # type: Final[int]
+    STRATEGY_ANY = 0  # type: Final
+    STRATEGY_ALL = 1  # type: Final
 
     def __init__(self, strategy: int) -> None:
         self.strategy = strategy
