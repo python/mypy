@@ -27,11 +27,42 @@ def use_tmp_dir() -> Iterator[None]:
 
 TEST_MODULE_NAME = "test_module"
 
+stubtest_builtins_stub = """
+from typing import Generic, Mapping, Sequence, TypeVar, overload
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+KT = TypeVar('KT')
+VT = TypeVar('VT')
+
+class object:
+    def __init__(self) -> None: pass
+class type: ...
+
+class tuple(Sequence[T_co], Generic[T_co]): ...
+class dict(Mapping[KT, VT]): ...
+
+class function: pass
+class ellipsis: pass
+
+class int: ...
+class float: ...
+class bool(int): ...
+class str: ...
+class bytes: ...
+
+def property(f: T) -> T: ...
+def classmethod(f: T) -> T: ...
+def staticmethod(f: T) -> T: ...
+"""
+
 
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
 ) -> str:
     with use_tmp_dir():
+        with open("builtins.pyi", "w") as f:
+            f.write(stubtest_builtins_stub)
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
@@ -47,7 +78,10 @@ def run_stubtest(
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            test_stubs(parse_options([TEST_MODULE_NAME] + options))
+            test_stubs(
+                parse_options([TEST_MODULE_NAME] + options),
+                use_builtins_fixtures=True
+            )
 
         return output.getvalue()
 
@@ -60,10 +94,10 @@ class Case:
 
 
 def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
-    """Repeatedly invoking run_stubtest is slow, so use this decorator to combine cases.
+    """run_stubtest used to be slow, so we used this decorator to combine cases.
 
-    We could also manually combine cases, but this allows us to keep the contrasting stub and
-    runtime definitions next to each other.
+    If you're reading this and bored, feel free to refactor this and make it more like
+    other mypy tests.
 
     """
 
@@ -775,12 +809,6 @@ class StubtestMiscUnit(unittest.TestCase):
             == "def (a, b, *, c, d = ..., **kwargs)"
         )
 
-
-class StubtestIntegration(unittest.TestCase):
-    def test_typeshed(self) -> None:
-        # check we don't crash while checking typeshed
-        test_stubs(parse_options(["--check-typeshed"]))
-
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
         stub = "from decimal import Decimal\ntemp: Decimal\n"
@@ -795,3 +823,9 @@ class StubtestIntegration(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""
+
+
+class StubtestIntegration(unittest.TestCase):
+    def test_typeshed(self) -> None:
+        # check we don't crash while checking typeshed
+        test_stubs(parse_options(["--check-typeshed"]))
