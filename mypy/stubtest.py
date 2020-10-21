@@ -1022,7 +1022,7 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
                 yield entry
 
 
-def test_stubs(args: argparse.Namespace) -> int:
+def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
     # Load the allowlist. This is a series of strings corresponding to Error.object_desc
     # Values in the dict will store whether we used the allowlist entry or not.
@@ -1049,6 +1049,7 @@ def test_stubs(args: argparse.Namespace) -> int:
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
     options.config_file = args.mypy_config_file
+    options.use_builtins_fixtures = use_builtins_fixtures
 
     if options.config_file:
         def set_strict_flags() -> None:  # not needed yet
