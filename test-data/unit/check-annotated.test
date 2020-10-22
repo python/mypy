@@ -116,3 +116,13 @@ Alias = Annotated[Union[T, str], ...]
 x: Alias[int]
 reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/tuple.pyi]
+
+[case testAnnotatedSecondParamNonType]
+from typing_extensions import Annotated
+
+class Meta:
+    ...
+
+x = Annotated[int, Meta()]
+reveal_type(x)  # N: Revealed type is 'def () -> builtins.int'
+[builtins fixtures/tuple.pyi]
