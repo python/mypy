@@ -65,7 +65,11 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
             if isinstance(expr.base, RefExpr) and expr.base.fullname in [
                 'typing.Annotated', 'typing_extensions.Annotated'
             ]:
-                base.args = (expr_to_unanalyzed_type(args[0], expr), args[1])
+                # TODO: this is not the optimal solution as we are basically getting rid
+                # of the Annotation definition and only returning the type information,
+                # losing all the annotations.
+
+                return expr_to_unanalyzed_type(args[0], expr)
             else:
                 base.args = tuple(expr_to_unanalyzed_type(arg, expr) for arg in args)
             if not base.args:
