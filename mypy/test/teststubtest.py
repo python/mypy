@@ -629,6 +629,31 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="def g(): ...", error="g")
 
     @collect_cases
+    def test_special_dunders(self) -> Iterator[Case]:
+        yield Case(
+            stub="class A:\n  def __init__(self, a: int, b: int) -> None: ...",
+            runtime="class A:\n  def __init__(self, a, bx): pass",
+            error="A.__init__",
+        )
+        yield Case(
+            stub="class B:\n  def __call__(self, c: int, d: int) -> None: ...",
+            runtime="class B:\n  def __call__(self, c, dx): pass",
+            error="B.__call__",
+        )
+        if sys.version_info >= (3, 6):
+            yield Case(
+                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
+                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                error=None,
+            )
+        if sys.version_info >= (3, 9):
+            yield Case(
+                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
+                runtime="class D:\n  def __class_getitem__(cls, type): ...",
+                error=None,
+            )
+
+    @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
         yield Case(
             stub="""
