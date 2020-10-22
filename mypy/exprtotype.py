@@ -61,7 +61,10 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
                 args = expr.index.items
             else:
                 args = [expr.index]
-            base.args = tuple(expr_to_unanalyzed_type(arg, expr) for arg in args)
+            if base.name == 'Annotated':
+                base.args = (expr_to_unanalyzed_type(args[0], expr), args[1])
+            else:
+                base.args = tuple(expr_to_unanalyzed_type(arg, expr) for arg in args)
             if not base.args:
                 base.empty_tuple_index = True
             return base
