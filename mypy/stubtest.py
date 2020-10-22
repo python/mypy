@@ -244,11 +244,13 @@ def verify_typeinfo(
         yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
         return
 
+    # Check everything already defined in the stub
     to_check = set(stub.names)
-    dunders_to_check = ("__init__", "__new__", "__call__", "__class_getitem__")
-    # cast to workaround mypyc complaints
+    # There's a reasonable case to be made that we should always check all dunders, but it's
+    # currently quite noisy. We could turn this into a denylist instead of an allowlist.
     to_check.update(
-        m for m in cast(Any, vars)(runtime) if m in dunders_to_check or not m.startswith("_")
+        # cast to workaround mypyc complaints
+        m for m in cast(Any, vars)(runtime) if not m.startswith("_") or m in SPECIAL_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -265,8 +267,8 @@ def verify_typeinfo(
 def _verify_static_class_methods(
     stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
 ) -> Iterator[str]:
-    if stub.name == "__new__":
-        # Special cased by Python, so never declared as staticmethod
+    if stub.name in ("__new__", "__init_subclass__", "__class_getitem__"):
+        # Special cased by Python, so don't bother checking
         return
     if inspect.isbuiltin(runtime):
         # The isinstance checks don't work reliably for builtins, e.g. datetime.datetime.now, so do
@@ -303,8 +305,8 @@ def _verify_arg_name(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter, function_name: str
 ) -> Iterator[str]:
     """Checks whether argument names match."""
-    # Ignore exact names for all dunder methods other than __init__
-    if is_dunder(function_name, exclude_init=True):
+    # Ignore exact names for most dunder methods
+    if is_dunder(function_name, exclude_special=True):
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
@@ -468,8 +470,8 @@ class Signature(Generic[T]):
         lies it might try to tell.
 
         """
-        # For all dunder methods other than __init__, just assume all args are positional-only
-        assume_positional_only = is_dunder(stub.name, exclude_init=True)
+        # For most dunder methods, just assume all args are positional-only
+        assume_positional_only = is_dunder(stub.name, exclude_special=True)
 
         all_args = {}  # type: Dict[str, List[Tuple[nodes.Argument, int]]]
         for func in map(_resolve_funcitem_from_decorator, stub.items):
@@ -548,7 +550,7 @@ def _verify_signature(
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
-            and not is_dunder(function_name)  # noisy for dunder methods
+            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 'stub argument "{}" should be positional-only '
@@ -655,6 +657,13 @@ def verify_funcitem(
         # inspect.signature throws sometimes
         # catch RuntimeError because of https://bugs.python.org/issue39504
         return
+
+    if stub.name in ("__init_subclass__", "__class_getitem__"):
+        # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
+        # should remove the cls argument
+        if stub.arguments[0].variable.name == "cls":
+            stub = copy.copy(stub)
+            stub.arguments = stub.arguments[1:]
 
     stub_sig = Signature.from_funcitem(stub)
     runtime_sig = Signature.from_inspect_signature(signature)
@@ -846,13 +855,16 @@ def verify_typealias(
         yield None
 
 
-def is_dunder(name: str, exclude_init: bool = False) -> bool:
+SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
+
+
+def is_dunder(name: str, exclude_special: bool = False) -> bool:
     """Returns whether name is a dunder name.
 
-    :param exclude_init: Whether to return False for __init__
+    :param exclude_special: Whether to return False for a couple special dunder methods.
 
     """
-    if exclude_init and name == "__init__":
+    if exclude_special and name in SPECIAL_DUNDERS:
         return False
     return name.startswith("__") and name.endswith("__")
 
