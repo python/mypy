@@ -1103,7 +1103,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
             if not t:
-                res[i] = self.accept(args[i])
+                if arg_kinds[i] == ARG_STAR2:
+                    res[i] = self.accept(args[i], self.chk.named_generic_type('typing.Mapping',
+                        [self.named_type('builtins.str'), AnyType(TypeOfAny.special_form)]))
+                else:
+                    res[i] = self.accept(args[i])
         assert all(tp is not None for tp in res)
         return cast(List[Type], res)
 

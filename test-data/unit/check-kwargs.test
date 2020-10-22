@@ -491,3 +491,9 @@ m = {} # type: Mapping[str, object]
 f(**m)
 g(**m)  # TODO: Should be an error
 [builtins fixtures/dict.pyi]
+
+[case testPassingEmptyDictAsKwarg]
+def f(x=0): pass
+
+f(**{})
+[builtins fixtures/dict.pyi]
