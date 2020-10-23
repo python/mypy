@@ -387,7 +387,7 @@ class FindModuleCache:
                     if mod not in hits:
                         hits.add(mod)
                         result += self.find_modules_recursive(module + '.' + mod)
-        elif os.path.isdir(module_path) and any(module.startswith(p) for p in self.ns_packages):
+        elif os.path.isdir(module_path):
             # Even subtler: handle recursive decent into PEP 420
             # namespace packages that are explicitly listed on the command
             # line with -p/--packages.
