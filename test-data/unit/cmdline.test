@@ -934,19 +934,19 @@ emarg/foo.py:1: error: Name 'fail' is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
 
 [case testPackageRootEmpty]
-# cmd: mypy --package-root= a/b/c.py main.py
+# cmd: mypy --namespace-packages --package-root= a/b/c.py main.py
 [file a/b/c.py]
 [file main.py]
 import a.b.c
 
 [case testPackageRootNonEmpty]
-# cmd: mypy --package-root=a/ a/b/c.py main.py
+# cmd: mypy --namespace-packages --package-root=a/ a/b/c.py main.py
 [file a/b/c.py]
 [file main.py]
 import b.c
 
 [case testPackageRootMultiple1]
-# cmd: mypy --package-root=. --package-root=a a/b/c.py d.py main.py
+# cmd: mypy --namespace-packages --package-root=. --package-root=a a/b/c.py d.py main.py
 [file a/b/c.py]
 [file d.py]
 [file main.py]
@@ -954,7 +954,7 @@ import b.c
 import d
 
 [case testPackageRootMultiple2]
-# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py
+# cmd: mypy --namespace-packages --package-root=a/ --package-root=./ a/b/c.py d.py main.py
 [file a/b/c.py]
 [file d.py]
 [file main.py]
