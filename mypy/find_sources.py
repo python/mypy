@@ -1,5 +1,6 @@
 """Routines for finding the sources that mypy will check"""
 
+import functools
 import os.path
 
 from typing import List, Sequence, Set, Tuple, Optional, Dict
@@ -140,6 +141,8 @@ class SourceFinder:
 
         return module, base_dir
 
+    # Add a cache in case many files are passed to mypy
+    @functools.lru_cache()
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
         """Given a directory name, return the corresponding module name and base directory."""
         parent_dir, base = os.path.split(dir)
