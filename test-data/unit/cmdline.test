@@ -66,8 +66,10 @@ dir/a.py: error: Are you missing an __init__.py?
 # cmd: mypy dir/
 [file dir/a.py]
 undef
+import b
 [file dir/subdir/b.py]
 undef
+import a
 [out]
 dir/a.py:1: error: Name 'undef' is not defined
 dir/subdir/b.py:1: error: Name 'undef' is not defined
@@ -77,8 +79,10 @@ dir/subdir/b.py:1: error: Name 'undef' is not defined
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
+import a
 [file pkg/subdir/a.py]
 undef
+import pkg.a
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
 pkg/subdir/a.py:1: error: Name 'undef' is not defined
