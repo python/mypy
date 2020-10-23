@@ -48,7 +48,6 @@ class FileSystemCache:
         self.read_cache = {}  # type: Dict[str, bytes]
         self.read_error_cache = {}  # type: Dict[str, Exception]
         self.hash_cache = {}  # type: Dict[str, str]
-        self.fake_package_cache = set()  # type: Set[str]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -68,11 +67,7 @@ class FileSystemCache:
     def listdir(self, path: str) -> List[str]:
         path = os.path.normpath(path)
         if path in self.listdir_cache:
-            res = self.listdir_cache[path]
-            # Check the fake cache.
-            if path in self.fake_package_cache and '__init__.py' not in res:
-                res.append('__init__.py')  # Updates the result as well as the cache
-            return res
+            return self.listdir_cache[path]
         if path in self.listdir_error_cache:
             raise copy_os_error(self.listdir_error_cache[path])
         try:
@@ -82,9 +77,6 @@ class FileSystemCache:
             self.listdir_error_cache[path] = copy_os_error(err)
             raise err
         self.listdir_cache[path] = results
-        # Check the fake cache.
-        if path in self.fake_package_cache and '__init__.py' not in results:
-            results.append('__init__.py')
         return results
 
     def isfile(self, path: str) -> bool:
@@ -160,16 +152,12 @@ class FileSystemCache:
 
         dirname, basename = os.path.split(path)
         dirname = os.path.normpath(dirname)
-        # Check the fake cache.
-        if basename == '__init__.py' and dirname in self.fake_package_cache:
-            data = b''
-        else:
-            try:
-                with open(path, 'rb') as f:
-                    data = f.read()
-            except OSError as err:
-                self.read_error_cache[path] = err
-                raise
+        try:
+            with open(path, 'rb') as f:
+                data = f.read()
+        except OSError as err:
+            self.read_error_cache[path] = err
+            raise
 
         self.read_cache[path] = data
         self.hash_cache[path] = hash_digest(data)
