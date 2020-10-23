@@ -45,29 +45,47 @@ pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 # cmd: mypy dir
 [file dir/a.py]
 undef
-[file dir/subdir/a.py]
+[file dir/subdir/b.py]
 undef
 [out]
 dir/a.py:1: error: Name 'undef' is not defined
+dir/subdir/b.py:1: error: Name 'undef' is not defined
 
-[case testCmdlineNonPackageSlash]
-# cmd: mypy dir/
+[case testCmdlineNonPackageDuplicate]
+# cmd: mypy dir
 [file dir/a.py]
 undef
 [file dir/subdir/a.py]
 undef
 [out]
+dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
+dir/a.py: error: Are you missing an __init__.py?
+== Return code: 2
+
+[case testCmdlineNonPackageSlash]
+# cmd: mypy dir/
+[file dir/a.py]
+undef
+import b
+[file dir/subdir/b.py]
+undef
+import a
+[out]
 dir/a.py:1: error: Name 'undef' is not defined
+dir/subdir/b.py:1: error: Name 'undef' is not defined
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
+import a
 [file pkg/subdir/a.py]
 undef
+import pkg.a
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
+pkg/subdir/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
