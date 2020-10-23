@@ -492,7 +492,7 @@ f(**m)
 g(**m)  # TODO: Should be an error
 [builtins fixtures/dict.pyi]
 
-[case testPassingEmptyDictAsKwarg]
+[case testPassingEmptyDictWithStars]
 def f(): pass
 
 f(**{})
