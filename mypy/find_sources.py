@@ -3,7 +3,7 @@
 import functools
 import os.path
 
-from typing import List, Sequence, Set, Tuple, Optional, Dict
+from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
 from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS
@@ -61,7 +61,9 @@ def keyfunc(name: str) -> Tuple[int, str]:
 
 
 class SourceFinder:
-    def __init__(self, fscache: FileSystemCache, explicit_package_roots: Optional[List[str]]) -> None:
+    def __init__(
+        self, fscache: FileSystemCache, explicit_package_roots: Optional[List[str]]
+    ) -> None:
         self.fscache = fscache
         self.explicit_package_roots = explicit_package_roots
 

@@ -30,7 +30,7 @@ advantage of the benefits.
 
 import os
 import stat
-from typing import Dict, List, Set
+from typing import Dict, List
 from mypy.util import hash_digest
 
 
