@@ -9622,26 +9622,3 @@ class C:
 [out]
 ==
 main:5: error: Unsupported left operand type for + ("str")
-
-[case testReexportNamedTupleChange]
-from m import M
-
-def f(x: M) -> None: ...
-
-f(M(0))
-
-[file m.py]
-from n import M
-
-[file n.py]
-from typing import NamedTuple
-M = NamedTuple('_N', [('x', int)])
-
-[file n.py.2]
-# change the line numbers
-from typing import NamedTuple
-M = NamedTuple('_N', [('x', int)])
-
-[builtins fixtures/tuple.pyi]
-[out]
-==

@@ -115,12 +115,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         neg = '!' if op.negated else ''
 
         cond = ''
-        if op.op == Branch.BOOL_EXPR:
+        if op.op == Branch.BOOL:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
-        elif op.op == Branch.NEG_INT_EXPR:
-            expr_result = self.reg(op.left)
-            cond = '{} < 0'.format(expr_result)
         elif op.op == Branch.IS_ERROR:
             typ = op.left.type
             compare = '!=' if op.negated else '=='

@@ -1,11 +1,10 @@
 """Primitive set (and frozenset) ops."""
 
-from mypyc.primitives.registry import (
-    c_function_op, c_method_op, c_binary_op
-)
-from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE, ERR_NEG_INT
+from mypyc.primitives.registry import c_function_op, c_method_op, c_binary_op, ERR_NEG_INT
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
-    object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive, pointer_rprimitive
+    object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive, pointer_rprimitive,
+    bit_rprimitive
 )
 
 
@@ -48,7 +47,7 @@ c_binary_op(
 c_method_op(
     name='remove',
     arg_types=[set_rprimitive, object_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPySet_Remove',
     error_kind=ERR_FALSE)
 

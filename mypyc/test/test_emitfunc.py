@@ -115,13 +115,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
     def test_branch(self) -> None:
-        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR),
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL),
                          """if (cpy_r_b) {
                                 goto CPyL8;
                             } else
                                 goto CPyL9;
                          """)
-        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR)
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL)
         b.negated = True
         self.assert_emit(b,
                          """if (!cpy_r_b) {

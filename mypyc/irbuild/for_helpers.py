@@ -517,7 +517,7 @@ class ForDictionaryCommon(ForGenerator):
 
         should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
         builder.add(
-            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
+            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL)
         )
 
     def gen_step(self) -> None:
