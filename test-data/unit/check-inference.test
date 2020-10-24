@@ -3209,7 +3209,7 @@ y = {'a', 2, object()}
 [builtins fixtures/set.pyi]
 
 [case testSuppressNeedTypeAnnotaionFlag]
-# flags: --suppress-need-type-annotation-errors
+# flags: --no-warn-implicit-object-collection
 
 x1 = [1, 'two', 3.5]
 [builtins fixtures/list.pyi]

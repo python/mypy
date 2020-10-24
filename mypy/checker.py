@@ -2146,9 +2146,42 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
-                    if self.options.check_need_type_annotation:
+                    if self.options.warn_implicit_object_collection:
                         self.check_forbidden_inference_types(inferred, rvalue, rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+
+    def _needs_explicit_annotation(self, arg_type: Instance,
+                items: Iterable[Expression],
+                iter_name: str,
+                dict_keys_type_name: Optional[str] = None
+                ) -> Tuple[bool, str]:
+        if arg_type.type.fullname != 'builtins.object':
+            # This list already has a specific type, no further checks needed
+            return (False, '')
+        arg_type_names = self.get_arg_type_names(items)
+        if self.iterable_has_object_type(items):
+            # A list that contains an an instance must
+            # necessarily be of type List[object], since
+            # there is no more specific type that can be
+            # assigned
+            return (False, '')
+        if iter_name == 'Dict':
+            if arg_type_names and len(arg_type_names) > 1:
+                msg = 'Suggested annotation: Dict[{}, Any] or Dict[{}, Union['.format(
+                    dict_keys_type_name, dict_keys_type_name) + ', '.join(
+                    sorted(arg_type_names)) + ']]'
+            else:
+                msg = 'Suggested annotation: Dict[{}, Any]'.format(
+                    dict_keys_type_name)
+        else:
+            if arg_type_names and len(arg_type_names) > 1:
+                msg = 'Suggested annotation: {}[Any] or {}[Union['.format(
+                    iter_name, iter_name
+                ) + ', '.join(
+                    sorted(arg_type_names)) + ']]'
+            else:
+                msg = 'Suggested annotation: {}[Any]'.format(iter_name)
+        return (True, msg)
 
     def check_forbidden_inference_types(self, var: Var, rvalue: Context,
                                         rvalue_type: Type) -> None:
@@ -2167,76 +2200,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         rvalue_type = get_proper_type(rvalue_type)
         if isinstance(rvalue_type, Instance):
+            is_list_set_or_dict_iter = False
+            iter_name = ''
+            dict_keys_type_name = None
             if isinstance(rvalue, ListExpr):
-                list_arg_type = rvalue_type.args[0]
-                list_arg_type = get_proper_type(list_arg_type)
-                if isinstance(list_arg_type, Instance):
-                    if list_arg_type.type.fullname != 'builtins.object':
-                        # This list already has a specific type, no further checks needed
-                        return
-
-                    if self.iterable_has_object_type(rvalue.items):
-                        # A list that contains an an instance must
-                        # necessarily be of type List[object], since
-                        # there is no more specific type that can be
-                        # assigned
-                        return
-
-                    list_arg_type_names = self.get_arg_type_names(rvalue.items)
-                    if list_arg_type_names and len(list_arg_type_names) > 1:
-                        msg = 'Suggested annotation: List[Any] or List[Union[' + ', '.join(
-                            sorted(list_arg_type_names)) + ']]'
-                    else:
-                        msg = 'Suggested annotation: List[Any]'
-                    self.msg.need_annotation_for_var(var, rvalue)
-                    self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
-
+                arg_type = rvalue_type.args[0]
+                iter_name = 'List'
+                is_list_set_or_dict_iter = True
+                items = rvalue.items
             elif isinstance(rvalue, SetExpr):
-                set_arg_type = rvalue_type.args[0]
-                set_arg_type = get_proper_type(set_arg_type)
-                if isinstance(set_arg_type, Instance):
-                    if set_arg_type.type.fullname != 'builtins.object':
-                        return
-
-                    if self.iterable_has_object_type(rvalue.items):
-                        return
-
-                    set_arg_type_names = self.get_arg_type_names(rvalue.items)
-                    if set_arg_type_names and len(set_arg_type_names) > 1:
-                        msg = 'Suggested annotation: Set[Any] or Set[Union[' + ', '.join(
-                            sorted(set_arg_type_names)) + ']]'
-                    else:
-                        msg = 'Suggested annotation: Set[Any]'
-                    self.msg.need_annotation_for_var(var, rvalue)
-                    self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
-
+                arg_type = rvalue_type.args[0]
+                iter_name = 'Set'
+                is_list_set_or_dict_iter = True
+                items = rvalue.items
             elif isinstance(rvalue, DictExpr):
-                dict_arg_type = rvalue_type.args[1]
-                dict_arg_type = get_proper_type(dict_arg_type)
-                if isinstance(dict_arg_type, Instance):
-                    if dict_arg_type.type.fullname != 'builtins.object':
-                        # The values in this dict have a specific type, no further checks
-                        return
-
-                    if self.iterable_has_object_type([v for k, v in rvalue.items]):
-                        return
-
-                    dict_items_type_names = self.get_arg_type_names(
-                        [v for k, v in rvalue.items]
-                    )
-                    dict_key = get_proper_type(rvalue_type.args[0])
-                    dict_keys_type_name = 'Any'
-                    if isinstance(dict_key, Instance):
-                        dict_keys_type_name = dict_key.type.name
-                    if dict_items_type_names and len(dict_items_type_names) > 1:
-                        msg = 'Suggested annotation: Dict[{}, Any] or Dict[{}, Union['.format(
-                            dict_keys_type_name, dict_keys_type_name) + ', '.join(
-                            sorted(dict_items_type_names)) + ']]'
-                    else:
-                        msg = 'Suggested annotation: Dict[{}, Any]'.format(
-                            dict_keys_type_name)
-                    self.msg.need_annotation_for_var(var, rvalue)
-                    self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
+                arg_type = rvalue_type.args[1]
+                dict_keys_type = get_proper_type(rvalue_type.args[0])
+                dict_keys_type_name = 'Any'
+                if isinstance(dict_keys_type, Instance):
+                    dict_keys_type_name = dict_keys_type.type.name
+                iter_name = 'Dict'
+                is_list_set_or_dict_iter = True
+                items = [v for k, v in rvalue.items]
+            if is_list_set_or_dict_iter:
+                arg_type = get_proper_type(arg_type)
+                if isinstance(arg_type, Instance):
+                    annotation_needed, msg = self._needs_explicit_annotation(
+                            arg_type, items, iter_name, dict_keys_type_name)
+                    if annotation_needed:
+                        self.msg.need_annotation_for_var(var, rvalue)
+                        self.msg.note(msg, context=rvalue, code=codes.OVERRIDE)
 
     def iterable_has_object_type(self, items: Iterable[Expression]) -> bool:
         """Check for any instance that has type object
