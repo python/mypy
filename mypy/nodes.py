@@ -138,11 +138,15 @@ reverse_builtin_aliases = {
     'builtins.frozenset': 'typing.FrozenSet',
 }  # type: Final
 
-nongen_builtins = {'builtins.tuple': 'typing.Tuple',
+_nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
-nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 # Drop OrderedDict from this for backward compatibility
-del nongen_builtins['collections.OrderedDict']
+del _nongen_builtins['collections.OrderedDict']
+
+def get_nongen_builtins(python_version):
+    # After 3.9 with pep585 generic builtins are allowed.
+    return _nongen_builtins if python_version < (3, 9) else {}
 
 RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
                           'typing_extensions.runtime',
