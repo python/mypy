@@ -345,7 +345,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
         disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
-        return get_omitted_any(disallow_any, self.fail, self.note, typ, self.options.python_version, fullname)
+        return get_omitted_any(disallow_any, self.fail, self.note, typ,
+                               self.options.python_version, fullname)
 
     def analyze_type_with_type_info(
             self, info: TypeInfo, args: Sequence[Type], ctx: Context) -> Type:
@@ -1028,7 +1029,8 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
             fullname = None  # type: Optional[str]
         else:
             fullname = t.type.fullname
-        any_type = get_omitted_any(disallow_any, fail, note, t, python_version, fullname, unexpanded_type)
+        any_type = get_omitted_any(disallow_any, fail, note, t, python_version, fullname,
+                                   unexpanded_type)
         t.args = (any_type,) * len(t.type.type_vars)
         return
     # Invalid number of type parameters.
@@ -1287,7 +1289,8 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback, python_version: Tuple[int, int]) -> None:
+def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback,
+                       python_version: Tuple[int, int]) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
@@ -1297,7 +1300,9 @@ def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback, python_ver
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: MsgCallback, note: MsgCallback, python_version: Tuple[int, int]) -> None:
+    def __init__(
+        self, fail: MsgCallback, note: MsgCallback, python_version: Tuple[int, int]
+    ) -> None:
         self.fail = fail
         self.note = note
         self.python_version = python_version
@@ -1305,4 +1310,5 @@ class InstanceFixer(TypeTraverserVisitor):
     def visit_instance(self, typ: Instance) -> None:
         super().visit_instance(typ)
         if len(typ.args) != len(typ.type.type_vars):
-            fix_instance(typ, self.fail, self.note, disallow_any=False, python_version=self.python_version, use_generic_error=True)
+            fix_instance(typ, self.fail, self.note, disallow_any=False,
+                         python_version=self.python_version, use_generic_error=True)
