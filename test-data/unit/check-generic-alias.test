@@ -1,0 +1,49 @@
+-- Test cases for generic aliases
+
+[case testGenericAliasImportCollections]
+# flags: --python-version 3.9
+from collections import defaultdict, OrderedDict, ChainMap, Counter, deque
+
+t1: defaultdict[int, int]
+t2: OrderedDict[int, int]
+t3: ChainMap[int, int]
+t4: Counter[int]
+t5: deque[int]
+
+[builtins fixtures/tuple.pyi]
+
+[case testGenericAliasImportCollectionsABC]
+# flags: --python-version 3.9
+from collections.abc import Awaitable, Coroutine, Iterable, Iterator, Mapping
+
+t1: Awaitable
+t2: Coroutine
+t3: Iterable
+t4: Iterator
+t5: Mapping
+
+[builtins fixtures/tuple.pyi]
+
+[case testGenericAliasImportBuiltIns]
+# flags: --python-version 3.9
+
+t1: type[int]
+
+[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testGenericAliasImportBuiltInsSet]
+# flags: --python-version 3.9
+
+t1: set[int]
+
+[builtins fixtures/set.pyi]
+
+[case testGenericAliasImportRe]
+# flags: --python-version 3.9
+from re import Pattern, Match
+
+t1: Pattern[str]
+t2: Match[str]
+
+[builtins fixtures/tuple.pyi]
