@@ -148,14 +148,14 @@ class SourceFinder:
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
         """Given a directory name, return the corresponding module name and base directory."""
         parent_dir, base = os.path.split(dir)
-        if not dir or not base:
-            module = ''
-            base_dir = dir or '.'
-            return module, base_dir
-
-        if self.explicit_package_roots is None and not self.get_init_file(dir):
-            module = ''
-            base_dir = dir or '.'
+        if (
+            not dir or not base
+            # In the absence of explicit package roots, a lack of __init__.py means we've reached
+            # an (implicit) package root
+            or (self.explicit_package_roots is None and not self.get_init_file(dir))
+        ):
+            module = ""
+            base_dir = dir or "."
             return module, base_dir
 
         # Ensure that base is a valid python module name
