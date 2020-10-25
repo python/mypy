@@ -159,29 +159,29 @@ t21: collections.abc.KeysView[int]
 t22: collections.abc.ItemsView[int, str]
 t23: collections.abc.ValuesView[str]
 
-# reveal_type(t01)  # N
-# reveal_type(t02)  # N
-# reveal_type(t03)  # N
-# reveal_type(t04)  # N
-# reveal_type(t05)  # N
-# reveal_type(t06)  # N
-# reveal_type(t07)  # N
-# reveal_type(t08)  # N
-# reveal_type(t09)  # N
-# reveal_type(t10)  # N
-# reveal_type(t11)  # N
-# reveal_type(t12)  # N
-# reveal_type(t13)  # N
-# reveal_type(t14)  # N
-# reveal_type(t15)  # N
-# reveal_type(t16)  # N
-# reveal_type(t17)  # N
-# reveal_type(t18)  # N
-# reveal_type(t19)  # N
-# reveal_type(t20)  # N
-# reveal_type(t21)  # N
-# reveal_type(t22)  # N
-# reveal_type(t23)  # N
+reveal_type(t01)  # N: Revealed type is 'collections.abc.Awaitable[builtins.int]'
+reveal_type(t02)  # N: Revealed type is 'collections.abc.Coroutine[builtins.str, builtins.int, builtins.float]'
+reveal_type(t03)  # N: Revealed type is 'collections.abc.AsyncIterable[builtins.int]'
+reveal_type(t04)  # N: Revealed type is 'collections.abc.AsyncIterator[builtins.int]'
+reveal_type(t05)  # N: Revealed type is 'collections.abc.AsyncGenerator[builtins.int, builtins.float]'
+reveal_type(t06)  # N: Revealed type is 'collections.abc.Iterable[builtins.int]'
+reveal_type(t07)  # N: Revealed type is 'collections.abc.Iterator[builtins.int]'
+reveal_type(t08)  # N: Revealed type is 'collections.abc.Generator[builtins.int, builtins.float, builtins.str]'
+reveal_type(t09)  # N: Revealed type is 'collections.abc.Reversible[builtins.int]'
+reveal_type(t10)  # N: Revealed type is 'collections.abc.Container[builtins.int]'
+reveal_type(t11)  # N: Revealed type is 'collections.abc.Collection[builtins.int]'
+reveal_type(t12)  # N: Revealed type is 'collections.abc.Callable[[builtins.int], builtins.float]'
+reveal_type(t13)  # N: Revealed type is 'collections.abc.Set[builtins.int]'
+reveal_type(t14)  # N: Revealed type is 'collections.abc.MutableSet[builtins.int]'
+reveal_type(t15)  # N: Revealed type is 'collections.abc.Mapping[builtins.int, builtins.str]'
+reveal_type(t16)  # N: Revealed type is 'collections.abc.MutableMapping[builtins.int, builtins.str]'
+reveal_type(t17)  # N: Revealed type is 'collections.abc.Sequence[builtins.int]'
+reveal_type(t18)  # N: Revealed type is 'collections.abc.MutableSequence[builtins.int]'
+reveal_type(t19)  # N: Revealed type is 'collections.abc.ByteString'
+reveal_type(t20)  # N: Revealed type is 'collections.abc.MappingView[builtins.int, builtins.int]'
+reveal_type(t21)  # N: Revealed type is 'collections.abc.KeysView[builtins.int]'
+reveal_type(t22)  # N: Revealed type is 'collections.abc.ItemsView[builtins.int, builtins.str]'
+reveal_type(t23)  # N: Revealed type is 'collections.abc.ValuesView[builtins.str]'
 
 [builtins fixtures/tuple.pyi]
 
@@ -226,16 +226,16 @@ t19: Tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8)
 [case testGenericBuiltinTuple]
 # flags: --python-version 3.9
 
-# t01: tuple = ()
-# t02: tuple[int] = (1, )
-# t03: tuple[int, str] = (1, 'a')
-# t04: tuple[int, int] = (1, 2)
-# t05: tuple[int, int, int] = (1, 2, 3)
-# t06: tuple[int, int, int, int] = (1, 2, 3, 4)
-# t07: tuple[int, int, int, int, int] = (1, 2, 3, 4, 5)
-# t08: tuple[int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6)
-# t09: tuple[int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7)
-# t10: tuple[int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8)
+t01: tuple = ()
+t02: tuple[int] = (1, )
+t03: tuple[int, str] = (1, 'a')
+t04: tuple[int, int] = (1, 2)
+t05: tuple[int, int, int] = (1, 2, 3)
+t06: tuple[int, int, int, int] = (1, 2, 3, 4)
+t07: tuple[int, int, int, int, int] = (1, 2, 3, 4, 5)
+t08: tuple[int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6)
+t09: tuple[int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7)
+t10: tuple[int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8)
 
 [builtins fixtures/tuple.pyi]
 [out]
@@ -243,15 +243,15 @@ t19: Tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8)
 [case testGenericBuiltinTupleVariadic]
 # flags: --python-version 3.9
 
-# t11: tuple[int, ...]
-# t12: tuple[int, ...] = (1,)
-# t13: tuple[int, ...] = (1, 2)
-# t14: tuple[int, ...] = (1, 2, 3)
-# t15: tuple[int, ...] = (1, 2, 3, 4)
-# t16: tuple[int, ...] = (1, 2, 3, 4, 5)
-# t17: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
-# t18: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7)
-# t19: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8)
+t11: tuple[int, ...]
+t12: tuple[int, ...] = (1,)
+t13: tuple[int, ...] = (1, 2)
+t14: tuple[int, ...] = (1, 2, 3)
+t15: tuple[int, ...] = (1, 2, 3, 4)
+t16: tuple[int, ...] = (1, 2, 3, 4, 5)
+t17: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
+t18: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7)
+t19: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8)
 
 [builtins fixtures/tuple.pyi]
 [out]
