@@ -29,6 +29,47 @@ L3:
 L4:
     return 1
 
+[case testForInRangeVariableEndIndxe]
+def f(a: int) -> None:
+    for i in range(a):
+        pass
+[out]
+def f(a):
+    a, r0, i :: int
+    r1 :: bool
+    r2 :: native_int
+    r3 :: bit
+    r4 :: native_int
+    r5, r6, r7, r8 :: bit
+    r9 :: int
+L0:
+    r0 = 0
+    i = r0
+L1:
+    r2 = r0 & 1
+    r3 = r2 == 0
+    r4 = a & 1
+    r5 = r4 == 0
+    r6 = r3 & r5
+    if r6 goto L2 else goto L3 :: bool
+L2:
+    r7 = r0 < a :: signed
+    r1 = r7
+    goto L4
+L3:
+    r8 = CPyTagged_IsLt_(r0, a)
+    r1 = r8
+L4:
+    if r1 goto L5 else goto L7 :: bool
+L5:
+L6:
+    r9 = CPyTagged_Add(r0, 2)
+    r0 = r9
+    i = r9
+    goto L1
+L7:
+    return 1
+
 [case testForInNegativeRange]
 def f() -> None:
     for i in range(10, 0, -1):
