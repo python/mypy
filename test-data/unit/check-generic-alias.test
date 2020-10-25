@@ -28,6 +28,8 @@ t5: Mapping
 # flags: --python-version 3.9
 
 t1: type[int]
+t2: tuple[int, int]
+t3: dict[int, str]
 
 [builtins fixtures/list.pyi]
 [builtins fixtures/dict.pyi]
