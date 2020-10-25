@@ -210,6 +210,7 @@ t07: Tuple[int, int, int, int, int] = (1, 2, 3, 4, 5)
 t08: Tuple[int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6)
 t09: Tuple[int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7)
 t10: Tuple[int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8)
+
 t11: Tuple[int, ...]
 t12: Tuple[int, ...] = (1,)
 t13: Tuple[int, ...] = (1, 2)
@@ -237,12 +238,6 @@ t08: tuple[int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6)
 t09: tuple[int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7)
 t10: tuple[int, int, int, int, int, int, int, int] = (1, 2, 3, 4, 5, 6, 7, 8)
 
-[builtins fixtures/tuple.pyi]
-[out]
-
-[case testGenericBuiltinTupleVariadic]
-# flags: --python-version 3.9
-
 t11: tuple[int, ...]
 t12: tuple[int, ...] = (1,)
 t13: tuple[int, ...] = (1, 2)
@@ -252,6 +247,10 @@ t16: tuple[int, ...] = (1, 2, 3, 4, 5)
 t17: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 t18: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7)
 t19: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8)
+
+from typing import Tuple
+
+t20: Tuple[int, ...] = t19
 
 [builtins fixtures/tuple.pyi]
 [out]
