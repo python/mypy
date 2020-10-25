@@ -79,6 +79,8 @@ cmds = {
          MYPYC_EXTERNAL,
          MYPYC_COMMAND_LINE,
          ERROR_STREAM]),
+    # Test cases to run in typeshed CI
+    'typeshed-ci': 'pytest -k "%s"' % ' or '.join([CMDLINE, EVALUATION, SAMPLES, TYPESHED]),
     # Mypyc tests that aren't run by default, since they are slow and rarely
     # fail for commits that don't touch mypyc
     'mypyc-extra': 'pytest -k "%s"' % ' or '.join(MYPYC_OPT_IN),
