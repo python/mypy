@@ -848,9 +848,3 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""
-
-
-class StubtestIntegration(unittest.TestCase):
-    def test_typeshed(self) -> None:
-        # check we don't crash while checking typeshed
-        test_stubs(parse_options(["--check-typeshed"]))
