@@ -275,7 +275,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail("Final can be only used as an outermost qualifier"
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
-        elif fullname in ('typing.Tuple', 'builtins.tuple'):
+        elif (fullname == 'typing.Tuple' or
+             (fullname == 'builtins.tuple' and (
+                 self.options.python_version >= (3, 9) or self.api.is_future_flag_set('annotations')))):
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
