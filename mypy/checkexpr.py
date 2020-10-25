@@ -3218,8 +3218,42 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_set_expr(self, e: SetExpr) -> Type:
         return self.check_lst_expr(e.items, 'builtins.set', '<set>', e)
 
+    def fast_container_type(
+            self, items: List[Expression], container_fullname: str
+    ) -> Optional[Type]:
+        """
+        Fast path to determine the type of a list or set literal,
+        based on the list of entries. This mostly impacts large
+        module-level constant definitions.
+
+        Limitations:
+         - no active type context
+         - no star expressions
+         - the joined type of all entries must be an Instance type
+        """
+        ctx = self.type_context[-1]
+        if ctx:
+            return None
+        values = []  # type: List[Type]
+        for item in items:
+            if isinstance(item, StarExpr):
+                # fallback to slow path
+                return None
+            values.append(self.accept(item))
+        vt = join.join_type_list(values)
+        if not isinstance(vt, Instance):
+            return None
+        # TODO: update tests instead?
+        vt.erased = True
+        return self.chk.named_generic_type(container_fullname, [vt])
+
     def check_lst_expr(self, items: List[Expression], fullname: str,
                        tag: str, context: Context) -> Type:
+        # fast path
+        t = self.fast_container_type(items, fullname)
+        if t:
+            return t
+
         # Translate into type checking a generic function call.
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
@@ -3301,6 +3335,48 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         fallback_item = AnyType(TypeOfAny.special_form)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
+    def fast_dict_type(self, e: DictExpr) -> Optional[Type]:
+        """
+        Fast path to determine the type of a dict literal,
+        based on the list of entries. This mostly impacts large
+        module-level constant definitions.
+
+        Limitations:
+         - no active type context
+         - only supported star expressions are other dict instances
+         - the joined types of all keys and values must be Instance types
+        """
+        ctx = self.type_context[-1]
+        if ctx:
+            return None
+        keys = []  # type: List[Type]
+        values = []  # type: List[Type]
+        stargs = None  # type: Optional[Tuple[Type, Type]]
+        for key, value in e.items:
+            if key is None:
+                st = get_proper_type(self.accept(value))
+                if (
+                        isinstance(st, Instance)
+                        and st.type.fullname == 'builtins.dict'
+                        and len(st.args) == 2
+                ):
+                    stargs = (st.args[0], st.args[1])
+                else:
+                    return None
+            else:
+                keys.append(self.accept(key))
+                values.append(self.accept(value))
+        kt = join.join_type_list(keys)
+        vt = join.join_type_list(values)
+        if not (isinstance(kt, Instance) and isinstance(vt, Instance)):
+            return None
+        if stargs and (stargs[0] != kt or stargs[1] != vt):
+            return None
+        # TODO: update tests instead?
+        kt.erased = True
+        vt.erased = True
+        return self.chk.named_generic_type('builtins.dict', [kt, vt])
+
     def visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
 
@@ -3318,6 +3394,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=e
             )
             return typeddict_context.copy_modified()
+
+        # fast path attempt
+        dt = self.fast_dict_type(e)
+        if dt:
+            return dt
 
         # Collect function arguments, watching out for **expr.
         args = []  # type: List[Expression]  # Regular "key: value"

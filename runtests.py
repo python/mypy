@@ -28,8 +28,6 @@ MYPYC_RUN_MULTI = 'TestRunMultiFile'
 MYPYC_EXTERNAL = 'TestExternal'
 MYPYC_COMMAND_LINE = 'TestCommandLine'
 ERROR_STREAM = 'ErrorStreamSuite'
-STUBTEST = 'StubtestUnit'
-STUBTEST_MISC = 'StubtestMiscUnit'
 STUBTEST_INTEGRATION = 'StubtestIntegration'
 
 
@@ -47,18 +45,15 @@ ALL_NON_FAST = [
     MYPYC_EXTERNAL,
     MYPYC_COMMAND_LINE,
     ERROR_STREAM,
-    STUBTEST,
-    STUBTEST_MISC,
     STUBTEST_INTEGRATION,
 ]
 
 
 # These must be enabled by explicitly including 'mypyc-extra' on the command line.
-MYPYC_OPT_IN = [MYPYC_RUN,
-                MYPYC_RUN_MULTI]
+MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
 
 # These must be enabled by explicitly including 'stubtest' on the command line.
-STUBTEST_OPT_IN = [STUBTEST, STUBTEST_MISC, STUBTEST_INTEGRATION]
+STUBTEST_OPT_IN = [STUBTEST_INTEGRATION]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
