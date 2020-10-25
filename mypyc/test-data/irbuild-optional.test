@@ -11,7 +11,7 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
 L0:
     r0 = box(None, 1)
     r1 = x == r0
@@ -34,7 +34,7 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1, r2 :: bool
+    r1, r2 :: bit
 L0:
     r0 = box(None, 1)
     r1 = x == r0
@@ -58,7 +58,7 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -90,10 +90,11 @@ L0:
 def f(x):
     x :: union[__main__.A, None]
     r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: __main__.A
     r3 :: int32
-    r4 :: bool
+    r4 :: bit
+    r5 :: bool
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
@@ -101,8 +102,9 @@ L0:
 L1:
     r2 = cast(__main__.A, x)
     r3 = PyObject_IsTrue(r2)
-    r4 = truncate r3: int32 to builtins.bool
-    if r4 goto L2 else goto L3 :: bool
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    if r5 goto L2 else goto L3 :: bool
 L2:
     return 2
 L3:
@@ -160,9 +162,9 @@ def f(x: List[Optional[int]]) -> None:
 def f(x):
     x :: list
     r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
-    r3 :: bool
+    r3 :: bit
 L0:
     r0 = box(short_int, 0)
     r1 = CPyList_SetItem(x, 0, r0)
@@ -186,7 +188,7 @@ def f(x):
     x :: union[__main__.A, None]
     r0, y :: __main__.A
     r1 :: object
-    r2, r3 :: bool
+    r2, r3 :: bit
     r4, r5 :: __main__.A
 L0:
     r0 = A()
@@ -215,39 +217,27 @@ def f(y):
     y :: int
     x :: union[int, None]
     r0 :: object
-    r1 :: bool
-    r2 :: native_int
-    r3, r4, r5 :: bool
-    r6, r7 :: object
-    r8, r9 :: bool
-    r10 :: int
+    r1 :: bit
+    r2, r3 :: object
+    r4, r5 :: bit
+    r6 :: int
 L0:
     r0 = box(None, 1)
     x = r0
-    r2 = y & 1
-    r3 = r2 == 0
-    if r3 goto L1 else goto L2 :: bool
+    r1 = y == 2
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r4 = y == 2
-    r1 = r4
-    goto L3
+    r2 = box(int, y)
+    x = r2
 L2:
-    r5 = CPyTagged_IsEq_(y, 2)
-    r1 = r5
+    r3 = box(None, 1)
+    r4 = x == r3
+    r5 = r4 ^ 1
+    if r5 goto L3 else goto L4 :: bool
 L3:
-    if r1 goto L4 else goto L5 :: bool
+    r6 = unbox(int, x)
+    y = r6
 L4:
-    r6 = box(int, y)
-    x = r6
-L5:
-    r7 = box(None, 1)
-    r8 = x == r7
-    r9 = r8 ^ 1
-    if r9 goto L6 else goto L7 :: bool
-L6:
-    r10 = unbox(int, x)
-    y = r10
-L7:
     return 1
 
 [case testUnionType]
@@ -266,23 +256,25 @@ def f(x):
     x :: union[int, __main__.A]
     r0 :: object
     r1 :: int32
-    r2 :: bool
-    r3, r4 :: int
-    r5 :: __main__.A
-    r6 :: int
+    r2 :: bit
+    r3 :: bool
+    r4, r5 :: int
+    r6 :: __main__.A
+    r7 :: int
 L0:
     r0 = load_address PyLong_Type
     r1 = PyObject_IsInstance(x, r0)
-    r2 = truncate r1: int32 to builtins.bool
-    if r2 goto L1 else goto L2 :: bool
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r3 = unbox(int, x)
-    r4 = CPyTagged_Add(r3, 2)
-    return r4
+    r4 = unbox(int, x)
+    r5 = CPyTagged_Add(r4, 2)
+    return r5
 L2:
-    r5 = cast(__main__.A, x)
-    r6 = r5.a
-    return r6
+    r6 = cast(__main__.A, x)
+    r7 = r6.a
+    return r7
 L3:
     unreachable
 
@@ -318,7 +310,7 @@ def get(o):
     r0, r1 :: object
     r2 :: ptr
     r3 :: object
-    r4 :: bool
+    r4 :: bit
     r5 :: __main__.A
     r6 :: int
     r7 :: object
@@ -347,9 +339,11 @@ def set(o, s):
     o :: union[__main__.A, __main__.B]
     s, r0 :: str
     r1 :: int32
+    r2 :: bit
 L0:
     r0 = load_global CPyStatic_unicode_5 :: static  ('a')
     r1 = PyObject_SetAttr(o, r0, s)
+    r2 = r1 >= 0 :: signed
     return 1
 
 [case testUnionMethodCall]
@@ -387,13 +381,13 @@ def g(o):
     r0, r1 :: object
     r2 :: ptr
     r3 :: object
-    r4 :: bool
+    r4 :: bit
     r5 :: __main__.A
     r6 :: int
     r7, r8 :: object
     r9 :: ptr
     r10 :: object
-    r11 :: bool
+    r11 :: bit
     r12 :: __main__.B
     r13, r14 :: object
     r15 :: __main__.C
@@ -458,7 +452,7 @@ def f(o):
     r1 :: object
     r2 :: ptr
     r3 :: object
-    r4 :: bool
+    r4 :: bit
     r5 :: __main__.A
     r6 :: int
     r7 :: object
@@ -490,7 +484,7 @@ def g(o):
     r1 :: object
     r2 :: ptr
     r3 :: object
-    r4 :: bool
+    r4 :: bit
     r5 :: __main__.A
     r6 :: int
     r7 :: object
@@ -543,4 +537,3 @@ L0:
     r0 = r3
 L1:
     return 1
-

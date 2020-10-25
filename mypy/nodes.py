@@ -114,11 +114,12 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
+    'typing.OrderedDict': 'collections.OrderedDict',
 }  # type: Final
 
 # This keeps track of the oldest supported Python version where the corresponding
-# alias _target_ is available.
-type_aliases_target_versions = {
+# alias source is available.
+type_aliases_source_versions = {
     'typing.List': (2, 7),
     'typing.Dict': (2, 7),
     'typing.Set': (2, 7),
@@ -127,6 +128,7 @@ type_aliases_target_versions = {
     'typing.Counter': (2, 7),
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
+    'typing.OrderedDict': (3, 7),
 }  # type: Final
 
 reverse_builtin_aliases = {
@@ -139,6 +141,8 @@ reverse_builtin_aliases = {
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+# Drop OrderedDict from this for backward compatibility
+del nongen_builtins['collections.OrderedDict']
 
 RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
                           'typing_extensions.runtime',

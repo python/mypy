@@ -513,6 +513,9 @@ no analog available via the command line options.
 Miscellaneous strictness flags
 ******************************
 
+For more information, see the :ref:`Miscellaneous strictness flags <miscellaneous-strictness-flags>`
+section of the command line docs.
+
 .. confval:: allow_untyped_globals
 
     :type: boolean
@@ -528,6 +531,19 @@ Miscellaneous strictness flags
 
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
+
+.. confval:: local_partial_types
+
+    :type: boolean
+    :default: False
+
+    Disallows inferring variable type for ``None`` from two assignments in different scopes.
+
+.. confval:: disable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows disabling one or multiple error codes globally.
 
 .. confval:: implicit_reexport
 

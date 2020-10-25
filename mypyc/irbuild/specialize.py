@@ -110,6 +110,7 @@ def dict_methods_fast_path(
 
 @specialize_function('builtins.tuple')
 @specialize_function('builtins.set')
+@specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
 @specialize_function('builtins.sum')
 @specialize_function('builtins.min')

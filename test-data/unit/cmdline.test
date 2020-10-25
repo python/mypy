@@ -45,29 +45,47 @@ pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 # cmd: mypy dir
 [file dir/a.py]
 undef
-[file dir/subdir/a.py]
+[file dir/subdir/b.py]
 undef
 [out]
 dir/a.py:1: error: Name 'undef' is not defined
+dir/subdir/b.py:1: error: Name 'undef' is not defined
 
-[case testCmdlineNonPackageSlash]
-# cmd: mypy dir/
+[case testCmdlineNonPackageDuplicate]
+# cmd: mypy dir
 [file dir/a.py]
 undef
 [file dir/subdir/a.py]
 undef
 [out]
+dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
+dir/a.py: error: Are you missing an __init__.py?
+== Return code: 2
+
+[case testCmdlineNonPackageSlash]
+# cmd: mypy dir/
+[file dir/a.py]
+undef
+import b
+[file dir/subdir/b.py]
+undef
+import a
+[out]
 dir/a.py:1: error: Name 'undef' is not defined
+dir/subdir/b.py:1: error: Name 'undef' is not defined
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
+import a
 [file pkg/subdir/a.py]
 undef
+import pkg.a
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
+pkg/subdir/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
@@ -790,6 +808,17 @@ def bar(a: int, b: int) -> str:
     return a + b
 [out]
 src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testNestedPEP420Packages]
+# cmd: mypy -p bottles --namespace-packages
+[file bottles/jars/secret/glitter.py]
+x = 0  # type: str
+[file bottles/jars/sprinkle.py]
+from bottles.jars.secret.glitter import x
+x + 1
+[out]
+bottles/jars/secret/glitter.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+bottles/jars/sprinkle.py:2: error: Unsupported operand types for + ("str" and "int")
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py

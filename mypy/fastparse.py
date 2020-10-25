@@ -169,7 +169,9 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        if sys.version_info < (3, 9) and e.filename == "<fstring>":
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
+        if is_py38_or_earlier and e.filename == "<fstring>":
             # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
             # start of the f-string. This would be misleading, as mypy will report the error as the
             # lineno within the file.
@@ -1210,9 +1212,11 @@ class ASTConverter:
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
         self.set_line(e, n)
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
         if (
             isinstance(n.slice, ast3.Slice) or
-            (sys.version_info < (3, 9) and isinstance(n.slice, ast3.ExtSlice))
+            (is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice))
         ):
             # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
             # visit_Slice doesn't set_line, even in Python 3.9 on.
@@ -1257,11 +1261,13 @@ class ASTConverter:
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        return TupleExpr(self.translate_expr_list(n.dims))
+        # cast for mypyc's benefit on Python 3.9
+        return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
 
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
-        return self.visit(n.value)
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
 
 
 class TypeConverter:

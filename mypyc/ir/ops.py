@@ -25,7 +25,8 @@ from mypy.nodes import SymbolNode
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive
+    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
+    bit_rprimitive, is_bit_rprimitive
 )
 from mypyc.common import short_name
 
@@ -300,10 +301,8 @@ ERR_NEVER = 0  # type: Final
 ERR_MAGIC = 1  # type: Final
 # Generates false (bool) on exception
 ERR_FALSE = 2  # type: Final
-# Generates negative integer on exception
-ERR_NEG_INT = 3  # type: Final
 # Always fails
-ERR_ALWAYS = 4  # type: Final
+ERR_ALWAYS = 3  # type: Final
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -416,20 +415,25 @@ class Goto(ControlOp):
 
 
 class Branch(ControlOp):
-    """if [not] r1 goto 1 else goto 2"""
+    """Branch based on a value.
+
+    If op is BOOL, branch based on a bit/bool value:
+       if [not] r1 goto L1 else goto L2
+
+    If op is IS_ERROR, branch based on whether there is an error value:
+       if [not] is_error(r1) goto L1 else goto L2
+    """
 
     # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
     # exception, it needs to split into two opcodes and only the first one may fail.
     error_kind = ERR_NEVER
 
-    BOOL_EXPR = 100  # type: Final
+    BOOL = 100  # type: Final
     IS_ERROR = 101  # type: Final
-    NEG_INT_EXPR = 102  # type: Final
 
     op_names = {
-        BOOL_EXPR: ('%r', 'bool'),
+        BOOL: ('%r', 'bool'),
         IS_ERROR: ('is_error(%r)', ''),
-        NEG_INT_EXPR: ('%r < 0', ''),
     }  # type: Final
 
     def __init__(self,
@@ -445,7 +449,7 @@ class Branch(ControlOp):
         self.left = left
         self.true = true_label
         self.false = false_label
-        # BOOL_EXPR (boolean check) or IS_ERROR (error value check)
+        # BOOL (boolean check) or IS_ERROR (error value check)
         self.op = op
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
@@ -1073,7 +1077,9 @@ class Box(RegisterOp):
         self.src = src
         self.type = object_rprimitive
         # When we box None and bool values, we produce a borrowed result
-        if is_none_rprimitive(self.src.type) or is_bool_rprimitive(self.src.type):
+        if (is_none_rprimitive(self.src.type)
+                or is_bool_rprimitive(self.src.type)
+                or is_bit_rprimitive(self.src.type)):
             self.is_borrowed = True
 
     def sources(self) -> List[Value]:
@@ -1315,12 +1321,20 @@ class BinaryIntOp(RegisterOp):
 
 
 class ComparisonOp(RegisterOp):
-    """Comparison ops
+    """Low-level comparison op.
 
-    The result type will always be boolean.
+    Both unsigned and signed comparisons are supported.
 
-    Support comparison between integer types and pointer types
+    The operands are assumed to be fixed-width integers/pointers. Python
+    semantics, such as calling __eq__, are not supported.
+
+    The result is always a bit.
+
+    Supports comparisons between fixed-width integer types and pointer
+    types.
     """
+    # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
+    # indicates that an exception has been raised and should be propagated.
     error_kind = ERR_NEVER
 
     # S for signed and U for unsigned
@@ -1350,7 +1364,7 @@ class ComparisonOp(RegisterOp):
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
-        self.type = bool_rprimitive
+        self.type = bit_rprimitive
         self.lhs = lhs
         self.rhs = rhs
         self.op = op

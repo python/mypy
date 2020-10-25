@@ -63,34 +63,22 @@ def f() -> int:
 [out]
 def f():
     x, y :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r0 :: bit
 L0:
     x = 2
     y = 4
-    r1 = x & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = x == 2
+    if r0 goto L3 else goto L4 :: bool
 L1:
-    r3 = x == 2
-    r0 = r3
-    goto L3
-L2:
-    r4 = CPyTagged_IsEq_(x, 2)
-    r0 = r4
-L3:
-    if r0 goto L6 else goto L7 :: bool
-L4:
     return x
-L5:
+L2:
     return y
-L6:
+L3:
     dec_ref y :: int
-    goto L4
-L7:
+    goto L1
+L4:
     dec_ref x :: int
-    goto L5
+    goto L2
 
 [case testArgumentsInOps]
 def f(a: int, b: int) -> int:
@@ -197,38 +185,34 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
-    x, r5, y :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    x, r4, y :: int
 L0:
-    r1 = a & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = a & 1
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = a == a
-    r0 = r3
-    goto L3
+    r2 = CPyTagged_IsEq_(a, a)
+    if r2 goto L3 else goto L4 :: bool
 L2:
-    r4 = CPyTagged_IsEq_(a, a)
-    r0 = r4
+    r3 = a == a
+    if r3 goto L3 else goto L4 :: bool
 L3:
-    if r0 goto L4 else goto L5 :: bool
-L4:
     a = 2
-    goto L6
-L5:
+    goto L5
+L4:
     x = 4
     dec_ref x :: int
-    goto L7
-L6:
-    r5 = CPyTagged_Add(a, 2)
-    dec_ref a :: int
-    y = r5
-    return y
-L7:
-    inc_ref a :: int
     goto L6
+L5:
+    r4 = CPyTagged_Add(a, 2)
+    dec_ref a :: int
+    y = r4
+    return y
+L6:
+    inc_ref a :: int
+    goto L5
 
 [case testConditionalAssignToArgument2]
 def f(a: int) -> int:
@@ -241,37 +225,33 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
-    x, r5, y :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    x, r4, y :: int
 L0:
-    r1 = a & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = a & 1
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = a == a
-    r0 = r3
-    goto L3
+    r2 = CPyTagged_IsEq_(a, a)
+    if r2 goto L3 else goto L4 :: bool
 L2:
-    r4 = CPyTagged_IsEq_(a, a)
-    r0 = r4
+    r3 = a == a
+    if r3 goto L3 else goto L4 :: bool
 L3:
-    if r0 goto L4 else goto L5 :: bool
-L4:
     x = 4
     dec_ref x :: int
-    goto L7
-L5:
-    a = 2
-L6:
-    r5 = CPyTagged_Add(a, 2)
-    dec_ref a :: int
-    y = r5
-    return y
-L7:
-    inc_ref a :: int
     goto L6
+L4:
+    a = 2
+L5:
+    r4 = CPyTagged_Add(a, 2)
+    dec_ref a :: int
+    y = r4
+    return y
+L6:
+    inc_ref a :: int
+    goto L5
 
 [case testConditionalAssignToArgument3]
 def f(a: int) -> int:
@@ -281,29 +261,25 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
+    r0 :: native_int
+    r1, r2, r3 :: bit
 L0:
-    r1 = a & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = a & 1
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = a == a
-    r0 = r3
-    goto L3
+    r2 = CPyTagged_IsEq_(a, a)
+    if r2 goto L3 else goto L5 :: bool
 L2:
-    r4 = CPyTagged_IsEq_(a, a)
-    r0 = r4
+    r3 = a == a
+    if r3 goto L3 else goto L5 :: bool
 L3:
-    if r0 goto L4 else goto L6 :: bool
-L4:
     a = 2
-L5:
+L4:
     return a
-L6:
+L5:
     inc_ref a :: int
-    goto L5
+    goto L4
 
 [case testAssignRegisterToItself]
 def f(a: int) -> int:
@@ -462,44 +438,40 @@ def f() -> int:
 [out]
 def f():
     x, y, z :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
-    a, r5, r6 :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    a, r4, r5 :: int
 L0:
     x = 2
     y = 4
     z = 6
-    r1 = z & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = z & 1
+    r1 = r0 != 0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = z == z
-    r0 = r3
-    goto L3
+    r2 = CPyTagged_IsEq_(z, z)
+    if r2 goto L5 else goto L6 :: bool
 L2:
-    r4 = CPyTagged_IsEq_(z, z)
-    r0 = r4
+    r3 = z == z
+    if r3 goto L5 else goto L6 :: bool
 L3:
-    if r0 goto L6 else goto L7 :: bool
-L4:
     return z
-L5:
+L4:
     a = 2
-    r5 = CPyTagged_Add(x, y)
+    r4 = CPyTagged_Add(x, y)
     dec_ref x :: int
     dec_ref y :: int
-    r6 = CPyTagged_Subtract(r5, a)
-    dec_ref r5 :: int
+    r5 = CPyTagged_Subtract(r4, a)
+    dec_ref r4 :: int
     dec_ref a :: int
-    return r6
-L6:
+    return r5
+L5:
     dec_ref x :: int
     dec_ref y :: int
-    goto L4
-L7:
+    goto L3
+L6:
     dec_ref z :: int
-    goto L5
+    goto L4
 
 [case testLoop]
 def f(a: int) -> int:
@@ -512,39 +484,35 @@ def f(a: int) -> int:
 [out]
 def f(a):
     a, sum, i :: int
-    r0 :: bool
-    r1 :: native_int
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6, r7, r8 :: bool
-    r9, r10 :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5 :: bit
+    r6, r7 :: int
 L0:
     sum = 0
     i = 0
 L1:
-    r1 = i & 1
-    r2 = r1 == 0
-    r3 = a & 1
-    r4 = r3 == 0
-    r5 = r2 & r4
-    if r5 goto L2 else goto L3 :: bool
+    r0 = i & 1
+    r1 = r0 != 0
+    if r1 goto L3 else goto L2 :: bool
 L2:
-    r6 = i <= a :: signed
-    r0 = r6
-    goto L4
+    r2 = a & 1
+    r3 = r2 != 0
+    if r3 goto L3 else goto L4 :: bool
 L3:
-    r7 = CPyTagged_IsLt_(a, i)
-    r8 = r7 ^ 1
-    r0 = r8
+    r4 = CPyTagged_IsLt_(a, i)
+    if r4 goto L7 else goto L5 :: bool
 L4:
-    if r0 goto L5 else goto L7 :: bool
+    r5 = i <= a :: signed
+    if r5 goto L5 else goto L7 :: bool
 L5:
-    r9 = CPyTagged_Add(sum, i)
+    r6 = CPyTagged_Add(sum, i)
     dec_ref sum :: int
-    sum = r9
-    r10 = CPyTagged_Add(i, 2)
+    sum = r6
+    r7 = CPyTagged_Add(i, 2)
     dec_ref i :: int
-    i = r10
+    i = r7
     goto L1
 L6:
     return sum
@@ -601,7 +569,7 @@ def f(a, b):
     r0 :: object
     r1 :: int
     r2 :: object
-    r3 :: bool
+    r3 :: bit
 L0:
     r0 = CPyList_GetItemShort(b, 0)
     r1 = unbox(int, r0)
@@ -734,11 +702,13 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: int32
+    r2 :: bit
 L0:
     inc_ref x :: int
     r0 = box(int, x)
     r1 = PyList_Append(a, r0)
     dec_ref r0
+    r2 = r1 >= 0 :: signed
     return 1
 
 [case testForDict]
@@ -761,7 +731,7 @@ def f(d):
     key, r8 :: int
     r9, r10 :: object
     r11 :: int
-    r12, r13 :: bool
+    r12, r13 :: bit
 L0:
     r0 = 0
     r1 = PyDict_Size(d)

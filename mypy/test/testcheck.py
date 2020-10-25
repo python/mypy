@@ -277,6 +277,10 @@ class TypeCheckSuite(DataSuite):
             raise AssertionError("cache data discrepancy %s != %s" %
                                  (missing_paths, busted_paths))
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
+        cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
+        assert os.path.isfile(cachedir_tag)
+        with open(cachedir_tag) as f:
+            assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
 
     def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()

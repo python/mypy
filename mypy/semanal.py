@@ -74,7 +74,7 @@ from mypy.nodes import (
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_target_versions,
+    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr
 )
@@ -307,12 +307,27 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         They will be replaced with real aliases when corresponding targets are ready.
         """
-        for stmt in file_node.defs.copy():
-            if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
-                    isinstance(stmt.lvalues[0], NameExpr)):
-                # Assignment to a simple name, remove it if it is a dummy alias.
-                if 'typing.' + stmt.lvalues[0].name in type_aliases:
-                    file_node.defs.remove(stmt)
+        # This is all pretty unfortunate. typeshed now has a
+        # sys.version_info check for OrderedDict, and we shouldn't
+        # take it out, because it is correct and a typechecker should
+        # use that as a source of truth. But instead we rummage
+        # through IfStmts to remove the info first.  (I tried to
+        # remove this whole machinery and ran into issues with the
+        # builtins/typing import cycle.)
+        def helper(defs: List[Statement]) -> None:
+            for stmt in defs.copy():
+                if isinstance(stmt, IfStmt):
+                    for body in stmt.body:
+                        helper(body.body)
+                    if stmt.else_body:
+                        helper(stmt.else_body.body)
+                if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
+                        isinstance(stmt.lvalues[0], NameExpr)):
+                    # Assignment to a simple name, remove it if it is a dummy alias.
+                    if 'typing.' + stmt.lvalues[0].name in type_aliases:
+                        defs.remove(stmt)
+
+        helper(file_node.defs)
 
     def prepare_builtins_namespace(self, file_node: MypyFile) -> None:
         """Add certain special-cased definitions to the builtins module.
@@ -430,7 +445,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         assert tree.fullname == 'typing'
         for alias, target_name in type_aliases.items():
-            if type_aliases_target_versions[alias] > self.options.python_version:
+            if type_aliases_source_versions[alias] > self.options.python_version:
                 # This alias is not available on this Python version.
                 continue
             name = alias.split('.')[-1]
@@ -1708,18 +1723,19 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_import(self, i: Import) -> None:
         self.statement = i
         for id, as_id in i.ids:
+            # Modules imported in a stub file without using 'import X as X' won't get exported
+            # When implicit re-exporting is disabled, we have the same behavior as stubs.
+            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
             if as_id is not None:
-                self.add_module_symbol(id, as_id, module_public=True, context=i)
+                base_id = id
+                imported_id = as_id
+                module_public = use_implicit_reexport or id.split(".")[-1] == as_id
             else:
-                # Modules imported in a stub file without using 'as x' won't get exported
-                # When implicit re-exporting is disabled, we have the same behavior as stubs.
-                module_public = (
-                    not self.is_stub_file
-                    and self.options.implicit_reexport
-                )
-                base = id.split('.')[0]
-                self.add_module_symbol(base, base, module_public=module_public,
-                                       context=i, module_hidden=not module_public)
+                base_id = id.split('.')[0]
+                imported_id = base_id
+                module_public = use_implicit_reexport
+            self.add_module_symbol(base_id, imported_id, context=i, module_public=module_public,
+                                   module_hidden=not module_public)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         self.statement = imp
@@ -1762,42 +1778,46 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if gvar:
                     self.add_symbol(imported_id, gvar, imp)
                     continue
+
+            # Modules imported in a stub file without using 'from Y import X as X' will
+            # not get exported.
+            # When implicit re-exporting is disabled, we have the same behavior as stubs.
+            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
+            module_public = use_implicit_reexport or (as_id is not None and id == as_id)
+
             if node and not node.module_hidden:
-                self.process_imported_symbol(node, module_id, id, as_id, fullname, imp)
+                self.process_imported_symbol(
+                    node, module_id, id, imported_id, fullname, module_public, context=imp
+                )
             elif module and not missing_submodule:
                 # Target module exists but the imported name is missing or hidden.
-                self.report_missing_module_attribute(module_id, id, imported_id, imp)
-            else:
-                module_public = (
-                    not self.is_stub_file
-                    and self.options.implicit_reexport
-                    or as_id is not None
+                self.report_missing_module_attribute(
+                    module_id, id, imported_id, module_public=module_public,
+                    module_hidden=not module_public, context=imp
                 )
+            else:
                 # Import of a missing (sub)module.
                 self.add_unknown_imported_symbol(
-                    imported_id, imp, target_name=fullname, module_public=module_public
+                    imported_id, imp, target_name=fullname, module_public=module_public,
+                    module_hidden=not module_public
                 )
 
     def process_imported_symbol(self,
                                 node: SymbolTableNode,
                                 module_id: str,
                                 id: str,
-                                as_id: Optional[str],
+                                imported_id: str,
                                 fullname: str,
+                                module_public: bool,
                                 context: ImportBase) -> None:
-        imported_id = as_id or id
-        # 'from m import x as x' exports x in a stub file or when implicit
-        # re-exports are disabled.
-        module_public = (
-            not self.is_stub_file
-            and self.options.implicit_reexport
-            or as_id is not None
-        )
         module_hidden = not module_public and fullname not in self.modules
 
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
-                self.report_missing_module_attribute(module_id, id, imported_id, context)
+                self.report_missing_module_attribute(
+                    module_id, id, imported_id, module_public=module_public,
+                    module_hidden=module_hidden, context=context
+                )
                 return
             else:
                 # This might become a type.
@@ -1822,8 +1842,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                                  module_public=module_public,
                                  module_hidden=module_hidden)
 
-    def report_missing_module_attribute(self, import_id: str, source_id: str, imported_id: str,
-                                        context: Node) -> None:
+    def report_missing_module_attribute(
+        self, import_id: str, source_id: str, imported_id: str, module_public: bool,
+        module_hidden: bool, context: Node
+    ) -> None:
         # Missing attribute.
         if self.is_incomplete_namespace(import_id):
             # We don't know whether the name will be there, since the namespace
@@ -1844,7 +1866,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                     suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
                     message += "{}".format(suggestion)
         self.fail(message, context, code=codes.ATTR_DEFINED)
-        self.add_unknown_imported_symbol(imported_id, context)
+        self.add_unknown_imported_symbol(
+            imported_id, context, target_name=None, module_public=module_public,
+            module_hidden=not module_public
+        )
 
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -2167,13 +2192,17 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
-                                                                          self.is_func_scope())
-        if not is_named_tuple:
+        internal_name, info = self.named_tuple_analyzer.check_namedtuple(s.rvalue, name,
+                                                                         self.is_func_scope())
+        if internal_name is None:
             return False
         if isinstance(lvalue, MemberExpr):
             self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
+        if internal_name != name:
+            self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
+                name, internal_name), s.rvalue)
+            return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
@@ -2626,9 +2655,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.fail('Unexpected type declaration', lval)
             lval.accept(self)
         elif isinstance(lval, TupleExpr):
-            items = lval.items
-            if len(items) == 0 and isinstance(lval, TupleExpr):
-                self.fail("can't assign to ()", lval)
             self.analyze_tuple_or_list_lvalue(lval, explicit_type)
         elif isinstance(lval, StarExpr):
             if nested:
@@ -4419,12 +4445,19 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             i += 1
 
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
+        """Add local variable or function."""
+        assert self.is_func_scope()
+        name = node.name
+        node._fullname = name
+        self.add_symbol(name, node, context)
+
     def add_module_symbol(self,
                           id: str,
                           as_id: str,
-                          module_public: bool,
                           context: Context,
-                          module_hidden: bool = False) -> None:
+                          module_public: bool,
+                          module_hidden: bool) -> None:
         """Add symbol that is a reference to a module object."""
         if id in self.modules:
             node = self.modules[id]
@@ -4433,22 +4466,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_hidden=module_hidden)
         else:
             self.add_unknown_imported_symbol(
-                as_id, context, target_name=id, module_public=module_public
+                as_id, context, target_name=id, module_public=module_public,
+                module_hidden=module_hidden
             )
-
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], context: Context) -> None:
-        """Add local variable or function."""
-        assert self.is_func_scope()
-        name = node.name
-        node._fullname = name
-        self.add_symbol(name, node, context)
 
     def add_imported_symbol(self,
                             name: str,
                             node: SymbolTableNode,
                             context: Context,
-                            module_public: bool = True,
-                            module_hidden: bool = False) -> None:
+                            module_public: bool,
+                            module_hidden: bool) -> None:
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
         symbol = SymbolTableNode(node.kind, node.node,
@@ -4459,8 +4486,9 @@ class SemanticAnalyzer(NodeVisitor[None],
     def add_unknown_imported_symbol(self,
                                     name: str,
                                     context: Context,
-                                    target_name: Optional[str] = None,
-                                    module_public: bool = True) -> None:
+                                    target_name: Optional[str],
+                                    module_public: bool,
+                                    module_hidden: bool) -> None:
         """Add symbol that we don't know what it points to because resolving an import failed.
 
         This can happen if a module is missing, or it is present, but doesn't have
@@ -4488,7 +4516,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         var.type = any_type
         var.is_suppressed_import = True
-        self.add_symbol(name, var, context, module_public=module_public)
+        self.add_symbol(
+            name, var, context, module_public=module_public, module_hidden=module_hidden
+        )
 
     #
     # Other helpers
@@ -4805,9 +4835,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                               allow_placeholder: bool = False) -> Optional[Type]:
         if isinstance(expr, CallExpr):
             expr.accept(self)
-            is_named_tuple, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
-                                                                              self.is_func_scope())
-            if not is_named_tuple:
+            internal_name, info = self.named_tuple_analyzer.check_namedtuple(expr, None,
+                                                                             self.is_func_scope())
+            if internal_name is None:
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
                 raise TypeTranslationError()
