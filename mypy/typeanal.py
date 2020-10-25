@@ -308,8 +308,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
         elif (fullname == 'typing.Type' or
-             (fullname == 'builtins.type' and self.api.is_future_flag_set('annotations')) or
-             (fullname == 'builtins.type' and not self.options.python_version < (3, 9))):
+             (fullname == 'builtins.type' and (self.options.python_version >= (3, 9) or
+                                               self.api.is_future_flag_set('annotations')))):
             if len(t.args) == 0:
                 if fullname == 'typing.Type':
                     any_type = self.get_omitted_any(t)
