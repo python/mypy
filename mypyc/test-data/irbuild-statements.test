@@ -37,9 +37,9 @@ def f(a: int) -> None:
 def f(a):
     a, r0, i :: int
     r1 :: bool
-    r2 :: int64
+    r2 :: native_int
     r3 :: bit
-    r4 :: int64
+    r4 :: native_int
     r5, r6, r7, r8 :: bit
     r9 :: int
 L0:
