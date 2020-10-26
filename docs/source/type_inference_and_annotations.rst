@@ -30,7 +30,7 @@ variable type annotation:
 
    from typing import Union
 
-   x: int | str = 1
+   x: Union[int, str] = 1
 
 Without the type annotation, the type of ``x`` would be just ``int``. We
 use an annotation to give it a more general type ``Union[int, str]`` (this
@@ -42,7 +42,7 @@ type:
 
 .. code-block:: python
 
-   x: int | str = 1.1  # Error!
+   x: Union[int, str] = 1.1  # Error!
 
 The variable annotation syntax is available starting from Python 3.6.
 In earlier Python versions, you can use a special comment after an
@@ -50,7 +50,7 @@ assignment statement to declare the type of a variable:
 
 .. code-block:: python
 
-   x = 1  # type: int | str
+   x = 1  # type: Union[int, str]
 
 We'll use both syntax variants in examples. The syntax variants are
 mostly interchangeable, but the variable annotation syntax allows

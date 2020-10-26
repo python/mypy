@@ -203,7 +203,7 @@ Our first attempt at writing this function might look like this:
     def mouse_event(x1: int,
                     y1: int,
                     x2: Optional[int] = None,
-                    y2: Optional[int] = None) -> ClickEvent | DragEvent:
+                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
         if x2 is None and y2 is None:
             return ClickEvent(x1, y1)
         elif x2 is not None and y2 is not None:
@@ -247,7 +247,7 @@ to more accurately describe the function's behavior:
     def mouse_event(x1: int,
                     y1: int,
                     x2: Optional[int] = None,
-                    y2: Optional[int] = None) -> ClickEvent | DragEvent:
+                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
         if x2 is None and y2 is None:
             return ClickEvent(x1, y1)
         elif x2 is not None and y2 is not None:
@@ -281,7 +281,7 @@ return type by using overloads like so:
         @overload
         def __getitem__(self, index: slice) -> Sequence[T]: ...
 
-        def __getitem__(self, index: int | slice) -> T | Sequence[T]:
+        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
             if isinstance(index, int):
                 # Return a T here
             elif isinstance(index, slice):
@@ -378,7 +378,7 @@ matching variant returns:
 
 .. code-block:: python
 
-    some_list: List[int] | List[str]
+    some_list: Union[List[int], List[str]]
 
     # output3 is of type 'Union[float, str]'
     output3 = summarize(some_list)
@@ -466,7 +466,7 @@ the following unsafe overload definition:
     @overload
     def unsafe_func(x: object) -> str: ...
 
-    def unsafe_func(x: object) -> int | str:
+    def unsafe_func(x: object) -> Union[int, str]:
         if isinstance(x, int):
             return 42
         else:
@@ -532,8 +532,8 @@ Type checking the implementation
 The body of an implementation is type-checked against the
 type hints provided on the implementation. For example, in the
 ``MyList`` example up above, the code in the body is checked with
-argument list ``index: int | slice`` and a return type of
-``T | Sequence[T]``. If there are no annotations on the
+argument list ``index: Union[int, slice]`` and a return type of
+``Union[T, Sequence[T]]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
 force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).

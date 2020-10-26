@@ -103,7 +103,7 @@ Functions
            i += 1
 
    # There's an alternative syntax for functions with many arguments
-   def send_email(address,     # type: str | List[str]
+   def send_email(address,     # type: Union[str, List[str]]
                   sender,      # type: str
                   cc,          # type: Optional[List[str]]
                   bcc,         # type: Optional[List[str]]
@@ -126,8 +126,7 @@ When you're puzzled or when things are complicated
    reveal_type(1) # -> Revealed type is 'builtins.int'
 
    # Use Union when something could be one of a few types
-   # Python 3.9+ (or List[Union[int, str]])
-   x = [3, 5, "test", "fun"]  # type: List[int | str]
+   x = [3, 5, "test", "fun"]  # type: List[Union[int, str]]
 
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for

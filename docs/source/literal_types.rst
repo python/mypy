@@ -30,9 +30,9 @@ precise type signature for this function using ``Literal[...]`` and overloads:
     # provides a regular bool:
 
     @overload
-    def fetch_data(raw: bool) -> bytes | str: ...
+    def fetch_data(raw: bool) -> Union[bytes, str]: ...
 
-    def fetch_data(raw: bool) -> bytes | str:
+    def fetch_data(raw: bool) -> Union[bytes, str]:
         # Implementation is omitted
         ...
 

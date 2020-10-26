@@ -208,8 +208,8 @@ Python functions often accept values of two or more different
 types. You can use :ref:`overloading <function-overloading>` to
 represent this, but union types are often more convenient.
 
-Use the ``T1|...|Tn`` (or ``Union[T1, ..., Tn]``) type constructor to construct a union
-type. For example, if an argument has type ``int|str`` (or ``Union[int, str]``), both
+Use the ``Union[T1, ..., Tn]`` type constructor to construct a union
+type. For example, if an argument has type ``Union[int, str]``, both
 integers and strings are valid argument values.
 
 You can use an :py:func:`isinstance` check to narrow down a union type to a
@@ -219,7 +219,7 @@ more specific type:
 
    from typing import Union
 
-   def f(x: int | str) -> None:
+   def f(x: Union[int, str]) -> None:
        x + 1     # Error: str + int is not valid
        if isinstance(x, int):
            # Here type of x is int.
@@ -248,7 +248,7 @@ Optional types and the None type
 
 You can use the :py:data:`~typing.Optional` type modifier to define a type variant
 that allows ``None``, such as ``Optional[int]`` (``Optional[X]`` is
-the preferred shorthand for ``X | None`` or ``Union[X, None]``):
+the preferred shorthand for ``Union[X, None]``):
 
 .. code-block:: python
 
@@ -560,7 +560,7 @@ In certain situations, type names may end up being long and painful to type:
 
 .. code-block:: python
 
-   def f() -> List[Dict[Tuple[int, str], Set[int]]] | Tuple[str, List[str]]:
+   def f() -> Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]:
        ...
 
 When cases like this arise, you can define a type alias by simply
@@ -568,7 +568,7 @@ assigning the type to a variable:
 
 .. code-block:: python
 
-   AliasType = List[Dict[Tuple[int, str], Set[int]]] | Tuple[str, List[str]]
+   AliasType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
 
    # Now we can use AliasType in place of the full name:
 
