@@ -1424,13 +1424,7 @@ class TypeConverter:
 
     def visit_BinOp(self, n: ast3.BinOp) -> Type:
         if not isinstance(n.op, ast3.BitOr):
-            # invalid_type
-            return RawExpressionType(
-                None,
-                'typing.Any',
-                line=self.line,
-                column=getattr(n, 'col_offset', -1)
-            )
+            return self.invalid_type(n)
 
         left = self.visit(n.left)
         right = self.visit(n.right)
