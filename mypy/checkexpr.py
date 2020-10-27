@@ -2849,6 +2849,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
+        self.chk.store_type(e.target, value)
         self.find_partial_type_ref_fast_path(e.target)
         return value
 
@@ -3902,9 +3903,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.type_context.pop()
         assert typ is not None
         self.chk.store_type(node, typ)
-
-        if isinstance(node, AssignmentExpr) and not has_uninhabited_component(typ):
-            self.chk.store_type(node.target, typ)
 
         if (self.chk.options.disallow_any_expr and
                 not always_allow_any and
