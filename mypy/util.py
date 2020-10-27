@@ -27,6 +27,7 @@ ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
+DEFAULT_COLUMNS = 80  # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -416,7 +417,9 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
+    return (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0'))
+            or shutil.get_terminal_size().columns
+            or DEFAULT_COLUMNS)
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
