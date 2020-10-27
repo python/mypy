@@ -90,7 +90,7 @@ cmds = {
 # Stop run immediately if these commands fail
 FAST_FAIL = ['self', 'lint']
 
-DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd != 'mypyc-extra']
+DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in ('mypyc-extra', 'typeshed-ci')]
 
 assert all(cmd in cmds for cmd in FAST_FAIL)
 
