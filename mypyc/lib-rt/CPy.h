@@ -458,7 +458,7 @@ static inline bool CPyFloat_Check(PyObject *o) {
 
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
-int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
+int CPy_YieldFromErrorHandle(PyObject *iter, PyObject *outp);
 PyObject *CPy_FetchStopIterationValue(void);
 PyObject *CPyType_FromTemplate(PyObject *template_,
                                PyObject *orig_bases,

@@ -41,8 +41,9 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 // Returns false (0) if a value should be yielded.
 // In both cases the value is stored in outp.
 // Signals an error (2) if the an exception should be propagated.
-int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
+int CPy_YieldFromErrorHandle(PyObject *iter, PyObject *_outp)
 {
+    PyObject **outp = (PyObject **)_outp;
     _Py_IDENTIFIER(close);
     _Py_IDENTIFIER(throw);
     PyObject *exc_type = CPy_ExcState()->exc_type;
