@@ -2,7 +2,7 @@
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
-    RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
+    bool_rprimitive, object_rprimitive, str_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
