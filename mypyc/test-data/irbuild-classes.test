@@ -663,7 +663,7 @@ def f(x):
     r3 :: __main__.B
 L0:
     r0 = __main__.R :: type
-    r1 = isinstance x, r0
+    r1 = CPy_TypeCheck(x, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = cast(__main__.R, x)

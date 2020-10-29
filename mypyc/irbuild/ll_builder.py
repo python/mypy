@@ -221,9 +221,9 @@ class LowLevelIRBuilder:
         """
         concrete = all_concrete_classes(class_ir)
         if concrete is None or len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
-            return self.primitive_op(fast_isinstance_op,
-                                     [obj, self.get_native_type(class_ir)],
-                                     line)
+            return self.call_c(fast_isinstance_op,
+                               [obj, self.get_native_type(class_ir)],
+                               line)
         if not concrete:
             # There can't be any concrete instance that matches this.
             return self.false()
