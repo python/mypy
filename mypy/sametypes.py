@@ -25,7 +25,6 @@ def is_same_type(left: Type, right: Type) -> bool:
         # types can be simplified to non-union types such as Union[int, bool]
         # -> int. It would be nice if we always had simplified union types but
         # this is currently not the case, though it often is.
-        left = simplify_union(left)
         right = simplify_union(right)
 
         return left.accept(SameTypeVisitor(right))
