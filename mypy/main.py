@@ -112,7 +112,8 @@ def main(script_path: Optional[str],
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
                 summary = formatter.format_error(
-                    n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
+                    n_errors, n_files, len(sources), blockers=blockers,
+                    use_color=options.color_output
                 )
                 stdout.write(summary + '\n')
         else:
