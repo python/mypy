@@ -538,7 +538,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if t.implicit and not self.allow_tuple_literal:
             self.fail('Syntax error in type annotation', t, code=codes.SYNTAX)
             if len(t.items) == 0:
-                self.note('Suggestion: Use None or Tuple[()] instead of ()', t, code=codes.SYNTAX)
+                self.note('Suggestion: Use Tuple[()] instead of () for an empty tuple, or '
+                'None for a function without a return value', t, code=codes.SYNTAX)
             elif len(t.items) == 1:
                 self.note('Suggestion: Is there a spurious trailing comma?', t, code=codes.SYNTAX)
             else:

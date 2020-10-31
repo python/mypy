@@ -252,7 +252,7 @@ class A: pass
 [case testReturnEmptyTuple]
 from typing import Tuple
 def f(x): # type: (int) -> () # E: Syntax error in type annotation \
-                              # N: Suggestion: Use None or Tuple[()] instead of ()
+                              # N: Suggestion: Use Tuple[()] instead of () for an empty tuple, or None for a function without a return value
    pass
 
 def g(x: int) -> Tuple[()]:
