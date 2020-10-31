@@ -106,8 +106,7 @@ class FindModuleCache:
     def __init__(self,
                  search_paths: SearchPaths,
                  fscache: Optional[FileSystemCache] = None,
-                 options: Optional[Options] = None,
-                 ns_packages: Optional[List[str]] = None) -> None:
+                 options: Optional[Options] = None) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
@@ -117,7 +116,6 @@ class FindModuleCache:
         self.results = {}  # type: Dict[str, ModuleSearchResult]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
-        self.ns_packages = ns_packages or []  # type: List[str]
 
     def clear(self) -> None:
         self.results.clear()
