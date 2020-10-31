@@ -2541,36 +2541,24 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           severity='note', only_once=True)
 
 
-def log_configuration(manager: BuildManager) -> None:
+def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
     manager.log()
     configuration_vars = [
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
-    ]
-
-    src_pth_str = "Source Path"
-    src_pths = list(manager.source_set.source_paths.copy())
-    src_pths.sort()
-
-    if len(src_pths) > 1:
-        src_pth_str += "s"
-        configuration_vars.append((src_pth_str, " ".join(src_pths)))
-    elif len(src_pths) == 1:
-        configuration_vars.append((src_pth_str, src_pths.pop()))
-    else:
-        configuration_vars.append((src_pth_str, "None"))
-
-    configuration_vars.extend([
         ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
-    ])
+    ]
 
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
+
+    for source in sources:
+        manager.log("{:24}{}".format("Found source:", source))
 
     # Complete list of searched paths can get very long, put them under TRACE
     for path_type, paths in manager.search_paths._asdict().items():
@@ -2591,7 +2579,7 @@ def dispatch(sources: List[BuildSource],
              manager: BuildManager,
              stdout: TextIO,
              ) -> Graph:
-    log_configuration(manager)
+    log_configuration(manager, sources)
 
     t0 = time.time()
     graph = load_graph(sources, manager)
