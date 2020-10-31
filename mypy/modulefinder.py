@@ -85,7 +85,7 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r has_text=%s base_dir=%s>' % (
+        return 'BuildSource(path=%r, module=%r, has_text=%s, base_dir=%r)' % (
             self.path,
             self.module,
             self.text is not None,
