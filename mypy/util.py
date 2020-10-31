@@ -680,13 +680,20 @@ class FancyFormatter:
             return msg
         return self.style(msg, 'green', bold=True)
 
-    def format_error(self, n_errors: int, n_files: int, n_sources: int,
-                     use_color: bool = True) -> str:
+    def format_error(
+        self, n_errors: int, n_files: int, n_sources: int, *,
+        blockers: bool = False, use_color: bool = True
+    ) -> str:
         """Format a short summary in case of errors."""
-        msg = 'Found {} error{} in {} file{}' \
-              ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
-                                                   n_files, 's' if n_files != 1 else '',
-                                                   n_sources, 's' if n_sources != 1 else '')
+
+        msg = 'Found {} error{} in {} file{}'.format(
+            n_errors, 's' if n_errors != 1 else '',
+            n_files, 's' if n_files != 1 else ''
+        )
+        if blockers:
+            msg += ' (errors prevented further checking)'
+        else:
+            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
