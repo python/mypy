@@ -494,6 +494,8 @@ g(**m)  # TODO: Should be an error
 
 [case testPassingEmptyDictWithStars]
 def f(): pass
+def g(x=1): pass
 
 f(**{})
+g(**{})
 [builtins fixtures/dict.pyi]
