@@ -549,6 +549,12 @@ class StubtestUnit(unittest.TestCase):
             runtime="x4 = (1, 3, 5)",
             error="x4",
         )
+        yield Case(stub="x5: int", runtime="def x5(a, b): pass", error="x5")
+        yield Case(
+            stub="def foo(a: int, b: int) -> None: ...\nx6 = foo",
+            runtime="def foo(a, b): pass\ndef x6(c, d): pass",
+            error="x6",
+        )
         yield Case(
             stub="""
             class X:
