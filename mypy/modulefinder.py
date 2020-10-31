@@ -105,8 +105,8 @@ class FindModuleCache:
 
     def __init__(self,
                  search_paths: SearchPaths,
-                 fscache: Optional[FileSystemCache] = None,
-                 options: Optional[Options] = None) -> None:
+                 fscache: Optional[FileSystemCache],
+                 options: Optional[Options]) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
@@ -206,7 +206,7 @@ class FindModuleCache:
         of the current working directory.
         """
         working_dir = os.getcwd()
-        parent_search = FindModuleCache(SearchPaths((), (), (), ()))
+        parent_search = FindModuleCache(SearchPaths((), (), (), ()), self.fscache, self.options)
         while any(file.endswith(("__init__.py", "__init__.pyi"))
                   for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
