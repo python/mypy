@@ -150,6 +150,8 @@ attribute of the module will automatically succeed:
 
 The next sections describe what each error means and recommended next steps.
 
+.. _missing-type-hints-for-third-party-library:
+
 Missing type hints for third party library
 ------------------------------------------
 
