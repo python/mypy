@@ -815,14 +815,19 @@ src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", e
 x = 0  # type: str
 [file pkg/a1/b/f.py]
 from pkg.a1.b.c.d.e import x
+x + 1
+
 [file pkg/a2/__init__.py]
 [file pkg/a2/b/c/d/e.py]
 x = 0  # type: str
 [file pkg/a2/b/f.py]
-from pkg.a1.b.c.d.e import x
+from pkg.a2.b.c.d.e import x
+x + 1
 [out]
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py
