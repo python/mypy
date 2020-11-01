@@ -824,10 +824,10 @@ x = 0  # type: str
 from pkg.a2.b.c.d.e import x
 x + 1
 [out]
-pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py

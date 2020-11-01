@@ -377,7 +377,7 @@ class FindModuleCache:
         # Another difference is it doesn't handle nested search paths / package roots.
 
         seen = set()  # type: Set[str]
-        names = self.fscache.listdir(package_path)
+        names = sorted(self.fscache.listdir(package_path))
         for name in names:
             # Skip certain names altogether
             if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
