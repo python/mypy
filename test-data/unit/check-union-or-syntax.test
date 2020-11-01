@@ -61,7 +61,7 @@ y: 42 | int  # E: Invalid type: try using Literal[42] instead?
 z: str | 42 | int  # E: Invalid type: try using Literal[42] instead?
 
 [case testUnionOrSyntaxInComment]
-# flags: --python-version 3.10
+# flags: --python-version 3.6
 x = 1  # type: int | str
 
 [case testUnionOrSyntaxFutureImport]

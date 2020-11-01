@@ -32,7 +32,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
     TypeOfAny, Instance, RawExpressionType, ProperType,
-    UnionType)
+    UnionType, Pep604Syntax)
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
@@ -241,7 +241,8 @@ def parse_type_comment(type_comment: str,
         converted = TypeConverter(errors,
                                   line=line,
                                   override_column=column,
-                                  assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
+                                  assume_str_is_unicode=assume_str_is_unicode
+                                  ).visit(typ.body, is_type_comment=True)
         return ignored, converted
 
 
@@ -1318,7 +1319,13 @@ class TypeConverter:
     @overload
     def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...
 
-    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
+    @overload
+    def visit(self, node: ast3.expr, is_type_comment: bool) -> ProperType: ...
+
+    @overload
+    def visit(self, node: Optional[AST], is_type_comment: bool) -> Optional[ProperType]: ...
+
+    def visit(self, node: Optional[AST], is_type_comment: bool = False) -> Optional[ProperType]:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1327,6 +1334,8 @@ class TypeConverter:
             method = 'visit_' + node.__class__.__name__
             visitor = getattr(self, method, None)
             if visitor is not None:
+                if visitor == self.visit_BinOp:
+                    return visitor(node, is_type_comment)
                 return visitor(node)
             else:
                 return self.invalid_type(node)
@@ -1422,7 +1431,7 @@ class TypeConverter:
     def visit_Name(self, n: Name) -> Type:
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
 
-    def visit_BinOp(self, n: ast3.BinOp) -> Type:
+    def visit_BinOp(self, n: ast3.BinOp, is_type_comment: bool = False) -> Type:
         if not isinstance(n.op, ast3.BitOr):
             return self.invalid_type(n)
 
@@ -1431,7 +1440,7 @@ class TypeConverter:
         return UnionType([left, right],
                          line=self.line,
                          column=self.convert_column(n.col_offset),
-                         uses_pep604_syntax=True)
+                         pep604_syntax=Pep604Syntax(True, is_type_comment))
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
