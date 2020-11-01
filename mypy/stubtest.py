@@ -897,9 +897,56 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     if isinstance(runtime, property):
         # Give up on properties to avoid issues with things that are typed as attributes.
         return None
-    if isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
-        # TODO: Construct a mypy.types.CallableType
-        return None
+
+    def anytype() -> mypy.types.AnyType:
+        return mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+
+    if isinstance(
+        runtime,
+        (types.FunctionType, types.BuiltinFunctionType,
+        types.MethodType, types.BuiltinMethodType)
+    ):
+        builtins = get_stub("builtins")
+        assert builtins is not None
+        type_info = builtins.names["function"].node
+        assert isinstance(type_info, nodes.TypeInfo)
+        fallback = mypy.types.Instance(type_info, [anytype()])
+        try:
+            signature = inspect.signature(runtime)
+            arg_types = []
+            arg_kinds = []
+            arg_names = []
+            for arg in signature.parameters.values():
+                arg_types.append(anytype())
+                arg_names.append(
+                    None if arg.kind == inspect.Parameter.POSITIONAL_ONLY else arg.name
+                )
+                has_default = arg.default == inspect.Parameter.empty
+                if arg.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                elif arg.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                elif arg.kind == inspect.Parameter.KEYWORD_ONLY:
+                    arg_kinds.append(nodes.ARG_NAMED if has_default else nodes.ARG_NAMED_OPT)
+                elif arg.kind == inspect.Parameter.VAR_POSITIONAL:
+                    arg_kinds.append(nodes.ARG_STAR)
+                elif arg.kind == inspect.Parameter.VAR_KEYWORD:
+                    arg_kinds.append(nodes.ARG_STAR2)
+                else:
+                    raise AssertionError
+        except ValueError:
+            arg_types = [anytype(), anytype()]
+            arg_kinds = [nodes.ARG_STAR, nodes.ARG_STAR2]
+            arg_names = [None, None]
+
+        return mypy.types.CallableType(
+            arg_types,
+            arg_kinds,
+            arg_names,
+            ret_type=anytype(),
+            fallback=fallback,
+            is_ellipsis_args=True,
+        )
 
     # Try and look up a stub for the runtime object
     stub = get_stub(type(runtime).__module__)
@@ -913,9 +960,6 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return type_info.type
     if not isinstance(type_info, nodes.TypeInfo):
         return None
-
-    def anytype() -> mypy.types.AnyType:
-        return mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
 
     if isinstance(runtime, tuple):
         # Special case tuples so we construct a valid mypy.types.TupleType
