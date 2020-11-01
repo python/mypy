@@ -345,3 +345,4 @@ import mypyc.primitives.list_ops  # noqa
 import mypyc.primitives.dict_ops  # noqa
 import mypyc.primitives.tuple_ops  # noqa
 import mypyc.primitives.misc_ops  # noqa
+import mypyc.primitives.float_ops  # noqa
