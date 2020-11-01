@@ -1724,11 +1724,13 @@ class UnionType(ProperType):
 
     __slots__ = ('items',)
 
-    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1,
+                 is_binary_op: bool = False) -> None:
         super().__init__(line, column)
         self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
+        self.is_binary_op = is_binary_op
 
     def __hash__(self) -> int:
         return hash(frozenset(self.items))

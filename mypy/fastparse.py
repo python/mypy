@@ -1430,7 +1430,8 @@ class TypeConverter:
         right = self.visit(n.right)
         return UnionType([left, right],
                          line=self.line,
-                         column=self.convert_column(n.col_offset))
+                         column=self.convert_column(n.col_offset),
+                         is_binary_op=True)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
