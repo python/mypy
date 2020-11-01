@@ -72,7 +72,7 @@ x: int | None
 
 [case testUnionOrSyntaxMissingFutureImport]
 # flags: --python-version 3.9
-x: int | None  # E: Alternative syntax for unions requires Python 3.10 or newer
+x: int | None  # E: X | Y syntax for unions requires Python 3.10
 
 [case testUnionOrSyntaxInStubFile]
 # flags: --python-version 3.6

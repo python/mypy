@@ -1431,7 +1431,7 @@ class TypeConverter:
         return UnionType([left, right],
                          line=self.line,
                          column=self.convert_column(n.col_offset),
-                         is_binary_op=True)
+                         uses_pep604_syntax=True)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
