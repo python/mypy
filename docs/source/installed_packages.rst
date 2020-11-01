@@ -137,7 +137,7 @@ the ``setup.py`` might look like:
 
 While instructions above assure that the builded wheel contains the type files,
 you may also need to modify your ``MANIFEST.in`` file to ensure their inclusion
-inside ``sdist`` (``.tag.gz``) archive too:
+inside ``sdist`` (``.tar.gz``) archive too:
 
 .. code-block:: text
 
