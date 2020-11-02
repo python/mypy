@@ -1,5 +1,4 @@
 [case testStrToFloat]
-from typing import Any
 def str_to_float(x: str) -> float:
     return float(x)
 
