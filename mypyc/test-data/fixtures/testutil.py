@@ -37,3 +37,6 @@ def run_generator(gen: Generator[T, V, U],
             print(val)
         res.append(val)
         i += 1
+
+def is_close(x: float, y: float) -> bool:
+    return 0.999999 <= x / y <= 1.000001

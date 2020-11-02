@@ -33,6 +33,7 @@ files = [
     'run-misc.test',
     'run-functions.test',
     'run-integers.test',
+    'run-floats.test',
     'run-bools.test',
     'run-strings.test',
     'run-tuples.test',
