@@ -1719,23 +1719,21 @@ class StarType(ProperType):
         assert False, "Synthetic types don't serialize"
 
 
-Pep604Syntax = NamedTuple('Pep604Syntax', [
-    ('uses_pep604_syntax', bool),
-    ('is_type_comment', bool)])
-
-
 class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
-    __slots__ = ('items', 'pep604_syntax')
+    __slots__ = ('items', 'is_evaluated', 'uses_pep604_syntax')
 
     def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1,
-                 pep604_syntax: Optional[Pep604Syntax] = None) -> None:
+                 is_evaluated: bool = True, uses_pep604_syntax: bool = False) -> None:
         super().__init__(line, column)
         self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
-        self.pep604_syntax = pep604_syntax
+        # is_evaluated should be set to false for type comments and string literals
+        self.is_evaluated = is_evaluated
+        # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
+        self.uses_pep604_syntax = uses_pep604_syntax
 
     def __hash__(self) -> int:
         return hash(frozenset(self.items))

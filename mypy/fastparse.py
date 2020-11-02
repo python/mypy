@@ -31,8 +31,8 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType, ProperType,
-    UnionType, Pep604Syntax)
+    TypeOfAny, Instance, RawExpressionType, ProperType, UnionType,
+)
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
@@ -241,8 +241,8 @@ def parse_type_comment(type_comment: str,
         converted = TypeConverter(errors,
                                   line=line,
                                   override_column=column,
-                                  assume_str_is_unicode=assume_str_is_unicode
-                                  ).visit(typ.body, is_type_comment=True)
+                                  assume_str_is_unicode=assume_str_is_unicode,
+                                  is_type_comment=True).visit(typ.body)
         return ignored, converted
 
 
@@ -268,6 +268,8 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
+            return node
+        elif isinstance(node, UnionType):
             return node
         else:
             return RawExpressionType(expr_string, expr_fallback_name, line, column)
@@ -1277,12 +1279,14 @@ class TypeConverter:
                  line: int = -1,
                  override_column: int = -1,
                  assume_str_is_unicode: bool = True,
+                 is_type_comment: bool = False,
                  ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack = []  # type: List[AST]
         self.assume_str_is_unicode = assume_str_is_unicode
+        self.is_type_comment = is_type_comment
 
     def convert_column(self, column: int) -> int:
         """Apply column override if defined; otherwise return column.
@@ -1319,13 +1323,7 @@ class TypeConverter:
     @overload
     def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...
 
-    @overload
-    def visit(self, node: ast3.expr, is_type_comment: bool) -> ProperType: ...
-
-    @overload
-    def visit(self, node: Optional[AST], is_type_comment: bool) -> Optional[ProperType]: ...
-
-    def visit(self, node: Optional[AST], is_type_comment: bool = False) -> Optional[ProperType]:
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1334,8 +1332,6 @@ class TypeConverter:
             method = 'visit_' + node.__class__.__name__
             visitor = getattr(self, method, None)
             if visitor is not None:
-                if visitor == self.visit_BinOp:
-                    return visitor(node, is_type_comment)
                 return visitor(node)
             else:
                 return self.invalid_type(node)
@@ -1431,7 +1427,7 @@ class TypeConverter:
     def visit_Name(self, n: Name) -> Type:
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
 
-    def visit_BinOp(self, n: ast3.BinOp, is_type_comment: bool = False) -> Type:
+    def visit_BinOp(self, n: ast3.BinOp) -> Type:
         if not isinstance(n.op, ast3.BitOr):
             return self.invalid_type(n)
 
@@ -1440,7 +1436,8 @@ class TypeConverter:
         return UnionType([left, right],
                          line=self.line,
                          column=self.convert_column(n.col_offset),
-                         pep604_syntax=Pep604Syntax(True, is_type_comment))
+                         is_evaluated=(not self.is_type_comment),
+                         uses_pep604_syntax=True)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
