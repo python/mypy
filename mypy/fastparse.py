@@ -242,7 +242,7 @@ def parse_type_comment(type_comment: str,
                                   line=line,
                                   override_column=column,
                                   assume_str_is_unicode=assume_str_is_unicode,
-                                  is_type_comment=True).visit(typ.body)
+                                  is_evaluated=False).visit(typ.body)
         return ignored, converted
 
 
@@ -1279,14 +1279,14 @@ class TypeConverter:
                  line: int = -1,
                  override_column: int = -1,
                  assume_str_is_unicode: bool = True,
-                 is_type_comment: bool = False,
+                 is_evaluated: bool = True,
                  ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack = []  # type: List[AST]
         self.assume_str_is_unicode = assume_str_is_unicode
-        self.is_type_comment = is_type_comment
+        self.is_evaluated = is_evaluated
 
     def convert_column(self, column: int) -> int:
         """Apply column override if defined; otherwise return column.
@@ -1436,7 +1436,7 @@ class TypeConverter:
         return UnionType([left, right],
                          line=self.line,
                          column=self.convert_column(n.col_offset),
-                         is_evaluated=(not self.is_type_comment),
+                         is_evaluated=self.is_evaluated,
                          uses_pep604_syntax=True)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:

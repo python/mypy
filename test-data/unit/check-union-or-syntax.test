@@ -74,19 +74,39 @@ reveal_type(x)  # N: Revealed type is 'builtins.list[Union[builtins.int, builtin
 [builtins fixtures/list.pyi]
 
 
-[case testUnionOrSyntaxWithQuotedTypes]
-# flags: --python-version 3.10
+[case testUnionOrSyntaxWithQuotedFunctionTypes]
+# flags: --python-version 3.4
 from typing import Union
 def f(x: 'Union[int, str, None]') -> 'Union[int, None]':
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str, None]'
     return 42
 reveal_type(f)  # N: Revealed type is 'def (x: Union[builtins.int, builtins.str, None]) -> Union[builtins.int, None]'
 
-# flags: --python-version 3.10
 def g(x: "int | str | None") -> "int | None":
     reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str, None]'
     return 42
 reveal_type(g)  # N: Revealed type is 'def (x: Union[builtins.int, builtins.str, None]) -> Union[builtins.int, None]'
+
+
+[case testUnionOrSyntaxWithQuotedVariableTypes]
+# flags: --python-version 3.6
+y: "int | str" = 42
+reveal_type(y)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+
+
+[case testUnionOrSyntaxWithTypeAliasWorking]
+# flags: --python-version 3.10
+from typing import Union
+T = Union[int, str]
+x: T
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+
+
+[case testUnionOrSyntaxWithTypeAliasNotAllowed]
+# flags: --python-version 3.9
+from __future__ import annotations
+T = int | str  # E: Unsupported left operand type for | ("Type[int]")
+[builtins fixtures/tuple.pyi]
 
 
 [case testUnionOrSyntaxInComment]
