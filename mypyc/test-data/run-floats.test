@@ -4,10 +4,9 @@ def str_to_float(x: str) -> float:
 
 [file driver.py]
 from native import str_to_float
-from testutil import is_close
 
-assert is_close(str_to_float("1"), 1.0)
-assert is_close(str_to_float("1.234567"), 1.234567)
-assert is_close(str_to_float("44324"), 44324.0)
-assert is_close(str_to_float("23.4"), 23.4)
-assert is_close(str_to_float("-43.44e-4"), -43.44e-4)
+assert str_to_float("1") == 1.0
+assert str_to_float("1.234567") == 1.234567
+assert str_to_float("44324") == 44324.0
+assert str_to_float("23.4") == 23.4
+assert str_to_float("-43.44e-4") == -43.44e-4
