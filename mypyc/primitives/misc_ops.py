@@ -6,7 +6,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, func_op, custom_op, c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
+    simple_emit, custom_op, c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
 )
 
 
@@ -89,13 +89,11 @@ check_stop_op = c_custom_op(
 
 # Determine the most derived metaclass and check for metaclass conflicts.
 # Arguments are (metaclass, bases).
-py_calc_meta_op = custom_op(
+py_calc_meta_op = c_custom_op(
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
+    return_type=object_rprimitive,
+    c_function_name='CPy_CalculateMetaclass',
     error_kind=ERR_MAGIC,
-    format_str='{dest} = py_calc_metaclass({comma_args})',
-    emit=simple_emit(
-        '{dest} = (PyObject*) _PyType_CalculateMetaclass((PyTypeObject *){args[0]}, {args[1]});'),
     is_borrowed=True
 )
 
@@ -126,12 +124,12 @@ c_function_op(
 
 # Faster isinstance(obj, cls) that only works with native classes and doesn't perform
 # type checking of the type argument.
-fast_isinstance_op = func_op(
+fast_isinstance_op = c_function_op(
     'builtins.isinstance',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
+    return_type=bool_rprimitive,
+    c_function_name='CPy_TypeCheck',
     error_kind=ERR_NEVER,
-    emit=simple_emit('{dest} = PyObject_TypeCheck({args[0]}, (PyTypeObject *){args[1]});'),
     priority=0)
 
 # bool(obj) with unboxed result

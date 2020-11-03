@@ -456,6 +456,16 @@ static inline bool CPyFloat_Check(PyObject *o) {
     return PyFloat_Check(o) || PyLong_Check(o);
 }
 
+// TODO: find an unified way to avoid inline functions in non-C back ends that can not
+//       use inline functions
+static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
+    return PyObject_TypeCheck(o, (PyTypeObject *)type);
+}
+
+static inline PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o) {
+    return (PyObject *)_PyType_CalculateMetaclass((PyTypeObject *)type, o);
+}
+
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
