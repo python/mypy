@@ -35,7 +35,7 @@ jobs:
           git rev-list --format=%s --max-count=1 upstream_master
           echo ''
           cd ..
-          ( mypy_primer --new $COMMIT --old upstream_master -o concise | tee diff.txt ) || [ $? -eq 1 ]
+          ( mypy_primer --repo mypy_to_test --new $COMMIT --old upstream_master --mypyc-compile-level 0 -o concise | tee diff.txt ) || [ $? -eq 1 ]
       - name: Post comment
         uses: actions/github-script@v3
         with:
