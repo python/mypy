@@ -229,7 +229,7 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
         declared_metaclass = builder.add(LoadAddress(type_object_op.type,
                                                      type_object_op.src, cdef.line))
 
-    return builder.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
+    return builder.call_c(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
 
 
 def setup_non_ext_dict(builder: IRBuilder,
