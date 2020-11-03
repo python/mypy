@@ -27,6 +27,7 @@ ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
+DEFAULT_COLUMNS = 80  # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -416,7 +417,9 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
+    return (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0'))
+            or shutil.get_terminal_size().columns
+            or DEFAULT_COLUMNS)
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
@@ -677,13 +680,20 @@ class FancyFormatter:
             return msg
         return self.style(msg, 'green', bold=True)
 
-    def format_error(self, n_errors: int, n_files: int, n_sources: int,
-                     use_color: bool = True) -> str:
+    def format_error(
+        self, n_errors: int, n_files: int, n_sources: int, *,
+        blockers: bool = False, use_color: bool = True
+    ) -> str:
         """Format a short summary in case of errors."""
-        msg = 'Found {} error{} in {} file{}' \
-              ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
-                                                   n_files, 's' if n_files != 1 else '',
-                                                   n_sources, 's' if n_sources != 1 else '')
+
+        msg = 'Found {} error{} in {} file{}'.format(
+            n_errors, 's' if n_errors != 1 else '',
+            n_files, 's' if n_files != 1 else ''
+        )
+        if blockers:
+            msg += ' (errors prevented further checking)'
+        else:
+            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
