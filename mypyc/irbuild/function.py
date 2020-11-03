@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
     BasicBlock, Value,  Return, SetAttr, LoadInt, Environment, GetAttr, Branch, AssignmentTarget,
     InitStatic, LoadAddress
 )
-from mypyc.ir.rtypes import object_rprimitive, RInstance
+from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
@@ -524,7 +524,7 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
         # reduce how much code we need to generate. It returns a value
         # indicating whether to break or yield (or raise an exception).
         val = builder.alloc_temp(object_rprimitive)
-        val_address = builder.add(LoadAddress(object_rprimitive, val))
+        val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
         to_stop = builder.call_c(yield_from_except_op,
                                  [builder.read(iter_reg), val_address], o.line)
 

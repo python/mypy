@@ -45,6 +45,10 @@ def split_blocks_at_uninits(env: Environment,
                 # If a register operand is not guaranteed to be
                 # initialized is an operand to something other than a
                 # check that it is defined, insert a check.
+
+                # Note that for register operand in a LoadAddress op,
+                # we should be able to use it without initialization
+                # as we may need to use its address to update itself
                 if (isinstance(src, Register) and src not in defined
                         and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)
                         and not isinstance(op, LoadAddress)):

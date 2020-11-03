@@ -2,7 +2,7 @@
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
-    bool_rprimitive, object_rprimitive, str_rprimitive,
+    bool_rprimitive, object_rprimitive, str_rprimitive, object_pointer_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
@@ -64,7 +64,7 @@ send_op = c_custom_op(
 # Op used for "yield from" error handling.
 # See comment in CPy_YieldFromErrorHandle for more information.
 yield_from_except_op = c_custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
+    arg_types=[object_rprimitive, object_pointer_rprimitive],
     return_type=bool_rprimitive,
     c_function_name='CPy_YieldFromErrorHandle',
     error_kind=ERR_MAGIC)

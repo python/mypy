@@ -3637,3 +3637,201 @@ L0:
     c = r2
     r3 = (c, b, a)
     return r3
+
+[case testYieldFromExcept]
+from typing import Any
+
+def foo(x: Any) -> Any:
+    return (yield from x)
+[out]
+def foo_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, arg):
+    __mypyc_self__ :: __main__.foo_gen
+    type, value, traceback, arg :: object
+    r0 :: __main__.foo_env
+    r1 :: int
+    r2 :: object
+    r3 :: bit
+    r4, r5, r6, r7, r8 :: object
+    r9 :: bool
+    r10, r11, r12 :: object
+    r13 :: bool
+    r14 :: object
+    r15 :: bit
+    r16 :: tuple[object, object, object]
+    r17 :: bool
+    r18 :: object
+    r19 :: object_ptr
+    r20 :: object
+    r21 :: bool
+    r22, r23, r24, r25 :: tuple[object, object, object]
+    r26 :: bit
+    r27, r28, r29 :: object
+    r30, r31 :: bool
+    r32 :: int64
+    r33, r34, r35 :: bit
+    r36 :: bool
+    r37 :: int64
+    r38, r39, r40 :: bit
+    r41 :: bool
+L0:
+    r0 = __mypyc_self__.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L22
+L1:
+    r2 = load_address _Py_NoneStruct
+    r3 = type != r2
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L3:
+    r7 = r0.x
+    r8 = PyObject_GetIter(r7)
+    r0.__mypyc_temp__0 = r8; r9 = is_error
+    r10 = r0.__mypyc_temp__0
+    r11 = CPyIter_Next(r10)
+    if is_error(r11) goto L4 else goto L5
+L4:
+    r12 = CPy_FetchStopIterationValue()
+    r4 = r12
+    goto L20
+L5:
+    r5 = r11
+L6:
+L7:
+    r0.__mypyc_next_label__ = 2; r13 = is_error
+    return r5
+L8:
+    r14 = load_address _Py_NoneStruct
+    r15 = type != r14
+    if r15 goto L9 else goto L10 :: bool
+L9:
+    CPyErr_SetObjectAndTraceback(type, value, traceback)
+    unreachable
+L10:
+    r6 = arg
+    goto L16
+L11: (handler for L10, L7, L8, L9)
+    r16 = CPy_CatchError()
+    r0.__mypyc_temp__1 = r16; r17 = is_error
+    r19 = load_address r18
+    r20 = r0.__mypyc_temp__0
+    r21 = CPy_YieldFromErrorHandle(r20, r19)
+    if r21 goto L13 else goto L12 :: bool
+L12:
+    r5 = r18
+    r22 = r0.__mypyc_temp__1
+    CPy_RestoreExcInfo(r22)
+    goto L6
+L13:
+    r4 = r18
+    r23 = r0.__mypyc_temp__1
+    CPy_RestoreExcInfo(r23)
+    goto L20
+L14:
+    r24 = r0.__mypyc_temp__1
+    CPy_RestoreExcInfo(r24)
+    goto L19
+L15: (handler for L11, L12, L13)
+    r25 = r0.__mypyc_temp__1
+    CPy_RestoreExcInfo(r25)
+    r26 = CPy_KeepPropagating()
+    unreachable
+L16:
+    r27 = r0.__mypyc_temp__0
+    r28 = CPyIter_Send(r27, r6)
+    if is_error(r28) goto L18 else goto L17
+L17:
+    r5 = r28
+    goto L6
+L18:
+    r29 = CPy_FetchStopIterationValue()
+    r4 = r29
+    goto L20
+L19:
+L20:
+    r0.__mypyc_next_label__ = -2; r30 = is_error
+L21:
+    CPyGen_SetStopIterationValue(r4)
+    unreachable
+L22:
+    r32 = r1 & 1
+    r33 = r32 == 0
+    if r33 goto L23 else goto L24 :: bool
+L23:
+    r34 = r1 == 0
+    r31 = r34
+    goto L25
+L24:
+    r35 = CPyTagged_IsEq_(r1, 0)
+    r31 = r35
+L25:
+    if r31 goto L1 else goto L26 :: bool
+L26:
+    r37 = r1 & 1
+    r38 = r37 == 0
+    if r38 goto L27 else goto L28 :: bool
+L27:
+    r39 = r1 == 2
+    r36 = r39
+    goto L29
+L28:
+    r40 = CPyTagged_IsEq_(r1, 2)
+    r36 = r40
+L29:
+    if r36 goto L8 else goto L30 :: bool
+L30:
+    raise StopIteration
+    unreachable
+def foo_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: __main__.foo_gen
+    r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = foo_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, r0)
+    return r1
+def foo_gen.send(__mypyc_self__, arg):
+    __mypyc_self__ :: __main__.foo_gen
+    arg, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = foo_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0, arg)
+    return r1
+def foo_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: __main__.foo_gen
+L0:
+    return __mypyc_self__
+def foo_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: __main__.foo_gen
+    type, value, traceback, r0, r1 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    if is_error(value) goto L1 else goto L2
+L1:
+    value = r0
+L2:
+    if is_error(traceback) goto L3 else goto L4
+L3:
+    traceback = r0
+L4:
+    r1 = foo_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, r0)
+    return r1
+def foo_gen.close(__mypyc_self__):
+    __mypyc_self__ :: __main__.foo_gen
+    r0 :: bool
+L0:
+    raise RuntimeError('close method on generator classes uimplemented')
+    unreachable
+def foo(x):
+    x :: object
+    r0 :: __main__.foo_env
+    r1 :: bool
+    r2 :: __main__.foo_gen
+    r3, r4 :: bool
+L0:
+    r0 = foo_env()
+    r0.x = x; r1 = is_error
+    r2 = foo_gen()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r0.__mypyc_next_label__ = 0; r4 = is_error
+    return r2

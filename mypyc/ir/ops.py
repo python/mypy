@@ -1502,6 +1502,15 @@ class GetElementPtr(RegisterOp):
 
 
 class LoadAddress(RegisterOp):
+    """Get the address of a value
+
+    ret = (type)&src
+
+    Attributes:
+      type: Type of the loaded address(e.g. ptr/object_ptr)
+      src: Source value, str for named constants like 'PyList_Type',
+           Register for temporary values
+    """
     error_kind = ERR_NEVER
     is_borrowed = True
 
