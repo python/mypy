@@ -15,3 +15,11 @@ c_function_op(
     return_type=float_rprimitive,
     c_function_name='PyFloat_FromString',
     error_kind=ERR_MAGIC)
+
+# abs(float)
+c_function_op(
+    name='builtins.abs',
+    arg_types=[float_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name='PyNumber_Absolute',
+    error_kind=ERR_MAGIC)
