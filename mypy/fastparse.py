@@ -676,11 +676,11 @@ class ASTConverter:
             names.append(args.vararg)
 
         # keyword-only arguments with defaults
-        for a, d in zip(args.kwonlyargs, args.kw_defaults):
+        for a, kd in zip(args.kwonlyargs, args.kw_defaults):
             new_args.append(self.make_argument(
                 a,
-                d,
-                ARG_NAMED if d is None else ARG_NAMED_OPT,
+                kd,
+                ARG_NAMED if kd is None else ARG_NAMED_OPT,
                 no_type_check))
             names.append(a)
 
