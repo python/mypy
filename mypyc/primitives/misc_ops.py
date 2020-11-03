@@ -6,7 +6,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, custom_op, c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
+    c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
 )
 
 
