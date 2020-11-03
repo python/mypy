@@ -4,6 +4,11 @@ on:
   # Only run on PR, since we diff against master
   # pull_request_target gives us access to a write token
   pull_request_target:
+    paths-ignore:
+    - 'docs/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - 'mypyc/**'
 
 jobs:
   mypy_primer:
