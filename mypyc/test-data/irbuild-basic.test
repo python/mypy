@@ -3667,10 +3667,10 @@ def foo_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback, a
     r26 :: bit
     r27, r28, r29 :: object
     r30, r31 :: bool
-    r32 :: int64
+    r32 :: native_int
     r33, r34, r35 :: bit
     r36 :: bool
-    r37 :: int64
+    r37 :: native_int
     r38, r39, r40 :: bit
     r41 :: bool
 L0:
