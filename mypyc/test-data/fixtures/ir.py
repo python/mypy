@@ -82,6 +82,7 @@ class float:
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __neg__(self) -> float: pass
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
