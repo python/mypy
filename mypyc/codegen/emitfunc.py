@@ -10,7 +10,7 @@ from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
-    BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
+    BasicBlock, Value, MethodCall, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
     BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
@@ -151,17 +151,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_return(self, op: Return) -> None:
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
-
-    def visit_primitive_op(self, op: PrimitiveOp) -> None:
-        args = [self.reg(arg) for arg in op.args]
-        if not op.is_void:
-            dest = self.reg(op)
-        else:
-            # This will generate a C compile error if used. The reason for this
-            # is that we don't want to insert "assert dest is not None" checks
-            # everywhere.
-            dest = '<undefined dest>'
-        op.desc.emit(self, args, dest)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op)
