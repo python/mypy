@@ -191,6 +191,8 @@ class RPrimitive(RType):
             self.c_undefined = 'NULL'
         elif ctype == 'char':
             self.c_undefined = '2'
+        elif ctype == 'PyObject **':
+            self.c_undefined = 'NULL'
         else:
             assert False, 'Unrecognized ctype: %r' % ctype
 
@@ -222,6 +224,10 @@ class RPrimitive(RType):
 # faster.
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
                                is_refcounted=True)  # type: Final
+
+# represents a low level pointer of an object
+object_pointer_rprimitive = RPrimitive('object_ptr', is_unboxed=False,
+                               is_refcounted=False, ctype='PyObject **')  # type: Final
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
 # enough values are stored unboxed, while large integers are

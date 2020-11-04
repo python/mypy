@@ -20,9 +20,9 @@ from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Return, SetAttr, LoadInt, Environment, GetAttr, Branch, AssignmentTarget,
-    TupleGet, InitStatic
+    InitStatic, LoadAddress
 )
-from mypyc.ir.rtypes import object_rprimitive, RInstance
+from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
@@ -523,9 +523,10 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
         # The body of the except is all implemented in a C function to
         # reduce how much code we need to generate. It returns a value
         # indicating whether to break or yield (or raise an exception).
-        res = builder.primitive_op(yield_from_except_op, [builder.read(iter_reg)], o.line)
-        to_stop = builder.add(TupleGet(res, 0, o.line))
-        val = builder.add(TupleGet(res, 1, o.line))
+        val = builder.alloc_temp(object_rprimitive)
+        val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
+        to_stop = builder.call_c(yield_from_except_op,
+                                 [builder.read(iter_reg), val_address], o.line)
 
         ok, stop = BasicBlock(), BasicBlock()
         builder.add(Branch(to_stop, stop, ok, Branch.BOOL))

@@ -1502,19 +1502,34 @@ class GetElementPtr(RegisterOp):
 
 
 class LoadAddress(RegisterOp):
+    """Get the address of a value
+
+    ret = (type)&src
+
+    Attributes:
+      type: Type of the loaded address(e.g. ptr/object_ptr)
+      src: Source value, str for named constants like 'PyList_Type',
+           Register for temporary values
+    """
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: str, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Union[str, Register], line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         self.src = src
 
     def sources(self) -> List[Value]:
-        return []
+        if isinstance(self.src, Register):
+            return [self.src]
+        else:
+            return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = load_address %s", self, self.src)
+        if isinstance(self.src, Register):
+            return env.format("%r = load_address %r", self, self.src)
+        else:
+            return env.format("%r = load_address %s", self, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_address(self)

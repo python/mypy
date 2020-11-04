@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -496,7 +496,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
         dest = self.reg(op)
-        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, op.src))
+        src = self.reg(op.src) if isinstance(op.src, Register) else op.src
+        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, src))
 
     # Helpers
 

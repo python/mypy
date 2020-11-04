@@ -9,7 +9,8 @@ from mypyc.analysis.dataflow import (
     AnalysisDict
 )
 from mypyc.ir.ops import (
-    BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register
+    BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register,
+    LoadAddress
 )
 from mypyc.ir.func_ir import FuncIR
 
@@ -44,8 +45,13 @@ def split_blocks_at_uninits(env: Environment,
                 # If a register operand is not guaranteed to be
                 # initialized is an operand to something other than a
                 # check that it is defined, insert a check.
+
+                # Note that for register operand in a LoadAddress op,
+                # we should be able to use it without initialization
+                # as we may need to use its address to update itself
                 if (isinstance(src, Register) and src not in defined
-                        and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)):
+                        and not (isinstance(op, Branch) and op.op == Branch.IS_ERROR)
+                        and not isinstance(op, LoadAddress)):
                     new_block, error_block = BasicBlock(), BasicBlock()
                     new_block.error_handler = error_block.error_handler = cur_block.error_handler
                     new_blocks += [error_block, new_block]

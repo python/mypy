@@ -2,11 +2,11 @@
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
-    RTuple, bool_rprimitive, object_rprimitive, str_rprimitive,
+    bool_rprimitive, object_rprimitive, str_rprimitive, object_pointer_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
-    simple_emit, custom_op, c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
+    c_function_op, c_custom_op, load_address_op, ERR_NEG_INT
 )
 
 
@@ -55,21 +55,19 @@ send_op = c_custom_op(
     error_kind=ERR_NEVER)
 
 # This is sort of unfortunate but oh well: yield_from_except performs most of the
-# error handling logic in `yield from` operations. It returns a bool and a value.
+# error handling logic in `yield from` operations. It returns a bool and passes
+# a value by address.
 # If the bool is true, then a StopIteration was received and we should return.
 # If the bool is false, then the value should be yielded.
 # The normal case is probably that it signals an exception, which gets
 # propagated.
-yield_from_rtuple = RTuple([bool_rprimitive, object_rprimitive])
-
 # Op used for "yield from" error handling.
 # See comment in CPy_YieldFromErrorHandle for more information.
-yield_from_except_op = custom_op(
-    name='yield_from_except',
-    arg_types=[object_rprimitive],
-    result_type=yield_from_rtuple,
-    error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest}.f0 = CPy_YieldFromErrorHandle({args[0]}, &{dest}.f1);'))
+yield_from_except_op = c_custom_op(
+    arg_types=[object_rprimitive, object_pointer_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name='CPy_YieldFromErrorHandle',
+    error_kind=ERR_MAGIC)
 
 # Create method object from a callable object and self.
 method_new_op = c_custom_op(
