@@ -19,7 +19,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, OpDescription, RegisterOp, CallC, Truncate,
+    LoadStatic, MethodCall, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
@@ -39,7 +39,7 @@ from mypyc.common import (
     STATIC_PREFIX, PLATFORM_SIZE
 )
 from mypyc.primitives.registry import (
-    func_ops, c_method_call_ops, CFunctionDescription, c_function_ops,
+    c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.list_ops import (
@@ -815,10 +815,6 @@ class LowLevelIRBuilder:
                      line: int) -> Value:
         call_c_ops_candidates = c_function_ops.get(fn_op, [])
         target = self.matching_call_c(call_c_ops_candidates, args, line)
-        if target:
-            return target
-        ops = func_ops.get(fn_op, [])
-        target = self.matching_primitive_op(ops, args, line)
         assert target, 'Unsupported builtin function: %s' % fn_op
         return target
 
@@ -1070,12 +1066,6 @@ class LowLevelIRBuilder:
             self.goto(exit_block)
         self.activate_block(exit_block)
         return result
-
-    def op_arg_type(self, desc: OpDescription, n: int) -> RType:
-        if n >= len(desc.arg_types):
-            assert desc.is_var_arg
-            return desc.arg_types[-1]
-        return desc.arg_types[n]
 
     def translate_special_method_call(self,
                                       base_reg: Value,

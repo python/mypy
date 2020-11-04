@@ -12,7 +12,7 @@ can hold various things:
 
 from abc import abstractmethod
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
+    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple,
     Union, Iterable, Set
 )
 from mypy.ordered_dict import OrderedDict
@@ -691,6 +691,7 @@ class EmitterInterface:
     @abstractmethod
     def emit_declaration(self, line: str) -> None:
         raise NotImplementedError
+
 
 # True steals all arguments, False steals none, a list steals those in matching positions
 StealsDescription = Union[bool, List[bool]]

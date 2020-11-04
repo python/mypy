@@ -1,7 +1,5 @@
 """List primitive ops."""
 
-from typing import List
-
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE
 from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive,  c_int_rprimitive,

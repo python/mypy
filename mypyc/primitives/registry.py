@@ -38,9 +38,7 @@ optimized implementations of all ops.
 from typing import Dict, List, Optional, NamedTuple, Tuple
 from typing_extensions import Final
 
-from mypyc.ir.ops import (
-    OpDescription, StealsDescription, short_name
-)
+from mypyc.ir.ops import StealsDescription
 from mypyc.ir.rtypes import RType
 
 # Error kind for functions that return negative integer on exception. This

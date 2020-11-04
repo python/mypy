@@ -34,7 +34,7 @@ from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
+    InitStatic, NAMESPACE_MODULE, RaiseStandardError,
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
@@ -43,7 +43,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function_ops
+from mypyc.primitives.registry import CFunctionDescription, c_function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
@@ -187,9 +187,6 @@ class IRBuilder:
 
     def load_static_int(self, value: int) -> Value:
         return self.builder.load_static_int(value)
-
-    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
-        return self.builder.primitive_op(desc, args, line)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -761,12 +758,6 @@ class IRBuilder:
             call_c_ops_candidates = c_function_ops.get(callee.fullname, [])
             target = self.builder.matching_call_c(call_c_ops_candidates, arg_values,
                                                   expr.line, self.node_type(expr))
-            if target:
-                return target
-            ops = func_ops.get(callee.fullname, [])
-            target = self.builder.matching_primitive_op(
-                ops, arg_values, expr.line, self.node_type(expr)
-            )
             if target:
                 return target
 
