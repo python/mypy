@@ -19,7 +19,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, PrimitiveOp, OpDescription, RegisterOp, CallC, Truncate,
+    LoadStatic, MethodCall, RegisterOp, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
@@ -39,7 +39,7 @@ from mypyc.common import (
     STATIC_PREFIX, PLATFORM_SIZE
 )
 from mypyc.primitives.registry import (
-    func_ops, c_method_call_ops, CFunctionDescription, c_function_ops,
+    c_method_call_ops, CFunctionDescription, c_function_ops,
     c_binary_ops, c_unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.list_ops import (
@@ -513,48 +513,6 @@ class LowLevelIRBuilder:
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     # Other primitive operations
-
-    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
-        assert desc.result_type is not None
-        coerced = []
-        for i, arg in enumerate(args):
-            formal_type = self.op_arg_type(desc, i)
-            arg = self.coerce(arg, formal_type, line)
-            coerced.append(arg)
-        target = self.add(PrimitiveOp(coerced, desc, line))
-        return target
-
-    def matching_primitive_op(self,
-                              candidates: List[OpDescription],
-                              args: List[Value],
-                              line: int,
-                              result_type: Optional[RType] = None) -> Optional[Value]:
-        # Find the highest-priority primitive op that matches.
-        matching = None  # type: Optional[OpDescription]
-        for desc in candidates:
-            if len(desc.arg_types) != len(args):
-                continue
-            if all(is_subtype(actual.type, formal)
-                   for actual, formal in zip(args, desc.arg_types)):
-                if matching:
-                    assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
-                        matching, desc)
-                    if desc.priority > matching.priority:
-                        matching = desc
-                else:
-                    matching = desc
-        if matching:
-            target = self.primitive_op(matching, args, line)
-            if result_type and not is_runtime_subtype(target.type, result_type):
-                if is_none_rprimitive(result_type):
-                    # Special case None return. The actual result may actually be a bool
-                    # and so we can't just coerce it.
-                    target = self.none()
-                else:
-                    target = self.coerce(target, result_type, line)
-            return target
-        return None
-
     def binary_op(self,
                   lreg: Value,
                   rreg: Value,
@@ -857,10 +815,6 @@ class LowLevelIRBuilder:
                      line: int) -> Value:
         call_c_ops_candidates = c_function_ops.get(fn_op, [])
         target = self.matching_call_c(call_c_ops_candidates, args, line)
-        if target:
-            return target
-        ops = func_ops.get(fn_op, [])
-        target = self.matching_primitive_op(ops, args, line)
         assert target, 'Unsupported builtin function: %s' % fn_op
         return target
 
@@ -1112,12 +1066,6 @@ class LowLevelIRBuilder:
             self.goto(exit_block)
         self.activate_block(exit_block)
         return result
-
-    def op_arg_type(self, desc: OpDescription, n: int) -> RType:
-        if n >= len(desc.arg_types):
-            assert desc.is_var_arg
-            return desc.arg_types[-1]
-        return desc.arg_types[n]
 
     def translate_special_method_call(self,
                                       base_reg: Value,

@@ -1,8 +1,6 @@
 """List primitive ops."""
 
-from typing import List
-
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE, EmitterInterface
+from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE
 from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive,  c_int_rprimitive,
     c_pyssize_t_rprimitive, bit_rprimitive
@@ -121,14 +119,6 @@ c_binary_op(name='*',
             return_type=list_rprimitive,
             c_function_name='CPySequence_RMultiply',
             error_kind=ERR_MAGIC)
-
-
-def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
-
 
 # list[begin:end]
 list_slice_op = c_custom_op(
