@@ -333,7 +333,7 @@ class LowLevelIRBuilder:
 
         sig_arg_kinds = [arg.kind for arg in sig.args]
         sig_arg_names = [arg.name for arg in sig.args]
-        sig_arg_types = [arg.type for arg in sig.args]
+        sig_arg_types = [AnyType(TypeOfAny.special_form)] * len(sig_arg_kinds)
         formal_to_actual = map_actuals_to_formals(arg_kinds,
                                                   arg_names,
                                                   sig_arg_kinds,

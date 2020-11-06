@@ -1,6 +1,6 @@
 """Test cases for type inference helper functions."""
 
-from typing import Any, List, Optional, Tuple, Union, Dict, Set
+from typing import List, Optional, Tuple, Union, Dict, Set
 
 from mypy.test.helpers import Suite, assert_equal
 from mypy.argmap import map_actuals_to_formals

@@ -1393,13 +1393,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                     actual_kinds: List[int],
                                     context: Context,
                                     messages: MessageBuilder,
-                                    formal_to_actual: List[List[int]]) -> bool:
+                                    formal_to_actual: List[List[int]]) -> None:
         """Each **kwarg supplied to a callable should map to at least one formal
         parameter.
         """
         ambiguous_kwargs = [(i, actualt, actualk)
                             for i, (actualt, actualk) in enumerate(zip(actual_types, actual_kinds))
-                            if actualk == nodes.ARG_STAR2 and not isinstance(actualt, TypedDictType)]
+                            if actualk == nodes.ARG_STAR2
+                                and not isinstance(get_proper_type(actualt), TypedDictType)]
         for i, actualt, actualk in ambiguous_kwargs:
             potential_formals = []  # type: List[int]
             actual_formals = [] # type: List[int]
@@ -1534,7 +1535,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type) and (caller_kind != nodes.ARG_STAR2
-                                                           or isinstance(original_caller_type, TypedDictType)):
+                                                           or isinstance(original_caller_type,
+                                                                         TypedDictType)):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
             code = messages.incompatible_argument(n,
