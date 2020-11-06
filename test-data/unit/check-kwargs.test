@@ -566,5 +566,5 @@ g(**d)
 
 m = {} # type: Mapping[str, object]
 f(**m)
-g(**m) # TODO: Should be an error
+g(**m)  # TODO: Should be an error
 [builtins fixtures/dict.pyi]
