@@ -51,7 +51,7 @@ from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.argmap import (
-    ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals, map_kwargs_to_actuals
+    ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals, map_kwargs_to_formals
 )
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
@@ -1404,7 +1404,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, actualt, actualk in ambiguous_kwargs:
             potential_formals = []  # type: List[int]
             actual_formals = [] # type: List[int]
-            for fi in map_kwargs_to_actuals(actualt, actualk, list(range(len(callee.arg_types))),
+            for fi in map_kwargs_to_formals(actualt, actualk, list(range(len(callee.arg_types))),
                                             callee.arg_types, callee.arg_names, callee.arg_kinds):
                 potential_formals.append(fi)
                 if i in formal_to_actual[fi]:
