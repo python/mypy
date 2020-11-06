@@ -12,7 +12,7 @@ import importlib.util
 from mypy.nodes import (
     Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, RaiseStmt, TryStmt, WithStmt, AssertStmt, DelStmt,
-    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr
+    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr
 )
 
 from mypyc.ir.ops import (
@@ -69,26 +69,29 @@ def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
 
 
 def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
-    assert len(stmt.lvalues) >= 1
-    builder.disallow_class_assignments(stmt.lvalues, stmt.line)
-    lvalue = stmt.lvalues[0]
+    lvalues = stmt.lvalues
+    assert len(lvalues) >= 1
+    builder.disallow_class_assignments(lvalues, stmt.line)
+    first_lvalue = lvalues[0]
     if stmt.type and isinstance(stmt.rvalue, TempNode):
         # This is actually a variable annotation without initializer. Don't generate
         # an assignment but we need to call get_assignment_target since it adds a
         # name binding as a side effect.
-        builder.get_assignment_target(lvalue, stmt.line)
+        builder.get_assignment_target(first_lvalue, stmt.line)
         return
 
-    # multiple assignment
-    if (isinstance(lvalue, TupleExpr) and isinstance(stmt.rvalue, TupleExpr)
-            and len(lvalue.items) == len(stmt.rvalue.items)):
+    # Special case multiple assignments like 'x, y = e1, e2'.
+    if (isinstance(first_lvalue, (TupleExpr, ListExpr))
+            and isinstance(stmt.rvalue, (TupleExpr, ListExpr))
+            and len(first_lvalue.items) == len(stmt.rvalue.items)
+            and len(lvalues) == 1):
         temps = []
         for right in stmt.rvalue.items:
             rvalue_reg = builder.accept(right)
             temp = builder.alloc_temp(rvalue_reg.type)
             builder.assign(temp, rvalue_reg, stmt.line)
             temps.append(temp)
-        for (left, temp) in zip(lvalue.items, temps):
+        for (left, temp) in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
         return
@@ -96,8 +99,8 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
     if builder.non_function_scope() and stmt.is_final_def:
-        builder.init_final_static(lvalue, rvalue_reg)
-    for lvalue in stmt.lvalues:
+        builder.init_final_static(first_lvalue, rvalue_reg)
+    for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
 

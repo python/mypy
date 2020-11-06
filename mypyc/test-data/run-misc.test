@@ -340,6 +340,10 @@ def from_tuple(t: Tuple[int, str]) -> List[Any]:
     x, y = t
     return [y, x]
 
+def from_tuple_sequence(t: Tuple[int, ...]) -> List[int]:
+    x, y, z = t
+    return [z, y, x]
+
 def from_list(l: List[int]) -> List[int]:
     x, y = l
     return [y, x]
@@ -348,9 +352,10 @@ def from_any(o: Any) -> List[Any]:
     x, y = o
     return [y, x]
 [file driver.py]
-from native import from_tuple, from_list, from_any
+from native import from_tuple, from_tuple_sequence, from_list, from_any
 
 assert from_tuple((1, 'x')) == ['x', 1]
+assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
 assert from_list([3, 4]) == [4, 3]
 assert from_any('xy') == ['y', 'x']
 
