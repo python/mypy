@@ -107,8 +107,8 @@ def map_kwargs_to_actuals(actual_type: Type, actual_kind: int,
                           formal_types: List[Type],
                           formal_names: Sequence[Optional[str]],
                           formal_kinds: List[int]) -> List[int]:
-    mapped_formals = []  # type: List[int]
     from mypy.subtypes import is_subtype
+    mapped_formals = []  # type: List[int]
     for fi in formals:
         if formal_kinds[fi] == nodes.ARG_STAR:
             continue

@@ -1523,7 +1523,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         caller_type = get_proper_type(caller_type)
         original_caller_type = get_proper_type(original_caller_type)
         callee_type = get_proper_type(callee_type)
-        
+
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...

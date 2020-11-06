@@ -322,21 +322,6 @@ class StatisticsVisitor(TraverserVisitor):
             kind = TYPE_ANY
         self.record_line(node.line, kind)
 
-    def named_type(self, name: str) -> Instance:
-        """Return an instance type with given name and implicit Any type args.
-
-        For example, named_type('builtins.object') produces the 'object' type.
-        """
-        # Assume that the name refers to a type.
-        sym = self.lookup_qualified(name)
-        node = sym.node
-        if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)  # type: ignore
-            node = node.target.type
-        assert isinstance(node, TypeInfo)
-        any_type = AnyType(TypeOfAny.from_omitted_generics)
-        return Instance(node, [any_type] * len(node.defn.type_vars))
-
     def type(self, t: Optional[Type]) -> None:
         t = get_proper_type(t)
 
