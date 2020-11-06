@@ -19,7 +19,8 @@ from mypy.nodes import (
     Expression, FuncDef, TypeApplication, AssignmentStmt, NameExpr, CallExpr, MypyFile,
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef,
     AssignmentExpr, ImportFrom, Import, ImportAll, PassStmt, BreakStmt, ContinueStmt, StrExpr,
-    BytesExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node
+    BytesExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr, EllipsisExpr, ExpressionStmt, Node,
+    TypeInfo, SymbolTableNode
 )
 from mypy.util import correct_relative_import
 from mypy.argmap import map_formals_to_actuals
@@ -250,7 +251,8 @@ class StatisticsVisitor(TraverserVisitor):
             o.arg_names,
             callee.arg_kinds,
             callee.arg_names,
-            lambda n: typemap[o.args[n]])
+            lambda n: typemap[o.args[n]],
+            callee.arg_types)
         for formals in actual_to_formal:
             for n in formals:
                 formal = get_proper_type(callee.arg_types[n])
@@ -320,6 +322,55 @@ class StatisticsVisitor(TraverserVisitor):
         else:
             kind = TYPE_ANY
         self.record_line(node.line, kind)
+
+    def lookup_typeinfo(self, fullname: str) -> TypeInfo:
+        # Assume that the name refers to a class.
+        sym = self.lookup_qualified(fullname)
+        node = sym.node
+        assert isinstance(node, TypeInfo)
+        return node
+
+    def lookup_qualified(self, name: str) -> SymbolTableNode:
+        if '.' not in name:
+            return self.lookup(name, GDEF)  # FIX kind
+        else:
+            parts = name.split('.')
+            n = self.modules[parts[0]]
+            for i in range(1, len(parts) - 1):
+                sym = n.names.get(parts[i])
+                assert sym is not None, "Internal error: attempted lookup of unknown name"
+                n = cast(MypyFile, sym.node)
+            last = parts[-1]
+            if last in n.names:
+                return n.names[last]
+            elif len(parts) == 2 and parts[0] == 'builtins':
+                fullname = 'builtins.' + last
+                if fullname in SUGGESTED_TEST_FIXTURES:
+                    suggestion = ", e.g. add '[builtins fixtures/{}]' to your test".format(
+                        SUGGESTED_TEST_FIXTURES[fullname])
+                else:
+                    suggestion = ''
+                raise KeyError("Could not find builtin symbol '{}' (If you are running a "
+                               "test case, use a fixture that "
+                               "defines this symbol{})".format(last, suggestion))
+            else:
+                msg = "Failed qualified lookup: '{}' (fullname = '{}')."
+                raise KeyError(msg.format(last, name))
+
+    def named_type(self, name: str) -> Instance:
+        """Return an instance type with given name and implicit Any type args.
+
+        For example, named_type('builtins.object') produces the 'object' type.
+        """
+        # Assume that the name refers to a type.
+        sym = self.lookup_qualified(name)
+        node = sym.node
+        if isinstance(node, TypeAlias):
+            assert isinstance(node.target, Instance)  # type: ignore
+            node = node.target.type
+        assert isinstance(node, TypeInfo)
+        any_type = AnyType(TypeOfAny.from_omitted_generics)
+        return Instance(node, [any_type] * len(node.defn.type_vars))
 
     def type(self, t: Optional[Type]) -> None:
         t = get_proper_type(t)
