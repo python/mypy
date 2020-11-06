@@ -333,11 +333,13 @@ class LowLevelIRBuilder:
 
         sig_arg_kinds = [arg.kind for arg in sig.args]
         sig_arg_names = [arg.name for arg in sig.args]
+        sig_arg_types = [arg.type for arg in sig.args]
         formal_to_actual = map_actuals_to_formals(arg_kinds,
                                                   arg_names,
                                                   sig_arg_kinds,
                                                   sig_arg_names,
-                                                  lambda n: AnyType(TypeOfAny.special_form))
+                                                  lambda n: AnyType(TypeOfAny.special_form),
+                                                  sig_arg_types)
 
         # Flatten out the arguments, loading error values for default
         # arguments, constructing tuples/dicts for star args, and

@@ -312,7 +312,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.arg_kinds, e.arg_names,
                 e.callee.arg_kinds, e.callee.arg_names,
                 lambda i: self.accept(e.args[i]),
-                [Any] * len(e.callee.arg_names))
+                [AnyType(TypeOfAny.special_form)] * len(e.callee.arg_names))
             arg_types = [join.join_type_list([self.accept(e.args[j]) for j in formal_to_actual[i]])
                          for i in range(len(e.callee.arg_kinds))]
             type_context = CallableType(arg_types, e.callee.arg_kinds, e.callee.arg_names,

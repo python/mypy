@@ -1,6 +1,6 @@
 """Test cases for type inference helper functions."""
 
-from typing import List, Optional, Tuple, Union, Dict, Set
+from typing import Any, List, Optional, Tuple, Union, Dict, Set
 
 from mypy.test.helpers import Suite, assert_equal
 from mypy.argmap import map_actuals_to_formals
@@ -181,7 +181,8 @@ class MapActualsToFormalsSuite(Suite):
             caller_names,
             callee_kinds,
             callee_names,
-            lambda i: AnyType(TypeOfAny.special_form))
+            lambda i: AnyType(TypeOfAny.special_form),
+            [AnyType(TypeOfAny.special_form)] * len(callee_kinds))
         assert_equal(result, expected)
 
     def assert_vararg_map(self,
@@ -195,7 +196,8 @@ class MapActualsToFormalsSuite(Suite):
             [],
             callee_kinds,
             [],
-            lambda i: vararg_type)
+            lambda i: vararg_type,
+            [AnyType(TypeOfAny.special_form)] * len(callee_kinds))
         assert_equal(result, expected)
 
 
