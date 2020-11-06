@@ -299,8 +299,9 @@ d = None # type: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2 = None # type: Dict[str, B]
-f(**d2)        # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
-f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(**d2)         # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
