@@ -1430,14 +1430,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ok = True  # False if we've found any error
 
         for i, kind in enumerate(actual_kinds):
-            if (i not in all_actuals and
+            if i not in all_actuals and (
+                    kind != nodes.ARG_STAR or
                     # We accept the other iterables than tuple (including Any)
                     # as star arguments because they could be empty, resulting no arguments.
-                    (kind != nodes.ARG_STAR or is_non_empty_tuple(actual_types[i])) #and
-                    # Accept all types for double-starred arguments, because they could be empty
-                    # dictionaries and we can't tell it from their types
-                    #kind != nodes.ARG_STAR2
-                    ):
+                    is_non_empty_tuple(actual_types[i])):
                 # Extra actual: not matched by a formal argument.
                 ok = False
                 if kind != nodes.ARG_NAMED:
@@ -1526,6 +1523,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         caller_type = get_proper_type(caller_type)
         original_caller_type = get_proper_type(original_caller_type)
         callee_type = get_proper_type(callee_type)
+        
         if isinstance(caller_type, DeletedType):
             messages.deleted_as_rvalue(caller_type, context)
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
@@ -1768,7 +1766,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if len(matches) == 0:
             # No match was found
             return None
-        elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names, self.chk):
+        elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
@@ -4399,8 +4397,7 @@ def any_causes_overload_ambiguity(items: List[CallableType],
                                   return_types: List[Type],
                                   arg_types: List[Type],
                                   arg_kinds: List[int],
-                                  arg_names: Optional[Sequence[Optional[str]]],
-                                  checker: 'checker.TypeChecker') -> bool:
+                                  arg_names: Optional[Sequence[Optional[str]]]) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
 
     Note that this sometimes returns True even if there is no ambiguity, since a correct
