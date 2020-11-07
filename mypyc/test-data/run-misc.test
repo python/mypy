@@ -356,8 +356,15 @@ def from_list_complex(l: List[int]) -> List[int]:
 def from_any(o: Any) -> List[Any]:
     x, y = o
     return [y, x]
+
+def multiple_assignments(t: Tuple[int, str]) -> List[Any]:
+    a, b = c, d = t
+    e, f = g, h = 1, 2
+    return [a, b, c, d, e, f, g, h]
 [file driver.py]
-from native import from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any
+from native import (
+    from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any, multiple_assignments
+)
 
 assert from_tuple((1, 'x')) == ['x', 1]
 
@@ -386,6 +393,8 @@ else:
     assert False
 
 assert from_any('xy') == ['y', 'x']
+
+assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
 
 [case testUnpack]
 from typing import List
