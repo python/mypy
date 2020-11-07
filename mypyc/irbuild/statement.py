@@ -12,7 +12,8 @@ import importlib.util
 from mypy.nodes import (
     Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, RaiseStmt, TryStmt, WithStmt, AssertStmt, DelStmt,
-    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr
+    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr,
+    StarExpr
 )
 
 from mypyc.ir.ops import (
@@ -84,6 +85,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     if (isinstance(first_lvalue, (TupleExpr, ListExpr))
             and isinstance(stmt.rvalue, (TupleExpr, ListExpr))
             and len(first_lvalue.items) == len(stmt.rvalue.items)
+            and all(is_simple_lvalue(item) for item in first_lvalue.items)
             and len(lvalues) == 1):
         temps = []
         for right in stmt.rvalue.items:
@@ -103,6 +105,10 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
+
+
+def is_simple_lvalue(expr: Expression) -> bool:
+    return not isinstance(expr, (StarExpr, ListExpr, TupleExpr))
 
 
 def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignmentStmt) -> None:
