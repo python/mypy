@@ -1400,10 +1400,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ambiguous_kwargs = [(i, actualt, actualk)
                             for i, (actualt, actualk) in enumerate(zip(actual_types, actual_kinds))
                             if actualk == nodes.ARG_STAR2
-                                and not isinstance(get_proper_type(actualt), TypedDictType)]
+                            and not isinstance(get_proper_type(actualt), TypedDictType)]
         for i, actualt, actualk in ambiguous_kwargs:
             potential_formals = []  # type: List[int]
-            actual_formals = [] # type: List[int]
+            actual_formals = []  # type: List[int]
             for fi in map_kwargs_to_formals(actualt, actualk, list(range(len(callee.arg_types))),
                                             callee.arg_types, callee.arg_names, callee.arg_kinds):
                 potential_formals.append(fi)
