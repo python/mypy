@@ -624,9 +624,9 @@ def f(l, t):
 L0:
     r0 = CPySequence_CheckUnpackCount(l, 2)
     r1 = r0 >= 0 :: signed
-    r2 = CPyList_GetItemShort(l, 0)
+    r2 = CPyList_GetItemUnsafe(l, 0)
     x = r2
-    r3 = CPyList_GetItemShort(l, 2)
+    r3 = CPyList_GetItemUnsafe(l, 2)
     r4 = unbox(int, r3)
     y = r4
     r5 = CPySequence_CheckUnpackCount(t, 2)

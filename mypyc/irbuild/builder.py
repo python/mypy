@@ -44,7 +44,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import CFunctionDescription, function_ops
-from mypyc.primitives.list_ops import to_list, list_pop_last
+from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
 from mypyc.primitives.misc_ops import import_op, check_unpack_count_op
@@ -505,15 +505,29 @@ class IRBuilder:
                                     target: AssignmentTargetTuple,
                                     rvalue: Value,
                                     line: int) -> None:
+        """Process assignment like 'x, y = s', where s is a variable-length list or tuple."""
         # Check the length of sequence.
         expected_len = self.add(LoadInt(len(target.items), rtype=c_pyssize_t_rprimitive))
         self.builder.call_c(check_unpack_count_op, [rvalue, expected_len], line)
-        # Read values from the sequence and assign them to the targets.
+        # If some lvalue item is not a register, we conservatively
+        # assume that the length of the sequence might change due to a
+        # property setter or custom __setitem__.
+        simple_lvalue = all(isinstance(item, AssignmentTargetRegister)
+                            for item in target.items)
+        # If it's possible for the length of the rvalue to change
+        # between item assignments, we must do it the hard way to
+        # preserve semantics.
+        if not simple_lvalue and is_list_rprimitive(rvalue.type):
+            return self.process_iterator_tuple_assignment(target, rvalue, line)
+        # Get values and assign them to the target items.
         for i in range(len(target.items)):
             item = target.items[i]
             index = self.builder.load_static_int(i)
-            item_value = self.builder.gen_method_call(
-                rvalue, '__getitem__', [index], item.type, line)
+            if is_list_rprimitive(rvalue.type):
+                item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
+            else:
+                item_value = self.builder.gen_method_call(
+                    rvalue, '__getitem__', [index], item.type, line)
             self.assign(target.items[i], item_value, line)
 
     def process_iterator_tuple_assignment_helper(self,

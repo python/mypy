@@ -348,11 +348,16 @@ def from_list(l: List[int]) -> List[int]:
     x, y = l
     return [y, x]
 
+def from_list_complex(l: List[int]) -> List[int]:
+    ll = l[:]
+    ll[1], ll[0] = l
+    return ll
+
 def from_any(o: Any) -> List[Any]:
     x, y = o
     return [y, x]
 [file driver.py]
-from native import from_tuple, from_tuple_sequence, from_list, from_any
+from native import from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any
 
 assert from_tuple((1, 'x')) == ['x', 1]
 
@@ -367,6 +372,14 @@ else:
 assert from_list([3, 4]) == [4, 3]
 try:
     from_list([5, 4, 3])
+except ValueError as e:
+    assert 'too many values to unpack (expected 2)' in str(e)
+else:
+    assert False
+
+assert from_list_complex([7, 6]) == [6, 7]
+try:
+    from_list_complex([5, 4, 3])
 except ValueError as e:
     assert 'too many values to unpack (expected 2)' in str(e)
 else:
