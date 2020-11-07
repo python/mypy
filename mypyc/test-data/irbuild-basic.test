@@ -3606,6 +3606,10 @@ def f(x: int, y: int) -> Tuple[int, int]:
 def f2(x: int, y: str, z: float) -> Tuple[float, str, int]:
     a, b, c = x, y, z
     return (c, b, a)
+
+def f3(x: int, y: int) -> Tuple[int, int]:
+    [x, y] = [y, x]
+    return (x, y)
 [out]
 def f(x, y):
     x, y, r0, r1 :: int
@@ -3637,6 +3641,17 @@ L0:
     c = r2
     r3 = (c, b, a)
     return r3
+
+def f3(x, y):
+    x, y, r0, r1 :: int
+    r2 :: tuple[int, int]
+L0:
+    r0 = y
+    r1 = x
+    x = r0
+    y = r1
+    r2 = (x, y)
+    return r2
 
 [case testLocalImportSubmodule]
 def f() -> int:
