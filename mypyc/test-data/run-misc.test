@@ -355,8 +355,23 @@ def from_any(o: Any) -> List[Any]:
 from native import from_tuple, from_tuple_sequence, from_list, from_any
 
 assert from_tuple((1, 'x')) == ['x', 1]
+
 assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
+try:
+    from_tuple_sequence((1, 5))
+except ValueError as e:
+    assert 'not enough values to unpack (expected 3, got 2)' in str(e)
+else:
+    assert False
+
 assert from_list([3, 4]) == [4, 3]
+try:
+    from_list([5, 4, 3])
+except ValueError as e:
+    assert 'too many values to unpack (expected 2)' in str(e)
+else:
+    assert False
+
 assert from_any('xy') == ['y', 'x']
 
 [case testUnpack]
