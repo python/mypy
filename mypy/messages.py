@@ -622,10 +622,11 @@ class MessageBuilder:
         kwargs_type_str = format_type(kwargs_type)
         argument_number = kwargs_index + 1
         if formals:
-            formal_names = ', '.join(('"' + callee.arg_names[fi] + '"')
-                                     if callee.arg_names[fi]
+            formal_names = ', '.join(('"' + name + '"')
+                                     if name
                                      else 'parameter {}'.format(fi)
-                                     for fi in formals)
+                                     for fi, name in enumerate(callee.arg_names[fi]
+                                                               for fi in formals))
             msg = ('Argument {} in call to {} with type {} cannot unpack into any expected '
                    'parameters; {} in use'.
                    format(argument_number, callee_name, kwargs_type_str, formal_names))
