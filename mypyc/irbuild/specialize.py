@@ -26,8 +26,9 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
-
+from mypyc.irbuild.for_helpers import (
+    translate_list_comprehension, comprehension_helper, translate_set_comprehension
+)
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -128,16 +129,20 @@ def translate_safe_generator_call(
     if (len(expr.args) > 0
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
+        if callee.fullname == "builtins.set":
+            translate_comprehension_fn = translate_set_comprehension
+        else:
+            translate_comprehension_fn = translate_list_comprehension
         if isinstance(callee, MemberExpr):
             return builder.gen_method_call(
                 builder.accept(callee.expr), callee.name,
-                ([translate_list_comprehension(builder, expr.args[0])]
+                ([translate_comprehension_fn(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             return builder.call_refexpr_with_args(
                 expr, callee,
-                ([translate_list_comprehension(builder, expr.args[0])]
+                ([translate_comprehension_fn(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]))
     return None
 
