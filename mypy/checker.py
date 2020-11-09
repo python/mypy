@@ -2897,10 +2897,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
         else:
             return False
-        if (not isinstance(lvalue, MemberExpr)
-            or lvalue.def_var not in self.inferred_attribute_types):
-            self.set_inferred_type(name, lvalue, partial_type)
-            self.partial_types[-1].map[name] = lvalue
+        self.set_inferred_type(name, lvalue, partial_type)
+        self.partial_types[-1].map[name] = lvalue
         return True
 
     def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
@@ -2938,7 +2936,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             var.is_inferred = True
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
-                if lvalue.def_var is not None:
+                if (lvalue.def_var is not None
+                    and lvalue.def_var not in self.inferred_attribute_types):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
