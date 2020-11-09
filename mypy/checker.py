@@ -2897,8 +2897,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return False
         else:
             return False
-        self.set_inferred_type(name, lvalue, partial_type)
-        self.partial_types[-1].map[name] = lvalue
+        if (not hasattr(lvalue, "def_var")
+            or lvalue.def_var not in self.inferred_attribute_types):
+            self.set_inferred_type(name, lvalue, partial_type)
+            self.partial_types[-1].map[name] = lvalue
         return True
 
     def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
