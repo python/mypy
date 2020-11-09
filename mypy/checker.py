@@ -2937,7 +2937,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
                 if (lvalue.def_var is not None
-                    and lvalue.def_var not in self.inferred_attribute_types):
+                        and lvalue.def_var not in self.inferred_attribute_types):
                     self.inferred_attribute_types[lvalue.def_var] = type
             self.store_type(lvalue, type)
 
