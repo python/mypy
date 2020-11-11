@@ -164,6 +164,10 @@ class SourceFinder:
     @functools.lru_cache()
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
         """Given a directory name, return the corresponding module name and base directory."""
+        if self.explicit_package_roots is not None:
+            if self.is_package_root(dir):
+                return "", dir
+
         parent_dir, base = os.path.split(dir)
         if (
             not dir or not base
@@ -180,10 +184,6 @@ class SourceFinder:
             base = base[:-6]  # PEP-561 stub-only directory
         if not base.isidentifier():
             raise InvalidSourceList('{} is not a valid Python package name'.format(base))
-
-        if self.explicit_package_roots is not None:
-            if self.is_package_root(parent_dir):
-                return base, parent_dir
 
         parent_module, base_dir = self.crawl_up_dir(parent_dir)
         module = module_join(parent_module, base)
