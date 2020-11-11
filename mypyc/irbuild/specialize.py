@@ -22,11 +22,12 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive
+    bool_rprimitive, is_dict_rprimitive, int_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
+from mypyc.primitives.int_ops import int_min
 
 
 # Specializers are attempted before compiling the arguments to the
@@ -36,6 +37,7 @@ from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehensio
 #
 # Specializers take three arguments: the IRBuilder, the CallExpr being
 # compiled, and the RefExpr that is the left hand side of the call.
+
 Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 
 # Dictionary containing all configured specializers.
@@ -256,3 +258,12 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         if irs is not None:
             return builder.builder.isinstance_helper(builder.accept(expr.args[0]), irs, expr.line)
     return None
+
+
+@specialize_function('builtins.min')
+def faster_min(builder: IRBuilder, expr: CallExpr, callee: RefExpr):
+    if (len(expr.args) == 2
+            and expr.arg_kinds == [ARG_POS, ARG_POS]
+            and all(builder.node_type(arg) is int_rprimitive for arg in expr.args)):
+        x, y = expr.args
+        return builder.call_c(int_min, [builder.accept(x), builder.accept(y)], expr.line)
