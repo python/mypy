@@ -85,7 +85,7 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r has_text=%s base_dir=%s>' % (
+        return 'BuildSource(path=%r, module=%r, has_text=%s, base_dir=%r)' % (
             self.path,
             self.module,
             self.text is not None,
@@ -387,13 +387,13 @@ class FindModuleCache:
                     if mod not in hits:
                         hits.add(mod)
                         result += self.find_modules_recursive(module + '.' + mod)
-        elif os.path.isdir(module_path) and module in self.ns_packages:
-            # Even more subtler: handle recursive decent into PEP 420
+        elif os.path.isdir(module_path):
+            # Even subtler: handle recursive decent into PEP 420
             # namespace packages that are explicitly listed on the command
             # line with -p/--packages.
             for item in sorted(self.fscache.listdir(module_path)):
-                if os.path.isdir(os.path.join(module_path, item)):
-                    result += self.find_modules_recursive(module + '.' + item)
+                item, _ = os.path.splitext(item)
+                result += self.find_modules_recursive(module + '.' + item)
         return result
 
 

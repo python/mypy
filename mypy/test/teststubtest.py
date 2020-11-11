@@ -549,6 +549,12 @@ class StubtestUnit(unittest.TestCase):
             runtime="x4 = (1, 3, 5)",
             error="x4",
         )
+        yield Case(stub="x5: int", runtime="def x5(a, b): pass", error="x5")
+        yield Case(
+            stub="def foo(a: int, b: int) -> None: ...\nx6 = foo",
+            runtime="def foo(a, b): pass\ndef x6(c, d): pass",
+            error="x6",
+        )
         yield Case(
             stub="""
             class X:
@@ -848,9 +854,3 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""
-
-
-class StubtestIntegration(unittest.TestCase):
-    def test_typeshed(self) -> None:
-        # check we don't crash while checking typeshed
-        test_stubs(parse_options(["--check-typeshed"]))
