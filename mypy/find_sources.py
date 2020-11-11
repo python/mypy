@@ -26,7 +26,11 @@ def create_source_list(paths: Sequence[str], options: Options,
     Raises InvalidSourceList on errors.
     """
     fscache = fscache or FileSystemCache()
-    finder = SourceFinder(fscache, explicit_package_roots=options.package_root or None)
+    finder = SourceFinder(
+        fscache,
+        explicit_package_roots=options.package_root or None,
+        namespace_packages=options.namespace_packages,
+    )
 
     sources = []
     for path in paths:
@@ -62,10 +66,14 @@ def keyfunc(name: str) -> Tuple[int, str]:
 
 class SourceFinder:
     def __init__(
-        self, fscache: FileSystemCache, explicit_package_roots: Optional[List[str]]
+        self,
+        fscache: FileSystemCache,
+        explicit_package_roots: Optional[List[str]],
+        namespace_packages: bool,
     ) -> None:
         self.fscache = fscache
         self.explicit_package_roots = explicit_package_roots
+        self.namespace_packages = namespace_packages
 
     def is_package_root(self, path: str) -> bool:
         assert self.explicit_package_roots
@@ -83,13 +91,22 @@ class SourceFinder:
         assert not mod_prefix or mod_prefix.endswith(".")
 
         init_file = self.get_init_file(dir_path)
+
+        is_package_root = False
         # If the current directory is an explicit package root, explore it as such.
+        if self.explicit_package_roots is not None and self.is_package_root(dir_path):
+            is_package_root = True
         # Alternatively, if we aren't given explicit package roots and we don't have an __init__
-        # file, recursively explore this directory as a new package root.
-        if (
-            (self.explicit_package_roots is not None and self.is_package_root(dir_path))
-            or (self.explicit_package_roots is None and init_file is None)
-        ):
+        # file, *conditionally* recursively explore this directory as a new package root...
+        elif self.explicit_package_roots is None and init_file is None:
+            # ...if namespace packages is False, we always consider this a new package root
+            # ...if namespace packages is True, we consider this a new package root only if we're
+            # not already exploring a package. This allows us to have reasonable behaviour in the
+            # face of missing __init__ files, without having to specify explicit package roots.
+            if not self.namespace_packages or mod_prefix == "":
+                is_package_root = True
+
+        if is_package_root:
             mod_prefix = ""
             root_dir = dir_path
 
