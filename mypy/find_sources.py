@@ -1,12 +1,12 @@
 """Routines for finding the sources that mypy will check"""
 
 import functools
-import os.path
+import os
 
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 from mypy.util import normalise_package_root
@@ -26,11 +26,7 @@ def create_source_list(paths: Sequence[str], options: Options,
     Raises InvalidSourceList on errors.
     """
     fscache = fscache or FileSystemCache()
-    finder = SourceFinder(
-        fscache,
-        explicit_package_roots=options.package_root or None,
-        namespace_packages=options.namespace_packages,
-    )
+    finder = SourceFinder(fscache, options)
 
     sources = []
     for path in paths:
@@ -64,16 +60,18 @@ def keyfunc(name: str) -> Tuple[int, str]:
     return (-1, name)
 
 
+def get_explicit_package_roots(options: Options) -> Optional[List[str]]:
+    if not options.package_root:
+        return None
+    roots = options.package_root + mypy_path() + options.mypy_path + [os.getcwd()]
+    return [normalise_package_root(root) for root in roots]
+
+
 class SourceFinder:
-    def __init__(
-        self,
-        fscache: FileSystemCache,
-        explicit_package_roots: Optional[List[str]],
-        namespace_packages: bool,
-    ) -> None:
+    def __init__(self, fscache: FileSystemCache, options: Options) -> None:
         self.fscache = fscache
-        self.explicit_package_roots = explicit_package_roots
-        self.namespace_packages = namespace_packages
+        self.explicit_package_roots = get_explicit_package_roots(options)
+        self.namespace_packages = options.namespace_packages
 
     def is_package_root(self, path: str) -> bool:
         assert self.explicit_package_roots
