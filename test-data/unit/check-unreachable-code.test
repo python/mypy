@@ -898,18 +898,11 @@ def foo() -> bool: ...
 lst = [1, 2, 3, 4]
 
 a = True or foo()                        # E: Right operand of 'or' is never evaluated
-b = False or foo()                       # E: Left operand of 'or' is always false
-c = True and foo()                       # E: Left operand of 'and' is always true
 d = False and foo()                      # E: Right operand of 'and' is never evaluated
 e = True or (True or (True or foo()))    # E: Right operand of 'or' is never evaluated
 f = (True or foo()) or (True or foo())   # E: Right operand of 'or' is never evaluated
-g = 3 if True else 4                     # E: If condition is always true
-h = 3 if False else 4                    # E: If condition is always false
-i = [x for x in lst if True]             # E: If condition in comprehension is always true
-j = [x for x in lst if False]            # E: If condition in comprehension is always false
 
-k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true \
-                                                     # E: Right operand of 'or' is never evaluated
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of 'or' is never evaluated
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagMiscTestCaseMissingMethod]
@@ -932,6 +925,7 @@ from typing import TypeVar, Generic
 
 T1 = TypeVar('T1', bound=int)
 T2 = TypeVar('T2', int, str)
+T3 = TypeVar('T3', None, str)
 
 def test1(x: T1) -> T1:
     if isinstance(x, int):
@@ -967,6 +961,19 @@ class Test3(Generic[T2]):
         if False:
             # Same issue as above
             reveal_type(self.x)
+
+
+class Test4(Generic[T3]):
+    def __init__(self, x: T3):
+        # https://github.com/python/mypy/issues/9456
+        # On TypeVars with value restrictions, we currently have no way
+        # of checking a statement for all the type expansions.
+        # Thus unreachable warnings are disabled
+        if x and False:
+            pass
+        # This test should fail after this limitation is removed.
+        if False and x:
+            pass
 
 [builtins fixtures/isinstancelist.pyi]
 

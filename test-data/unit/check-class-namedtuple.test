@@ -582,7 +582,8 @@ class Base(NamedTuple):
         reveal_type(self.x)  # N: Revealed type is 'builtins.int'
         self.x = 3  # E: Property "x" defined in "Base" is read-only
         self[1]  # E: Tuple index out of range
-        reveal_type(self[T])  # N: Revealed type is 'builtins.int'
+        reveal_type(self[T])  # N: Revealed type is 'Any' \
+                              # E: Invalid tuple index type (actual type "object", expected type "Union[int, slice]")
         return self.x
     def bad_override(self) -> int:
         return self.x

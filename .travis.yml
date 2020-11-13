@@ -42,7 +42,7 @@ jobs:
   - name: "run test suite with python 3.8"
     python: 3.8
   - name: "run test suite with python 3.9"
-    python: 3.9-dev
+    python: 3.9
   - name: "run mypyc runtime tests with python 3.6 debug build"
     language: generic
     env:
@@ -85,6 +85,7 @@ install:
 - pip install -U pip setuptools
 - pip install -U 'virtualenv<20'
 - pip install -U tox==3.9.0
+- python2 -m pip install --user -U typing
 - tox --notest
 
 # This is a big hack and only works because the layout of our directories

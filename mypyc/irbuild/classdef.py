@@ -171,8 +171,8 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
                                    builder.module_name, NAMESPACE_TYPE))
     # Create the class
-    tp = builder.primitive_op(pytype_from_template_op,
-                           [template, tp_bases, modname], cdef.line)
+    tp = builder.call_c(pytype_from_template_op,
+                    [template, tp_bases, modname], cdef.line)
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -229,7 +229,7 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
         declared_metaclass = builder.add(LoadAddress(type_object_op.type,
                                                      type_object_op.src, cdef.line))
 
-    return builder.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
+    return builder.call_c(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
 
 
 def setup_non_ext_dict(builder: IRBuilder,
@@ -399,7 +399,7 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
         builder.translate_is_op(eqval, not_implemented, 'is', line),
         not_implemented_block,
         regular_block,
-        Branch.BOOL_EXPR))
+        Branch.BOOL))
 
     builder.activate_block(regular_block)
     retval = builder.coerce(

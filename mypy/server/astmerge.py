@@ -370,9 +370,10 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         if typ.fallback is not None:
             typ.fallback.accept(self)
         for tv in typ.variables:
-            tv.upper_bound.accept(self)
-            for value in tv.values:
-                value.accept(self)
+            if isinstance(tv, TypeVarDef):
+                tv.upper_bound.accept(self)
+                for value in tv.values:
+                    value.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items():

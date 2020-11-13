@@ -743,7 +743,7 @@ class Server:
                 n_errors, n_files = count_stats(messages)
                 if n_errors:
                     summary = self.formatter.format_error(n_errors, n_files, n_sources,
-                                                          use_color)
+                                                          use_color=use_color)
             else:
                 summary = self.formatter.format_success(n_sources, use_color)
             if summary:

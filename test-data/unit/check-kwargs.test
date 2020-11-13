@@ -377,6 +377,29 @@ f(*l, **d)
 class A: pass
 [builtins fixtures/dict.pyi]
 
+[case testPassingMultipleKeywordVarArgs]
+from typing import Any, Dict
+def f1(a: 'A', b: 'A') -> None: pass
+def f2(a: 'A') -> None: pass
+def f3(a: 'A', **kwargs: 'A') -> None: pass
+def f4(**kwargs: 'A') -> None: pass
+d = None # type: Dict[Any, Any]
+d2 = None # type: Dict[Any, Any]
+f1(**d, **d2)
+f2(**d, **d2)
+f3(**d, **d2)
+f4(**d, **d2)
+class A: pass
+[builtins fixtures/dict.pyi]
+
+[case testPassingKeywordVarArgsToVarArgsOnlyFunction]
+from typing import Any, Dict
+def f(*args: 'A') -> None: pass
+d = None # type: Dict[Any, Any]
+f(**d) # E: Too many arguments for "f"
+class A: pass
+[builtins fixtures/dict.pyi]
+
 [case testKeywordArgumentAndCommentSignature]
 import typing
 def f(x): # type: (int) -> str # N: "f" defined here

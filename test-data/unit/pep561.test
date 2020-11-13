@@ -20,6 +20,11 @@ reveal_type(a)
 [out]
 testTypedPkgSimple.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
 
+[case testTypedPkgSimplePackageSearchPath]
+# pkgs: typedpkg
+# flags: -p typedpkg.pkg
+[out]
+
 [case testTypedPkg_config_nositepackages]
 # pkgs: typedpkg
 from typedpkg.sample import ex

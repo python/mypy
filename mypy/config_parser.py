@@ -94,6 +94,8 @@ config_types = {
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'disable_error_code': lambda s: [p.strip() for p in s.split(',')],
+    'enable_error_code': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
     'cache_dir': expand_path,
     'python_executable': expand_path,
@@ -129,11 +131,16 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         except configparser.Error as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
+            if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
+                continue
             file_read = config_file
             options.config_file = file_read
             break
     else:
         return
+
+    os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
+            os.path.abspath(config_file))
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:

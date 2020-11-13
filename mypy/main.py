@@ -14,7 +14,10 @@ from mypy import build
 from mypy import defaults
 from mypy import state
 from mypy import util
-from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
+from mypy.modulefinder import (
+    BuildSource, FindModuleCache, SearchPaths,
+    get_site_packages_dirs, mypy_path,
+)
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
@@ -72,14 +75,11 @@ def main(script_path: Optional[str],
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
         f = stderr if serious else stdout
-        try:
-            for msg in new_messages:
-                if options.color_output:
-                    msg = formatter.colorize(msg)
-                f.write(msg + '\n')
-            f.flush()
-        except BrokenPipeError:
-            sys.exit(2)
+        for msg in new_messages:
+            if options.color_output:
+                msg = formatter.colorize(msg)
+            f.write(msg + '\n')
+        f.flush()
 
     serious = False
     blockers = False
@@ -111,11 +111,13 @@ def main(script_path: Optional[str],
         if messages:
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
-                stdout.write(formatter.format_error(n_errors, n_files, len(sources),
-                                                    options.color_output) + '\n')
+                summary = formatter.format_error(
+                    n_errors, n_files, len(sources), blockers=blockers,
+                    use_color=options.color_output
+                )
+                stdout.write(summary + '\n')
         else:
-            stdout.write(formatter.format_success(len(sources),
-                                                  options.color_output) + '\n')
+            stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
@@ -574,7 +576,7 @@ def process_options(args: List[str],
                         group=lint_group)
     add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
                         help="Warn about statements or expressions inferred to be"
-                             " unreachable or redundant",
+                             " unreachable",
                         group=lint_group)
 
     # Note: this group is intentionally added here even though we don't add
@@ -921,7 +923,11 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path() + options.mypy_path), (), ())
+        egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+        search_paths = SearchPaths((os.getcwd(),),
+                                   tuple(mypy_path() + options.mypy_path),
+                                   tuple(egg_dirs + site_packages),
+                                   ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)

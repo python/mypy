@@ -126,7 +126,7 @@ from mypy_extensions import trait, mypyc_attr
 from mypy.nodes import (
     Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import Type, Instance, CallableType, TypeList, UnboundType, ProperType
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -265,7 +265,7 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
                   report_invalid_types: bool = True,
@@ -359,11 +359,21 @@ class SemanticAnalyzerPluginInterface:
 # A context for querying for configuration data about a module for
 # cache invalidation purposes.
 ReportConfigContext = NamedTuple(
-    'DynamicClassDefContext', [
+    'ReportConfigContext', [
         ('id', str),        # Module name
         ('path', str),      # Module file path
         ('is_check', bool)  # Is this invocation for checking whether the config matches
     ])
+
+# A context for a function signature hook that infers a better signature for a
+# function.  Note that argument types aren't available yet.  If you need them,
+# you have to use a method hook instead.
+FunctionSigContext = NamedTuple(
+    'FunctionSigContext', [
+        ('args', List[List[Expression]]),     # Actual expressions for each formal argument
+        ('default_signature', CallableType),  # Original signature of the method
+        ('context', Context),                 # Relevant location context (e.g. for error messages)
+        ('api', CheckerPluginInterface)])
 
 # A context for a function hook that infers the return type of a function with
 # a special signature.
@@ -395,7 +405,7 @@ FunctionContext = NamedTuple(
 # TODO: document ProperType in the plugin changelog/update issue.
 MethodSigContext = NamedTuple(
     'MethodSigContext', [
-        ('type', ProperType),                       # Base object type for method call
+        ('type', ProperType),                 # Base object type for method call
         ('args', List[List[Expression]]),     # Actual expressions for each formal argument
         ('default_signature', CallableType),  # Original signature of the method
         ('context', Context),                 # Relevant location context (e.g. for error messages)
@@ -407,7 +417,7 @@ MethodSigContext = NamedTuple(
 # This is very similar to FunctionContext (only differences are documented).
 MethodContext = NamedTuple(
     'MethodContext', [
-        ('type', ProperType),                    # Base object type for method call
+        ('type', ProperType),              # Base object type for method call
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         # see FunctionContext for details about names and kinds
         ('arg_kinds', List[List[int]]),
@@ -421,7 +431,7 @@ MethodContext = NamedTuple(
 # A context for an attribute type hook that infers the type of an attribute.
 AttributeContext = NamedTuple(
     'AttributeContext', [
-        ('type', ProperType),               # Type of object with attribute
+        ('type', ProperType),         # Type of object with attribute
         ('default_attr_type', Type),  # Original attribute type
         ('context', Context),         # Relevant location context (e.g. for error messages)
         ('api', CheckerPluginInterface)])
@@ -530,6 +540,22 @@ class Plugin(CommonPluginApi):
         this method will be called with 'lib.Special', and then with 'lib.Other'.
         The callback returned by plugin must return an analyzed type,
         i.e. an instance of `mypy.types.Type`.
+        """
+        return None
+
+    def get_function_signature_hook(self, fullname: str
+                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
+        """Adjust the signature a function.
+
+        This method is called before type checking a function call. Plugin
+        may infer a better type for the function.
+
+            from lib import Class, do_stuff
+
+            do_stuff(42)
+            Class()
+
+        This method will be called with 'lib.do_stuff' and then with 'lib.Class'.
         """
         return None
 
@@ -720,6 +746,10 @@ class ChainedPlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str
                               ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
         return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
+
+    def get_function_signature_hook(self, fullname: str
+                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
+        return self._find_hook(lambda plugin: plugin.get_function_signature_hook(fullname))
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:

@@ -183,7 +183,7 @@ class B: pass
 <m.A> -> <m.f>, m.A, m.f, m.g
 <m.B.__init__> -> m
 <m.B.__new__> -> m
--- The <m.A.X> dependecy target is superfluous but benign
+-- The <m.A.X> dependency target is superfluous but benign
 <m.B> -> <m.A.X>, m
 <m> -> m
 

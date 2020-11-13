@@ -3722,6 +3722,9 @@ import b
 {"snapshot": {"__main__": "a7c958b001a45bd6a2a320f4e53c4c16", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "c532c89da517a4b779bcf7a964478d67"}, "deps_meta": {"@root": {"path": "@root.deps.json", "mtime": 0}, "__main__": {"path": "__main__.deps.json", "mtime": 0}, "a": {"path": "a.deps.json", "mtime": 0}, "b": {"path": "b.deps.json", "mtime": 0}, "builtins": {"path": "builtins.deps.json", "mtime": 0}}}
 [file ../.mypy_cache/.gitignore]
 # Another hack to not trigger a .gitignore creation failure "false positive"
+[file ../.mypy_cache/CACHEDIR.TAG]
+Signature: 8a477f597d28d172789f06886806bc55
+# Another another hack to not trigger a CACHEDIR.TAG creation failure "false positive"
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
@@ -5056,7 +5059,9 @@ from typing import NamedTuple
 NT = NamedTuple('BadName', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
+tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
 [out2]
+tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
 tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.NT]'
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
@@ -5076,7 +5081,9 @@ def test() -> None:
     NT = namedtuple('BadName', ['x', 'y'])
 [builtins fixtures/list.pyi]
 [out]
+tmp/b.py:4: error: First argument to namedtuple() should be 'NT', not 'BadName'
 [out2]
+tmp/b.py:4: error: First argument to namedtuple() should be 'NT', not 'BadName'
 
 [case testNewAnalyzerIncrementalMethodNamedTuple]
 

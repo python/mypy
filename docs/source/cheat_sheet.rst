@@ -111,7 +111,7 @@ Functions
                   body=None    # type: List[str]
                   ):
        # type: (...) -> bool
-       <code>
+       ...
 
 When you're puzzled or when things are complicated
 **************************************************

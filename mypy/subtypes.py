@@ -543,6 +543,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
             # print(member, 'of', right, 'has type', supertype)
             if not subtype:
                 return False
+            if isinstance(subtype, PartialType):
+                subtype = NoneType() if subtype.type is None else Instance(
+                    subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+                )
             if not proper_subtype:
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to

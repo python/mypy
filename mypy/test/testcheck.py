@@ -65,6 +65,7 @@ typecheck_files = [
     'check-selftype.test',
     'check-python2.test',
     'check-columns.test',
+    'check-future.test',
     'check-functions.test',
     'check-tuples.test',
     'check-expressions.test',
@@ -89,6 +90,7 @@ typecheck_files = [
     'check-reports.test',
     'check-errorcodes.test',
     'check-annotated.test',
+    'check-parameter-specification.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -275,6 +277,10 @@ class TypeCheckSuite(DataSuite):
             raise AssertionError("cache data discrepancy %s != %s" %
                                  (missing_paths, busted_paths))
         assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
+        cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
+        assert os.path.isfile(cachedir_tag)
+        with open(cachedir_tag) as f:
+            assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
 
     def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()

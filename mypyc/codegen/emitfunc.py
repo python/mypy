@@ -10,9 +10,9 @@ from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
-    BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
+    BasicBlock, Value, MethodCall, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -115,12 +115,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         neg = '!' if op.negated else ''
 
         cond = ''
-        if op.op == Branch.BOOL_EXPR:
+        if op.op == Branch.BOOL:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
-        elif op.op == Branch.NEG_INT_EXPR:
-            expr_result = self.reg(op.left)
-            cond = '{} < 0'.format(expr_result)
         elif op.op == Branch.IS_ERROR:
             typ = op.left.type
             compare = '!=' if op.negated else '=='
@@ -154,17 +151,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_return(self, op: Return) -> None:
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
-
-    def visit_primitive_op(self, op: PrimitiveOp) -> None:
-        args = [self.reg(arg) for arg in op.args]
-        if not op.is_void:
-            dest = self.reg(op)
-        else:
-            # This will generate a C compile error if used. The reason for this
-            # is that we don't want to insert "assert dest is not None" checks
-            # everywhere.
-            dest = '<undefined dest>'
-        op.desc.emit(self, args, dest)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op)
@@ -481,11 +467,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
         src = self.reg(op.src)
-        type = self.ctype(op.type)
+        dest_type = self.ctype(op.dest_type)
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            self.emit_line('*(%s *)%s = %s;' % (type, dest, src))
+            self.emit_line('*(%s *)%s = %s;' % (dest_type, dest, src))
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)
@@ -499,7 +485,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
         dest = self.reg(op)
-        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, op.src))
+        src = self.reg(op.src) if isinstance(op.src, Register) else op.src
+        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, src))
 
     # Helpers
 

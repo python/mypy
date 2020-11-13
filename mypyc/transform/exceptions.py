@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from mypyc.ir.ops import (
     BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, LoadInt, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, ERR_NEG_INT, ERR_ALWAYS, NO_TRACEBACK_LINE_NO, Environment
+    ERR_FALSE, ERR_ALWAYS, NO_TRACEBACK_LINE_NO, Environment
 )
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.rtypes import bool_rprimitive
@@ -75,13 +75,10 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     negated = False
                 elif op.error_kind == ERR_FALSE:
                     # Op returns a C false value on error.
-                    variant = Branch.BOOL_EXPR
+                    variant = Branch.BOOL
                     negated = True
-                elif op.error_kind == ERR_NEG_INT:
-                    variant = Branch.NEG_INT_EXPR
-                    negated = False
                 elif op.error_kind == ERR_ALWAYS:
-                    variant = Branch.BOOL_EXPR
+                    variant = Branch.BOOL
                     negated = True
                     # this is a hack to represent the always fail
                     # semantics, using a temporary bool with value false

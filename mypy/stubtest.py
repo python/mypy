@@ -212,11 +212,18 @@ def verify_mypyfile(
         for m, o in stub.names.items()
         if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
     )
-    # Check all things declared in module's __all__
-    to_check.update(getattr(runtime, "__all__", []))
+    runtime_public_contents = [
+        m
+        for m in dir(runtime)
+        if not m.startswith("_")
+        # Ensure that the object's module is `runtime`, e.g. so that we don't pick up reexported
+        # modules and infinitely recurse. Unfortunately, there's no way to detect an explicit
+        # reexport missing from the stubs (that isn't specified in __all__)
+        and getattr(getattr(runtime, m), "__module__", None) == runtime.__name__
+    ]
+    # Check all things declared in module's __all__, falling back to runtime_public_contents
+    to_check.update(getattr(runtime, "__all__", runtime_public_contents))
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
-    # We currently don't check things in the module that aren't in the stub, other than things that
-    # are in __all__, to avoid false positives.
 
     for entry in sorted(to_check):
         yield from verify(
@@ -237,11 +244,13 @@ def verify_typeinfo(
         yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
         return
 
+    # Check everything already defined in the stub
     to_check = set(stub.names)
-    dunders_to_check = ("__init__", "__new__", "__call__")
-    # cast to workaround mypyc complaints
+    # There's a reasonable case to be made that we should always check all dunders, but it's
+    # currently quite noisy. We could turn this into a denylist instead of an allowlist.
     to_check.update(
-        m for m in cast(Any, vars)(runtime) if m in dunders_to_check or not m.startswith("_")
+        # cast to workaround mypyc complaints
+        m for m in cast(Any, vars)(runtime) if not m.startswith("_") or m in SPECIAL_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -258,8 +267,8 @@ def verify_typeinfo(
 def _verify_static_class_methods(
     stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
 ) -> Iterator[str]:
-    if stub.name == "__new__":
-        # Special cased by Python, so never declared as staticmethod
+    if stub.name in ("__new__", "__init_subclass__", "__class_getitem__"):
+        # Special cased by Python, so don't bother checking
         return
     if inspect.isbuiltin(runtime):
         # The isinstance checks don't work reliably for builtins, e.g. datetime.datetime.now, so do
@@ -296,8 +305,8 @@ def _verify_arg_name(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter, function_name: str
 ) -> Iterator[str]:
     """Checks whether argument names match."""
-    # Ignore exact names for all dunder methods other than __init__
-    if is_dunder(function_name, exclude_init=True):
+    # Ignore exact names for most dunder methods
+    if is_dunder(function_name, exclude_special=True):
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
@@ -461,8 +470,8 @@ class Signature(Generic[T]):
         lies it might try to tell.
 
         """
-        # For all dunder methods other than __init__, just assume all args are positional-only
-        assume_positional_only = is_dunder(stub.name, exclude_init=True)
+        # For most dunder methods, just assume all args are positional-only
+        assume_positional_only = is_dunder(stub.name, exclude_special=True)
 
         all_args = {}  # type: Dict[str, List[Tuple[nodes.Argument, int]]]
         for func in map(_resolve_funcitem_from_decorator, stub.items):
@@ -541,7 +550,7 @@ def _verify_signature(
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
-            and not is_dunder(function_name)  # noisy for dunder methods
+            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 'stub argument "{}" should be positional-only '
@@ -649,6 +658,13 @@ def verify_funcitem(
         # catch RuntimeError because of https://bugs.python.org/issue39504
         return
 
+    if stub.name in ("__init_subclass__", "__class_getitem__"):
+        # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
+        # should remove the cls argument
+        if stub.arguments[0].variable.name == "cls":
+            stub = copy.copy(stub)
+            stub.arguments = stub.arguments[1:]
+
     stub_sig = Signature.from_funcitem(stub)
     runtime_sig = Signature.from_inspect_signature(signature)
 
@@ -755,7 +771,7 @@ def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
         # It's enough like a property...
         return
     # Sometimes attributes pretend to be properties, for instance, to express that they
-    # are read only. So whitelist if runtime_type matches the return type of stub.
+    # are read only. So allowlist if runtime_type matches the return type of stub.
     runtime_type = get_mypy_type_of_runtime_value(runtime)
     func_type = (
         stub.func.type.ret_type if isinstance(stub.func.type, mypy.types.CallableType) else None
@@ -784,7 +800,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
     def apply_decorator_to_funcitem(
         decorator: nodes.Expression, func: nodes.FuncItem
     ) -> Optional[nodes.FuncItem]:
-        if not isinstance(decorator, nodes.NameExpr):
+        if not isinstance(decorator, nodes.RefExpr):
             return None
         if decorator.fullname is None:
             # Happens with namedtuple
@@ -839,13 +855,16 @@ def verify_typealias(
         yield None
 
 
-def is_dunder(name: str, exclude_init: bool = False) -> bool:
+SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
+
+
+def is_dunder(name: str, exclude_special: bool = False) -> bool:
     """Returns whether name is a dunder name.
 
-    :param exclude_init: Whether to return False for __init__
+    :param exclude_special: Whether to return False for a couple special dunder methods.
 
     """
-    if exclude_init and name == "__init__":
+    if exclude_special and name in SPECIAL_DUNDERS:
         return False
     return name.startswith("__") and name.endswith("__")
 
@@ -878,9 +897,56 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     if isinstance(runtime, property):
         # Give up on properties to avoid issues with things that are typed as attributes.
         return None
-    if isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType)):
-        # TODO: Construct a mypy.types.CallableType
-        return None
+
+    def anytype() -> mypy.types.AnyType:
+        return mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+
+    if isinstance(
+        runtime,
+        (types.FunctionType, types.BuiltinFunctionType,
+        types.MethodType, types.BuiltinMethodType)
+    ):
+        builtins = get_stub("builtins")
+        assert builtins is not None
+        type_info = builtins.names["function"].node
+        assert isinstance(type_info, nodes.TypeInfo)
+        fallback = mypy.types.Instance(type_info, [anytype()])
+        try:
+            signature = inspect.signature(runtime)
+            arg_types = []
+            arg_kinds = []
+            arg_names = []
+            for arg in signature.parameters.values():
+                arg_types.append(anytype())
+                arg_names.append(
+                    None if arg.kind == inspect.Parameter.POSITIONAL_ONLY else arg.name
+                )
+                has_default = arg.default == inspect.Parameter.empty
+                if arg.kind == inspect.Parameter.POSITIONAL_ONLY:
+                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                elif arg.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+                    arg_kinds.append(nodes.ARG_POS if has_default else nodes.ARG_OPT)
+                elif arg.kind == inspect.Parameter.KEYWORD_ONLY:
+                    arg_kinds.append(nodes.ARG_NAMED if has_default else nodes.ARG_NAMED_OPT)
+                elif arg.kind == inspect.Parameter.VAR_POSITIONAL:
+                    arg_kinds.append(nodes.ARG_STAR)
+                elif arg.kind == inspect.Parameter.VAR_KEYWORD:
+                    arg_kinds.append(nodes.ARG_STAR2)
+                else:
+                    raise AssertionError
+        except ValueError:
+            arg_types = [anytype(), anytype()]
+            arg_kinds = [nodes.ARG_STAR, nodes.ARG_STAR2]
+            arg_names = [None, None]
+
+        return mypy.types.CallableType(
+            arg_types,
+            arg_kinds,
+            arg_names,
+            ret_type=anytype(),
+            fallback=fallback,
+            is_ellipsis_args=True,
+        )
 
     # Try and look up a stub for the runtime object
     stub = get_stub(type(runtime).__module__)
@@ -894,9 +960,6 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return type_info.type
     if not isinstance(type_info, nodes.TypeInfo):
         return None
-
-    def anytype() -> mypy.types.AnyType:
-        return mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
 
     if isinstance(runtime, tuple):
         # Special case tuples so we construct a valid mypy.types.TupleType
@@ -1001,33 +1064,33 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     return sorted(modules)
 
 
-def get_whitelist_entries(whitelist_file: str) -> Iterator[str]:
+def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
     def strip_comments(s: str) -> str:
         try:
             return s[: s.index("#")].strip()
         except ValueError:
             return s.strip()
 
-    with open(whitelist_file) as f:
+    with open(allowlist_file) as f:
         for line in f.readlines():
             entry = strip_comments(line)
             if entry:
                 yield entry
 
 
-def test_stubs(args: argparse.Namespace) -> int:
+def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
-    # Load the whitelist. This is a series of strings corresponding to Error.object_desc
-    # Values in the dict will store whether we used the whitelist entry or not.
-    whitelist = {
+    # Load the allowlist. This is a series of strings corresponding to Error.object_desc
+    # Values in the dict will store whether we used the allowlist entry or not.
+    allowlist = {
         entry: False
-        for whitelist_file in args.whitelist
-        for entry in get_whitelist_entries(whitelist_file)
+        for allowlist_file in args.allowlist
+        for entry in get_allowlist_entries(allowlist_file)
     }
-    whitelist_regexes = {entry: re.compile(entry) for entry in whitelist}
+    allowlist_regexes = {entry: re.compile(entry) for entry in allowlist}
 
-    # If we need to generate a whitelist, we store Error.object_desc for each error here.
-    generated_whitelist = set()
+    # If we need to generate an allowlist, we store Error.object_desc for each error here.
+    generated_allowlist = set()
 
     modules = args.modules
     if args.check_typeshed:
@@ -1042,6 +1105,7 @@ def test_stubs(args: argparse.Namespace) -> int:
     options.incremental = False
     options.custom_typeshed_dir = args.custom_typeshed_dir
     options.config_file = args.mypy_config_file
+    options.use_builtins_fixtures = use_builtins_fixtures
 
     if options.config_file:
         def set_strict_flags() -> None:  # not needed yet
@@ -1061,37 +1125,37 @@ def test_stubs(args: argparse.Namespace) -> int:
                 continue
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
-            if error.object_desc in whitelist:
-                whitelist[error.object_desc] = True
+            if error.object_desc in allowlist:
+                allowlist[error.object_desc] = True
                 continue
-            is_whitelisted = False
-            for w in whitelist:
-                if whitelist_regexes[w].fullmatch(error.object_desc):
-                    whitelist[w] = True
-                    is_whitelisted = True
+            is_allowlisted = False
+            for w in allowlist:
+                if allowlist_regexes[w].fullmatch(error.object_desc):
+                    allowlist[w] = True
+                    is_allowlisted = True
                     break
-            if is_whitelisted:
+            if is_allowlisted:
                 continue
 
             # We have errors, so change exit code, and output whatever necessary
             exit_code = 1
-            if args.generate_whitelist:
-                generated_whitelist.add(error.object_desc)
+            if args.generate_allowlist:
+                generated_allowlist.add(error.object_desc)
                 continue
             print(error.get_description(concise=args.concise))
 
-    # Print unused whitelist entries
-    if not args.ignore_unused_whitelist:
-        for w in whitelist:
+    # Print unused allowlist entries
+    if not args.ignore_unused_allowlist:
+        for w in allowlist:
             # Don't consider an entry unused if it regex-matches the empty string
-            # This allows us to whitelist errors that don't manifest at all on some systems
-            if not whitelist[w] and not whitelist_regexes[w].fullmatch(""):
+            # This lets us allowlist errors that don't manifest at all on some systems
+            if not allowlist[w] and not allowlist_regexes[w].fullmatch(""):
                 exit_code = 1
-                print("note: unused whitelist entry {}".format(w))
+                print("note: unused allowlist entry {}".format(w))
 
-    # Print the generated whitelist
-    if args.generate_whitelist:
-        for e in sorted(generated_whitelist):
+    # Print the generated allowlist
+    if args.generate_allowlist:
+        for e in sorted(generated_allowlist):
             print(e)
         exit_code = 0
 
@@ -1121,24 +1185,27 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
     )
     parser.add_argument(
+        "--allowlist",
         "--whitelist",
         action="append",
         metavar="FILE",
         default=[],
         help=(
-            "Use file as a whitelist. Can be passed multiple times to combine multiple "
-            "whitelists. Whitelists can be created with --generate-whitelist"
+            "Use file as an allowlist. Can be passed multiple times to combine multiple "
+            "allowlists. Allowlists can be created with --generate-allowlist"
         ),
     )
     parser.add_argument(
+        "--generate-allowlist",
         "--generate-whitelist",
         action="store_true",
-        help="Print a whitelist (to stdout) to be used with --whitelist",
+        help="Print an allowlist (to stdout) to be used with --allowlist",
     )
     parser.add_argument(
+        "--ignore-unused-allowlist",
         "--ignore-unused-whitelist",
         action="store_true",
-        help="Ignore unused whitelist entries",
+        help="Ignore unused allowlist entries",
     )
     config_group = parser.add_argument_group(
         title='mypy config file',

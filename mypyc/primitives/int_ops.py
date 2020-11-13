@@ -10,7 +10,7 @@ from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, RType
+    str_rprimitive, bit_rprimitive, RType
 )
 from mypyc.primitives.registry import (
     load_address_op, c_unary_op, CFunctionDescription, c_function_op, c_binary_op, c_custom_op
@@ -84,10 +84,16 @@ def int_binary_op(name: str, c_function_name: str,
 int_binary_op('+', 'CPyTagged_Add')
 int_binary_op('-', 'CPyTagged_Subtract')
 int_binary_op('*', 'CPyTagged_Multiply')
+int_binary_op('&', 'CPyTagged_And')
+int_binary_op('|', 'CPyTagged_Or')
+int_binary_op('^', 'CPyTagged_Xor')
 # Divide and remainder we honestly propagate errors from because they
 # can raise ZeroDivisionError
 int_binary_op('//', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
+# Negative shift counts raise an exception
+int_binary_op('>>', 'CPyTagged_Rshift', error_kind=ERR_MAGIC)
+int_binary_op('<<', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 # This should work because assignment operators are parsed differently
 # and the code in irbuild that handles it does the assignment
@@ -95,8 +101,13 @@ int_binary_op('%', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
 int_binary_op('+=', 'CPyTagged_Add')
 int_binary_op('-=', 'CPyTagged_Subtract')
 int_binary_op('*=', 'CPyTagged_Multiply')
+int_binary_op('&=', 'CPyTagged_And')
+int_binary_op('|=', 'CPyTagged_Or')
+int_binary_op('^=', 'CPyTagged_Xor')
 int_binary_op('//=', 'CPyTagged_FloorDivide', error_kind=ERR_MAGIC)
 int_binary_op('%=', 'CPyTagged_Remainder', error_kind=ERR_MAGIC)
+int_binary_op('>>=', 'CPyTagged_Rshift', error_kind=ERR_MAGIC)
+int_binary_op('<<=', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
@@ -108,6 +119,7 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
+int_invert_op = int_unary_op('~', 'CPyTagged_Invert')
 
 # integer comparsion operation implementation related:
 
@@ -126,13 +138,13 @@ IntLogicalOpDescrption = NamedTuple(
 # description for equal operation on two boxed tagged integers
 int_equal_ = c_custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsEq_',
     error_kind=ERR_NEVER)
 
 int_less_than_ = c_custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsLt_',
     error_kind=ERR_NEVER)
 
