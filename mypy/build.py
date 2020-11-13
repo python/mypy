@@ -269,6 +269,7 @@ def _build(sources: List[BuildSource],
             reports.finish()
         if not cache_dir_existed and os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
+            exclude_from_backups(options.cache_dir)
 
 
 def default_data_dir() -> str:
@@ -1117,6 +1118,22 @@ def add_catch_all_gitignore(target_dir: str) -> None:
         pass
 
 
+def exclude_from_backups(target_dir: str) -> None:
+    """Exclude the directory from various archives and backups supporting CACHEDIR.TAG.
+
+    If the CACHEDIR.TAG file exists the function is a no-op.
+    """
+    cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
+    try:
+        with open(cachedir_tag, "x") as f:
+            f.write("""Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag automtically created by mypy.
+# For information about cache directory tags see https://bford.info/cachedir/
+""")
+    except FileExistsError:
+        pass
+
+
 def create_metastore(options: Options) -> MetadataStore:
     """Create the appropriate metadata store."""
     if options.sqlite_cache:
@@ -1699,6 +1716,7 @@ class State:
     order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
+    abspath = None  # type: Optional[str]  # Absolute path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
     source_hash = None  # type: Optional[str]  # Hash calculated based on the source code
@@ -1800,6 +1818,8 @@ class State:
             if follow_imports == 'silent':
                 self.ignore_all = True
         self.path = path
+        if path:
+            self.abspath = os.path.abspath(path)
         self.xpath = path or '<string>'
         if path and source is None and self.manager.fscache.isdir(path):
             source = ''
@@ -2521,36 +2541,24 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           severity='note', only_once=True)
 
 
-def log_configuration(manager: BuildManager) -> None:
+def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
     manager.log()
     configuration_vars = [
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
-    ]
-
-    src_pth_str = "Source Path"
-    src_pths = list(manager.source_set.source_paths.copy())
-    src_pths.sort()
-
-    if len(src_pths) > 1:
-        src_pth_str += "s"
-        configuration_vars.append((src_pth_str, " ".join(src_pths)))
-    elif len(src_pths) == 1:
-        configuration_vars.append((src_pth_str, src_pths.pop()))
-    else:
-        configuration_vars.append((src_pth_str, "None"))
-
-    configuration_vars.extend([
         ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
-    ])
+    ]
 
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
+
+    for source in sources:
+        manager.log("{:24}{}".format("Found source:", source))
 
     # Complete list of searched paths can get very long, put them under TRACE
     for path_type, paths in manager.search_paths._asdict().items():
@@ -2571,7 +2579,7 @@ def dispatch(sources: List[BuildSource],
              manager: BuildManager,
              stdout: TextIO,
              ) -> Graph:
-    log_configuration(manager)
+    log_configuration(manager, sources)
 
     t0 = time.time()
     graph = load_graph(sources, manager)
@@ -2758,7 +2766,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
 
     # Note: Running this each time could be slow in the daemon. If it's a problem, we
     # can do more work to maintain this incrementally.
-    seen_files = {st.path: st for st in graph.values() if st.path}
+    seen_files = {st.abspath: st for st in graph.values() if st.path}
 
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
@@ -2805,16 +2813,18 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     if dep in st.dependencies_set:
                         st.suppress_dependency(dep)
                 else:
-                    if newst.path in seen_files:
-                        manager.errors.report(
-                            -1, 0,
-                            "Source file found twice under different module names: '{}' and '{}'".
-                            format(seen_files[newst.path].id, newst.id),
-                            blocker=True)
-                        manager.errors.raise_error()
-
                     if newst.path:
-                        seen_files[newst.path] = newst
+                        newst_path = os.path.abspath(newst.path)
+
+                        if newst_path in seen_files:
+                            manager.errors.report(
+                                -1, 0,
+                                "Source file found twice under different module names: "
+                                "'{}' and '{}'".format(seen_files[newst_path].id, newst.id),
+                                blocker=True)
+                            manager.errors.raise_error()
+
+                        seen_files[newst_path] = newst
 
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst

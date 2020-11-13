@@ -37,6 +37,12 @@ class int:
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
+    def __invert__(self) -> int: pass
+    def __and__(self, n: int) -> int: pass
+    def __or__(self, n: int) -> int: pass
+    def __xor__(self, n: int) -> int: pass
+    def __lshift__(self, x: int) -> int: pass
+    def __rshift__(self, x: int) -> int: pass
     def __eq__(self, n: object) -> bool: pass
     def __ne__(self, n: object) -> bool: pass
     def __lt__(self, n: int) -> bool: pass
@@ -45,6 +51,9 @@ class int:
     def __ge__(self, n: int) -> bool: pass
 
 class str:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object) -> None: pass
     def __add__(self, x: str) -> str: pass
     def __eq__(self, x: object) -> bool: pass
@@ -53,7 +62,10 @@ class str:
     def __le__(self, x: str) -> bool: ...
     def __gt__(self, x: str) -> bool: ...
     def __ge__(self, x: str) -> bool: ...
+    @overload
     def __getitem__(self, i: int) -> str: pass
+    @overload
+    def __getitem__(self, i: slice) -> str: pass
     def __contains__(self, item: str) -> bool: pass
     def __iter__(self) -> Iterator[str]: ...
     def split(self, sep: Optional[str] = None, max: Optional[int] = None) -> List[str]: pass
@@ -61,6 +73,8 @@ class str:
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
     def upper(self) -> str: pass
+    def startswith(self, x: str, start: int=..., end: int=...) -> bool: pass
+    def endswith(self, x: str, start: int=..., end: int=...) -> bool: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -68,6 +82,7 @@ class float:
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __neg__(self) -> float: pass
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -83,13 +98,27 @@ class bytes:
     def __ne__(self, x: object) -> bool: pass
     def join(self, x: Iterable[object]) -> bytes: pass
 
-class bool:
+class bool(int):
     def __init__(self, o: object = ...) -> None: ...
-
+    @overload
+    def __and__(self, n: bool) -> bool: ...
+    @overload
+    def __and__(self, n: int) -> int: ...
+    @overload
+    def __or__(self, n: bool) -> bool: ...
+    @overload
+    def __or__(self, n: int) -> int: ...
+    @overload
+    def __xor__(self, n: bool) -> bool: ...
+    @overload
+    def __xor__(self, n: int) -> int: ...
 
 class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __init__(self, i: Iterable[T_co]) -> None: pass
+    @overload
     def __getitem__(self, i: int) -> T_co: pass
+    @overload
+    def __getitem__(self, i: slice) -> Tuple[T_co, ...]: pass
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[T_co]: ...
     def __contains__(self, item: object) -> int: ...
@@ -222,6 +251,8 @@ def enumerate(x: Iterable[T]) -> Iterator[Tuple[int, T]]: ...
 def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 @overload
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
+def eval(e: str) -> Any: ...
+def abs(x: float) -> float: ...
 
 # Dummy definitions.
 class classmethod: pass

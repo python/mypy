@@ -2536,3 +2536,41 @@ class EmptyProto(Protocol): ...
 def hh(h: EmptyProto) -> None: pass
 hh(None)
 [builtins fixtures/tuple.pyi]
+
+
+[case testPartialTypeProtocol]
+from typing import Protocol
+
+class Flapper(Protocol):
+    def flap(self) -> int: ...
+
+class Blooper:
+    flap = None
+
+    def bloop(self, x: Flapper) -> None:
+        reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
+
+class Gleemer:
+    flap = []  # E: Need type annotation for 'flap' (hint: "flap: List[<type>] = ...")
+
+    def gleem(self, x: Flapper) -> None:
+        reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
+[builtins fixtures/tuple.pyi]
+
+
+[case testPartialTypeProtocolHashable]
+# flags: --no-strict-optional
+from typing import Protocol
+
+class Hashable(Protocol):
+    def __hash__(self) -> int: ...
+
+class ObjectHashable:
+    def __hash__(self) -> int: ...
+
+class DataArray(ObjectHashable):
+    __hash__ = None
+
+    def f(self, x: Hashable) -> None:
+        reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
+[builtins fixtures/tuple.pyi]

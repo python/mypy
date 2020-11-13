@@ -49,7 +49,7 @@ class B(A):
     def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                               # N: This violates the Liskov substitution principle \
                                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides \
-                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str" 
+                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
 
 class C(A):
     def f(self, foo: int, bar: str) -> None: pass
@@ -247,6 +247,16 @@ if int():
     o = f
 
 class A: pass
+[builtins fixtures/tuple.pyi]
+
+[case testReturnEmptyTuple]
+from typing import Tuple
+def f(x): # type: (int) -> () # E: Syntax error in type annotation \
+                              # N: Suggestion: Use Tuple[()] instead of () for an empty tuple, or None for a function without a return value
+   pass
+
+def g(x: int) -> Tuple[()]:
+   pass
 [builtins fixtures/tuple.pyi]
 
 [case testFunctionSubtypingWithVoid]

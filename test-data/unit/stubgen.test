@@ -1577,7 +1577,7 @@ else:
     import cookielib
 
 [out]
-import FIXME as cookielib
+import cookielib as cookielib
 
 [case testCannotCalculateMRO_semanal]
 class X: pass
@@ -2177,3 +2177,114 @@ from collections import namedtuple
 
 class C:
     N = namedtuple('N', ['x', 'y'])
+
+[case testImports_directImportsWithAlias]
+import p.a as a
+import p.b as b
+
+x: a.X
+y: b.Y
+
+[out]
+import p.a as a
+import p.b as b
+
+x: a.X
+y: b.Y
+
+[case testImports_directImportsMixed]
+import p.a
+import p.a as a
+import p.b as b
+
+x: a.X
+y: b.Y
+z: p.a.X
+
+[out]
+import p.a as a
+import p.b as b
+import p.a
+
+x: a.X
+y: b.Y
+z: p.a.X
+
+[case testImport_overwrites_directWithAlias_from]
+import p.a as a
+from p import a
+
+x: a.X
+
+[out]
+from p import a as a
+
+x: a.X
+
+[case testImport_overwrites_directWithAlias_fromWithAlias]
+import p.a as a
+from p import b as a
+
+x: a.X
+
+[out]
+from p import b as a
+
+x: a.X
+
+[case testImports_overwrites_direct_from]
+import a
+from p import a
+
+x: a.X
+
+[out]
+from p import a as a
+
+x: a.X
+
+[case testImports_overwrites_direct_fromWithAlias]
+import a
+from p import b as a
+
+x: a.X
+
+[out]
+from p import b as a
+
+x: a.X
+
+[case testImports_overwrites_from_directWithAlias]
+from p import a
+import p.a as a
+
+x: a.X
+
+[out]
+import p.a as a
+
+x: a.X
+
+[case testImports_overwrites_fromWithAlias_direct]
+import a
+from p import b as a
+
+x: a.X
+
+[out]
+from p import b as a
+
+x: a.X
+
+[case testImports_direct]
+import p.a
+import pp
+
+x: a.X
+y: p.a.Y
+
+[out]
+import p.a
+
+x: a.X
+y: p.a.Y

@@ -771,3 +771,18 @@ def f(**x: int) -> None:
 f(**1)  # type: ignore[arg-type]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testRedundantExpressions]
+# flags: --enable-error-code redundant-expr
+def foo() -> bool: ...
+
+lst = [1, 2, 3, 4]
+
+b = False or foo()                       # E: Left operand of 'or' is always false  [redundant-expr]
+c = True and foo()                       # E: Left operand of 'and' is always true  [redundant-expr]
+g = 3 if True else 4                     # E: If condition is always true  [redundant-expr]
+h = 3 if False else 4                    # E: If condition is always false  [redundant-expr]
+i = [x for x in lst if True]             # E: If condition in comprehension is always true  [redundant-expr]
+j = [x for x in lst if False]            # E: If condition in comprehension is always false  [redundant-expr]
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]

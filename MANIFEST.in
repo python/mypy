@@ -1,23 +1,44 @@
-recursive-include scripts *
-recursive-include test-data *
-recursive-include extensions *
-recursive-include docs *
-recursive-include misc proper_plugin.py
-recursive-include mypy/typeshed *.py *.pyi
-recursive-include mypy/xml *.xsd *.xslt *.css
-recursive-include mypyc/lib-rt *.c *.h *.tmpl *.py *.cc
-recursive-include mypyc/ir *.py
-recursive-include mypyc/codegen *.py
-recursive-include mypyc/irbuild *.py
-recursive-include mypyc/primitives *.py
-recursive-include mypyc/transform *.py
-recursive-include mypyc/external *.cc *.h Makefile *.pump LICENSE README
-recursive-include mypyc/test *.py
-recursive-include mypyc/test-data *.test
-recursive-include mypyc/test-data/fixtures *.py *.pyi
-recursive-include mypyc/doc *.rst *.py *.md Makefile *.bat
+# some of the prunes here are so that check-manifest doesn't complain about their exclusion
+# as such, be judicious in your use of prune
+
+# stubs
+prune mypy/typeshed
+recursive-include mypy/typeshed *.pyi
+
+# mypy and mypyc
+include mypy/py.typed
+recursive-include mypy *.py
+recursive-include mypyc *.py
+
+# random
 include mypy_bootstrap.ini
+graft mypy/xml
+graft scripts
+
+# docs
+graft docs
+prune docs/build
+prune docs/source/_build
+
+# assorted mypyc requirements
+graft mypyc/external
+graft mypyc/lib-rt
+graft mypyc/test-data
+graft mypyc/doc
+
+# files necessary for testing sdist
+include mypy-requirements.txt
+include test-requirements.txt
 include mypy_self_check.ini
-include LICENSE
+prune misc
+include misc/proper_plugin.py
+graft test-data
+include conftest.py
 include runtests.py
 include pytest.ini
+
+include LICENSE mypyc/README.md
+exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md tox.ini
+
+global-exclude *.py[cod]
+global-exclude .DS_Store

@@ -377,11 +377,6 @@ main:1: error: can't assign to literal
 [out]
 main:1: error: can't assign to literal
 
-[case testInvalidLvalues5]
-() = 1
-[out]
-main:1: error: can't assign to ()
-
 [case testInvalidLvalues6]
 x = y = z = 1  # ok
 x, (y, 1) = 1

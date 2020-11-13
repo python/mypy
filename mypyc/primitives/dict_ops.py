@@ -1,14 +1,14 @@
 """Primitive dict ops."""
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER, ERR_NEG_INT
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
     list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive,
-    c_int_rprimitive
+    c_int_rprimitive, bit_rprimitive
 )
 
 from mypyc.primitives.registry import (
-    c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op
+    c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op, ERR_NEG_INT
 )
 
 # Get the 'dict' type object.
@@ -203,7 +203,7 @@ dict_next_item_op = c_custom_op(
 # check that len(dict) == const during iteration
 dict_check_size_op = c_custom_op(
     arg_types=[dict_rprimitive, int_rprimitive],
-    return_type=bool_rprimitive,
+    return_type=bit_rprimitive,
     c_function_name='CPyDict_CheckSize',
     error_kind=ERR_FALSE)
 

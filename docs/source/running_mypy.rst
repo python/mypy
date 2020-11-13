@@ -133,9 +133,8 @@ follow the import.
 
 This can cause errors that look like the following::
 
-    main.py:1: error: No library stub file for standard library module 'antigravity'
-    main.py:2: error: Skipping analyzing 'django': found module but no type hints or library stubs
-    main.py:3: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
+    main.py:1: error: Skipping analyzing 'django': found module but no type hints or library stubs
+    main.py:2: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
 
 If you get any of these errors on an import, mypy will assume the type of that
 module is ``Any``, the dynamic type. This means attempting to access any
@@ -149,27 +148,7 @@ attribute of the module will automatically succeed:
     # But this type checks, and x will have type 'Any'
     x = does_not_exist.foobar()
 
-The next three sections describe what each error means and recommended next steps.
-
-Missing type hints for standard library module
-----------------------------------------------
-
-If you are getting a "No library stub file for standard library module" error,
-this means that you are attempting to import something from the standard library
-which has not yet been annotated with type hints. In this case, try:
-
-1.  Updating mypy and re-running it. It's possible type hints for that corner
-    of the standard library were added in a newer version of mypy.
-
-2.  Filing a bug report or submitting a pull request to
-    `typeshed <https://github.com/python/typeshed>`_, the repository of type hints
-    for the standard library that comes bundled with mypy.
-
-    Changes to typeshed will come bundled with mypy the next time it's released.
-    In the meantime, you can add a ``# type: ignore`` to the import to suppress
-    the errors generated on that line. After upgrading, run mypy with the
-    :option:`--warn-unused-ignores <mypy --warn-unused-ignores>` flag to help you
-    find any ``# type: ignore`` annotations you no longer need.
+The next sections describe what each error means and recommended next steps.
 
 .. _missing-type-hints-for-third-party-library:
 
@@ -275,8 +254,8 @@ this error, try:
     how you're invoking mypy accordingly.
 
 3.  Directly specifying the directory containing the module you want to
-    type check from the command line, by using the :confval:`files` or
-    :confval:`mypy_path` config file options,
+    type check from the command line, by using the :confval:`mypy_path`
+    or :confval:`files` config file options,
     or by using the ``MYPYPATH`` environment variable.
 
     Note: if the module you are trying to import is actually a *submodule* of

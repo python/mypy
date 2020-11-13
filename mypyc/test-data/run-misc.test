@@ -26,29 +26,6 @@ loop = asyncio.get_event_loop()
 result = loop.run_until_complete(f())
 assert result == 1
 
-[case testTrue]
-def f() -> bool:
-    return True
-[file driver.py]
-from native import f
-print(f())
-[out]
-True
-
-[case testBoolIf]
-def f(x: bool) -> bool:
-    if x:
-        return False
-    else:
-        return True
-[file driver.py]
-from native import f
-print(f(True))
-print(f(False))
-[out]
-False
-True
-
 [case testMaybeUninitVar]
 class C:
     def __init__(self, x: int) -> None:

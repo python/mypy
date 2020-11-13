@@ -17,14 +17,14 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple, is_dict_rprimitive, short_int_rprimitive
+    RTuple, is_dict_rprimitive, short_int_rprimitive, int_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
@@ -87,7 +87,7 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
-    list_ops = builder.primitive_op(new_list_op, [], gen.line)
+    list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:
@@ -517,7 +517,7 @@ class ForDictionaryCommon(ForGenerator):
 
         should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
         builder.add(
-            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
+            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL)
         )
 
     def gen_step(self) -> None:
@@ -605,7 +605,11 @@ class ForRange(ForGenerator):
         self.end_reg = end_reg
         self.step = step
         self.end_target = builder.maybe_spill(end_reg)
-        index_reg = builder.alloc_temp(start_reg.type)
+        if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
+            index_type = short_int_rprimitive
+        else:
+            index_type = int_rprimitive
+        index_reg = builder.alloc_temp(index_type)
         builder.assign(index_reg, start_reg, -1)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.

@@ -1059,7 +1059,7 @@ class B(A):
         return 10
 
 # This is just to make sure that this stuff works even when the
-# methods might be overriden.
+# methods might be overridden.
 class C(B):
     @classmethod
     def foo(cls, *, y: int = 0, x: int = 0) -> None:

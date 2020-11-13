@@ -28,9 +28,6 @@ MYPYC_RUN_MULTI = 'TestRunMultiFile'
 MYPYC_EXTERNAL = 'TestExternal'
 MYPYC_COMMAND_LINE = 'TestCommandLine'
 ERROR_STREAM = 'ErrorStreamSuite'
-STUBTEST = 'StubtestUnit'
-STUBTEST_MISC = 'StubtestMiscUnit'
-STUBTEST_INTEGRATION = 'StubtestIntegration'
 
 
 ALL_NON_FAST = [
@@ -47,18 +44,11 @@ ALL_NON_FAST = [
     MYPYC_EXTERNAL,
     MYPYC_COMMAND_LINE,
     ERROR_STREAM,
-    STUBTEST,
-    STUBTEST_MISC,
-    STUBTEST_INTEGRATION,
 ]
 
 
 # These must be enabled by explicitly including 'mypyc-extra' on the command line.
-MYPYC_OPT_IN = [MYPYC_RUN,
-                MYPYC_RUN_MULTI]
-
-# These must be enabled by explicitly including 'stubtest' on the command line.
-STUBTEST_OPT_IN = [STUBTEST, STUBTEST_MISC, STUBTEST_INTEGRATION]
+MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
@@ -84,16 +74,17 @@ cmds = {
          MYPYC_EXTERNAL,
          MYPYC_COMMAND_LINE,
          ERROR_STREAM]),
+    # Test cases to run in typeshed CI
+    'typeshed-ci': 'pytest -k "%s"' % ' or '.join([CMDLINE, EVALUATION, SAMPLES, TYPESHED]),
     # Mypyc tests that aren't run by default, since they are slow and rarely
     # fail for commits that don't touch mypyc
     'mypyc-extra': 'pytest -k "%s"' % ' or '.join(MYPYC_OPT_IN),
-    'stubtest': 'pytest -k "%s"' % ' or '.join(STUBTEST_OPT_IN),
 }
 
 # Stop run immediately if these commands fail
 FAST_FAIL = ['self', 'lint']
 
-DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd != 'mypyc-extra']
+DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in ('mypyc-extra', 'typeshed-ci')]
 
 assert all(cmd in cmds for cmd in FAST_FAIL)
 

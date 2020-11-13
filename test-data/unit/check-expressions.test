@@ -2803,3 +2803,10 @@ def f() -> int:  # E: Missing return statement
     x: int
     assert isinstance(x, int), '...'
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeVarAsValue]
+from typing import TypeVar
+T = TypeVar("T")
+x: int
+x + T  # E: Unsupported operand types for + ("int" and "object")
+T()  # E: "object" not callable

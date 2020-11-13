@@ -256,7 +256,7 @@ type. Then, you can discriminate between each kind of TypedDict by checking the 
             print(event["job_id"])
 
 While this feature is mostly useful when working with TypedDicts, you can also
-use the same technique wih regular objects, tuples, or namedtuples.
+use the same technique with regular objects, tuples, or namedtuples.
 
 Similarly, tags do not need to be specifically str Literals: they can be any type
 you can normally narrow within ``if`` statements and the like. For example, you

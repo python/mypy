@@ -4,29 +4,34 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Callable, cast
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
+    AssignmentExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
-from mypy.types import TupleType, get_proper_type
+from mypy.types import TupleType, get_proper_type, Instance
 
+from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, BasicBlock, OpDescription, Assign, LoadAddress
+    Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
-from mypyc.ir.rtypes import RTuple, object_rprimitive, is_none_rprimitive, is_int_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+)
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
-from mypyc.primitives.list_ops import new_list_op, list_append_op, list_extend_op
-from mypyc.primitives.tuple_ops import list_tuple_op
+from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
+from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
+from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
@@ -323,13 +328,57 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base = builder.accept(expr.base)
+    index = expr.index
 
-    if isinstance(base.type, RTuple) and isinstance(expr.index, IntExpr):
-        return builder.add(TupleGet(base, expr.index.value, expr.line))
+    if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
+        return builder.add(TupleGet(base, index.value, expr.line))
+
+    if isinstance(index, SliceExpr):
+        value = try_gen_slice_op(builder, base, index)
+        if value:
+            return value
 
     index_reg = builder.accept(expr.index)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
+
+
+def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optional[Value]:
+    """Generate specialized slice op for some index expressions.
+
+    Return None if a specialized op isn't available.
+
+    This supports obj[x:y], obj[:x], and obj[x:] for a few types.
+    """
+    if index.stride:
+        # We can only handle the default stride of 1.
+        return None
+
+    if index.begin_index:
+        begin_type = builder.node_type(index.begin_index)
+    else:
+        begin_type = int_rprimitive
+    if index.end_index:
+        end_type = builder.node_type(index.end_index)
+    else:
+        end_type = int_rprimitive
+
+    # Both begin and end index must be int (or missing).
+    if is_int_rprimitive(begin_type) and is_int_rprimitive(end_type):
+        if index.begin_index:
+            begin = builder.accept(index.begin_index)
+        else:
+            begin = builder.load_static_int(0)
+        if index.end_index:
+            end = builder.accept(index.end_index)
+        else:
+            # Replace missing end index with the largest short integer
+            # (a sequence can't be longer).
+            end = builder.load_static_int(MAX_SHORT_INT)
+        candidates = [list_slice_op, tuple_slice_op, str_slice_op]
+        return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
+
+    return None
 
 
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
@@ -358,8 +407,56 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 
 
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
-    # TODO: Don't produce an expression when used in conditional context
+    # x in (...)/[...]
+    # x not in (...)/[...]
+    if (e.operators[0] in ['in', 'not in']
+            and len(e.operators) == 1
+            and isinstance(e.operands[1], (TupleExpr, ListExpr))):
+        items = e.operands[1].items
+        n_items = len(items)
+        # x in y -> x == y[0] or ... or x == y[n]
+        # x not in y -> x != y[0] and ... and x != y[n]
+        # 16 is arbitrarily chosen to limit code size
+        if 1 < n_items < 16:
+            if e.operators[0] == 'in':
+                bin_op = 'or'
+                cmp_op = '=='
+            else:
+                bin_op = 'and'
+                cmp_op = '!='
+            lhs = e.operands[0]
+            mypy_file = builder.graph['builtins'].tree
+            assert mypy_file is not None
+            bool_type = Instance(cast(TypeInfo, mypy_file.names['bool'].node), [])
+            exprs = []
+            for item in items:
+                expr = ComparisonExpr([cmp_op], [lhs, item])
+                builder.types[expr] = bool_type
+                exprs.append(expr)
 
+            or_expr = exprs.pop(0)  # type: Expression
+            for expr in exprs:
+                or_expr = OpExpr(bin_op, or_expr, expr)
+                builder.types[or_expr] = bool_type
+            return builder.accept(or_expr)
+        # x in [y]/(y) -> x == y
+        # x not in [y]/(y) -> x != y
+        elif n_items == 1:
+            if e.operators[0] == 'in':
+                cmp_op = '=='
+            else:
+                cmp_op = '!='
+            e.operators = [cmp_op]
+            e.operands[1] = items[0]
+        # x in []/() -> False
+        # x not in []/() -> True
+        elif n_items == 0:
+            if e.operators[0] == 'in':
+                return builder.false()
+            else:
+                return builder.true()
+
+    # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
     # `e1 < e2 and e2 > e3` except that `e2` is only evaluated once.
@@ -443,10 +540,11 @@ def _visit_list_display(builder: IRBuilder, items: List[Expression], line: int) 
     return _visit_display(
         builder,
         items,
-        new_list_op,
+        builder.new_list_op,
         list_append_op,
         list_extend_op,
-        line
+        line,
+        True
     )
 
 
@@ -490,19 +588,21 @@ def transform_set_expr(builder: IRBuilder, expr: SetExpr) -> Value:
     return _visit_display(
         builder,
         expr.items,
-        new_set_op,
+        builder.new_set_op,
         set_add_op,
         set_update_op,
-        expr.line
+        expr.line,
+        False
     )
 
 
 def _visit_display(builder: IRBuilder,
                    items: List[Expression],
-                   constructor_op: OpDescription,
+                   constructor_op: Callable[[List[Value], int], Value],
                    append_op: CFunctionDescription,
                    extend_op: CFunctionDescription,
-                   line: int
+                   line: int,
+                   is_list: bool
                    ) -> Value:
     accepted_items = []
     for item in items:
@@ -514,17 +614,17 @@ def _visit_display(builder: IRBuilder,
     result = None  # type: Union[Value, None]
     initial_items = []
     for starred, value in accepted_items:
-        if result is None and not starred and constructor_op.is_var_arg:
+        if result is None and not starred and is_list:
             initial_items.append(value)
             continue
 
         if result is None:
-            result = builder.primitive_op(constructor_op, initial_items, line)
+            result = constructor_op(initial_items, line)
 
         builder.call_c(extend_op if starred else append_op, [result, value], line)
 
     if result is None:
-        result = builder.primitive_op(constructor_op, initial_items, line)
+        result = constructor_op(initial_items, line)
 
     return result
 
@@ -538,7 +638,7 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
     gen = o.generator
-    set_ops = builder.primitive_op(new_set_op, [], o.line)
+    set_ops = builder.call_c(new_set_op, [], o.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 
     def gen_inner_stmts() -> None:
@@ -583,3 +683,10 @@ def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line
     )
+
+
+def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
+    value = builder.accept(o.value)
+    target = builder.get_assignment_target(o.target)
+    builder.assign(target, value, o.line)
+    return value

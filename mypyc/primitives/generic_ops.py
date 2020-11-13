@@ -9,12 +9,12 @@ will take precedence. If your specialized op doesn't seem to be used,
 check that the priorities are configured properly.
 """
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_NEG_INT
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
 from mypyc.ir.rtypes import (
     object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive
 )
 from mypyc.primitives.registry import (
-    c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op
+    c_binary_op, c_unary_op, c_method_op, c_function_op, c_custom_op, ERR_NEG_INT
 )
 
 

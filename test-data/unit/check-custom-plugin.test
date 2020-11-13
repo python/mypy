@@ -721,3 +721,12 @@ Cls().attr = "foo"  # E: Incompatible types in assignment (expression has type "
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/descriptor.py
+
+[case testFunctionSigPluginFile]
+# flags: --config-file tmp/mypy.ini
+
+def dynamic_signature(arg1: str) -> str: ...
+reveal_type(dynamic_signature(1))  # N: Revealed type is 'builtins.int'
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py

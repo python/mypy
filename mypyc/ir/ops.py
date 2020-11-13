@@ -12,7 +12,7 @@ can hold various things:
 
 from abc import abstractmethod
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
+    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple,
     Union, Iterable, Set
 )
 from mypy.ordered_dict import OrderedDict
@@ -25,7 +25,8 @@ from mypy.nodes import SymbolNode
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
-    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive
+    short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
+    bit_rprimitive, is_bit_rprimitive
 )
 from mypyc.common import short_name
 
@@ -300,10 +301,8 @@ ERR_NEVER = 0  # type: Final
 ERR_MAGIC = 1  # type: Final
 # Generates false (bool) on exception
 ERR_FALSE = 2  # type: Final
-# Generates negative integer on exception
-ERR_NEG_INT = 3  # type: Final
 # Always fails
-ERR_ALWAYS = 4  # type: Final
+ERR_ALWAYS = 3  # type: Final
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -416,20 +415,25 @@ class Goto(ControlOp):
 
 
 class Branch(ControlOp):
-    """if [not] r1 goto 1 else goto 2"""
+    """Branch based on a value.
+
+    If op is BOOL, branch based on a bit/bool value:
+       if [not] r1 goto L1 else goto L2
+
+    If op is IS_ERROR, branch based on whether there is an error value:
+       if [not] is_error(r1) goto L1 else goto L2
+    """
 
     # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
     # exception, it needs to split into two opcodes and only the first one may fail.
     error_kind = ERR_NEVER
 
-    BOOL_EXPR = 100  # type: Final
+    BOOL = 100  # type: Final
     IS_ERROR = 101  # type: Final
-    NEG_INT_EXPR = 102  # type: Final
 
     op_names = {
-        BOOL_EXPR: ('%r', 'bool'),
+        BOOL: ('%r', 'bool'),
         IS_ERROR: ('is_error(%r)', ''),
-        NEG_INT_EXPR: ('%r < 0', ''),
     }  # type: Final
 
     def __init__(self,
@@ -445,7 +449,7 @@ class Branch(ControlOp):
         self.left = left
         self.true = true_label
         self.false = false_label
-        # BOOL_EXPR (boolean check) or IS_ERROR (error value check)
+        # BOOL (boolean check) or IS_ERROR (error value check)
         self.op = op
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
@@ -567,7 +571,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease referece count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref r).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -689,83 +693,8 @@ class EmitterInterface:
         raise NotImplementedError
 
 
-EmitCallback = Callable[[EmitterInterface, List[str], str], None]
-
 # True steals all arguments, False steals none, a list steals those in matching positions
 StealsDescription = Union[bool, List[bool]]
-
-# Description of a primitive operation
-OpDescription = NamedTuple(
-    'OpDescription', [('name', str),
-                      ('arg_types', List[RType]),
-                      ('result_type', Optional[RType]),
-                      ('is_var_arg', bool),
-                      ('error_kind', int),
-                      ('format_str', str),
-                      ('emit', EmitCallback),
-                      ('steals', StealsDescription),
-                      ('is_borrowed', bool),
-                      ('priority', int)])  # To resolve ambiguities, highest priority wins
-
-
-class PrimitiveOp(RegisterOp):
-    """reg = op(reg, ...)
-
-    These are register-based primitive operations that work on specific
-    operand types.
-
-    The details of the operation are defined by the 'desc'
-    attribute. The modules under mypyc.primitives define the supported
-    operations. mypyc.irbuild uses the descriptions to look for suitable
-    primitive ops.
-    """
-
-    def __init__(self,
-                 args: List[Value],
-                 desc: OpDescription,
-                 line: int) -> None:
-        if not desc.is_var_arg:
-            assert len(args) == len(desc.arg_types)
-        self.error_kind = desc.error_kind
-        super().__init__(line)
-        self.args = args
-        self.desc = desc
-        if desc.result_type is None:
-            assert desc.error_kind == ERR_FALSE  # TODO: No-value ops not supported yet
-            self.type = bool_rprimitive
-        else:
-            self.type = desc.result_type
-
-        self.is_borrowed = desc.is_borrowed
-
-    def sources(self) -> List[Value]:
-        return list(self.args)
-
-    def stolen(self) -> List[Value]:
-        if isinstance(self.desc.steals, list):
-            assert len(self.desc.steals) == len(self.args)
-            return [arg for arg, steal in zip(self.args, self.desc.steals) if steal]
-        else:
-            return [] if not self.desc.steals else self.sources()
-
-    def __repr__(self) -> str:
-        return '<PrimitiveOp name=%r args=%s>' % (self.desc.name,
-                                                  self.args)
-
-    def to_str(self, env: Environment) -> str:
-        params = {}  # type: Dict[str, Any]
-        if not self.is_void:
-            params['dest'] = env.format('%r', self)
-        args = [env.format('%r', arg) for arg in self.args]
-        params['args'] = args
-        params['comma_args'] = ', '.join(args)
-        params['colon_args'] = ', '.join(
-            '{}: {}'.format(k, v) for k, v in zip(args[::2], args[1::2])
-        )
-        return self.desc.format_str.format(**params).strip()
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_primitive_op(self)
 
 
 class Assign(Op):
@@ -1073,7 +1002,9 @@ class Box(RegisterOp):
         self.src = src
         self.type = object_rprimitive
         # When we box None and bool values, we produce a borrowed result
-        if is_none_rprimitive(self.src.type) or is_bool_rprimitive(self.src.type):
+        if (is_none_rprimitive(self.src.type)
+                or is_bool_rprimitive(self.src.type)
+                or is_bit_rprimitive(self.src.type)):
             self.is_borrowed = True
 
     def sources(self) -> List[Value]:
@@ -1315,12 +1246,20 @@ class BinaryIntOp(RegisterOp):
 
 
 class ComparisonOp(RegisterOp):
-    """Comparison ops
+    """Low-level comparison op.
 
-    The result type will always be boolean.
+    Both unsigned and signed comparisons are supported.
 
-    Support comparison between integer types and pointer types
+    The operands are assumed to be fixed-width integers/pointers. Python
+    semantics, such as calling __eq__, are not supported.
+
+    The result is always a bit.
+
+    Supports comparisons between fixed-width integer types and pointer
+    types.
     """
+    # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
+    # indicates that an exception has been raised and should be propagated.
     error_kind = ERR_NEVER
 
     # S for signed and U for unsigned
@@ -1350,7 +1289,7 @@ class ComparisonOp(RegisterOp):
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
-        self.type = bool_rprimitive
+        self.type = bit_rprimitive
         self.lhs = lhs
         self.rhs = rhs
         self.op = op
@@ -1396,6 +1335,7 @@ class LoadMem(RegisterOp):
         assert is_pointer_rprimitive(src.type)
         self.src = src
         self.base = base
+        self.is_borrowed = True
 
     def sources(self) -> List[Value]:
         if self.base:
@@ -1433,12 +1373,13 @@ class SetMem(Op):
 
     def __init__(self,
                  type: RType,
-                 dest: Register,
+                 dest: Value,
                  src: Value,
                  base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
-        self.type = type
+        self.type = void_rtype
+        self.dest_type = type
         self.src = src
         self.dest = dest
         self.base = base
@@ -1457,7 +1398,7 @@ class SetMem(Op):
             base = env.format(', %r', self.base)
         else:
             base = ''
-        return env.format("%r = set_mem %r%s :: %r*", self.dest, self.src, base, self.type)
+        return env.format("set_mem %r, %r%s :: %r*", self.dest, self.src, base, self.dest_type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_set_mem(self)
@@ -1486,19 +1427,34 @@ class GetElementPtr(RegisterOp):
 
 
 class LoadAddress(RegisterOp):
+    """Get the address of a value
+
+    ret = (type)&src
+
+    Attributes:
+      type: Type of the loaded address(e.g. ptr/object_ptr)
+      src: Source value, str for named constants like 'PyList_Type',
+           Register for temporary values
+    """
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: str, line: int = -1) -> None:
+    def __init__(self, type: RType, src: Union[str, Register], line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         self.src = src
 
     def sources(self) -> List[Value]:
-        return []
+        if isinstance(self.src, Register):
+            return [self.src]
+        else:
+            return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format("%r = load_address %s", self, self.src)
+        if isinstance(self.src, Register):
+            return env.format("%r = load_address %r", self, self.src)
+        else:
+            return env.format("%r = load_address %s", self, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_address(self)
@@ -1522,10 +1478,6 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_unreachable(self, op: Unreachable) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_primitive_op(self, op: PrimitiveOp) -> T:
         raise NotImplementedError
 
     @abstractmethod

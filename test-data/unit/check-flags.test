@@ -1078,6 +1078,15 @@ always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
+[case testDisableErrorCodeConfigFile]
+# flags: --config-file tmp/mypy.ini --disallow-untyped-defs
+import foo
+def bar():
+    pass
+[file mypy.ini]
+\[mypy]
+disable_error_code = import, no-untyped-def
+
 [case testCheckDisallowAnyGenericsNamedTuple]
 # flags: --disallow-any-generics
 from typing import NamedTuple
@@ -1210,7 +1219,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import a
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1224,7 +1233,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportStarConsideredImplicit]
 # flags: --no-implicit-reexport
@@ -1234,7 +1243,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import *
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
 
 [case testNoImplicitReexportStarCanBeReexportedWithAll]
 # flags: --no-implicit-reexport
@@ -1248,7 +1257,19 @@ from other_module_1 import *
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+
+[case textNoImplicitReexportSuggestions]
+# flags: --no-implicit-reexport
+from other_module_2 import attr_1
+
+[file other_module_1.py]
+attr_1 = 5
+attr_2 = 6
+[file other_module_2.py]
+from other_module_1 import attr_1, attr_2
+[out]
+main:2: error: Module 'other_module_2' does not explicitly export attribute 'attr_1'; implicit reexport disabled
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1575,3 +1596,12 @@ def bad_return_type() -> str:
     return None  # E: Incompatible return value type (got "None", expected "str")  [return-value]
 
 bad_return_type('no args taken!')
+
+[case testDisallowUntypedCallsArgType]
+# flags: --disallow-untyped-calls
+def f(x):
+    pass
+
+y = 1
+f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
+                  # N: Revealed type is 'builtins.int'

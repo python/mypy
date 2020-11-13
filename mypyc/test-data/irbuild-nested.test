@@ -36,7 +36,7 @@ def second() -> str:
 [out]
 def inner_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -71,7 +71,7 @@ L0:
     return r4
 def second_b_first_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -97,7 +97,7 @@ L0:
     return r3
 def first_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -142,7 +142,7 @@ L0:
     return r4
 def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -181,7 +181,7 @@ L0:
     return r4
 def inner_d_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -276,7 +276,7 @@ def c(flag: bool) -> str:
 [out]
 def inner_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -318,7 +318,7 @@ L0:
     return r7
 def inner_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -364,7 +364,7 @@ L0:
     return r9
 def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -388,7 +388,7 @@ L0:
     return r2
 def inner_c_obj_0.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -450,7 +450,7 @@ def a() -> int:
 [out]
 def c_a_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -476,7 +476,7 @@ L0:
     return r3
 def b_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -545,7 +545,7 @@ def f(flag: bool) -> str:
 [out]
 def inner_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -569,7 +569,7 @@ L0:
     return r2
 def inner_f_obj_0.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -638,7 +638,7 @@ def f(a: int) -> int:
 [out]
 def foo_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -663,7 +663,7 @@ L0:
     return r3
 def bar_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -689,7 +689,7 @@ L0:
     return r4
 def baz_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -705,37 +705,25 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     n :: int
     r0 :: __main__.f_env
     r1, baz :: object
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6 :: bool
-    r7 :: int
-    r8, r9 :: object
-    r10, r11 :: int
+    r2 :: bit
+    r3 :: int
+    r4, r5 :: object
+    r6, r7 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.baz
     baz = r1
-    r3 = n & 1
-    r4 = r3 == 0
-    if r4 goto L1 else goto L2 :: bool
+    r2 = n == 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r5 = n == 0
-    r2 = r5
-    goto L3
-L2:
-    r6 = CPyTagged_IsEq_(n, 0)
-    r2 = r6
-L3:
-    if r2 goto L4 else goto L5 :: bool
-L4:
     return 0
-L5:
-    r7 = CPyTagged_Subtract(n, 2)
-    r8 = box(int, r7)
-    r9 = PyObject_CallFunctionObjArgs(baz, r8, 0)
-    r10 = unbox(int, r9)
-    r11 = CPyTagged_Add(n, r10)
-    return r11
+L2:
+    r3 = CPyTagged_Subtract(n, 2)
+    r4 = box(int, r3)
+    r5 = PyObject_CallFunctionObjArgs(baz, r4, 0)
+    r6 = unbox(int, r5)
+    r7 = CPyTagged_Add(n, r6)
+    return r7
 def f(a):
     a :: int
     r0 :: __main__.f_env
@@ -782,7 +770,7 @@ def f(x: int, y: int) -> None:
 [out]
 def __mypyc_lambda__0_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -804,7 +792,7 @@ L0:
     return r1
 def __mypyc_lambda__1_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -859,28 +847,16 @@ def baz(n: int) -> int:
 [out]
 def baz(n):
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
-    r5, r6, r7 :: int
+    r0 :: bit
+    r1, r2, r3 :: int
 L0:
-    r1 = n & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = n == 0
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r3 = n == 0
-    r0 = r3
-    goto L3
-L2:
-    r4 = CPyTagged_IsEq_(n, 0)
-    r0 = r4
-L3:
-    if r0 goto L4 else goto L5 :: bool
-L4:
     return 0
-L5:
-    r5 = CPyTagged_Subtract(n, 2)
-    r6 = baz(r5)
-    r7 = CPyTagged_Add(n, r6)
-    return r7
+L2:
+    r1 = CPyTagged_Subtract(n, 2)
+    r2 = baz(r1)
+    r3 = CPyTagged_Add(n, r2)
+    return r3
 
