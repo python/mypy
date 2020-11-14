@@ -206,7 +206,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     patches = None  # type: List[Tuple[int, Callable[[], None]]]
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
-    is_stub_file = False   # Are we analyzing a stub file?
+    _is_stub_file = False   # Are we analyzing a stub file?
     _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     # Note: some imports (and therefore dependencies) might
@@ -280,6 +280,10 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
+    @property
+    def is_stub_file(self) -> bool:
+        return self._is_stub_file
+
     @property
     def is_typeshed_stub_file(self) -> bool:
         return self._is_typeshed_stub_file
@@ -507,7 +511,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname
         scope.enter_file(self.cur_mod_id)
-        self.is_stub_file = file_node.path.lower().endswith('.pyi')
+        self._is_stub_file = file_node.path.lower().endswith('.pyi')
         self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarLikeScope()

@@ -608,6 +608,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return StarType(self.anal_type(t.type), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
+        if (t.uses_pep604_syntax is True
+                and t.is_evaluated is True
+                and self.api.is_stub_file is False
+                and self.options.python_version < (3, 10)
+                and self.api.is_future_flag_set('annotations') is False):
+            self.fail("X | Y syntax for unions requires Python 3.10", t)
         return UnionType(self.anal_array(t.items), t.line)
 
     def visit_partial_type(self, t: PartialType) -> Type:
