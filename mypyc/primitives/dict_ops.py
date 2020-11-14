@@ -2,7 +2,7 @@
 
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
+    dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive, void_rtype,
     list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive,
     c_int_rprimitive, bit_rprimitive
 )
@@ -141,6 +141,14 @@ method_op(
     return_type=object_rprimitive,
     c_function_name='CPyDict_ItemsView',
     error_kind=ERR_MAGIC)
+
+# dict.clear()
+c_method_op(
+    name='clear',
+    arg_types=[dict_rprimitive],
+    return_type=void_rtype,
+    c_function_name='PyDict_Clear',
+    error_kind=ERR_NEVER)
 
 # list(dict.keys())
 dict_keys_op = custom_op(
