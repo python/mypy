@@ -5,11 +5,11 @@ from mypyc.ir.rtypes import (
     str_rprimitive, float_rprimitive
 )
 from mypyc.primitives.registry import (
-    c_function_op
+    function_op
 )
 
 # float(str)
-c_function_op(
+function_op(
     name='builtins.float',
     arg_types=[str_rprimitive],
     return_type=float_rprimitive,
@@ -17,7 +17,7 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # abs(float)
-c_function_op(
+function_op(
     name='builtins.abs',
     arg_types=[float_rprimitive],
     return_type=float_rprimitive,
