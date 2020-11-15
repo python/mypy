@@ -29,10 +29,10 @@ function_op(
 
 # str1 + str2
 binary_op(name='+',
-            arg_types=[str_rprimitive, str_rprimitive],
-            return_type=str_rprimitive,
-            c_function_name='PyUnicode_Concat',
-            error_kind=ERR_MAGIC)
+          arg_types=[str_rprimitive, str_rprimitive],
+          return_type=str_rprimitive,
+          c_function_name='PyUnicode_Concat',
+          error_kind=ERR_MAGIC)
 
 # str.join(obj)
 method_op(
@@ -91,11 +91,11 @@ for i in range(len(str_split_types)):
 # PyUnicodeAppend makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
 binary_op(name='+=',
-            arg_types=[str_rprimitive, str_rprimitive],
-            return_type=str_rprimitive,
-            c_function_name='CPyStr_Append',
-            error_kind=ERR_MAGIC,
-            steals=[True, False])
+          arg_types=[str_rprimitive, str_rprimitive],
+          return_type=str_rprimitive,
+          c_function_name='CPyStr_Append',
+          error_kind=ERR_MAGIC,
+          steals=[True, False])
 
 unicode_compare = custom_op(
     arg_types=[str_rprimitive, str_rprimitive],

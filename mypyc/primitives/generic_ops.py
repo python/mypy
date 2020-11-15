@@ -28,12 +28,12 @@ for op, opid in [('==', 2),   # PY_EQ
                  ('>=', 5)]:  # PY_GE
     # The result type is 'object' since that's what PyObject_RichCompare returns.
     binary_op(name=op,
-                arg_types=[object_rprimitive, object_rprimitive],
-                return_type=object_rprimitive,
-                c_function_name='PyObject_RichCompare',
-                error_kind=ERR_MAGIC,
-                extra_int_constants=[(opid, c_int_rprimitive)],
-                priority=0)
+              arg_types=[object_rprimitive, object_rprimitive],
+              return_type=object_rprimitive,
+              c_function_name='PyObject_RichCompare',
+              error_kind=ERR_MAGIC,
+              extra_int_constants=[(opid, c_int_rprimitive)],
+              priority=0)
 
 for op, funcname in [('+', 'PyNumber_Add'),
                      ('-', 'PyNumber_Subtract'),
@@ -47,11 +47,11 @@ for op, funcname in [('+', 'PyNumber_Add'),
                      ('^', 'PyNumber_Xor'),
                      ('|', 'PyNumber_Or')]:
     binary_op(name=op,
-                arg_types=[object_rprimitive, object_rprimitive],
-                return_type=object_rprimitive,
-                c_function_name=funcname,
-                error_kind=ERR_MAGIC,
-                priority=0)
+              arg_types=[object_rprimitive, object_rprimitive],
+              return_type=object_rprimitive,
+              c_function_name=funcname,
+              error_kind=ERR_MAGIC,
+              priority=0)
 
 for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
                      ('-=', 'PyNumber_InPlaceSubtract'),
@@ -66,18 +66,18 @@ for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
                      ('^=', 'PyNumber_InPlaceXor'),
                      ('|=', 'PyNumber_InPlaceOr')]:
     binary_op(name=op,
-                arg_types=[object_rprimitive, object_rprimitive],
-                return_type=object_rprimitive,
-                c_function_name=funcname,
-                error_kind=ERR_MAGIC,
-                priority=0)
+              arg_types=[object_rprimitive, object_rprimitive],
+              return_type=object_rprimitive,
+              c_function_name=funcname,
+              error_kind=ERR_MAGIC,
+              priority=0)
 
 binary_op(name='**',
-            arg_types=[object_rprimitive, object_rprimitive],
-            return_type=object_rprimitive,
-            error_kind=ERR_MAGIC,
-            c_function_name='CPyNumber_Power',
-            priority=0)
+          arg_types=[object_rprimitive, object_rprimitive],
+          return_type=object_rprimitive,
+          error_kind=ERR_MAGIC,
+          c_function_name='CPyNumber_Power',
+          priority=0)
 
 binary_op(
     name='in',
@@ -113,11 +113,11 @@ c_unary_op(
 
 # obj1[obj2]
 method_op(name='__getitem__',
-            arg_types=[object_rprimitive, object_rprimitive],
-            return_type=object_rprimitive,
-            c_function_name='PyObject_GetItem',
-            error_kind=ERR_MAGIC,
-            priority=0)
+          arg_types=[object_rprimitive, object_rprimitive],
+          return_type=object_rprimitive,
+          c_function_name='PyObject_GetItem',
+          error_kind=ERR_MAGIC,
+          priority=0)
 
 # obj1[obj2] = obj3
 method_op(
@@ -222,18 +222,18 @@ generic_len_op = custom_op(
 
 # iter(obj)
 iter_op = function_op(name='builtins.iter',
-                        arg_types=[object_rprimitive],
-                        return_type=object_rprimitive,
-                        c_function_name='PyObject_GetIter',
-                        error_kind=ERR_MAGIC)
+                      arg_types=[object_rprimitive],
+                      return_type=object_rprimitive,
+                      c_function_name='PyObject_GetIter',
+                      error_kind=ERR_MAGIC)
 # next(iterator)
 #
 # Although the error_kind is set to be ERR_NEVER, this can actually
 # return NULL, and thus it must be checked using Branch.IS_ERROR.
 next_op = custom_op(arg_types=[object_rprimitive],
-                      return_type=object_rprimitive,
-                      c_function_name='PyIter_Next',
-                      error_kind=ERR_NEVER)
+                    return_type=object_rprimitive,
+                    c_function_name='PyIter_Next',
+                    error_kind=ERR_NEVER)
 # next(iterator)
 #
 # Do a next, don't swallow StopIteration, but also don't propagate an
@@ -242,6 +242,6 @@ next_op = custom_op(arg_types=[object_rprimitive],
 # *explicitly* raised this will not swallow it.)
 # Can return NULL: see next_op.
 next_raw_op = custom_op(arg_types=[object_rprimitive],
-                          return_type=object_rprimitive,
-                          c_function_name='CPyIter_Next',
-                          error_kind=ERR_NEVER)
+                        return_type=object_rprimitive,
+                        c_function_name='CPyIter_Next',
+                        error_kind=ERR_NEVER)
