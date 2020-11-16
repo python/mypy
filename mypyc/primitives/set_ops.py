@@ -1,6 +1,6 @@
 """Primitive set (and frozenset) ops."""
 
-from mypyc.primitives.registry import c_function_op, c_method_op, c_binary_op, ERR_NEG_INT
+from mypyc.primitives.registry import function_op, method_op, binary_op, ERR_NEG_INT
 from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     object_rprimitive, bool_rprimitive, set_rprimitive, c_int_rprimitive, pointer_rprimitive,
@@ -9,7 +9,7 @@ from mypyc.ir.rtypes import (
 
 
 # Construct an empty set.
-new_set_op = c_function_op(
+new_set_op = function_op(
     name='builtins.set',
     arg_types=[],
     return_type=set_rprimitive,
@@ -18,7 +18,7 @@ new_set_op = c_function_op(
     extra_int_constants=[(0, pointer_rprimitive)])
 
 # set(obj)
-c_function_op(
+function_op(
     name='builtins.set',
     arg_types=[object_rprimitive],
     return_type=set_rprimitive,
@@ -26,7 +26,7 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # frozenset(obj)
-c_function_op(
+function_op(
     name='builtins.frozenset',
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,
@@ -34,7 +34,7 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # item in set
-c_binary_op(
+binary_op(
     name='in',
     arg_types=[object_rprimitive, set_rprimitive],
     return_type=c_int_rprimitive,
@@ -44,7 +44,7 @@ c_binary_op(
     ordering=[1, 0])
 
 # set.remove(obj)
-c_method_op(
+method_op(
     name='remove',
     arg_types=[set_rprimitive, object_rprimitive],
     return_type=bit_rprimitive,
@@ -52,7 +52,7 @@ c_method_op(
     error_kind=ERR_FALSE)
 
 # set.discard(obj)
-c_method_op(
+method_op(
     name='discard',
     arg_types=[set_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -60,7 +60,7 @@ c_method_op(
     error_kind=ERR_NEG_INT)
 
 # set.add(obj)
-set_add_op = c_method_op(
+set_add_op = method_op(
     name='add',
     arg_types=[set_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -70,7 +70,7 @@ set_add_op = c_method_op(
 # set.update(obj)
 #
 # This is not a public API but looks like it should be fine.
-set_update_op = c_method_op(
+set_update_op = method_op(
     name='update',
     arg_types=[set_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -78,7 +78,7 @@ set_update_op = c_method_op(
     error_kind=ERR_NEG_INT)
 
 # set.clear()
-c_method_op(
+method_op(
     name='clear',
     arg_types=[set_rprimitive],
     return_type=c_int_rprimitive,
@@ -86,7 +86,7 @@ c_method_op(
     error_kind=ERR_NEG_INT)
 
 # set.pop()
-c_method_op(
+method_op(
     name='pop',
     arg_types=[set_rprimitive],
     return_type=object_rprimitive,

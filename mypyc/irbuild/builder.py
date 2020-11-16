@@ -43,7 +43,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.registry import CFunctionDescription, c_function_ops
+from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
@@ -755,7 +755,7 @@ class IRBuilder:
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
-            call_c_ops_candidates = c_function_ops.get(callee.fullname, [])
+            call_c_ops_candidates = function_ops.get(callee.fullname, [])
             target = self.builder.matching_call_c(call_c_ops_candidates, arg_values,
                                                   expr.line, self.node_type(expr))
             if target:

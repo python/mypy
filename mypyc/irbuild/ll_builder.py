@@ -39,8 +39,8 @@ from mypyc.common import (
     STATIC_PREFIX, PLATFORM_SIZE
 )
 from mypyc.primitives.registry import (
-    c_method_call_ops, CFunctionDescription, c_function_ops,
-    c_binary_ops, c_unary_ops, ERR_NEG_INT
+    method_call_ops, CFunctionDescription, function_ops,
+    binary_ops, unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.list_ops import (
     list_extend_op, new_list_op
@@ -542,7 +542,7 @@ class LowLevelIRBuilder:
                 '&', '&=', '|', '|=', '^', '^='):
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
 
-        call_c_ops_candidates = c_binary_ops.get(op, [])
+        call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % op
         return target
@@ -749,7 +749,7 @@ class LowLevelIRBuilder:
                  line: int) -> Value:
         if (is_bool_rprimitive(lreg.type) or is_bit_rprimitive(lreg.type)) and expr_op == 'not':
             return self.unary_not(lreg, line)
-        call_c_ops_candidates = c_unary_ops.get(expr_op, [])
+        call_c_ops_candidates = unary_ops.get(expr_op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
         return target
@@ -813,7 +813,7 @@ class LowLevelIRBuilder:
                      args: List[Value],
                      fn_op: str,
                      line: int) -> Value:
-        call_c_ops_candidates = c_function_ops.get(fn_op, [])
+        call_c_ops_candidates = function_ops.get(fn_op, [])
         target = self.matching_call_c(call_c_ops_candidates, args, line)
         assert target, 'Unsupported builtin function: %s' % fn_op
         return target
@@ -1081,7 +1081,7 @@ class LowLevelIRBuilder:
 
         Return None if no translation found; otherwise return the target register.
         """
-        call_c_ops_candidates = c_method_call_ops.get(name, [])
+        call_c_ops_candidates = method_call_ops.get(name, [])
         call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args,
                                          line, result_type)
         return call_c_op
