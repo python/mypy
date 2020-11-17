@@ -1241,3 +1241,14 @@ class Thing: ...
 [out]
 Success: no issues found in 1 source file
 == Return code: 0
+
+[case testBlocker]
+# cmd: mypy pkg --error-summary --disable-error-code syntax
+[file pkg/x.py]
+public static void main(String[] args)
+[file pkg/y.py]
+x: str = 0
+[out]
+pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
