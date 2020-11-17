@@ -347,6 +347,7 @@ PyObject *CPyDict_ItemsView(PyObject *dict);
 PyObject *CPyDict_Keys(PyObject *dict);
 PyObject *CPyDict_Values(PyObject *dict);
 PyObject *CPyDict_Items(PyObject *dict);
+void CPyDict_Clear(PyObject *dict);
 PyObject *CPyDict_GetKeysIter(PyObject *dict);
 PyObject *CPyDict_GetItemsIter(PyObject *dict);
 PyObject *CPyDict_GetValuesIter(PyObject *dict);

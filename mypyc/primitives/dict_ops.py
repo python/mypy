@@ -143,11 +143,11 @@ method_op(
     error_kind=ERR_MAGIC)
 
 # dict.clear()
-c_method_op(
+method_op(
     name='clear',
     arg_types=[dict_rprimitive],
     return_type=void_rtype,
-    c_function_name='PyDict_Clear',
+    c_function_name='CPyDict_Clear',
     error_kind=ERR_NEVER)
 
 # list(dict.keys())

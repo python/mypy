@@ -321,5 +321,5 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
 L0:
-    PyDict_Clear(d)
+    CPyDict_Clear(d)
     return 1
