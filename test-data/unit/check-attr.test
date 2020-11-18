@@ -361,6 +361,46 @@ class A:
 a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/bool.pyi]
+[case testAttrsNextGenFrozen]
+from attr import frozen, field
+
+@frozen
+class A:
+    a = field()
+
+a = A(5)
+a.a = 16  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/bool.pyi]
+
+[case testAttrsNextGenDetect]
+from attr import define, field
+
+@define
+class A:
+    a = field()
+
+@define
+class B:
+    a: int
+
+@define
+class C:
+    a: int = field()
+    b = field()
+
+@define
+class D:
+    a: int
+    b = field()
+
+reveal_type(A)  # N: Revealed type is 'def (a: Any) -> __main__.A'
+reveal_type(B)  # N: Revealed type is 'def (a: builtins.int) -> __main__.B'
+reveal_type(C)  # N: Revealed type is 'def (a: builtins.int, b: Any) -> __main__.C'
+reveal_type(D)  # N: Revealed type is 'def (b: Any) -> __main__.D'
+
+[builtins fixtures/bool.pyi]
+
+
 
 [case testAttrsDataClass]
 import attr
