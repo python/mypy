@@ -1308,7 +1308,7 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
     result = []  # type: List[StubSource]
     typeshed_path = default_lib_path(mypy.build.default_data_dir(), pyversion, None)
     search_paths = SearchPaths(('.',) + tuple(search_path), (), (), tuple(typeshed_path))
-    cache = FindModuleCache(search_paths)
+    cache = FindModuleCache(search_paths, fscache=None, options=None)
     for module in modules:
         m_result = cache.find_module(module)
         if isinstance(m_result, ModuleNotFoundReason):

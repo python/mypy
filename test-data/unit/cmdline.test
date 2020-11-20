@@ -810,15 +810,24 @@ def bar(a: int, b: int) -> str:
 src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
 
 [case testNestedPEP420Packages]
-# cmd: mypy -p bottles --namespace-packages
-[file bottles/jars/secret/glitter.py]
+# cmd: mypy -p pkg --namespace-packages
+[file pkg/a1/b/c/d/e.py]
 x = 0  # type: str
-[file bottles/jars/sprinkle.py]
-from bottles.jars.secret.glitter import x
+[file pkg/a1/b/f.py]
+from pkg.a1.b.c.d.e import x
+x + 1
+
+[file pkg/a2/__init__.py]
+[file pkg/a2/b/c/d/e.py]
+x = 0  # type: str
+[file pkg/a2/b/f.py]
+from pkg.a2.b.c.d.e import x
 x + 1
 [out]
-bottles/jars/secret/glitter.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-bottles/jars/sprinkle.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py

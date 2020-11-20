@@ -999,7 +999,9 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     """
     data_dir = mypy.build.default_data_dir()
     search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
-    find_module_cache = mypy.modulefinder.FindModuleCache(search_path)
+    find_module_cache = mypy.modulefinder.FindModuleCache(
+        search_path, fscache=None, options=options
+    )
 
     all_modules = []
     sources = []
