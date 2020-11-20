@@ -148,7 +148,7 @@ method_op(
     arg_types=[dict_rprimitive],
     return_type=void_rtype,
     c_function_name='CPyDict_Clear',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_MAGIC)
 
 # list(dict.keys())
 dict_keys_op = custom_op(
