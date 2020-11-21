@@ -110,7 +110,7 @@ method_op(
     name='insert',
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
     return_type=int_rprimitive,
-    c_function_name='PyList_Insert',
+    c_function_name='CPyList_Insert',
     error_kind=ERR_MAGIC)
 
 # list * int

@@ -246,5 +246,5 @@ def f(x, y):
     r1 :: int
 L0:
     r0 = box(int, y)
-    r1 = PyList_Insert(x, 0, r0)
+    r1 = CPyList_Insert(x, 0, r0)
     return 1
