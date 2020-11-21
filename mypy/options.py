@@ -88,6 +88,7 @@ class Options:
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
         self.namespace_packages = False
+        self.explicit_package_bases = False
 
         # disallow_any options
         self.disallow_any_generics = False
