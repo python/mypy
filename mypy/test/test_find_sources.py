@@ -1,13 +1,14 @@
 from mypy.modulefinder import BuildSource
 import os
-from typing import Any, List, Optional, Set, Tuple, cast
+from typing import List, Optional, Set, Tuple
 from unittest import TestCase
 from mypy.find_sources import SourceFinder
+from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
 
 
-class _FakeFSCache:
+class FakeFSCache(FileSystemCache):
     def __init__(self, files: Set[str]) -> None:
         assert all(os.path.isabs(f) for f in files)
         self.files = files
@@ -27,9 +28,6 @@ class _FakeFSCache:
 
     def init_under_package_root(self, file: str) -> bool:
         return False
-
-
-FakeFSCache = cast(Any, _FakeFSCache)
 
 
 def normalise_build_source_list(sources: List[BuildSource]) -> List[Tuple[str, Optional[str]]]:

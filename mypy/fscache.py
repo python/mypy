@@ -32,8 +32,10 @@ import os
 import stat
 from typing import Dict, List, Set
 from mypy.util import hash_digest
+from mypy_extensions import mypyc_attr
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)  # for tests
 class FileSystemCache:
     def __init__(self) -> None:
         # The package root is not flushed with the caches.
