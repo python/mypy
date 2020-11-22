@@ -361,7 +361,7 @@ class FindModuleCache:
         module_path = self.find_module(module)
         if isinstance(module_path, ModuleNotFoundReason):
             return []
-        result = [BuildSource(module_path, module, None)]
+        sources = [BuildSource(module_path, module, None)]
 
         package_path = None
         if module_path.endswith(('__init__.py', '__init__.pyi')):
@@ -369,7 +369,7 @@ class FindModuleCache:
         elif self.fscache.isdir(module_path):
             package_path = module_path
         if package_path is None:
-            return result
+            return sources
 
         # This logic closely mirrors that in find_sources. One small but important difference is
         # that we do not sort names with keyfunc. The recursive call to find_modules_recursive
@@ -382,16 +382,16 @@ class FindModuleCache:
             # Skip certain names altogether
             if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
                 continue
-            path = os.path.join(package_path, name)
+            subpath = os.path.join(package_path, name)
 
-            if self.fscache.isdir(path):
+            if self.fscache.isdir(subpath):
                 # Only recurse into packages
                 if (self.options and self.options.namespace_packages) or (
-                    self.fscache.isfile(os.path.join(path, "__init__.py"))
-                    or self.fscache.isfile(os.path.join(path, "__init__.pyi"))
+                    self.fscache.isfile(os.path.join(subpath, "__init__.py"))
+                    or self.fscache.isfile(os.path.join(subpath, "__init__.pyi"))
                 ):
                     seen.add(name)
-                    result.extend(self.find_modules_recursive(module + '.' + name))
+                    sources.extend(self.find_modules_recursive(module + '.' + name))
             else:
                 stem, suffix = os.path.splitext(name)
                 if stem == '__init__':
@@ -400,8 +400,8 @@ class FindModuleCache:
                     # (If we sorted names) we could probably just make the BuildSource ourselves,
                     # but this ensures compatibility with find_module / the cache
                     seen.add(stem)
-                    result.extend(self.find_modules_recursive(module + '.' + stem))
-        return result
+                    sources.extend(self.find_modules_recursive(module + '.' + stem))
+        return sources
 
 
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:
