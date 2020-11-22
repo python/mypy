@@ -131,13 +131,13 @@ class SourceFinder:
         parent, filename = os.path.split(path)
 
         module_name = strip_py(filename) or filename
-        if not module_name.isidentifier():
-            return module_name, parent
 
         parent_module, base_dir = self.crawl_up_dir(parent)
         if module_name == "__init__":
             return parent_module, base_dir
 
+        # Note that module_name might not actually be a valid identifier, but that's okay
+        # Ignoring this possibility sidesteps some search path confusion
         module = module_join(parent_module, module_name)
         return module, base_dir
 
