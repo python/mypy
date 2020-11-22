@@ -108,7 +108,7 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
     return list_count((PyListObject *)obj, value);
 }
 
-CPyTagged CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
+int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
 {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
