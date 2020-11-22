@@ -96,9 +96,10 @@ from collections import defaultdict
 d = {'a': 1, 'b': 2}
 d.clear()
 assert d == {}
-d = defaultdict(int)
-d.clear()
-assert d == {}
+dd: Dict[str, int] = defaultdict(int)
+dd['a'] = 1
+dd.clear()
+assert dd == {}
 [typing fixtures/typing-full.pyi]
 
 [case testDictIterationMethodsRun]
