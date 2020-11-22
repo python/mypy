@@ -243,8 +243,10 @@ def f(x, y):
     x :: list
     y :: int
     r0 :: object
-    r1 :: int
+    r1 :: int32
+    r2 :: bit
 L0:
     r0 = box(int, y)
     r1 = CPyList_Insert(x, 0, r0)
+    r2 = r1 >= 0 :: signed
     return 1

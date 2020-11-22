@@ -109,7 +109,7 @@ method_op(
 method_op(
     name='insert',
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
-    return_type=int_rprimitive,
+    return_type=c_int_rprimitive,
     c_function_name='CPyList_Insert',
     error_kind=ERR_NEG_INT)
 
