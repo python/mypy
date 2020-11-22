@@ -320,6 +320,7 @@ def f(d: Dict[int, int]) -> None:
 [out]
 def f(d):
     d :: dict
+    r0 :: bit
 L0:
-    CPyDict_Clear(d)
+    r0 = CPyDict_Clear(d)
     return 1
