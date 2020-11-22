@@ -2396,7 +2396,7 @@ def find_module_and_diagnose(manager: BuildManager,
                 and not options.use_builtins_fixtures
                 and not options.custom_typeshed_dir):
             raise CompileError([
-                'mypy: "%s" shadows library module "%s"' % (result, id),
+                'mypy: "%s" shadows library module "%s"' % (os.path.relpath(result), id),
                 'note: A user-defined top-level module with name "%s" is not supported' % id
             ])
         return (result, follow_imports)
