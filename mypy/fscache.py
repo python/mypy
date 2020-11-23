@@ -114,6 +114,8 @@ class FileSystemCache:
                 return False
         ok = False
         drive, path = os.path.splitdrive(path)  # Ignore Windows drive name
+        if os.path.isabs(path):
+            path = os.path.relpath(path)
         path = os.path.normpath(path)
         for root in self.package_root:
             if path.startswith(root):

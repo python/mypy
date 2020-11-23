@@ -974,6 +974,10 @@ def process_package_roots(fscache: Optional[FileSystemCache],
     assert fscache is not None  # Since mypy doesn't know parser.error() raises.
     # Do some stuff with drive letters to make Windows happy (esp. tests).
     current_drive, _ = os.path.splitdrive(os.getcwd())
+    dot = os.curdir
+    dotslash = os.curdir + os.sep
+    dotdotslash = os.pardir + os.sep
+    trivial_paths = {dot, dotslash}
     package_root = []
     for root in options.package_root:
         if os.path.isabs(root):
@@ -982,13 +986,14 @@ def process_package_roots(fscache: Optional[FileSystemCache],
         if drive and drive != current_drive:
             parser.error("Package root must be on current drive: %r" % (drive + root))
         # Empty package root is always okay.
-        if not root:
-            root = os.curdir
-        if os.path.relpath(root).split(os.sep)[0] == os.pardir:
-            parser.error("Package root cannot be above current directory: %r" % root)
-        root = os.path.normpath(os.path.abspath(root))
-        if not root.endswith(os.sep):
-            root += os.sep
+        if root:
+            root = os.path.relpath(root)  # Normalize the heck out of it.
+            if not root.endswith(os.sep):
+                root = root + os.sep
+            if root.startswith(dotdotslash):
+                parser.error("Package root cannot be above current directory: %r" % root)
+            if root in trivial_paths:
+                root = ''
         package_root.append(root)
     options.package_root = package_root
     # Pass the package root on the the filesystem cache.
