@@ -195,8 +195,11 @@ class FuncIR:
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)
 
-    def __str__(self) -> str:
-        return '\n'.join(format_func(self))
+    def __repr__(self) -> str:
+        if self.class_name:
+            return '<FuncIR {}.{}>'.format(self.class_name, self.name)
+        else:
+            return '<FuncIR {}>'.format(self.name)
 
     def serialize(self) -> JsonDict:
         # We don't include blocks or env in the serialized version
