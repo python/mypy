@@ -313,7 +313,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []
         self.declarations.fragments = []
-        self.env.temp_index = 0
         if isinstance(op, RegisterOp):
             self.env.add_op(op)
         op.accept(self.visitor)
@@ -373,7 +372,6 @@ class TestGenerateFunction(unittest.TestCase):
             result, msg='Generated code invalid')
 
     def test_register(self) -> None:
-        self.env.temp_index = 0
         op = LoadInt(5)
         self.block.ops.append(op)
         self.env.add_op(op)

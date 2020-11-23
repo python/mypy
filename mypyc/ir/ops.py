@@ -76,9 +76,6 @@ class AssignmentTargetRegister(AssignmentTarget):
         self.register = register
         self.type = register.type
 
-    def to_str(self, env: 'Environment') -> str:
-        return self.register.name
-
 
 class AssignmentTargetIndex(AssignmentTarget):
     """base[index] as assignment target"""
@@ -89,9 +86,6 @@ class AssignmentTargetIndex(AssignmentTarget):
         # TODO: This won't be right for user-defined classes. Store the
         #       lvalue type in mypy and remove this special case.
         self.type = object_rprimitive
-
-    def to_str(self, env: 'Environment') -> str:
-        return '{}[{}]'.format(self.base.name, self.index.name)
 
 
 class AssignmentTargetAttr(AssignmentTarget):
@@ -109,9 +103,6 @@ class AssignmentTargetAttr(AssignmentTarget):
             self.obj_type = object_rprimitive
             self.type = object_rprimitive
 
-    def to_str(self, env: 'Environment') -> str:
-        return '{}.{}'.format(self.obj.to_str(env), self.attr)
-
 
 class AssignmentTargetTuple(AssignmentTarget):
     """x, ..., y as assignment target"""
@@ -123,9 +114,6 @@ class AssignmentTargetTuple(AssignmentTarget):
         # The shouldn't be relevant, but provide it just in case.
         self.type = object_rprimitive
 
-    def to_str(self, env: 'Environment') -> str:
-        return '({})'.format(', '.join(item.to_str(env) for item in self.items))
-
 
 class Environment:
     """Maintain the register symbol table and manage temp generation"""
@@ -133,28 +121,13 @@ class Environment:
     def __init__(self) -> None:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
-        self.temp_index = 0
-        self.temp_load_int_idx = 0
-        # All names genereted; value is the number of duplicates seen.
-        self.names = {}  # type: Dict[str, int]
         self.vars_needing_init = set()  # type: Set[Value]
 
     def regs(self) -> Iterable['Value']:
         return self.indexes.keys()
 
-    def add(self, reg: 'Value', name: str) -> None:
-        # Ensure uniqueness of variable names in this environment.
-        # This is needed for things like list comprehensions, which are their own scope--
-        # if we don't do this and two comprehensions use the same variable, we'd try to
-        # declare that variable twice.
-        unique_name = name
-        while unique_name in self.names:
-            unique_name = name + str(self.names[name])
-            self.names[name] += 1
-        self.names[unique_name] = 0
-        reg.name = unique_name
-
-        self.indexes[reg] = len(self.indexes)
+    def add(self, value: 'Value') -> None:
+        self.indexes[value] = len(self.indexes)
 
     def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
         """Add register that represents a symbol to the symbol table.
@@ -163,9 +136,9 @@ class Environment:
             is_arg: is this a function argument
         """
         assert isinstance(symbol, SymbolNode)
-        reg = Register(typ, symbol.line, is_arg=is_arg)
+        reg = Register(typ, symbol.line, is_arg=is_arg, name=symbol.name)
         self.symtable[symbol] = AssignmentTargetRegister(reg)
-        self.add(reg, symbol.name)
+        self.add(reg)
         return reg
 
     def add_local_reg(self, symbol: SymbolNode,
@@ -187,37 +160,14 @@ class Environment:
         """Add register that contains a temporary value with the given type."""
         assert isinstance(typ, RType)
         reg = Register(typ)
-        self.add(reg, 'r%d' % self.temp_index)
-        self.temp_index += 1
+        self.add(reg)
         return reg
 
     def add_op(self, reg: 'RegisterOp') -> None:
         """Record the value of an operation."""
         if reg.is_void:
             return
-        if isinstance(reg, LoadInt):
-            self.add(reg, "i%d" % self.temp_load_int_idx)
-            self.temp_load_int_idx += 1
-            return
-        self.add(reg, 'r%d' % self.temp_index)
-        self.temp_index += 1
-
-    def to_lines(self, const_regs: Optional[Dict[str, int]] = None) -> List[str]:
-        result = []
-        i = 0
-        regs = list(self.regs())
-        if const_regs is None:
-            const_regs = {}
-        regs = [reg for reg in regs if reg.name not in const_regs]
-        while i < len(regs):
-            i0 = i
-            group = [regs[i0].name]
-            while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
-                i += 1
-                group.append(regs[i].name)
-            i += 1
-            result.append('%s :: %s' % (', '.join(group), regs[i0].type))
-        return result
+        self.add(reg)
 
 
 class BasicBlock:
@@ -312,7 +262,7 @@ class Op(Value):
     """Abstract base class for all operations (as opposed to values)."""
 
     def __init__(self, line: int) -> None:
-        super().__init__(line)
+        self.line = line
 
     def can_raise(self) -> bool:
         # Override this is if Op may raise an exception. Note that currently the fact that

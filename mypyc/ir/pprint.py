@@ -1,13 +1,18 @@
+import re
+
 from typing_extensions import Final
 
+from mypyc.common import short_name
 from mypyc.ir.ops import (
     Goto, Branch, Return, Unreachable, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, BinaryIntOp, ComparisonOp, LoadMem, SetMem,
-    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock
+    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, Environment
 )
-from mypyc.common import short_name
+from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.module_ir import ModuleIR, ModuleIRs
 from mypyc.ir.rtypes import is_bool_rprimitive, is_int_rprimitive
+from mypyc.ir.const_int import find_constant_integer_registers
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -209,3 +214,87 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             else:
                 i = n
         return ''.join(result)
+
+
+def env_to_lines(env: Environment, const_regs: Optional[Dict[str, int]] = None) -> List[str]:
+    result = []
+    i = 0
+    regs = list(env.regs())
+    if const_regs is None:
+        const_regs = {}
+    regs = [reg for reg in regs if reg.name not in const_regs]
+    while i < len(regs):
+        i0 = i
+        group = [regs[i0].name]
+        while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
+            i += 1
+            group.append(regs[i].name)
+        i += 1
+        result.append('%s :: %s' % (', '.join(group), regs[i0].type))
+    return result
+
+
+def format_blocks(blocks: List[BasicBlock],
+                  env: Environment,
+                  const_regs: Dict[str, int]) -> List[str]:
+    """Format a list of IR basic blocks into a human-readable form."""
+    # First label all of the blocks
+    for i, block in enumerate(blocks):
+        block.label = i
+
+    handler_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
+    for b in blocks:
+        if b.error_handler:
+            handler_map.setdefault(b.error_handler, []).append(b)
+
+    lines = []
+    for i, block in enumerate(blocks):
+        i == len(blocks) - 1
+
+        handler_msg = ''
+        if block in handler_map:
+            labels = sorted(env.format('%l', b.label) for b in handler_map[block])
+            handler_msg = ' (handler for {})'.format(', '.join(labels))
+
+        lines.append(env.format('%l:%s', block.label, handler_msg))
+        ops = block.ops
+        if (isinstance(ops[-1], Goto) and i + 1 < len(blocks)
+                and ops[-1].label == blocks[i + 1]):
+            # Hide the last goto if it just goes to the next basic block.
+            ops = ops[:-1]
+        # load int registers start with 'i'
+        regex = re.compile(r'\bi[0-9]+\b')
+        for op in ops:
+            if op.name not in const_regs:
+                line = '    ' + op.to_str(env)
+                line = regex.sub(lambda i: str(const_regs[i.group()]) if i.group() in const_regs
+                                 else i.group(), line)
+                lines.append(line)
+
+        if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
+            # Each basic block needs to exit somewhere.
+            lines.append('    [MISSING BLOCK EXIT OPCODE]')
+    return lines
+
+
+def format_func(fn: FuncIR) -> List[str]:
+    lines = []
+    cls_prefix = fn.class_name + '.' if fn.class_name else ''
+    lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
+                                        ', '.join(arg.name for arg in fn.args)))
+    # compute constants
+    const_regs = find_constant_integer_registers(fn.blocks)
+    for line in fn.env.to_lines(const_regs):
+        lines.append('    ' + line)
+    code = format_blocks(fn.blocks, fn.env, const_regs)
+    lines.extend(code)
+    return lines
+
+
+def format_modules(modules: ModuleIRs) -> List[str]:
+    ops = []
+    for module in modules.values():
+        for fn in module.functions:
+            ops.extend(format_func(fn))
+            ops.append('')
+    return ops
