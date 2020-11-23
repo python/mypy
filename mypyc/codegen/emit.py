@@ -88,9 +88,13 @@ class EmitterContext:
 class Emitter:
     """Helper for C code generation."""
 
-    def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
+    def __init__(self,
+                 context: EmitterContext,
+                 env: Optional[Environment] = None,
+                 value_names: Optional[Dict[Value, str]] = None) -> None:
         self.context = context
         self.names = context.names
+        self.value_names = value_names or {}
         self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
@@ -108,7 +112,7 @@ class Emitter:
         return 'CPyL%s' % label.label
 
     def reg(self, reg: Value) -> str:
-        return REG_PREFIX + reg.name
+        return REG_PREFIX + self.value_names[reg]
 
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name

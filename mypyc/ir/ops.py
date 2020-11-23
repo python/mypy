@@ -12,8 +12,7 @@ can hold various things:
 
 from abc import abstractmethod
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple,
-    Union, Iterable, Set
+    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union, Iterable, Set
 )
 from mypy.ordered_dict import OrderedDict
 
@@ -28,7 +27,6 @@ from mypyc.ir.rtypes import (
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
     bit_rprimitive, is_bit_rprimitive
 )
-from mypyc.common import short_name
 
 if TYPE_CHECKING:
     from mypyc.ir.class_ir import ClassIR  # noqa

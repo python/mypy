@@ -21,6 +21,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.const_int import find_constant_integer_registers
+from mypyc.ir.pprint import generate_names_for_env
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -54,7 +55,8 @@ def generate_native_function(fn: FuncIR,
     else:
         const_int_regs = {}
     declarations = Emitter(emitter.context, fn.env)
-    body = Emitter(emitter.context, fn.env)
+    names = generate_names_for_env(fn.env)
+    body = Emitter(emitter.context, fn.env, names)
     visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
@@ -69,11 +71,11 @@ def generate_native_function(fn: FuncIR,
         init = ''
         if r in fn.env.vars_needing_init:
             init = ' = {}'.format(declarations.c_error_value(r.type))
-        if r.name not in const_int_regs:
+        if r not in const_int_regs:
             declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
-                                                                        prefix=REG_PREFIX,
-                                                                        name=r.name,
-                                                                        init=init))
+                                                                         prefix=REG_PREFIX,
+                                                                         name=names[r],
+                                                                         init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -96,7 +98,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                  declarations: Emitter,
                  source_path: str,
                  module_name: str,
-                 const_int_regs: Dict[str, int]) -> None:
+                 const_int_regs: Dict[LoadInt, int]) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
@@ -172,7 +174,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = %s;' % (dest, src))
 
     def visit_load_int(self, op: LoadInt) -> None:
-        if op.name in self.const_int_regs:
+        if op in self.const_int_regs:
             return
         dest = self.reg(op)
         self.emit_line('%s = %d;' % (dest, op.value))
@@ -403,8 +405,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                     'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
             elif isinstance(op.value, Value):
                 self.emitter.emit_line(
-                    'PyErr_SetObject(PyExc_{}, {}{});'.format(op.class_name, REG_PREFIX,
-                                                              op.value.name))
+                    'PyErr_SetObject(PyExc_{}, {});'.format(op.class_name,
+                                                            self.emitter.reg(op.value)))
             else:
                 assert False, 'op value type must be either str or Value'
         else:
@@ -494,8 +496,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         return self.emitter.label(label)
 
     def reg(self, reg: Value) -> str:
-        if reg.name in self.const_int_regs:
-            val = self.const_int_regs[reg.name]
+        if isinstance(reg, LoadInt) and reg in self.const_int_regs:
+            val = self.const_int_regs[reg]
             if val == 0 and is_pointer_rprimitive(reg.type):
                 return "NULL"
             return str(val)
