@@ -64,7 +64,7 @@ def keyfunc(name: str) -> Tuple[bool, int, str]:
 def normalise_package_base(root: str) -> str:
     if not root:
         root = os.curdir
-    root = os.path.normpath(os.path.abspath(root))
+    root = os.path.abspath(root)
     if root.endswith(os.sep):
         root = root[:-1]
     return root
@@ -127,7 +127,7 @@ class SourceFinder:
         We won't crawl past directories with invalid package names.
         The base directory returned is an absolute path.
         """
-        path = os.path.normpath(os.path.abspath(path))
+        path = os.path.abspath(path)
         parent, filename = os.path.split(path)
 
         module_name = strip_py(filename) or filename

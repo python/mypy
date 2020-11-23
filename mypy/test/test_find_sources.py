@@ -1,7 +1,7 @@
 from mypy.modulefinder import BuildSource
 import os
+import unittest
 from typing import List, Optional, Set, Tuple
-from unittest import TestCase
 from mypy.find_sources import SourceFinder
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
@@ -10,8 +10,7 @@ from mypy.options import Options
 
 class FakeFSCache(FileSystemCache):
     def __init__(self, files: Set[str]) -> None:
-        assert all(os.path.isabs(f) for f in files)
-        self.files = files
+        self.files = {os.path.abspath(f) for f in files}
 
     def isfile(self, file: str) -> bool:
         return file in self.files
@@ -30,72 +29,90 @@ class FakeFSCache(FileSystemCache):
         return False
 
 
+def normalise_path(path: str) -> str:
+    path = os.path.splitdrive(path)[1]
+    path = path.replace(os.sep, "/")
+    return path
+
+
 def normalise_build_source_list(sources: List[BuildSource]) -> List[Tuple[str, Optional[str]]]:
-    return sorted((s.module, s.base_dir) for s in sources)
+    return sorted(
+        (s.module, normalise_path(s.base_dir) if s.base_dir is not None else None)
+        for s in sources
+    )
 
 
-class SourceFinderSuite(TestCase):
+def crawl(finder: SourceFinder, f: str) -> Tuple[str, str]:
+    module, base_dir = finder.crawl_up(f)
+    return module, normalise_path(base_dir)
+
+
+def find_sources(finder: SourceFinder, f: str) -> List[Tuple[str, Optional[str]]]:
+    return normalise_build_source_list(finder.find_sources_in_dir(os.path.abspath(f)))
+
+
+class SourceFinderSuite(unittest.TestCase):
     def test_crawl_no_namespace(self) -> None:
         options = Options()
         options.namespace_packages = False
 
         finder = SourceFinder(FakeFSCache({"/setup.py"}), options)
-        assert finder.crawl_up("/setup.py") == ("setup", "/")
+        assert crawl(finder, "/setup.py") == ("setup", "/")
 
         finder = SourceFinder(FakeFSCache({"/a/setup.py"}), options)
-        assert finder.crawl_up("/a/setup.py") == ("setup", "/a")
+        assert crawl(finder, "/a/setup.py") == ("setup", "/a")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py"}), options)
-        assert finder.crawl_up("/a/b/setup.py") == ("setup", "/a/b")
+        assert crawl(finder, "/a/b/setup.py") == ("setup", "/a/b")
 
         finder = SourceFinder(FakeFSCache({"/a/setup.py", "/a/__init__.py"}), options)
-        assert finder.crawl_up("/a/setup.py") == ("a.setup", "/")
+        assert crawl(finder, "/a/setup.py") == ("a.setup", "/")
 
         finder = SourceFinder(
             FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
+        assert crawl(finder, "/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py", "/a/__init__.py"}), options)
-        assert finder.crawl_up("/a/b/setup.py") == ("setup", "/a/b")
+        assert crawl(finder, "/a/b/setup.py") == ("setup", "/a/b")
 
         finder = SourceFinder(
             FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/b/c/setup.py") == ("c.setup", "/a/b")
+        assert crawl(finder, "/a/b/c/setup.py") == ("c.setup", "/a/b")
 
     def test_crawl_namespace(self) -> None:
         options = Options()
         options.namespace_packages = True
 
         finder = SourceFinder(FakeFSCache({"/setup.py"}), options)
-        assert finder.crawl_up("/setup.py") == ("setup", "/")
+        assert crawl(finder, "/setup.py") == ("setup", "/")
 
         finder = SourceFinder(FakeFSCache({"/a/setup.py"}), options)
-        assert finder.crawl_up("/a/setup.py") == ("setup", "/a")
+        assert crawl(finder, "/a/setup.py") == ("setup", "/a")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py"}), options)
-        assert finder.crawl_up("/a/b/setup.py") == ("setup", "/a/b")
+        assert crawl(finder, "/a/b/setup.py") == ("setup", "/a/b")
 
         finder = SourceFinder(FakeFSCache({"/a/setup.py", "/a/__init__.py"}), options)
-        assert finder.crawl_up("/a/setup.py") == ("a.setup", "/")
+        assert crawl(finder, "/a/setup.py") == ("a.setup", "/")
 
         finder = SourceFinder(
             FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
+        assert crawl(finder, "/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py", "/a/__init__.py"}), options)
-        assert finder.crawl_up("/a/b/setup.py") == ("a.b.setup", "/")
+        assert crawl(finder, "/a/b/setup.py") == ("a.b.setup", "/")
 
         finder = SourceFinder(
             FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/b/c/setup.py") == ("a.b.c.setup", "/")
+        assert crawl(finder, "/a/b/c/setup.py") == ("a.b.c.setup", "/")
 
     def test_crawl_namespace_explicit_base(self) -> None:
         options = Options()
@@ -103,47 +120,47 @@ class SourceFinderSuite(TestCase):
         options.explicit_package_bases = True
 
         finder = SourceFinder(FakeFSCache({"/setup.py"}), options)
-        assert finder.crawl_up("/setup.py") == ("setup", "/")
+        assert crawl(finder, "/setup.py") == ("setup", "/")
 
         finder = SourceFinder(FakeFSCache({"/a/setup.py"}), options)
-        assert finder.crawl_up("/a/setup.py") == ("setup", "/a")
+        assert crawl(finder, "/a/setup.py") == ("setup", "/a")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py"}), options)
-        assert finder.crawl_up("/a/b/setup.py") == ("setup", "/a/b")
+        assert crawl(finder, "/a/b/setup.py") == ("setup", "/a/b")
 
         finder = SourceFinder(FakeFSCache({"/a/setup.py", "/a/__init__.py"}), options)
-        assert finder.crawl_up("/a/setup.py") == ("a.setup", "/")
+        assert crawl(finder, "/a/setup.py") == ("a.setup", "/")
 
         finder = SourceFinder(
             FakeFSCache({"/a/invalid-name/setup.py", "/a/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
+        assert crawl(finder, "/a/invalid-name/setup.py") == ("setup", "/a/invalid-name")
 
         finder = SourceFinder(FakeFSCache({"/a/b/setup.py", "/a/__init__.py"}), options)
-        assert finder.crawl_up("/a/b/setup.py") == ("a.b.setup", "/")
+        assert crawl(finder, "/a/b/setup.py") == ("a.b.setup", "/")
 
         finder = SourceFinder(
             FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/b/c/setup.py") == ("a.b.c.setup", "/")
+        assert crawl(finder, "/a/b/c/setup.py") == ("a.b.c.setup", "/")
 
         # set mypy path, so we actually have some explicit base dirs
         options.mypy_path = ["/a/b"]
 
         finder = SourceFinder(FakeFSCache({"/a/b/c/setup.py"}), options)
-        assert finder.crawl_up("/a/b/c/setup.py") == ("c.setup", "/a/b")
+        assert crawl(finder, "/a/b/c/setup.py") == ("c.setup", "/a/b")
 
         finder = SourceFinder(
             FakeFSCache({"/a/b/c/setup.py", "/a/__init__.py", "/a/b/c/__init__.py"}),
             options,
         )
-        assert finder.crawl_up("/a/b/c/setup.py") == ("c.setup", "/a/b")
+        assert crawl(finder, "/a/b/c/setup.py") == ("c.setup", "/a/b")
 
         options.mypy_path = ["/a/b", "/a/b/c"]
         finder = SourceFinder(FakeFSCache({"/a/b/c/setup.py"}), options)
-        assert finder.crawl_up("/a/b/c/setup.py") == ("setup", "/a/b/c")
+        assert crawl(finder, "/a/b/c/setup.py") == ("setup", "/a/b/c")
 
     def test_find_sources_no_namespace(self) -> None:
         options = Options()
@@ -157,7 +174,7 @@ class SourceFinderSuite(TestCase):
             "/pkg/a2/b/f.py",
         }
         finder = SourceFinder(FakeFSCache(files), options)
-        assert normalise_build_source_list(finder.find_sources_in_dir("/")) == [
+        assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
             ("e", "/pkg/a1/b/c/d"),
             ("e", "/pkg/a2/b/c/d"),
@@ -177,7 +194,7 @@ class SourceFinderSuite(TestCase):
             "/pkg/a2/b/f.py",
         }
         finder = SourceFinder(FakeFSCache(files), options)
-        assert normalise_build_source_list(finder.find_sources_in_dir("/")) == [
+        assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
             ("a2.b.c.d.e", "/pkg"),
             ("a2.b.f", "/pkg"),
@@ -199,7 +216,7 @@ class SourceFinderSuite(TestCase):
             "/pkg/a2/b/f.py",
         }
         finder = SourceFinder(FakeFSCache(files), options)
-        assert normalise_build_source_list(finder.find_sources_in_dir("/")) == [
+        assert find_sources(finder, "/") == [
             ("pkg.a1.b.c.d.e", "/"),
             ("pkg.a1.b.f", "/"),
             ("pkg.a2", "/"),
@@ -209,7 +226,7 @@ class SourceFinderSuite(TestCase):
 
         options.mypy_path = ["/pkg"]
         finder = SourceFinder(FakeFSCache(files), options)
-        assert normalise_build_source_list(finder.find_sources_in_dir("/")) == [
+        assert find_sources(finder, "/") == [
             ("a1.b.c.d.e", "/pkg"),
             ("a1.b.f", "/pkg"),
             ("a2", "/pkg"),
