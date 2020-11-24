@@ -145,8 +145,7 @@ Automate annotation of legacy code
 
 There are tools for automatically adding draft annotations
 based on type profiles collected at runtime.  Tools include
-:doc:`monkeytype:index` (Python 3) and `PyAnnotate`_
-(type comments only).
+:doc:`monkeytype:index` (Python 3) and `PyAnnotate`_.
 
 A simple approach is to collect types from test runs. This may work
 well if your test coverage is good (and if your tests aren't very
