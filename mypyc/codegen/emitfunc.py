@@ -18,7 +18,7 @@ from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
     is_pointer_rprimitive
 )
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
+from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.const_int import find_constant_integer_registers
 from mypyc.ir.pprint import generate_names_for_env
@@ -55,18 +55,20 @@ def generate_native_function(fn: FuncIR,
     else:
         const_int_regs = {}
     declarations = Emitter(emitter.context, fn.env)
-    names = generate_names_for_env(fn.env)
+    names = generate_names_for_env(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, fn.env, names)
     visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
     body.indent()
 
-    for r, i in fn.env.indexes.items():
+    for r in all_values(fn.arg_regs, fn.blocks):
         if isinstance(r.type, RTuple):
             emitter.declare_tuple_struct(r.type)
-        if i < len(fn.args):
-            continue  # skip the arguments
+
+        if r in fn.arg_regs:
+            continue  # Skip the arguments
+
         ctype = emitter.ctype_spaced(r.type)
         init = ''
         if r in fn.env.vars_needing_init:

@@ -19,7 +19,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Environment, Op, LoadInt, Value, Register,
     Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, RegisterOp, CallC, Truncate,
+    LoadStatic, MethodCall, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
@@ -86,10 +86,7 @@ class LowLevelIRBuilder:
     def add(self, op: Op) -> Value:
         """Add an op."""
         assert not self.blocks[-1].terminated, "Can't add to finished block"
-
         self.blocks[-1].ops.append(op)
-        if isinstance(op, RegisterOp):
-            self.environment.add_op(op)
         return op
 
     def goto(self, target: BasicBlock) -> None:
@@ -115,9 +112,6 @@ class LowLevelIRBuilder:
 
     def pop_error_handler(self) -> Optional[BasicBlock]:
         return self.error_handlers.pop()
-
-    def alloc_temp(self, type: RType) -> Register:
-        return self.environment.add_temp(type)
 
     # Type conversions
 
@@ -156,7 +150,7 @@ class LowLevelIRBuilder:
                 or not is_subtype(src.type, target_type)):
             return self.unbox_or_cast(src, target_type, line)
         elif force:
-            tmp = self.alloc_temp(target_type)
+            tmp = Register(target_type)
             self.add(Assign(tmp, src))
             return tmp
         return src
@@ -566,7 +560,7 @@ class LowLevelIRBuilder:
         if is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type):
             return self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
-        result = self.alloc_temp(bool_rprimitive)
+        result = Register(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line)
         if op in ("==", "!="):
@@ -685,7 +679,7 @@ class LowLevelIRBuilder:
         # type cast to pass mypy check
         assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
         equal = True if op == '==' else False
-        result = self.alloc_temp(bool_rprimitive)
+        result = Register(bool_rprimitive)
         # empty tuples
         if len(lhs.type.types) == 0 and len(rhs.type.types) == 0:
             self.add(Assign(result, self.true() if equal else self.false(), line))
@@ -823,7 +817,7 @@ class LowLevelIRBuilder:
                             left: Callable[[], Value],
                             right: Callable[[], Value], line: int) -> Value:
         # Having actual Phi nodes would be really nice here!
-        target = self.alloc_temp(expr_type)
+        target = Register(expr_type)
         # left_body takes the value of the left side, right_body the right
         left_body, right_body, next = BasicBlock(), BasicBlock(), BasicBlock()
         # true_body is taken if the left is true, false_body if it is false.
@@ -1040,7 +1034,7 @@ class LowLevelIRBuilder:
                 # For everything but RInstance we fall back to C API
                 rest_items.append(item)
         exit_block = BasicBlock()
-        result = self.alloc_temp(result_type)
+        result = Register(result_type)
         for i, item in enumerate(fast_items):
             more_types = i < len(fast_items) - 1 or rest_items
             if more_types:

@@ -115,7 +115,7 @@ def g():
     r11 :: str
     r12 :: object
     r13 :: bit
-    e, r14 :: object
+    r14, e :: object
     r15 :: str
     r16 :: object
     r17 :: str
@@ -289,28 +289,28 @@ L2:
 L3:
 L4:
 L5:
-    r6 = <error> :: tuple[object, object, object]
-    r5 = r6
+    r5 = <error> :: tuple[object, object, object]
+    r6 = r5
     goto L7
 L6: (handler for L1, L2, L3)
     r7 = CPy_CatchError()
-    r5 = r7
+    r6 = r7
 L7:
     r8 = load_global CPyStatic_unicode_3 :: static  ('finally')
     r9 = builtins :: module
     r10 = load_global CPyStatic_unicode_4 :: static  ('print')
     r11 = CPyObject_GetAttr(r9, r10)
     r12 = PyObject_CallFunctionObjArgs(r11, r8, 0)
-    if is_error(r5) goto L9 else goto L8
+    if is_error(r6) goto L9 else goto L8
 L8:
     CPy_Reraise()
     unreachable
 L9:
     goto L13
 L10: (handler for L7, L8)
-    if is_error(r5) goto L12 else goto L11
+    if is_error(r6) goto L12 else goto L11
 L11:
-    CPy_RestoreExcInfo(r5)
+    CPy_RestoreExcInfo(r6)
 L12:
     r13 = CPy_KeepPropagating()
     unreachable
@@ -388,31 +388,30 @@ L7: (handler for L3, L4, L5)
 L8:
 L9:
 L10:
-    r24 = <error> :: tuple[object, object, object]
-    r23 = r24
+    r23 = <error> :: tuple[object, object, object]
+    r24 = r23
     goto L12
 L11: (handler for L1, L6, L7, L8)
     r25 = CPy_CatchError()
-    r23 = r25
+    r24 = r25
 L12:
     if r7 goto L13 else goto L14 :: bool
 L13:
     r26 = load_address _Py_NoneStruct
     r27 = PyObject_CallFunctionObjArgs(r3, r0, r26, r26, r26, 0)
 L14:
-    if is_error(r23) goto L16 else goto L15
+    if is_error(r24) goto L16 else goto L15
 L15:
     CPy_Reraise()
     unreachable
 L16:
     goto L20
 L17: (handler for L12, L13, L14, L15)
-    if is_error(r23) goto L19 else goto L18
+    if is_error(r24) goto L19 else goto L18
 L18:
-    CPy_RestoreExcInfo(r23)
+    CPy_RestoreExcInfo(r24)
 L19:
     r28 = CPy_KeepPropagating()
     unreachable
 L20:
     return 1
-

@@ -18,7 +18,7 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable
+    Value, Register, BasicBlock, LoadInt, RaiseStandardError, Unreachable
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
@@ -170,7 +170,7 @@ def any_all_helper(builder: IRBuilder,
                    initial_value: Callable[[], Value],
                    modify: Callable[[Value], Value],
                    new_value: Callable[[], Value]) -> Value:
-    retval = builder.alloc_temp(bool_rprimitive)
+    retval = Register(bool_rprimitive)
     builder.assign(retval, initial_value(), -1)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
@@ -216,7 +216,7 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
     gen = expr.args[0]
 
-    retval = builder.alloc_temp(builder.node_type(expr))
+    retval = Register(builder.node_type(expr))
     default_val = None
     if len(expr.args) > 1:
         default_val = builder.accept(expr.args[1])

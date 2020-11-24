@@ -141,7 +141,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         if self.ret_reg is None:
-            self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
+            self.ret_reg = Register(builder.ret_types[-1])
 
         builder.add(Assign(self.ret_reg, value))
         builder.add(Goto(self.target))

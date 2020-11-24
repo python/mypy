@@ -609,7 +609,7 @@ class ForRange(ForGenerator):
             index_type = short_int_rprimitive
         else:
             index_type = int_rprimitive
-        index_reg = builder.alloc_temp(index_type)
+        index_reg = Register(index_type)
         builder.assign(index_reg, start_reg, -1)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.

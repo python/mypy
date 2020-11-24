@@ -352,8 +352,6 @@ def lol(x):
     r1, st :: object
     r2 :: tuple[object, object, object]
     r3 :: str
-    r4 :: bit
-    r5 :: object
 L0:
 L1:
     r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
@@ -390,10 +388,8 @@ def lol(x):
     r2 :: str
     r3, b :: object
     r4 :: tuple[object, object, object]
-    r5 :: bit
-    r6 :: object
-    r7, r8 :: bool
-    r9 :: object
+    r5, r6 :: bool
+    r7, r8 :: object
 L0:
 L1:
     r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
@@ -415,27 +411,27 @@ L5:
 L6:
     if is_error(a) goto L17 else goto L9
 L7:
-    raise UnboundLocalError("local variable 'a' referenced before assignment")
-    if not r7 goto L14 (error at lol:9) else goto L8 :: bool
+    r5 = raise UnboundLocalError("local variable 'a' referenced before assignment")
+    if not r5 goto L14 (error at lol:9) else goto L8 :: bool
 L8:
     unreachable
 L9:
     if is_error(b) goto L18 else goto L12
 L10:
-    raise UnboundLocalError("local variable 'b' referenced before assignment")
-    if not r8 goto L14 (error at lol:9) else goto L11 :: bool
+    r6 = raise UnboundLocalError("local variable 'b' referenced before assignment")
+    if not r6 goto L14 (error at lol:9) else goto L11 :: bool
 L11:
     unreachable
 L12:
-    r6 = PyNumber_Add(a, b)
+    r7 = PyNumber_Add(a, b)
     xdec_ref a
     xdec_ref b
-    if is_error(r6) goto L14 (error at lol:9) else goto L13
+    if is_error(r7) goto L14 (error at lol:9) else goto L13
 L13:
-    return r6
+    return r7
 L14:
-    r9 = <error> :: object
-    return r9
+    r8 = <error> :: object
+    return r8
 L15:
     xdec_ref a
     goto L2
@@ -517,4 +513,3 @@ L13:
 L14:
     dec_ref r7
     goto L8
-

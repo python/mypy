@@ -8,11 +8,6 @@ from mypy.nodes import (
     ARG_OPT, GDEF
 )
 
-from mypyc.ir.ops import Environment, AssignmentTargetRegister
-from mypyc.ir.rtypes import RInstance
-from mypyc.ir.class_ir import ClassIR
-from mypyc.common import SELF_NAME
-
 
 def is_trait_decorator(d: Expression) -> bool:
     return isinstance(d, RefExpr) and d.fullname == 'mypy_extensions.trait'
@@ -129,9 +124,3 @@ def is_constant(e: Expression) -> bool:
             or (isinstance(e, RefExpr) and e.kind == GDEF
                 and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
                      or (isinstance(e.node, Var) and e.node.is_final))))
-
-
-def add_self_to_env(environment: Environment, cls: ClassIR) -> AssignmentTargetRegister:
-    return environment.add_local_reg(
-        Var(SELF_NAME), RInstance(cls), is_arg=True
-    )

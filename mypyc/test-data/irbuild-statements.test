@@ -303,7 +303,7 @@ def f(ls):
     r3 :: short_int
     r4 :: bit
     r5 :: object
-    x, r6, r7 :: int
+    r6, x, r7 :: int
     r8 :: short_int
 L0:
     y = 0
@@ -344,7 +344,7 @@ def f(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    key, r8 :: int
+    r8, key :: int
     r9, r10 :: object
     r11 :: int
     r12, r13 :: bit
@@ -581,13 +581,13 @@ def multi_assign(t, a, l):
     t :: tuple[int, tuple[str, object]]
     a :: __main__.A
     l :: list
-    z, r0 :: int
+    r0 :: int
     r1 :: bool
     r2 :: tuple[str, object]
     r3 :: str
     r4 :: bit
     r5 :: object
-    r6 :: int
+    r6, z :: int
 L0:
     r0 = t[0]
     a.x = r0; r1 = is_error
@@ -874,7 +874,7 @@ def f(a):
     r4 :: short_int
     r5 :: bit
     r6 :: object
-    x, r7, r8 :: int
+    r7, x, r8 :: int
     r9, r10 :: short_int
 L0:
     r0 = 0
@@ -951,7 +951,7 @@ def f(a, b):
     r4 :: short_int
     r5 :: bit
     r6, r7 :: object
-    x, r8 :: int
+    r8, x :: int
     r9, y :: bool
     r10 :: int32
     r11 :: bit
@@ -1004,7 +1004,7 @@ def g(a, b):
     r7, r8 :: bit
     r9, x :: bool
     r10 :: object
-    y, r11 :: int
+    r11, y :: int
     r12, r13 :: short_int
     r14 :: bit
 L0:

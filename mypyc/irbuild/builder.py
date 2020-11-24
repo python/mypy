@@ -28,7 +28,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
 
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
@@ -80,6 +80,8 @@ class IRBuilder:
                  options: CompilerOptions) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper)
         self.builders = [self.builder]
+        self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, AssignmentTarget]]
+        self.args = [[]]  # type: List[List[Register]]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -153,7 +155,7 @@ class IRBuilder:
                 # messages. Generate a temp of the right type to keep
                 # from causing more downstream trouble.
                 except UnsupportedException:
-                    res = self.alloc_temp(self.node_type(node))
+                    res = Register(self.node_type(node))
                 return res
             else:
                 try:
@@ -175,9 +177,6 @@ class IRBuilder:
 
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.builder.goto_and_activate(block)
-
-    def alloc_temp(self, type: RType) -> Register:
-        return self.builder.alloc_temp(type)
 
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
@@ -396,7 +395,7 @@ class IRBuilder:
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
             if lvalue.kind == LDEF:
-                if symbol not in self.environment.symtable:
+                if symbol not in self.symtables[-1]:
                     # If the function is a generator function, then first define a new variable
                     # in the current function's environment class. Next, define a target that
                     # refers to the newly defined variable in that environment class. Add the
@@ -408,10 +407,10 @@ class IRBuilder:
                                                          reassign=False)
 
                     # Otherwise define a new local variable.
-                    return self.environment.add_local_reg(symbol, self.node_type(lvalue))
+                    return self.add_local_reg(symbol, self.node_type(lvalue))
                 else:
                     # Assign to a previously defined variable.
-                    return self.environment.lookup(symbol)
+                    return self.lookup(symbol)
             elif lvalue.kind == GDEF:
                 globals_dict = self.load_globals_dict()
                 name = self.load_static_unicode(lvalue.name)
@@ -617,7 +616,7 @@ class IRBuilder:
             return value
 
         # Allocate a temporary register for the assignable value.
-        reg = self.alloc_temp(value.type)
+        reg = Register(value.type)
         self.assign(reg, value, -1)
         return reg
 
@@ -871,6 +870,8 @@ class IRBuilder:
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.current_module, self.mapper)
         self.builders.append(self.builder)
+        self.symtables.append(OrderedDict())
+        self.args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
@@ -880,14 +881,49 @@ class IRBuilder:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.activate_block(BasicBlock())
 
-    def leave(self) -> Tuple[List[BasicBlock], Environment, RType, FuncInfo]:
+    def leave(self) -> Tuple[List[Register], List[BasicBlock], Environment, RType, FuncInfo]:
         builder = self.builders.pop()
+        self.symtables.pop()
+        args = self.args.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return builder.blocks, builder.environment, ret_type, fn_info
+        return args, builder.blocks, builder.environment, ret_type, fn_info
+
+    def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
+        return self.symtables[-1][symbol]
+
+    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
+        """Add register that represents a symbol to the symbol table.
+
+        Args:
+            is_arg: is this a function argument
+        """
+        assert isinstance(symbol, SymbolNode)
+        reg = Register(typ, symbol.name, is_arg=is_arg, line=symbol.line)
+        self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
+        if is_arg:
+            self.args[-1].append(reg)
+        return reg
+
+    def add_local_reg(self,
+                      symbol: SymbolNode,
+                      typ: RType,
+                      is_arg: bool = False) -> AssignmentTargetRegister:
+        """Like add_local, but return an assignment target instead of value."""
+        self.add_local(symbol, typ, is_arg)
+        target = self.symtables[-1][symbol]
+        assert isinstance(target, AssignmentTargetRegister)
+        return target
+
+    def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
+        return self.add_local_reg(Var(SELF_NAME), RInstance(cls), is_arg=True)
+
+    def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
+        self.symtables[-1][symbol] = target
+        return target
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         return self.mapper.type_to_rtype(typ)
@@ -914,12 +950,12 @@ class IRBuilder:
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
             # the environment class' variable to be that value.
-            reg = self.read(self.environment.lookup(var), self.fn_info.fitem.line)
+            reg = self.read(self.lookup(var), self.fn_info.fitem.line)
             self.add(SetAttr(base.curr_env_reg, var.name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
         # the environment class.
-        return self.environment.add_target(var, attr_target)
+        return self.add_target(var, attr_target)
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
         assert expr.node, "RefExpr not resolved"
@@ -974,7 +1010,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
     fitem = builder.fn_info.fitem
     for arg in fitem.arguments:
         if arg.initializer:
-            target = builder.environment.lookup(arg.variable)
+            target = builder.lookup(arg.variable)
 
             def get_default() -> Value:
                 assert arg.initializer is not None

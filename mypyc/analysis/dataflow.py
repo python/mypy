@@ -11,6 +11,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
     Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
+from mypyc.ir.func_ir import all_values
 
 
 class CFG:
@@ -361,8 +362,10 @@ def analyze_undefined_regs(blocks: List[BasicBlock],
 
     A register is undefined if there is some path from initial block
     where it has an undefined value.
+
+    Function arguments are assumed to be always defined.
     """
-    initial_undefined = set(env.regs()) - initial_defined
+    initial_undefined = set(all_values([], blocks)) - initial_defined
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=UndefinedVisitor(),
