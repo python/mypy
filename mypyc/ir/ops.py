@@ -114,7 +114,7 @@ class Environment:
     # TODO: Remove this class
 
     def __init__(self) -> None:
-        self.vars_needing_init = set()  # type: Set[Value]
+        pass
 
 
 class BasicBlock:

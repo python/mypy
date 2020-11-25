@@ -71,8 +71,6 @@ def generate_native_function(fn: FuncIR,
 
         ctype = emitter.ctype_spaced(r.type)
         init = ''
-        if r in fn.env.vars_needing_init:
-            init = ' = {}'.format(declarations.c_error_value(r.type))
         if r not in const_int_regs:
             declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
                                                                          prefix=REG_PREFIX,
