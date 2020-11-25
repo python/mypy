@@ -1118,8 +1118,8 @@ class MessageBuilder:
             if actual_set < expected_set:
                 # Use list comprehension instead of set operations to preserve order.
                 missing = [key for key in expected_keys if key not in actual_set]
-                self.fail('{} missing for TypedDict {}'.format(
-                    format_key_list(missing, short=True).capitalize(), format_type(typ)),
+                self.fail('Missing {} for TypedDict {}'.format(
+                    format_key_list(missing, short=True), format_type(typ)),
                     context, code=codes.TYPEDDICT_ITEM)
                 return
             else:
