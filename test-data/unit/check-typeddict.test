@@ -66,7 +66,7 @@ p = Point(x=42, y=1337, z=666)  # E: Extra key 'z' for TypedDict "Point"
 [case testCannotCreateTypedDictInstanceWithMissingItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42)  # E: Key 'y' missing for TypedDict "Point"
+p = Point(x=42)  # E: Missing key 'y' for TypedDict "Point"
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithIncompatibleItemType]
@@ -149,7 +149,7 @@ def foo(x):
     # type: (Movie) -> None
     pass
 
-foo({})  # E: Keys ('name', 'year') missing for TypedDict "Movie"
+foo({})  # E: Missing keys ('name', 'year') for TypedDict "Movie"
 foo({'name': 'lol', 'year': 2009, 'based_on': 0})  # E: Incompatible types (expression has type "int", TypedDict item "based_on" has type "str")
 
 [builtins fixtures/dict.pyi]
@@ -871,7 +871,7 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 def f(p: Point) -> None:
     if int():
         p = {'x': 2, 'y': 3}
-        p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
+        p = {'x': 2}  # E: Missing key 'y' for TypedDict "Point"
         p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
@@ -888,15 +888,15 @@ from mypy_extensions import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-p1a: Point = {'x': 'hi'}  # E: Key 'y' missing for TypedDict "Point"
-p1b: Point = {}           # E: Keys ('x', 'y') missing for TypedDict "Point"
+p1a: Point = {'x': 'hi'}  # E: Missing key 'y' for TypedDict "Point"
+p1b: Point = {}           # E: Missing keys ('x', 'y') for TypedDict "Point"
 
 p2: Point
-p2 = dict(x='bye')  # E: Key 'y' missing for TypedDict "Point"
+p2 = dict(x='bye')  # E: Missing key 'y' for TypedDict "Point"
 
 p3 = Point(x=1, y=2)
 if int():
-    p3 = {'x': 'hi'}  # E: Key 'y' missing for TypedDict "Point"
+    p3 = {'x': 'hi'}  # E: Missing key 'y' for TypedDict "Point"
 
 p4: Point = {'x': 1, 'y': 2}
 
@@ -2103,3 +2103,10 @@ d[3] # E: TypedDict key must be a string literal; expected one of ('foo')
 d[True] # E: TypedDict key must be a string literal; expected one of ('foo')
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictUppercaseKey]
+from mypy_extensions import TypedDict
+
+Foo = TypedDict('Foo', {'camelCaseKey': str})
+value: Foo = {}  # E: Missing key 'camelCaseKey' for TypedDict "Foo"
+[builtins fixtures/dict.pyi]
