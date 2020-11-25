@@ -351,12 +351,12 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
 
     builder.add(Return(builder.true()))
 
-    args, blocks, env, ret_type, _ = builder.leave()
+    args, blocks, ret_type, _ = builder.leave()
     ir = FuncIR(
         FuncDecl('__mypyc_defaults_setup',
                  cls.name, builder.module_name,
                  FuncSignature(rt_args, ret_type)),
-        args, blocks, env)
+        args, blocks)
     builder.functions.append(ir)
     cls.methods[ir.name] = ir
 
@@ -405,11 +405,11 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     builder.activate_block(not_implemented_block)
     builder.add(Return(not_implemented))
 
-    arg_regs, blocks, env, ret_type, _ = builder.leave()
+    arg_regs, blocks, ret_type, _ = builder.leave()
     return FuncIR(
         FuncDecl('__ne__', cls.name, builder.module_name,
                  FuncSignature(rt_args, ret_type)),
-        arg_regs, blocks, env)
+        arg_regs, blocks)
 
 
 def load_non_ext_class(builder: IRBuilder,

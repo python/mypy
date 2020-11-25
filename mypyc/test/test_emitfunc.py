@@ -7,7 +7,7 @@ from mypy.ordered_dict import OrderedDict
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
-    Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
+    BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem,
     GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
@@ -18,7 +18,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.pprint import generate_names_for_env
+from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
@@ -37,8 +37,6 @@ from mypyc.namegen import NameGenerator
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
     def setUp(self) -> None:
-        self.env = Environment()
-
         self.registers = []  # type: List[Register]
 
         def add_local(name: str, rtype: RType) -> Register:
@@ -313,9 +311,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def assert_emit(self, op: Op, expected: str) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
-        value_names = generate_names_for_env(self.registers, [block])
-        emitter = Emitter(self.context, self.env, value_names)
-        declarations = Emitter(self.context, self.env, value_names)
+        value_names = generate_names_for_ir(self.registers, [block])
+        emitter = Emitter(self.context, value_names)
+        declarations = Emitter(self.context, value_names)
         emitter.fragments = []
         declarations.fragments = []
 
@@ -357,7 +355,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 class TestGenerateFunction(unittest.TestCase):
     def setUp(self) -> None:
         self.arg = RuntimeArg('arg', int_rprimitive)
-        self.env = Environment()
         self.reg = Register(int_rprimitive, 'arg')
         self.block = BasicBlock(0)
 
@@ -365,10 +362,9 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(Return(self.reg))
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.reg],
-                    [self.block],
-                    self.env)
-        value_names = generate_names_for_env(fn.arg_regs, fn.blocks)
-        emitter = Emitter(EmitterContext(NameGenerator([['mod']])), self.env, value_names)
+                    [self.block])
+        value_names = generate_names_for_ir(fn.arg_regs, fn.blocks)
+        emitter = Emitter(EmitterContext(NameGenerator([['mod']])), value_names)
         generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
         assert_string_arrays_equal(
@@ -385,10 +381,9 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(op)
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.reg],
-                    [self.block],
-                    self.env)
-        value_names = generate_names_for_env(fn.arg_regs, fn.blocks)
-        emitter = Emitter(EmitterContext(NameGenerator([['mod']])), self.env, value_names)
+                    [self.block])
+        value_names = generate_names_for_ir(fn.arg_regs, fn.blocks)
+        emitter = Emitter(EmitterContext(NameGenerator([['mod']])), value_names)
         generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
         assert_string_arrays_equal(

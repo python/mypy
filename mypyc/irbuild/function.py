@@ -19,7 +19,7 @@ from mypy.nodes import (
 from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
-    BasicBlock, Value,  Register, Return, SetAttr, LoadInt, Environment, GetAttr, Branch,
+    BasicBlock, Value,  Register, Return, SetAttr, LoadInt, GetAttr, Branch,
     AssignmentTarget, InitStatic, LoadAddress
 )
 from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
@@ -225,8 +225,8 @@ def gen_func_item(builder: IRBuilder,
     if builder.fn_info.is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
         gen_generator_func(builder)
-        args, blocks, env, ret_type, fn_info = builder.leave()
-        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, env, fn_info, cdef)
+        args, blocks, ret_type, fn_info = builder.leave()
+        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, fn_info, cdef)
 
         # Re-enter the FuncItem and visit the body of the function this time.
         builder.enter(fn_info)
@@ -287,13 +287,13 @@ def gen_func_item(builder: IRBuilder,
     # to calculate argument defaults below.
     symtable = builder.symtables[-1]
 
-    args, blocks, env, ret_type, fn_info = builder.leave()
+    args, blocks, ret_type, fn_info = builder.leave()
 
     if fn_info.is_generator:
         add_methods_to_generator_class(
-            builder, fn_info, sig, env, args, blocks, fitem.is_coroutine)
+            builder, fn_info, sig, args, blocks, fitem.is_coroutine)
     else:
-        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, env, fn_info, cdef)
+        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, fn_info, cdef)
 
     # Evaluate argument defaults in the surrounding scope, since we
     # calculate them *once* when the function definition is evaluated.
@@ -306,19 +306,18 @@ def gen_func_ir(builder: IRBuilder,
                 args: List[Register],
                 blocks: List[BasicBlock],
                 sig: FuncSignature,
-                env: Environment,
                 fn_info: FuncInfo,
                 cdef: Optional[ClassDef]) -> Tuple[FuncIR, Optional[Value]]:
     """Generate the FuncIR for a function.
 
-    This takes the basic blocks, environment, and function info of a
-    particular function and returns the IR. If the function is nested,
+    This takes the basic blocks and function info of a particular
+    function and returns the IR. If the function is nested,
     also returns the register containing the instance of the
     corresponding callable class.
     """
     func_reg = None  # type: Optional[Value]
     if fn_info.is_nested or fn_info.in_non_ext:
-        func_ir = add_call_to_callable_class(builder, args, blocks, sig, env, fn_info)
+        func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
         add_get_to_callable_class(builder, fn_info)
         func_reg = instantiate_callable_class(builder, fn_info)
     else:
@@ -329,10 +328,10 @@ def gen_func_ir(builder: IRBuilder,
             func_decl = FuncDecl(fn_info.name, class_name, builder.module_name, sig,
                                  func_decl.kind,
                                  func_decl.is_prop_getter, func_decl.is_prop_setter)
-            func_ir = FuncIR(func_decl, args, blocks, env, fn_info.fitem.line,
+            func_ir = FuncIR(func_decl, args, blocks, fn_info.fitem.line,
                              traceback_name=fn_info.fitem.name)
         else:
-            func_ir = FuncIR(func_decl, args, blocks, env,
+            func_ir = FuncIR(func_decl, args, blocks,
                              fn_info.fitem.line, traceback_name=fn_info.fitem.name)
     return (func_ir, func_reg)
 
@@ -676,13 +675,13 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     retval = builder.coerce(retval, sig.ret_type, line)
     builder.add(Return(retval))
 
-    arg_regs, blocks, env, ret_type, _ = builder.leave()
+    arg_regs, blocks, ret_type, _ = builder.leave()
     return FuncIR(
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name,
                  FuncSignature(rt_args, ret_type),
                  target.decl.kind),
-        arg_regs, blocks, env)
+        arg_regs, blocks)
 
 
 def gen_glue_property(builder: IRBuilder,
@@ -714,11 +713,11 @@ def gen_glue_property(builder: IRBuilder,
     retbox = builder.coerce(retval, sig.ret_type, line)
     builder.add(Return(retbox))
 
-    args, blocks, env, return_type, _ = builder.leave()
+    args, blocks, return_type, _ = builder.leave()
     return FuncIR(
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name, FuncSignature([rt_arg], return_type)),
-        args, blocks, env)
+        args, blocks)
 
 
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:

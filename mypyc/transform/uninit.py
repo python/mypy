@@ -9,7 +9,7 @@ from mypyc.analysis.dataflow import (
     AnalysisDict
 )
 from mypyc.ir.ops import (
-    BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register,
+    BasicBlock, Op, Branch, Value, RaiseStandardError, Unreachable, Register,
     LoadAddress, Assign, LoadErrorValue
 )
 from mypyc.ir.func_ir import FuncIR, all_values
@@ -27,11 +27,10 @@ def insert_uninit_checks(ir: FuncIR) -> None:
         set(ir.arg_regs),
         all_values(ir.arg_regs, ir.blocks))
 
-    ir.blocks = split_blocks_at_uninits(ir.env, ir.blocks, must_defined.before)
+    ir.blocks = split_blocks_at_uninits(ir.blocks, must_defined.before)
 
 
-def split_blocks_at_uninits(env: Environment,
-                            blocks: List[BasicBlock],
+def split_blocks_at_uninits(blocks: List[BasicBlock],
                             pre_must_defined: 'AnalysisDict[Value]') -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
 
@@ -81,7 +80,7 @@ def split_blocks_at_uninits(env: Environment,
             cur_block.ops.append(op)
 
     if init_registers:
-        new_ops = []
+        new_ops = []  # type: List[Op]
         for reg in init_registers:
             err = LoadErrorValue(reg.type)
             new_ops.append(err)

@@ -10,7 +10,7 @@ from mypyc.ir.ops import (
     Goto, Branch, Return, Unreachable, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, BinaryIntOp, ComparisonOp, LoadMem, SetMem,
-    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, Environment, ControlOp
+    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
@@ -265,7 +265,6 @@ def format_registers(func_ir: FuncIR,
 
 
 def format_blocks(blocks: List[BasicBlock],
-                  env: Environment,
                   names: Dict[Value, str],
                   const_regs: Dict[LoadInt, int]) -> List[str]:
     """Format a list of IR basic blocks into a human-readable form."""
@@ -323,10 +322,10 @@ def format_func(fn: FuncIR) -> List[str]:
                                         ', '.join(arg.name for arg in fn.args)))
     # compute constants
     const_regs = find_constant_integer_registers(fn.blocks)
-    names = generate_names_for_env(fn.arg_regs, fn.blocks)
+    names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     for line in format_registers(fn, names, const_regs):
         lines.append('    ' + line)
-    code = format_blocks(fn.blocks, fn.env, names, const_regs)
+    code = format_blocks(fn.blocks, names, const_regs)
     lines.extend(code)
     return lines
 
@@ -340,8 +339,8 @@ def format_modules(modules: ModuleIRs) -> List[str]:
     return ops
 
 
-def generate_names_for_env(args: List[Register], blocks: List[BasicBlock]) -> Dict[Value, str]:
-    """Generate unique names for values in an environment.
+def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dict[Value, str]:
+    """Generate unique names for IR values.
 
     Give names such as 'r5' or 'i0' to temp values in IR which are useful
     when pretty-printing or generating C. Ensure generated names are unique.

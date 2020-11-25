@@ -6,9 +6,7 @@ from typing_extensions import Final
 from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
-from mypyc.ir.ops import (
-    DeserMaps, BasicBlock, Environment, Value, Register, Assign, ControlOp, LoadAddress
-)
+from mypyc.ir.ops import DeserMaps, BasicBlock, Value, Register, Assign, ControlOp, LoadAddress
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
 
@@ -147,21 +145,18 @@ class FuncDecl:
 class FuncIR:
     """Intermediate representation of a function with contextual information.
 
-    Unlike FuncDecl, this includes the IR of the body (basic blocks) and an
-    environment.
+    Unlike FuncDecl, this includes the IR of the body (basic blocks).
     """
 
     def __init__(self,
                  decl: FuncDecl,
                  arg_regs: List[Register],
                  blocks: List[BasicBlock],
-                 env: Environment,
                  line: int = -1,
                  traceback_name: Optional[str] = None) -> None:
         self.decl = decl
         self.arg_regs = arg_regs
         self.blocks = blocks
-        self.env = env
         self.line = line
         # The name that should be displayed for tracebacks that
         # include this function. Function will be omitted from
@@ -202,7 +197,7 @@ class FuncIR:
             return '<FuncIR {}>'.format(self.name)
 
     def serialize(self) -> JsonDict:
-        # We don't include blocks or env in the serialized version
+        # We don't include blocks in the serialized version
         return {
             'decl': self.decl.serialize(),
             'line': self.line,
@@ -215,7 +210,6 @@ class FuncIR:
             FuncDecl.deserialize(data['decl'], ctx),
             [],
             [],
-            Environment(),
             data['line'],
             data['traceback_name'],
         )

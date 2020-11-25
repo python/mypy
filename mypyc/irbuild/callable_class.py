@@ -9,7 +9,7 @@ from typing import List
 from mypy.nodes import Var
 
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register, Environment
+from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
 from mypyc.ir.rtypes import RInstance, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncSignature, RuntimeArg, FuncDecl
 from mypyc.ir.class_ir import ClassIR
@@ -86,19 +86,17 @@ def add_call_to_callable_class(builder: IRBuilder,
                                args: List[Register],
                                blocks: List[BasicBlock],
                                sig: FuncSignature,
-                               env: Environment,
                                fn_info: FuncInfo) -> FuncIR:
     """Generate a '__call__' method for a callable class representing a nested function.
 
-    This takes the blocks, signature, and environment associated with
-    a function definition and uses those to build the '__call__'
-    method of a given callable class, used to represent that
-    function.
+    This takes the blocks and signature associated with a function
+    definition and uses those to build the '__call__' method of a
+    given callable class, used to represent that function.
     """
     # Since we create a method, we also add a 'self' parameter.
     sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
     call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, builder.module_name, sig)
-    call_fn_ir = FuncIR(call_fn_decl, args, blocks, env,
+    call_fn_ir = FuncIR(call_fn_decl, args, blocks,
                         fn_info.fitem.line, traceback_name=fn_info.fitem.name)
     fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
     return call_fn_ir
@@ -130,14 +128,14 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     builder.activate_block(instance_block)
     builder.add(Return(builder.call_c(method_new_op, [vself, builder.read(instance)], line)))
 
-    args, blocks, env, _, fn_info = builder.leave()
+    args, blocks, _, fn_info = builder.leave()
 
     sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
                          RuntimeArg('instance', object_rprimitive),
                          RuntimeArg('owner', object_rprimitive)),
                         object_rprimitive)
     get_fn_decl = FuncDecl('__get__', fn_info.callable_class.ir.name, builder.module_name, sig)
-    get_fn_ir = FuncIR(get_fn_decl, args, blocks, env)
+    get_fn_ir = FuncIR(get_fn_decl, args, blocks)
     fn_info.callable_class.ir.methods['__get__'] = get_fn_ir
     builder.functions.append(get_fn_ir)
 

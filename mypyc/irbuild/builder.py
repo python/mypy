@@ -32,7 +32,7 @@ from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
+    AssignmentTargetAttr, AssignmentTargetTuple, LoadInt, Value,
     Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
     InitStatic, NAMESPACE_MODULE, RaiseStandardError,
 )
@@ -267,10 +267,6 @@ class IRBuilder:
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
-
-    @property
-    def environment(self) -> Environment:
-        return self.builder.environment
 
     # Helpers for IR building
 
@@ -881,7 +877,7 @@ class IRBuilder:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.activate_block(BasicBlock())
 
-    def leave(self) -> Tuple[List[Register], List[BasicBlock], Environment, RType, FuncInfo]:
+    def leave(self) -> Tuple[List[Register], List[BasicBlock], RType, FuncInfo]:
         builder = self.builders.pop()
         self.symtables.pop()
         args = self.args.pop()
@@ -890,7 +886,7 @@ class IRBuilder:
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return args, builder.blocks, builder.environment, ret_type, fn_info
+        return args, builder.blocks, ret_type, fn_info
 
     def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
         return self.symtables[-1][symbol]

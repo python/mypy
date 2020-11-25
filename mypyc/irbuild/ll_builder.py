@@ -17,9 +17,8 @@ from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ir.ops import (
-    BasicBlock, Environment, Op, LoadInt, Value, Register,
-    Assign, Branch, Goto, Call, Box, Unbox, Cast, GetAttr,
-    LoadStatic, MethodCall, CallC, Truncate,
+    BasicBlock, Op, LoadInt, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
+    GetAttr, LoadStatic, MethodCall, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
@@ -76,7 +75,6 @@ class LowLevelIRBuilder:
     ) -> None:
         self.current_module = current_module
         self.mapper = mapper
-        self.environment = Environment()
         self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
