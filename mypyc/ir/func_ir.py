@@ -235,8 +235,6 @@ def format_blocks(blocks: List[BasicBlock],
 
     lines = []
     for i, block in enumerate(blocks):
-        i == len(blocks) - 1
-
         handler_msg = ''
         if block in handler_map:
             labels = sorted(env.format('%l', b.label) for b in handler_map[block])
