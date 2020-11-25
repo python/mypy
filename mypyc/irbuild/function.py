@@ -225,7 +225,7 @@ def gen_func_item(builder: IRBuilder,
     if builder.fn_info.is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
         gen_generator_func(builder)
-        args, blocks, ret_type, fn_info = builder.leave()
+        args, _, blocks, ret_type, fn_info = builder.leave()
         func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, fn_info, cdef)
 
         # Re-enter the FuncItem and visit the body of the function this time.
@@ -287,7 +287,7 @@ def gen_func_item(builder: IRBuilder,
     # to calculate argument defaults below.
     symtable = builder.symtables[-1]
 
-    args, blocks, ret_type, fn_info = builder.leave()
+    args, _, blocks, ret_type, fn_info = builder.leave()
 
     if fn_info.is_generator:
         add_methods_to_generator_class(
@@ -675,7 +675,7 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     retval = builder.coerce(retval, sig.ret_type, line)
     builder.add(Return(retval))
 
-    arg_regs, blocks, ret_type, _ = builder.leave()
+    arg_regs, _, blocks, ret_type, _ = builder.leave()
     return FuncIR(
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name,
@@ -713,7 +713,7 @@ def gen_glue_property(builder: IRBuilder,
     retbox = builder.coerce(retval, sig.ret_type, line)
     builder.add(Return(retbox))
 
-    args, blocks, return_type, _ = builder.leave()
+    args, _, blocks, return_type, _ = builder.leave()
     return FuncIR(
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name, FuncSignature([rt_arg], return_type)),

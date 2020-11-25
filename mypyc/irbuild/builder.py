@@ -41,7 +41,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive, is_tagged
 )
-from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
+from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF, RuntimeArg, FuncSignature, FuncDecl
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last
@@ -82,6 +82,9 @@ class IRBuilder:
         self.builders = [self.builder]
         self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, AssignmentTarget]]
         self.args = [[]]  # type: List[List[Register]]
+        self.args2 = [[]]  # type: List[List[RuntimeArg]]
+        self.function_name_stack = []  # type: List[str]
+        self.class_ir_stack = []  # type: List[ClassIR]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -440,6 +443,9 @@ class IRBuilder:
             return self.get_assignment_target(lvalue.expr)
 
         assert False, 'Unsupported lvalue: %r' % lvalue
+
+    def self(self) -> Register:
+        return self.args[-1][0]
 
     def read(self, target: Union[Value, AssignmentTarget], line: int = -1) -> Value:
         if isinstance(target, Value):
@@ -868,6 +874,7 @@ class IRBuilder:
         self.builders.append(self.builder)
         self.symtables.append(OrderedDict())
         self.args.append([])
+        self.args2.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
@@ -877,16 +884,46 @@ class IRBuilder:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.activate_block(BasicBlock())
 
-    def leave(self) -> Tuple[List[Register], List[BasicBlock], RType, FuncInfo]:
+    def leave(self) -> Tuple[List[Register], List[RuntimeArg], List[BasicBlock], RType, FuncInfo]:
         builder = self.builders.pop()
         self.symtables.pop()
         args = self.args.pop()
+        args2 = self.args2.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return args, builder.blocks, ret_type, fn_info
+        return args, args2, builder.blocks, ret_type, fn_info
+
+    def enter_method(self,
+                     class_ir: ClassIR,
+                     name: str,
+                     ret_type: RType,
+                     fn_info: Union[FuncInfo, str] = '') -> None:
+        self.enter(fn_info)
+        self.function_name_stack.append(name)
+        self.class_ir_stack.append(class_ir)
+        self.ret_types[-1] = ret_type
+        self.add_argument(SELF_NAME, RInstance(class_ir))
+
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+        if isinstance(var, str):
+            var = Var(var)
+        reg = self.add_local(var, typ, is_arg=True)
+        self.args[-1].append(reg)
+        self.args2[-1].append(RuntimeArg(var.name, typ, kind))
+        return reg
+
+    def leave_method(self) -> None:
+        arg_regs, args, blocks, ret_type, fn_info = self.leave()
+        sig = FuncSignature(args, ret_type)
+        name = self.function_name_stack.pop()
+        class_ir = self.class_ir_stack.pop()
+        decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+        ir = FuncIR(decl, arg_regs, blocks)
+        class_ir.methods[name] = ir
+        self.functions.append(ir)
 
     def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
         return self.symtables[-1][symbol]

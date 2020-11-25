@@ -128,7 +128,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     builder.activate_block(instance_block)
     builder.add(Return(builder.call_c(method_new_op, [vself, builder.read(instance)], line)))
 
-    args, blocks, _, fn_info = builder.leave()
+    args, _, blocks, _, fn_info = builder.leave()
 
     sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
                          RuntimeArg('instance', object_rprimitive),
