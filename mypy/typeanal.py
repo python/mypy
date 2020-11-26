@@ -59,6 +59,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
     'queue.Queue',
     'builtins._PathLike',
+    'asyncio.futures.Future',
 }  # type: Final
 
 
