@@ -854,6 +854,7 @@ _program.py:19: error: Dict entry 0 has incompatible type "str": "List[<nothing>
 _program.py:23: error: Invalid index type "str" for "MyDDict[Dict[_KT, _VT]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
+# flags: --python-version 3.6
 import collections
 from collections import Counter
 from typing import TypeVar
@@ -870,11 +871,11 @@ d[0] = 1
 def f(d: collections.defaultdict[int, str]) -> None:
     ...
 [out]
-_program.py:5: error: "defaultdict" is not subscriptable
-_program.py:6: error: "Counter" is not subscriptable
-_program.py:9: error: "defaultdict" is not subscriptable
-_program.py:12: error: Invalid index type "int" for "defaultdict[str, int]"; expected type "str"
-_program.py:14: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
+_program.py:6: error: "defaultdict" is not subscriptable
+_program.py:7: error: "Counter" is not subscriptable
+_program.py:10: error: "defaultdict" is not subscriptable
+_program.py:13: error: Invalid index type "int" for "defaultdict[str, int]"; expected type "str"
+_program.py:15: error: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
 
 [case testCollectionsAliases]
 import typing as t

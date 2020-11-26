@@ -73,7 +73,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
-    nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
+    get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr
@@ -465,7 +465,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     target = self.named_type_or_none(target_name, [])
                     assert target is not None
                     # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail, self.note)
+                    fix_instance_types(target, self.fail, self.note, self.options.python_version)
                     alias_node = TypeAlias(target, alias,
                                            line=-1, column=-1,  # there is no context
                                            no_args=True, normalized=True)
@@ -2589,7 +2589,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
         no_args = isinstance(res, Instance) and not res.args  # type: ignore
-        fix_instance_types(res, self.fail, self.note)
+        fix_instance_types(res, self.fail, self.note, self.options.python_version)
         alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
                                alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
@@ -3807,12 +3807,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(target, Instance):
                 name = target.type.fullname
                 if (alias.no_args and  # this avoids bogus errors for already reported aliases
-                        name in nongen_builtins and not alias.normalized):
+                        name in get_nongen_builtins(self.options.python_version) and
+                        not alias.normalized):
                     self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
         # ...or directly.
         else:
             n = self.lookup_type_node(base)
-            if n and n.fullname in nongen_builtins:
+            if n and n.fullname in get_nongen_builtins(self.options.python_version):
                 self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> Optional[List[Type]]:

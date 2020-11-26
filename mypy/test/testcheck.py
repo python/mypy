@@ -66,7 +66,6 @@ typecheck_files = [
     'check-selftype.test',
     'check-python2.test',
     'check-columns.test',
-    'check-future.test',
     'check-functions.test',
     'check-tuples.test',
     'check-expressions.test',
@@ -92,6 +91,7 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-generic-alias.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
