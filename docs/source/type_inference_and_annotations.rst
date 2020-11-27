@@ -182,17 +182,17 @@ must give each variable a type separately:
 
 .. code-block:: python
 
-   i, found = 0, False # type: int, bool
+   i, found = 0, False  # type: int, bool
 
 You can optionally use parentheses around the types, assignment targets
 and assigned expression:
 
 .. code-block:: python
 
-   i, found = 0, False # type: (int, bool)      # OK
-   (i, found) = 0, False # type: int, bool      # OK
-   i, found = (0, False) # type: int, bool      # OK
-   (i, found) = (0, False) # type: (int, bool)  # OK
+   i, found = 0, False  # type: (int, bool)      # OK
+   (i, found) = 0, False  # type: int, bool      # OK
+   i, found = (0, False)  # type: int, bool      # OK
+   (i, found) = (0, False)  # type: (int, bool)  # OK
 
 Starred expressions
 *******************
