@@ -10,9 +10,9 @@ from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
-    BasicBlock, Value, MethodCall, EmitterInterface, Unreachable, NAMESPACE_STATIC,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
+    BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
+    RaiseStandardError, CallC, LoadGlobal, Truncate, BinaryIntOp, LoadMem, GetElementPtr,
+    LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -92,7 +92,7 @@ def generate_native_function(fn: FuncIR,
     emitter.emit_from_emitter(body)
 
 
-class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
+class FunctionEmitterVisitor(OpVisitor[None]):
     def __init__(self,
                  emitter: Emitter,
                  declarations: Emitter,
