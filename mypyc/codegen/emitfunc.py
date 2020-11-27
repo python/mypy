@@ -435,7 +435,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 ann = ' /* %s */' % s
         self.emit_line('%s = %s;%s' % (dest, op.identifier, ann))
 
-    def visit_binary_int_op(self, op: IntOp) -> None:
+    def visit_int_op(self, op: IntOp) -> None:
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)

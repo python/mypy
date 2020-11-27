@@ -154,7 +154,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
         return self.format('%r = load_global %s :: static%s', op, op.identifier, ann)
 
-    def visit_binary_int_op(self, op: IntOp) -> str:
+    def visit_int_op(self, op: IntOp) -> str:
         return self.format('%r = %r %s %r', op, op.lhs, IntOp.op_str[op.op], op.rhs)
 
     def visit_comparison_op(self, op: ComparisonOp) -> str:

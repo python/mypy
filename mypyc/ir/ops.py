@@ -880,7 +880,7 @@ class IntOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_binary_int_op(self)
+        return visitor.visit_int_op(self)
 
 
 class ComparisonOp(RegisterOp):
@@ -1163,7 +1163,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_binary_int_op(self, op: IntOp) -> T:
+    def visit_int_op(self, op: IntOp) -> T:
         raise NotImplementedError
 
     @abstractmethod

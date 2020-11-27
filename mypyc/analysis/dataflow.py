@@ -207,7 +207,7 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
         return self.visit_register_op(op)
 
-    def visit_binary_int_op(self, op: IntOp) -> GenAndKill:
+    def visit_int_op(self, op: IntOp) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
