@@ -57,58 +57,6 @@ DeserMaps = NamedTuple('DeserMaps',
                        [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
 
 
-class AssignmentTarget(object):
-    """Abstract base class for assignment targets in IR"""
-
-    type = None  # type: RType
-
-
-class AssignmentTargetRegister(AssignmentTarget):
-    """Register as assignment target"""
-
-    def __init__(self, register: 'Register') -> None:
-        self.register = register
-        self.type = register.type
-
-
-class AssignmentTargetIndex(AssignmentTarget):
-    """base[index] as assignment target"""
-
-    def __init__(self, base: 'Value', index: 'Value') -> None:
-        self.base = base
-        self.index = index
-        # TODO: This won't be right for user-defined classes. Store the
-        #       lvalue type in mypy and remove this special case.
-        self.type = object_rprimitive
-
-
-class AssignmentTargetAttr(AssignmentTarget):
-    """obj.attr as assignment target"""
-
-    def __init__(self, obj: 'Value', attr: str) -> None:
-        self.obj = obj
-        self.attr = attr
-        if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
-            # Native attribute reference
-            self.obj_type = obj.type  # type: RType
-            self.type = obj.type.attr_type(attr)
-        else:
-            # Python attribute reference
-            self.obj_type = object_rprimitive
-            self.type = object_rprimitive
-
-
-class AssignmentTargetTuple(AssignmentTarget):
-    """x, ..., y as assignment target"""
-
-    def __init__(self, items: List[AssignmentTarget],
-                 star_idx: Optional[int] = None) -> None:
-        self.items = items
-        self.star_idx = star_idx
-        # The shouldn't be relevant, but provide it just in case.
-        self.type = object_rprimitive
-
-
 class BasicBlock:
     """Basic IR block.
 
