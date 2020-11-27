@@ -105,6 +105,14 @@ method_op(
     c_function_name='CPyList_Count',
     error_kind=ERR_MAGIC)
 
+# list.insert(index, obj)
+method_op(
+    name='insert',
+    arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='CPyList_Insert',
+    error_kind=ERR_NEG_INT)
+
 # list * int
 binary_op(
     name='*',

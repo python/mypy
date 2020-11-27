@@ -323,6 +323,7 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
+int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);

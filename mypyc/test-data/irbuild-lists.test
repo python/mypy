@@ -233,3 +233,20 @@ L0:
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
     return r3
+
+[case testListInsert]
+from typing import List
+def f(x: List[int], y: int) -> None:
+    x.insert(0, y)
+[out]
+def f(x, y):
+    x :: list
+    y :: int
+    r0 :: object
+    r1 :: int32
+    r2 :: bit
+L0:
+    r0 = box(int, y)
+    r1 = CPyList_Insert(x, 0, r0)
+    r2 = r1 >= 0 :: signed
+    return 1
