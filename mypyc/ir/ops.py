@@ -205,7 +205,7 @@ class Register(Value):
         return False
 
     def __repr__(self) -> str:
-        return '<Register %r>' % self.name
+        return '<Register %r at %s>' % (self.name, hex(id(self)))
 
 
 class Op(Value):
