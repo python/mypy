@@ -60,7 +60,7 @@ DeserMaps = NamedTuple('DeserMaps',
 class BasicBlock:
     """Basic IR block.
 
-    Ends with a jump, branch, or return.
+    Constains a sequence of ops and ends with a jump, branch, or return.
 
     When building the IR, ops that raise exceptions can be included in
     the middle of a basic block, but the exceptions aren't checked.
@@ -404,10 +404,6 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
-# True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, List[bool]]
-
-
 class Assign(Op):
     """Assign a value to a register (dest = int)."""
 
@@ -740,6 +736,10 @@ class RaiseStandardError(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_raise_standard_error(self)
+
+
+# True steals all arguments, False steals none, a list steals those in matching positions
+StealsDescription = Union[bool, List[bool]]
 
 
 class CallC(RegisterOp):
