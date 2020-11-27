@@ -1189,7 +1189,3 @@ class OpVisitor(Generic[T]):
 
 # TODO: Should this live somewhere else?
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
-
-
-# Import mypyc.primitives.registry that will set up set up global primitives tables.
-import mypyc.primitives.registry  # noqa
