@@ -67,7 +67,7 @@ Built-in types
 
    # For tuples of fixed size, we specify the types of all the elements
    x: Tuple[int, str, float] = (3, "yes", 7.5)
-   
+
    # For tuples of variable size, we use one type and ellipsis
    x: Tuple[int, ...] = (1, 2, 3)
 
@@ -226,6 +226,8 @@ that are common in idiomatic Python are standardized.
    f({3: 'yes', 4: 'no'})
 
 
+You can even make your own duck types using :ref:`protocol-types`.
+
 Classes
 *******
 
@@ -319,7 +321,7 @@ Decorators
 **********
 
 Decorator functions can be expressed via generics. See
-:ref:`declaring-decorators` for the more details.
+:ref:`declaring-decorators` for more details.
 
 .. code-block:: python
 
