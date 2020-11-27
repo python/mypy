@@ -1,6 +1,7 @@
 """Test runner for data-flow analysis test cases."""
 
 import os.path
+from typing import Set
 
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir

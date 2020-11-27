@@ -1,6 +1,6 @@
 import unittest
 
-from typing import Dict
+from typing import Dict, List
 
 from mypy.ordered_dict import OrderedDict
 
