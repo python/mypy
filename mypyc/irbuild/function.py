@@ -10,11 +10,11 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr
+    FuncItem, LambdaExpr, SymbolNode
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -210,7 +210,7 @@ def gen_func_item(builder: IRBuilder,
         class_name = cdef.name
 
     builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
-                        is_nested, contains_nested, is_decorated, in_non_ext))
+                           is_nested, contains_nested, is_decorated, in_non_ext))
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -283,6 +283,10 @@ def gen_func_item(builder: IRBuilder,
     if builder.fn_info.is_generator:
         populate_switch_for_generator_class(builder)
 
+    # Hang on to the local symbol table for a while, since we use it
+    # to calculate argument defaults below.
+    symtable = builder.symtables[-1]
+
     args, blocks, env, ret_type, fn_info = builder.leave()
 
     if fn_info.is_generator:
@@ -291,7 +295,9 @@ def gen_func_item(builder: IRBuilder,
     else:
         func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, env, fn_info, cdef)
 
-    calculate_arg_defaults(builder, fn_info, func_reg)
+    # Evaluate argument defaults in the surrounding scope, since we
+    # calculate them *once* when the function definition is evaluated.
+    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
 
     return (func_ir, func_reg)
 
@@ -432,7 +438,8 @@ def handle_non_ext_method(
 
 def calculate_arg_defaults(builder: IRBuilder,
                            fn_info: FuncInfo,
-                           func_reg: Optional[Value]) -> None:
+                           func_reg: Optional[Value],
+                           symtable: Dict[SymbolNode, AssignmentTarget]) -> None:
     """Calculate default argument values and store them.
 
     They are stored in statics for top level functions and in
@@ -445,7 +452,7 @@ def calculate_arg_defaults(builder: IRBuilder,
         if arg.initializer and not is_constant(arg.initializer):
             value = builder.coerce(
                 builder.accept(arg.initializer),
-                builder.lookup(arg.variable).type,
+                symtable[arg.variable].type,
                 arg.line
             )
             if not fn_info.is_nested:
