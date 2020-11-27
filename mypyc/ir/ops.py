@@ -834,7 +834,7 @@ class LoadGlobal(RegisterOp):
         return visitor.visit_load_global(self)
 
 
-class BinaryIntOp(RegisterOp):
+class IntOp(RegisterOp):
     """Binary arithmetic and bitwise operations on integer types
 
     These ops are low-level and will be eventually generated to simple x op y form.
@@ -1163,7 +1163,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_binary_int_op(self, op: BinaryIntOp) -> T:
+    def visit_binary_int_op(self, op: IntOp) -> T:
         raise NotImplementedError
 
     @abstractmethod

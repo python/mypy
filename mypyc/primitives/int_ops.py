@@ -125,7 +125,7 @@ int_invert_op = int_unary_op('~', 'CPyTagged_Invert')
 
 # Description for building int logical ops
 # For each field:
-# binary_op_variant: identify which BinaryIntOp to use when operands are short integers
+# binary_op_variant: identify which IntOp to use when operands are short integers
 # c_func_description: the C function to call when operands are tagged integers
 # c_func_negated: whether to negate the C function call's result
 # c_func_swap_operands: whether to swap lhs and rhs when call the function
