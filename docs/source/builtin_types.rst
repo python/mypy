@@ -31,10 +31,10 @@ strings and ``Dict[Any, Any]`` is a dictionary of dynamically typed
 (arbitrary) values and keys. ``List`` is another generic class. ``Dict`` and
 ``List`` are aliases for the built-ins ``dict`` and ``list``, respectively.
 
-``Iterable``, ``Sequence``, and ``Mapping`` are generic types that
-correspond to Python protocols. For example, a ``str`` object or a
-``List[str]`` object is valid
-when ``Iterable[str]`` or ``Sequence[str]`` is expected. Note that even though
-they are similar to abstract base classes defined in :py:mod:`collections.abc`
-(formerly ``collections``), they are not identical, since the built-in
-collection type objects do not support indexing.
+``Iterable``, ``Sequence``, and ``Mapping`` are generic types that correspond to
+Python protocols. For example, a ``str`` object or a ``List[str]`` object is
+valid when ``Iterable[str]`` or ``Sequence[str]`` is expected. Note that even
+though they are similar to abstract base classes defined in
+:py:mod:`collections.abc` (formerly ``collections``), they are not identical. In
+particular, prior to Python 3.9, the built-in collection type objects do not
+support indexing.
