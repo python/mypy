@@ -1113,6 +1113,22 @@ GroupDataDict = TypedDict(
 GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 [builtins fixtures/dict.pyi]
 
+
+[case testCheckDisallowAnyGenericsStubOnly]
+# flags: --disallow-any-generics --python-version 3.8
+from asyncio import Future
+from queue import Queue
+x: Future[str]
+y: Queue[int]
+
+p: Future  # E: Missing type parameters for generic type "Future" \
+           # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
+q: Queue  # E: Missing type parameters for generic type "Queue" \
+          # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+
+
 [case testCheckDefaultAllowAnyGeneric]
 from typing import TypeVar, Callable
 

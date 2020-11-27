@@ -59,6 +59,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
     'queue.Queue',
     'builtins._PathLike',
+    'asyncio.futures.Future',
 }  # type: Final
 
 
@@ -1010,7 +1011,9 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
             base_fullname = (
                 base_type.type.fullname if isinstance(base_type, Instance) else fullname
             )
-            if base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
+            # Ideally, we'd check whether the type is quoted or `from __future__ annotations`
+            # is set before issuing this note
+            if python_version < (3, 9) and base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
                 # Recommend `from __future__ import annotations` or to put type in quotes
                 # (string literal escaping) for classes not generic at runtime
                 note(
