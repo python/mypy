@@ -1,0 +1,310 @@
+.. _runtime_troubles:
+
+Annotation issues at runtime
+============================
+
+Idiomatic use of type annotations can sometimes run up against what a given
+version of Python considers legal code. This section describes these scenarios
+and explains how to get your code running again. Generally speaking, we have
+three tools at our disposal:
+
+* For Python 3.7 through 3.9, use of ``from __future__ import annotations``
+  (:pep:`563`), made the default in Python 3.10 and later
+* Use of string literal types or type comments
+* Use of ``typing.TYPE_CHECKING``
+
+We provide a description of these before moving onto discussion of specific
+problems you may encounter.
+
+.. _string-literal-types:
+
+String literal types
+--------------------
+
+Type comments can't cause runtime errors because comments are not evaluated by
+Python. Using string literal types sidesteps the problem of annotations that
+would cause runtime errors in a similar way.
+
+Any type can be entered as a string literal, and you can combine
+string-literal types with non-string-literal types freely:
+
+.. code-block:: python
+
+   def f(a: List['A']) -> None: ...  # OK
+   def g(n: 'int') -> None: ...      # OK, though not useful
+
+   class A: pass
+
+String literal types are never needed in ``# type:`` comments and :ref:`stub files <stub-files>`.
+
+String literal types must be defined (or imported) later *in the same module*.
+They cannot be used to leave cross-module references unresolved.  (For dealing
+with import cycles, see :ref:`import-cycles`.)
+
+.. _future-annotations:
+
+Annotations import from future (PEP 563)
+----------------------------------------
+
+Many of the issues described here are caused by Python trying to evaluate
+annotations. From Python 3.10 on, Python will no longer attempt to evaluate
+function and variable annotations. This behaviour is made available in Python
+3.7 and later through the use of ``from __future__ import annotations``.
+
+This can be thought of as automatic string literal-ification of all function and
+variable annotations. Note that function and variable annotations are still
+required to be valid Python syntax. For more details, see :pep:`563`.
+
+.. note::
+
+    Even with the ``__future__`` import, there are some scenarios that could
+    still require string literals or result in errors, typically involving use
+    of forward references or generics in:
+
+    * :ref:`type aliases <type-aliases>`;
+    * :ref:`casts <casts>`;
+    * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
+    * base classes.
+
+    .. code-block:: python
+
+        # base class example
+        class A(Tuple['B', 'C']): ... # OK
+        class B: ...
+        class C: ...
+
+.. note::
+
+    Some libraries may have use cases for dynamic evaluation of annotations, for
+    instance, through use of ``typing.get_type_hints`` or ``eval``. If your
+    annotation would raise an error when evaluated (say by using :pep:`604`
+    syntax with Python 3.9), you may need to be careful when using such
+    libraries.
+
+.. _typing-type-checking:
+
+typing.TYPE_CHECKING
+--------------------
+
+The :py:mod:`typing` module defines a :py:data:`~typing.TYPE_CHECKING` constant
+that is ``False`` at runtime but treated as ``True`` while type checking.
+
+Since code inside ``if TYPE_CHECKING:`` is not executed at runtime, it provides
+a convenient way to tell mypy something without the code being evaluated at
+runtime. This is most useful for resolving :ref:`import cycles <import-cycles>`.
+
+.. note::
+
+   Python 3.5.1 and below don't have :py:data:`~typing.TYPE_CHECKING`. An
+   alternative is to define a constant named ``MYPY`` that has the value
+   ``False`` at runtime. Mypy considers it to be ``True`` when type checking.
+
+Class name forward references
+-----------------------------
+
+Python does not allow references to a class object before the class is
+defined (aka forward reference). Thus this code does not work as expected:
+
+.. code-block:: python
+
+   def f(x: A) -> None: ...  # NameError: name 'A' is not defined
+   class A: ...
+
+Starting from Python 3.7, you can add the special import ``from __future__ import annotations``,
+which makes the use of string literals in annotations unnecessary:
+
+.. code-block:: python
+
+   from __future__ import annotations
+
+   def f(x: A) -> None: ...  # OK
+   class A: ...
+
+For Python 3.6 and below, you can enter the type as a string literal or type comment:
+
+.. code-block:: python
+
+   def f(x: 'A') -> None: ...  # OK
+
+   # Also OK
+   def g(x):  # type: (A) -> None
+       ...
+
+   class A: ...
+
+Of course, instead of using a string literal type or special import, you could move the
+function definition after the class definition. This is not always
+desirable or even possible, though.
+
+.. _import-cycles:
+
+Import cycles
+-------------
+
+An import cycle occurs where module A imports module B and module B
+imports module A (perhaps indirectly, e.g. ``A -> B -> C -> A``).
+Sometimes in order to add type annotations you have to add extra
+imports to a module and those imports cause cycles that didn't exist
+before. This can lead to errors at runtime like:
+
+.. code-block::
+
+   ImportError: cannot import name 'b' from partially initialized module 'A' (most likely due to a circular import)
+
+If those cycles do become a problem when running your program,
+there's a trick: if the import is only needed for type annotations in
+forward references (string literals) or comments, you can write the
+imports inside ``if TYPE_CHECKING:`` so that they are not executed at runtime.
+Example:
+
+File ``foo.py``:
+
+.. code-block:: python
+
+   from typing import List, TYPE_CHECKING
+
+   if TYPE_CHECKING:
+       import bar
+
+   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
+       return [arg]
+
+File ``bar.py``:
+
+.. code-block:: python
+
+   from typing import List
+   from foo import listify
+
+   class BarClass:
+       def listifyme(self) -> 'List[BarClass]':
+           return listify(self)
+
+.. _not-generic-runtime:
+
+Using classes that are generic in stubs but not at runtime
+----------------------------------------------------------
+
+Some classes are declared as generic in stubs, but not at runtime.
+
+In Python 3.8 and lower, there are several examples within the standard library,
+for instance, :py:class:`os.PathLike` and :py:class:`queue.Queue`. Subscripting
+such a class will result in a runtime error:
+
+.. code-block:: python
+
+   from queue import Queue
+
+   class Tasks(Queue[str]):  # TypeError: 'type' object is not subscriptable
+       ...
+
+   results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
+
+To avoid errors from use of these generics in annotations, just use the
+:ref:`future annotations import<future-annotations>` (or string literals or type
+comments for Python 3.6 and below).
+
+To avoid errors when inheriting from these classes, things are a little more
+complicated and you need to use :ref:`typing.TYPE_CHECKING
+<typing-type-checking>`:
+
+.. code-block:: python
+
+   from typing import TYPE_CHECKING
+   from queue import Queue
+
+   if TYPE_CHECKING:
+       BaseQueue = Queue[str]  # this is only processed by mypy
+   else:
+       BaseQueue = Queue  # this is not seen by mypy but will be executed at runtime
+
+   class Tasks(BaseQueue):  # OK
+       ...
+
+   task_queue: Tasks
+   reveal_type(task_queue.get())  # Reveals str
+
+If your subclass is also generic, you can using something like the following:
+
+.. code-block:: python
+
+   from typing import TYPE_CHECKING, TypeVar, Generic
+   from queue import Queue
+
+   _T = TypeVar("_T")
+   if TYPE_CHECKING:
+       class _MyQueueBase(Queue[_T]): pass
+   else:
+       class _MyQueueBase(Generic[_T], Queue): pass
+
+   class MyQueue(_MyQueueBase[_T]): pass
+
+   task_queue: MyQueue[str]
+   reveal_type(task_queue.get())  # Reveals str
+
+
+Using types defined in stubs but not at runtime
+-----------------------------------------------
+
+Sometimes stubs that you're using may define types you wish to re-use that do
+not exist at runtime. Importing these types naively will cause your code to fail
+at runtime with ``ImportError`` or ``ModuleNotFoundError``. Similar to previous
+sections, these can be dealt with by using :ref:`typing.TYPE_CHECKING
+<typing-type-checking>`:
+
+.. code-block:: python
+
+   from typing import TYPE_CHECKING
+   if TYPE_CHECKING:
+       from _typeshed import SupportsLessThan
+
+.. _generic-builtins:
+
+Using generic builtins
+----------------------
+
+Starting with Python 3.9 (:pep:`585`), the type objects of many collections in
+the standard library support subscription at runtime. This means that you no
+longer have to import the equivalents from :py:mod:`typing`; you can simply use
+the built-in collections or those from :py:mod:`collections.abc`
+
+.. code-block:: python
+
+   from collections.abc import Sequence
+   x: list[str]
+   y: dict[int, str]
+   z: Sequence[str] = x
+
+If you use ``from __future__ import annotations``, mypy will understand this
+syntax in Python 3.7 and later. However, since this will not be supported by the
+Python interpreter at runtime, make sure you're aware of the caveats mentioned
+in the notes at :ref:`future annotations import<future-annotations>`.
+
+Using new syntax
+----------------
+
+Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
+str``, instead of ``x: typing.Union[int, str]``.
+
+If you use ``from __future__ import annotations``, mypy will understand this
+syntax in Python 3.7 and later. However, since this will not be supported by the
+Python interpreter at runtime (if evaluated, ``int | str`` will raise
+``TypeError: unsupported operand type(s) for |: 'type' and 'type'``), make sure
+you're aware of the caveats mentioned in the notes at :ref:`future annotations
+import<future-annotations>`. You can also use the new syntax in string literal
+types or type comments.
+
+Using new additions to the typing module
+----------------------------------------
+
+You may find yourself wanting to use features added to the :py:mod:`typing`
+module in earlier versions of Python than the addition, for example, using any
+of ``Literal``, ``Protocol``, ``TypedDict`` with Python 3.6.
+
+The easiest way to do this is to install and use the ``typing_extensions``
+package for the relevant imports, for example:
+
+.. code-block:: python
+
+   from typing_extensions import Literal
+   x: Literal["open", "close"]
