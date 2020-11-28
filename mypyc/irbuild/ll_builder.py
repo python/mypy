@@ -849,8 +849,9 @@ class LowLevelIRBuilder:
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_runtime_subtype(value.type, int_rprimitive):
-            zero = self.add(LoadInt(0, rtype=value.type))
-            value = self.binary_op(value, zero, '!=', value.line)
+            zero = self.add(LoadInt(0, rtype=short_int_rprimitive))
+            self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
+            return
         elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
             zero = self.add(LoadInt(0))
