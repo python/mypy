@@ -277,24 +277,3 @@ def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Valu
                     values.append(op)
 
     return values
-
-
-def all_registers(ir: FuncIR) -> List[Register]:
-    """Return set of all registers that may be initialized within function.
-
-    This omits registers that are only read.
-    """
-    registers = list(ir.arg_regs)
-    seen = set(registers)
-    for block in ir.blocks:
-        for op in block.ops:
-            if isinstance(op, Assign) and op.dest not in seen:
-                registers.append(op.dest)
-                seen.add(op.dest)
-            elif (isinstance(op, LoadAddress)
-                      and isinstance(op.src, Register)
-                      and op.src not in seen):
-                # Taking the address of a register allows initialization.
-                registers.append(op.src)
-                seen.add(op.src)
-    return registers
