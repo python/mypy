@@ -43,8 +43,8 @@ with import cycles, see :ref:`import-cycles`.)
 
 .. _future-annotations:
 
-Annotations import from future (PEP 563)
-----------------------------------------
+Future annotations import (PEP 563)
+-----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
 annotations. From Python 3.10 on, Python will no longer attempt to evaluate
@@ -275,24 +275,25 @@ the built-in collections or those from :py:mod:`collections.abc`
    y: dict[int, str]
    z: Sequence[str] = x
 
+There is limited support for using this syntax in Python 3.7 and later as well.
 If you use ``from __future__ import annotations``, mypy will understand this
-syntax in Python 3.7 and later. However, since this will not be supported by the
-Python interpreter at runtime, make sure you're aware of the caveats mentioned
-in the notes at :ref:`future annotations import<future-annotations>`.
+syntax in annotations. However, since this will not be supported by the Python
+interpreter at runtime, make sure you're aware of the caveats mentioned in the
+notes at :ref:`future annotations import<future-annotations>`.
 
-Using new syntax
-----------------
+Using X | Y syntax for Unions
+-----------------------------
 
 Starting with Python 3.10 (:pep:`604`), you can spell union types as ``x: int |
 str``, instead of ``x: typing.Union[int, str]``.
 
+There is limited support for using this syntax in Python 3.7 and later as well.
 If you use ``from __future__ import annotations``, mypy will understand this
-syntax in Python 3.7 and later. However, since this will not be supported by the
-Python interpreter at runtime (if evaluated, ``int | str`` will raise
-``TypeError: unsupported operand type(s) for |: 'type' and 'type'``), make sure
-you're aware of the caveats mentioned in the notes at :ref:`future annotations
-import<future-annotations>`. You can also use the new syntax in string literal
-types or type comments.
+syntax in annotations, string literal types, type comments and stub files.
+However, since this will not be supported by the Python interpreter at runtime
+(if evaluated, ``int | str`` will raise ``TypeError: unsupported operand type(s)
+for |: 'type' and 'type'``), make sure you're aware of the caveats mentioned in
+the notes at :ref:`future annotations import<future-annotations>`.
 
 Using new additions to the typing module
 ----------------------------------------

@@ -247,8 +247,8 @@ X | Y syntax for Unions
 -----------------------
 
 :pep:`604` introduced an alternative way for spelling union types. In Python
-3.10 and later, it is possible to write ``Union[int, str]`` as ``int | str``. It
-is possible to use this syntax in versions of Python where it isn't supported by
+3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
+possible to use this syntax in versions of Python where it isn't supported by
 the runtime with some limitations, see :ref:`runtime_troubles`.
 
 .. code-block:: python
