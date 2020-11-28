@@ -454,6 +454,109 @@ A([1], '2')  # E: Cannot infer type argument 1 of "A"
 
 [builtins fixtures/list.pyi]
 
+
+[case testAttrsUntypedGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T]):
+    attr: T
+
+@attr.s(auto_attribs=True)
+class Sub(Base):
+    pass
+
+sub = Sub(attr=1)
+reveal_type(sub)  # N: Revealed type is '__main__.Sub'
+reveal_type(sub.attr)  # N: Revealed type is 'Any'
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+S = TypeVar("S")
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T]):
+    attr: T
+
+@attr.s(auto_attribs=True)
+class Sub(Base[S]):
+    pass
+
+sub_int = Sub[int](attr=1)
+reveal_type(sub_int)  # N: Revealed type is '__main__.Sub[builtins.int*]'
+reveal_type(sub_int.attr)  # N: Revealed type is 'builtins.int*'
+
+sub_str = Sub[str](attr='ok')
+reveal_type(sub_str)  # N: Revealed type is '__main__.Sub[builtins.str*]'
+reveal_type(sub_str.attr)  # N: Revealed type is 'builtins.str*'
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T1, T2, T3]):
+    one: T1
+    two: T2
+    three: T3
+
+@attr.s(auto_attribs=True)
+class Sub(Base[int, str, float]):
+    pass
+
+sub = Sub(one=1, two='ok', three=3.14)
+reveal_type(sub)  # N: Revealed type is '__main__.Sub'
+reveal_type(sub.one)  # N: Revealed type is 'builtins.int*'
+reveal_type(sub.two)  # N: Revealed type is 'builtins.str*'
+reveal_type(sub.three)  # N: Revealed type is 'builtins.float*'
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsMultiGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True, eq=False)
+class Base(Generic[T]):
+    base_attr: T
+
+S = TypeVar("S")
+
+@attr.s(auto_attribs=True, eq=False)
+class Middle(Base[int], Generic[S]):
+    middle_attr: S
+
+@attr.s(auto_attribs=True, eq=False)
+class Sub(Middle[str]):
+    pass
+
+sub = Sub(base_attr=1, middle_attr='ok')
+reveal_type(sub)  # N: Revealed type is '__main__.Sub'
+reveal_type(sub.base_attr)  # N: Revealed type is 'builtins.int*'
+reveal_type(sub.middle_attr)  # N: Revealed type is 'builtins.str*'
+
+[builtins fixtures/bool.pyi]
+
+
 [case testAttrsGenericClassmethod]
 from typing import TypeVar, Generic, Optional
 import attr
