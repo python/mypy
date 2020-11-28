@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union
+from typing import Union, Optional
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -73,11 +73,17 @@ def generate_native_function(fn: FuncIR,
                                                                      init=init))
 
     # Before we emit the blocks, give them all labels
-    for i, block in enumerate(fn.blocks):
+    blocks = fn.blocks
+    for i, block in enumerate(blocks):
         block.label = i
 
-    for block in fn.blocks:
+    for i in range(len(blocks)):
+        block = blocks[i]
+        next_block = None
+        if i + 1 < len(blocks):
+            next_block = blocks[i + 1]
         body.emit_label(block)
+        visitor.next_block = next_block
         for op in block.ops:
             op.accept(visitor)
 
@@ -98,7 +104,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
-        self.literals = emitter.context.literals
+        self.next_block = None  # type: Optional[BasicBlock]
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -107,8 +113,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emit_line('goto %s;' % self.label(op.label))
 
     def visit_branch(self, op: Branch) -> None:
-        neg = '!' if op.negated else ''
+        true, false = op.true, op.false
+        negated = op.negated
+        if true is self.next_block and op.traceback_entry is None:
+            # Switch true/false since it avoids an else block.
+            true, false = false, true
+            negated = not negated
 
+        neg = '!' if negated else ''
         cond = ''
         if op.op == Branch.BOOL:
             expr_result = self.reg(op.value)
@@ -133,15 +145,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.traceback_entry is not None or op.rare:
             cond = 'unlikely({})'.format(cond)
 
-        self.emit_line('if ({}) {{'.format(cond))
-
-        self.emit_traceback(op)
-
-        self.emit_lines(
-            'goto %s;' % self.label(op.true),
-            '} else',
-            '    goto %s;' % self.label(op.false)
-        )
+        if false is self.next_block:
+            if op.traceback_entry is None:
+                self.emit_line('if ({}) goto {};'.format(cond, self.label(true)))
+            else:
+                self.emit_line('if ({}) {{'.format(cond))
+                self.emit_traceback(op)
+                self.emit_lines(
+                    'goto %s;' % self.label(true),
+                    '}'
+                )
+        else:
+            self.emit_line('if ({}) {{'.format(cond))
+            self.emit_traceback(op)
+            self.emit_lines(
+                'goto %s;' % self.label(true),
+                '} else',
+                '    goto %s;' % self.label(false)
+            )
 
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)

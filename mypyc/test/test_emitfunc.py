@@ -1,6 +1,12 @@
 import unittest
 
+<<<<<<< HEAD
 from typing import List
+||||||| constructed merge base
+from typing import Dict, List
+=======
+from typing import Dict, List, Optional
+>>>>>>> [mypyc] Omit else block if possible in C generated for branch ops
 
 from mypy.ordered_dict import OrderedDict
 
@@ -24,9 +30,7 @@ from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.primitives.registry import binary_ops
 from mypyc.primitives.misc_ops import none_object_op
-from mypyc.primitives.list_ops import (
-    list_get_item_op, list_set_item_op, list_append_op
-)
+from mypyc.primitives.list_ops import list_get_item_op, list_set_item_op, list_append_op
 from mypyc.primitives.dict_ops import (
     dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
 )
@@ -36,6 +40,8 @@ from mypyc.namegen import NameGenerator
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
+    """Test generation of fragments of C from individual IR ops."""
+
     def setUp(self) -> None:
         self.registers = []  # type: List[Register]
 
@@ -123,6 +129,49 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         b.negated = True
         self.assert_emit(b,
                          """if (!cpy_r_b) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+
+    def test_branch_no_else(self) -> None:
+        next_block = BasicBlock(9)
+        b = Branch(self.b, BasicBlock(8), next_block, Branch.BOOL)
+        self.assert_emit(b,
+                         """if (cpy_r_b) goto CPyL8;""",
+                         next_block=next_block)
+        next_block = BasicBlock(9)
+        b = Branch(self.b, BasicBlock(8), next_block, Branch.BOOL)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (!cpy_r_b) goto CPyL8;""",
+                         next_block=next_block)
+
+    def test_branch_no_else_negated(self) -> None:
+        next_block = BasicBlock(1)
+        b = Branch(self.b, next_block, BasicBlock(2), Branch.BOOL)
+        self.assert_emit(b,
+                         """if (!cpy_r_b) goto CPyL2;""",
+                         next_block=next_block)
+        next_block = BasicBlock(1)
+        b = Branch(self.b, next_block, BasicBlock(2), Branch.BOOL)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (cpy_r_b) goto CPyL2;""",
+                         next_block=next_block)
+
+    def test_branch_is_error(self) -> None:
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        self.assert_emit(b,
+                         """if (cpy_r_b == 2) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (cpy_r_b != 2) {
                                 goto CPyL8;
                             } else
                                 goto CPyL9;
@@ -318,7 +367,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Assign(a, Integer((1 << 31) - 1, int64_rprimitive)),
                          """cpy_r_a = 2147483647;""")
 
-    def assert_emit(self, op: Op, expected: str) -> None:
+    def assert_emit(self, op: Op, expected: str, next_block: Optional[BasicBlock] = None) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
         value_names = generate_names_for_ir(self.registers, [block])
@@ -328,6 +377,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         declarations.fragments = []
 
         visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
+        visitor.next_block = next_block
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
