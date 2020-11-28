@@ -6,7 +6,9 @@ from typing_extensions import Final
 from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
-from mypyc.ir.ops import DeserMaps, BasicBlock, Environment, Value, Register, Assign, ControlOp
+from mypyc.ir.ops import (
+    DeserMaps, BasicBlock, Environment, Value, Register, Assign, ControlOp, LoadAddress
+)
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
 
@@ -223,9 +225,9 @@ INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
 
 
 def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
-    """Return set of all values that are initialized at least once.
+    """Return the set of all values that may be initialized in the blocks.
 
-    This omits registers that are never assigned to.
+    This omits registers that are only read.
     """
     values = list(args)  # type: List[Value]
     seen_registers = set(args)
@@ -240,6 +242,12 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
                 elif op.is_void:
                     continue
                 else:
+                    # If we take the address of a register, it might get initialized.
+                    if (isinstance(op, LoadAddress)
+                            and isinstance(op.src, Register)
+                            and op.src not in seen_registers):
+                        values.append(op.src)
+                        seen_registers.add(op.src)
                     values.append(op)
 
     return values
@@ -272,7 +280,10 @@ def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Valu
 
 
 def all_registers(ir: FuncIR) -> List[Register]:
-    """Return set of all registers that are initialized at least once."""
+    """Return set of all registers that may be initialized within function.
+
+    This omits registers that are only read.
+    """
     registers = list(ir.arg_regs)
     seen = set(registers)
     for block in ir.blocks:
@@ -280,4 +291,10 @@ def all_registers(ir: FuncIR) -> List[Register]:
             if isinstance(op, Assign) and op.dest not in seen:
                 registers.append(op.dest)
                 seen.add(op.dest)
+            elif (isinstance(op, LoadAddress)
+                      and isinstance(op.src, Register)
+                      and op.src not in seen):
+                # Taking the address of a register allows initialization.
+                registers.append(op.src)
+                seen.add(op.src)
     return registers

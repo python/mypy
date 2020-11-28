@@ -27,7 +27,8 @@ from mypyc.analysis.dataflow import (
     AnalysisDict
 )
 from mypyc.ir.ops import (
-    BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto,  Op, ControlOp, Value, Register
+    BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto,  Op, ControlOp, Value, Register,
+    LoadAddress
 )
 from mypyc.ir.func_ir import FuncIR, all_values
 
@@ -248,7 +249,10 @@ def add_block(decincs: DecIncs, cache: BlockCache,
 
 
 def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
-    """Create a ordering of values that allows them to be sorted."""
+    """Create a ordering of values that allows them to be sorted.
+
+    This omits registers that are only ever read.
+    """
     # TODO: Never initialized values??
     result = {}  # type: Dict[Value, int]
     n = 0
@@ -259,6 +263,12 @@ def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
 
     for block in ir.blocks:
         for op in block.ops:
+            if (isinstance(op, LoadAddress)
+                    and isinstance(op.src, Register)
+                    and op.src not in result):
+                # Taking the address of a register allows initialization.
+                result[op.src] = n
+                n += 1
             if isinstance(op, Assign):
                 if op.dest not in result:
                     result[op.dest] = n
