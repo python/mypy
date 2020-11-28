@@ -22,8 +22,8 @@ String literal types
 --------------------
 
 Type comments can't cause runtime errors because comments are not evaluated by
-Python. Using string literal types sidesteps the problem of annotations that
-would cause runtime errors in a similar way.
+Python. In a similar way, using string literal types sidesteps the problem of
+annotations that would cause runtime errors.
 
 Any type can be entered as a string literal, and you can combine
 string-literal types with non-string-literal types freely:
@@ -151,11 +151,11 @@ before. This can lead to errors at runtime like:
 
    ImportError: cannot import name 'b' from partially initialized module 'A' (most likely due to a circular import)
 
-If those cycles do become a problem when running your program,
-there's a trick: if the import is only needed for type annotations in
-forward references (string literals) or comments, you can write the
-imports inside ``if TYPE_CHECKING:`` so that they are not executed at runtime.
-Example:
+If those cycles do become a problem when running your program, there's a trick:
+if the import is only needed for type annotations and you're using a) the
+:ref:`future annotations import<future-annotations>`, or b) string literals or type
+comments for the relevant annotations, you can write the imports inside ``if
+TYPE_CHECKING:`` so that they are not executed at runtime. Example:
 
 File ``foo.py``:
 
@@ -224,7 +224,7 @@ complicated and you need to use :ref:`typing.TYPE_CHECKING
    task_queue: Tasks
    reveal_type(task_queue.get())  # Reveals str
 
-If your subclass is also generic, you can using something like the following:
+If your subclass is also generic, you can use the following:
 
 .. code-block:: python
 
