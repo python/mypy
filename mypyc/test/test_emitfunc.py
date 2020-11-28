@@ -81,6 +81,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Goto(BasicBlock(2)),
                          "goto CPyL2;")
 
+    def test_goto_next_block(self) -> None:
+        next_block = BasicBlock(2)
+        self.assert_emit(Goto(next_block), "", next_block=next_block)
+
     def test_return(self) -> None:
         self.assert_emit(Return(self.m),
                          "return cpy_r_m;")
@@ -384,7 +388,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         actual_lines = [line.strip(' ') for line in frags]
         assert all(line.endswith('\n') for line in actual_lines)
         actual_lines = [line.rstrip('\n') for line in actual_lines]
-        expected_lines = expected.rstrip().split('\n')
+        if not expected.strip():
+            expected_lines = []
+        else:
+            expected_lines = expected.rstrip().split('\n')
         expected_lines = [line.strip(' ') for line in expected_lines]
         assert_string_arrays_equal(expected_lines, actual_lines,
                                    msg='Generated code unexpected')

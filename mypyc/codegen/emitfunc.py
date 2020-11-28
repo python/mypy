@@ -110,7 +110,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         return self.emitter.temp_name()
 
     def visit_goto(self, op: Goto) -> None:
-        self.emit_line('goto %s;' % self.label(op.label))
+        if op.label is not self.next_block:
+            self.emit_line('goto %s;' % self.label(op.label))
 
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
