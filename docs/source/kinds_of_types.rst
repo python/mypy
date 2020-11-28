@@ -831,9 +831,9 @@ so use :py:data:`~typing.AnyStr`:
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-   concat('a', 'b')     # Okay
-   concat(b'a', b'b')   # Okay
-   concat('a', b'b')    # Error: cannot mix bytes and unicode
+   concat('foo', 'foo')     # Okay
+   concat(b'foo', b'foo')   # Okay
+   concat('foo', b'foo')    # Error: cannot mix bytes and unicode
 
 For more details, see :ref:`type-variable-value-restriction`.
 
