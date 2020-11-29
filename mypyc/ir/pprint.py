@@ -1,3 +1,5 @@
+"""Utilities for pretty-printing IR in a human-readable form."""
+
 import re
 from typing import Any, Dict, List, Optional, Match
 
@@ -17,7 +19,12 @@ from mypyc.ir.const_int import find_constant_integer_registers
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
+    """Internal visitor that pretty-prints ops."""
+
     def __init__(self, names: Dict[Value, str]) -> None:
+        # This should contain a name for all values that are shown as
+        # registers in the output. This is not just for Register
+        # instances -- all Ops that produce values need (generated) names.
         self.names = names
 
     def visit_goto(self, op: Goto) -> str:
@@ -186,6 +193,17 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     # Helpers
 
     def format(self, fmt: str, *args: Any) -> str:
+        """Helper for formatting strings.
+
+        These format sequences are supported in fmt:
+
+          %s: arbitrary object converted to string using str()
+          %r: name of IR value/register
+          %d: int
+          %f: float
+          %l: BasicBlock (formatted as label 'Ln')
+          %t: RType
+        """
         result = []
         i = 0
         arglist = list(args)
@@ -328,7 +346,7 @@ def generate_names_for_env(env: Environment) -> Dict[Value, str]:
     """Generate unique names for values in an environment.
 
     Give names such as 'r5' or 'i0' to temp values in IR which are useful
-    when pretty-printing or generating C. Ensure register names are unique.
+    when pretty-printing or generating C. Ensure generated names are unique.
     """
     names = {}
     used_names = set()
