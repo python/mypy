@@ -364,9 +364,15 @@ def generate_names_for_env(env: Environment) -> Dict[Value, str]:
             name = 'r%d' % temp_index
             temp_index += 1
 
-        # Append as many underscores as needed to make it unique.
-        while name in used_names:
-            name += '_'
+        # Append _2, _3, ... if needed to make the name unique.
+        if name in used_names:
+            n = 2
+            while True:
+                candidate = '%s_%d' % (name, n)
+                if candidate not in used_names:
+                    name = candidate
+                    break
+                n += 1
 
         names[value] = name
         used_names.add(name)
