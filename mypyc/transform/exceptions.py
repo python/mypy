@@ -12,7 +12,7 @@ only be placed at the end of a basic block.
 from typing import List, Optional
 
 from mypyc.ir.ops import (
-    BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, LoadInt, ERR_NEVER, ERR_MAGIC,
+    Value, BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, Integer, ERR_NEVER, ERR_MAGIC,
     ERR_FALSE, ERR_ALWAYS, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.func_ir import FuncIR
@@ -60,7 +60,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
         block.error_handler = None
 
         for op in ops:
-            target = op
+            target = op  # type: Value
             cur_block.ops.append(op)
             if isinstance(op, RegisterOp) and op.error_kind != ERR_NEVER:
                 # Split
@@ -80,9 +80,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     negated = True
                     # this is a hack to represent the always fail
                     # semantics, using a temporary bool with value false
-                    tmp = LoadInt(0, rtype=bool_rprimitive)
-                    cur_block.ops.append(tmp)
-                    target = tmp
+                    target = Integer(0, bool_rprimitive)
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind
 

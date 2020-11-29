@@ -19,7 +19,7 @@ from mypy.nodes import (
 from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
-    BasicBlock, Value,  Register, Return, SetAttr, LoadInt, GetAttr, Branch, InitStatic,
+    BasicBlock, Value,  Register, Return, SetAttr, Integer, GetAttr, Branch, InitStatic,
     LoadAddress
 )
 from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
@@ -480,7 +480,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_block = BasicBlock()
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
-    builder.assign(cls.next_label_target, builder.add(LoadInt(next_label)), line)
+    builder.assign(cls.next_label_target, Integer(next_label), line)
     builder.add(Return(retval))
     builder.activate_block(next_block)
 

@@ -14,7 +14,7 @@ from mypy.nodes import Var, ARG_OPT
 
 from mypyc.common import SELF_NAME, NEXT_LABEL_ATTR_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import (
-    BasicBlock, Call, Return, Goto, LoadInt, SetAttr, Unreachable, RaiseStandardError,
+    BasicBlock, Call, Return, Goto, Integer, SetAttr, Unreachable, RaiseStandardError,
     Value, Register
 )
 from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
@@ -54,8 +54,8 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
     builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
 
     # Set the generator class' environment class' NEXT_LABEL_ATTR_NAME attribute to 0.
-    zero_reg = builder.add(LoadInt(0))
-    builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero_reg, fitem.line))
+    zero = Integer(0)
+    builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     return generator_reg
 
 
@@ -86,7 +86,7 @@ def populate_switch_for_generator_class(builder: IRBuilder) -> None:
     for label, true_block in enumerate(cls.continuation_blocks):
         false_block = BasicBlock()
         comparison = builder.binary_op(
-            cls.next_label_reg, builder.add(LoadInt(label)), '==', line
+            cls.next_label_reg, Integer(label), '==', line
         )
         builder.add_bool_branch(comparison, true_block, false_block)
         builder.activate_block(false_block)
