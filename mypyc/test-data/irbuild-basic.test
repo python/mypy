@@ -2127,7 +2127,7 @@ def f(l):
     r15 :: short_int
     r16 :: bit
     r17 :: object
-    x0, y0, z0 :: int
+    x_2, y_2, z_2 :: int
     r18 :: tuple[int, int, int]
     r19, r20, r21, r22, r23 :: int
     r24 :: object
@@ -2168,13 +2168,13 @@ L6:
     r17 = CPyList_GetItemUnsafe(l, r12)
     r18 = unbox(tuple[int, int, int], r17)
     r19 = r18[0]
-    x0 = r19
+    x_2 = r19
     r20 = r18[1]
-    y0 = r20
+    y_2 = r20
     r21 = r18[2]
-    z0 = r21
-    r22 = CPyTagged_Add(x0, y0)
-    r23 = CPyTagged_Add(r22, z0)
+    z_2 = r21
+    r22 = CPyTagged_Add(x_2, y_2)
+    r23 = CPyTagged_Add(r22, z_2)
     r24 = box(int, r23)
     r25 = PyList_Append(r11, r24)
     r26 = r25 >= 0 :: signed
