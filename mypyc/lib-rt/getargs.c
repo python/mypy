@@ -47,8 +47,6 @@
 #include <ctype.h>
 #include <float.h>
 
-#define _PyTuple_CAST(op) (assert(PyTuple_Check(op)), (PyTupleObject *)(op))
-#define _PyTuple_ITEMS(op) (_PyTuple_CAST(op)->ob_item)
 #ifndef PyDict_GET_SIZE
 #define PyDict_GET_SIZE(d) PyDict_Size(d)
 #endif
