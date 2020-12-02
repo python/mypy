@@ -94,8 +94,6 @@ static const char *converttuple(PyObject *, const char **, va_list *, int,
                                 int *, char *, size_t, int, freelist_t *);
 static const char *convertsimple(PyObject *, const char **, va_list *, int,
                                  char *, size_t, freelist_t *);
-static Py_ssize_t convertbuffer(PyObject *, const void **p, const char **);
-static int getbuffer(PyObject *, Py_buffer *, const char**);
 
 static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char * const *, va_list *, int);
@@ -395,43 +393,6 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
 
     *p_format = format;
     return NULL;
-}
-
-static Py_ssize_t
-convertbuffer(PyObject *arg, const void **p, const char **errmsg)
-{
-    PyBufferProcs *pb = Py_TYPE(arg)->tp_as_buffer;
-    Py_ssize_t count;
-    Py_buffer view;
-
-    *errmsg = NULL;
-    *p = NULL;
-    if (pb != NULL && pb->bf_releasebuffer != NULL) {
-        *errmsg = "read-only bytes-like object";
-        return -1;
-    }
-
-    if (getbuffer(arg, &view, errmsg) < 0)
-        return -1;
-    count = view.len;
-    *p = view.buf;
-    PyBuffer_Release(&view);
-    return count;
-}
-
-static int
-getbuffer(PyObject *arg, Py_buffer *view, const char **errmsg)
-{
-    if (PyObject_GetBuffer(arg, view, PyBUF_SIMPLE) != 0) {
-        *errmsg = "bytes-like object";
-        return -1;
-    }
-    if (!PyBuffer_IsContiguous(view, 'C')) {
-        PyBuffer_Release(view);
-        *errmsg = "contiguous buffer";
-        return -1;
-    }
-    return 0;
 }
 
 /* Support for keyword arguments donated by
