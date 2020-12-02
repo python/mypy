@@ -381,30 +381,6 @@ static const char *
 convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
               char *msgbuf, size_t bufsize, freelist_t *freelist)
 {
-    /* For # codes */
-#define FETCH_SIZE      int *q=NULL;Py_ssize_t *q2=NULL;\
-    if (flags & FLAG_SIZE_T) q2=va_arg(*p_va, Py_ssize_t*); \
-    else { \
-        if (PyErr_WarnEx(PyExc_DeprecationWarning, \
-                    "PY_SSIZE_T_CLEAN will be required for '#' formats", 1)) { \
-            return NULL; \
-        } \
-        q=va_arg(*p_va, int*); \
-    }
-#define STORE_SIZE(s)   \
-    if (flags & FLAG_SIZE_T) \
-        *q2=s; \
-    else { \
-        if (INT_MAX < s) { \
-            PyErr_SetString(PyExc_OverflowError, \
-                "size does not fit in an int"); \
-            return converterr("", arg, msgbuf, bufsize); \
-        } \
-        *q = (int)s; \
-    }
-#define BUFFER_LEN      ((flags & FLAG_SIZE_T) ? *q2:*q)
-#define RETURN_ERR_OCCURRED return msgbuf
-
     const char *format = *p_format;
     char c = *format++;
     const char *sarg;
@@ -420,11 +396,6 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
 
     *p_format = format;
     return NULL;
-
-#undef FETCH_SIZE
-#undef STORE_SIZE
-#undef BUFFER_LEN
-#undef RETURN_ERR_OCCURRED
 }
 
 static Py_ssize_t
