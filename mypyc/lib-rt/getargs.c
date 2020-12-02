@@ -389,7 +389,6 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
         PyObject **p;
         p = va_arg(*p_va, PyObject **);
         *p = arg;
-        break;
     } else {
         return converterr("(impossible<bad format char>)", arg, msgbuf, bufsize);
     }
