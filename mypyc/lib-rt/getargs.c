@@ -98,39 +98,6 @@ static const char *skipitem(const char **, va_list *, int);
 /* Handle cleanup of allocated memory in case of exception */
 
 static int
-cleanup_ptr(PyObject *self, void *ptr)
-{
-    if (ptr) {
-        PyMem_FREE(ptr);
-    }
-    return 0;
-}
-
-static int
-cleanup_buffer(PyObject *self, void *ptr)
-{
-    Py_buffer *buf = (Py_buffer *)ptr;
-    if (buf) {
-        PyBuffer_Release(buf);
-    }
-    return 0;
-}
-
-static int
-addcleanup(void *ptr, freelist_t *freelist, destr_t destructor)
-{
-    int index;
-
-    index = freelist->first_available;
-    freelist->first_available += 1;
-
-    freelist->entries[index].item = ptr;
-    freelist->entries[index].destructor = destructor;
-
-    return 0;
-}
-
-static int
 cleanreturn(int retval, freelist_t *freelist)
 {
     int index;
@@ -204,33 +171,6 @@ converterr(const char *expected, PyObject *arg, char *msgbuf, size_t bufsize)
     }
     return msgbuf;
 }
-
-#define CONV_UNICODE "(unicode conversion error)"
-
-/* Explicitly check for float arguments when integers are expected.
-   Return 1 for error, 0 if ok.
-   XXX Should be removed after the end of the deprecation period in
-   _PyLong_FromNbIndexOrNbInt. */
-static int
-float_argument_error(PyObject *arg)
-{
-    if (PyFloat_Check(arg)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "integer argument expected, got float" );
-        return 1;
-    }
-    else
-        return 0;
-}
-
-/* Convert a non-tuple argument.  Return NULL if conversion went OK,
-   or a string with a message describing the failure.  The message is
-   formatted as "must be <desired type>, not <actual type>".
-   When failing, an exception may or may not have been raised.
-   Don't call if a tuple is expected.
-
-   When you add new format codes, please don't forget poor skipitem() below.
-*/
 
 static inline const char *
 convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
