@@ -85,7 +85,7 @@ typedef struct {
 /* Forward */
 static void seterror(Py_ssize_t, const char *, const char *, const char *);
 static const char *convertsimple(PyObject *, const char **, va_list *, int,
-                                 char *, size_t, freelist_t *);
+                                 freelist_t *);
 
 static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char * const *, va_list *, int);
@@ -170,7 +170,7 @@ converterr(const char *expected, PyObject *arg, char *msgbuf, size_t bufsize)
 
 static inline const char *
 convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
-              char *msgbuf, size_t bufsize, freelist_t *freelist)
+              freelist_t *freelist)
 {
     const char *format = *p_format;
     char c = *format++;
@@ -208,7 +208,6 @@ static int
 vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                  const char * const *kwlist, va_list *p_va, int flags)
 {
-    char msgbuf[512];
     const char *fname, *msg;
     int min = INT_MAX;
     int max = INT_MAX;
@@ -400,8 +399,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             }
 
             if (current_arg) {
-                msg = convertsimple(current_arg, &format, p_va, flags,
-                                    msgbuf, sizeof(msgbuf), &freelist);
+                msg = convertsimple(current_arg, &format, p_va, flags, &freelist);
                 if (msg) {
                     seterror(i+1, msg, fname, NULL);
                     return cleanreturn(0, &freelist);
