@@ -1253,20 +1253,24 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     /* convert tuple args and keyword args in same loop, using kwlist to drive process */
     for (i = 0; i < len; i++) {
         if (*format == '|') {
+#ifdef DEBUG
             if (min != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string (| specified twice)");
                 return cleanreturn(0, &freelist);
             }
+#endif
 
             min = i;
             format++;
 
+#ifdef DEBUG
             if (max != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string ($ before |)");
                 return cleanreturn(0, &freelist);
             }
+#endif
 
             /* If there are optional args, figure out whether we have
              * required keyword arguments so that we don't bail without
@@ -1274,20 +1278,24 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             has_required_kws = strchr(format, '@') != NULL;
         }
         if (*format == '$') {
+#ifdef DEBUG
             if (max != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string ($ specified twice)");
                 return cleanreturn(0, &freelist);
             }
+#endif
 
             max = i;
             format++;
 
+#ifdef DEBUG
             if (max < pos) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Empty parameter name after $");
                 return cleanreturn(0, &freelist);
             }
+#endif
             if (skip) {
                 /* Now we know the minimal and the maximal numbers of
                  * positional arguments and can raise an exception with
@@ -1316,6 +1324,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             }
         }
         if (*format == '@') {
+#ifdef DEBUG
             if (min == INT_MAX && max == INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string "
@@ -1327,16 +1336,19 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                                 "Invalid format string (@ specified twice)");
                 return cleanreturn(0, &freelist);
             }
+#endif
 
             required_kwonly_start = i;
             format++;
         }
+#ifdef DEBUG
         if (IS_END_OF_FORMAT(*format)) {
             PyErr_Format(PyExc_SystemError,
                          "More keyword list entries (%d) than "
                          "format specifiers (%d)", len, i);
             return cleanreturn(0, &freelist);
         }
+#endif
         if (!skip) {
             if (i < nargs && i < max) {
                 current_arg = PyTuple_GET_ITEM(args, i);
@@ -1428,6 +1440,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         return cleanreturn(0, &freelist);
     }
 
+#ifdef DEBUG
     if (!IS_END_OF_FORMAT(*format) &&
         (*format != '|') && (*format != '$') && (*format != '@'))
     {
@@ -1436,6 +1449,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             "(remaining format:'%s')", format);
         return cleanreturn(0, &freelist);
     }
+#endif
 
     bound_pos_args = Py_MIN(nargs, Py_MIN(max, len));
     if (p_args) {
