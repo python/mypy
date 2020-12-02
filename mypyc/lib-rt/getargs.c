@@ -57,8 +57,6 @@ extern "C" {
 #endif
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, const char * const *, ...);
-int CPyArg_VaParseTupleAndKeywords(PyObject *, PyObject *,
-                                   const char *, const char * const *, va_list);
 
 
 #define FLAG_COMPAT 1
@@ -201,22 +199,6 @@ CPyArg_ParseTupleAndKeywords(PyObject *args,
     va_start(va, kwlist);
     retval = vgetargskeywords(args, keywords, format, kwlist, &va, FLAG_SIZE_T);
     va_end(va);
-    return retval;
-}
-
-
-int
-CPyArg_VaParseTupleAndKeywords(PyObject *args,
-                               PyObject *keywords,
-                               const char *format,
-                               const char * const *kwlist, va_list va)
-{
-    int retval;
-    va_list lva;
-
-    va_copy(lva, va);
-    retval = vgetargskeywords(args, keywords, format, kwlist, &lva, FLAG_SIZE_T);
-    va_end(lva);
     return retval;
 }
 
