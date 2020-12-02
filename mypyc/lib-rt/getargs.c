@@ -410,36 +410,9 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
     const char *sarg;
 
     if (c == 'O') {
-        PyTypeObject *type;
         PyObject **p;
-        if (*format == '!') {
-            type = va_arg(*p_va, PyTypeObject*);
-            p = va_arg(*p_va, PyObject **);
-            format++;
-            if (PyType_IsSubtype(arg->ob_type, type))
-                *p = arg;
-            else
-                return converterr(type->tp_name, arg, msgbuf, bufsize);
-
-        }
-        else if (*format == '&') {
-            typedef int (*converter)(PyObject *, void *);
-            converter convert = va_arg(*p_va, converter);
-            void *addr = va_arg(*p_va, void *);
-            int res;
-            format++;
-            if (! (res = (*convert)(arg, addr)))
-                return converterr("(unspecified)",
-                                  arg, msgbuf, bufsize);
-            if (res == Py_CLEANUP_SUPPORTED &&
-                addcleanup(addr, freelist, convert) == -1)
-                return converterr("(cleanup problem)",
-                                arg, msgbuf, bufsize);
-        }
-        else {
-            p = va_arg(*p_va, PyObject **);
-            *p = arg;
-        }
+        p = va_arg(*p_va, PyObject **);
+        *p = arg;
         break;
     } else {
         return converterr("(impossible<bad format char>)", arg, msgbuf, bufsize);
