@@ -142,6 +142,14 @@ method_op(
     c_function_name='CPyDict_ItemsView',
     error_kind=ERR_MAGIC)
 
+# dict.clear()
+method_op(
+    name='clear',
+    arg_types=[dict_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyDict_Clear',
+    error_kind=ERR_FALSE)
+
 # list(dict.keys())
 dict_keys_op = custom_op(
     arg_types=[dict_rprimitive],
