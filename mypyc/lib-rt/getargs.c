@@ -234,7 +234,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                  const char * const *kwlist, va_list *p_va, int flags)
 {
     char msgbuf[512];
-    const char *fname, *msg, *custom_msg;
+    const char *fname, *msg;
     int min = INT_MAX;
     int max = INT_MAX;
     int required_kwonly_start = INT_MAX;
@@ -263,12 +263,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     fname = strchr(format, ':');
     if (fname) {
         fname++;
-        custom_msg = NULL;
-    }
-    else {
-        custom_msg = strchr(format,';');
-        if (custom_msg)
-            custom_msg++;
     }
 
     /* scan kwlist and count the number of positional-only parameters */
@@ -434,7 +428,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 msg = convertsimple(current_arg, &format, p_va, flags,
                                     msgbuf, sizeof(msgbuf), &freelist);
                 if (msg) {
-                    seterror(i+1, msg, fname, custom_msg);
+                    seterror(i+1, msg, fname, NULL);
                     return cleanreturn(0, &freelist);
                 }
                 continue;
