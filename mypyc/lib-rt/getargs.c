@@ -84,7 +84,7 @@ typedef struct {
   int entries_malloced;
 } freelist_t;
 
-#define STATIC_FREELIST_ENTRIES 8
+#define STATIC_FREELIST_ENTRIES 16
 
 /* Forward */
 static void seterror(Py_ssize_t, const char *, const char *, const char *);
@@ -283,7 +283,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         format++;
     }
 
-    if (len > STATIC_FREELIST_ENTRIES) {
+    if (unlikely(len > STATIC_FREELIST_ENTRIES)) {
         freelist.entries = PyMem_NEW(freelistentry_t, len);
         if (freelist.entries == NULL) {
             PyErr_NoMemory();
@@ -294,7 +294,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
 
     nargs = PyTuple_GET_SIZE(args);
     nkwargs = (kwargs == NULL) ? 0 : PyDict_GET_SIZE(kwargs);
-    if (nargs + nkwargs > len && !p_args && !p_kwargs) {
+    if (unlikely(nargs + nkwargs > len && !p_args && !p_kwargs)) {
         /* Adding "keyword" (when nargs == 0) prevents producing wrong error
            messages in some special cases (see bpo-31229). */
         PyErr_Format(PyExc_TypeError,
@@ -360,7 +360,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                  * informative message (see below). */
                 break;
             }
-            if (max < nargs && !p_args) {
+            if (unlikely(max < nargs && !p_args)) {
                 if (max == 0) {
                     PyErr_Format(PyExc_TypeError,
                                  "%.200s%s takes no positional arguments",
@@ -435,7 +435,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             }
 
             if (i < min || i >= required_kwonly_start) {
-                if (i < pos) {
+                if (likely(i < pos)) {
                     assert (min == INT_MAX);
                     assert (max == INT_MAX);
                     skip = 1;
@@ -478,14 +478,14 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         /* We are into optional args, skip through to any remaining
          * keyword args */
         msg = skipitem(&format, p_va, flags);
-        if (msg) {
+        if (unlikely(msg != NULL)) {
             PyErr_Format(PyExc_SystemError, "%s: '%s'", msg,
                          format);
             return cleanreturn(0, &freelist);
         }
     }
 
-    if (skip) {
+    if (unlikely(skip)) {
         PyErr_Format(PyExc_TypeError,
                      "%.200s%s takes %s %d positional argument%s"
                      " (%zd given)",
@@ -520,7 +520,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     if (p_kwargs) {
         /* This unfortunately needs to be special cased because if len is 0 then we
          * never go through the main loop. */
-        if (nargs > 0 && len == 0 && !p_args) {
+        if (unlikely(nargs > 0 && len == 0 && !p_args)) {
             PyErr_Format(PyExc_TypeError,
                          "%.200s%s takes no positional arguments",
                          (fname == NULL) ? "function" : fname,
@@ -541,7 +541,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         /* make sure there are no arguments given by name and position */
         for (i = pos; i < bound_pos_args && i < len; i++) {
             current_arg = _PyDict_GetItemStringWithError(kwargs, kwlist[i]);
-            if (current_arg) {
+            if (unlikely(current_arg != NULL)) {
                 /* arg present in tuple and in dict */
                 PyErr_Format(PyExc_TypeError,
                              "argument for %.200s%s given by name ('%s') "
@@ -551,7 +551,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                              kwlist[i], i+1);
                 goto latefail;
             }
-            else if (PyErr_Occurred()) {
+            else if (unlikely(PyErr_Occurred() != NULL)) {
                 goto latefail;
             }
         }
@@ -559,7 +559,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         j = 0;
         while (PyDict_Next(kwargs, &j, &key, &value)) {
             int match = 0;
-            if (!PyUnicode_Check(key)) {
+            if (unlikely(!PyUnicode_Check(key))) {
                 PyErr_SetString(PyExc_TypeError,
                                 "keywords must be strings");
                 goto latefail;
@@ -571,7 +571,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 }
             }
             if (!match) {
-                if (!p_kwargs) {
+                if (unlikely(!p_kwargs)) {
                     PyErr_Format(PyExc_TypeError,
                                  "'%U' is an invalid keyword "
                                  "argument for %.200s%s",
