@@ -176,15 +176,10 @@ convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
 {
     const char *format = *p_format;
     char c = *format++;
-    const char *sarg;
 
-    if (c == 'O') {
-        PyObject **p;
-        p = va_arg(*p_va, PyObject **);
-        *p = arg;
-    } else {
-        return converterr("(impossible<bad format char>)", arg, msgbuf, bufsize);
-    }
+    PyObject **p;
+    p = va_arg(*p_va, PyObject **);
+    *p = arg;
 
     *p_format = format;
     return NULL;
