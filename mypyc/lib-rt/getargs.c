@@ -616,127 +616,13 @@ skipitem(const char **p_format, va_list *p_va, int flags)
 
     switch (c) {
 
-    /*
-     * codes that take a single data pointer as an argument
-     * (the type of the pointer is irrelevant)
-     */
-
-    case 'b': /* byte -- very short int */
-    case 'B': /* byte as bitfield */
-    case 'h': /* short int */
-    case 'H': /* short int as bitfield */
-    case 'i': /* int */
-    case 'I': /* int sized bitfield */
-    case 'l': /* long int */
-    case 'k': /* long int sized bitfield */
-    case 'L': /* long long */
-    case 'K': /* long long sized bitfield */
-    case 'n': /* Py_ssize_t */
-    case 'f': /* float */
-    case 'd': /* double */
-    case 'D': /* complex double */
-    case 'c': /* char */
-    case 'C': /* unicode char */
-    case 'p': /* boolean predicate */
-    case 'S': /* string object */
-    case 'Y': /* string object */
-    case 'U': /* unicode string object */
-        {
-            if (p_va != NULL) {
-                (void) va_arg(*p_va, void *);
-            }
-            break;
-        }
-
-    /* string codes */
-
-    case 'e': /* string with encoding */
-        {
-            if (p_va != NULL) {
-                (void) va_arg(*p_va, const char *);
-            }
-            if (!(*format == 's' || *format == 't'))
-                /* after 'e', only 's' and 't' is allowed */
-                goto err;
-            format++;
-        }
-        /* fall through */
-
-    case 's': /* string */
-    case 'z': /* string or None */
-    case 'y': /* bytes */
-    case 'u': /* unicode string */
-    case 'Z': /* unicode string or None */
-    case 'w': /* buffer, read-write */
-        {
-            if (p_va != NULL) {
-                (void) va_arg(*p_va, char **);
-            }
-            if (*format == '#') {
-                if (p_va != NULL) {
-                    if (flags & FLAG_SIZE_T)
-                        (void) va_arg(*p_va, Py_ssize_t *);
-                    else {
-                        if (PyErr_WarnEx(PyExc_DeprecationWarning,
-                                    "PY_SSIZE_T_CLEAN will be required for '#' formats", 1)) {
-                            return NULL;
-                        }
-                        (void) va_arg(*p_va, int *);
-                    }
-                }
-                format++;
-            } else if ((c == 's' || c == 'z' || c == 'y' || c == 'w')
-                       && *format == '*')
-            {
-                format++;
-            }
-            break;
-        }
-
     case 'O': /* object */
         {
-            if (*format == '!') {
-                format++;
-                if (p_va != NULL) {
-                    (void) va_arg(*p_va, PyTypeObject*);
-                    (void) va_arg(*p_va, PyObject **);
-                }
-            }
-            else if (*format == '&') {
-                typedef int (*converter)(PyObject *, void *);
-                if (p_va != NULL) {
-                    (void) va_arg(*p_va, converter);
-                    (void) va_arg(*p_va, void *);
-                }
-                format++;
-            }
-            else {
-                if (p_va != NULL) {
-                    (void) va_arg(*p_va, PyObject **);
-                }
+            if (p_va != NULL) {
+                (void) va_arg(*p_va, PyObject **);
             }
             break;
         }
-
-    case '(':           /* bypass tuple, not handled at all previously */
-        {
-            const char *msg;
-            for (;;) {
-                if (*format==')')
-                    break;
-                if (IS_END_OF_FORMAT(*format))
-                    return "Unmatched left paren in format "
-                           "string";
-                msg = skipitem(&format, p_va, flags);
-                if (msg)
-                    return msg;
-            }
-            format++;
-            break;
-        }
-
-    case ')':
-        return "Unmatched right paren in format string";
 
     default:
 err:
