@@ -1140,15 +1140,6 @@ CPyArg_ParseTupleAndKeywords(PyObject *args,
     int retval;
     va_list va;
 
-    if ((args == NULL || !PyTuple_Check(args)) ||
-        (keywords != NULL && !PyDict_Check(keywords)) ||
-        format == NULL ||
-        kwlist == NULL)
-    {
-        PyErr_BadInternalCall();
-        return 0;
-    }
-
     va_start(va, kwlist);
     retval = vgetargskeywords(args, keywords, format, kwlist, &va, FLAG_SIZE_T);
     va_end(va);
@@ -1165,17 +1156,7 @@ CPyArg_VaParseTupleAndKeywords(PyObject *args,
     int retval;
     va_list lva;
 
-    if ((args == NULL || !PyTuple_Check(args)) ||
-        (keywords != NULL && !PyDict_Check(keywords)) ||
-        format == NULL ||
-        kwlist == NULL)
-    {
-        PyErr_BadInternalCall();
-        return 0;
-    }
-
     va_copy(lva, va);
-
     retval = vgetargskeywords(args, keywords, format, kwlist, &lva, FLAG_SIZE_T);
     va_end(lva);
     return retval;
