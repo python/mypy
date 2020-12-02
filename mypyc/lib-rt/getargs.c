@@ -87,9 +87,7 @@ typedef struct {
 #define STATIC_FREELIST_ENTRIES 8
 
 /* Forward */
-static void seterror(Py_ssize_t, const char *, int *, const char *, const char *);
-static const char *convertitem(PyObject *, const char **, va_list *, int, int *,
-                               char *, size_t, freelist_t *);
+static void seterror(Py_ssize_t, const char *, const char *, const char *);
 static const char *convertsimple(PyObject *, const char **, va_list *, int,
                                  char *, size_t, freelist_t *);
 
@@ -153,7 +151,7 @@ cleanreturn(int retval, freelist_t *freelist)
 
 
 static void
-seterror(Py_ssize_t iarg, const char *msg, int *levels, const char *fname,
+seterror(Py_ssize_t iarg, const char *msg, const char *fname,
          const char *message)
 {
     char buf[512];
@@ -172,12 +170,6 @@ seterror(Py_ssize_t iarg, const char *msg, int *levels, const char *fname,
                           "argument %" PY_FORMAT_SIZE_T "d", iarg);
             i = 0;
             p += strlen(p);
-            while (i < 32 && levels[i] > 0 && (int)(p-buf) < 220) {
-                PyOS_snprintf(p, sizeof(buf) - (p - buf),
-                              ", item %d", levels[i]-1);
-                p += strlen(p);
-                i++;
-            }
         }
         else {
             PyOS_snprintf(p, sizeof(buf) - (p - buf), "argument");
@@ -240,7 +232,7 @@ float_argument_error(PyObject *arg)
    When you add new format codes, please don't forget poor skipitem() below.
 */
 
-static const char *
+static inline const char *
 convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
               char *msgbuf, size_t bufsize, freelist_t *freelist)
 {
@@ -302,7 +294,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                  const char * const *kwlist, va_list *p_va, int flags)
 {
     char msgbuf[512];
-    int levels[32];
     const char *fname, *msg, *custom_msg;
     int min = INT_MAX;
     int max = INT_MAX;
@@ -503,7 +494,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 msg = convertsimple(current_arg, &format, p_va, flags,
                                     msgbuf, sizeof(msgbuf), &freelist);
                 if (msg) {
-                    seterror(i+1, msg, levels, fname, custom_msg);
+                    seterror(i+1, msg, fname, custom_msg);
                     return cleanreturn(0, &freelist);
                 }
                 continue;
