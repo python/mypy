@@ -16,6 +16,7 @@
  *    variety of vararg.
  *    Unlike most format specifiers, the caller takes ownership of these objects
  *    and is responsible for decrefing them.
+ *  - All arguments must use the 'O' format.
  */
 
 // These macro definitions are copied from pyport.h in Python 3.9 and later
@@ -84,12 +85,20 @@ typedef struct {
 
 /* Forward */
 static void seterror(Py_ssize_t, const char *, const char *, const char *);
-static const char *convertsimple(PyObject *, const char **, va_list *, int,
-                                 freelist_t *);
+static const char *convertsimple(PyObject *, const char **, va_list *, freelist_t *);
 
+<<<<<<< HEAD
 static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char * const *, va_list *, int);
 static const char *skipitem(const char **, va_list *, int);
+||||||| constructed merge base
+static int vgetargskeywords(PyObject *, PyObject *,
+                            const char *, char **, va_list *, int);
+static const char *skipitem(const char **, va_list *, int);
+=======
+static int vgetargskeywords(PyObject *, PyObject *, const char *, char **, va_list *);
+static const char *skipitem(const char **, va_list *);
+>>>>>>> Remove unused arg + update comment
 
 /* Handle cleanup of allocated memory in case of exception */
 
@@ -169,8 +178,7 @@ converterr(const char *expected, PyObject *arg, char *msgbuf, size_t bufsize)
 }
 
 static inline const char *
-convertsimple(PyObject *arg, const char **p_format, va_list *p_va, int flags,
-              freelist_t *freelist)
+convertsimple(PyObject *arg, const char **p_format, va_list *p_va, freelist_t *freelist)
 {
     const char *format = *p_format;
     char c = *format++;
@@ -197,7 +205,7 @@ CPyArg_ParseTupleAndKeywords(PyObject *args,
     va_list va;
 
     va_start(va, kwlist);
-    retval = vgetargskeywords(args, keywords, format, kwlist, &va, FLAG_SIZE_T);
+    retval = vgetargskeywords(args, keywords, format, kwlist, &va);
     va_end(va);
     return retval;
 }
@@ -206,7 +214,7 @@ CPyArg_ParseTupleAndKeywords(PyObject *args,
 
 static int
 vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
-                 const char * const *kwlist, va_list *p_va, int flags)
+                 const char * const *kwlist, va_list *p_va)
 {
     const char *fname, *msg;
     int min = INT_MAX;
@@ -399,7 +407,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             }
 
             if (current_arg) {
-                msg = convertsimple(current_arg, &format, p_va, flags, &freelist);
+                msg = convertsimple(current_arg, &format, p_va, &freelist);
                 if (msg) {
                     seterror(i+1, msg, fname, NULL);
                     return cleanreturn(0, &freelist);
@@ -450,7 +458,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
 
         /* We are into optional args, skip through to any remaining
          * keyword args */
-        msg = skipitem(&format, p_va, flags);
+        msg = skipitem(&format, p_va);
         if (unlikely(msg != NULL)) {
             PyErr_Format(PyExc_SystemError, "%s: '%s'", msg,
                          format);
@@ -576,7 +584,7 @@ latefail:
 
 
 static const char *
-skipitem(const char **p_format, va_list *p_va, int flags)
+skipitem(const char **p_format, va_list *p_va)
 {
     const char *format = *p_format;
     char c = *format++;
