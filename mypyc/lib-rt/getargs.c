@@ -86,18 +86,9 @@ typedef struct {
 /* Forward */
 static void convertsimple(PyObject *, const char **, va_list *, freelist_t *);
 
-<<<<<<< HEAD
 static int vgetargskeywords(PyObject *, PyObject *,
-                            const char *, const char * const *, va_list *, int);
-static const char *skipitem(const char **, va_list *, int);
-||||||| constructed merge base
-static int vgetargskeywords(PyObject *, PyObject *,
-                            const char *, char **, va_list *, int);
-static const char *skipitem(const char **, va_list *, int);
-=======
-static int vgetargskeywords(PyObject *, PyObject *, const char *, char **, va_list *);
-static const char *skipitem(const char **, va_list *);
->>>>>>> Remove unused arg + update comment
+                            const char *, const char * const *, va_list *);
+static void skipitem(const char **, va_list *);
 
 /* Handle cleanup of allocated memory in case of exception */
 
@@ -397,12 +388,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
 
         /* We are into optional args, skip through to any remaining
          * keyword args */
-        msg = skipitem(&format, p_va);
-        if (unlikely(msg != NULL)) {
-            PyErr_Format(PyExc_SystemError, "%s: '%s'", msg,
-                         format);
-            return cleanreturn(0, &freelist);
-        }
+        skipitem(&format, p_va);
     }
 
     if (unlikely(skip)) {
@@ -522,30 +508,17 @@ latefail:
 }
 
 
-static const char *
+static void
 skipitem(const char **p_format, va_list *p_va)
 {
     const char *format = *p_format;
     char c = *format++;
 
-    switch (c) {
-
-    case 'O': /* object */
-        {
-            if (p_va != NULL) {
-                (void) va_arg(*p_va, PyObject **);
-            }
-            break;
-        }
-
-    default:
-err:
-        return "impossible<bad format char>";
-
+    if (p_va != NULL) {
+        (void) va_arg(*p_va, PyObject **);
     }
 
     *p_format = format;
-    return NULL;
 }
 
 #ifdef __cplusplus
