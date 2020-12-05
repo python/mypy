@@ -86,8 +86,6 @@ typedef struct {
 #define STATIC_FREELIST_ENTRIES 16
 
 /* Forward */
-static void convertsimple(PyObject *, const char **, va_list *, freelist_t *);
-
 static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char * const *, va_list *);
 static void skipitem(const char **, va_list *);
@@ -111,20 +109,6 @@ cleanreturn(int retval, freelist_t *freelist)
     if (freelist->entries_malloced)
         PyMem_FREE(freelist->entries);
     return retval;
-}
-
-
-static inline void
-convertsimple(PyObject *arg, const char **p_format, va_list *p_va, freelist_t *freelist)
-{
-    const char *format = *p_format;
-    char c = *format++;
-
-    PyObject **p;
-    p = va_arg(*p_va, PyObject **);
-    *p = arg;
-
-    *p_format = format;
 }
 
 /* Support for keyword arguments donated by
@@ -343,7 +327,9 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             }
 
             if (current_arg) {
-                convertsimple(current_arg, &format, p_va, &freelist);
+                PyObject **p = va_arg(*p_va, PyObject **);
+                *p = current_arg;
+                format++;
                 continue;
             }
 
