@@ -103,17 +103,17 @@ def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
 
     These are used by both vectorcall and legacy wrapper functions.
     """
-    main_format = ''
+    format = ''
     if groups[ARG_STAR] or groups[ARG_STAR2]:
-        main_format += '%'
-    main_format += 'O' * len(groups[ARG_POS])
+        format += '%'
+    format += 'O' * len(groups[ARG_POS])
     if groups[ARG_OPT] or groups[ARG_NAMED_OPT] or groups[ARG_NAMED]:
-        main_format += '|' + 'O' * len(groups[ARG_OPT])
+        format += '|' + 'O' * len(groups[ARG_OPT])
     if groups[ARG_NAMED_OPT] or groups[ARG_NAMED]:
-        main_format += '$' + 'O' * len(groups[ARG_NAMED_OPT])
+        format += '$' + 'O' * len(groups[ARG_NAMED_OPT])
     if groups[ARG_NAMED]:
-        main_format += '@' + 'O' * len(groups[ARG_NAMED])
-    return '{}:{}'.format(main_format, func_name)
+        format += '@' + 'O' * len(groups[ARG_NAMED])
+    return format
 
 
 def generate_wrapper_function(fn: FuncIR,
@@ -237,8 +237,8 @@ def generate_legacy_wrapper_function(fn: FuncIR,
     arg_ptrs += ['&obj_{}'.format(arg.name) for arg in reordered_args]
 
     emitter.emit_lines(
-        'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
-            make_format_string(fn.name, groups), ''.join(', ' + n for n in arg_ptrs)),
+        'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", "{}", kwlist{})) {{'.format(
+            make_format_string(groups), fn.name, ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)

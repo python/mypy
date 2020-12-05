@@ -59,7 +59,7 @@
 extern "C" {
 #endif
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
-                                 const char *, const char * const *, ...);
+                                 const char *, const char *, const char * const *, ...);
 
 
 #define FLAG_COMPAT 1
@@ -67,7 +67,7 @@ int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
 
 /* Forward */
 static int vgetargskeywords(PyObject *, PyObject *,
-                            const char *, const char * const *, va_list *);
+                            const char *, const char *, const char * const *, va_list *);
 static void skipitem(const char **, va_list *);
 
 /* Support for keyword arguments donated by
@@ -78,13 +78,14 @@ int
 CPyArg_ParseTupleAndKeywords(PyObject *args,
                              PyObject *keywords,
                              const char *format,
+                             const char *fname,
                              const char * const *kwlist, ...)
 {
     int retval;
     va_list va;
 
     va_start(va, kwlist);
-    retval = vgetargskeywords(args, keywords, format, kwlist, &va);
+    retval = vgetargskeywords(args, keywords, format, fname, kwlist, &va);
     va_end(va);
     return retval;
 }
@@ -93,9 +94,9 @@ CPyArg_ParseTupleAndKeywords(PyObject *args,
 
 static int
 vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
-                 const char * const *kwlist, va_list *p_va)
+                 const char *fname, const char * const *kwlist, va_list *p_va)
 {
-    const char *fname, *msg;
+    const char *msg;
     int min = INT_MAX;
     int max = INT_MAX;
     int required_kwonly_start = INT_MAX;
@@ -113,12 +114,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     assert(format != NULL);
     assert(kwlist != NULL);
     assert(p_va != NULL);
-
-    /* grab the function name or custom error msg first (mutually exclusive) */
-    fname = strchr(format, ':');
-    if (fname) {
-        fname++;
-    }
 
     /* scan kwlist and count the number of positional-only parameters */
     for (pos = 0; kwlist[pos] && !*kwlist[pos]; pos++) {
