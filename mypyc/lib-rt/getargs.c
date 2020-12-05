@@ -65,26 +65,6 @@ int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
 #define FLAG_COMPAT 1
 #define FLAG_SIZE_T 2
 
-typedef int (*destr_t)(PyObject *, void *);
-
-
-/* Keep track of "objects" that have been allocated or initialized and
-   which will need to be deallocated or cleaned up somehow if overall
-   parsing fails.
-*/
-typedef struct {
-  void *item;
-  destr_t destructor;
-} freelistentry_t;
-
-typedef struct {
-  freelistentry_t *entries;
-  int first_available;
-  int entries_malloced;
-} freelist_t;
-
-#define STATIC_FREELIST_ENTRIES 16
-
 /* Forward */
 static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char * const *, va_list *);
@@ -124,15 +104,9 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     int skip = 0;
     Py_ssize_t nargs, nkwargs;
     PyObject *current_arg;
-    freelistentry_t static_entries[STATIC_FREELIST_ENTRIES];
-    freelist_t freelist;
     int bound_pos_args;
 
     PyObject **p_args = NULL, **p_kwargs = NULL;
-
-    freelist.entries = static_entries;
-    freelist.first_available = 0;
-    freelist.entries_malloced = 0;
 
     assert(args != NULL && PyTuple_Check(args));
     assert(kwargs == NULL || PyDict_Check(kwargs));
@@ -162,15 +136,6 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         p_args = va_arg(*p_va, PyObject **);
         p_kwargs = va_arg(*p_va, PyObject **);
         format++;
-    }
-
-    if (unlikely(len > STATIC_FREELIST_ENTRIES)) {
-        freelist.entries = PyMem_NEW(freelistentry_t, len);
-        if (freelist.entries == NULL) {
-            PyErr_NoMemory();
-            return 0;
-        }
-        freelist.entries_malloced = 1;
     }
 
     nargs = PyTuple_GET_SIZE(args);
