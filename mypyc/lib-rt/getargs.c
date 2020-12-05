@@ -116,11 +116,13 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     }
     /* scan kwlist and get greatest possible nbr of args */
     for (len = pos; kwlist[len]; len++) {
+#ifdef DEBUG
         if (!*kwlist[len]) {
             PyErr_SetString(PyExc_SystemError,
                             "Empty keyword parameter name");
             return 0;
         }
+#endif
     }
 
     if (*format == '%') {
