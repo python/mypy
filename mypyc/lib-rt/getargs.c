@@ -90,27 +90,6 @@ static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char * const *, va_list *);
 static void skipitem(const char **, va_list *);
 
-/* Handle cleanup of allocated memory in case of exception */
-
-static int
-cleanreturn(int retval, freelist_t *freelist)
-{
-    int index;
-
-    if (retval == 0) {
-      /* A failure occurred, therefore execute all of the cleanup
-         functions.
-      */
-      for (index = 0; index < freelist->first_available; ++index) {
-          freelist->entries[index].destructor(NULL,
-                                              freelist->entries[index].item);
-      }
-    }
-    if (freelist->entries_malloced)
-        PyMem_FREE(freelist->entries);
-    return retval;
-}
-
 /* Support for keyword arguments donated by
    Geoff Philbrick <philbric@delphi.hks.com> */
 
@@ -175,7 +154,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         if (!*kwlist[len]) {
             PyErr_SetString(PyExc_SystemError,
                             "Empty keyword parameter name");
-            return cleanreturn(0, &freelist);
+            return 0;
         }
     }
 
@@ -207,7 +186,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                      (nargs == 0) ? "keyword " : "",
                      (len == 1) ? "" : "s",
                      nargs + nkwargs);
-        return cleanreturn(0, &freelist);
+        return 0;
     }
 
     /* convert tuple args and keyword args in same loop, using kwlist to drive process */
@@ -217,7 +196,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (min != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string (| specified twice)");
-                return cleanreturn(0, &freelist);
+                return 0;
             }
 #endif
 
@@ -228,7 +207,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (max != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string ($ before |)");
-                return cleanreturn(0, &freelist);
+                return 0;
             }
 #endif
 
@@ -242,7 +221,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (max != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string ($ specified twice)");
-                return cleanreturn(0, &freelist);
+                return 0;
             }
 #endif
 
@@ -253,7 +232,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (max < pos) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Empty parameter name after $");
-                return cleanreturn(0, &freelist);
+                return 0;
             }
 #endif
             if (skip) {
@@ -280,7 +259,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                                  max == 1 ? "" : "s",
                                  nargs);
                 }
-                return cleanreturn(0, &freelist);
+                return 0;
             }
         }
         if (*format == '@') {
@@ -289,12 +268,12 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string "
                                 "(@ without preceding | and $)");
-                return cleanreturn(0, &freelist);
+                return 0;
             }
             if (required_kwonly_start != INT_MAX) {
                 PyErr_SetString(PyExc_SystemError,
                                 "Invalid format string (@ specified twice)");
-                return cleanreturn(0, &freelist);
+                return 0;
             }
 #endif
 
@@ -306,7 +285,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             PyErr_Format(PyExc_SystemError,
                          "More keyword list entries (%d) than "
                          "format specifiers (%d)", len, i);
-            return cleanreturn(0, &freelist);
+            return 0;
         }
 #endif
         if (!skip) {
@@ -319,7 +298,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                     --nkwargs;
                 }
                 else if (PyErr_Occurred()) {
-                    return cleanreturn(0, &freelist);
+                    return 0;
                 }
             }
             else {
@@ -360,7 +339,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                                      (fname == NULL) ? "" : "()",
                                      kwlist[i], i+1);
                     }
-                    return cleanreturn(0, &freelist);
+                    return 0;
                 }
             }
             /* current code reports success when all required args
@@ -370,7 +349,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
             if (!nkwargs && !skip && !has_required_kws &&
                 !p_args && !p_kwargs)
             {
-                return cleanreturn(1, &freelist);
+                return 1;
             }
         }
 
@@ -389,7 +368,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                      Py_MIN(pos, min),
                      Py_MIN(pos, min) == 1 ? "" : "s",
                      nargs);
-        return cleanreturn(0, &freelist);
+        return 0;
     }
 
 #ifdef DEBUG
@@ -399,7 +378,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         PyErr_Format(PyExc_SystemError,
             "more argument specifiers than keyword list entries "
             "(remaining format:'%s')", format);
-        return cleanreturn(0, &freelist);
+        return 0;
     }
 #endif
 
@@ -407,7 +386,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
     if (p_args) {
         *p_args = PyTuple_GetSlice(args, bound_pos_args, nargs);
         if (!*p_args) {
-            return cleanreturn(0, &freelist);
+            return 0;
         }
     }
 
@@ -420,7 +399,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                          (fname == NULL) ? "function" : fname,
                          (fname == NULL) ? "" : "()");
 
-            return cleanreturn(0, &freelist);
+            return 0;
         }
 
         *p_kwargs = PyDict_New();
@@ -482,7 +461,7 @@ vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
         }
     }
 
-    return cleanreturn(1, &freelist);
+    return 1;
     /* Handle failures that have happened after we have tried to
      * create *args and **kwargs, if they exist. */
 latefail:
@@ -492,7 +471,7 @@ latefail:
     if (p_kwargs) {
         Py_XDECREF(*p_kwargs);
     }
-    return cleanreturn(0, &freelist);
+    return 0;
 }
 
 
