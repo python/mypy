@@ -61,10 +61,6 @@ extern "C" {
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, const char *, const char * const *, ...);
 
-
-#define FLAG_COMPAT 1
-#define FLAG_SIZE_T 2
-
 /* Forward */
 static int vgetargskeywords(PyObject *, PyObject *,
                             const char *, const char *, const char * const *, va_list *);
