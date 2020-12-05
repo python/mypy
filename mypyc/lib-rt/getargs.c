@@ -92,7 +92,6 @@ static int
 vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
                  const char *fname, const char * const *kwlist, va_list *p_va)
 {
-    const char *msg;
     int min = INT_MAX;
     int max = INT_MAX;
     int required_kwonly_start = INT_MAX;
