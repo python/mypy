@@ -19,6 +19,10 @@ def test_import_submodule_within_function() -> None:
     assert pkg.x == 1
     assert pkg.mod.y == 2
 
+def test_import_as_submodule_within_function() -> None:
+    import pkg.mod as mm
+    assert mm.y == 2
+
 # TODO: Don't add local imports to globals()
 #
 # def test_local_import_not_in_globals() -> None:
@@ -31,6 +35,14 @@ def test_import_module_without_stub_in_function() -> None:
     # TODO: We shouldn't add local imports to globals()
     # assert 'virtualenv' not in globals()
     assert isinstance(virtualenv.__name__, str)
+
+def test_import_as_module_without_stub_in_function() -> None:
+    # 'virtualenv' must not have a stub in typeshed for this test case
+    import virtualenv as vv  # type: ignore
+    assert 'virtualenv' not in globals()
+    # TODO: We shouldn't add local imports to globals()
+    # assert 'vv' not in globals()
+    assert isinstance(vv.__name__, str)
 
 [file testmodule.py]
 def factorial(x: int) -> int:
