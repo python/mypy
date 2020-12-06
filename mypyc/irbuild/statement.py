@@ -119,32 +119,35 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
 def transform_import(builder: IRBuilder, node: Import) -> None:
     if node.is_mypy_only:
         return
-    globals = builder.load_globals_dict()
     for node_id, as_name in node.ids:
         builder.gen_import(node_id, node.line)
 
-        # Update the globals dict with the appropriate module:
-        # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
-        # * For 'import foo.bar' we add 'foo' with the name 'foo'
-        # Typically we then ignore these entries and access things directly
-        # via the module static, but we will use the globals version for modules
-        # that mypy couldn't find, since it doesn't analyze module references
-        # from those properly.
+        if builder.non_function_scope():
+            # Update the globals dict with the appropriate module:
+            # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
+            # * For 'import foo.bar' we add 'foo' with the name 'foo'
+            # Typically we then ignore these entries and access things directly
+            # via the module static, but we will use the globals version for modules
+            # that mypy couldn't find, since it doesn't analyze module references
+            # from those properly.
 
-        # Miscompiling imports inside of functions, like below in import from.
-        if as_name:
-            name = as_name
-            base = node_id
-        else:
-            base = name = node_id.split('.')[0]
+            # Miscompiling imports inside of functions, like below in import from.
+            if as_name:
+                name = as_name
+                base = node_id
+            else:
+                base = name = node_id.split('.')[0]
 
-        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-        mod_dict = builder.call_c(get_module_dict_op, [], node.line)
-        obj = builder.call_c(dict_get_item_op,
-                             [mod_dict, builder.load_static_unicode(base)], node.line)
-        builder.gen_method_call(
-            globals, '__setitem__', [builder.load_static_unicode(name), obj],
-            result_type=None, line=node.line)
+            globals = builder.load_globals_dict()
+            # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
+            mod_dict = builder.call_c(get_module_dict_op, [], node.line)
+            # Get top-level module/package object.
+            obj = builder.call_c(dict_get_item_op,
+                                 [mod_dict, builder.load_static_unicode(base)], node.line)
+
+            builder.gen_method_call(
+                globals, '__setitem__', [builder.load_static_unicode(name), obj],
+                result_type=None, line=node.line)
 
 
 def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:

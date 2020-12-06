@@ -26,10 +26,10 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
-from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
+from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
-from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
@@ -85,8 +85,21 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
                     expr.node.name),
                 expr.node.line)
 
-        # TODO: Behavior currently only defined for Var and FuncDef node types.
-        return builder.read(builder.get_assignment_target(expr), expr.line)
+        # TODO: Behavior currently only defined for Var, FuncDef and MypyFile node types.
+        if isinstance(expr.node, MypyFile):
+            # Load reference to a module imported inside function from
+            # the modules dictionary. It would be closer to Python
+            # semantics to access modules imported inside functions
+            # via local variables, but this is tricky since the mypy
+            # AST doesn't include a Var node for the module. We
+            # instead load the module separately on each access.
+            mod_dict = builder.call_c(get_module_dict_op, [], expr.line)
+            obj = builder.call_c(dict_get_item_op,
+                                 [mod_dict, builder.load_static_unicode(expr.node.fullname)],
+                                 expr.line)
+            return obj
+        else:
+            return builder.read(builder.get_assignment_target(expr), expr.line)
 
     return builder.load_global(expr)
 

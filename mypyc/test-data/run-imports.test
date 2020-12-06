@@ -5,9 +5,20 @@ import testmodule
 
 def f(x: int) -> int:
     return testmodule.factorial(5)
+
 def g(x: int) -> int:
     from welp import foo
     return foo(x)
+
+def test_import() -> None:
+    assert f(5) == 120
+    assert g(5) == 5
+
+def test_import_submodule_within_function() -> None:
+    import pkg.mod
+    assert pkg.x == 1
+    assert pkg.mod.y == 2
+
 [file testmodule.py]
 def factorial(x: int) -> int:
     if x == 0:
@@ -17,13 +28,10 @@ def factorial(x: int) -> int:
 [file welp.py]
 def foo(x: int) -> int:
     return x
-[file driver.py]
-from native import f, g
-print(f(5))
-print(g(5))
-[out]
-120
-5
+[file pkg/__init__.py]
+x = 1
+[file pkg/mod.py]
+y = 2
 
 [case testImportMissing]
 # The unchecked module is configured by the test harness to not be
