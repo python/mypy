@@ -3637,3 +3637,54 @@ L0:
     c = r2
     r3 = (c, b, a)
     return r3
+
+[case testLocalImportSubmodule]
+def f() -> int:
+    import p.m
+    return p.x
+[file p/__init__.py]
+x = 1
+[file p/m.py]
+[out]
+def f():
+    r0 :: dict
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5 :: object
+    r6 :: dict
+    r7 :: str
+    r8 :: object
+    r9 :: str
+    r10 :: int32
+    r11 :: bit
+    r12 :: dict
+    r13 :: str
+    r14 :: object
+    r15 :: str
+    r16 :: object
+    r17 :: int
+L0:
+    r0 = __main__.globals :: static
+    r1 = p.m :: module
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = load_global CPyStatic_unicode_1 :: static  ('p.m')
+    r5 = PyImport_Import(r4)
+    p.m = r5 :: module
+L2:
+    r6 = PyImport_GetModuleDict()
+    r7 = load_global CPyStatic_unicode_2 :: static  ('p')
+    r8 = CPyDict_GetItem(r6, r7)
+    r9 = load_global CPyStatic_unicode_2 :: static  ('p')
+    r10 = CPyDict_SetItem(r0, r9, r8)
+    r11 = r10 >= 0 :: signed
+    r12 = PyImport_GetModuleDict()
+    r13 = load_global CPyStatic_unicode_2 :: static  ('p')
+    r14 = CPyDict_GetItem(r12, r13)
+    r15 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r16 = CPyObject_GetAttr(r14, r15)
+    r17 = unbox(int, r16)
+    return r17
