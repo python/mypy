@@ -131,6 +131,8 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
         # that mypy couldn't find, since it doesn't analyze module references
         # from those properly.
 
+        # TODO: Don't add local imports to the global namespace
+
         # Miscompiling imports inside of functions, like below in import from.
         if as_name:
             name = as_name
@@ -140,8 +142,10 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
 
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
         mod_dict = builder.call_c(get_module_dict_op, [], node.line)
+        # Get top-level module/package object.
         obj = builder.call_c(dict_get_item_op,
                              [mod_dict, builder.load_static_unicode(base)], node.line)
+
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_static_unicode(name), obj],
             result_type=None, line=node.line)

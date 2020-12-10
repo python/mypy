@@ -312,3 +312,15 @@ L0:
     r0 = load_address PyDict_Type
     x = r0
     return 1
+
+[case testDictClear]
+from typing import Dict
+def f(d: Dict[int, int]) -> None:
+    return d.clear()
+[out]
+def f(d):
+    d :: dict
+    r0 :: bit
+L0:
+    r0 = CPyDict_Clear(d)
+    return 1

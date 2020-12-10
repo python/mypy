@@ -226,6 +226,18 @@ PyObject *CPyDict_Items(PyObject *dict) {
     return list;
 }
 
+char CPyDict_Clear(PyObject *dict) {
+    if (PyDict_CheckExact(dict)) {
+        PyDict_Clear(dict);
+    } else {
+        PyObject *res = PyObject_CallMethod(dict, "clear", NULL);
+        if (res == NULL) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         // Return dict itself to indicate we can use fast path instead.
