@@ -13,7 +13,7 @@ if sys.version_info < (3, 5, 0):
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 # This requires setuptools when building; setuptools is not needed
-# when installing from a wheel file (though it is still neeeded for
+# when installing from a wheel file (though it is still needed for
 # alternative forms of installing, as suggested by README.md).
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
