@@ -186,7 +186,8 @@ File ``bar.py``:
 Using classes that are generic in stubs but not at runtime
 ----------------------------------------------------------
 
-Some classes are declared as generic in stubs, but not at runtime.
+Some classes are declared as :ref:`generic<generic-classes>` in stubs, but not
+at runtime.
 
 In Python 3.8 and lower, there are several examples within the standard library,
 for instance, :py:class:`os.PathLike` and :py:class:`queue.Queue`. Subscripting
