@@ -69,7 +69,8 @@ required to be valid Python syntax. For more details, see :pep:`563`.
     .. code-block:: python
 
         # base class example
-        class A(Tuple['B', 'C']): ... # OK
+        from __future__ import annotations
+        class A(Tuple['B', 'C']): ... # String literal types needed here
         class B: ...
         class C: ...
 
