@@ -50,7 +50,7 @@ def create_source_list(paths: Sequence[str], options: Options,
 def keyfunc(name: str) -> Tuple[bool, int, str]:
     """Determines sort order for directory listing.
 
-    The desirable propertes are:
+    The desirable properties are:
     1) foo < foo.pyi < foo.py
     2) __init__.py[i] < foo
     """
