@@ -189,7 +189,7 @@ Using classes that are generic in stubs but not at runtime
 Some classes are declared as :ref:`generic<generic-classes>` in stubs, but not
 at runtime.
 
-In Python 3.8 and lower, there are several examples within the standard library,
+In Python 3.8 and earlier, there are several examples within the standard library,
 for instance, :py:class:`os.PathLike` and :py:class:`queue.Queue`. Subscripting
 such a class will result in a runtime error:
 
@@ -268,7 +268,7 @@ Using generic builtins
 Starting with Python 3.9 (:pep:`585`), the type objects of many collections in
 the standard library support subscription at runtime. This means that you no
 longer have to import the equivalents from :py:mod:`typing`; you can simply use
-the built-in collections or those from :py:mod:`collections.abc`
+the built-in collections or those from :py:mod:`collections.abc`:
 
 .. code-block:: python
 
@@ -305,7 +305,7 @@ module in earlier versions of Python than the addition, for example, using any
 of ``Literal``, ``Protocol``, ``TypedDict`` with Python 3.6.
 
 The easiest way to do this is to install and use the ``typing_extensions``
-package for the relevant imports, for example:
+package from PyPI for the relevant imports, for example:
 
 .. code-block:: python
 
