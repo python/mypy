@@ -244,6 +244,9 @@ If your subclass is also generic, you can use the following:
    task_queue: MyQueue[str]
    reveal_type(task_queue.get())  # Reveals str
 
+In Python 3.9, we can just inherit directly from ``Queue[str]`` or ``Queue[T]``
+since its :py:class:`queue.Queue` implements :py:meth:`__class_getitem__`, so
+the class object can be subscripted at runtime without issue.
 
 Using types defined in stubs but not at runtime
 -----------------------------------------------
