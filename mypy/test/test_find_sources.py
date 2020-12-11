@@ -162,6 +162,16 @@ class SourceFinderSuite(unittest.TestCase):
         finder = SourceFinder(FakeFSCache({"/a/b/c/setup.py"}), options)
         assert crawl(finder, "/a/b/c/setup.py") == ("setup", "/a/b/c")
 
+    def test_crawl_namespace_multi_dir(self) -> None:
+        options = Options()
+        options.namespace_packages = True
+        options.explicit_package_bases = True
+        options.mypy_path = ["/a", "/b"]
+
+        finder = SourceFinder(FakeFSCache({"/a/pkg/a.py", "/b/pkg/b.py"}), options)
+        assert crawl(finder, "/a/pkg/a.py") == ("pkg.a", "/a")
+        assert crawl(finder, "/b/pkg/b.py") == ("pkg.b", "/b")
+
     def test_find_sources_no_namespace(self) -> None:
         options = Options()
         options.namespace_packages = False
@@ -233,3 +243,12 @@ class SourceFinderSuite(unittest.TestCase):
             ("a2.b.c.d.e", "/pkg"),
             ("a2.b.f", "/pkg"),
         ]
+
+    def test_find_sources_namespace_multi_dir(self) -> None:
+        options = Options()
+        options.namespace_packages = True
+        options.explicit_package_bases = True
+        options.mypy_path = ["/a", "/b"]
+
+        finder = SourceFinder(FakeFSCache({"/a/pkg/a.py", "/b/pkg/b.py"}), options)
+        assert find_sources(finder, "/") == [("pkg.a", "/a"), ("pkg.b", "/b")]
