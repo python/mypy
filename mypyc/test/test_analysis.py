@@ -9,7 +9,7 @@ from mypy.errors import CompileError
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.analysis import dataflow
 from mypyc.transform import exceptions
-from mypyc.ir.func_ir import format_func
+from mypyc.ir.pprint import format_func, generate_names_for_env
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
     assert_test_output, replace_native_int
@@ -64,11 +64,13 @@ class TestAnalysis(MypycDataSuite):
                     else:
                         assert False, 'No recognized _AnalysisName suffix in test case'
 
+                    names = generate_names_for_env(fn.env)
+
                     for key in sorted(analysis_result.before.keys(),
                                       key=lambda x: (x[0].label, x[1])):
-                        pre = ', '.join(sorted(reg.name
+                        pre = ', '.join(sorted(names[reg]
                                                for reg in analysis_result.before[key]))
-                        post = ', '.join(sorted(reg.name
+                        post = ', '.join(sorted(names[reg]
                                                 for reg in analysis_result.after[key]))
                         actual.append('%-8s %-23s %s' % ((key[0].label, key[1]),
                                                          '{%s}' % pre, '{%s}' % post))

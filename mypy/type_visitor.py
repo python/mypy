@@ -14,7 +14,7 @@ other modules refer to them.
 from abc import abstractmethod
 from mypy.ordered_dict import OrderedDict
 from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
-from mypy_extensions import trait
+from mypy_extensions import trait, mypyc_attr
 
 T = TypeVar('T')
 
@@ -28,6 +28,7 @@ from mypy.types import (
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeVisitor(Generic[T]):
     """Visitor class for types (Type subclasses).
 
@@ -104,6 +105,7 @@ class TypeVisitor(Generic[T]):
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
@@ -134,6 +136,7 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
@@ -241,6 +244,7 @@ class TypeTranslator(TypeVisitor[Type]):
         pass
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 

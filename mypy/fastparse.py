@@ -31,7 +31,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType, ProperType
+    TypeOfAny, Instance, RawExpressionType, ProperType, UnionType,
 )
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
@@ -169,7 +169,9 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        if sys.version_info < (3, 9) and e.filename == "<fstring>":
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
+        if is_py38_or_earlier and e.filename == "<fstring>":
             # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
             # start of the f-string. This would be misleading, as mypy will report the error as the
             # lineno within the file.
@@ -239,7 +241,8 @@ def parse_type_comment(type_comment: str,
         converted = TypeConverter(errors,
                                   line=line,
                                   override_column=column,
-                                  assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
+                                  assume_str_is_unicode=assume_str_is_unicode,
+                                  is_evaluated=False).visit(typ.body)
         return ignored, converted
 
 
@@ -265,6 +268,8 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
+            return node
+        elif isinstance(node, UnionType):
             return node
         else:
             return RawExpressionType(expr_string, expr_fallback_name, line, column)
@@ -674,11 +679,11 @@ class ASTConverter:
             names.append(args.vararg)
 
         # keyword-only arguments with defaults
-        for a, d in zip(args.kwonlyargs, args.kw_defaults):
+        for a, kd in zip(args.kwonlyargs, args.kw_defaults):
             new_args.append(self.make_argument(
                 a,
-                d,
-                ARG_NAMED if d is None else ARG_NAMED_OPT,
+                kd,
+                ARG_NAMED if kd is None else ARG_NAMED_OPT,
                 no_type_check))
             names.append(a)
 
@@ -1210,9 +1215,11 @@ class ASTConverter:
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
         self.set_line(e, n)
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
         if (
             isinstance(n.slice, ast3.Slice) or
-            (sys.version_info < (3, 9) and isinstance(n.slice, ast3.ExtSlice))
+            (is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice))
         ):
             # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
             # visit_Slice doesn't set_line, even in Python 3.9 on.
@@ -1257,11 +1264,13 @@ class ASTConverter:
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        return TupleExpr(self.translate_expr_list(n.dims))
+        # cast for mypyc's benefit on Python 3.9
+        return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
 
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
-        return self.visit(n.value)
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
 
 
 class TypeConverter:
@@ -1270,12 +1279,14 @@ class TypeConverter:
                  line: int = -1,
                  override_column: int = -1,
                  assume_str_is_unicode: bool = True,
+                 is_evaluated: bool = True,
                  ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack = []  # type: List[AST]
         self.assume_str_is_unicode = assume_str_is_unicode
+        self.is_evaluated = is_evaluated
 
     def convert_column(self, column: int) -> int:
         """Apply column override if defined; otherwise return column.
@@ -1415,6 +1426,18 @@ class TypeConverter:
 
     def visit_Name(self, n: Name) -> Type:
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
+
+    def visit_BinOp(self, n: ast3.BinOp) -> Type:
+        if not isinstance(n.op, ast3.BitOr):
+            return self.invalid_type(n)
+
+        left = self.visit(n.left)
+        right = self.visit(n.right)
+        return UnionType([left, right],
+                         line=self.line,
+                         column=self.convert_column(n.col_offset),
+                         is_evaluated=self.is_evaluated,
+                         uses_pep604_syntax=True)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):

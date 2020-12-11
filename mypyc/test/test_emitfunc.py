@@ -20,10 +20,11 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.pprint import generate_names_for_env
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.primitives.registry import c_binary_ops
+from mypyc.primitives.registry import binary_ops
 from mypyc.primitives.misc_ops import none_object_op
 from mypyc.primitives.list_ops import (
     list_get_item_op, list_set_item_op, list_append_op
@@ -66,12 +67,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.r = self.env.add_local(Var('r'), RInstance(ir))
 
         self.context = EmitterContext(NameGenerator([['mod']]))
-        self.emitter = Emitter(self.context, self.env)
-        self.declarations = Emitter(self.context, self.env)
-
-        const_int_regs = {}  # type: Dict[str, int]
-        self.visitor = FunctionEmitterVisitor(self.emitter, self.declarations, 'prog.py', 'prog',
-                                              const_int_regs)
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)),
@@ -115,13 +110,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          "cpy_r_r0 = CPyTagged_Negate(cpy_r_m);")
 
     def test_branch(self) -> None:
-        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR),
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL),
                          """if (cpy_r_b) {
                                 goto CPyL8;
                             } else
                                 goto CPyL9;
                          """)
-        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR)
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL)
         b.negated = True
         self.assert_emit(b,
                          """if (!cpy_r_b) {
@@ -244,53 +239,53 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.ADD, 1),
                          """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.SUB, 1),
-                        """cpy_r_r00 = cpy_r_s1 - cpy_r_s2;""")
+                        """cpy_r_r1 = cpy_r_s1 - cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MUL, 1),
-                        """cpy_r_r01 = cpy_r_s1 * cpy_r_s2;""")
+                        """cpy_r_r2 = cpy_r_s1 * cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.DIV, 1),
-                        """cpy_r_r02 = cpy_r_s1 / cpy_r_s2;""")
+                        """cpy_r_r3 = cpy_r_s1 / cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MOD, 1),
-                        """cpy_r_r03 = cpy_r_s1 % cpy_r_s2;""")
+                        """cpy_r_r4 = cpy_r_s1 % cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.AND, 1),
-                        """cpy_r_r04 = cpy_r_s1 & cpy_r_s2;""")
+                        """cpy_r_r5 = cpy_r_s1 & cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.OR, 1),
-                        """cpy_r_r05 = cpy_r_s1 | cpy_r_s2;""")
+                        """cpy_r_r6 = cpy_r_s1 | cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.XOR, 1),
-                        """cpy_r_r06 = cpy_r_s1 ^ cpy_r_s2;""")
+                        """cpy_r_r7 = cpy_r_s1 ^ cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
                                      BinaryIntOp.LEFT_SHIFT, 1),
-                        """cpy_r_r07 = cpy_r_s1 << cpy_r_s2;""")
+                        """cpy_r_r8 = cpy_r_s1 << cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
                                      BinaryIntOp.RIGHT_SHIFT, 1),
-                        """cpy_r_r08 = cpy_r_s1 >> cpy_r_s2;""")
+                        """cpy_r_r9 = cpy_r_s1 >> cpy_r_s2;""")
 
     def test_comparison_op(self) -> None:
         # signed
         self.assert_emit(ComparisonOp(self.s1, self.s2, ComparisonOp.SLT, 1),
                          """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 < (Py_ssize_t)cpy_r_s2;""")
         self.assert_emit(ComparisonOp(self.i32, self.i32_1, ComparisonOp.SLT, 1),
-                         """cpy_r_r00 = cpy_r_i32 < cpy_r_i32_1;""")
+                         """cpy_r_r1 = cpy_r_i32 < cpy_r_i32_1;""")
         self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.SLT, 1),
-                         """cpy_r_r01 = cpy_r_i64 < cpy_r_i64_1;""")
+                         """cpy_r_r2 = cpy_r_i64 < cpy_r_i64_1;""")
         # unsigned
         self.assert_emit(ComparisonOp(self.s1, self.s2, ComparisonOp.ULT, 1),
-                         """cpy_r_r02 = cpy_r_s1 < cpy_r_s2;""")
+                         """cpy_r_r3 = cpy_r_s1 < cpy_r_s2;""")
         self.assert_emit(ComparisonOp(self.i32, self.i32_1, ComparisonOp.ULT, 1),
-                         """cpy_r_r03 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
+                         """cpy_r_r4 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
         self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.ULT, 1),
-                         """cpy_r_r04 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
+                         """cpy_r_r5 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
 
         # object type
         self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.EQ, 1),
-                         """cpy_r_r05 = cpy_r_o == cpy_r_o2;""")
+                         """cpy_r_r6 = cpy_r_o == cpy_r_o2;""")
         self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.NEQ, 1),
-                         """cpy_r_r06 = cpy_r_o != cpy_r_o2;""")
+                         """cpy_r_r7 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
-                         """cpy_r_r00 = *(char *)cpy_r_ptr;""")
+                         """cpy_r_r1 = *(char *)cpy_r_ptr;""")
 
     def test_set_mem(self) -> None:
         self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
@@ -302,22 +297,29 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(GetElementPtr(self.o, r, "b"),
                         """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->b;""")
         self.assert_emit(GetElementPtr(self.o, r, "i32"),
-                        """cpy_r_r00 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
+                        """cpy_r_r1 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
         self.assert_emit(GetElementPtr(self.o, r, "i64"),
-                        """cpy_r_r01 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
+                        """cpy_r_r2 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
 
     def test_load_address(self) -> None:
         self.assert_emit(LoadAddress(object_rprimitive, "PyDict_Type"),
                          """cpy_r_r0 = (PyObject *)&PyDict_Type;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
-        self.emitter.fragments = []
-        self.declarations.fragments = []
-        self.env.temp_index = 0
         if isinstance(op, RegisterOp):
             self.env.add_op(op)
-        op.accept(self.visitor)
-        frags = self.declarations.fragments + self.emitter.fragments
+
+        value_names = generate_names_for_env(self.env)
+        emitter = Emitter(self.context, self.env, value_names)
+        declarations = Emitter(self.context, self.env, value_names)
+        emitter.fragments = []
+        declarations.fragments = []
+
+        const_int_regs = {}  # type: Dict[LoadInt, int]
+        visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog', const_int_regs)
+
+        op.accept(visitor)
+        frags = declarations.fragments + emitter.fragments
         actual_lines = [line.strip(' ') for line in frags]
         assert all(line.endswith('\n') for line in actual_lines)
         actual_lines = [line.rstrip('\n') for line in actual_lines]
@@ -332,18 +334,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                               left: Value,
                               right: Value,
                               expected: str) -> None:
-        # TODO: merge this
-        if op in c_binary_ops:
-            c_ops = c_binary_ops[op]
-            for c_desc in c_ops:
-                if (is_subtype(left.type, c_desc.arg_types[0])
-                        and is_subtype(right.type, c_desc.arg_types[1])):
+        if op in binary_ops:
+            ops = binary_ops[op]
+            for desc in ops:
+                if (is_subtype(left.type, desc.arg_types[0])
+                        and is_subtype(right.type, desc.arg_types[1])):
                     args = [left, right]
-                    if c_desc.ordering is not None:
-                        args = [args[i] for i in c_desc.ordering]
-                    self.assert_emit(CallC(c_desc.c_function_name, args, c_desc.return_type,
-                                           c_desc.steals, c_desc.is_borrowed,
-                                           c_desc.error_kind, 55), expected)
+                    if desc.ordering is not None:
+                        args = [args[i] for i in desc.ordering]
+                    self.assert_emit(CallC(desc.c_function_name, args, desc.return_type,
+                                           desc.steals, desc.is_borrowed,
+                                           desc.error_kind, 55), expected)
                     return
         else:
             assert False, 'Could not find matching op'
@@ -361,7 +362,8 @@ class TestGenerateFunction(unittest.TestCase):
         self.block.ops.append(Return(self.reg))
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.block], self.env)
-        emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
+        value_names = generate_names_for_env(self.env)
+        emitter = Emitter(EmitterContext(NameGenerator([['mod']])), self.env, value_names)
         generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
         assert_string_arrays_equal(
@@ -374,13 +376,13 @@ class TestGenerateFunction(unittest.TestCase):
             result, msg='Generated code invalid')
 
     def test_register(self) -> None:
-        self.env.temp_index = 0
         op = LoadInt(5)
         self.block.ops.append(op)
         self.env.add_op(op)
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.block], self.env)
-        emitter = Emitter(EmitterContext(NameGenerator([['mod']])))
+        value_names = generate_names_for_env(self.env)
+        emitter = Emitter(EmitterContext(NameGenerator([['mod']])), self.env, value_names)
         generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
         assert_string_arrays_equal(

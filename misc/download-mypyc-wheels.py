@@ -29,7 +29,7 @@ def download_files(version):
     for pyver in range(MIN_VER, MAX_VER + 1):
         for platform in PLATFORMS:
             abi_tag = "" if pyver >= 8 else "m"
-            macos_ver = 9 if pyver >= 8 else 6
+            macos_ver = 9 if pyver >= 6 else 6
             url = URL.format(
                 base=BASE_URL,
                 version=version,

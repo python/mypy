@@ -241,6 +241,96 @@ more specific type:
     since the caller may have to use :py:func:`isinstance` before doing anything
     interesting with the value.
 
+.. _alternative_union_syntax:
+
+Alternative union syntax
+------------------------
+
+`PEP 604 <https://www.python.org/dev/peps/pep-0604/>`_ introduced an alternative way
+for writing union types. Starting with **Python 3.10** it is possible to write
+``Union[int, str]`` as ``int | str``. Any of the following options is possible
+
+.. code-block:: python
+
+    from typing import List
+
+    # Use as Union
+    t1: int | str  # equivalent to Union[int, str]
+
+    # Use as Optional
+    t2: int | None  # equivalent to Optional[int]
+
+    # Use in generics
+    t3: List[int | str]  # equivalent to List[Union[int, str]]
+
+    # Use in type aliases
+    T4 = int | None
+    x: T4
+
+    # Quoted variable annotations
+    t5: "int | str"
+
+    # Quoted function annotations
+    def f(t6: "int | str") -> None: ...
+
+    # Type comments
+    t6 = 42  # type: int | str
+
+It is possible to use most of these even for earlier versions. However there are some
+limitations to be aware of.
+
+.. _alternative_union_syntax_stub_files:
+
+Stub files
+""""""""""
+
+All options are supported, regardless of the Python version the project uses.
+
+.. _alternative_union_syntax_37:
+
+Python 3.7 - 3.9
+""""""""""""""""
+
+It is necessary to add ``from __future__ import annotations`` to delay the evaluation
+of type annotations. Not using it would result in a ``TypeError``.
+This does not apply for **type comments**, **quoted function** and **quoted variable** annotations,
+as those also work for earlier versions, see :ref:`below <alternative_union_syntax_older_version>`.
+
+.. warning::
+
+    Type aliases are **NOT** supported! Those result in a ``TypeError`` regardless
+    if the evaluation of type annotations is delayed.
+
+    Dynamic evaluation of annotations is **NOT** possible (e.g. ``typing.get_type_hints`` and ``eval``).
+    See `note PEP 604 <https://www.python.org/dev/peps/pep-0604/#change-only-pep-484-type-hints-to-accept-the-syntax-type1-type2>`_.
+    Use ``typing.Union`` or **Python 3.10** instead if you need those!
+
+.. code-block:: python
+
+    from __future__ import annotations
+
+    t1: int | None
+
+    # Type aliases
+    T2 = int | None  # TypeError!
+
+.. _alternative_union_syntax_older_version:
+
+Older versions
+""""""""""""""
+
++------------------------------------------+-----------+-----------+-----------+
+| Python Version                           | 3.6       | 3.0 - 3.5 | 2.7       |
++==========================================+===========+===========+===========+
+| Type comments                            | yes       | yes       | yes       |
++------------------------------------------+-----------+-----------+-----------+
+| Quoted function annotations              | yes       | yes       |           |
++------------------------------------------+-----------+-----------+-----------+
+| Quoted variable annotations              | yes       |           |           |
++------------------------------------------+-----------+-----------+-----------+
+| Everything else                          |           |           |           |
++------------------------------------------+-----------+-----------+-----------+
+
 .. _strict_optional:
 
 Optional types and the None type
@@ -741,9 +831,9 @@ so use :py:data:`~typing.AnyStr`:
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-   concat('a', 'b')     # Okay
-   concat(b'a', b'b')   # Okay
-   concat('a', b'b')    # Error: cannot mix bytes and unicode
+   concat('foo', 'foo')     # Okay
+   concat(b'foo', b'foo')   # Okay
+   concat('foo', b'foo')    # Error: cannot mix bytes and unicode
 
 For more details, see :ref:`type-variable-value-restriction`.
 

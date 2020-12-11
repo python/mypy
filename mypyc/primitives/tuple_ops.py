@@ -8,11 +8,11 @@ from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import (
     tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive, c_pyssize_t_rprimitive
 )
-from mypyc.primitives.registry import c_method_op, c_function_op, c_custom_op
+from mypyc.primitives.registry import method_op, function_op, custom_op
 
 
 # tuple[index] (for an int index)
-tuple_get_item_op = c_method_op(
+tuple_get_item_op = method_op(
     name='__getitem__',
     arg_types=[tuple_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
@@ -20,7 +20,7 @@ tuple_get_item_op = c_method_op(
     error_kind=ERR_MAGIC)
 
 # Construct a boxed tuple from items: (item1, item2, ...)
-new_tuple_op = c_custom_op(
+new_tuple_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=tuple_rprimitive,
     c_function_name='PyTuple_Pack',
@@ -28,7 +28,7 @@ new_tuple_op = c_custom_op(
     var_arg_type=object_rprimitive)
 
 # Construct tuple from a list.
-list_tuple_op = c_function_op(
+list_tuple_op = function_op(
     name='builtins.tuple',
     arg_types=[list_rprimitive],
     return_type=tuple_rprimitive,
@@ -37,7 +37,7 @@ list_tuple_op = c_function_op(
     priority=2)
 
 # Construct tuple from an arbitrary (iterable) object.
-c_function_op(
+function_op(
     name='builtins.tuple',
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,
@@ -45,7 +45,7 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # tuple[begin:end]
-tuple_slice_op = c_custom_op(
+tuple_slice_op = custom_op(
     arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPySequenceTuple_GetSlice',

@@ -13,7 +13,8 @@ from mypyc.ir.rtypes import (
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
-    int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive, is_int64_rprimitive
+    int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive,
+    is_int64_rprimitive, is_bit_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -87,9 +88,13 @@ class EmitterContext:
 class Emitter:
     """Helper for C code generation."""
 
-    def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
+    def __init__(self,
+                 context: EmitterContext,
+                 env: Optional[Environment] = None,
+                 value_names: Optional[Dict[Value, str]] = None) -> None:
         self.context = context
         self.names = context.names
+        self.value_names = value_names or {}
         self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
@@ -107,7 +112,7 @@ class Emitter:
         return 'CPyL%s' % label.label
 
     def reg(self, reg: Value) -> str:
-        return REG_PREFIX + reg.name
+        return REG_PREFIX + self.value_names[reg]
 
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
@@ -413,7 +418,7 @@ class Emitter:
                 prefix = 'PyUnicode'
             elif is_int_rprimitive(typ):
                 prefix = 'PyLong'
-            elif is_bool_rprimitive(typ):
+            elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
                 prefix = 'PyBool'
             else:
                 assert False, 'unexpected primitive type'
@@ -602,7 +607,7 @@ class Emitter:
             self.emit_line('else {')
             self.emit_lines(*failure)
             self.emit_line('}')
-        elif is_bool_rprimitive(typ):
+        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line('char {};'.format(dest))
@@ -681,7 +686,7 @@ class Emitter:
         if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             # Steal the existing reference if it exists.
             self.emit_line('{}{} = CPyTagged_StealAsObject({});'.format(declaration, dest, src))
-        elif is_bool_rprimitive(typ):
+        elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
             # N.B: bool is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount
             # when this comes directly from a Box op.

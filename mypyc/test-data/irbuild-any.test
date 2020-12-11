@@ -52,6 +52,7 @@ def f(a, n, c):
     r6 :: str
     r7 :: object
     r8 :: int32
+    r9 :: bit
 L0:
     r0 = box(int, n)
     c.a = r0; r1 = is_error
@@ -64,6 +65,7 @@ L0:
     r6 = load_global CPyStatic_unicode_6 :: static  ('a')
     r7 = box(int, n)
     r8 = PyObject_SetAttr(a, r6, r7)
+    r9 = r8 >= 0 :: signed
     return 1
 
 [case testCoerceAnyInOps]
@@ -98,12 +100,13 @@ def f2(a, n, l):
     l :: list
     r0, r1, r2, r3, r4 :: object
     r5 :: int32
-    r6 :: object
-    r7 :: int32
-    r8 :: bool
-    r9 :: list
-    r10 :: object
-    r11, r12, r13 :: ptr
+    r6 :: bit
+    r7 :: object
+    r8 :: int32
+    r9, r10 :: bit
+    r11 :: list
+    r12 :: object
+    r13, r14, r15 :: ptr
 L0:
     r0 = box(int, n)
     r1 = PyObject_GetItem(a, r0)
@@ -111,16 +114,18 @@ L0:
     r3 = box(int, n)
     r4 = box(int, n)
     r5 = PyObject_SetItem(a, r3, r4)
-    r6 = box(int, n)
-    r7 = PyObject_SetItem(l, a, r6)
-    r8 = CPyList_SetItem(l, n, a)
-    r9 = PyList_New(2)
-    r10 = box(int, n)
-    r11 = get_element_ptr r9 ob_item :: PyListObject
-    r12 = load_mem r11, r9 :: ptr*
-    set_mem r12, a, r9 :: builtins.object*
-    r13 = r12 + WORD_SIZE*1
-    set_mem r13, r10, r9 :: builtins.object*
+    r6 = r5 >= 0 :: signed
+    r7 = box(int, n)
+    r8 = PyObject_SetItem(l, a, r7)
+    r9 = r8 >= 0 :: signed
+    r10 = CPyList_SetItem(l, n, a)
+    r11 = PyList_New(2)
+    r12 = box(int, n)
+    r13 = get_element_ptr r11 ob_item :: PyListObject
+    r14 = load_mem r13, r11 :: ptr*
+    set_mem r14, a, r11 :: builtins.object*
+    r15 = r14 + WORD_SIZE*1
+    set_mem r15, r12, r11 :: builtins.object*
     return 1
 def f3(a, n):
     a :: object
@@ -170,4 +175,3 @@ L6:
     r4 = unbox(int, r2)
     n = r4
     return 1
-

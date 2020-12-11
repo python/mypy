@@ -53,6 +53,18 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
     return PyUnicode_Split(str, sep, temp_max_split);
 }
 
+bool CPyStr_Startswith(PyObject *self, PyObject *subobj) {
+    Py_ssize_t start = 0;
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    return PyUnicode_Tailmatch(self, subobj, start, end, -1);
+}
+
+bool CPyStr_Endswith(PyObject *self, PyObject *subobj) {
+    Py_ssize_t start = 0;
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    return PyUnicode_Tailmatch(self, subobj, start, end, 1);
+}
+
 /* This does a dodgy attempt to append in place  */
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2) {
     PyUnicode_Append(&o1, o2);

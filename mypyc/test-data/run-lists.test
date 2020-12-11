@@ -103,6 +103,12 @@ pop(l, -2)
 assert l == [1, 3]
 assert count(l, 1) == 1
 assert count(l, 2) == 0
+l.insert(0, 0)
+assert l == [0, 1, 3]
+l.insert(2, 2)
+assert l == [0, 1, 2, 3]
+l.insert(4, 4)
+assert l == [0, 1, 2, 3, 4]
 
 [case testListOfUserDefinedClass]
 class C:

@@ -26,15 +26,8 @@ T = TypeVar('T')
 ENCODING_RE = \
     re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
-# This works in most default terminals works (because it is ANSI standard). The problem
-# this tries to solve is that although it is a basic ANSI "feature", terminfo files
-# for most default terminals don't have dim termcap entry, so curses doesn't report it.
-# Potentially, we can choose a grey color that would look good on both white and black
-# background, but it is not easy, and again most default terminals are 8-color, not 256-color,
-# so we can't get the color code from curses.
-PLAIN_ANSI_DIM = '\x1b[2m'  # type: Final
-
 DEFAULT_SOURCE_OFFSET = 4  # type: Final
+DEFAULT_COLUMNS = 80  # type: Final
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -424,7 +417,9 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
+    return (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0'))
+            or shutil.get_terminal_size().columns
+            or DEFAULT_COLUMNS)
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
@@ -474,6 +469,13 @@ def hash_digest(data: bytes) -> str:
     # Once we drop Python 3.5 support, we should consider using
     # blake2b, which is faster.
     return hashlib.sha256(data).hexdigest()
+
+
+def parse_gray_color(cup: bytes) -> str:
+    """Reproduce a gray color in ANSI escape sequence"""
+    set_color = ''.join([cup[:-1].decode(), 'm'])
+    gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
+    return gray
 
 
 class FancyFormatter:
@@ -553,16 +555,15 @@ class FancyFormatter:
         bold = curses.tigetstr('bold')
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
-        if not (bold and under and set_color):
+        set_eseq = curses.tigetstr('cup')
+
+        if not (bold and under and set_color and set_eseq):
             return False
 
         self.NORMAL = curses.tigetstr('sgr0').decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
-        dim = curses.tigetstr('dim')
-        # TODO: more reliable way to get gray color good for both dark and light schemes.
-        self.DIM = dim.decode() if dim else PLAIN_ANSI_DIM
-
+        self.DIM = parse_gray_color(set_eseq)
         self.BLUE = curses.tparm(set_color, curses.COLOR_BLUE).decode()
         self.GREEN = curses.tparm(set_color, curses.COLOR_GREEN).decode()
         self.RED = curses.tparm(set_color, curses.COLOR_RED).decode()
@@ -679,13 +680,20 @@ class FancyFormatter:
             return msg
         return self.style(msg, 'green', bold=True)
 
-    def format_error(self, n_errors: int, n_files: int, n_sources: int,
-                     use_color: bool = True) -> str:
+    def format_error(
+        self, n_errors: int, n_files: int, n_sources: int, *,
+        blockers: bool = False, use_color: bool = True
+    ) -> str:
         """Format a short summary in case of errors."""
-        msg = 'Found {} error{} in {} file{}' \
-              ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
-                                                   n_files, 's' if n_files != 1 else '',
-                                                   n_sources, 's' if n_sources != 1 else '')
+
+        msg = 'Found {} error{} in {} file{}'.format(
+            n_errors, 's' if n_errors != 1 else '',
+            n_files, 's' if n_files != 1 else ''
+        )
+        if blockers:
+            msg += ' (errors prevented further checking)'
+        else:
+            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)

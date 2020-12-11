@@ -15,7 +15,7 @@ coercion is necessary first.
 
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RStruct,
-    is_int_rprimitive, is_short_int_rprimitive,
+    is_int_rprimitive, is_short_int_rprimitive, is_bool_rprimitive, is_bit_rprimitive
 )
 from mypyc.subtype import is_subtype
 
@@ -42,6 +42,8 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
 
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         if is_short_int_rprimitive(left) and is_int_rprimitive(self.right):
+            return True
+        if is_bit_rprimitive(left) and is_bool_rprimitive(self.right):
             return True
         return left is self.right
 

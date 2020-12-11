@@ -10,9 +10,9 @@ from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
-    BasicBlock, Value, MethodCall, PrimitiveOp, EmitterInterface, Unreachable, NAMESPACE_STATIC,
+    BasicBlock, Value, MethodCall, EmitterInterface, Unreachable, NAMESPACE_STATIC,
     NAMESPACE_TYPE, NAMESPACE_MODULE, RaiseStandardError, CallC, LoadGlobal, Truncate,
-    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -21,6 +21,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.const_int import find_constant_integer_registers
+from mypyc.ir.pprint import generate_names_for_env
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -54,7 +55,8 @@ def generate_native_function(fn: FuncIR,
     else:
         const_int_regs = {}
     declarations = Emitter(emitter.context, fn.env)
-    body = Emitter(emitter.context, fn.env)
+    names = generate_names_for_env(fn.env)
+    body = Emitter(emitter.context, fn.env, names)
     visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
@@ -69,11 +71,11 @@ def generate_native_function(fn: FuncIR,
         init = ''
         if r in fn.env.vars_needing_init:
             init = ' = {}'.format(declarations.c_error_value(r.type))
-        if r.name not in const_int_regs:
+        if r not in const_int_regs:
             declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
-                                                                        prefix=REG_PREFIX,
-                                                                        name=r.name,
-                                                                        init=init))
+                                                                         prefix=REG_PREFIX,
+                                                                         name=names[r],
+                                                                         init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -96,7 +98,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                  declarations: Emitter,
                  source_path: str,
                  module_name: str,
-                 const_int_regs: Dict[str, int]) -> None:
+                 const_int_regs: Dict[LoadInt, int]) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
@@ -115,12 +117,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         neg = '!' if op.negated else ''
 
         cond = ''
-        if op.op == Branch.BOOL_EXPR:
+        if op.op == Branch.BOOL:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
-        elif op.op == Branch.NEG_INT_EXPR:
-            expr_result = self.reg(op.left)
-            cond = '{} < 0'.format(expr_result)
         elif op.op == Branch.IS_ERROR:
             typ = op.left.type
             compare = '!=' if op.negated else '=='
@@ -155,17 +154,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
-    def visit_primitive_op(self, op: PrimitiveOp) -> None:
-        args = [self.reg(arg) for arg in op.args]
-        if not op.is_void:
-            dest = self.reg(op)
-        else:
-            # This will generate a C compile error if used. The reason for this
-            # is that we don't want to insert "assert dest is not None" checks
-            # everywhere.
-            dest = '<undefined dest>'
-        op.desc.emit(self, args, dest)
-
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op)
         tuple_type = op.tuple_type
@@ -186,7 +174,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = %s;' % (dest, src))
 
     def visit_load_int(self, op: LoadInt) -> None:
-        if op.name in self.const_int_regs:
+        if op in self.const_int_regs:
             return
         dest = self.reg(op)
         self.emit_line('%s = %d;' % (dest, op.value))
@@ -417,8 +405,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                     'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
             elif isinstance(op.value, Value):
                 self.emitter.emit_line(
-                    'PyErr_SetObject(PyExc_{}, {}{});'.format(op.class_name, REG_PREFIX,
-                                                              op.value.name))
+                    'PyErr_SetObject(PyExc_{}, {});'.format(op.class_name,
+                                                            self.emitter.reg(op.value)))
             else:
                 assert False, 'op value type must be either str or Value'
         else:
@@ -499,7 +487,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
         dest = self.reg(op)
-        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, op.src))
+        src = self.reg(op.src) if isinstance(op.src, Register) else op.src
+        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, src))
 
     # Helpers
 
@@ -507,8 +496,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         return self.emitter.label(label)
 
     def reg(self, reg: Value) -> str:
-        if reg.name in self.const_int_regs:
-            val = self.const_int_regs[reg.name]
+        if isinstance(reg, LoadInt) and reg in self.const_int_regs:
+            val = self.const_int_regs[reg]
             if val == 0 and is_pointer_rprimitive(reg.type):
                 return "NULL"
             return str(val)

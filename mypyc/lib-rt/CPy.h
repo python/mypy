@@ -129,11 +129,17 @@ void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
 CPyTagged CPyTagged_Negate(CPyTagged num);
+CPyTagged CPyTagged_Invert(CPyTagged num);
 CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Remainder(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_And(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Or(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Xor(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Rshift(CPyTagged left, CPyTagged right);
+CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 PyObject *CPyTagged_Str(CPyTagged n);
@@ -317,6 +323,7 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
+int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
@@ -341,6 +348,7 @@ PyObject *CPyDict_ItemsView(PyObject *dict);
 PyObject *CPyDict_Keys(PyObject *dict);
 PyObject *CPyDict_Values(PyObject *dict);
 PyObject *CPyDict_Items(PyObject *dict);
+char CPyDict_Clear(PyObject *dict);
 PyObject *CPyDict_GetKeysIter(PyObject *dict);
 PyObject *CPyDict_GetItemsIter(PyObject *dict);
 PyObject *CPyDict_GetValuesIter(PyObject *dict);
@@ -371,6 +379,8 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
+bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
 
 
 // Set operations
@@ -448,6 +458,16 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
 // might be an int also
 static inline bool CPyFloat_Check(PyObject *o) {
     return PyFloat_Check(o) || PyLong_Check(o);
+}
+
+// TODO: find an unified way to avoid inline functions in non-C back ends that can not
+//       use inline functions
+static inline bool CPy_TypeCheck(PyObject *o, PyObject *type) {
+    return PyObject_TypeCheck(o, (PyTypeObject *)type);
+}
+
+static inline PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o) {
+    return (PyObject *)_PyType_CalculateMetaclass((PyTypeObject *)type, o);
 }
 
 PyObject *CPy_GetCoro(PyObject *obj);

@@ -99,7 +99,18 @@ class DefaultPlugin(Plugin):
         elif fullname in attrs.attr_dataclass_makers:
             return partial(
                 attrs.attr_class_maker_callback,
-                auto_attribs_default=True
+                auto_attribs_default=True,
+            )
+        elif fullname in attrs.attr_frozen_makers:
+            return partial(
+                attrs.attr_class_maker_callback,
+                auto_attribs_default=None,
+                frozen_default=True,
+            )
+        elif fullname in attrs.attr_define_makers:
+            return partial(
+                attrs.attr_class_maker_callback,
+                auto_attribs_default=None,
             )
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback

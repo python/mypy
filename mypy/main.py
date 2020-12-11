@@ -111,11 +111,13 @@ def main(script_path: Optional[str],
         if messages:
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
-                stdout.write(formatter.format_error(n_errors, n_files, len(sources),
-                                                    options.color_output) + '\n')
+                summary = formatter.format_error(
+                    n_errors, n_files, len(sources), blockers=blockers,
+                    use_color=options.color_output
+                )
+                stdout.write(summary + '\n')
         else:
-            stdout.write(formatter.format_success(len(sources),
-                                                  options.color_output) + '\n')
+            stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
@@ -928,7 +930,7 @@ def process_options(args: List[str],
                                    ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)
+        cache = FindModuleCache(search_paths, fscache, options)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),

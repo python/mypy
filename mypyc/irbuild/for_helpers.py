@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple, is_dict_rprimitive, short_int_rprimitive
+    RTuple, is_dict_rprimitive, short_int_rprimitive, int_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import (
@@ -517,7 +517,7 @@ class ForDictionaryCommon(ForGenerator):
 
         should_continue = builder.add(TupleGet(self.next_tuple, 0, line))
         builder.add(
-            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL_EXPR)
+            Branch(should_continue, self.body_block, self.loop_exit, Branch.BOOL)
         )
 
     def gen_step(self) -> None:
@@ -605,7 +605,11 @@ class ForRange(ForGenerator):
         self.end_reg = end_reg
         self.step = step
         self.end_target = builder.maybe_spill(end_reg)
-        index_reg = builder.alloc_temp(start_reg.type)
+        if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
+            index_type = short_int_rprimitive
+        else:
+            index_type = int_rprimitive
+        index_reg = builder.alloc_temp(index_type)
         builder.assign(index_reg, start_reg, -1)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.

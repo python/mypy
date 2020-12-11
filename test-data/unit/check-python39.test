@@ -7,3 +7,13 @@ def f(a: 'A', b: 'B') -> None: pass
 f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
 class A: pass
 class B: pass
+
+
+[case testPEP614]
+from typing import Callable, List
+
+decorator_list: List[Callable[..., Callable[[int], str]]]
+@decorator_list[0]
+def f(x: float) -> float: ...
+reveal_type(f)  # N: Revealed type is 'def (builtins.int) -> builtins.str'
+[builtins fixtures/list.pyi]

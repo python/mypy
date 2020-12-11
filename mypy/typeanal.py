@@ -21,7 +21,7 @@ from mypy.types import (
 
 from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
+    get_nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr, ParamSpecExpr,
     TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
@@ -59,6 +59,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
     'queue.Queue',
     'builtins._PathLike',
+    'asyncio.futures.Future',
 }  # type: Final
 
 
@@ -94,6 +95,8 @@ def analyze_type_alias(node: Expression,
 
 def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
     msg = '"{}" is not subscriptable'.format(name.split('.')[-1])
+    # This should never be called if the python_version is 3.9 or newer
+    nongen_builtins = get_nongen_builtins((3, 8))
     replacement = nongen_builtins[name]
     if replacement and propose_alt:
         msg += ', use "{}" instead'.format(replacement)
@@ -194,7 +197,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
-            if (fullname in nongen_builtins
+            if (fullname in get_nongen_builtins(self.options.python_version)
                     and t.args and
                     not self.allow_unnormalized and
                     not self.api.is_future_flag_set("annotations")):
@@ -241,6 +244,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.fail,
                         self.note,
                         disallow_any=disallow_any,
+                        python_version=self.options.python_version,
                         use_generic_error=True,
                         unexpanded_type=t)
                 return res
@@ -272,7 +276,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail("Final can be only used as an outermost qualifier"
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
-        elif fullname == 'typing.Tuple':
+        elif (fullname == 'typing.Tuple' or
+             (fullname == 'builtins.tuple' and (self.options.python_version >= (3, 9) or
+                                                self.api.is_future_flag_set('annotations')))):
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
@@ -305,7 +311,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
         elif (fullname == 'typing.Type' or
-             (fullname == 'builtins.type' and self.api.is_future_flag_set('annotations'))):
+             (fullname == 'builtins.type' and (self.options.python_version >= (3, 9) or
+                                               self.api.is_future_flag_set('annotations')))):
             if len(t.args) == 0:
                 if fullname == 'typing.Type':
                     any_type = self.get_omitted_any(t)
@@ -342,7 +349,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
         disallow_any = not self.is_typeshed_stub and self.options.disallow_any_generics
-        return get_omitted_any(disallow_any, self.fail, self.note, typ, fullname)
+        return get_omitted_any(disallow_any, self.fail, self.note, typ,
+                               self.options.python_version, fullname)
 
     def analyze_type_with_type_info(
             self, info: TypeInfo, args: Sequence[Type], ctx: Context) -> Type:
@@ -364,7 +372,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail, self.note,
                          disallow_any=self.options.disallow_any_generics and
-                         not self.is_typeshed_stub)
+                         not self.is_typeshed_stub,
+                         python_version=self.options.python_version)
 
         tup = info.tuple_type
         if tup is not None:
@@ -537,7 +546,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
             self.fail('Syntax error in type annotation', t, code=codes.SYNTAX)
-            if len(t.items) == 1:
+            if len(t.items) == 0:
+                self.note('Suggestion: Use Tuple[()] instead of () for an empty tuple, or '
+                'None for a function without a return value', t, code=codes.SYNTAX)
+            elif len(t.items) == 1:
                 self.note('Suggestion: Is there a spurious trailing comma?', t, code=codes.SYNTAX)
             else:
                 self.note('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t,
@@ -605,6 +617,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return StarType(self.anal_type(t.type), t.line)
 
     def visit_union_type(self, t: UnionType) -> Type:
+        if (t.uses_pep604_syntax is True
+                and t.is_evaluated is True
+                and self.api.is_stub_file is False
+                and self.options.python_version < (3, 10)
+                and self.api.is_future_flag_set('annotations') is False):
+            self.fail("X | Y syntax for unions requires Python 3.10", t)
         return UnionType(self.anal_array(t.items), t.line)
 
     def visit_partial_type(self, t: PartialType) -> Type:
@@ -970,9 +988,11 @@ MsgCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code
 
 
 def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
-                    orig_type: Type, fullname: Optional[str] = None,
+                    orig_type: Type, python_version: Tuple[int, int],
+                    fullname: Optional[str] = None,
                     unexpanded_type: Optional[Type] = None) -> AnyType:
     if disallow_any:
+        nongen_builtins = get_nongen_builtins(python_version)
         if fullname in nongen_builtins:
             typ = orig_type
             # We use a dedicated error message for builtin generics (as the most common case).
@@ -991,7 +1011,9 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
             base_fullname = (
                 base_type.type.fullname if isinstance(base_type, Instance) else fullname
             )
-            if base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
+            # Ideally, we'd check whether the type is quoted or `from __future__ annotations`
+            # is set before issuing this note
+            if python_version < (3, 9) and base_fullname in GENERIC_STUB_NOT_AT_RUNTIME_TYPES:
                 # Recommend `from __future__ import annotations` or to put type in quotes
                 # (string literal escaping) for classes not generic at runtime
                 note(
@@ -1010,7 +1032,8 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
 
 
 def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
-                 disallow_any: bool, use_generic_error: bool = False,
+                 disallow_any: bool, python_version: Tuple[int, int],
+                 use_generic_error: bool = False,
                  unexpanded_type: Optional[Type] = None,) -> None:
     """Fix a malformed instance by replacing all type arguments with Any.
 
@@ -1021,7 +1044,8 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
             fullname = None  # type: Optional[str]
         else:
             fullname = t.type.fullname
-        any_type = get_omitted_any(disallow_any, fail, note, t, fullname, unexpanded_type)
+        any_type = get_omitted_any(disallow_any, fail, note, t, python_version, fullname,
+                                   unexpanded_type)
         t.args = (any_type,) * len(t.type.type_vars)
         return
     # Invalid number of type parameters.
@@ -1280,21 +1304,26 @@ def make_optional_type(t: Type) -> Type:
         return UnionType([t, NoneType()], t.line, t.column)
 
 
-def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback) -> None:
+def fix_instance_types(t: Type, fail: MsgCallback, note: MsgCallback,
+                       python_version: Tuple[int, int]) -> None:
     """Recursively fix all instance types (type argument count) in a given type.
 
     For example 'Union[Dict, List[str, int]]' will be transformed into
     'Union[Dict[Any, Any], List[Any]]' in place.
     """
-    t.accept(InstanceFixer(fail, note))
+    t.accept(InstanceFixer(fail, note, python_version))
 
 
 class InstanceFixer(TypeTraverserVisitor):
-    def __init__(self, fail: MsgCallback, note: MsgCallback) -> None:
+    def __init__(
+        self, fail: MsgCallback, note: MsgCallback, python_version: Tuple[int, int]
+    ) -> None:
         self.fail = fail
         self.note = note
+        self.python_version = python_version
 
     def visit_instance(self, typ: Instance) -> None:
         super().visit_instance(typ)
         if len(typ.args) != len(typ.type.type_vars):
-            fix_instance(typ, self.fail, self.note, disallow_any=False, use_generic_error=True)
+            fix_instance(typ, self.fail, self.note, disallow_any=False,
+                         python_version=self.python_version, use_generic_error=True)
