@@ -111,8 +111,8 @@ defined (aka forward reference). Thus this code does not work as expected:
    def f(x: A) -> None: ...  # NameError: name 'A' is not defined
    class A: ...
 
-Starting from Python 3.7, you can add the special import ``from __future__ import annotations``,
-which makes the use of string literals in annotations unnecessary:
+Starting from Python 3.7, you can add ``from __future__ import annotations`` to
+resolve this, as discussed earlier:
 
 .. code-block:: python
 
@@ -133,9 +133,9 @@ For Python 3.6 and below, you can enter the type as a string literal or type com
 
    class A: ...
 
-Of course, instead of using a string literal type or special import, you could move the
-function definition after the class definition. This is not always
-desirable or even possible, though.
+Of course, instead of using future annotations import or string literal types,
+you could move the function definition after the class definition. This is not
+always desirable or even possible, though.
 
 .. _import-cycles:
 
