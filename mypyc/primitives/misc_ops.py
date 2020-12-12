@@ -179,7 +179,7 @@ dataclass_sleight_of_hand = custom_op(
 
 # Raise ValueError if length of first argument is not equal to the second argument.
 # The first argument must be a list or a variable-length tuple.
-check_unpack_count_op = c_custom_op(
+check_unpack_count_op = custom_op(
     arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name='CPySequence_CheckUnpackCount',
