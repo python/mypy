@@ -509,17 +509,9 @@ class IRBuilder:
         # Check the length of sequence.
         expected_len = self.add(LoadInt(len(target.items), rtype=c_pyssize_t_rprimitive))
         self.builder.call_c(check_unpack_count_op, [rvalue, expected_len], line)
-        # If some lvalue item is not a register, we conservatively
-        # assume that the length of the sequence might change due to a
-        # property setter or custom __setitem__.
-        simple_lvalue = all(isinstance(item, AssignmentTargetRegister)
-                            for item in target.items)
-        # If it's possible for the length of the rvalue to change
-        # between item assignments, we must do it the hard way to
-        # preserve semantics.
-        if not simple_lvalue and is_list_rprimitive(rvalue.type):
-            return self.process_iterator_tuple_assignment(target, rvalue, line)
-        # Get values and assign them to the target items.
+
+        # Read sequence items.
+        values = []
         for i in range(len(target.items)):
             item = target.items[i]
             index = self.builder.load_static_int(i)
@@ -528,7 +520,11 @@ class IRBuilder:
             else:
                 item_value = self.builder.gen_method_call(
                     rvalue, '__getitem__', [index], item.type, line)
-            self.assign(target.items[i], item_value, line)
+            values.append(item_value)
+
+        # Assign sequence items to the target lvalues.
+        for lvalue, value in zip(target.items, values):
+            self.assign(lvalue, value, line)
 
     def process_iterator_tuple_assignment_helper(self,
                                                  litem: AssignmentTarget,
