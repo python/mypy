@@ -604,7 +604,11 @@ class MessageBuilder:
                 args = '", "'.join(cast(List[str], diff))
                 msg += ' "{}" in call to {}'.format(args, callee_name)
         else:
-            msg = 'Too few arguments' + for_function(callee)
+            msg = '"{}" missing {} required positional argument{}: '.format(callee.name, callee.min_args,'s' if callee.min_args>1 else '')
+            for i,argument in enumerate(callee.arg_names):
+                if callee.arg_kinds[i]==0:
+                    msg+="\'{}\', ".format(argument)
+            msg=msg[:-2]  
         self.fail(msg, context, code=codes.CALL_ARG)
 
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
