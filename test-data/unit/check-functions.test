@@ -737,7 +737,7 @@ import typing
 def f(x: object) -> None:
     def g(y):
         pass
-    g() # E: Too few arguments for "g"
+    g() # E: "g" missing 1 required positional argument: 'y'
     g(x)
 [out]
 
@@ -1080,7 +1080,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: "x" missing 1 required positional argument: 'x'
 
 class A:
     @staticmethod
@@ -1102,7 +1102,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: "x" missing 1 required positional argument: 'a'
 
 class A:
     @classmethod
@@ -1504,7 +1504,7 @@ def g() -> None:
     f = None
     if object():
         def f(x: int) -> None: pass
-    f() # E: Too few arguments for "f"
+    f() # E: "f" missing 1 required positional argument: 'x'
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
@@ -2201,7 +2201,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"
+        self.g() # E: "g" of "A" missing 1 required positional argument: 'None'
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
