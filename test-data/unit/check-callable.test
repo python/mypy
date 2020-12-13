@@ -110,7 +110,7 @@ from typing import Callable, Union
 x = 5  # type: Union[int, Callable[[], None], Callable[[int], None]]
 
 if callable(x):
-    x()  # E: Missing positional argument
+    x()  # E: Too few arguments
 
 [builtins fixtures/callable.pyi]
 

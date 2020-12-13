@@ -17,7 +17,7 @@ if int():
 if int():
     b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
 if int():
-    b = f()     # E: Missing positional argument
+    b = f()     # E: Too few arguments
 if int():
     b = f(a, a) # E: Too many arguments
 if int():
@@ -598,7 +598,7 @@ a = None # type: A
 a.f()
 a.g(B())
 a.f(a) # E: Too many arguments
-a.g()  # E: Missing positional argument
+a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
 from typing import Any, Callable
@@ -648,7 +648,7 @@ class A:
 a = None # type: A
 a.g(object())
 a.g(a, a) # E: Too many arguments
-a.g()     # E: Missing positional argument
+a.g()     # E: Too few arguments
 
 [case testMethodAsDataAttributeInGenericClass]
 from typing import TypeVar, Generic
@@ -2201,7 +2201,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Missing positional argument   
+        self.g() # E: Too few arguments for "g" of "A"   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2349,8 +2349,8 @@ bad = make_list()  # E: Need type annotation for 'bad' (hint: "bad: List[<type>]
 
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
-foo(x=2, y=2)  # E: Missing positional argument
-foo(y=2)  # E: Missing positional arguments
+foo(x=2, y=2)  # E: Too few arguments for "foo"
+foo(y=2)  # E: Too few arguments for "foo"
 
 [case testMissingArgumentError]
 def f(a, b, c, d=None) -> None: pass

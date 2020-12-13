@@ -602,6 +602,9 @@ class MessageBuilder:
             if callee_name is not None and diff and all(d is not None for d in diff):
                 args = '", "'.join(cast(List[str], diff))
                 msg += ' "{}" in call to {}'.format(args, callee_name)
+            else:
+                msg = 'Too few arguments' + for_function(callee)
+
         else:
             msg = 'Too few arguments' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)

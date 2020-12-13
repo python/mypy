@@ -3751,7 +3751,7 @@ int.__eq__(int)
 int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
-main:33: error: Missing positional arguments 
+main:33: error: Too few arguments for "__eq__" of "int" 
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
 [case testMroSetAfterError]

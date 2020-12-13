@@ -191,7 +191,7 @@ def f() -> None: pass
 g = 0
 
 [out]
-main.py:2: error: Missing positional argument
+main.py:2: error: Too few arguments
 ==
 ==
 main.py:2: error: "int" not callable
