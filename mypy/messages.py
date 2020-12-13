@@ -590,8 +590,7 @@ class MessageBuilder:
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
-        if (argument_names is not None and not all(k is None for k in argument_names)
-                and len(argument_names) >= 1):
+        if argument_names is not None:
             num_positional_args = sum(k is None for k in argument_names)
             arguments_left = callee.arg_names[num_positional_args:callee.min_args]
             diff = [k for k in arguments_left if k not in argument_names]
@@ -604,16 +603,7 @@ class MessageBuilder:
                 args = '", "'.join(cast(List[str], diff))
                 msg += ' "{}" in call to {}'.format(args, callee_name)
         else:
-            name = callable_name(callee)
-            if name is not None:
-                msg = '{} missing {} required positional argument{}: '.format(
-                    name, callee.min_args, 's' if callee.min_args > 1 else '')
-                for i, argument in enumerate(callee.arg_names):
-                    if callee.arg_kinds[i] == 0:
-                        msg += "\'{}\', ".format(argument)
-                msg = msg[:-2]
-            else:
-                msg = "Too few arguments"
+            msg = 'Too few arguments' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
 
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:

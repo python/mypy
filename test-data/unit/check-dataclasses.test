@@ -945,7 +945,7 @@ if MYPY:  # Force deferral
 class C:
     total: int
 
-C()  # E: "C" missing 1 required positional argument: 'total'
+C()  # E: Missing positional argument "total" in call to "C"
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib

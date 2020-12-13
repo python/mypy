@@ -110,7 +110,7 @@ from typing import Callable, Union
 x = 5  # type: Union[int, Callable[[], None], Callable[[int], None]]
 
 if callable(x):
-    x()  # E: Too few arguments
+    x()  # E: Missing positional argument
 
 [builtins fixtures/callable.pyi]
 
@@ -445,7 +445,7 @@ def g(o: Thing) -> None:
 
 [case testCallableNoArgs]
 
-if callable():  # E: "callable" missing 1 required positional argument: 'x'
+if callable():  # E: Missing positional argument "x" in call to "callable"
     pass
 
 [builtins fixtures/callable.pyi]

@@ -1975,7 +1975,7 @@ T = TypeVar('T')
 
 class A:
     def f(self) -> None:
-        self.g() # E: "g" of "A" missing 1 required positional argument: 'None'
+        self.g() # E: Missing positional argument   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass

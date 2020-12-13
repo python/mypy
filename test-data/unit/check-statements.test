@@ -1316,7 +1316,7 @@ import typing
 class A:
     def __enter__(self, x) -> None: pass
     def __exit__(self, x, y, z) -> None: pass
-with A(): # E: "__enter__" of "A" missing 1 required positional argument: 'None'
+with A(): # E: Too few arguments for "__enter__" of "A"
     pass
 
 [case testWithStmtAndMissingEnter]

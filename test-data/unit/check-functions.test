@@ -17,7 +17,7 @@ if int():
 if int():
     b = f(b)    # E: Argument 1 has incompatible type "B"; expected "A"
 if int():
-    b = f()     # E: Too few arguments
+    b = f()     # E: Missing positional argument
 if int():
     b = f(a, a) # E: Too many arguments
 if int():
@@ -598,7 +598,7 @@ a = None # type: A
 a.f()
 a.g(B())
 a.f(a) # E: Too many arguments
-a.g()  # E: Too few arguments
+a.g()  # E: Missing positional argument
 
 [case testMethodWithInvalidMethodAsDataAttribute]
 from typing import Any, Callable
@@ -648,7 +648,7 @@ class A:
 a = None # type: A
 a.g(object())
 a.g(a, a) # E: Too many arguments
-a.g()     # E: Too few arguments
+a.g()     # E: Missing positional argument
 
 [case testMethodAsDataAttributeInGenericClass]
 from typing import TypeVar, Generic
@@ -737,7 +737,7 @@ import typing
 def f(x: object) -> None:
     def g(y):
         pass
-    g() # E: "g" missing 1 required positional argument: 'y'
+    g() # E: Missing positional argument "y" in call to "g"
     g(x)
 [out]
 
@@ -1080,7 +1080,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: "x" missing 1 required positional argument: 'x'
+    A.x() # E: Missing positional argument "x" in call to "x"
 
 class A:
     @staticmethod
@@ -1102,7 +1102,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: "x" missing 1 required positional argument: 'a'
+    A.x() # E: Missing positional argument "a" in call to "x"
 
 class A:
     @classmethod
@@ -1504,7 +1504,7 @@ def g() -> None:
     f = None
     if object():
         def f(x: int) -> None: pass
-    f() # E: "f" missing 1 required positional argument: 'x'
+    f() # E: Missing positional argument "x" in call to "f"
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
@@ -2201,7 +2201,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: "g" of "A" missing 1 required positional argument: 'None'
+        self.g() # E: Missing positional argument   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass

@@ -254,7 +254,7 @@ f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "*Tuple[A, B, B]"; ex
 f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "*Tuple[B, B, C]"; expected "A"
 f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "*Tuple[B, B]"; expected "C"
 f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(*(a, b))    # E: "f" missing 3 required positional arguments: 'a', 'b', 'c'
+f(*(a, b))    # E: Missing positional arguments "b", "c" in call to "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
 f(a, *(b, c, c)) # E: Too many arguments for "f"
 f(*(a, b, c))
@@ -330,7 +330,7 @@ f(b, *(b, b))   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(b, b, *(b,))  # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 f(a, a, *(b,))  # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 f(a, b, *(a,))  # E: Argument 3 to "f" has incompatible type "*Tuple[A]"; expected "B"
-f(*())          # E: "f" missing 1 required positional argument: 'a'
+f(*())          # E: Missing positional arguments
 f(*(a, b, b))
 f(a, *(b, b))
 f(a, b, *(b,))
@@ -408,7 +408,7 @@ class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: "f" missing 1 required positional argument: 'a'
+main:3: error: Missing positional arguments
 main:4: error: Argument 2 to "f" has incompatible type "*List[A]"; expected "Optional[B]"
 main:4: error: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
 main:5: error: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
