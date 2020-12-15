@@ -301,7 +301,7 @@ def format_blocks(blocks: List[BasicBlock],
                 line = '    ' + op.accept(visitor)
 
                 def repl(i: Match[str]) -> str:
-                    value = names_rev[i.group()]
+                    value = names_rev.get(i.group(), None)
                     if isinstance(value, LoadInt) and value in const_regs:
                         return str(const_regs[value])
                     else:
