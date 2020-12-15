@@ -149,7 +149,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.input = input
     case.output = output
     case.output2 = output2
-    case.lastline = item.line
+    case.lastline = item.line+len(item.data)-1
     case.files = files
     case.output_files = output_files
     case.expected_stale_modules = stale_modules
