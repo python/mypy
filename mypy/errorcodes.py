@@ -117,6 +117,9 @@ REDUNDANT_EXPR = ErrorCode(
     "Warn about redundant expressions",
     'General',
     default_enabled=False)  # type: Final
+NAME_MATCH = ErrorCode(
+    'name-match', "Check that type definition has consistent naming", 'General')  # type: Final
+
 
 # Syntax errors are often blocking.
 SYNTAX = ErrorCode(
