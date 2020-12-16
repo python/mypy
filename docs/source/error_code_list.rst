@@ -651,8 +651,8 @@ You can also use ``None``:
 Check that naming is consistent [name-match]
 --------------------------------------------
 
-The definition of a named tuple must be named consistently when
-using the call-based syntax:
+The definition of a named tuple or a TypedDict must be named
+consistently when using the call-based syntax. Example:
 
 .. code-block:: python
 
