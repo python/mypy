@@ -1507,7 +1507,7 @@ f1(**a)
 f2(**a) # E: Argument "y" to "f2" has incompatible type "str"; expected "int"
 f3(**a) # E: Argument "x" to "f3" has incompatible type "int"; expected "B"
 f4(**a) # E: Extra argument "y" from **args for "f4"
-f5(**a) # E: Too few arguments for "f5"
+f5(**a) # E: Missing positional arguments "y", "z" in call to "f5"
 f6(**a) # E: Extra argument "y" from **args for "f6"
 f1(1, **a) # E: "f1" gets multiple values for keyword argument "x"
 [builtins fixtures/tuple.pyi]

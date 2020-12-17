@@ -214,7 +214,7 @@ main:5: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
-f()  # E: Too few arguments for "f"  [call-arg]
+f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
 f(1, 2)  # E: Too many arguments for "f"  [call-arg]
 f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
 

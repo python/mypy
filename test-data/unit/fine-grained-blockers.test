@@ -21,7 +21,7 @@ def f() -> None: pass
 ==
 a.py:1: error: invalid syntax
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 ==
 
 [case testParseErrorShowSource]
@@ -42,7 +42,7 @@ a.py:1: error: invalid syntax  [syntax]
     def f(x: int) ->
                     ^
 ==
-main:3: error: Too few arguments for "f"  [call-arg]
+main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
     a.f()
     ^
 ==
@@ -65,7 +65,7 @@ a.py:1: error: invalid syntax
 ==
 a.py:2: error: invalid syntax
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testSemanticAnalysisBlockingError]
 import a
@@ -81,7 +81,7 @@ def f(x: int) -> None: pass
 ==
 a.py:2: error: 'break' outside loop
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testBlockingErrorWithPreviousError]
 import a
@@ -124,7 +124,7 @@ class C:
 ==
 a.py:1: error: invalid syntax
 ==
-main:5: error: Too few arguments for "f" of "C"
+main:5: error: Missing positional argument "x" in call to "f" of "C"
 
 [case testAddFileWithBlockingError]
 import a
@@ -215,7 +215,7 @@ a.py:1: error: invalid syntax
 ==
 a.py:1: error: invalid syntax
 ==
-a.py:2: error: Too few arguments for "f"
+a.py:2: error: Missing positional argument "x" in call to "f"
 
 [case testModifyTwoFilesIntroduceTwoBlockingErrors]
 import a

@@ -445,7 +445,7 @@ def g(o: Thing) -> None:
 
 [case testCallableNoArgs]
 
-if callable():  # E: Too few arguments for "callable"
+if callable():  # E: Missing positional argument "x" in call to "callable"
     pass
 
 [builtins fixtures/callable.pyi]

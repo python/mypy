@@ -2263,9 +2263,9 @@ def f() -> None: pass
 def f(x) -> None: pass
 [out]
 [out2]
-tmp/a.py:2: error: Too few arguments for "f"
+tmp/a.py:2: error: Missing positional argument "x" in call to "f"
 [out3]
-tmp/a.py:2: error: Too few arguments for "f"
+tmp/a.py:2: error: Missing positional argument "x" in call to "f"
 
 [case testCacheDeletedAfterErrorsFound4]
 import a
@@ -3579,7 +3579,7 @@ def f(x: int) -> None: pass
 main:1: error: Cannot find implementation or library stub for module named 'p.q'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testDeleteIndirectDependency]
 import b

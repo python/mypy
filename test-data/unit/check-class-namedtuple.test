@@ -57,7 +57,7 @@ class X(NamedTuple):
 x = X(1, '2')
 x.x
 x.z      # E: "X" has no attribute "z"
-x = X(1) # E: Too few arguments for "X"
+x = X(1) # E: Missing positional argument "y" in call to "X"
 x = X(1, '2', 3)  # E: Too many arguments for "X"
 [builtins fixtures/tuple.pyi]
 
@@ -420,7 +420,7 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main:9: error: Too few arguments for "N"
+main:9: error: Missing positional arguments "x", "y" in call to "N"
 
 [case testNewNamedTupleWithDefaults]
 # flags: --python-version 3.6

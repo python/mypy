@@ -1834,12 +1834,12 @@ if isinstance(x, (set, (list, T))):
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceTooFewArgs]
-isinstance() # E: Too few arguments for "isinstance"
+isinstance() # E: Missing positional arguments "x", "t" in call to "isinstance"
 x: object
-if isinstance(): # E: Too few arguments for "isinstance"
+if isinstance(): # E: Missing positional arguments "x", "t" in call to "isinstance"
     x = 1
     reveal_type(x) # N: Revealed type is 'builtins.int'
-if isinstance(x): # E: Too few arguments for "isinstance"
+if isinstance(x): # E: Missing positional argument "t" in call to "isinstance"
     x = 1
     reveal_type(x) # N: Revealed type is 'builtins.int'
 [builtins fixtures/isinstancelist.pyi]
@@ -1847,11 +1847,11 @@ if isinstance(x): # E: Too few arguments for "isinstance"
 [case testIsSubclassTooFewArgs]
 from typing import Type
 
-issubclass() # E: Too few arguments for "issubclass"
+issubclass() # E: Missing positional arguments "x", "t" in call to "issubclass"
 y: Type[object]
-if issubclass(): # E: Too few arguments for "issubclass"
+if issubclass(): # E: Missing positional arguments "x", "t" in call to "issubclass"
     reveal_type(y) # N: Revealed type is 'Type[builtins.object]'
-if issubclass(y): # E: Too few arguments for "issubclass"
+if issubclass(y): # E: Missing positional argument "t" in call to "issubclass"
     reveal_type(y) # N: Revealed type is 'Type[builtins.object]'
 
 [builtins fixtures/isinstancelist.pyi]

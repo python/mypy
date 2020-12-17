@@ -623,7 +623,7 @@ class A:
        return cls(6, 'hello')
     @classmethod
     def bad(cls) -> A:
-        return cls(17)  # E: Too few arguments for "A"
+        return cls(17)  # E: Missing positional argument "b" in call to "A"
     def foo(self) -> int:
        return self.a
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
@@ -1346,7 +1346,7 @@ if MYPY:  # Force deferral
 class C:
     total = attr.ib(type=int)
 
-C()  # E: Too few arguments for "C"
+C()  # E: Missing positional argument "total" in call to "C"
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib

@@ -133,8 +133,19 @@ def f(x, y) -> None: pass
 f(object())
 f(object(), object(), object())
 [out]
-main:3: error: Too few arguments for "f"
+main:3: error: Missing positional argument "y" in call to "f"
 main:4: error: Too many arguments for "f"
+
+[case testMissingPositionalArguments]
+class Foo:
+    def __init__(self, bar: int):
+        pass
+c = Foo()
+def foo(baz: int, bas: int):pass
+foo()
+[out]
+main:4: error: Missing positional argument "bar" in call to "Foo"
+main:6: error: Missing positional arguments "baz", "bas" in call to "foo"
 
 
 -- Locals
