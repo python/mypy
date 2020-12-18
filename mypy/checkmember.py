@@ -596,6 +596,20 @@ def analyze_var(name: str,
             mx.not_ready_callback(var.name, mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
+
+    if info.is_enum and info == itype.type:
+        # enum members are enums themselves.
+        #
+        # class Spam(enum.Enum):
+        #    FOO = "Foo"
+        #
+        # It seems that Spam.FOO is assigned a "Foo" str. Yet:
+        #
+        # reveal_type(Spam.FOO) # N: Revealed type is 'Literal[test_enum.Spam.FOO]?'
+        #
+        # Therefore, we overide the result:
+        result = itype
+
     fullname = '{}.{}'.format(var.info.fullname, name)
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:

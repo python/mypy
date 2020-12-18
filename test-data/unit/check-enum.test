@@ -1242,3 +1242,19 @@ class Comparator(enum.Enum):
 
 reveal_type(Comparator.__foo__)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 [builtins fixtures/dict.pyi]
+
+[case testEnumMemberType]
+from enum import Enum
+class Truth(Enum):
+    true = True
+    false = False
+
+x = Truth.true
+
+reveal_type(Truth.true)  # N: Revealed type is 'Literal[__main__.Truth.true]?'
+reveal_type(Truth.true.value)  # N: Revealed type is 'builtins.bool'
+reveal_type(Truth.true.true)  # N: Revealed type is 'Literal[__main__.Truth.true]?'
+reveal_type(x)  # N: Revealed type is '__main__.Truth'
+reveal_type(x.value)  # N: Revealed type is 'builtins.bool'
+reveal_type(x.true)  # N: Revealed type is '__main__.Truth'
+reveal_type(x.true.true)  # N: Revealed type is '__main__.Truth'
