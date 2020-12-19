@@ -148,7 +148,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
     with open(testcase_path, encoding='utf8') as f:
         data_lines = f.read().splitlines()
-    test = '\n'.join(data_lines[testcase.line:testcase.lastline])
+    test = '\n'.join(data_lines[testcase.line:testcase.last_line])
 
     mapping = {}  # type: Dict[str, List[str]]
     for old, new in zip(testcase.output, output):
@@ -168,7 +168,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
                 list(chain.from_iterable(zip(mapping[old], betweens[1:])))
             test = ''.join(interleaved)
 
-    data_lines[testcase.line:testcase.lastline] = [test]
+    data_lines[testcase.line:testcase.last_line] = [test]
     data = '\n'.join(data_lines)
     with open(testcase_path, 'w', encoding='utf8') as f:
         print(data, file=f)
