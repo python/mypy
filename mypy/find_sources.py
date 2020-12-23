@@ -145,8 +145,11 @@ class SourceFinder:
         if module_name == "__init__":
             return parent_module, base_dir
 
-        # Note that module_name might not actually be a valid identifier, but that's okay
+        # Note that module_name might not actually be a valid identifier, but that's okay (once
+        # we've removed periods from module_name)
         # Ignoring this possibility sidesteps some search path confusion
+        module_name = module_name.replace(".", "-")
+
         module = module_join(parent_module, module_name)
         return module, base_dir
 

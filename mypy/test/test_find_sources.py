@@ -172,6 +172,12 @@ class SourceFinderSuite(unittest.TestCase):
         assert crawl(finder, "/a/pkg/a.py") == ("pkg.a", "/a")
         assert crawl(finder, "/b/pkg/b.py") == ("pkg.b", "/b")
 
+    def test_crawl_invalid_module(self) -> None:
+        options = Options()
+
+        finder = SourceFinder(FakeFSCache({"/dot.dot.py"}), options)
+        assert crawl(finder, "/dot.dot.py") == ("dot-dot", "/")
+
     def test_find_sources_no_namespace(self) -> None:
         options = Options()
         options.namespace_packages = False
