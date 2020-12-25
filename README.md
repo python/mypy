@@ -11,14 +11,14 @@ Mypy: Optional Static Typing for Python
 Got a question? Join us on Gitter!
 ----------------------------------
 
-We don't have a mailing list; but we are always happy to answer
-questions on [gitter chat](https://gitter.im/python/typing).  If you are
+We don't have a mailing list, but we are always happy to answer
+questions on [Gitter chat](https://gitter.im/python/typing).  If you are
 sure you've found a bug please search our issue trackers for a
 duplicate before filing a new issue:
 
 - [mypy tracker](https://github.com/python/mypy/issues)
   for mypy issues
-- [typeshed tracker](https://github.com/python/typeshed/issues)
+- [type shed tracker](https://github.com/python/typeshed/issues)
   for issues with specific modules
 - [typing tracker](https://github.com/python/typing/issues)
   for discussion of new type system features (PEP 484 changes) and
@@ -67,7 +67,7 @@ Requirements
 You need Python 3.5 or later to run mypy.  You can have multiple Python
 versions (2.x and 3.x) installed on the same system without problems.
 
-In Ubuntu, Mint and Debian you can install Python 3 like this:
+In Ubuntu, Mint, and Debian you can install Python 3 like this:
 
     $ sudo apt-get install python3 python3-pip
 
@@ -83,7 +83,7 @@ Mypy can be installed using pip:
 
     $ python3 -m pip install -U mypy
 
-If you want to run the latest version of the code, you can install from git:
+If you want to run the latest version of the code, you can install it from git:
 
     $ python3 -m pip install -U git+git://github.com/python/mypy.git
 
@@ -129,7 +129,7 @@ Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 Web site and documentation
 --------------------------
 
-Documentation and additional information is available at the web site:
+Documentation and additional information are available at the web site:
 
   http://www.mypy-lang.org/
 
@@ -153,7 +153,7 @@ can install it manually:
     $ python3 -m pip install -U typed-ast
 
 If the `mypy` command isn't found after installation: After
-`python3 -m pip install`, the `mypy` script and
+`python3 -m pip install`, the `mypy` script ,and
 dependencies, including the `typing` module, will be installed to
 system-dependent locations.  Sometimes the script directory will not
 be in `PATH`, and you have to add the target directory to `PATH`
@@ -163,7 +163,7 @@ macOS, the script may be installed under `/Library/Frameworks`:
     /Library/Frameworks/Python.framework/Versions/<version>/bin
 
 In Windows, the script is generally installed in
-`\PythonNN\Scripts`. So, type check a program like this (replace
+`\PythonNN\Scripts`. So, type checks a program like this (replace
 `\Python34` with your Python installation path):
 
     C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
@@ -179,22 +179,22 @@ modules from the command line.
     $ python3 -m virtualenv env
 
 
-Quick start for contributing to mypy
+Quickstart for contributing to mypy
 ------------------------------------
 
-If you want to contribute, first clone the mypy git repository:
+If you want to contribute, the first clone the mypy git repository:
 
     $ git clone --recurse-submodules https://github.com/python/mypy.git
 
 If you've already cloned the repo without `--recurse-submodules`,
-you need to pull in the typeshed repo as follows:
+you need to pull in the type shed repo as follows:
 
     $ git submodule init
     $ git submodule update
 
-Either way you should now have a subdirectory `typeshed` inside your mypy repo,
-your folders tree should be like `mypy/mypy/typeshed`, containing a
-clone of the typeshed repo (`https://github.com/python/typeshed`).
+Either way, you should now have a subdirectory `type shed` inside your mypy repo,
+your folders tree should be like `mypy/mypy/type shed`, containing a
+clone of the type shed repo (`https://github.com/python/typeshed`).
 
 From the mypy directory, use pip to install mypy:
 
@@ -209,18 +209,18 @@ the above as root. For example, in Ubuntu:
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
 
-> NOTE: Installing with sudo can be a security risk, please try with flag `--user` first.
+> NOTE: Installing with sudo can be a security risk, please try with the flag `--user` first.
     $ python3 -m pip install --user -U . 
 
 Working with the git version of mypy
 ------------------------------------
 
-mypy contains a submodule, "typeshed". See https://github.com/python/typeshed.
+mypy contains a submodule, "type shed". See https://github.com/python/typeshed.
 This submodule contains types for the Python standard library.
 
 Due to the way git submodules work, you'll have to do
 ```
-  git submodule update mypy/typeshed
+  git submodule update mypy/type shed
 ```
 whenever you change branches, merge, rebase, or pull.
 
@@ -266,7 +266,7 @@ If you have any questions about using mypy or types, please ask
 in the typing gitter instead: https://gitter.im/python/typing
 
 
-Compiled version of mypy
+The Compiled version of mypy
 ------------------------
 
 We have built a compiled version of mypy using the [mypyc
@@ -287,10 +287,10 @@ https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
 Help wanted
 -----------
 
-Any help in testing, development, documentation and other tasks is
+Any help in testing, development, documentation, and other tasks is
 highly appreciated and useful to the project. There are tasks for
 contributors of all experience levels. If you're just getting started,
-ask on the [gitter chat](https://gitter.im/python/typing) for ideas of good
+ask on the [Gitter chat](https://gitter.im/python/typing) for ideas of good
 beginner issues.
 
 For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
