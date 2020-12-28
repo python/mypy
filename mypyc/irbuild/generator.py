@@ -244,18 +244,9 @@ def add_close_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
 
 def add_await_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__await__' method for a generator class."""
-    builder.enter(fn_info)
-    self_target = builder.add_self_to_env(fn_info.generator_class.ir)
-    builder.add(Return(builder.read(self_target, fn_info.fitem.line)))
-    args, _, blocks, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    await_fn_decl = FuncDecl('__await__', fn_info.generator_class.ir.name,
-                             builder.module_name, sig)
-    await_fn_ir = FuncIR(await_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['__await__'] = await_fn_ir
-    builder.functions.append(await_fn_ir)
+    builder.enter_method(fn_info.generator_class.ir, '__await__', object_rprimitive, fn_info)
+    builder.add(Return(builder.self()))
+    builder.leave_method()
 
 
 def setup_env_for_generator_class(builder: IRBuilder) -> None:
