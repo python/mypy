@@ -17,7 +17,7 @@ from mypyc.ir.ops import (
     BasicBlock, Call, Return, Goto, LoadInt, SetAttr, Unreachable, RaiseStandardError,
     Value, Register
 )
-from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive, none_rprimitive
+from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
 from mypyc.primitives.exc_ops import raise_exception_with_tb_op

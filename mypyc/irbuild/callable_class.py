@@ -6,8 +6,6 @@ non-local variables defined in outer scopes.
 
 from typing import List
 
-from mypy.nodes import Var
-
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
 from mypyc.ir.rtypes import RInstance, object_rprimitive

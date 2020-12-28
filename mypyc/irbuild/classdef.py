@@ -4,17 +4,17 @@ from typing import List, Optional
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
-    ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, Var, is_class_var
+    ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, is_class_var
 )
 from mypyc.ir.ops import (
     Value, Register, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
-    RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
+    object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
     is_object_rprimitive, is_none_rprimitive
 )
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
+from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, py_hasattr_op
 from mypyc.primitives.misc_ops import (
@@ -22,7 +22,6 @@ from mypyc.primitives.misc_ops import (
     not_implemented_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
-from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant
 )
