@@ -902,6 +902,24 @@ class IRBuilder:
                      ret_type: RType,
                      fn_info: Union[FuncInfo, str] = '',
                      self_type: Optional[RType] = None) -> None:
+        """Begin generating IR for a method.
+
+        If the method takes arguments, you should immediately afterwards call
+        add_argument() for each non-self argument (self is created implicitly).
+
+        Call leave_method() to finish the generation of the method.
+
+        You can enter multiple methods at a time. They are maintained in a
+        stack, and leave_method() leaves the topmost one.
+
+        Args:
+            class_ir: Add method to this class
+            name: Short name of the method
+            ret_type: Return type of the method
+            fn_info: Optionally, additional information about the method
+            self_type: If not None, override default type of the implicit 'self'
+                argument (by default, derive type from class_ir)
+        """
         self.enter(fn_info)
         self.function_name_stack.append(name)
         self.class_ir_stack.append(class_ir)
@@ -911,6 +929,11 @@ class IRBuilder:
         self.add_argument(SELF_NAME, self_type)
 
     def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+        """Add argument to the method that is being generated.
+
+        Currently this doesn't support non-method functions. For those you'll
+        need to use add_local().
+        """
         if isinstance(var, str):
             var = Var(var)
         reg = self.add_local(var, typ, is_arg=True)
@@ -918,6 +941,7 @@ class IRBuilder:
         return reg
 
     def leave_method(self) -> None:
+        """Finish the generation of IR for a method."""
         arg_regs, args, blocks, ret_type, fn_info = self.leave()
         sig = FuncSignature(args, ret_type)
         name = self.function_name_stack.pop()
@@ -955,6 +979,10 @@ class IRBuilder:
         return target
 
     def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
+        """Low-level function that adds a 'self' argument.
+
+        This is only useful if using enter() instead of enter_method().
+        """
         return self.add_local_reg(Var(SELF_NAME), RInstance(cls), is_arg=True)
 
     def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
