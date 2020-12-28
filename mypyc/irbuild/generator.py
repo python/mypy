@@ -175,29 +175,7 @@ def add_next_to_generator_class(builder: IRBuilder,
                                 fn_decl: FuncDecl,
                                 sig: FuncSignature) -> None:
     """Generates the '__next__' method for a generator class."""
-    builder.enter(fn_info)
-    self_reg = builder.read(builder.add_self_to_env(fn_info.generator_class.ir))
-    none_reg = builder.none_object()
-
-    # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, none_reg],
-                           fn_info.fitem.line))
-    builder.add(Return(result))
-    args, _, blocks, _, fn_info = builder.leave()
-
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), sig.ret_type)
-    next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, builder.module_name, sig)
-    next_fn_ir = FuncIR(next_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
-    builder.functions.append(next_fn_ir)
-
-
-def add_next_to_generator_class_xxx(builder: IRBuilder,
-                                    fn_info: FuncInfo,
-                                    fn_decl: FuncDecl,
-                                    sig: FuncSignature) -> None:
-    """Generates the '__next__' method for a generator class."""
-    builder.enter_method(fn_info.generator_class.ir, '__next__', none_rprimitive, fn_info)
+    builder.enter_method(fn_info.generator_class.ir, '__next__', object_rprimitive, fn_info)
     none_reg = builder.none_object()
     # Call the helper function with error flags set to Py_None, and return that result.
     result = builder.add(Call(fn_decl,
