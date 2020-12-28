@@ -900,18 +900,20 @@ class IRBuilder:
                      class_ir: ClassIR,
                      name: str,
                      ret_type: RType,
-                     fn_info: Union[FuncInfo, str] = '') -> None:
+                     fn_info: Union[FuncInfo, str] = '',
+                     self_type: Optional[RType] = None) -> None:
         self.enter(fn_info)
         self.function_name_stack.append(name)
         self.class_ir_stack.append(class_ir)
         self.ret_types[-1] = ret_type
-        self.add_argument(SELF_NAME, RInstance(class_ir))
+        if self_type is None:
+            self_type = RInstance(class_ir)
+        self.add_argument(SELF_NAME, self_type)
 
     def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
         if isinstance(var, str):
             var = Var(var)
         reg = self.add_local(var, typ, is_arg=True)
-        self.args[-1].append(reg)
         self.args2[-1].append(RuntimeArg(var.name, typ, kind))
         return reg
 
