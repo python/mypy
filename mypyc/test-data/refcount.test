@@ -728,7 +728,7 @@ def f(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    key, r8 :: int
+    r8, key :: int
     r9, r10 :: object
     r11 :: int
     r12, r13 :: bit
@@ -812,4 +812,3 @@ L0:
     dec_ref x
     r3 = r2 << 1
     return r3
-

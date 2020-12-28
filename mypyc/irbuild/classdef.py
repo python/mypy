@@ -7,7 +7,7 @@ from mypy.nodes import (
     ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, Var, is_class_var
 )
 from mypyc.ir.ops import (
-    Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
+    Value, Register, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
@@ -24,7 +24,7 @@ from mypyc.primitives.misc_ops import (
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
-    is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
+    is_dataclass_decorator, get_func_def, is_dataclass, is_constant
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.function import transform_method
@@ -245,7 +245,7 @@ def setup_non_ext_dict(builder: IRBuilder,
                                 [metaclass,
                                 builder.load_static_unicode('__prepare__')], cdef.line)
 
-    non_ext_dict = builder.alloc_temp(dict_rprimitive)
+    non_ext_dict = Register(dict_rprimitive)
 
     true_block, false_block, exit_block, = BasicBlock(), BasicBlock(), BasicBlock()
     builder.add_bool_branch(has_prepare, true_block, false_block)
@@ -331,7 +331,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     builder.ret_types[-1] = bool_rprimitive
 
     rt_args = (RuntimeArg(SELF_NAME, RInstance(cls)),)
-    self_var = builder.read(add_self_to_env(builder.environment, cls), -1)
+    self_var = builder.read(builder.add_self_to_env(cls), -1)
 
     for stmt in default_assignments:
         lvalue = stmt.lvalues[0]
@@ -351,12 +351,12 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
 
     builder.add(Return(builder.true()))
 
-    blocks, env, ret_type, _ = builder.leave()
+    args, blocks, env, ret_type, _ = builder.leave()
     ir = FuncIR(
         FuncDecl('__mypyc_defaults_setup',
                  cls.name, builder.module_name,
                  FuncSignature(rt_args, ret_type)),
-        blocks, env)
+        args, blocks, env)
     builder.functions.append(ir)
     cls.methods[ir.name] = ir
 
@@ -380,12 +380,7 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     # The environment operates on Vars, so we make some up
     fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
     args = [
-        builder.read(
-            builder.environment.add_local_reg(
-                var, type, is_arg=True
-            ),
-            line
-        )
+        builder.read(builder.add_local_reg(var, type, is_arg=True), line)
         for var, type in fake_vars
     ]  # type: List[Value]
     builder.ret_types[-1] = object_rprimitive
@@ -410,11 +405,11 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     builder.activate_block(not_implemented_block)
     builder.add(Return(not_implemented))
 
-    blocks, env, ret_type, _ = builder.leave()
+    arg_regs, blocks, env, ret_type, _ = builder.leave()
     return FuncIR(
         FuncDecl('__ne__', cls.name, builder.module_name,
                  FuncSignature(rt_args, ret_type)),
-        blocks, env)
+        arg_regs, blocks, env)
 
 
 def load_non_ext_class(builder: IRBuilder,

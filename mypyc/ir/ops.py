@@ -12,14 +12,11 @@ can hold various things:
 
 from abc import abstractmethod
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union, Iterable, Set
+    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union, Set
 )
-from mypy.ordered_dict import OrderedDict
 
 from typing_extensions import Final, Type, TYPE_CHECKING
 from mypy_extensions import trait
-
-from mypy.nodes import SymbolNode
 
 from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
@@ -114,58 +111,10 @@ class AssignmentTargetTuple(AssignmentTarget):
 
 
 class Environment:
-    """Maintain the register symbol table and manage temp generation"""
+    # TODO: Remove this class
 
     def __init__(self) -> None:
-        self.indexes = OrderedDict()  # type: Dict[Value, int]
-        self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
         self.vars_needing_init = set()  # type: Set[Value]
-
-    def regs(self) -> Iterable['Value']:
-        return self.indexes.keys()
-
-    def add(self, value: 'Value') -> None:
-        self.indexes[value] = len(self.indexes)
-
-    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
-        """Add register that represents a symbol to the symbol table.
-
-        Args:
-            is_arg: is this a function argument
-        """
-        assert isinstance(symbol, SymbolNode)
-        reg = Register(typ, symbol.line, is_arg=is_arg, name=symbol.name)
-        self.symtable[symbol] = AssignmentTargetRegister(reg)
-        self.add(reg)
-        return reg
-
-    def add_local_reg(self, symbol: SymbolNode,
-                      typ: RType, is_arg: bool = False) -> AssignmentTargetRegister:
-        """Like add_local, but return an assignment target instead of value."""
-        self.add_local(symbol, typ, is_arg)
-        target = self.symtable[symbol]
-        assert isinstance(target, AssignmentTargetRegister)
-        return target
-
-    def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
-        self.symtable[symbol] = target
-        return target
-
-    def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
-        return self.symtable[symbol]
-
-    def add_temp(self, typ: RType) -> 'Register':
-        """Add register that contains a temporary value with the given type."""
-        assert isinstance(typ, RType)
-        reg = Register(typ)
-        self.add(reg)
-        return reg
-
-    def add_op(self, reg: 'RegisterOp') -> None:
-        """Record the value of an operation."""
-        if reg.is_void:
-            return
-        self.add(reg)
 
 
 class BasicBlock:
@@ -244,9 +193,9 @@ class Register(Value):
     (but not all) temporary values.
     """
 
-    def __init__(self, type: RType, line: int = -1, is_arg: bool = False, name: str = '') -> None:
-        self.name = name
+    def __init__(self, type: RType, name: str = '', is_arg: bool = False, line: int = -1) -> None:
         self.type = type
+        self.name = name
         self.is_arg = is_arg
         self.is_borrowed = is_arg
         self.line = line
@@ -254,6 +203,9 @@ class Register(Value):
     @property
     def is_void(self) -> bool:
         return False
+
+    def __repr__(self) -> str:
+        return '<Register %r at %s>' % (self.name, hex(id(self)))
 
 
 class Op(Value):

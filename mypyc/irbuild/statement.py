@@ -85,7 +85,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         temps = []
         for right in stmt.rvalue.items:
             rvalue_reg = builder.accept(right)
-            temp = builder.alloc_temp(rvalue_reg.type)
+            temp = Register(rvalue_reg.type)
             builder.assign(temp, rvalue_reg, stmt.line)
             temps.append(temp)
         for (left, temp) in zip(lvalue.items, temps):
@@ -394,7 +394,7 @@ def try_finally_entry_blocks(builder: IRBuilder,
                              main_entry: BasicBlock,
                              finally_block: BasicBlock,
                              ret_reg: Optional[Register]) -> Value:
-    old_exc = builder.alloc_temp(exc_rtuple)
+    old_exc = Register(exc_rtuple)
 
     # Entry block for non-exceptional flow
     builder.activate_block(main_entry)

@@ -1,20 +1,18 @@
 import unittest
 
-from typing import Dict
+from typing import Dict, List
 
 from mypy.ordered_dict import OrderedDict
 
-from mypy.nodes import Var
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
     Environment, BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
-    Call, Unbox, Box, TupleGet, GetAttr, RegisterOp,
-    SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp,
-    SetMem
+    Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem,
+    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
-    RTuple, RInstance, int_rprimitive, bool_rprimitive, list_rprimitive,
+    RTuple, RInstance, RType, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive, int32_rprimitive,
     int64_rprimitive, RStruct, pointer_rprimitive
 )
@@ -40,31 +38,38 @@ from mypyc.namegen import NameGenerator
 class TestFunctionEmitterVisitor(unittest.TestCase):
     def setUp(self) -> None:
         self.env = Environment()
-        self.n = self.env.add_local(Var('n'), int_rprimitive)
-        self.m = self.env.add_local(Var('m'), int_rprimitive)
-        self.k = self.env.add_local(Var('k'), int_rprimitive)
-        self.l = self.env.add_local(Var('l'), list_rprimitive)  # noqa
-        self.ll = self.env.add_local(Var('ll'), list_rprimitive)
-        self.o = self.env.add_local(Var('o'), object_rprimitive)
-        self.o2 = self.env.add_local(Var('o2'), object_rprimitive)
-        self.d = self.env.add_local(Var('d'), dict_rprimitive)
-        self.b = self.env.add_local(Var('b'), bool_rprimitive)
-        self.s1 = self.env.add_local(Var('s1'), short_int_rprimitive)
-        self.s2 = self.env.add_local(Var('s2'), short_int_rprimitive)
-        self.i32 = self.env.add_local(Var('i32'), int32_rprimitive)
-        self.i32_1 = self.env.add_local(Var('i32_1'), int32_rprimitive)
-        self.i64 = self.env.add_local(Var('i64'), int64_rprimitive)
-        self.i64_1 = self.env.add_local(Var('i64_1'), int64_rprimitive)
-        self.ptr = self.env.add_local(Var('ptr'), pointer_rprimitive)
-        self.t = self.env.add_local(Var('t'), RTuple([int_rprimitive, bool_rprimitive]))
-        self.tt = self.env.add_local(
-            Var('tt'),
-            RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive]))
+
+        self.registers = []  # type: List[Register]
+
+        def add_local(name: str, rtype: RType) -> Register:
+            reg = Register(rtype, name)
+            self.registers.append(reg)
+            return reg
+
+        self.n = add_local('n', int_rprimitive)
+        self.m = add_local('m', int_rprimitive)
+        self.k = add_local('k', int_rprimitive)
+        self.l = add_local('l', list_rprimitive)  # noqa
+        self.ll = add_local('ll', list_rprimitive)
+        self.o = add_local('o', object_rprimitive)
+        self.o2 = add_local('o2', object_rprimitive)
+        self.d = add_local('d', dict_rprimitive)
+        self.b = add_local('b', bool_rprimitive)
+        self.s1 = add_local('s1', short_int_rprimitive)
+        self.s2 = add_local('s2', short_int_rprimitive)
+        self.i32 = add_local('i32', int32_rprimitive)
+        self.i32_1 = add_local('i32_1', int32_rprimitive)
+        self.i64 = add_local('i64', int64_rprimitive)
+        self.i64_1 = add_local('i64_1', int64_rprimitive)
+        self.ptr = add_local('ptr', pointer_rprimitive)
+        self.t = add_local('t', RTuple([int_rprimitive, bool_rprimitive]))
+        self.tt = add_local(
+            'tt', RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive]))
         ir = ClassIR('A', 'mod')
         ir.attributes = OrderedDict([('x', bool_rprimitive), ('y', int_rprimitive)])
         compute_vtable(ir)
         ir.mro = [ir]
-        self.r = self.env.add_local(Var('r'), RInstance(ir))
+        self.r = add_local('r', RInstance(ir))
 
         self.context = EmitterContext(NameGenerator([['mod']]))
 
@@ -80,7 +85,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(LoadInt(5),
                          "cpy_r_i0 = 10;")
         self.assert_emit(LoadInt(5, -1, c_int_rprimitive),
-                         "cpy_r_i1 = 5;")
+                         "cpy_r_i0 = 5;")
 
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), 'cpy_r_r0 = cpy_r_t.f1;')
@@ -239,53 +244,53 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.ADD, 1),
                          """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.SUB, 1),
-                        """cpy_r_r1 = cpy_r_s1 - cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 - cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MUL, 1),
-                        """cpy_r_r2 = cpy_r_s1 * cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 * cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.DIV, 1),
-                        """cpy_r_r3 = cpy_r_s1 / cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 / cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MOD, 1),
-                        """cpy_r_r4 = cpy_r_s1 % cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 % cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.AND, 1),
-                        """cpy_r_r5 = cpy_r_s1 & cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 & cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.OR, 1),
-                        """cpy_r_r6 = cpy_r_s1 | cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 | cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.XOR, 1),
-                        """cpy_r_r7 = cpy_r_s1 ^ cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 ^ cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
                                      BinaryIntOp.LEFT_SHIFT, 1),
-                        """cpy_r_r8 = cpy_r_s1 << cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
         self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
                                      BinaryIntOp.RIGHT_SHIFT, 1),
-                        """cpy_r_r9 = cpy_r_s1 >> cpy_r_s2;""")
+                        """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
 
     def test_comparison_op(self) -> None:
         # signed
         self.assert_emit(ComparisonOp(self.s1, self.s2, ComparisonOp.SLT, 1),
                          """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 < (Py_ssize_t)cpy_r_s2;""")
         self.assert_emit(ComparisonOp(self.i32, self.i32_1, ComparisonOp.SLT, 1),
-                         """cpy_r_r1 = cpy_r_i32 < cpy_r_i32_1;""")
+                         """cpy_r_r0 = cpy_r_i32 < cpy_r_i32_1;""")
         self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.SLT, 1),
-                         """cpy_r_r2 = cpy_r_i64 < cpy_r_i64_1;""")
+                         """cpy_r_r0 = cpy_r_i64 < cpy_r_i64_1;""")
         # unsigned
         self.assert_emit(ComparisonOp(self.s1, self.s2, ComparisonOp.ULT, 1),
-                         """cpy_r_r3 = cpy_r_s1 < cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 < cpy_r_s2;""")
         self.assert_emit(ComparisonOp(self.i32, self.i32_1, ComparisonOp.ULT, 1),
-                         """cpy_r_r4 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
+                         """cpy_r_r0 = (uint32_t)cpy_r_i32 < (uint32_t)cpy_r_i32_1;""")
         self.assert_emit(ComparisonOp(self.i64, self.i64_1, ComparisonOp.ULT, 1),
-                         """cpy_r_r5 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
+                         """cpy_r_r0 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""")
 
         # object type
         self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.EQ, 1),
-                         """cpy_r_r6 = cpy_r_o == cpy_r_o2;""")
+                         """cpy_r_r0 = cpy_r_o == cpy_r_o2;""")
         self.assert_emit(ComparisonOp(self.o, self.o2, ComparisonOp.NEQ, 1),
-                         """cpy_r_r7 = cpy_r_o != cpy_r_o2;""")
+                         """cpy_r_r0 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
         self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
-                         """cpy_r_r1 = *(char *)cpy_r_ptr;""")
+                         """cpy_r_r0 = *(char *)cpy_r_ptr;""")
 
     def test_set_mem(self) -> None:
         self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
@@ -297,19 +302,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(GetElementPtr(self.o, r, "b"),
                         """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->b;""")
         self.assert_emit(GetElementPtr(self.o, r, "i32"),
-                        """cpy_r_r1 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
+                        """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->i32;""")
         self.assert_emit(GetElementPtr(self.o, r, "i64"),
-                        """cpy_r_r2 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
+                        """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->i64;""")
 
     def test_load_address(self) -> None:
         self.assert_emit(LoadAddress(object_rprimitive, "PyDict_Type"),
                          """cpy_r_r0 = (PyObject *)&PyDict_Type;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
-        if isinstance(op, RegisterOp):
-            self.env.add_op(op)
-
-        value_names = generate_names_for_env(self.env)
+        block = BasicBlock(0)
+        block.ops.append(op)
+        value_names = generate_names_for_env(self.registers, [block])
         emitter = Emitter(self.context, self.env, value_names)
         declarations = Emitter(self.context, self.env, value_names)
         emitter.fragments = []
@@ -352,17 +356,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
 class TestGenerateFunction(unittest.TestCase):
     def setUp(self) -> None:
-        self.var = Var('arg')
         self.arg = RuntimeArg('arg', int_rprimitive)
         self.env = Environment()
-        self.reg = self.env.add_local(self.var, int_rprimitive)
+        self.reg = Register(int_rprimitive, 'arg')
         self.block = BasicBlock(0)
 
     def test_simple(self) -> None:
         self.block.ops.append(Return(self.reg))
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
-                    [self.block], self.env)
-        value_names = generate_names_for_env(self.env)
+                    [self.reg],
+                    [self.block],
+                    self.env)
+        value_names = generate_names_for_env(fn.arg_regs, fn.blocks)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])), self.env, value_names)
         generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments
@@ -378,10 +383,11 @@ class TestGenerateFunction(unittest.TestCase):
     def test_register(self) -> None:
         op = LoadInt(5)
         self.block.ops.append(op)
-        self.env.add_op(op)
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
-                    [self.block], self.env)
-        value_names = generate_names_for_env(self.env)
+                    [self.reg],
+                    [self.block],
+                    self.env)
+        value_names = generate_names_for_env(fn.arg_regs, fn.blocks)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])), self.env, value_names)
         generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
         result = emitter.fragments

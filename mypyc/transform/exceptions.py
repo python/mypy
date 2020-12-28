@@ -38,7 +38,6 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
     ir.blocks.append(block)
     op = LoadErrorValue(ir.ret_type)
     block.ops.append(op)
-    ir.env.add_op(op)
     block.ops.append(Return(op))
     return block
 
@@ -84,7 +83,6 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     # semantics, using a temporary bool with value false
                     tmp = LoadInt(0, rtype=bool_rprimitive)
                     cur_block.ops.append(tmp)
-                    env.add_op(tmp)
                     target = tmp
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind

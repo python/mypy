@@ -10,17 +10,17 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr
+    FuncItem, LambdaExpr, SymbolNode
 )
 from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
-    BasicBlock, Value,  Return, SetAttr, LoadInt, Environment, GetAttr, Branch, AssignmentTarget,
-    InitStatic, LoadAddress
+    BasicBlock, Value,  Register, Return, SetAttr, LoadInt, Environment, GetAttr, Branch,
+    AssignmentTarget, InitStatic, LoadAddress
 )
 from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
 from mypyc.ir.func_ir import (
@@ -32,7 +32,7 @@ from mypyc.primitives.misc_ops import check_stop_op, yield_from_except_op, coro_
 from mypyc.primitives.dict_ops import dict_set_item_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
-from mypyc.irbuild.util import concrete_arg_kind, is_constant, add_self_to_env
+from mypyc.irbuild.util import concrete_arg_kind, is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.statement import transform_try_except
 from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
@@ -210,7 +210,7 @@ def gen_func_item(builder: IRBuilder,
         class_name = cdef.name
 
     builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
-                        is_nested, contains_nested, is_decorated, in_non_ext))
+                           is_nested, contains_nested, is_decorated, in_non_ext))
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -225,8 +225,8 @@ def gen_func_item(builder: IRBuilder,
     if builder.fn_info.is_generator:
         # Do a first-pass and generate a function that just returns a generator object.
         gen_generator_func(builder)
-        blocks, env, ret_type, fn_info = builder.leave()
-        func_ir, func_reg = gen_func_ir(builder, blocks, sig, env, fn_info, cdef)
+        args, blocks, env, ret_type, fn_info = builder.leave()
+        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, env, fn_info, cdef)
 
         # Re-enter the FuncItem and visit the body of the function this time.
         builder.enter(fn_info)
@@ -283,19 +283,27 @@ def gen_func_item(builder: IRBuilder,
     if builder.fn_info.is_generator:
         populate_switch_for_generator_class(builder)
 
-    blocks, env, ret_type, fn_info = builder.leave()
+    # Hang on to the local symbol table for a while, since we use it
+    # to calculate argument defaults below.
+    symtable = builder.symtables[-1]
+
+    args, blocks, env, ret_type, fn_info = builder.leave()
 
     if fn_info.is_generator:
-        add_methods_to_generator_class(builder, fn_info, sig, env, blocks, fitem.is_coroutine)
+        add_methods_to_generator_class(
+            builder, fn_info, sig, env, args, blocks, fitem.is_coroutine)
     else:
-        func_ir, func_reg = gen_func_ir(builder, blocks, sig, env, fn_info, cdef)
+        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, env, fn_info, cdef)
 
-    calculate_arg_defaults(builder, fn_info, env, func_reg)
+    # Evaluate argument defaults in the surrounding scope, since we
+    # calculate them *once* when the function definition is evaluated.
+    calculate_arg_defaults(builder, fn_info, func_reg, symtable)
 
     return (func_ir, func_reg)
 
 
 def gen_func_ir(builder: IRBuilder,
+                args: List[Register],
                 blocks: List[BasicBlock],
                 sig: FuncSignature,
                 env: Environment,
@@ -310,7 +318,7 @@ def gen_func_ir(builder: IRBuilder,
     """
     func_reg = None  # type: Optional[Value]
     if fn_info.is_nested or fn_info.in_non_ext:
-        func_ir = add_call_to_callable_class(builder, blocks, sig, env, fn_info)
+        func_ir = add_call_to_callable_class(builder, args, blocks, sig, env, fn_info)
         add_get_to_callable_class(builder, fn_info)
         func_reg = instantiate_callable_class(builder, fn_info)
     else:
@@ -321,10 +329,10 @@ def gen_func_ir(builder: IRBuilder,
             func_decl = FuncDecl(fn_info.name, class_name, builder.module_name, sig,
                                  func_decl.kind,
                                  func_decl.is_prop_getter, func_decl.is_prop_setter)
-            func_ir = FuncIR(func_decl, blocks, env, fn_info.fitem.line,
+            func_ir = FuncIR(func_decl, args, blocks, env, fn_info.fitem.line,
                              traceback_name=fn_info.fitem.name)
         else:
-            func_ir = FuncIR(func_decl, blocks, env,
+            func_ir = FuncIR(func_decl, args, blocks, env,
                              fn_info.fitem.line, traceback_name=fn_info.fitem.name)
     return (func_ir, func_reg)
 
@@ -430,8 +438,8 @@ def handle_non_ext_method(
 
 def calculate_arg_defaults(builder: IRBuilder,
                            fn_info: FuncInfo,
-                           env: Environment,
-                           func_reg: Optional[Value]) -> None:
+                           func_reg: Optional[Value],
+                           symtable: Dict[SymbolNode, AssignmentTarget]) -> None:
     """Calculate default argument values and store them.
 
     They are stored in statics for top level functions and in
@@ -444,7 +452,7 @@ def calculate_arg_defaults(builder: IRBuilder,
         if arg.initializer and not is_constant(arg.initializer):
             value = builder.coerce(
                 builder.accept(arg.initializer),
-                env.lookup(arg.variable).type,
+                symtable[arg.variable].type,
                 arg.line
             )
             if not fn_info.is_nested:
@@ -486,9 +494,9 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
     # This is basically an implementation of the code in PEP 380.
 
     # TODO: do we want to use the right types here?
-    result = builder.alloc_temp(object_rprimitive)
-    to_yield_reg = builder.alloc_temp(object_rprimitive)
-    received_reg = builder.alloc_temp(object_rprimitive)
+    result = Register(object_rprimitive)
+    to_yield_reg = Register(object_rprimitive)
+    received_reg = Register(object_rprimitive)
 
     if isinstance(o, YieldFromExpr):
         iter_val = builder.call_c(iter_op, [builder.accept(o.expr)], o.line)
@@ -523,7 +531,7 @@ def handle_yield_from_and_await(builder: IRBuilder, o: Union[YieldFromExpr, Awai
         # The body of the except is all implemented in a C function to
         # reduce how much code we need to generate. It returns a value
         # indicating whether to break or yield (or raise an exception).
-        val = builder.alloc_temp(object_rprimitive)
+        val = Register(object_rprimitive)
         val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
         to_stop = builder.call_c(yield_from_except_op,
                                  [builder.read(iter_reg), val_address], o.line)
@@ -655,7 +663,7 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
 
     # The environment operates on Vars, so we make some up
     fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-    args = [builder.read(builder.environment.add_local_reg(var, type, is_arg=True), line)
+    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
             for var, type in fake_vars]
     arg_names = [arg.name for arg in rt_args]
     arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
@@ -668,13 +676,13 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     retval = builder.coerce(retval, sig.ret_type, line)
     builder.add(Return(retval))
 
-    blocks, env, ret_type, _ = builder.leave()
+    arg_regs, blocks, env, ret_type, _ = builder.leave()
     return FuncIR(
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name,
                  FuncSignature(rt_args, ret_type),
                  target.decl.kind),
-        blocks, env)
+        arg_regs, blocks, env)
 
 
 def gen_glue_property(builder: IRBuilder,
@@ -696,7 +704,8 @@ def gen_glue_property(builder: IRBuilder,
     builder.enter()
 
     rt_arg = RuntimeArg(SELF_NAME, RInstance(cls))
-    arg = builder.read(add_self_to_env(builder.environment, cls), line)
+    self_target = builder.add_self_to_env(cls)
+    arg = builder.read(self_target, line)
     builder.ret_types[-1] = sig.ret_type
     if do_pygetattr:
         retval = builder.py_get_attr(arg, target.name, line)
@@ -705,11 +714,11 @@ def gen_glue_property(builder: IRBuilder,
     retbox = builder.coerce(retval, sig.ret_type, line)
     builder.add(Return(retbox))
 
-    blocks, env, return_type, _ = builder.leave()
+    args, blocks, env, return_type, _ = builder.leave()
     return FuncIR(
         FuncDecl(target.name + '__' + base.name + '_glue',
                  cls.name, builder.module_name, FuncSignature([rt_arg], return_type)),
-        blocks, env)
+        args, blocks, env)
 
 
 def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
@@ -720,9 +729,9 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     """
     if fdef.original_def:
         # Get the target associated with the previously defined FuncDef.
-        return builder.environment.lookup(fdef.original_def)
+        return builder.lookup(fdef.original_def)
 
     if builder.fn_info.is_generator or builder.fn_info.contains_nested:
-        return builder.environment.lookup(fdef)
+        return builder.lookup(fdef)
 
-    return builder.environment.add_local_reg(fdef, object_rprimitive)
+    return builder.add_local_reg(fdef, object_rprimitive)

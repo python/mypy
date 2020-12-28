@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register,
     LoadAddress
 )
-from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.func_ir import FuncIR, all_values
 
 
 def insert_uninit_checks(ir: FuncIR) -> None:
@@ -21,8 +21,11 @@ def insert_uninit_checks(ir: FuncIR) -> None:
     cleanup_cfg(ir.blocks)
 
     cfg = get_cfg(ir.blocks)
-    args = set(reg for reg in ir.env.regs() if ir.env.indexes[reg] < len(ir.args))
-    must_defined = analyze_must_defined_regs(ir.blocks, cfg, args, ir.env.regs())
+    must_defined = analyze_must_defined_regs(
+        ir.blocks,
+        cfg,
+        set(ir.arg_regs),
+        all_values(ir.arg_regs, ir.blocks))
 
     ir.blocks = split_blocks_at_uninits(ir.env, ir.blocks, must_defined.before)
 
@@ -67,7 +70,6 @@ def split_blocks_at_uninits(env: Environment,
                         RaiseStandardError.UNBOUND_LOCAL_ERROR,
                         "local variable '{}' referenced before assignment".format(src.name),
                         op.line)
-                    env.add_op(raise_std)
                     error_block.ops.append(raise_std)
                     error_block.ops.append(Unreachable())
                     cur_block = new_block

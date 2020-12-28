@@ -6,7 +6,9 @@ from typing_extensions import Final
 from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
-from mypyc.ir.ops import DeserMaps, BasicBlock, Environment
+from mypyc.ir.ops import (
+    DeserMaps, BasicBlock, Environment, Value, Register, Assign, ControlOp, LoadAddress
+)
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
 
@@ -151,11 +153,13 @@ class FuncIR:
 
     def __init__(self,
                  decl: FuncDecl,
+                 arg_regs: List[Register],
                  blocks: List[BasicBlock],
                  env: Environment,
                  line: int = -1,
                  traceback_name: Optional[str] = None) -> None:
         self.decl = decl
+        self.arg_regs = arg_regs
         self.blocks = blocks
         self.env = env
         self.line = line
@@ -210,6 +214,7 @@ class FuncIR:
         return FuncIR(
             FuncDecl.deserialize(data['decl'], ctx),
             [],
+            [],
             Environment(),
             data['line'],
             data['traceback_name'],
@@ -217,3 +222,58 @@ class FuncIR:
 
 
 INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
+
+
+def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+    """Return the set of all values that may be initialized in the blocks.
+
+    This omits registers that are only read.
+    """
+    values = list(args)  # type: List[Value]
+    seen_registers = set(args)
+
+    for block in blocks:
+        for op in block.ops:
+            if not isinstance(op, ControlOp):
+                if isinstance(op, Assign):
+                    if op.dest not in seen_registers:
+                        values.append(op.dest)
+                        seen_registers.add(op.dest)
+                elif op.is_void:
+                    continue
+                else:
+                    # If we take the address of a register, it might get initialized.
+                    if (isinstance(op, LoadAddress)
+                            and isinstance(op.src, Register)
+                            and op.src not in seen_registers):
+                        values.append(op.src)
+                        seen_registers.add(op.src)
+                    values.append(op)
+
+    return values
+
+
+def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+    """Return set of all values that are initialized or accessed."""
+    values = list(args)  # type: List[Value]
+    seen_registers = set(args)
+
+    for block in blocks:
+        for op in block.ops:
+            for source in op.sources():
+                # Look for unitialized registers that are accessed. Ignore
+                # non-registers since we don't allow ops outside basic blocks.
+                if isinstance(source, Register) and source not in seen_registers:
+                    values.append(source)
+                    seen_registers.add(source)
+            if not isinstance(op, ControlOp):
+                if isinstance(op, Assign):
+                    if op.dest not in seen_registers:
+                        values.append(op.dest)
+                        seen_registers.add(op.dest)
+                elif op.is_void:
+                    continue
+                else:
+                    values.append(op)
+
+    return values

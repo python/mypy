@@ -18,7 +18,7 @@ from mypy.types import TupleType, get_proper_type, Instance
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
+    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
@@ -138,11 +138,12 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         assert o.info is not None
         typ = builder.load_native_type_object(o.info.fullname)
         ir = builder.mapper.type_to_ir[o.info]
-        iter_env = iter(builder.environment.indexes)
-        vself = next(iter_env)  # grab first argument
+        iter_env = iter(builder.args[-1])
+        # Grab first argument
+        vself = next(iter_env)  # type: Value
         if builder.fn_info.is_generator:
             # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.environment.symtable.values())[6]
+            self_targ = list(builder.symtables[-1].values())[6]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
@@ -300,7 +301,8 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
 
     if decl.kind != FUNC_STATICMETHOD:
-        vself = next(iter(builder.environment.indexes))  # grab first argument
+        # Grab first argument
+        vself = builder.args[-1][0]  # type: Value
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.call_c(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
@@ -309,7 +311,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             # of ugly, but we can't search by name since the 'self' parameter
             # could be named anything, and it doesn't get added to the
             # environment indexes.
-            self_targ = list(builder.environment.symtable.values())[6]
+            self_targ = list(builder.symtables[-1].values())[6]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         arg_values.insert(0, vself)
         arg_kinds.insert(0, ARG_POS)
@@ -400,7 +402,7 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     builder.process_conditional(expr.cond, if_body, else_body)
     expr_type = builder.node_type(expr)
     # Having actual Phi nodes would be really nice here!
-    target = builder.alloc_temp(expr_type)
+    target = Register(expr_type)
 
     builder.activate_block(if_body)
     true_value = builder.accept(expr.if_expr)
