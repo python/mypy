@@ -157,17 +157,9 @@ def add_helper_to_generator_class(builder: IRBuilder,
 
 def add_iter_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__iter__' method for a generator class."""
-    builder.enter(fn_info)
-    self_target = builder.add_self_to_env(fn_info.generator_class.ir)
-    builder.add(Return(builder.read(self_target, fn_info.fitem.line)))
-    args, _, blocks, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    iter_fn_decl = FuncDecl('__iter__', fn_info.generator_class.ir.name, builder.module_name, sig)
-    iter_fn_ir = FuncIR(iter_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['__iter__'] = iter_fn_ir
-    builder.functions.append(iter_fn_ir)
+    builder.enter_method(fn_info.generator_class.ir, '__iter__', object_rprimitive, fn_info)
+    builder.add(Return(builder.self()))
+    builder.leave_method()
 
 
 def add_next_to_generator_class(builder: IRBuilder,
