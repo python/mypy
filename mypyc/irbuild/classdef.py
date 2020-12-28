@@ -355,29 +355,17 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
     """Create a "__ne__" method from a "__eq__" method (if only latter exists)."""
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.has_method('__eq__') and not cls.has_method('__ne__'):
-        f = gen_glue_ne_method(builder, cls, cdef.line)
-        cls.method_decls['__ne__'] = f.decl
-        cls.methods['__ne__'] = f
-        builder.functions.append(f)
+        gen_glue_ne_method(builder, cls, cdef.line)
 
 
-def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
+def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method. """
-    builder.enter()
-
-    rt_args = (RuntimeArg("self", RInstance(cls)), RuntimeArg("rhs", object_rprimitive))
-
-    # The environment operates on Vars, so we make some up
-    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-    args = [
-        builder.read(builder.add_local_reg(var, type, is_arg=True), line)
-        for var, type in fake_vars
-    ]  # type: List[Value]
-    builder.ret_types[-1] = object_rprimitive
+    builder.enter_method(cls, '__ne__', object_rprimitive)
+    rhs_arg = builder.add_argument('rhs', object_rprimitive)
 
     # If __eq__ returns NotImplemented, then __ne__ should also
     not_implemented_block, regular_block = BasicBlock(), BasicBlock()
-    eqval = builder.add(MethodCall(args[0], '__eq__', [args[1]], line))
+    eqval = builder.add(MethodCall(builder.self(), '__eq__', [rhs_arg], line))
     not_implemented = builder.add(LoadAddress(not_implemented_op.type,
                                               not_implemented_op.src, line))
     builder.add(Branch(
@@ -395,11 +383,7 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     builder.activate_block(not_implemented_block)
     builder.add(Return(not_implemented))
 
-    arg_regs, _, blocks, ret_type, _ = builder.leave()
-    return FuncIR(
-        FuncDecl('__ne__', cls.name, builder.module_name,
-                 FuncSignature(rt_args, ret_type)),
-        arg_regs, blocks)
+    builder.leave_method()
 
 
 def load_non_ext_class(builder: IRBuilder,

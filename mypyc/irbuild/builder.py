@@ -925,6 +925,7 @@ class IRBuilder:
         decl = FuncDecl(name, class_ir.name, self.module_name, sig)
         ir = FuncIR(decl, arg_regs, blocks)
         class_ir.methods[name] = ir
+        class_ir.method_decls[name] = ir.decl
         self.functions.append(ir)
 
     def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
