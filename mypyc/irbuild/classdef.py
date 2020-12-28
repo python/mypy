@@ -327,12 +327,9 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     if not default_assignments:
         return
 
-    builder.enter()
-    builder.ret_types[-1] = bool_rprimitive
+    builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive)
 
-    rt_args = (RuntimeArg(SELF_NAME, RInstance(cls)),)
-    self_var = builder.read(builder.add_self_to_env(cls), -1)
-
+    self_var = builder.self()
     for stmt in default_assignments:
         lvalue = stmt.lvalues[0]
         assert isinstance(lvalue, NameExpr)
@@ -351,14 +348,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
 
     builder.add(Return(builder.true()))
 
-    args, _, blocks, ret_type, _ = builder.leave()
-    ir = FuncIR(
-        FuncDecl('__mypyc_defaults_setup',
-                 cls.name, builder.module_name,
-                 FuncSignature(rt_args, ret_type)),
-        args, blocks)
-    builder.functions.append(ir)
-    cls.methods[ir.name] = ir
+    builder.leave_method()
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
