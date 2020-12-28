@@ -232,22 +232,14 @@ def add_throw_to_generator_class(builder: IRBuilder,
 
 def add_close_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__close__' method for a generator class."""
-    # TODO: Currently this method just triggers a runtime error,
-    # we should fill this out eventually.
-    builder.enter(fn_info)
-    builder.add_self_to_env(fn_info.generator_class.ir)
+    # TODO: Currently this method just triggers a runtime error.
+    #       We should fill this out (https://github.com/mypyc/mypyc/issues/790).
+    builder.enter_method(fn_info.generator_class.ir, 'close', object_rprimitive, fn_info)
     builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
-                                'close method on generator classes uimplemented',
-                                fn_info.fitem.line))
+                                   'close method on generator classes unimplemented',
+                                   fn_info.fitem.line))
     builder.add(Unreachable())
-    args, _, blocks, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    close_fn_decl = FuncDecl('close', fn_info.generator_class.ir.name, builder.module_name, sig)
-    close_fn_ir = FuncIR(close_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['close'] = close_fn_ir
-    builder.functions.append(close_fn_ir)
+    builder.leave_method()
 
 
 def add_await_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
