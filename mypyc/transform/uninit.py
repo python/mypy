@@ -82,7 +82,7 @@ def split_blocks_at_uninits(blocks: List[BasicBlock],
     if init_registers:
         new_ops = []  # type: List[Op]
         for reg in init_registers:
-            err = LoadErrorValue(reg.type)
+            err = LoadErrorValue(reg.type, undefines=True)
             new_ops.append(err)
             new_ops.append(Assign(reg, err))
         new_blocks[0].ops[0:0] = new_ops
