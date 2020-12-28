@@ -292,13 +292,13 @@ class IRBuilder:
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
-    def assign_if_null(self, target: AssignmentTargetRegister,
+    def assign_if_null(self, target: Register,
                        get_val: Callable[[], Value], line: int) -> None:
-        """Generate blocks for registers that NULL values."""
+        """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
-        self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
+        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
         self.activate_block(error_block)
-        self.add(Assign(target.register, self.coerce(get_val(), target.register.type, line)))
+        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
         self.goto(body_block)
         self.activate_block(body_block)
 
@@ -1064,4 +1064,4 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                     return builder.add(
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line))
             assert isinstance(target, AssignmentTargetRegister)
-            builder.assign_if_null(target, get_default, arg.initializer.line)
+            builder.assign_if_null(target.register, get_default, arg.initializer.line)

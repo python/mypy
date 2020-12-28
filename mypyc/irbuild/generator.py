@@ -206,13 +206,10 @@ def add_throw_to_generator_class(builder: IRBuilder,
                                  fn_decl: FuncDecl,
                                  sig: FuncSignature) -> None:
     """Generates the 'throw' method for a generator class."""
-    builder.enter(fn_info)
-    self_reg = builder.read(builder.add_self_to_env(fn_info.generator_class.ir))
-
-    # Add the type, value, and traceback variables to the environment.
-    typ = builder.add_local_reg(Var('type'), object_rprimitive, True)
-    val = builder.add_local_reg(Var('value'), object_rprimitive, True)
-    tb = builder.add_local_reg(Var('traceback'), object_rprimitive, True)
+    builder.enter_method(fn_info.generator_class.ir, 'throw', object_rprimitive, fn_info)
+    typ = builder.add_argument('type', object_rprimitive)
+    val = builder.add_argument('value', object_rprimitive, ARG_OPT)
+    tb = builder.add_argument('traceback', object_rprimitive, ARG_OPT)
 
     # Because the value and traceback arguments are optional and hence
     # can be NULL if not passed in, we have to assign them Py_None if
@@ -225,26 +222,12 @@ def add_throw_to_generator_class(builder: IRBuilder,
     result = builder.add(
         Call(
             fn_decl,
-            [self_reg, builder.read(typ), builder.read(val), builder.read(tb), none_reg],
+            [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg],
             fn_info.fitem.line
         )
     )
     builder.add(Return(result))
-    args, _, blocks, _, fn_info = builder.leave()
-
-    # Create the FuncSignature for the throw function. Note that the
-    # value and traceback fields are optional, and are assigned to if
-    # they are not passed in inside the body of the throw function.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('type', object_rprimitive),
-                         RuntimeArg('value', object_rprimitive, ARG_OPT),
-                         RuntimeArg('traceback', object_rprimitive, ARG_OPT)),
-                        sig.ret_type)
-
-    throw_fn_decl = FuncDecl('throw', fn_info.generator_class.ir.name, builder.module_name, sig)
-    throw_fn_ir = FuncIR(throw_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['throw'] = throw_fn_ir
-    builder.functions.append(throw_fn_ir)
+    builder.leave_method()
 
 
 def add_close_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
