@@ -245,7 +245,6 @@ def format_registers(func_ir: FuncIR,
     result = []
     i = 0
     regs = all_values_full(func_ir.arg_regs, func_ir.blocks)
-    regs = [reg for reg in regs if reg not in const_regs]
     while i < len(regs):
         i0 = i
         group = [names[regs[i0]]]
@@ -285,21 +284,9 @@ def format_blocks(blocks: List[BasicBlock],
                 and ops[-1].label == blocks[i + 1]):
             # Hide the last goto if it just goes to the next basic block.
             ops = ops[:-1]
-        # load int registers start with 'i'
-        regex = re.compile(r'\bi[0-9]+\b')
         for op in ops:
-            if op not in const_regs:
-                line = '    ' + op.accept(visitor)
-
-                def repl(i: Match[str]) -> str:
-                    value = names_rev.get(i.group(), None)
-                    if isinstance(value, Integer) and value in const_regs:
-                        return str(const_regs[value])
-                    else:
-                        return i.group()
-
-                line = regex.sub(repl, line)
-                lines.append(line)
+            line = '    ' + op.accept(visitor)
+            lines.append(line)
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.
