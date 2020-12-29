@@ -460,9 +460,10 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         step = 1 if not self.reverse else -1
-        add = builder.binary_int_op(short_int_rprimitive,
-                                    builder.read(self.index_target, line),
-                                    builder.add(LoadInt(step)), IntOp.ADD, line)
+        add = builder.int_op(short_int_rprimitive,
+                             builder.read(self.index_target, line),
+                             builder.add(LoadInt(step)),
+                             IntOp.ADD, line)
         builder.assign(self.index_target, add, line)
 
 
@@ -634,7 +635,7 @@ class ForRange(ForGenerator):
         # short ints.
         if (is_short_int_rprimitive(self.start_reg.type)
                 and is_short_int_rprimitive(self.end_reg.type)):
-            new_val = builder.binary_int_op(short_int_rprimitive,
+            new_val = builder.int_op(short_int_rprimitive,
                             builder.read(self.index_reg, line),
                             builder.add(LoadInt(self.step)), IntOp.ADD, line)
 
@@ -664,7 +665,7 @@ class ForInfiniteCounter(ForGenerator):
         # We can safely assume that the integer is short, since we are not going to wrap
         # around a 63-bit integer.
         # NOTE: This would be questionable if short ints could be 32 bits.
-        new_val = builder.binary_int_op(short_int_rprimitive,
+        new_val = builder.int_op(short_int_rprimitive,
                 builder.read(self.index_reg, line),
                 builder.add(LoadInt(1)), IntOp.ADD, line)
         builder.assign(self.index_reg, new_val, line)

@@ -238,7 +238,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             'in', self.b, self.o, self.d,
             """cpy_r_r0 = PyDict_Contains(cpy_r_d, cpy_r_o);""")
 
-    def test_binary_int_op(self) -> None:
+    def test_int_op(self) -> None:
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.ADD, 1),
                          """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.SUB, 1),
