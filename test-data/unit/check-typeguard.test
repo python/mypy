@@ -1,0 +1,28 @@
+[case testTypeGuardBasic]
+from typing_extensions import TypeGuard
+class Point:
+    x: int
+def is_point(a: object) -> TypeGuard[Point]:
+    return not not a
+def norm(a: object) -> None:
+    if is_point(a):
+        reveal_type(a)  # N: Revealed type is '__main__.Point'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardArgsNone]
+from typing_extensions import TypeGuard
+def foo(a: object) -> TypeGuard:  # E: TypeGuard must have exactly one type argument
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardArgsTooMany]
+from typing_extensions import TypeGuard
+def foo(a: object) -> TypeGuard[int, int]:  # E: TypeGuard must have exactly one type argument
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardArgType]
+from typing_extensions import TypeGuard
+def foo(a: object) -> TypeGuard[42]:  # E: Invalid type: try using Literal[42] instead?
+    pass
+[builtins fixtures/tuple.pyi]

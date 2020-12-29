@@ -1005,6 +1005,7 @@ class CallableType(FunctionLike):
                                 # tools that consume mypy ASTs
                  'def_extras',  # Information about original definition we want to serialize.
                                 # This is used for more detailed error messages.
+                 'is_type_guard',  # Of the form def (...) -> TypeGuard[...].
                  )
 
     def __init__(self,
@@ -1024,6 +1025,7 @@ class CallableType(FunctionLike):
                  from_type_type: bool = False,
                  bound_args: Sequence[Optional[Type]] = (),
                  def_extras: Optional[Dict[str, Any]] = None,
+                 is_type_guard: bool = False,
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1058,6 +1060,7 @@ class CallableType(FunctionLike):
                                not definition.is_static else None}
         else:
             self.def_extras = {}
+        self.is_type_guard = is_type_guard
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
@@ -1075,7 +1078,9 @@ class CallableType(FunctionLike):
                       special_sig: Bogus[Optional[str]] = _dummy,
                       from_type_type: Bogus[bool] = _dummy,
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
-                      def_extras: Bogus[Dict[str, Any]] = _dummy) -> 'CallableType':
+                      def_extras: Bogus[Dict[str, Any]] = _dummy,
+                      is_type_guard: Bogus[bool] = _dummy,
+                    ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1094,6 +1099,7 @@ class CallableType(FunctionLike):
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
+            is_type_guard=is_type_guard if is_type_guard is not _dummy else self.is_type_guard,
         )
 
     def var_arg(self) -> Optional[FormalArgument]:
