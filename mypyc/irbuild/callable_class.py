@@ -6,8 +6,6 @@ non-local variables defined in outer scopes.
 
 from typing import List
 
-from mypy.nodes import Var
-
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
 from mypyc.ir.rtypes import RInstance, object_rprimitive
@@ -105,13 +103,13 @@ def add_call_to_callable_class(builder: IRBuilder,
 def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generate the '__get__' method for a callable class."""
     line = fn_info.fitem.line
-    builder.enter(fn_info)
 
-    vself = builder.read(
-        builder.add_local_reg(Var(SELF_NAME), object_rprimitive, True)
+    builder.enter_method(
+        fn_info.callable_class.ir, '__get__', object_rprimitive, fn_info,
+        self_type=object_rprimitive
     )
-    instance = builder.add_local_reg(Var('instance'), object_rprimitive, True)
-    builder.add_local_reg(Var('owner'), object_rprimitive, True)
+    instance = builder.add_argument('instance', object_rprimitive)
+    builder.add_argument('owner', object_rprimitive)
 
     # If accessed through the class, just return the callable
     # object. If accessed through an object, create a new bound
@@ -123,21 +121,13 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     builder.add_bool_branch(comparison, class_block, instance_block)
 
     builder.activate_block(class_block)
-    builder.add(Return(vself))
+    builder.add(Return(builder.self()))
 
     builder.activate_block(instance_block)
-    builder.add(Return(builder.call_c(method_new_op, [vself, builder.read(instance)], line)))
+    builder.add(Return(builder.call_c(method_new_op,
+                                      [builder.self(), builder.read(instance)], line)))
 
-    args, blocks, _, fn_info = builder.leave()
-
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('instance', object_rprimitive),
-                         RuntimeArg('owner', object_rprimitive)),
-                        object_rprimitive)
-    get_fn_decl = FuncDecl('__get__', fn_info.callable_class.ir.name, builder.module_name, sig)
-    get_fn_ir = FuncIR(get_fn_decl, args, blocks)
-    fn_info.callable_class.ir.methods['__get__'] = get_fn_ir
-    builder.functions.append(get_fn_ir)
+    builder.leave_method()
 
 
 def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:

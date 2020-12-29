@@ -75,6 +75,7 @@ class LowLevelIRBuilder:
     ) -> None:
         self.current_module = current_module
         self.mapper = mapper
+        self.args = []  # type: List[Register]
         self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
@@ -110,6 +111,13 @@ class LowLevelIRBuilder:
 
     def pop_error_handler(self) -> Optional[BasicBlock]:
         return self.error_handlers.pop()
+
+    def self(self) -> Register:
+        """Return reference to the 'self' argument.
+
+        This only works in a method.
+        """
+        return self.args[0]
 
     # Type conversions
 

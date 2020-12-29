@@ -41,7 +41,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
-from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
+from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF, RuntimeArg, FuncSignature, FuncDecl
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
@@ -81,7 +81,9 @@ class IRBuilder:
         self.builder = LowLevelIRBuilder(current_module, mapper)
         self.builders = [self.builder]
         self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, AssignmentTarget]]
-        self.args = [[]]  # type: List[List[Register]]
+        self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
+        self.function_name_stack = []  # type: List[str]
+        self.class_ir_stack = []  # type: List[ClassIR]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -177,6 +179,9 @@ class IRBuilder:
 
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.builder.goto_and_activate(block)
+
+    def self(self) -> Register:
+        return self.builder.self()
 
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
@@ -289,13 +294,13 @@ class IRBuilder:
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
-    def assign_if_null(self, target: AssignmentTargetRegister,
+    def assign_if_null(self, target: Register,
                        get_val: Callable[[], Value], line: int) -> None:
-        """Generate blocks for registers that NULL values."""
+        """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
-        self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
+        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
         self.activate_block(error_block)
-        self.add(Assign(target.register, self.coerce(get_val(), target.register.type, line)))
+        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
         self.goto(body_block)
         self.activate_block(body_block)
 
@@ -897,7 +902,7 @@ class IRBuilder:
         self.builder = LowLevelIRBuilder(self.current_module, self.mapper)
         self.builders.append(self.builder)
         self.symtables.append(OrderedDict())
-        self.args.append([])
+        self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
@@ -907,16 +912,71 @@ class IRBuilder:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.activate_block(BasicBlock())
 
-    def leave(self) -> Tuple[List[Register], List[BasicBlock], RType, FuncInfo]:
+    def leave(self) -> Tuple[List[Register], List[RuntimeArg], List[BasicBlock], RType, FuncInfo]:
         builder = self.builders.pop()
         self.symtables.pop()
-        args = self.args.pop()
+        runtime_args = self.runtime_args.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return args, builder.blocks, ret_type, fn_info
+        return builder.args, runtime_args, builder.blocks, ret_type, fn_info
+
+    def enter_method(self,
+                     class_ir: ClassIR,
+                     name: str,
+                     ret_type: RType,
+                     fn_info: Union[FuncInfo, str] = '',
+                     self_type: Optional[RType] = None) -> None:
+        """Begin generating IR for a method.
+
+        If the method takes arguments, you should immediately afterwards call
+        add_argument() for each non-self argument (self is created implicitly).
+
+        Call leave_method() to finish the generation of the method.
+
+        You can enter multiple methods at a time. They are maintained in a
+        stack, and leave_method() leaves the topmost one.
+
+        Args:
+            class_ir: Add method to this class
+            name: Short name of the method
+            ret_type: Return type of the method
+            fn_info: Optionally, additional information about the method
+            self_type: If not None, override default type of the implicit 'self'
+                argument (by default, derive type from class_ir)
+        """
+        self.enter(fn_info)
+        self.function_name_stack.append(name)
+        self.class_ir_stack.append(class_ir)
+        self.ret_types[-1] = ret_type
+        if self_type is None:
+            self_type = RInstance(class_ir)
+        self.add_argument(SELF_NAME, self_type)
+
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+        """Declare an argument in the current function.
+
+        You should use this instead of directly calling add_local() in new code.
+        """
+        if isinstance(var, str):
+            var = Var(var)
+        reg = self.add_local(var, typ, is_arg=True)
+        self.runtime_args[-1].append(RuntimeArg(var.name, typ, kind))
+        return reg
+
+    def leave_method(self) -> None:
+        """Finish the generation of IR for a method."""
+        arg_regs, args, blocks, ret_type, fn_info = self.leave()
+        sig = FuncSignature(args, ret_type)
+        name = self.function_name_stack.pop()
+        class_ir = self.class_ir_stack.pop()
+        decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+        ir = FuncIR(decl, arg_regs, blocks)
+        class_ir.methods[name] = ir
+        class_ir.method_decls[name] = ir.decl
+        self.functions.append(ir)
 
     def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
         return self.symtables[-1][symbol]
@@ -931,7 +991,7 @@ class IRBuilder:
         reg = Register(typ, symbol.name, is_arg=is_arg, line=symbol.line)
         self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
         if is_arg:
-            self.args[-1].append(reg)
+            self.builder.args.append(reg)
         return reg
 
     def add_local_reg(self,
@@ -945,6 +1005,10 @@ class IRBuilder:
         return target
 
     def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
+        """Low-level function that adds a 'self' argument.
+
+        This is only useful if using enter() instead of enter_method().
+        """
         return self.add_local_reg(Var(SELF_NAME), RInstance(cls), is_arg=True)
 
     def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
@@ -1057,4 +1121,4 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                     return builder.add(
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line))
             assert isinstance(target, AssignmentTargetRegister)
-            builder.assign_if_null(target, get_default, arg.initializer.line)
+            builder.assign_if_null(target.register, get_default, arg.initializer.line)

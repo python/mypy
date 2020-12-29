@@ -138,7 +138,7 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         assert o.info is not None
         typ = builder.load_native_type_object(o.info.fullname)
         ir = builder.mapper.type_to_ir[o.info]
-        iter_env = iter(builder.args[-1])
+        iter_env = iter(builder.builder.args)
         # Grab first argument
         vself = next(iter_env)  # type: Value
         if builder.fn_info.is_generator:
@@ -302,7 +302,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
 
     if decl.kind != FUNC_STATICMETHOD:
         # Grab first argument
-        vself = builder.args[-1][0]  # type: Value
+        vself = builder.self()  # type: Value
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.call_c(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:

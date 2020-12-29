@@ -848,8 +848,8 @@ def Base.__eq__(self, other):
 L0:
     r0 = box(bool, 0)
     return r0
-def Base.__ne__(self, rhs):
-    self :: __main__.Base
+def Base.__ne__(__mypyc_self__, rhs):
+    __mypyc_self__ :: __main__.Base
     rhs, r0, r1 :: object
     r2 :: bit
     r3 :: int32
@@ -857,7 +857,7 @@ def Base.__ne__(self, rhs):
     r5 :: bool
     r6 :: object
 L0:
-    r0 = self.__eq__(rhs)
+    r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
     if r2 goto L2 else goto L1 :: bool
@@ -968,8 +968,8 @@ def Derived.__eq__(self, other):
 L0:
     r0 = box(bool, 1)
     return r0
-def Derived.__ne__(self, rhs):
-    self :: __main__.Derived
+def Derived.__ne__(__mypyc_self__, rhs):
+    __mypyc_self__ :: __main__.Derived
     rhs, r0, r1 :: object
     r2 :: bit
     r3 :: int32
@@ -977,7 +977,7 @@ def Derived.__ne__(self, rhs):
     r5 :: bool
     r6 :: object
 L0:
-    r0 = self.__eq__(rhs)
+    r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
     if r2 goto L2 else goto L1 :: bool

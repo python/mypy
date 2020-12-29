@@ -157,17 +157,9 @@ def add_helper_to_generator_class(builder: IRBuilder,
 
 def add_iter_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__iter__' method for a generator class."""
-    builder.enter(fn_info)
-    self_target = builder.add_self_to_env(fn_info.generator_class.ir)
-    builder.add(Return(builder.read(self_target, fn_info.fitem.line)))
-    args, blocks, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    iter_fn_decl = FuncDecl('__iter__', fn_info.generator_class.ir.name, builder.module_name, sig)
-    iter_fn_ir = FuncIR(iter_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['__iter__'] = iter_fn_ir
-    builder.functions.append(iter_fn_ir)
+    builder.enter_method(fn_info.generator_class.ir, '__iter__', object_rprimitive, fn_info)
+    builder.add(Return(builder.self()))
+    builder.leave_method()
 
 
 def add_next_to_generator_class(builder: IRBuilder,
@@ -175,21 +167,14 @@ def add_next_to_generator_class(builder: IRBuilder,
                                 fn_decl: FuncDecl,
                                 sig: FuncSignature) -> None:
     """Generates the '__next__' method for a generator class."""
-    builder.enter(fn_info)
-    self_reg = builder.read(builder.add_self_to_env(fn_info.generator_class.ir))
+    builder.enter_method(fn_info.generator_class.ir, '__next__', object_rprimitive, fn_info)
     none_reg = builder.none_object()
-
     # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, none_reg],
-                           fn_info.fitem.line))
+    result = builder.add(Call(fn_decl,
+                              [builder.self(), none_reg, none_reg, none_reg, none_reg],
+                              fn_info.fitem.line))
     builder.add(Return(result))
-    args, blocks, _, fn_info = builder.leave()
-
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), sig.ret_type)
-    next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, builder.module_name, sig)
-    next_fn_ir = FuncIR(next_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
-    builder.functions.append(next_fn_ir)
+    builder.leave_method()
 
 
 def add_send_to_generator_class(builder: IRBuilder,
@@ -197,24 +182,15 @@ def add_send_to_generator_class(builder: IRBuilder,
                                 fn_decl: FuncDecl,
                                 sig: FuncSignature) -> None:
     """Generates the 'send' method for a generator class."""
-    # FIXME: this is basically the same as add_next...
-    builder.enter(fn_info)
-    self_reg = builder.read(builder.add_self_to_env(fn_info.generator_class.ir))
-    arg = builder.add_local_reg(Var('arg'), object_rprimitive, True)
+    builder.enter_method(fn_info.generator_class.ir, 'send', object_rprimitive, fn_info)
+    arg = builder.add_argument('arg', object_rprimitive)
     none_reg = builder.none_object()
-
     # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg, builder.read(arg)],
-                           fn_info.fitem.line))
+    result = builder.add(Call(fn_decl,
+                              [builder.self(), none_reg, none_reg, none_reg, builder.read(arg)],
+                              fn_info.fitem.line))
     builder.add(Return(result))
-    args, blocks, _, fn_info = builder.leave()
-
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('arg', object_rprimitive),), sig.ret_type)
-    next_fn_decl = FuncDecl('send', fn_info.generator_class.ir.name, builder.module_name, sig)
-    next_fn_ir = FuncIR(next_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['send'] = next_fn_ir
-    builder.functions.append(next_fn_ir)
+    builder.leave_method()
 
 
 def add_throw_to_generator_class(builder: IRBuilder,
@@ -222,13 +198,10 @@ def add_throw_to_generator_class(builder: IRBuilder,
                                  fn_decl: FuncDecl,
                                  sig: FuncSignature) -> None:
     """Generates the 'throw' method for a generator class."""
-    builder.enter(fn_info)
-    self_reg = builder.read(builder.add_self_to_env(fn_info.generator_class.ir))
-
-    # Add the type, value, and traceback variables to the environment.
-    typ = builder.add_local_reg(Var('type'), object_rprimitive, True)
-    val = builder.add_local_reg(Var('value'), object_rprimitive, True)
-    tb = builder.add_local_reg(Var('traceback'), object_rprimitive, True)
+    builder.enter_method(fn_info.generator_class.ir, 'throw', object_rprimitive, fn_info)
+    typ = builder.add_argument('type', object_rprimitive)
+    val = builder.add_argument('value', object_rprimitive, ARG_OPT)
+    tb = builder.add_argument('traceback', object_rprimitive, ARG_OPT)
 
     # Because the value and traceback arguments are optional and hence
     # can be NULL if not passed in, we have to assign them Py_None if
@@ -241,62 +214,31 @@ def add_throw_to_generator_class(builder: IRBuilder,
     result = builder.add(
         Call(
             fn_decl,
-            [self_reg, builder.read(typ), builder.read(val), builder.read(tb), none_reg],
+            [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg],
             fn_info.fitem.line
         )
     )
     builder.add(Return(result))
-    args, blocks, _, fn_info = builder.leave()
-
-    # Create the FuncSignature for the throw function. Note that the
-    # value and traceback fields are optional, and are assigned to if
-    # they are not passed in inside the body of the throw function.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
-                         RuntimeArg('type', object_rprimitive),
-                         RuntimeArg('value', object_rprimitive, ARG_OPT),
-                         RuntimeArg('traceback', object_rprimitive, ARG_OPT)),
-                        sig.ret_type)
-
-    throw_fn_decl = FuncDecl('throw', fn_info.generator_class.ir.name, builder.module_name, sig)
-    throw_fn_ir = FuncIR(throw_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['throw'] = throw_fn_ir
-    builder.functions.append(throw_fn_ir)
+    builder.leave_method()
 
 
 def add_close_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__close__' method for a generator class."""
-    # TODO: Currently this method just triggers a runtime error,
-    # we should fill this out eventually.
-    builder.enter(fn_info)
-    builder.add_self_to_env(fn_info.generator_class.ir)
+    # TODO: Currently this method just triggers a runtime error.
+    #       We should fill this out (https://github.com/mypyc/mypyc/issues/790).
+    builder.enter_method(fn_info.generator_class.ir, 'close', object_rprimitive, fn_info)
     builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
-                                'close method on generator classes uimplemented',
-                                fn_info.fitem.line))
+                                   'close method on generator classes unimplemented',
+                                   fn_info.fitem.line))
     builder.add(Unreachable())
-    args, blocks, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    close_fn_decl = FuncDecl('close', fn_info.generator_class.ir.name, builder.module_name, sig)
-    close_fn_ir = FuncIR(close_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['close'] = close_fn_ir
-    builder.functions.append(close_fn_ir)
+    builder.leave_method()
 
 
 def add_await_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__await__' method for a generator class."""
-    builder.enter(fn_info)
-    self_target = builder.add_self_to_env(fn_info.generator_class.ir)
-    builder.add(Return(builder.read(self_target, fn_info.fitem.line)))
-    args, blocks, _, fn_info = builder.leave()
-
-    # Next, add the actual function as a method of the generator class.
-    sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
-    await_fn_decl = FuncDecl('__await__', fn_info.generator_class.ir.name,
-                             builder.module_name, sig)
-    await_fn_ir = FuncIR(await_fn_decl, args, blocks)
-    fn_info.generator_class.ir.methods['__await__'] = await_fn_ir
-    builder.functions.append(await_fn_ir)
+    builder.enter_method(fn_info.generator_class.ir, '__await__', object_rprimitive, fn_info)
+    builder.add(Return(builder.self()))
+    builder.leave_method()
 
 
 def setup_env_for_generator_class(builder: IRBuilder) -> None:
