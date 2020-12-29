@@ -31,36 +31,10 @@ if TYPE_CHECKING:
 T = TypeVar('T')
 
 
-# We do a three-pass deserialization scheme in order to resolve name
-# references.
-#  1. Create an empty ClassIR for each class in an SCC.
-#  2. Deserialize all of the functions, which can contain references
-#     to ClassIRs in their types
-#  3. Deserialize all of the classes, which contain lots of references
-#     to the functions they contain. (And to other classes.)
-#
-# Note that this approach differs from how we deserialize ASTs in mypy itself,
-# where everything is deserialized in one pass then a second pass cleans up
-# 'cross_refs'. We don't follow that approach here because it seems to be more
-# code for not a lot of gain since it is easy in mypyc to identify all the objects
-# we might need to reference.
-#
-# Because of these references, we need to maintain maps from class
-# names to ClassIRs and func names to FuncIRs.
-#
-# These are tracked in a DeserMaps which is passed to every
-# deserialization function.
-#
-# (Serialization and deserialization *will* be used for incremental
-# compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple('DeserMaps',
-                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
-
-
 class BasicBlock:
     """Basic IR block.
 
-    Ends with a jump, branch, or return.
+    Constains a sequence of ops and ends with a jump, branch, or return.
 
     When building the IR, ops that raise exceptions can be included in
     the middle of a basic block, but the exceptions aren't checked.
@@ -404,10 +378,6 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
-# True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, List[bool]]
-
-
 class Assign(Op):
     """Assign a value to a register (dest = int)."""
 
@@ -742,6 +712,10 @@ class RaiseStandardError(RegisterOp):
         return visitor.visit_raise_standard_error(self)
 
 
+# True steals all arguments, False steals none, a list steals those in matching positions
+StealsDescription = Union[bool, List[bool]]
+
+
 class CallC(RegisterOp):
     """ret = func_call(arg0, arg1, ...)
 
@@ -840,6 +814,7 @@ class IntOp(RegisterOp):
     These ops are low-level and will be eventually generated to simple x op y form.
     The left and right values should be of low-level integer types that support those ops
     """
+
     error_kind = ERR_NEVER
 
     # arithmetic
@@ -896,6 +871,7 @@ class ComparisonOp(RegisterOp):
     Supports comparisons between fixed-width integer types and pointer
     types.
     """
+
     # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
     # indicates that an exception has been raised and should be propagated.
     error_kind = ERR_NEVER
@@ -953,6 +929,7 @@ class LoadMem(RegisterOp):
             memory, or we know that the target won't be freed, it can be
             None.
     """
+
     error_kind = ERR_NEVER
 
     def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
@@ -990,6 +967,7 @@ class SetMem(Op):
             memory, or we know that the target won't be freed, it can be
             None.
     """
+
     error_kind = ERR_NEVER
 
     def __init__(self,
@@ -1020,6 +998,7 @@ class SetMem(Op):
 
 class GetElementPtr(RegisterOp):
     """Get the address of a struct element"""
+
     error_kind = ERR_NEVER
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
@@ -1046,6 +1025,7 @@ class LoadAddress(RegisterOp):
       src: Source value, str for named constants like 'PyList_Type',
            Register for temporary values
     """
+
     error_kind = ERR_NEVER
     is_borrowed = True
 
@@ -1187,9 +1167,31 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
 
-# TODO: Should this live somewhere else?
+# TODO: Should the following definitions live somewhere else?
+
+# We do a three-pass deserialization scheme in order to resolve name
+# references.
+#  1. Create an empty ClassIR for each class in an SCC.
+#  2. Deserialize all of the functions, which can contain references
+#     to ClassIRs in their types
+#  3. Deserialize all of the classes, which contain lots of references
+#     to the functions they contain. (And to other classes.)
+#
+# Note that this approach differs from how we deserialize ASTs in mypy itself,
+# where everything is deserialized in one pass then a second pass cleans up
+# 'cross_refs'. We don't follow that approach here because it seems to be more
+# code for not a lot of gain since it is easy in mypyc to identify all the objects
+# we might need to reference.
+#
+# Because of these references, we need to maintain maps from class
+# names to ClassIRs and func names to FuncIRs.
+#
+# These are tracked in a DeserMaps which is passed to every
+# deserialization function.
+#
+# (Serialization and deserialization *will* be used for incremental
+# compilation but so far it is not hooked up to anything.)
+DeserMaps = NamedTuple('DeserMaps',
+                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
+
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
-
-
-# Import mypyc.primitives.registry that will set up set up global primitives tables.
-import mypyc.primitives.registry  # noqa
