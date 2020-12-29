@@ -224,6 +224,21 @@ def f(x: int) -> int: pass
 tmp/a.py:2: note: Revealed type is 'builtins.str'
 tmp/a.py:3: error: Unexpected keyword argument "x" for "f"
 
+[case testSerializeTypeGuardFunction]
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+reveal_type(b.guard(''))
+reveal_type(b.guard)
+[file b.py]
+from typing_extensions import TypeGuard
+def guard(a: object) -> TypeGuard[str]: pass
+[builtins fixtures/tuple.pyi]
+[out2]
+tmp/a.py:2: note: Revealed type is 'builtins.bool'
+tmp/a.py:3: note: Revealed type is 'def (a: builtins.object) -> TypeGuard[builtins.str]'
 --
 -- Classes
 --

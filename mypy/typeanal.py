@@ -535,7 +535,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   fallback=(t.fallback if t.fallback.type
                                             else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables),
-                                  is_type_guard=(special is not None),
+                                  type_guard=special,
                                  )
         return ret
 

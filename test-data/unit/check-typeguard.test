@@ -26,3 +26,10 @@ from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard[42]:  # E: Invalid type: try using Literal[42] instead?
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardRepr]
+from typing_extensions import TypeGuard
+def foo(a: object) -> TypeGuard[int]:
+    pass
+reveal_type(foo)  # N: Revealed type is 'def (a: builtins.object) -> TypeGuard[builtins.int]'
+[builtins fixtures/tuple.pyi]
