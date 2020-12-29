@@ -497,6 +497,7 @@ void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
+int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected);
 
 
 #ifdef __cplusplus

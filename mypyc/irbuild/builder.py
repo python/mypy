@@ -39,15 +39,15 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive, is_tagged
+    str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.registry import CFunctionDescription, function_ops
-from mypyc.primitives.list_ops import to_list, list_pop_last
+from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op
+from mypyc.primitives.misc_ops import import_op, check_unpack_count_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -460,8 +460,10 @@ class IRBuilder:
 
         assert False, 'Unsupported lvalue: %r' % target
 
-    def assign(self, target: Union[Register, AssignmentTarget],
-               rvalue_reg: Value, line: int) -> None:
+    def assign(self,
+               target: Union[Register, AssignmentTarget],
+               rvalue_reg: Value,
+               line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, rvalue_reg))
         elif isinstance(target, AssignmentTargetRegister):
@@ -486,10 +488,38 @@ class IRBuilder:
                 for i in range(len(rtypes)):
                     item_value = self.add(TupleGet(rvalue_reg, i, line))
                     self.assign(target.items[i], item_value, line)
+            elif ((is_list_rprimitive(rvalue_reg.type) or is_tuple_rprimitive(rvalue_reg.type))
+                  and target.star_idx is None):
+                self.process_sequence_assignment(target, rvalue_reg, line)
             else:
                 self.process_iterator_tuple_assignment(target, rvalue_reg, line)
         else:
             assert False, 'Unsupported assignment target'
+
+    def process_sequence_assignment(self,
+                                    target: AssignmentTargetTuple,
+                                    rvalue: Value,
+                                    line: int) -> None:
+        """Process assignment like 'x, y = s', where s is a variable-length list or tuple."""
+        # Check the length of sequence.
+        expected_len = self.add(LoadInt(len(target.items), rtype=c_pyssize_t_rprimitive))
+        self.builder.call_c(check_unpack_count_op, [rvalue, expected_len], line)
+
+        # Read sequence items.
+        values = []
+        for i in range(len(target.items)):
+            item = target.items[i]
+            index = self.builder.load_static_int(i)
+            if is_list_rprimitive(rvalue.type):
+                item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
+            else:
+                item_value = self.builder.gen_method_call(
+                    rvalue, '__getitem__', [index], item.type, line)
+            values.append(item_value)
+
+        # Assign sequence items to the target lvalues.
+        for lvalue, value in zip(target.items, values):
+            self.assign(lvalue, value, line)
 
     def process_iterator_tuple_assignment_helper(self,
                                                  litem: AssignmentTarget,
