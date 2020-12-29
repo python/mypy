@@ -242,25 +242,23 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.ADD, 1),
                          """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.SUB, 1),
-                        """cpy_r_r0 = cpy_r_s1 - cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 - cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.MUL, 1),
-                        """cpy_r_r0 = cpy_r_s1 * cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 * cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.DIV, 1),
-                        """cpy_r_r0 = cpy_r_s1 / cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 / cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.MOD, 1),
-                        """cpy_r_r0 = cpy_r_s1 % cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 % cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.AND, 1),
-                        """cpy_r_r0 = cpy_r_s1 & cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 & cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.OR, 1),
-                        """cpy_r_r0 = cpy_r_s1 | cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 | cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.XOR, 1),
-                        """cpy_r_r0 = cpy_r_s1 ^ cpy_r_s2;""")
-        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2,
-                                     IntOp.LEFT_SHIFT, 1),
-                        """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
-        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2,
-                                     IntOp.RIGHT_SHIFT, 1),
-                        """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
+                         """cpy_r_r0 = cpy_r_s1 ^ cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.LEFT_SHIFT, 1),
+                         """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.RIGHT_SHIFT, 1),
+                         """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
 
     def test_comparison_op(self) -> None:
         # signed

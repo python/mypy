@@ -802,7 +802,7 @@ class LowLevelIRBuilder:
             else:
                 offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=c_pyssize_t_rprimitive))
                 item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
-                                                    IntOp.ADD, line))
+                                              IntOp.ADD, line))
             self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
         return result_list
 
