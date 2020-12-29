@@ -31,10 +31,8 @@ from mypy.util import split_target
 from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
-    BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, LoadInt, Value,
-    Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, NAMESPACE_MODULE, RaiseStandardError,
+    BasicBlock, LoadInt, Value, Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr,
+    SetAttr, LoadStatic, InitStatic, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
@@ -54,6 +52,10 @@ from mypyc.errors import Errors
 from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
 )
+from mypyc.irbuild.targets import (
+    AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex, AssignmentTargetAttr,
+    AssignmentTargetTuple
+)
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -68,6 +70,9 @@ class UnsupportedException(Exception):
     pass
 
 
+SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
+
+
 class IRBuilder:
     def __init__(self,
                  current_module: str,
@@ -80,7 +85,7 @@ class IRBuilder:
                  options: CompilerOptions) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper)
         self.builders = [self.builder]
-        self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, AssignmentTarget]]
+        self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, SymbolTarget]]
         self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
         self.function_name_stack = []  # type: List[str]
         self.class_ir_stack = []  # type: List[ClassIR]
@@ -978,7 +983,7 @@ class IRBuilder:
         class_ir.method_decls[name] = ir.decl
         self.functions.append(ir)
 
-    def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
+    def lookup(self, symbol: SymbolNode) -> SymbolTarget:
         return self.symtables[-1][symbol]
 
     def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
@@ -1011,7 +1016,7 @@ class IRBuilder:
         """
         return self.add_local_reg(Var(SELF_NAME), RInstance(cls), is_arg=True)
 
-    def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
+    def add_target(self, symbol: SymbolNode, target: SymbolTarget) -> SymbolTarget:
         self.symtables[-1][symbol] = target
         return target
 

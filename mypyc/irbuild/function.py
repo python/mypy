@@ -19,8 +19,8 @@ from mypy.nodes import (
 from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
-    BasicBlock, Value,  Register, Return, SetAttr, LoadInt, GetAttr, Branch,
-    AssignmentTarget, InitStatic, LoadAddress
+    BasicBlock, Value,  Register, Return, SetAttr, LoadInt, GetAttr, Branch, InitStatic,
+    LoadAddress
 )
 from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
 from mypyc.ir.func_ir import (
@@ -34,8 +34,9 @@ from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import concrete_arg_kind, is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
+from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.statement import transform_try_except
-from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
+from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
     setup_callable_class, add_call_to_callable_class, add_get_to_callable_class,
     instantiate_callable_class
@@ -438,7 +439,7 @@ def handle_non_ext_method(
 def calculate_arg_defaults(builder: IRBuilder,
                            fn_info: FuncInfo,
                            func_reg: Optional[Value],
-                           symtable: Dict[SymbolNode, AssignmentTarget]) -> None:
+                           symtable: Dict[SymbolNode, SymbolTarget]) -> None:
     """Calculate default argument values and store them.
 
     They are stored in statics for top level functions and in

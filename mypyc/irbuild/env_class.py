@@ -20,10 +20,11 @@ from typing import Dict, Optional, Union
 from mypy.nodes import FuncDef, SymbolNode
 
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import Call, GetAttr, SetAttr, Value, AssignmentTarget, AssignmentTargetAttr
+from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, object_rprimitive
 from mypyc.ir.class_ir import ClassIR
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, SymbolTarget
+from mypyc.irbuild.targets import AssignmentTargetAttr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass, GeneratorClass
 
 
@@ -108,7 +109,7 @@ def load_env_registers(builder: IRBuilder) -> None:
 
 def load_outer_env(builder: IRBuilder,
                    base: Value,
-                   outer_env: Dict[SymbolNode, AssignmentTarget]) -> Value:
+                   outer_env: Dict[SymbolNode, SymbolTarget]) -> Value:
     """Load the environment class for a given base into a register.
 
     Additionally, iterates through all of the SymbolNode and

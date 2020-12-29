@@ -17,9 +17,8 @@ from mypy.nodes import (
 )
 
 from mypyc.ir.ops import (
-    Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, RaiseStandardError, LoadErrorValue,
-    BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
+    Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
+    Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
@@ -28,6 +27,10 @@ from mypyc.primitives.dict_ops import dict_get_item_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
+)
+from mypyc.irbuild.targets import (
+    AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex, AssignmentTargetAttr,
+    AssignmentTargetTuple
 )
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl

@@ -12,8 +12,7 @@ from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
 )
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, Branch, Register, AssignmentTarget, TupleGet,
-    AssignmentTargetTuple, TupleSet, BinaryIntOp
+    Value, BasicBlock, LoadInt, Branch, Register, TupleGet, TupleSet, BinaryIntOp
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
@@ -28,6 +27,7 @@ from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 
 GenFunc = Callable[[], None]
 

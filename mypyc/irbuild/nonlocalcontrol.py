@@ -9,9 +9,10 @@ from typing_extensions import TYPE_CHECKING
 
 from mypyc.ir.ops import (
     Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
-    AssignmentTarget, NO_TRACEBACK_LINE_NO
+    NO_TRACEBACK_LINE_NO
 )
 from mypyc.primitives.exc_ops import set_stop_iteration_value, restore_exc_info_op
+from mypyc.irbuild.targets import AssignmentTarget
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
