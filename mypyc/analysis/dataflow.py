@@ -370,28 +370,39 @@ def analyze_undefined_regs(blocks: List[BasicBlock],
                         kind=MAYBE_ANALYSIS)
 
 
+def non_trivial_sources(op: Op) -> Set[Value]:
+    result = set()
+    for source in op.sources():
+        if not isinstance(source, Integer):
+            result.add(source)
+    return result
+
+
 class LivenessVisitor(BaseAnalysisVisitor):
     def visit_branch(self, op: Branch) -> GenAndKill:
-        return set(op.sources()), set()
+        return non_trivial_sources(op), set()
 
     def visit_return(self, op: Return) -> GenAndKill:
-        return {op.reg}, set()
+        if not isinstance(op.reg, Integer):
+            return {op.reg}, set()
+        else:
+            return set(), set()
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill:
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
-        gen = set(op.sources())
+        gen = non_trivial_sources(op)
         if not op.is_void:
             return gen, {op}
         else:
             return gen, set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
-        return set(op.sources()), {op.dest}
+        return non_trivial_sources(op), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-        return set(op.sources()), set()
+        return non_trivial_sources(op), set()
 
 
 def analyze_live_regs(blocks: List[BasicBlock],
