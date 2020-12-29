@@ -512,7 +512,7 @@ class IRBuilder:
                                     line: int) -> None:
         """Process assignment like 'x, y = s', where s is a variable-length list or tuple."""
         # Check the length of sequence.
-        expected_len = self.add(LoadInt(len(target.items), rtype=c_pyssize_t_rprimitive))
+        expected_len = Integer(len(target.items), c_pyssize_t_rprimitive)
         self.builder.call_c(check_unpack_count_op, [rvalue, expected_len], line)
 
         # Read sequence items.
