@@ -81,9 +81,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_integer(self) -> None:
         self.assert_emit(Assign(self.n, Integer(5)),
-                         "cpy_r_i0 = 10;")
+                         "cpy_r_n = 10;")
         self.assert_emit(Assign(self.i32, Integer(5, c_int_rprimitive)),
-                         "cpy_r_i0 = 5;")
+                         "cpy_r_i32 = 5;")
 
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), 'cpy_r_r0 = cpy_r_t.f1;')
@@ -387,9 +387,9 @@ class TestGenerateFunction(unittest.TestCase):
         assert_string_arrays_equal(
             [
                 'PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
-                '    CPyTagged cpy_r_i0;\n',
+                '    CPyTagged cpy_r_r0;\n',
                 'CPyL0: ;\n',
-                '    cpy_r_i0 = 10;\n',
+                '    cpy_r_r0 = 10;\n',
                 '}\n',
             ],
             result, msg='Generated code invalid')
