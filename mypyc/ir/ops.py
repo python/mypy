@@ -297,7 +297,7 @@ class Unreachable(ControlOp):
 class RegisterOp(Op):
     """Abstract base class for operations that can be written as r1 = f(r2, ..., rn).
 
-    Takes some registers, performs an operation and generates an output.
+    Takes some values, performs an operation and generates an output.
     Doesn't do any control flow, but can raise an error.
     """
 
@@ -402,33 +402,6 @@ class MethodCall(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_method_call(self)
-
-
-@trait
-class EmitterInterface:
-    @abstractmethod
-    def reg(self, name: Value) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def c_error_value(self, rtype: RType) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def temp_name(self) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def emit_line(self, line: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def emit_lines(self, *lines: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def emit_declaration(self, line: str) -> None:
-        raise NotImplementedError
 
 
 # True steals all arguments, False steals none, a list steals those in matching positions
