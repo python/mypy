@@ -180,6 +180,9 @@ class IRBuilder:
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.builder.goto_and_activate(block)
 
+    def self(self) -> Register:
+        return self.builder.self()
+
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
 
@@ -442,13 +445,6 @@ class IRBuilder:
             return self.get_assignment_target(lvalue.expr)
 
         assert False, 'Unsupported lvalue: %r' % lvalue
-
-    def self(self) -> Register:
-        """Return reference to the 'self' argument.
-
-        This only works in a method.
-        """
-        return self.builder.args[0]
 
     def read(self, target: Union[Value, AssignmentTarget], line: int = -1) -> Value:
         if isinstance(target, Value):

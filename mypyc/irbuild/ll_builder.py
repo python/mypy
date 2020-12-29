@@ -112,6 +112,13 @@ class LowLevelIRBuilder:
     def pop_error_handler(self) -> Optional[BasicBlock]:
         return self.error_handlers.pop()
 
+    def self(self) -> Register:
+        """Return reference to the 'self' argument.
+
+        This only works in a method.
+        """
+        return self.args[0]
+
     # Type conversions
 
     def box(self, src: Value) -> Value:
