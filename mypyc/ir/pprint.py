@@ -214,7 +214,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                 if typespec == 'r':
                     # Register/value
                     assert isinstance(arg, Value)
-                    result.append(self.names[arg])
+                    if isinstance(arg, Integer):
+                        result.append(str(arg.value))
+                    else:
+                        result.append(self.names[arg])
                 elif typespec == 'd':
                     # Integer
                     result.append('%d' % arg)
