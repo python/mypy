@@ -82,7 +82,7 @@ class IRBuilder:
         self.builders = [self.builder]
         self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, AssignmentTarget]]
         self.args = [[]]  # type: List[List[Register]]
-        self.args2 = [[]]  # type: List[List[RuntimeArg]]
+        self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
         self.function_name_stack = []  # type: List[str]
         self.class_ir_stack = []  # type: List[ClassIR]
 
@@ -874,7 +874,7 @@ class IRBuilder:
         self.builders.append(self.builder)
         self.symtables.append(OrderedDict())
         self.args.append([])
-        self.args2.append([])
+        self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
@@ -888,13 +888,13 @@ class IRBuilder:
         builder = self.builders.pop()
         self.symtables.pop()
         args = self.args.pop()
-        args2 = self.args2.pop()
+        runtime_args = self.runtime_args.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return args, args2, builder.blocks, ret_type, fn_info
+        return args, runtime_args, builder.blocks, ret_type, fn_info
 
     def enter_method(self,
                      class_ir: ClassIR,
@@ -929,15 +929,14 @@ class IRBuilder:
         self.add_argument(SELF_NAME, self_type)
 
     def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
-        """Add argument to the method that is being generated.
+        """Declare an argument in the current function.
 
-        Currently this doesn't support non-method functions. For those you'll
-        need to use add_local().
+        You should use this instead of directly calling add_local() in new code.
         """
         if isinstance(var, str):
             var = Var(var)
         reg = self.add_local(var, typ, is_arg=True)
-        self.args2[-1].append(RuntimeArg(var.name, typ, kind))
+        self.runtime_args[-1].append(RuntimeArg(var.name, typ, kind))
         return reg
 
     def leave_method(self) -> None:
