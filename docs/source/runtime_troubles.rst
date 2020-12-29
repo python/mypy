@@ -314,3 +314,19 @@ package from PyPI for the relevant imports, for example:
 
    from typing_extensions import Literal
    x: Literal["open", "close"]
+
+If you don't want to rely on ``typing_extensions`` being installed on newer
+Pythons, you could alternatively use:
+
+.. code-block:: python
+
+   import sys
+   if sys.version_info >= (3, 8):
+       from typing import Literal
+   else:
+       from typing_extensions import Literal
+
+   x: Literal["open", "close"]
+
+This plays nicely well with following :pep:`508` dependency specification:
+``typing_extensions; python_version<"3.8"``
