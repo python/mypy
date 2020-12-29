@@ -664,12 +664,10 @@ def f(l: List[int], t: Tuple[int, ...]) -> None:
 def f(l, t):
     l :: list
     t :: tuple
-    x :: object
-    y :: int
     r0 :: int32
     r1 :: bit
-    r2, r3 :: object
-    r4 :: int
+    r2, r3, x :: object
+    r4, y :: int
     r5 :: int32
     r6 :: bit
     r7, r8 :: object
