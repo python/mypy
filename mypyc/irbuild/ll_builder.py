@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     BasicBlock, Op, LoadInt, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
     GetAttr, LoadStatic, MethodCall, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
-    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, BinaryIntOp, GetElementPtr,
+    NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
@@ -553,8 +553,7 @@ class LowLevelIRBuilder:
         Return the result of the check (value of type 'bit').
         """
         int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
-        bitwise_and = self.binary_int_op(c_pyssize_t_rprimitive, val,
-                                         int_tag, BinaryIntOp.AND, line)
+        bitwise_and = self.int_op(c_pyssize_t_rprimitive, val, int_tag, IntOp.AND, line)
         zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
         op = ComparisonOp.NEQ if negated else ComparisonOp.EQ
         check = self.comparison_op(bitwise_and, zero, op, line)
@@ -574,8 +573,7 @@ class LowLevelIRBuilder:
         else:
             # for non-equality logical ops (less/greater than, etc.), need to check both sides
             check_rhs = self.check_tagged_short_int(rhs, line)
-            check = self.binary_int_op(bit_rprimitive, check_lhs,
-                                       check_rhs, BinaryIntOp.AND, line)
+            check = self.int_op(bit_rprimitive, check_lhs, check_rhs, IntOp.AND, line)
         self.add(Branch(check, short_int_block, int_block, Branch.BOOL))
         self.activate_block(short_int_block)
         eq = self.comparison_op(lhs, rhs, op_type, line)
@@ -728,20 +726,20 @@ class LowLevelIRBuilder:
 
     def bool_bitwise_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
         if op == '&':
-            code = BinaryIntOp.AND
+            code = IntOp.AND
         elif op == '|':
-            code = BinaryIntOp.OR
+            code = IntOp.OR
         elif op == '^':
-            code = BinaryIntOp.XOR
+            code = IntOp.XOR
         else:
             assert False, op
-        return self.add(BinaryIntOp(bool_rprimitive, lreg, rreg, code, line))
+        return self.add(IntOp(bool_rprimitive, lreg, rreg, code, line))
 
     def unary_not(self,
                   value: Value,
                   line: int) -> Value:
         mask = self.add(LoadInt(1, line, rtype=value.type))
-        return self.binary_int_op(value.type, value, mask, BinaryIntOp.XOR, line)
+        return self.int_op(value.type, value, mask, IntOp.XOR, line)
 
     def unary_op(self,
                  lreg: Value,
@@ -801,8 +799,8 @@ class LowLevelIRBuilder:
                 item_address = ob_item_base
             else:
                 offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=c_pyssize_t_rprimitive))
-                item_address = self.add(BinaryIntOp(pointer_rprimitive, ob_item_base, offset,
-                                                    BinaryIntOp.ADD, line))
+                item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
+                                              IntOp.ADD, line))
             self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
         return result_list
 
@@ -971,8 +969,8 @@ class LowLevelIRBuilder:
             return target
         return None
 
-    def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
-        return self.add(BinaryIntOp(type, lhs, rhs, op, line))
+    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.add(IntOp(type, lhs, rhs, op, line))
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))
@@ -983,19 +981,19 @@ class LowLevelIRBuilder:
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
             offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
-            return self.binary_int_op(short_int_rprimitive, size_value, offset,
-                                      BinaryIntOp.LEFT_SHIFT, line)
+            return self.int_op(short_int_rprimitive, size_value, offset,
+                               IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_size_op, [val], line)
             offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
-            return self.binary_int_op(short_int_rprimitive, size_value, offset,
-                                      BinaryIntOp.LEFT_SHIFT, line)
+            return self.int_op(short_int_rprimitive, size_value, offset,
+                               IntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
             offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
-            return self.binary_int_op(short_int_rprimitive, size_value, offset,
-                                      BinaryIntOp.LEFT_SHIFT, line)
+            return self.int_op(short_int_rprimitive, size_value, offset,
+                               IntOp.LEFT_SHIFT, line)
         # generic case
         else:
             return self.call_c(generic_len_op, [val], line)

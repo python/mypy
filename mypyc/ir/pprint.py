@@ -9,7 +9,7 @@ from mypyc.common import short_name
 from mypyc.ir.ops import (
     Goto, Branch, Return, Unreachable, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
-    RaiseStandardError, CallC, Truncate, LoadGlobal, BinaryIntOp, ComparisonOp, LoadMem, SetMem,
+    RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
     GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
@@ -154,8 +154,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
         return self.format('%r = load_global %s :: static%s', op, op.identifier, ann)
 
-    def visit_binary_int_op(self, op: BinaryIntOp) -> str:
-        return self.format('%r = %r %s %r', op, op.lhs, BinaryIntOp.op_str[op.op], op.rhs)
+    def visit_int_op(self, op: IntOp) -> str:
+        return self.format('%r = %r %s %r', op, op.lhs, IntOp.op_str[op.op], op.rhs)
 
     def visit_comparison_op(self, op: ComparisonOp) -> str:
         if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):

@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
     OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
-    RaiseStandardError, CallC, LoadGlobal, Truncate, BinaryIntOp, LoadMem, GetElementPtr,
+    RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
     LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
@@ -435,7 +435,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 ann = ' /* %s */' % s
         self.emit_line('%s = %s;%s' % (dest, op.identifier, ann))
 
-    def visit_binary_int_op(self, op: BinaryIntOp) -> None:
+    def visit_int_op(self, op: IntOp) -> None:
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)

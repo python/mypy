@@ -9,7 +9,7 @@ from mypyc.ir.ops import (
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
     LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
-    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    Truncate, IntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
 from mypyc.ir.func_ir import all_values
 
@@ -207,7 +207,7 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
         return self.visit_register_op(op)
 
-    def visit_binary_int_op(self, op: BinaryIntOp) -> GenAndKill:
+    def visit_int_op(self, op: IntOp) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:

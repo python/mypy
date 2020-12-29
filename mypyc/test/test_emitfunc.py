@@ -8,7 +8,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
     BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
-    Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, BinaryIntOp, LoadMem,
+    Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
     GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
@@ -238,29 +238,27 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             'in', self.b, self.o, self.d,
             """cpy_r_r0 = PyDict_Contains(cpy_r_d, cpy_r_o);""")
 
-    def test_binary_int_op(self) -> None:
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.ADD, 1),
+    def test_int_op(self) -> None:
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.ADD, 1),
                          """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.SUB, 1),
-                        """cpy_r_r0 = cpy_r_s1 - cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MUL, 1),
-                        """cpy_r_r0 = cpy_r_s1 * cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.DIV, 1),
-                        """cpy_r_r0 = cpy_r_s1 / cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.MOD, 1),
-                        """cpy_r_r0 = cpy_r_s1 % cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.AND, 1),
-                        """cpy_r_r0 = cpy_r_s1 & cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.OR, 1),
-                        """cpy_r_r0 = cpy_r_s1 | cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2, BinaryIntOp.XOR, 1),
-                        """cpy_r_r0 = cpy_r_s1 ^ cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
-                                     BinaryIntOp.LEFT_SHIFT, 1),
-                        """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
-        self.assert_emit(BinaryIntOp(short_int_rprimitive, self.s1, self.s2,
-                                     BinaryIntOp.RIGHT_SHIFT, 1),
-                        """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.SUB, 1),
+                         """cpy_r_r0 = cpy_r_s1 - cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.MUL, 1),
+                         """cpy_r_r0 = cpy_r_s1 * cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.DIV, 1),
+                         """cpy_r_r0 = cpy_r_s1 / cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.MOD, 1),
+                         """cpy_r_r0 = cpy_r_s1 % cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.AND, 1),
+                         """cpy_r_r0 = cpy_r_s1 & cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.OR, 1),
+                         """cpy_r_r0 = cpy_r_s1 | cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.XOR, 1),
+                         """cpy_r_r0 = cpy_r_s1 ^ cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.LEFT_SHIFT, 1),
+                         """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.RIGHT_SHIFT, 1),
+                         """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
 
     def test_comparison_op(self) -> None:
         # signed

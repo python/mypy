@@ -12,7 +12,7 @@ from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
 )
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, Branch, Register, TupleGet, TupleSet, BinaryIntOp
+    Value, BasicBlock, LoadInt, Branch, Register, TupleGet, TupleSet, IntOp
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
@@ -460,9 +460,10 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         step = 1 if not self.reverse else -1
-        add = builder.binary_int_op(short_int_rprimitive,
-                                    builder.read(self.index_target, line),
-                                    builder.add(LoadInt(step)), BinaryIntOp.ADD, line)
+        add = builder.int_op(short_int_rprimitive,
+                             builder.read(self.index_target, line),
+                             builder.add(LoadInt(step)),
+                             IntOp.ADD, line)
         builder.assign(self.index_target, add, line)
 
 
@@ -634,9 +635,9 @@ class ForRange(ForGenerator):
         # short ints.
         if (is_short_int_rprimitive(self.start_reg.type)
                 and is_short_int_rprimitive(self.end_reg.type)):
-            new_val = builder.binary_int_op(short_int_rprimitive,
+            new_val = builder.int_op(short_int_rprimitive,
                             builder.read(self.index_reg, line),
-                            builder.add(LoadInt(self.step)), BinaryIntOp.ADD, line)
+                            builder.add(LoadInt(self.step)), IntOp.ADD, line)
 
         else:
             new_val = builder.binary_op(
@@ -664,9 +665,9 @@ class ForInfiniteCounter(ForGenerator):
         # We can safely assume that the integer is short, since we are not going to wrap
         # around a 63-bit integer.
         # NOTE: This would be questionable if short ints could be 32 bits.
-        new_val = builder.binary_int_op(short_int_rprimitive,
+        new_val = builder.int_op(short_int_rprimitive,
                 builder.read(self.index_reg, line),
-                builder.add(LoadInt(1)), BinaryIntOp.ADD, line)
+                builder.add(LoadInt(1)), IntOp.ADD, line)
         builder.assign(self.index_reg, new_val, line)
         builder.assign(self.index_target, new_val, line)
 
