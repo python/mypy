@@ -7,7 +7,7 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional,
 from mypyc.ir.ops import (
     Value, ControlOp,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
-    Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
+    Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
     LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
     Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
@@ -356,7 +356,6 @@ class UndefinedVisitor(BaseAnalysisVisitor):
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
                            cfg: CFG,
-                           env: Environment,
                            initial_defined: Set[Value]) -> AnalysisResult[Value]:
     """Calculate potentially undefined registers at each CFG location.
 

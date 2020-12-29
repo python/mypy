@@ -68,13 +68,6 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
                                           ordering)
         transform_block(block, live.before, live.after, borrow.before, defined.after)
 
-    # Find all the xdecs we inserted and note the registers down as
-    # needing to be initialized.
-    for block in ir.blocks:
-        for op in block.ops:
-            if isinstance(op, DecRef) and op.is_xdec:
-                ir.env.vars_needing_init.add(op.src)
-
     cleanup_cfg(ir.blocks)
 
 

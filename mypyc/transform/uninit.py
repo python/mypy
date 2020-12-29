@@ -9,8 +9,8 @@ from mypyc.analysis.dataflow import (
     AnalysisDict
 )
 from mypyc.ir.ops import (
-    BasicBlock, Branch, Value, RaiseStandardError, Unreachable, Environment, Register,
-    LoadAddress
+    BasicBlock, Op, Branch, Value, RaiseStandardError, Unreachable, Register,
+    LoadAddress, Assign, LoadErrorValue
 )
 from mypyc.ir.func_ir import FuncIR, all_values
 
@@ -27,13 +27,15 @@ def insert_uninit_checks(ir: FuncIR) -> None:
         set(ir.arg_regs),
         all_values(ir.arg_regs, ir.blocks))
 
-    ir.blocks = split_blocks_at_uninits(ir.env, ir.blocks, must_defined.before)
+    ir.blocks = split_blocks_at_uninits(ir.blocks, must_defined.before)
 
 
-def split_blocks_at_uninits(env: Environment,
-                            blocks: List[BasicBlock],
+def split_blocks_at_uninits(blocks: List[BasicBlock],
                             pre_must_defined: 'AnalysisDict[Value]') -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
+
+    init_registers = []
+    init_registers_set = set()
 
     # First split blocks on ops that may raise.
     for block in blocks:
@@ -59,7 +61,9 @@ def split_blocks_at_uninits(env: Environment,
                     new_block.error_handler = error_block.error_handler = cur_block.error_handler
                     new_blocks += [error_block, new_block]
 
-                    env.vars_needing_init.add(src)
+                    if src not in init_registers_set:
+                        init_registers.append(src)
+                        init_registers_set.add(src)
 
                     cur_block.ops.append(Branch(src,
                                                 true_label=error_block,
@@ -74,5 +78,13 @@ def split_blocks_at_uninits(env: Environment,
                     error_block.ops.append(Unreachable())
                     cur_block = new_block
             cur_block.ops.append(op)
+
+    if init_registers:
+        new_ops = []  # type: List[Op]
+        for reg in init_registers:
+            err = LoadErrorValue(reg.type, undefines=True)
+            new_ops.append(err)
+            new_ops.append(Assign(reg, err))
+        new_blocks[0].ops[0:0] = new_ops
 
     return new_blocks

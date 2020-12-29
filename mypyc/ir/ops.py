@@ -1,18 +1,17 @@
-"""Representation of low-level opcodes for compiler intermediate representation (IR).
+"""Low-level opcodes for compiler intermediate representation (IR).
 
-Opcodes operate on abstract registers in a register machine. Each
-register has a type and a name, specified in an environment. A register
-can hold various things:
+Opcodes operate on abstract values (Value) in a register machine. Each
+value has a type (RType). A value can hold various things:
 
-- local variables
-- intermediate values of expressions
+- local variables (Register)
+- intermediate values of expressions (RegisterOp subclasses)
 - condition flags (true/false)
 - literals (integer literals, True, False, etc.)
 """
 
 from abc import abstractmethod
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union, Set
+    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union
 )
 
 from typing_extensions import Final, Type, TYPE_CHECKING
@@ -108,13 +107,6 @@ class AssignmentTargetTuple(AssignmentTarget):
         self.star_idx = star_idx
         # The shouldn't be relevant, but provide it just in case.
         self.type = object_rprimitive
-
-
-class Environment:
-    # TODO: Remove this class
-
-    def __init__(self) -> None:
-        self.vars_needing_init = set()  # type: Set[Value]
 
 
 class BasicBlock:

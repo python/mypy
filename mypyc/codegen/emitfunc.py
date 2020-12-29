@@ -21,7 +21,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.const_int import find_constant_integer_registers
-from mypyc.ir.pprint import generate_names_for_env
+from mypyc.ir.pprint import generate_names_for_ir
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -54,9 +54,9 @@ def generate_native_function(fn: FuncIR,
         const_int_regs = find_constant_integer_registers(fn.blocks)
     else:
         const_int_regs = {}
-    declarations = Emitter(emitter.context, fn.env)
-    names = generate_names_for_env(fn.arg_regs, fn.blocks)
-    body = Emitter(emitter.context, fn.env, names)
+    declarations = Emitter(emitter.context)
+    names = generate_names_for_ir(fn.arg_regs, fn.blocks)
+    body = Emitter(emitter.context, names)
     visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
@@ -71,8 +71,6 @@ def generate_native_function(fn: FuncIR,
 
         ctype = emitter.ctype_spaced(r.type)
         init = ''
-        if r in fn.env.vars_needing_init:
-            init = ' = {}'.format(declarations.c_error_value(r.type))
         if r not in const_int_regs:
             declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
                                                                          prefix=REG_PREFIX,
@@ -104,7 +102,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
-        self.env = self.emitter.env
         self.source_path = source_path
         self.module_name = module_name
         self.const_int_regs = const_int_regs
