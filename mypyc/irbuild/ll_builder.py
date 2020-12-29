@@ -75,6 +75,7 @@ class LowLevelIRBuilder:
     ) -> None:
         self.current_module = current_module
         self.mapper = mapper
+        self.args = []  # type: List[Register]
         self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]

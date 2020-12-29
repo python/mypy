@@ -81,7 +81,6 @@ class IRBuilder:
         self.builder = LowLevelIRBuilder(current_module, mapper)
         self.builders = [self.builder]
         self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, AssignmentTarget]]
-        self.args = [[]]  # type: List[List[Register]]
         self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
         self.function_name_stack = []  # type: List[str]
         self.class_ir_stack = []  # type: List[ClassIR]
@@ -445,7 +444,11 @@ class IRBuilder:
         assert False, 'Unsupported lvalue: %r' % lvalue
 
     def self(self) -> Register:
-        return self.args[-1][0]
+        """Return reference to the 'self' argument.
+
+        This only works in a method.
+        """
+        return self.builder.args[0]
 
     def read(self, target: Union[Value, AssignmentTarget], line: int = -1) -> Value:
         if isinstance(target, Value):
@@ -873,7 +876,6 @@ class IRBuilder:
         self.builder = LowLevelIRBuilder(self.current_module, self.mapper)
         self.builders.append(self.builder)
         self.symtables.append(OrderedDict())
-        self.args.append([])
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
@@ -887,14 +889,13 @@ class IRBuilder:
     def leave(self) -> Tuple[List[Register], List[RuntimeArg], List[BasicBlock], RType, FuncInfo]:
         builder = self.builders.pop()
         self.symtables.pop()
-        args = self.args.pop()
         runtime_args = self.runtime_args.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return args, runtime_args, builder.blocks, ret_type, fn_info
+        return builder.args, runtime_args, builder.blocks, ret_type, fn_info
 
     def enter_method(self,
                      class_ir: ClassIR,
@@ -964,7 +965,7 @@ class IRBuilder:
         reg = Register(typ, symbol.name, is_arg=is_arg, line=symbol.line)
         self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
         if is_arg:
-            self.args[-1].append(reg)
+            self.builder.args.append(reg)
         return reg
 
     def add_local_reg(self,
