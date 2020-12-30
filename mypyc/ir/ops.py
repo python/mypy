@@ -281,10 +281,13 @@ class Branch(ControlOp):
         super().__init__(line)
         # Target value being checked
         self.value = value
+        # Branch here if the condition is true
         self.true = true_label
+        # Branch here if the condition is false
         self.false = false_label
-        # BOOL (boolean check) or IS_ERROR (error value check)
+        # Branch.BOOL (boolean check) or Branch.IS_ERROR (error value check)
         self.op = op
+        # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
         self.traceback_entry = None  # type: Optional[Tuple[str, int]]
