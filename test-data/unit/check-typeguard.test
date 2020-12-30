@@ -102,7 +102,7 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/tuple.pyi]
 
-[case TestTypeGuardNonzeroFloat]
+[case testTypeGuardNonzeroFloat]
 from typing import Union
 from typing_extensions import TypeGuard
 def is_nonzero(a: object) -> TypeGuard[float]: pass
