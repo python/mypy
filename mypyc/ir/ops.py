@@ -324,13 +324,19 @@ class Return(ControlOp):
 
 
 class Unreachable(ControlOp):
-    """Added to the end of non-None returning functions.
+    """Mark the end of basic block as unreachable.
 
-    Mypy statically guarantees that the end of the function is not unreachable
-    if there is not a return statement.
+    This is sometimes necessary when the end of a basic block is never
+    reached. This can also be explicitly added to the end of non-None
+    returning functions (in None-returning function we can just return
+    None).
 
-    This prevents the block formatter from being confused due to lack of a leave
-    and also leaves a nifty note in the IR. It is not generally processed by visitors.
+    Mypy statically guarantees that the end of the function is not
+    unreachable if there is not a return statement.
+
+    This prevents the block formatter from being confused due to lack
+    of a leave and also leaves a nifty note in the IR. It is not
+    generally processed by visitors.
     """
 
     error_kind = ERR_NEVER
@@ -351,8 +357,11 @@ class RegisterOp(Op):
     Takes some values, performs an operation, and generates an output
     (unless the 'type' attribute is void_rtype, which is the default).
     Other ops can refer to the result of the Op by referring to the Op
-    instance. Doesn't do any explicit control flow, but can raise an
+    instance. This doesn't do any explicit control flow, but can raise an
     error.
+
+    Note that the operands can be arbitrary Values, not just Register
+    instances, even though the naming may suggest otherwise.
     """
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
@@ -368,7 +377,7 @@ class RegisterOp(Op):
 
 
 class IncRef(RegisterOp):
-    """Increase reference count (inc_ref r)."""
+    """Increase reference count (inc_ref src)."""
 
     error_kind = ERR_NEVER
 
@@ -385,7 +394,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease reference count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref src).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -431,7 +440,7 @@ class Call(RegisterOp):
 
 
 class MethodCall(RegisterOp):
-    """Native method call obj.m(arg, ...) """
+    """Native method call obj.method(arg, ...)"""
 
     error_kind = ERR_MAGIC
 
@@ -628,7 +637,7 @@ class TupleSet(RegisterOp):
 
 
 class TupleGet(RegisterOp):
-    """Get item of a fixed-length tuple (src[n])."""
+    """Get item of a fixed-length tuple (src[index])."""
 
     error_kind = ERR_NEVER
 
@@ -637,6 +646,7 @@ class TupleGet(RegisterOp):
         self.src = src
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
+        assert index >= 0
         self.type = src.type.types[index]
 
     def sources(self) -> List[Value]:
@@ -757,9 +767,11 @@ StealsDescription = Union[bool, List[bool]]
 
 
 class CallC(RegisterOp):
-    """ret = func_call(arg0, arg1, ...)
+    """result = function(arg0, arg1, ...)
 
-    A call to a C function
+    Call a C function that is not a compiled/native function (for
+    example, a Python C API function). Use Call to call native
+    functions.
     """
 
     def __init__(self,
@@ -778,7 +790,8 @@ class CallC(RegisterOp):
         self.type = ret_type
         self.steals = steals
         self.is_borrowed = is_borrowed
-        self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
+        # The position of the first variable argument in args (if >= 0)
+        self.var_arg_idx = var_arg_idx
 
     def sources(self) -> List[Value]:
         return self.args
@@ -795,12 +808,13 @@ class CallC(RegisterOp):
 
 
 class Truncate(RegisterOp):
-    """truncate src: src_type to dst_type
+    """result = truncate src from src_type to dst_type
 
-    Truncate a value from type with more bits to type with less bits
+    Truncate a value from type with more bits to type with less bits.
 
-    both src_type and dst_type should be non-reference counted integer types or bool
-    especially note that int_rprimitive is reference counted so should never be used here
+    Both src_type and dst_type should be non-reference counted integer
+    types or bool. Note that int_rprimitive is reference counted so
+    it should never be used here.
     """
 
     error_kind = ERR_NEVER
@@ -826,7 +840,7 @@ class Truncate(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """Load a global variable/pointer"""
+    """Load a global variable/pointer."""
 
     error_kind = ERR_NEVER
     is_borrowed = True
@@ -849,22 +863,28 @@ class LoadGlobal(RegisterOp):
 
 
 class IntOp(RegisterOp):
-    """Binary arithmetic and bitwise operations on integer types
+    """Binary arithmetic or bitwise op on integer operands (e.g., r1 = r2 + r3).
 
-    These ops are low-level and will be eventually generated to simple x op y form.
-    The left and right values should be of low-level integer types that support those ops
+    These ops are low-level and are similar to the corresponding C
+    operations (and unlike Python operations).
+
+    The left and right values must have low-level integer types with
+    compatible representations. Fixed-width integers, short_int_rprimitive,
+    bool_rprimitive and bit_rprimitive are supported.
+
+    For tagged (arbitrary-precision) integer ops look at mypyc.primitives.int_ops.
     """
 
     error_kind = ERR_NEVER
 
-    # arithmetic
+    # Arithmetic ops
     ADD = 0  # type: Final
     SUB = 1  # type: Final
     MUL = 2  # type: Final
     DIV = 3  # type: Final
     MOD = 4  # type: Final
 
-    # bitwise
+    # Bitwise ops
     AND = 200  # type: Final
     OR = 201  # type: Final
     XOR = 202  # type: Final

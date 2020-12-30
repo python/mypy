@@ -1,9 +1,11 @@
-"""Integer primitive ops.
+"""Arbitrary-precision integer primitive ops.
 
 These mostly operate on (usually) unboxed integers that use a tagged pointer
-representation (CPyTagged).
+representation (CPyTagged) and correspond to the Python 'int' type.
 
 See also the documentation for mypyc.rtypes.int_rprimitive.
+
+Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 """
 
 from typing import Dict, NamedTuple
@@ -79,7 +81,8 @@ def int_binary_op(name: str, c_function_name: str,
               error_kind=error_kind)
 
 
-# Binary, unary and augmented assignment operations that operate on CPyTagged ints.
+# Binary, unary and augmented assignment operations that operate on CPyTagged ints
+# are implemented as C functions.
 
 int_binary_op('+', 'CPyTagged_Add')
 int_binary_op('-', 'CPyTagged_Subtract')
@@ -121,40 +124,42 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
 int_invert_op = int_unary_op('~', 'CPyTagged_Invert')
 
-# integer comparsion operation implementation related:
+# Primitives related to integer comparison operations:
 
-# Description for building int logical ops
-# For each field:
-# binary_op_variant: identify which IntOp to use when operands are short integers
-# c_func_description: the C function to call when operands are tagged integers
-# c_func_negated: whether to negate the C function call's result
-# c_func_swap_operands: whether to swap lhs and rhs when call the function
-IntLogicalOpDescrption = NamedTuple(
-    'IntLogicalOpDescrption',  [('binary_op_variant', int),
-                                ('c_func_description', CFunctionDescription),
-                                ('c_func_negated', bool),
-                                ('c_func_swap_operands', bool)])
+# Description for building int comparison ops
+#
+# Fields:
+#   binary_op_variant: identify which IntOp to use when operands are short integers
+#   c_func_description: the C function to call when operands are tagged integers
+#   c_func_negated: whether to negate the C function call's result
+#   c_func_swap_operands: whether to swap lhs and rhs when call the function
+IntComparisonOpDescription = NamedTuple(
+    'IntComparisonOpDescription',  [('binary_op_variant', int),
+                                    ('c_func_description', CFunctionDescription),
+                                    ('c_func_negated', bool),
+                                    ('c_func_swap_operands', bool)])
 
-# description for equal operation on two boxed tagged integers
+# Equals operation on two boxed tagged integers
 int_equal_ = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsEq_',
     error_kind=ERR_NEVER)
 
+# Less than operation on two boxed tagged integers
 int_less_than_ = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsLt_',
     error_kind=ERR_NEVER)
 
-# provide mapping from textual op to short int's op variant and boxed int's description
-# note these are not complete implementations
+# Provide mapping from textual op to short int's op variant and boxed int's description.
+# Note that these are not complete implementations and require extra IR.
 int_comparison_op_mapping = {
-    '==': IntLogicalOpDescrption(ComparisonOp.EQ, int_equal_, False, False),
-    '!=': IntLogicalOpDescrption(ComparisonOp.NEQ, int_equal_, True, False),
-    '<': IntLogicalOpDescrption(ComparisonOp.SLT, int_less_than_, False, False),
-    '<=': IntLogicalOpDescrption(ComparisonOp.SLE, int_less_than_, True, True),
-    '>': IntLogicalOpDescrption(ComparisonOp.SGT, int_less_than_, False, True),
-    '>=': IntLogicalOpDescrption(ComparisonOp.SGE, int_less_than_, True, False),
-}  # type: Dict[str, IntLogicalOpDescrption]
+    '==': IntComparisonOpDescription(ComparisonOp.EQ, int_equal_, False, False),
+    '!=': IntComparisonOpDescription(ComparisonOp.NEQ, int_equal_, True, False),
+    '<': IntComparisonOpDescription(ComparisonOp.SLT, int_less_than_, False, False),
+    '<=': IntComparisonOpDescription(ComparisonOp.SLE, int_less_than_, True, True),
+    '>': IntComparisonOpDescription(ComparisonOp.SGT, int_less_than_, False, True),
+    '>=': IntComparisonOpDescription(ComparisonOp.SGE, int_less_than_, True, False),
+}  # type: Dict[str, IntComparisonOpDescription]
