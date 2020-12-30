@@ -1,12 +1,6 @@
 import unittest
 
-<<<<<<< HEAD
-from typing import List
-||||||| constructed merge base
-from typing import Dict, List
-=======
-from typing import Dict, List, Optional
->>>>>>> [mypyc] Omit else block if possible in C generated for branch ops
+from typing import List, Optional
 
 from mypy.ordered_dict import OrderedDict
 
