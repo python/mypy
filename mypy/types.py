@@ -261,7 +261,7 @@ class TypeAliasType(Type):
         alias = TypeAliasType(None, args)
         alias.type_ref = data['type_ref']
         return alias
-    
+
     def copy_modified(self, *,
                       args: Optional[List[Type]] = None) -> 'TypeAliasType':
         return TypeAliasType(
@@ -1090,7 +1090,7 @@ class CallableType(FunctionLike):
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
                       def_extras: Bogus[Dict[str, Any]] = _dummy,
                       type_guard: Bogus[Optional[Type]] = _dummy,
-                    ) -> 'CallableType':
+                      ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1271,7 +1271,8 @@ class CallableType(FunctionLike):
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
-        assert self.type_guard is None or isinstance(self.type_guard, Instance), str(self.type_guard)
+        assert (self.type_guard is None
+                or isinstance(get_proper_type(self.type_guard), Instance)), str(self.type_guard)
         return {'.class': 'CallableType',
                 'arg_types': [t.serialize() for t in self.arg_types],
                 'arg_kinds': self.arg_kinds,
@@ -1286,8 +1287,7 @@ class CallableType(FunctionLike):
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
                 'def_extras': dict(self.def_extras),
-                'type_guard': self.type_guard.serialize()
-                              if isinstance(self.type_guard, Instance) else None,
+                'type_guard': self.type_guard.serialize() if self.type_guard is not None else None,
                 }
 
     @classmethod
@@ -1306,7 +1306,7 @@ class CallableType(FunctionLike):
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
                             def_extras=data['def_extras'],
-                            type_guard=(Instance.deserialize(data['type_guard'])
+                            type_guard=(deserialize_type(data['type_guard'])
                                         if data['type_guard'] is not None else None),
                             )
 

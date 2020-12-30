@@ -22,7 +22,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
+    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF, SYMBOL_FUNCBASE_TYPES,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
     ARG_NAMED)
@@ -4003,12 +4003,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
             else:
-                type_guard = node.callee.node.type.type_guard
-                if type_guard is not None:
+                if (isinstance(node.callee, RefExpr)
+                        and isinstance(node.callee.node, SYMBOL_FUNCBASE_TYPES)
+                        and isinstance(node.callee.node.type, CallableType)
+                        and node.callee.node.type.type_guard is not None):
                     if len(node.args) < 1:  # TODO: Is this an error?
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
-                        return {expr: TypeGuardType(type_guard)}, {}
+                        return {expr: TypeGuardType(node.callee.node.type.type_guard)}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the

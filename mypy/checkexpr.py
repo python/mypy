@@ -4163,8 +4163,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
-            if isinstance(restriction, TypeGuardType):
-                # A type guard forces the new type even if it doesn't overlap the old
+            # Ignore the error about using get_proper_type().
+            if isinstance(restriction, TypeGuardType):  # type: ignore[misc]
+                # A type guard forces the new type even if it doesn't overlap the old.
                 return restriction.type_guard
             # If the current node is deferred, some variables may get Any types that they
             # otherwise wouldn't have. We don't want to narrow down these since it may

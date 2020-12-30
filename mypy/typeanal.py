@@ -536,7 +536,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                             else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables),
                                   type_guard=special,
-                                 )
+                                  )
         return ret
 
     def anal_type_guard(self, t: Type) -> Optional[Type]:
@@ -547,7 +547,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # TODO: What if it's an Instance? Then use t.type.fullname?
         return None
 
-    def anal_type_guard_arg(self, t: Type, fullname: str) -> Optional[Type]:
+    def anal_type_guard_arg(self, t: UnboundType, fullname: str) -> Optional[Type]:
         if fullname in ('typing_extensions.TypeGuard', 'typing.TypeGuard'):
             if len(t.args) != 1:
                 self.fail("TypeGuard must have exactly one type argument", t)
