@@ -309,15 +309,15 @@ class Return(ControlOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, reg: Value, line: int = -1) -> None:
+    def __init__(self, value: Value, line: int = -1) -> None:
         super().__init__(line)
-        self.reg = reg
+        self.value = value
 
     def sources(self) -> List[Value]:
-        return [self.reg]
+        return [self.value]
 
     def stolen(self) -> List[Value]:
-        return [self.reg]
+        return [self.value]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_return(self)

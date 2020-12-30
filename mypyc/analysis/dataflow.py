@@ -383,8 +383,8 @@ class LivenessVisitor(BaseAnalysisVisitor):
         return non_trivial_sources(op), set()
 
     def visit_return(self, op: Return) -> GenAndKill:
-        if not isinstance(op.reg, Integer):
-            return {op.reg}, set()
+        if not isinstance(op.value, Integer):
+            return {op.value}, set()
         else:
             return set(), set()
 

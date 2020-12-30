@@ -48,7 +48,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format(fmt, op.true, op.false)
 
     def visit_return(self, op: Return) -> str:
-        return self.format('return %r', op.reg)
+        return self.format('return %r', op.value)
 
     def visit_unreachable(self, op: Unreachable) -> str:
         return "unreachable"

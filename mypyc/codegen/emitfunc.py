@@ -141,8 +141,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         )
 
     def visit_return(self, op: Return) -> None:
-        regstr = self.reg(op.reg)
-        self.emit_line('return %s;' % regstr)
+        value_str = self.reg(op.value)
+        self.emit_line('return %s;' % value_str)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op)
