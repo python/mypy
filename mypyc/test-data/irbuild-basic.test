@@ -1293,29 +1293,15 @@ L3:
     unreachable
 def num(x):
     x :: int
-    r0 :: native_int
-    r1, r2 :: bit
-    r3 :: bool
-    r4, r5 :: bit
+    r0 :: bit
 L0:
-    r0 = x & 1
-    r1 = r0 == 0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = x != 0
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = x != 0
-    r3 = r2
-    goto L3
-L2:
-    r4 = CPyTagged_IsEq_(x, 0)
-    r5 = r4 ^ 1
-    r3 = r5
-L3:
-    if r3 goto L4 else goto L5 :: bool
-L4:
     return 2
-L5:
+L2:
     return 0
-L6:
+L3:
     unreachable
 def lst(x):
     x :: list
@@ -1364,34 +1350,20 @@ def opt_int(x):
     r0 :: object
     r1 :: bit
     r2 :: int
-    r3 :: native_int
-    r4, r5 :: bit
-    r6 :: bool
-    r7, r8 :: bit
+    r3 :: bit
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
-    if r1 goto L1 else goto L6 :: bool
+    if r1 goto L1 else goto L3 :: bool
 L1:
     r2 = unbox(int, x)
-    r3 = r2 & 1
-    r4 = r3 == 0
-    if r4 goto L2 else goto L3 :: bool
+    r3 = r2 != 0
+    if r3 goto L2 else goto L3 :: bool
 L2:
-    r5 = r2 != 0
-    r6 = r5
-    goto L4
-L3:
-    r7 = CPyTagged_IsEq_(r2, 0)
-    r8 = r7 ^ 1
-    r6 = r8
-L4:
-    if r6 goto L5 else goto L6 :: bool
-L5:
     return 2
-L6:
+L3:
     return 0
-L7:
+L4:
     unreachable
 def opt_a(x):
     x :: union[__main__.A, None]
