@@ -166,7 +166,7 @@ def insert_branch_inc_and_decrefs(
         #      to perform data flow analysis on whether a value can be null (or is always
         #      null).
         if branch.op == Branch.IS_ERROR:
-            omitted = {branch.left}
+            omitted = {branch.value}
         else:
             omitted = set()
         true_decincs = (

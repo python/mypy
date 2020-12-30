@@ -1,7 +1,7 @@
 """Low-level opcodes for compiler intermediate representation (IR).
 
 Opcodes operate on abstract values (Value) in a register machine. Each
-value has a type (RType). A value can hold various things:
+value has a type (RType). A value can hold various things, such as:
 
 - local variables (Register)
 - intermediate values of expressions (RegisterOp subclasses)
@@ -32,9 +32,15 @@ T = TypeVar('T')
 
 
 class BasicBlock:
-    """Basic IR block.
+    """IR basic block.
 
-    Constains a sequence of ops and ends with a jump, branch, or return.
+    Contains a sequence of Ops and ends with a ControlOp (Goto,
+    Branch, Return or Unreachable). Only the last op can be a
+    ControlOp.
+
+    All generated Ops live in basic blocks. Basic blocks determine the
+    order of evaluation and control flow within a function. A basic
+    block is always associated with a single function/method (FuncIR).
 
     When building the IR, ops that raise exceptions can be included in
     the middle of a basic block, but the exceptions aren't checked.
@@ -49,8 +55,8 @@ class BasicBlock:
     propagate up out of the function. This is compiled away by the
     `exceptions` module.
 
-    Block labels are used for pretty printing and emitting C code, and get
-    filled in by those passes.
+    Block labels are used for pretty printing and emitting C code, and
+    get filled in by those passes.
 
     Ops that may terminate the program aren't treated as exits.
     """
@@ -86,7 +92,17 @@ NO_TRACEBACK_LINE_NO = -10000
 class Value:
     """Abstract base class for all IR values.
 
-    These include references to registers, literals, and various operations.
+    These include references to registers, literals, and all
+    operations (Ops), such as assignments, calls and branches.
+
+    Values are often used as inputs of Ops. Register can be used as an
+    assignment target.
+
+    A Value is part of the IR being compiled if it's included in a BasicBlock
+    that is reachable from a FuncIR (i.e., is part of a function).
+
+    See also: Op is a subclass of Value that is the base class of all
+    operations.
     """
 
     # Source line number (-1 for no/unknown line)
@@ -101,10 +117,14 @@ class Value:
 
 
 class Register(Value):
-    """A register holds a value of a specific type, and it can be read and mutated.
+    """A Register holds a value of a specific type, and it can be read and mutated.
 
-    Each local variable maps to a register, and they are also used for some
-    (but not all) temporary values.
+    A Register is always local to a function. Each local variable maps
+    to a Register, and they are also used for some (but not all)
+    temporary values.
+
+    Note that the term 'register' is overloaded and is sometimes used
+    to refer to arbitrary Values (for example, in RegisterOp).
     """
 
     def __init__(self, type: RType, name: str = '', is_arg: bool = False, line: int = -1) -> None:
@@ -128,6 +148,12 @@ class Integer(Value):
     Integer literals are treated as constant values and are generally
     not included in data flow analyses and such, unlike Register and
     Op subclasses.
+
+    These can represent both short tagged integers
+    (short_int_primitive type; the tag bit is clear), ordinary
+    fixed-width integers (e.g., int32_rprimitive), and values of some
+    other unboxed primitive types that are represented as integers
+    (none_rprimitive, bool_rprimitive).
     """
 
     def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
@@ -140,7 +166,16 @@ class Integer(Value):
 
 
 class Op(Value):
-    """Abstract base class for all operations (as opposed to values)."""
+    """Abstract base class for all IR operations.
+
+    Each operation must be stored in a BasicBlock (in 'ops') to be
+    active in the IR. This is different from non-Op values, including
+    Register and Integer, where a reference from an active Op is
+    sufficient to be considered active.
+
+    In well-formed IR an active Op has no references to inactive ops
+    or ops used in another function.
+    """
 
     def __init__(self, line: int) -> None:
         self.line = line
@@ -171,10 +206,33 @@ class Op(Value):
         pass
 
 
+class Assign(Op):
+    """Assign a value to a Register (dest = src)."""
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign(self)
+
+
 class ControlOp(Op):
-    # Basically just for hierarchy organization.
-    # We could plausibly have a targets() method if we wanted.
-    pass
+    """Control flow operation.
+
+    This is Basically just for class hierarchy organization.
+
+    We could plausibly have a targets() method if we wanted.
+    """
 
 
 class Goto(ControlOp):
@@ -206,15 +264,14 @@ class Branch(ControlOp):
        if [not] is_error(r1) goto L1 else goto L2
     """
 
-    # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
-    # exception, it needs to split into two opcodes and only the first one may fail.
+    # Branch ops never raise an exception.
     error_kind = ERR_NEVER
 
     BOOL = 100  # type: Final
     IS_ERROR = 101  # type: Final
 
     def __init__(self,
-                 left: Value,
+                 value: Value,
                  true_label: BasicBlock,
                  false_label: BasicBlock,
                  op: int,
@@ -223,11 +280,14 @@ class Branch(ControlOp):
                  rare: bool = False) -> None:
         super().__init__(line)
         # Target value being checked
-        self.left = left
+        self.value = value
+        # Branch here if the condition is true
         self.true = true_label
+        # Branch here if the condition is false
         self.false = false_label
-        # BOOL (boolean check) or IS_ERROR (error value check)
+        # Branch.BOOL (boolean check) or Branch.IS_ERROR (error value check)
         self.op = op
+        # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
         self.traceback_entry = None  # type: Optional[Tuple[str, int]]
@@ -235,7 +295,7 @@ class Branch(ControlOp):
         self.rare = rare
 
     def sources(self) -> List[Value]:
-        return [self.left]
+        return [self.value]
 
     def invert(self) -> None:
         self.negated = not self.negated
@@ -249,28 +309,34 @@ class Return(ControlOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, reg: Value, line: int = -1) -> None:
+    def __init__(self, value: Value, line: int = -1) -> None:
         super().__init__(line)
-        self.reg = reg
+        self.value = value
 
     def sources(self) -> List[Value]:
-        return [self.reg]
+        return [self.value]
 
     def stolen(self) -> List[Value]:
-        return [self.reg]
+        return [self.value]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_return(self)
 
 
 class Unreachable(ControlOp):
-    """Added to the end of non-None returning functions.
+    """Mark the end of basic block as unreachable.
 
-    Mypy statically guarantees that the end of the function is not unreachable
-    if there is not a return statement.
+    This is sometimes necessary when the end of a basic block is never
+    reached. This can also be explicitly added to the end of non-None
+    returning functions (in None-returning function we can just return
+    None).
 
-    This prevents the block formatter from being confused due to lack of a leave
-    and also leaves a nifty note in the IR. It is not generally processed by visitors.
+    Mypy statically guarantees that the end of the function is not
+    unreachable if there is not a return statement.
+
+    This prevents the block formatter from being confused due to lack
+    of a leave and also leaves a nifty note in the IR. It is not
+    generally processed by visitors.
     """
 
     error_kind = ERR_NEVER
@@ -288,8 +354,14 @@ class Unreachable(ControlOp):
 class RegisterOp(Op):
     """Abstract base class for operations that can be written as r1 = f(r2, ..., rn).
 
-    Takes some values, performs an operation and generates an output.
-    Doesn't do any control flow, but can raise an error.
+    Takes some values, performs an operation, and generates an output
+    (unless the 'type' attribute is void_rtype, which is the default).
+    Other ops can refer to the result of the Op by referring to the Op
+    instance. This doesn't do any explicit control flow, but can raise an
+    error.
+
+    Note that the operands can be arbitrary Values, not just Register
+    instances, even though the naming may suggest otherwise.
     """
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
@@ -305,7 +377,7 @@ class RegisterOp(Op):
 
 
 class IncRef(RegisterOp):
-    """Increase reference count (inc_ref r)."""
+    """Increase reference count (inc_ref src)."""
 
     error_kind = ERR_NEVER
 
@@ -322,7 +394,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease reference count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref src).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -368,7 +440,7 @@ class Call(RegisterOp):
 
 
 class MethodCall(RegisterOp):
-    """Native method call obj.m(arg, ...) """
+    """Native method call obj.method(arg, ...)"""
 
     error_kind = ERR_MAGIC
 
@@ -393,26 +465,6 @@ class MethodCall(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_method_call(self)
-
-
-class Assign(Op):
-    """Assign a value to a register (dest = int)."""
-
-    error_kind = ERR_NEVER
-
-    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
-        super().__init__(line)
-        self.src = src
-        self.dest = dest
-
-    def sources(self) -> List[Value]:
-        return [self.src]
-
-    def stolen(self) -> List[Value]:
-        return [self.src]
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_assign(self)
 
 
 class LoadErrorValue(RegisterOp):
@@ -585,7 +637,7 @@ class TupleSet(RegisterOp):
 
 
 class TupleGet(RegisterOp):
-    """Get item of a fixed-length tuple (src[n])."""
+    """Get item of a fixed-length tuple (src[index])."""
 
     error_kind = ERR_NEVER
 
@@ -594,6 +646,7 @@ class TupleGet(RegisterOp):
         self.src = src
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
+        assert index >= 0
         self.type = src.type.types[index]
 
     def sources(self) -> List[Value]:
@@ -714,9 +767,11 @@ StealsDescription = Union[bool, List[bool]]
 
 
 class CallC(RegisterOp):
-    """ret = func_call(arg0, arg1, ...)
+    """result = function(arg0, arg1, ...)
 
-    A call to a C function
+    Call a C function that is not a compiled/native function (for
+    example, a Python C API function). Use Call to call native
+    functions.
     """
 
     def __init__(self,
@@ -735,7 +790,8 @@ class CallC(RegisterOp):
         self.type = ret_type
         self.steals = steals
         self.is_borrowed = is_borrowed
-        self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
+        # The position of the first variable argument in args (if >= 0)
+        self.var_arg_idx = var_arg_idx
 
     def sources(self) -> List[Value]:
         return self.args
@@ -752,12 +808,13 @@ class CallC(RegisterOp):
 
 
 class Truncate(RegisterOp):
-    """truncate src: src_type to dst_type
+    """result = truncate src from src_type to dst_type
 
-    Truncate a value from type with more bits to type with less bits
+    Truncate a value from type with more bits to type with less bits.
 
-    both src_type and dst_type should be non-reference counted integer types or bool
-    especially note that int_rprimitive is reference counted so should never be used here
+    Both src_type and dst_type should be non-reference counted integer
+    types or bool. Note that int_rprimitive is reference counted so
+    it should never be used here.
     """
 
     error_kind = ERR_NEVER
@@ -783,7 +840,7 @@ class Truncate(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """Load a global variable/pointer"""
+    """Load a global variable/pointer."""
 
     error_kind = ERR_NEVER
     is_borrowed = True
@@ -806,22 +863,28 @@ class LoadGlobal(RegisterOp):
 
 
 class IntOp(RegisterOp):
-    """Binary arithmetic and bitwise operations on integer types
+    """Binary arithmetic or bitwise op on integer operands (e.g., r1 = r2 + r3).
 
-    These ops are low-level and will be eventually generated to simple x op y form.
-    The left and right values should be of low-level integer types that support those ops
+    These ops are low-level and are similar to the corresponding C
+    operations (and unlike Python operations).
+
+    The left and right values must have low-level integer types with
+    compatible representations. Fixed-width integers, short_int_rprimitive,
+    bool_rprimitive and bit_rprimitive are supported.
+
+    For tagged (arbitrary-precision) integer ops look at mypyc.primitives.int_ops.
     """
 
     error_kind = ERR_NEVER
 
-    # arithmetic
+    # Arithmetic ops
     ADD = 0  # type: Final
     SUB = 1  # type: Final
     MUL = 2  # type: Final
     DIV = 3  # type: Final
     MOD = 4  # type: Final
 
-    # bitwise
+    # Bitwise ops
     AND = 200  # type: Final
     OR = 201  # type: Final
     XOR = 202  # type: Final
@@ -856,17 +919,15 @@ class IntOp(RegisterOp):
 
 
 class ComparisonOp(RegisterOp):
-    """Low-level comparison op.
+    """Low-level comparison op for integers and pointers.
 
-    Both unsigned and signed comparisons are supported.
+    Both unsigned and signed comparisons are supported. Supports
+    comparisons between fixed-width integer types and pointer types.
+    The operands should have matching sizes.
 
-    The operands are assumed to be fixed-width integers/pointers. Python
-    semantics, such as calling __eq__, are not supported.
+    The result is always a bit (representing a boolean).
 
-    The result is always a bit.
-
-    Supports comparisons between fixed-width integer types and pointer
-    types.
+    Python semantics, such as calling __eq__, are not supported.
     """
 
     # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
@@ -913,9 +974,7 @@ class ComparisonOp(RegisterOp):
 
 
 class LoadMem(RegisterOp):
-    """Read a memory location.
-
-    type ret = *(type *)src
+    """Read a memory location: result = *(type *)src.
 
     Attributes:
       type: Type of the read value
@@ -950,15 +1009,13 @@ class LoadMem(RegisterOp):
 
 
 class SetMem(Op):
-    """Write a memory location.
-
-    *(type *)dest = src
+    """Write to a memory location: *(type *)dest = src
 
     Attributes:
-      type: Type of the read value
+      type: Type of the written value
       dest: Pointer to memory to write
       src: Source value
-      base: If not None, the object from which we are reading memory.
+      base: If not None, the object which we are modifying.
             It's used to avoid the target object from being freed via
             reference counting. If the target is not in reference counted
             memory, or we know that the target won't be freed, it can be
@@ -994,7 +1051,7 @@ class SetMem(Op):
 
 
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element"""
+    """Get the address of a struct element."""
 
     error_kind = ERR_NEVER
 
@@ -1013,14 +1070,12 @@ class GetElementPtr(RegisterOp):
 
 
 class LoadAddress(RegisterOp):
-    """Get the address of a value
-
-    ret = (type)&src
+    """Get the address of a value: result = (type)&src
 
     Attributes:
       type: Type of the loaded address(e.g. ptr/object_ptr)
-      src: Source value, str for named constants like 'PyList_Type',
-           Register for temporary values
+      src: Source value (str for globals like 'PyList_Type',
+           Register for temporary values or locals)
     """
 
     error_kind = ERR_NEVER

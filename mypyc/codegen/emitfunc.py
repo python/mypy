@@ -108,19 +108,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         cond = ''
         if op.op == Branch.BOOL:
-            expr_result = self.reg(op.left)  # right isn't used
+            expr_result = self.reg(op.value)
             cond = '{}{}'.format(neg, expr_result)
         elif op.op == Branch.IS_ERROR:
-            typ = op.left.type
+            typ = op.value.type
             compare = '!=' if op.negated else '=='
             if isinstance(typ, RTuple):
                 # TODO: What about empty tuple?
                 cond = self.emitter.tuple_undefined_check_cond(typ,
-                                                               self.reg(op.left),
+                                                               self.reg(op.value),
                                                                self.c_error_value,
                                                                compare)
             else:
-                cond = '{} {} {}'.format(self.reg(op.left),
+                cond = '{} {} {}'.format(self.reg(op.value),
                                          compare,
                                          self.c_error_value(typ))
         else:
@@ -141,8 +141,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         )
 
     def visit_return(self, op: Return) -> None:
-        regstr = self.reg(op.reg)
-        self.emit_line('return %s;' % regstr)
+        value_str = self.reg(op.value)
+        self.emit_line('return %s;' % value_str)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op)

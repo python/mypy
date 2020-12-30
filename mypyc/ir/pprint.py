@@ -38,7 +38,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         if op.negated:
             fmt = 'not {}'.format(fmt)
 
-        cond = self.format(fmt, op.left)
+        cond = self.format(fmt, op.value)
         tb = ''
         if op.traceback_entry:
             tb = ' (error at %s:%d)' % op.traceback_entry
@@ -48,7 +48,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format(fmt, op.true, op.false)
 
     def visit_return(self, op: Return) -> str:
-        return self.format('return %r', op.reg)
+        return self.format('return %r', op.value)
 
     def visit_unreachable(self, op: Unreachable) -> str:
         return "unreachable"
