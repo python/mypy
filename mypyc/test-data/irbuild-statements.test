@@ -400,13 +400,10 @@ def sum_over_even_values(d):
     r8, key :: int
     r9, r10 :: object
     r11, r12 :: int
-    r13 :: native_int
-    r14, r15 :: bit
-    r16 :: bool
-    r17, r18 :: bit
-    r19, r20 :: object
-    r21, r22 :: int
-    r23, r24 :: bit
+    r13 :: bit
+    r14, r15 :: object
+    r16, r17 :: int
+    r18, r19 :: bit
 L0:
     s = 0
     r0 = 0
@@ -418,7 +415,7 @@ L1:
     r5 = r4[1]
     r0 = r5
     r6 = r4[0]
-    if r6 goto L2 else goto L9 :: bool
+    if r6 goto L2 else goto L6 :: bool
 L2:
     r7 = r4[2]
     r8 = unbox(int, r7)
@@ -427,33 +424,22 @@ L2:
     r10 = CPyDict_GetItem(d, r9)
     r11 = unbox(int, r10)
     r12 = CPyTagged_Remainder(r11, 4)
-    r13 = r12 & 1
-    r14 = r13 == 0
-    if r14 goto L3 else goto L4 :: bool
+    r13 = r12 != 0
+    if r13 goto L3 else goto L4 :: bool
 L3:
-    r15 = r12 != 0
-    r16 = r15
     goto L5
 L4:
-    r17 = CPyTagged_IsEq_(r12, 0)
-    r18 = r17 ^ 1
-    r16 = r18
+    r14 = box(int, key)
+    r15 = CPyDict_GetItem(d, r14)
+    r16 = unbox(int, r15)
+    r17 = CPyTagged_Add(s, r16)
+    s = r17
 L5:
-    if r16 goto L6 else goto L7 :: bool
-L6:
-    goto L8
-L7:
-    r19 = box(int, key)
-    r20 = CPyDict_GetItem(d, r19)
-    r21 = unbox(int, r20)
-    r22 = CPyTagged_Add(s, r21)
-    s = r22
-L8:
-    r23 = CPyDict_CheckSize(d, r2)
+    r18 = CPyDict_CheckSize(d, r2)
     goto L1
-L9:
-    r24 = CPy_NoErrOccured()
-L10:
+L6:
+    r19 = CPy_NoErrOccured()
+L7:
     return s
 
 [case testMultipleAssignmentWithNoUnpacking]
