@@ -1,27 +1,27 @@
 [case testTypeGuardBasic]
 from typing_extensions import TypeGuard
-class Point:
-    x: int
-def is_point(a: object) -> TypeGuard[Point]:
-    return not not a
-def norm(a: object) -> None:
+class Point: pass
+def is_point(a: object) -> TypeGuard[Point]: pass
+def main(a: object) -> None:
     if is_point(a):
         reveal_type(a)  # N: Revealed type is '__main__.Point'
+    else:
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardArgsNone]
+[case testTypeGuardTypeArgsNone]
 from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard:  # E: TypeGuard must have exactly one type argument
     pass
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardArgsTooMany]
+[case testTypeGuardTypeArgsTooMany]
 from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard[int, int]:  # E: TypeGuard must have exactly one type argument
     pass
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardArgType]
+[case testTypeGuardTypeArgType]
 from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard[42]:  # E: Invalid type: try using Literal[42] instead?
     pass
@@ -32,4 +32,72 @@ from typing_extensions import TypeGuard
 def foo(a: object) -> TypeGuard[int]:
     pass
 reveal_type(foo)  # N: Revealed type is 'def (a: builtins.object) -> TypeGuard[builtins.int]'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardCallArgsNone]
+from typing_extensions import TypeGuard
+class Point: pass
+# TODO: error on the 'def' line (insufficient args for type guard)
+def is_point() -> TypeGuard[Point]: pass
+def main(a: object) -> None:
+    if is_point():
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardCallArgsMultiple]
+from typing_extensions import TypeGuard
+class Point: pass
+def is_point(a: object, b: object) -> TypeGuard[Point]: pass
+def main(a: object, b: object) -> None:
+    if is_point(a, b):
+        reveal_type(a)  # N: Revealed type is '__main__.Point'
+        reveal_type(b)  # N: Revealed type is 'builtins.object'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardIsBool]
+from typing_extensions import TypeGuard
+def f(a: TypeGuard[int]) -> None: pass
+reveal_type(f)  # N: Revealed type is 'def (a: builtins.bool)'
+a: TypeGuard[int]
+reveal_type(a)  # N: Revealed type is 'builtins.bool'
+class C:
+    a: TypeGuard[int]
+reveal_type(C().a)  # N: Revealed type is 'builtins.bool'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithTypeVar]
+from typing import TypeVar, Tuple
+from typing_extensions import TypeGuard
+T = TypeVar('T')
+def is_two_element_tuple(a: Tuple[T, ...]) -> TypeGuard[Tuple[T, T]]: pass
+def main(a: Tuple[T, ...]):
+    if is_two_element_tuple(a):
+        reveal_type(a)  # N: Revealed type is 'Tuple[T`-1, T`-1]'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNonOverlapping]
+from typing import List
+from typing_extensions import TypeGuard
+def is_str_list(a: List[object]) -> TypeGuard[List[str]]: pass
+def main(a: List[object]):
+    if is_str_list(a):
+        reveal_type(a)  # N: Revealed type is 'List[builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardUnionIn]
+from typing import Union
+from typing_extensions import TypeGuard
+def is_foo(a: Union[int, str]) -> TypeGuard[str]: pass
+def main(a: Union[str, int]) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.str'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardUnionOut]
+from typing import Union
+from typing_extensions import TypeGuard
+def is_foo(a: object) -> TypeGuard[Union[int, str]]: pass
+def main(a: object) -> None:
+    if is_foo(a):
+        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
 [builtins fixtures/tuple.pyi]
