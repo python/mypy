@@ -32,11 +32,15 @@ T = TypeVar('T')
 
 
 class BasicBlock:
-    """Basic IR block.
+    """IR basic block.
 
-    Contains a sequence of Ops and ends with a jump, branch, or return.
-    All generated Ops must live in a BasicBlock, as this is needed for
-    determining the order of evaluation.
+    Contains a sequence of Ops and ends with a ControlOp (Goto,
+    Branch, Return or Unreachable). Only the last op can be a
+    ControlOp.
+
+    All generated Ops live in basic blocks. Basic blocks determine the
+    order of evaluation and control flow within a function. A basic
+    block is always associated with a single function/method (FuncIR).
 
     When building the IR, ops that raise exceptions can be included in
     the middle of a basic block, but the exceptions aren't checked.
@@ -91,15 +95,14 @@ class Value:
     These include references to registers, literals, and all
     operations (Ops), such as assignments, calls and branches.
 
-    Values are mostly used as inputs of Ops (Register can also be used
-    as an output).
+    Values are mostly used as inputs of Ops. Register can also be used
+    as an assignment target.
 
     A Value is part of the IR being compiled if it's included in a BasicBlock
     that is reachable from a FuncIR (i.e., is part of a function).
 
     See also: Op is a subclass of Value that is the base class of all
     operations.
-
     """
 
     # Source line number (-1 for no/unknown line)
@@ -114,10 +117,14 @@ class Value:
 
 
 class Register(Value):
-    """A register holds a value of a specific type, and it can be read and mutated.
+    """A Register holds a value of a specific type, and it can be read and mutated.
 
-    Each local variable maps to a register, and they are also used for some
-    (but not all) temporary values.
+    A Register is always local to a function. Each local variable maps
+    to a Register, and they are also used for some (but not all)
+    temporary values.
+
+    Note that the term 'register' is overloaded and is sometimes used
+    to refer to arbitrary Values (for example, in RegisterOp).
     """
 
     def __init__(self, type: RType, name: str = '', is_arg: bool = False, line: int = -1) -> None:
@@ -141,6 +148,12 @@ class Integer(Value):
     Integer literals are treated as constant values and are generally
     not included in data flow analyses and such, unlike Register and
     Op subclasses.
+
+    These can represent both short tagged integers
+    (short_int_primitive type; the tag bit is clear), ordinary
+    fixed-width integers (e.g., int32_rprimitive), and values of some
+    other unboxed primitive types that are represented as integers
+    (none_rprimitive, bool_rprimitive).
     """
 
     def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
@@ -157,11 +170,11 @@ class Op(Value):
 
     Each operation must be stored in a BasicBlock (in 'ops') to be
     active in the IR. This is different from non-Op values, including
-    Register and Integer, which only need a reference from an active
-    Op to be considered active.
+    Register and Integer, where a reference from an active Op is
+    sufficient to be considered active.
 
-    For IR to be well-formed, an active Op must not have references to
-    inactive ops.
+    In well-formed IR an active Op has no references to inactive ops
+    or ops used in another function.
     """
 
     def __init__(self, line: int) -> None:
@@ -194,7 +207,7 @@ class Op(Value):
 
 
 class Assign(Op):
-    """Assign a value to a Register (dest = int)."""
+    """Assign a value to a Register (dest = src)."""
 
     error_kind = ERR_NEVER
 
@@ -251,8 +264,7 @@ class Branch(ControlOp):
        if [not] is_error(r1) goto L1 else goto L2
     """
 
-    # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
-    # exception, it needs to split into two opcodes and only the first one may fail.
+    # Branch ops never raise an exception.
     error_kind = ERR_NEVER
 
     BOOL = 100  # type: Final
