@@ -340,19 +340,61 @@ def from_tuple(t: Tuple[int, str]) -> List[Any]:
     x, y = t
     return [y, x]
 
+def from_tuple_sequence(t: Tuple[int, ...]) -> List[int]:
+    x, y, z = t
+    return [z, y, x]
+
 def from_list(l: List[int]) -> List[int]:
     x, y = l
     return [y, x]
 
+def from_list_complex(l: List[int]) -> List[int]:
+    ll = l[:]
+    ll[1], ll[0] = l
+    return ll
+
 def from_any(o: Any) -> List[Any]:
     x, y = o
     return [y, x]
+
+def multiple_assignments(t: Tuple[int, str]) -> List[Any]:
+    a, b = c, d = t
+    e, f = g, h = 1, 2
+    return [a, b, c, d, e, f, g, h]
 [file driver.py]
-from native import from_tuple, from_list, from_any
+from native import (
+    from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any, multiple_assignments
+)
 
 assert from_tuple((1, 'x')) == ['x', 1]
+
+assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
+try:
+    from_tuple_sequence((1, 5))
+except ValueError as e:
+    assert 'not enough values to unpack (expected 3, got 2)' in str(e)
+else:
+    assert False
+
 assert from_list([3, 4]) == [4, 3]
+try:
+    from_list([5, 4, 3])
+except ValueError as e:
+    assert 'too many values to unpack (expected 2)' in str(e)
+else:
+    assert False
+
+assert from_list_complex([7, 6]) == [6, 7]
+try:
+    from_list_complex([5, 4, 3])
+except ValueError as e:
+    assert 'too many values to unpack (expected 2)' in str(e)
+else:
+    assert False
+
 assert from_any('xy') == ['y', 'x']
+
+assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
 
 [case testUnpack]
 from typing import List

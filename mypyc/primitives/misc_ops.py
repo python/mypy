@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     bool_rprimitive, object_rprimitive, str_rprimitive, object_pointer_rprimitive,
-    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive
+    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     function_op, custom_op, load_address_op, ERR_NEG_INT
@@ -176,3 +176,11 @@ dataclass_sleight_of_hand = custom_op(
     return_type=bit_rprimitive,
     c_function_name='CPyDataclass_SleightOfHand',
     error_kind=ERR_FALSE)
+
+# Raise ValueError if length of first argument is not equal to the second argument.
+# The first argument must be a list or a variable-length tuple.
+check_unpack_count_op = custom_op(
+    arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='CPySequence_CheckUnpackCount',
+    error_kind=ERR_NEG_INT)

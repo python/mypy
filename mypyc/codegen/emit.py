@@ -7,7 +7,7 @@ from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
 )
-from mypyc.ir.ops import Environment, BasicBlock, Value
+from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, RUnion, RPrimitive,
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
@@ -90,12 +90,10 @@ class Emitter:
 
     def __init__(self,
                  context: EmitterContext,
-                 env: Optional[Environment] = None,
                  value_names: Optional[Dict[Value, str]] = None) -> None:
         self.context = context
         self.names = context.names
         self.value_names = value_names or {}
-        self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
 

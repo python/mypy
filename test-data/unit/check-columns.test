@@ -213,7 +213,7 @@ def g(x):
 
 [case testColumnInvalidArguments]
 def f(x, y): pass
-(f()) # E:2: Too few arguments for "f"
+(f()) # E:2: Missing positional arguments "x", "y" in call to "f"
 (f(y=1)) # E:2: Missing positional argument "x" in call to "f"
 
 [case testColumnTooFewSuperArgs_python2]

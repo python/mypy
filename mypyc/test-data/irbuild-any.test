@@ -166,12 +166,12 @@ L3:
     a = r0
     if b goto L4 else goto L5 :: bool
 L4:
-    r3 = box(int, n)
-    r2 = r3
+    r2 = box(int, n)
+    r3 = r2
     goto L6
 L5:
-    r2 = a
+    r3 = a
 L6:
-    r4 = unbox(int, r2)
+    r4 = unbox(int, r3)
     n = r4
     return 1

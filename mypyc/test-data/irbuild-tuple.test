@@ -79,8 +79,9 @@ def f() -> int:
 [out]
 def f():
     r0 :: tuple[int, int]
+    r1 :: object
     t :: tuple
-    r1, r2 :: object
+    r2 :: object
     r3 :: int
 L0:
     r0 = (2, 4)
@@ -135,7 +136,7 @@ def f(xs):
     r3 :: short_int
     r4 :: bit
     r5 :: object
-    x, r6 :: str
+    r6, x :: str
     r7 :: short_int
 L0:
     r0 = 0
@@ -191,61 +192,66 @@ def f(i: int) -> bool:
 [out]
 def f(i):
     i :: int
-    r0, r1, r2 :: bool
-    r3 :: native_int
-    r4, r5, r6 :: bit
-    r7 :: bool
-    r8 :: native_int
-    r9, r10, r11 :: bit
-    r12 :: bool
-    r13 :: native_int
-    r14, r15, r16 :: bit
+    r0 :: native_int
+    r1, r2 :: bit
+    r3 :: bool
+    r4 :: bit
+    r5 :: bool
+    r6 :: native_int
+    r7, r8 :: bit
+    r9 :: bool
+    r10 :: bit
+    r11 :: bool
+    r12 :: native_int
+    r13, r14 :: bit
+    r15 :: bool
+    r16 :: bit
 L0:
-    r3 = i & 1
-    r4 = r3 == 0
-    if r4 goto L1 else goto L2 :: bool
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r5 = i == 2
-    r2 = r5
+    r2 = i == 2
+    r3 = r2
     goto L3
 L2:
-    r6 = CPyTagged_IsEq_(i, 2)
-    r2 = r6
+    r4 = CPyTagged_IsEq_(i, 2)
+    r3 = r4
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r1 = r2
+    r5 = r3
     goto L9
 L5:
-    r8 = i & 1
-    r9 = r8 == 0
-    if r9 goto L6 else goto L7 :: bool
+    r6 = i & 1
+    r7 = r6 == 0
+    if r7 goto L6 else goto L7 :: bool
 L6:
-    r10 = i == 4
-    r7 = r10
+    r8 = i == 4
+    r9 = r8
     goto L8
 L7:
-    r11 = CPyTagged_IsEq_(i, 4)
-    r7 = r11
+    r10 = CPyTagged_IsEq_(i, 4)
+    r9 = r10
 L8:
-    r1 = r7
+    r5 = r9
 L9:
-    if r1 goto L10 else goto L11 :: bool
+    if r5 goto L10 else goto L11 :: bool
 L10:
-    r0 = r1
+    r11 = r5
     goto L15
 L11:
-    r13 = i & 1
-    r14 = r13 == 0
-    if r14 goto L12 else goto L13 :: bool
+    r12 = i & 1
+    r13 = r12 == 0
+    if r13 goto L12 else goto L13 :: bool
 L12:
-    r15 = i == 6
-    r12 = r15
+    r14 = i == 6
+    r15 = r14
     goto L14
 L13:
     r16 = CPyTagged_IsEq_(i, 6)
-    r12 = r16
+    r15 = r16
 L14:
-    r0 = r12
+    r11 = r15
 L15:
-    return r0
+    return r11

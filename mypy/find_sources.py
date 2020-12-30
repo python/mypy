@@ -1,11 +1,12 @@
 """Routines for finding the sources that mypy will check"""
 
-import os.path
+import functools
+import os
 
-from typing import List, Sequence, Set, Tuple, Optional, Dict
+from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
@@ -24,7 +25,7 @@ def create_source_list(paths: Sequence[str], options: Options,
     Raises InvalidSourceList on errors.
     """
     fscache = fscache or FileSystemCache()
-    finder = SourceFinder(fscache)
+    finder = SourceFinder(fscache, options)
 
     sources = []
     for path in paths:
@@ -34,7 +35,7 @@ def create_source_list(paths: Sequence[str], options: Options,
             name, base_dir = finder.crawl_up(path)
             sources.append(BuildSource(path, name, None, base_dir))
         elif fscache.isdir(path):
-            sub_sources = finder.find_sources_in_dir(path, explicit_package_roots=None)
+            sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
                 raise InvalidSourceList(
                     "There are no .py[i] files in directory '{}'".format(path)
@@ -46,124 +47,161 @@ def create_source_list(paths: Sequence[str], options: Options,
     return sources
 
 
-def keyfunc(name: str) -> Tuple[int, str]:
+def keyfunc(name: str) -> Tuple[bool, int, str]:
     """Determines sort order for directory listing.
 
-    The desirable property is foo < foo.pyi < foo.py.
+    The desirable properties are:
+    1) foo < foo.pyi < foo.py
+    2) __init__.py[i] < foo
     """
     base, suffix = os.path.splitext(name)
     for i, ext in enumerate(PY_EXTENSIONS):
         if suffix == ext:
-            return (i, base)
-    return (-1, name)
+            return (base != "__init__", i, base)
+    return (base != "__init__", -1, name)
+
+
+def normalise_package_base(root: str) -> str:
+    if not root:
+        root = os.curdir
+    root = os.path.abspath(root)
+    if root.endswith(os.sep):
+        root = root[:-1]
+    return root
+
+
+def get_explicit_package_bases(options: Options) -> Optional[List[str]]:
+    """Returns explicit package bases to use if the option is enabled, or None if disabled.
+
+    We currently use MYPYPATH and the current directory as the package bases. In the future,
+    when --namespace-packages is the default could also use the values passed with the
+    --package-root flag, see #9632.
+
+    Values returned are normalised so we can use simple string comparisons in
+    SourceFinder.is_explicit_package_base
+    """
+    if not options.explicit_package_bases:
+        return None
+    roots = mypy_path() + options.mypy_path + [os.getcwd()]
+    return [normalise_package_base(root) for root in roots]
 
 
 class SourceFinder:
-    def __init__(self, fscache: FileSystemCache) -> None:
+    def __init__(self, fscache: FileSystemCache, options: Options) -> None:
         self.fscache = fscache
-        # A cache for package names, mapping from directory path to module id and base dir
-        self.package_cache = {}  # type: Dict[str, Tuple[str, str]]
+        self.explicit_package_bases = get_explicit_package_bases(options)
+        self.namespace_packages = options.namespace_packages
 
-    def find_sources_in_dir(
-        self, path: str, explicit_package_roots: Optional[List[str]]
-    ) -> List[BuildSource]:
-        if explicit_package_roots is None:
-            mod_prefix, root_dir = self.crawl_up_dir(path)
-        else:
-            mod_prefix = os.path.basename(path)
-            root_dir = os.path.dirname(path) or "."
-        if mod_prefix:
-            mod_prefix += "."
-        return self.find_sources_in_dir_helper(path, mod_prefix, root_dir, explicit_package_roots)
+    def is_explicit_package_base(self, path: str) -> bool:
+        assert self.explicit_package_bases
+        return normalise_package_base(path) in self.explicit_package_bases
 
-    def find_sources_in_dir_helper(
-        self, dir_path: str, mod_prefix: str, root_dir: str,
-        explicit_package_roots: Optional[List[str]]
-    ) -> List[BuildSource]:
-        assert not mod_prefix or mod_prefix.endswith(".")
-
-        init_file = self.get_init_file(dir_path)
-        # If the current directory is an explicit package root, explore it as such.
-        # Alternatively, if we aren't given explicit package roots and we don't have an __init__
-        # file, recursively explore this directory as a new package root.
-        if (
-            (explicit_package_roots is not None and dir_path in explicit_package_roots)
-            or (explicit_package_roots is None and init_file is None)
-        ):
-            mod_prefix = ""
-            root_dir = dir_path
-
-        seen = set()  # type: Set[str]
+    def find_sources_in_dir(self, path: str) -> List[BuildSource]:
         sources = []
 
-        if init_file:
-            sources.append(BuildSource(init_file, mod_prefix.rstrip("."), None, root_dir))
-
-        names = self.fscache.listdir(dir_path)
-        names.sort(key=keyfunc)
+        seen = set()  # type: Set[str]
+        names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
             if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
                 continue
-            path = os.path.join(dir_path, name)
+            subpath = os.path.join(path, name)
 
-            if self.fscache.isdir(path):
-                sub_sources = self.find_sources_in_dir_helper(
-                    path, mod_prefix + name + '.', root_dir, explicit_package_roots
-                )
+            if self.fscache.isdir(subpath):
+                sub_sources = self.find_sources_in_dir(subpath)
                 if sub_sources:
                     seen.add(name)
                     sources.extend(sub_sources)
             else:
                 stem, suffix = os.path.splitext(name)
-                if stem == '__init__':
-                    continue
-                if stem not in seen and '.' not in stem and suffix in PY_EXTENSIONS:
+                if stem not in seen and suffix in PY_EXTENSIONS:
                     seen.add(stem)
-                    src = BuildSource(path, mod_prefix + stem, None, root_dir)
-                    sources.append(src)
+                    module, base_dir = self.crawl_up(subpath)
+                    sources.append(BuildSource(subpath, module, None, base_dir))
 
         return sources
 
     def crawl_up(self, path: str) -> Tuple[str, str]:
-        """Given a .py[i] filename, return module and base directory
+        """Given a .py[i] filename, return module and base directory.
 
-        We crawl up the path until we find a directory without
-        __init__.py[i], or until we run out of path components.
+        For example, given "xxx/yyy/foo/bar.py", we might return something like:
+        ("foo.bar", "xxx/yyy")
+
+        If namespace packages is off, we crawl upwards until we find a directory without
+        an __init__.py
+
+        If namespace packages is on, we crawl upwards until the nearest explicit base directory.
+        Failing that, we return one past the highest directory containing an __init__.py
+
+        We won't crawl past directories with invalid package names.
+        The base directory returned is an absolute path.
         """
+        path = os.path.abspath(path)
         parent, filename = os.path.split(path)
-        module_name = strip_py(filename) or os.path.basename(filename)
-        module_prefix, base_dir = self.crawl_up_dir(parent)
-        if module_name == '__init__' or not module_name:
-            module = module_prefix
-        else:
-            module = module_join(module_prefix, module_name)
 
+        module_name = strip_py(filename) or filename
+
+        parent_module, base_dir = self.crawl_up_dir(parent)
+        if module_name == "__init__":
+            return parent_module, base_dir
+
+        # Note that module_name might not actually be a valid identifier, but that's okay
+        # Ignoring this possibility sidesteps some search path confusion
+        module = module_join(parent_module, module_name)
         return module, base_dir
 
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
-        """Given a directory name, return the corresponding module name and base directory
+        return self._crawl_up_helper(dir) or ("", dir)
 
-        Use package_cache to cache results.
+    @functools.lru_cache()
+    def _crawl_up_helper(self, dir: str) -> Optional[Tuple[str, str]]:
+        """Given a directory, maybe returns module and base directory.
+
+        We return a non-None value if we were able to find something clearly intended as a base
+        directory (as adjudicated by being an explicit base directory or by containing a package
+        with __init__.py).
+
+        This distinction is necessary for namespace packages, so that we know when to treat
+        ourselves as a subpackage.
         """
-        if dir in self.package_cache:
-            return self.package_cache[dir]
+        # stop crawling if we're an explicit base directory
+        if self.explicit_package_bases is not None and self.is_explicit_package_base(dir):
+            return "", dir
 
-        parent_dir, base = os.path.split(dir)
-        if not dir or not self.get_init_file(dir) or not base:
-            module = ''
-            base_dir = dir or '.'
-        else:
-            # Ensure that base is a valid python module name
-            if base.endswith('-stubs'):
-                base = base[:-6]  # PEP-561 stub-only directory
-            if not base.isidentifier():
-                raise InvalidSourceList('{} is not a valid Python package name'.format(base))
-            parent_module, base_dir = self.crawl_up_dir(parent_dir)
-            module = module_join(parent_module, base)
+        parent, name = os.path.split(dir)
+        if name.endswith('-stubs'):
+            name = name[:-6]  # PEP-561 stub-only directory
 
-        self.package_cache[dir] = module, base_dir
-        return module, base_dir
+        # recurse if there's an __init__.py
+        init_file = self.get_init_file(dir)
+        if init_file is not None:
+            if not name.isidentifier():
+                # in most cases the directory name is invalid, we'll just stop crawling upwards
+                # but if there's an __init__.py in the directory, something is messed up
+                raise InvalidSourceList("{} is not a valid Python package name".format(name))
+            # we're definitely a package, so we always return a non-None value
+            mod_prefix, base_dir = self.crawl_up_dir(parent)
+            return module_join(mod_prefix, name), base_dir
+
+        # stop crawling if we're out of path components or our name is an invalid identifier
+        if not name or not parent or not name.isidentifier():
+            return None
+
+        # stop crawling if namespace packages is off (since we don't have an __init__.py)
+        if not self.namespace_packages:
+            return None
+
+        # at this point: namespace packages is on, we don't have an __init__.py and we're not an
+        # explicit base directory
+        result = self._crawl_up_helper(parent)
+        if result is None:
+            # we're not an explicit base directory and we don't have an __init__.py
+            # and none of our parents are either, so return
+            return None
+        # one of our parents was an explicit base directory or had an __init__.py, so we're
+        # definitely a subpackage! chain our name to the module.
+        mod_prefix, base_dir = result
+        return module_join(mod_prefix, name), base_dir
 
     def get_init_file(self, dir: str) -> Optional[str]:
         """Check whether a directory contains a file named __init__.py[i].
@@ -185,8 +223,7 @@ def module_join(parent: str, child: str) -> str:
     """Join module ids, accounting for a possibly empty parent."""
     if parent:
         return parent + '.' + child
-    else:
-        return child
+    return child
 
 
 def strip_py(arg: str) -> Optional[str]:

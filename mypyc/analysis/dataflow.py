@@ -7,10 +7,11 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional,
 from mypyc.ir.ops import (
     Value, ControlOp,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
-    Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
+    Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
     LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
-    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    Truncate, IntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
 )
+from mypyc.ir.func_ir import all_values
 
 
 class CFG:
@@ -206,7 +207,7 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
         return self.visit_register_op(op)
 
-    def visit_binary_int_op(self, op: BinaryIntOp) -> GenAndKill:
+    def visit_int_op(self, op: IntOp) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
@@ -355,14 +356,15 @@ class UndefinedVisitor(BaseAnalysisVisitor):
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
                            cfg: CFG,
-                           env: Environment,
                            initial_defined: Set[Value]) -> AnalysisResult[Value]:
     """Calculate potentially undefined registers at each CFG location.
 
     A register is undefined if there is some path from initial block
     where it has an undefined value.
+
+    Function arguments are assumed to be always defined.
     """
-    initial_undefined = set(env.regs()) - initial_defined
+    initial_undefined = set(all_values([], blocks)) - initial_defined
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=UndefinedVisitor(),

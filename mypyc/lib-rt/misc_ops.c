@@ -495,3 +495,17 @@ void CPyDebug_Print(const char *msg) {
     printf("%s\n", msg);
     fflush(stdout);
 }
+
+int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
+    Py_ssize_t actual = Py_SIZE(sequence);
+    if (unlikely(actual != expected)) {
+        if (actual < expected) {
+            PyErr_Format(PyExc_ValueError, "not enough values to unpack (expected %zd, got %zd)",
+                         expected, actual);
+        } else {
+            PyErr_Format(PyExc_ValueError, "too many values to unpack (expected %zd)", expected);
+        }
+        return -1;
+    }
+    return 0;
+}

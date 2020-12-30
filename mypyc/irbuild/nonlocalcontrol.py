@@ -9,9 +9,10 @@ from typing_extensions import TYPE_CHECKING
 
 from mypyc.ir.ops import (
     Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
-    AssignmentTarget, NO_TRACEBACK_LINE_NO
+    NO_TRACEBACK_LINE_NO
 )
 from mypyc.primitives.exc_ops import set_stop_iteration_value, restore_exc_info_op
+from mypyc.irbuild.targets import AssignmentTarget
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
@@ -141,7 +142,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         if self.ret_reg is None:
-            self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
+            self.ret_reg = Register(builder.ret_types[-1])
 
         builder.add(Assign(self.ret_reg, value))
         builder.add(Goto(self.target))

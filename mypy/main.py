@@ -787,6 +787,9 @@ def process_options(args: List[str],
         description="Specify the code you want to type check. For more details, see "
                     "mypy.readthedocs.io/en/latest/running_mypy.html#running-mypy")
     code_group.add_argument(
+        '--explicit-package-bases', action='store_true',
+        help="Use current directory and MYPYPATH to determine module names of files passed")
+    code_group.add_argument(
         '-m', '--module', action='append', metavar='MODULE',
         default=[],
         dest='special-opts:modules',
@@ -862,6 +865,11 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
+    if options.explicit_package_bases and not options.namespace_packages:
+        parser.error(
+            "Can only use --explicit-base-dirs with --namespace-packages, since otherwise "
+            "examining __init__.py's is sufficient to determine module names for files"
+        )
 
     # Check for overlapping `--always-true` and `--always-false` flags.
     overlap = set(options.always_true) & set(options.always_false)
@@ -980,12 +988,12 @@ def process_package_roots(fscache: Optional[FileSystemCache],
         # Empty package root is always okay.
         if root:
             root = os.path.relpath(root)  # Normalize the heck out of it.
+            if not root.endswith(os.sep):
+                root = root + os.sep
             if root.startswith(dotdotslash):
                 parser.error("Package root cannot be above current directory: %r" % root)
             if root in trivial_paths:
                 root = ''
-            elif not root.endswith(os.sep):
-                root = root + os.sep
         package_root.append(root)
     options.package_root = package_root
     # Pass the package root on the the filesystem cache.

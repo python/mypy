@@ -13,7 +13,7 @@ from typing import List, Optional
 
 from mypyc.ir.ops import (
     BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, LoadInt, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, ERR_ALWAYS, NO_TRACEBACK_LINE_NO, Environment
+    ERR_FALSE, ERR_ALWAYS, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.rtypes import bool_rprimitive
@@ -30,7 +30,7 @@ def insert_exception_handling(ir: FuncIR) -> None:
             error_label = add_handler_block(ir)
             break
     if error_label:
-        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.traceback_name, ir.env)
+        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.traceback_name)
 
 
 def add_handler_block(ir: FuncIR) -> BasicBlock:
@@ -38,15 +38,13 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
     ir.blocks.append(block)
     op = LoadErrorValue(ir.ret_type)
     block.ops.append(op)
-    ir.env.add_op(op)
     block.ops.append(Return(op))
     return block
 
 
 def split_blocks_at_errors(blocks: List[BasicBlock],
                            default_error_handler: BasicBlock,
-                           func_name: Optional[str],
-                           env: Environment) -> List[BasicBlock]:
+                           func_name: Optional[str]) -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
 
     # First split blocks on ops that may raise.
@@ -84,7 +82,6 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     # semantics, using a temporary bool with value false
                     tmp = LoadInt(0, rtype=bool_rprimitive)
                     cur_block.ops.append(tmp)
-                    env.add_op(tmp)
                     target = tmp
                 else:
                     assert False, 'unknown error kind %d' % op.error_kind

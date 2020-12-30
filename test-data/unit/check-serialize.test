@@ -64,7 +64,7 @@ b.f()
 [file b.py]
 def f(x): pass
 [out2]
-tmp/a.py:3: error: Too few arguments for "f"
+tmp/a.py:3: error: Missing positional argument "x" in call to "f"
 
 [case testSerializeGenericFunction]
 import a
@@ -1084,9 +1084,9 @@ import c
 def f() -> None: pass
 def g(x: int) -> None: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testSerializeImportAs]
 import b
@@ -1098,9 +1098,9 @@ import c as d
 def f() -> None: pass
 def g(x: int) -> None: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testSerializeFromImportedClass]
 import b
@@ -1143,9 +1143,9 @@ from c import d
 def f() -> None: pass
 def g(x: int) -> None: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testSerializeQualifiedImport]
 import b
@@ -1158,9 +1158,9 @@ import c.d
 def f() -> None: pass
 def g(x: int) -> None: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testSerializeQualifiedImportAs]
 import b
@@ -1173,9 +1173,9 @@ import c.d as e
 def f() -> None: pass
 def g(x: int) -> None: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testSerialize__init__ModuleImport]
 import b
@@ -1192,10 +1192,10 @@ def g(x: int) -> None: pass
 [file d.py]
 class A: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 main:5: note: Revealed type is 'd.A'
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 main:5: note: Revealed type is 'd.A'
 
 [case testSerializeImportInClassBody]
@@ -1209,9 +1209,9 @@ class A:
 def f() -> None: pass
 def g(x: int) -> None: pass
 [out1]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 [out2]
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testSerializeImportedTypeAlias]
 import b

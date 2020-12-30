@@ -145,7 +145,7 @@ def increment(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    k, r8 :: str
+    r8, k :: str
     r9, r10, r11 :: object
     r12 :: int32
     r13, r14, r15 :: bit
@@ -223,7 +223,7 @@ def print_dict_methods(d1, d2):
     r5 :: int
     r6 :: bool
     r7 :: object
-    v, r8 :: int
+    r8, v :: int
     r9 :: object
     r10 :: int32
     r11 :: bit

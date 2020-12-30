@@ -300,3 +300,22 @@ def test_left_shift() -> None:
             assert False
         except Exception:
             pass
+
+def is_true(x: int) -> bool:
+    if x:
+        return True
+    else:
+        return False
+
+def is_false(x: int) -> bool:
+    if not x:
+        return True
+    else:
+        return False
+
+def test_int_as_bool() -> None:
+    assert not is_true(0)
+    assert is_false(0)
+    for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
+        assert is_true(x)
+        assert not is_false(x)

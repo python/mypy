@@ -55,6 +55,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     # Type check the program.
     fixed = [python3_path, '-m', 'mypy']
     env = os.environ.copy()
+    env.pop('COLUMNS', None)
     env['PYTHONPATH'] = PREFIX
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,

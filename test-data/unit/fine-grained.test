@@ -79,7 +79,7 @@ class A:
     def g(self, a: A) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "g" of "A"
+main:4: error: Missing positional argument "a" in call to "g" of "A"
 
 [case testReprocessMethodShowSource]
 # flags: --pretty --show-error-codes
@@ -95,7 +95,7 @@ class A:
     def g(self, a: A) -> None: pass
 [out]
 ==
-main:5: error: Too few arguments for "g" of "A"  [call-arg]
+main:5: error: Missing positional argument "a" in call to "g" of "A"  [call-arg]
             a.g() # E
             ^
 
@@ -218,10 +218,10 @@ def g(a: str) -> None:
     m.f('') # E
 [out]
 ==
-n.py:3: error: Too few arguments for "f"
+n.py:3: error: Missing positional argument "x" in call to "f"
 ==
 n.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-m.py:3: error: Too few arguments for "g"
+m.py:3: error: Missing positional argument "a" in call to "g"
 
 [case testTwoRounds]
 import m
@@ -424,7 +424,7 @@ def f() -> None: pass
 def g() -> None: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
-main:3: error: Too few arguments for "f"
+main:3: error: Missing positional argument "x" in call to "f"
 main:5: error: Module has no attribute "g"
 ==
 main:5: error: Module has no attribute "g"
@@ -746,7 +746,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:3: error: Too few arguments for "B"
+main:3: error: Missing positional argument "b" in call to "B"
 
 [case testDataclassUpdate4]
 # flags: --python-version 3.7
@@ -773,7 +773,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:3: error: Too few arguments for "B"
+main:3: error: Missing positional argument "b" in call to "B"
 
 [case testDataclassUpdate5]
 # flags: --python-version 3.7
@@ -807,7 +807,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:3: error: Too few arguments for "B"
+main:3: error: Missing positional argument "b" in call to "B"
 ==
 
 [case testDataclassUpdate6]
@@ -867,7 +867,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:3: error: Too few arguments for "C"
+main:3: error: Missing positional argument "c" in call to "C"
 
 [case testDataclassUpdate9]
 # flags: --python-version 3.7
@@ -907,7 +907,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:3: error: Too few arguments for "C"
+main:3: error: Missing positional argument "c" in call to "C"
 ==
 
 [case testAttrsUpdate1]
@@ -935,7 +935,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-b.py:7: error: Too few arguments for "B"
+b.py:7: error: Missing positional argument "b" in call to "B"
 
 [case testAttrsUpdate2]
 from b import B
@@ -961,7 +961,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:2: error: Too few arguments for "B"
+main:2: error: Missing positional argument "b" in call to "B"
 
 [case testAttrsUpdate3]
 from b import B
@@ -995,7 +995,7 @@ class A:
 
 [out]
 ==
-main:2: error: Too few arguments for "B"
+main:2: error: Missing positional argument "x" in call to "B"
 ==
 
 [case testAttrsUpdate4]
@@ -1151,7 +1151,7 @@ class A:
     def g(self, a: 'A') -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "g" of "A"
+main:4: error: Missing positional argument "a" in call to "g" of "A"
 
 [case testRemoveBaseClass]
 import m
@@ -1206,7 +1206,7 @@ def g() -> None: pass
 def g(x: int) -> None: pass
 [out]
 ==
-main:3: error: Too few arguments for "g"
+main:3: error: Missing positional argument "x" in call to "g"
 
 [case testTriggerTargetInPackage]
 import m.n
@@ -1221,7 +1221,7 @@ def g() -> None: pass
 def g(x: int) -> None: pass
 [out]
 ==
-m/n.py:3: error: Too few arguments for "g"
+m/n.py:3: error: Missing positional argument "x" in call to "g"
 
 [case testChangeInPackage__init__]
 import m
@@ -1235,7 +1235,7 @@ def g(x: int) -> None: pass
 [file m/n.py]
 [out]
 ==
-main:4: error: Too few arguments for "g"
+main:4: error: Missing positional argument "x" in call to "g"
 
 [case testTriggerTargetInPackage__init__]
 import m
@@ -1251,7 +1251,7 @@ def g(x: int) -> None: pass
 [file m/n.py]
 [out]
 ==
-m/__init__.py:3: error: Too few arguments for "g"
+m/__init__.py:3: error: Missing positional argument "x" in call to "g"
 
 [case testModuleAttributeTypeChanges]
 import m
@@ -1330,7 +1330,7 @@ class A:
     def __init__(self, x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "A"
+main:4: error: Missing positional argument "x" in call to "A"
 
 [case testConstructorSignatureChanged2]
 from typing import Callable
@@ -1365,8 +1365,8 @@ class C:
     def __init__(self, x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "__init__" of "C"
-main:5: error: Too few arguments for "D"
+main:4: error: Missing positional argument "x" in call to "__init__" of "C"
+main:5: error: Missing positional argument "x" in call to "D"
 
 [case testConstructorAdded]
 import m
@@ -1380,7 +1380,7 @@ class A:
     def __init__(self, x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "A"
+main:4: error: Missing positional argument "x" in call to "A"
 
 [case testConstructorDeleted]
 import m
@@ -1411,7 +1411,7 @@ class A:
 class B(A): pass
 [out]
 ==
-main:4: error: Too few arguments for "B"
+main:4: error: Missing positional argument "x" in call to "B"
 
 [case testSuperField]
 from a import C
@@ -1440,7 +1440,7 @@ def f(x: int) -> None: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
 ==
-main:4: error: Too few arguments for "f"
+main:4: error: Missing positional argument "x" in call to "f"
 
 [case testImportFrom2]
 from m import f
@@ -1451,7 +1451,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportFromTargetsClass]
 from m import C
@@ -1466,7 +1466,7 @@ class C:
     def g(self, x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "g" of "C"
+main:4: error: Missing positional argument "x" in call to "g" of "C"
 
 [case testImportFromTargetsVariable]
 from m import x
@@ -1495,7 +1495,7 @@ def g() -> None: pass
 def g(x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "g"
+main:4: error: Missing positional argument "x" in call to "g"
 
 [case testImportedFunctionGetsImported]
 from m import f
@@ -1510,7 +1510,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "f"
+main:4: error: Missing positional argument "x" in call to "f"
 
 [case testNestedClassMethodSignatureChanges]
 from m import A
@@ -1527,7 +1527,7 @@ class A:
         def g(self, x: int) -> None: pass
 [out]
 ==
-main:4: error: Too few arguments for "g" of "B"
+main:4: error: Missing positional argument "x" in call to "g" of "B"
 
 [case testNestedClassAttributeTypeChanges]
 from m import A
@@ -2240,7 +2240,7 @@ a.py:3: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; ex
 ==
 a.py:6: error: "B" has no attribute "x"
 ==
-a.py:4: error: Too few arguments for "C"
+a.py:4: error: Missing positional argument "x" in call to "C"
 
 [case testDecoratorUpdateFunc]
 import a
@@ -2308,7 +2308,7 @@ a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; ex
 ==
 a.py:7: error: "B" has no attribute "x"
 ==
-a.py:5: error: Too few arguments for "C"
+a.py:5: error: Missing positional argument "x" in call to "C"
 
 [case DecoratorUpdateMethod]
 import a
@@ -2376,7 +2376,7 @@ a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[D, B], B]";
 ==
 a.py:7: error: "B" has no attribute "x"
 ==
-a.py:5: error: Too few arguments for "C"
+a.py:5: error: Missing positional argument "x" in call to "C"
 
 [case testDecoratorUpdateDeeepNested]
 import a
@@ -3417,8 +3417,8 @@ class C:
     def __init__(self, x: int) -> None: pass
 [out]
 ==
-main:5: error: Too few arguments for "__init__" of "C"
-main:6: error: Too few arguments for "D"
+main:5: error: Missing positional argument "x" in call to "__init__" of "C"
+main:6: error: Missing positional argument "x" in call to "D"
 
 [case testInferAttributeTypeAndMultipleStaleTargets]
 import a
@@ -6007,7 +6007,7 @@ class C:
         pass
 [out]
 ==
-a.py:4: error: Too few arguments for "C"
+a.py:4: error: Missing positional argument "x" in call to "C"
 
 [case testDunderNewInsteadOfInit]
 import a

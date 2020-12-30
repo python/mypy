@@ -627,8 +627,11 @@ def generate_dealloc_for_class(cl: ClassIR,
     emitter.emit_line('{}({} *self)'.format(dealloc_func_name, cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     emitter.emit_line('PyObject_GC_UnTrack(self);')
+    # The trashcan is needed to handle deep recursive deallocations
+    emitter.emit_line('CPy_TRASHCAN_BEGIN(self, {})'.format(dealloc_func_name))
     emitter.emit_line('{}(self);'.format(clear_func_name))
     emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
+    emitter.emit_line('CPy_TRASHCAN_END(self)')
     emitter.emit_line('}')
 
 

@@ -453,6 +453,14 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
 
 // Misc operations
 
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 8
+#define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_BEGIN(op, dealloc)
+#define CPy_TRASHCAN_END(op) Py_TRASHCAN_END
+#else
+#define CPy_TRASHCAN_BEGIN(op, dealloc) Py_TRASHCAN_SAFE_BEGIN(op)
+#define CPy_TRASHCAN_END(op) Py_TRASHCAN_SAFE_END(op)
+#endif
+
 
 // mypy lets ints silently coerce to floats, so a mypyc runtime float
 // might be an int also
@@ -489,6 +497,7 @@ void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
+int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected);
 
 
 #ifdef __cplusplus

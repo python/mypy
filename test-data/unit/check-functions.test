@@ -737,7 +737,7 @@ import typing
 def f(x: object) -> None:
     def g(y):
         pass
-    g() # E: Too few arguments for "g"
+    g() # E: Missing positional argument "y" in call to "g"
     g(x)
 [out]
 
@@ -1080,7 +1080,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: Missing positional argument "x" in call to "x"
 
 class A:
     @staticmethod
@@ -1102,7 +1102,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: Missing positional argument "a" in call to "x"
 
 class A:
     @classmethod
@@ -1504,7 +1504,7 @@ def g() -> None:
     f = None
     if object():
         def f(x: int) -> None: pass
-    f() # E: Too few arguments for "f"
+    f() # E: Missing positional argument "x" in call to "f"
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
@@ -2201,7 +2201,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"
+        self.g() # E: Too few arguments for "g" of "A"   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2349,8 +2349,8 @@ bad = make_list()  # E: Need type annotation for 'bad' (hint: "bad: List[<type>]
 
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
-foo(x=2, y=2)  # E: Missing positional argument
-foo(y=2)  # E: Missing positional arguments
+foo(x=2, y=2)  # E: Too few arguments for "foo"
+foo(y=2)  # E: Too few arguments for "foo"
 
 [case testMissingArgumentError]
 def f(a, b, c, d=None) -> None: pass

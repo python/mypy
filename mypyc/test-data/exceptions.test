@@ -241,17 +241,15 @@ def a():
     r1 :: str
     r2, r3 :: object
     r4, r5 :: str
-    r6 :: tuple[object, object, object]
-    r7 :: str
-    r8 :: tuple[object, object, object]
-    r9 :: str
-    r10 :: tuple[object, object, object]
-    r11 :: str
-    r12 :: object
-    r13 :: str
-    r14, r15 :: object
-    r16 :: bit
-    r17 :: str
+    r6, r7 :: tuple[object, object, object]
+    r8 :: str
+    r9 :: tuple[object, object, object]
+    r10 :: str
+    r11 :: object
+    r12 :: str
+    r13, r14 :: object
+    r15 :: bit
+    r16 :: str
 L0:
 L1:
     r0 = builtins :: module
@@ -267,26 +265,26 @@ L3:
     inc_ref r4
     r5 = r4
 L4:
-    r8 = <error> :: tuple[object, object, object]
-    r6 = r8
+    r6 = <error> :: tuple[object, object, object]
+    r7 = r6
     goto L6
 L5:
-    r9 = <error> :: str
-    r5 = r9
-    r10 = CPy_CatchError()
-    r6 = r10
+    r8 = <error> :: str
+    r5 = r8
+    r9 = CPy_CatchError()
+    r7 = r9
 L6:
-    r11 = load_global CPyStatic_unicode_3 :: static  ('goodbye!')
-    r12 = builtins :: module
-    r13 = load_global CPyStatic_unicode_1 :: static  ('print')
-    r14 = CPyObject_GetAttr(r12, r13)
-    if is_error(r14) goto L13 (error at a:6) else goto L7
+    r10 = load_global CPyStatic_unicode_3 :: static  ('goodbye!')
+    r11 = builtins :: module
+    r12 = load_global CPyStatic_unicode_1 :: static  ('print')
+    r13 = CPyObject_GetAttr(r11, r12)
+    if is_error(r13) goto L13 (error at a:6) else goto L7
 L7:
-    r15 = PyObject_CallFunctionObjArgs(r14, r11, 0)
-    dec_ref r14
-    if is_error(r15) goto L13 (error at a:6) else goto L21
+    r14 = PyObject_CallFunctionObjArgs(r13, r10, 0)
+    dec_ref r13
+    if is_error(r14) goto L13 (error at a:6) else goto L21
 L8:
-    if is_error(r6) goto L11 else goto L9
+    if is_error(r7) goto L11 else goto L9
 L9:
     CPy_Reraise()
     if not 0 goto L13 else goto L22 :: bool
@@ -299,29 +297,29 @@ L12:
 L13:
     if is_error(r5) goto L14 else goto L23
 L14:
-    if is_error(r6) goto L16 else goto L15
+    if is_error(r7) goto L16 else goto L15
 L15:
-    CPy_RestoreExcInfo(r6)
-    dec_ref r6
+    CPy_RestoreExcInfo(r7)
+    dec_ref r7
 L16:
-    r16 = CPy_KeepPropagating()
-    if not r16 goto L19 else goto L17 :: bool
+    r15 = CPy_KeepPropagating()
+    if not r15 goto L19 else goto L17 :: bool
 L17:
     unreachable
 L18:
     unreachable
 L19:
-    r17 = <error> :: str
-    return r17
+    r16 = <error> :: str
+    return r16
 L20:
     dec_ref r3
     goto L3
 L21:
-    dec_ref r15
+    dec_ref r14
     goto L8
 L22:
     dec_ref r5
-    dec_ref r6
+    dec_ref r7
     goto L10
 L23:
     dec_ref r5
@@ -352,8 +350,6 @@ def lol(x):
     r1, st :: object
     r2 :: tuple[object, object, object]
     r3 :: str
-    r4 :: bit
-    r5 :: object
 L0:
 L1:
     r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
@@ -384,58 +380,60 @@ def lol(x: Any) -> object:
     return a + b
 [out]
 def lol(x):
-    x :: object
-    r0 :: str
-    r1, a :: object
+    x, r0, a, r1, b :: object
     r2 :: str
-    r3, b :: object
-    r4 :: tuple[object, object, object]
-    r5 :: bit
-    r6 :: object
+    r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: tuple[object, object, object]
     r7, r8 :: bool
-    r9 :: object
+    r9, r10 :: object
 L0:
+    r0 = <error> :: object
+    a = r0
+    r1 = <error> :: object
+    b = r1
 L1:
-    r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
-    r1 = CPyObject_GetAttr(x, r0)
-    if is_error(r1) goto L4 (error at lol:4) else goto L15
-L2:
-    a = r1
-    r2 = load_global CPyStatic_unicode_4 :: static  ('bar')
+    r2 = load_global CPyStatic_unicode_3 :: static  ('foo')
     r3 = CPyObject_GetAttr(x, r2)
-    if is_error(r3) goto L4 (error at lol:5) else goto L16
+    if is_error(r3) goto L4 (error at lol:4) else goto L15
+L2:
+    a = r3
+    r4 = load_global CPyStatic_unicode_4 :: static  ('bar')
+    r5 = CPyObject_GetAttr(x, r4)
+    if is_error(r5) goto L4 (error at lol:5) else goto L16
 L3:
-    b = r3
+    b = r5
     goto L6
 L4:
-    r4 = CPy_CatchError()
+    r6 = CPy_CatchError()
 L5:
-    CPy_RestoreExcInfo(r4)
-    dec_ref r4
+    CPy_RestoreExcInfo(r6)
+    dec_ref r6
 L6:
     if is_error(a) goto L17 else goto L9
 L7:
-    raise UnboundLocalError("local variable 'a' referenced before assignment")
+    r7 = raise UnboundLocalError("local variable 'a' referenced before assignment")
     if not r7 goto L14 (error at lol:9) else goto L8 :: bool
 L8:
     unreachable
 L9:
     if is_error(b) goto L18 else goto L12
 L10:
-    raise UnboundLocalError("local variable 'b' referenced before assignment")
+    r8 = raise UnboundLocalError("local variable 'b' referenced before assignment")
     if not r8 goto L14 (error at lol:9) else goto L11 :: bool
 L11:
     unreachable
 L12:
-    r6 = PyNumber_Add(a, b)
+    r9 = PyNumber_Add(a, b)
     xdec_ref a
     xdec_ref b
-    if is_error(r6) goto L14 (error at lol:9) else goto L13
+    if is_error(r9) goto L14 (error at lol:9) else goto L13
 L13:
-    return r6
-L14:
-    r9 = <error> :: object
     return r9
+L14:
+    r10 = <error> :: object
+    return r10
 L15:
     xdec_ref a
     goto L2
@@ -460,48 +458,51 @@ def f(b: bool) -> None:
 [out]
 def f(b):
     b :: bool
-    r0, u, r1, v :: str
-    r2, r3 :: bit
-    r4 :: object
-    r5 :: str
-    r6, r7 :: object
+    r0, v, r1, u, r2 :: str
+    r3, r4 :: bit
+    r5 :: object
+    r6 :: str
+    r7 :: object
     r8 :: bool
-    r9 :: None
+    r9 :: object
+    r10 :: None
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('a')
-    inc_ref r0
-    u = r0
+    r0 = <error> :: str
+    v = r0
+    r1 = load_global CPyStatic_unicode_1 :: static  ('a')
+    inc_ref r1
+    u = r1
 L1:
     if b goto L10 else goto L11 :: bool
 L2:
-    r1 = load_global CPyStatic_unicode_2 :: static  ('b')
-    inc_ref r1
-    v = r1
-    r2 = v == u
-    r3 = r2 ^ 1
-    if r3 goto L11 else goto L1 :: bool
+    r2 = load_global CPyStatic_unicode_2 :: static  ('b')
+    inc_ref r2
+    v = r2
+    r3 = v == u
+    r4 = r3 ^ 1
+    if r4 goto L11 else goto L1 :: bool
 L3:
-    r4 = builtins :: module
-    r5 = load_global CPyStatic_unicode_3 :: static  ('print')
-    r6 = CPyObject_GetAttr(r4, r5)
-    if is_error(r6) goto L12 (error at f:7) else goto L4
+    r5 = builtins :: module
+    r6 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r7 = CPyObject_GetAttr(r5, r6)
+    if is_error(r7) goto L12 (error at f:7) else goto L4
 L4:
     if is_error(v) goto L13 else goto L7
 L5:
-    raise UnboundLocalError("local variable 'v' referenced before assignment")
+    r8 = raise UnboundLocalError("local variable 'v' referenced before assignment")
     if not r8 goto L9 (error at f:7) else goto L6 :: bool
 L6:
     unreachable
 L7:
-    r7 = PyObject_CallFunctionObjArgs(r6, v, 0)
-    dec_ref r6
+    r9 = PyObject_CallFunctionObjArgs(r7, v, 0)
+    dec_ref r7
     xdec_ref v
-    if is_error(r7) goto L9 (error at f:7) else goto L14
+    if is_error(r9) goto L9 (error at f:7) else goto L14
 L8:
     return 1
 L9:
-    r9 = <error> :: None
-    return r9
+    r10 = <error> :: None
+    return r10
 L10:
     xdec_ref v
     goto L2
@@ -512,9 +513,9 @@ L12:
     xdec_ref v
     goto L9
 L13:
-    dec_ref r6
+    dec_ref r7
     goto L5
 L14:
-    dec_ref r7
+    dec_ref r9
     goto L8
 

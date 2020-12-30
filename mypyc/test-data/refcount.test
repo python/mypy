@@ -728,7 +728,7 @@ def f(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    key, r8 :: int
+    r8, key :: int
     r9, r10 :: object
     r11 :: int
     r12, r13 :: bit
@@ -813,3 +813,54 @@ L0:
     r3 = r2 << 1
     return r3
 
+[case testSometimesUninitializedVariable]
+def f(x: bool) -> int:
+    if x:
+        y = 1
+    else:
+        z = 2
+    return y + z
+[out]
+def f(x):
+    x :: bool
+    r0, y, r1, z :: int
+    r2, r3 :: bool
+    r4 :: int
+L0:
+    r0 = <error> :: int
+    y = r0
+    r1 = <error> :: int
+    z = r1
+    if x goto L8 else goto L9 :: bool
+L1:
+    y = 2
+    goto L3
+L2:
+    z = 4
+L3:
+    if is_error(y) goto L10 else goto L5
+L4:
+    r2 = raise UnboundLocalError("local variable 'y' referenced before assignment")
+    unreachable
+L5:
+    if is_error(z) goto L11 else goto L7
+L6:
+    r3 = raise UnboundLocalError("local variable 'z' referenced before assignment")
+    unreachable
+L7:
+    r4 = CPyTagged_Add(y, z)
+    xdec_ref y :: int
+    xdec_ref z :: int
+    return r4
+L8:
+    xdec_ref y :: int
+    goto L1
+L9:
+    xdec_ref z :: int
+    goto L2
+L10:
+    xdec_ref z :: int
+    goto L4
+L11:
+    xdec_ref y :: int
+    goto L6

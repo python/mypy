@@ -111,7 +111,7 @@ X = namedtuple('X', 'x y')
 x = X(1, 'x')
 x.x
 x.z      # E: "X" has no attribute "z"
-x = X(1) # E: Too few arguments for "X"
+x = X(1) # E: Missing positional argument "y" in call to "X"
 x = X(1, 2, 3)  # E: Too many arguments for "X"
 [builtins fixtures/tuple.pyi]
 
@@ -157,7 +157,7 @@ from collections import namedtuple
 
 X = namedtuple('X', ['x', 'y'], defaults=(1,))
 
-X()  # E: Too few arguments for "X"
+X()  # E: Missing positional argument "x" in call to "X"
 X(0)  # ok
 X(0, 1)  # ok
 X(0, 1, 2)  # E: Too many arguments for "X"
