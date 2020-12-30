@@ -128,7 +128,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             cond = '{}{}'.format(neg, expr_result)
         elif op.op == Branch.IS_ERROR:
             typ = op.value.type
-            compare = '!=' if op.negated else '=='
+            compare = '!=' if negated else '=='
             if isinstance(typ, RTuple):
                 # TODO: What about empty tuple?
                 cond = self.emitter.tuple_undefined_check_cond(typ,

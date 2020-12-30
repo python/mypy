@@ -175,6 +175,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                 goto CPyL9;
                          """)
 
+    def test_branch_is_error_next_block(self) -> None:
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.IS_ERROR)
+        self.assert_emit(b,
+                         """if (cpy_r_b != 2) goto CPyL9;""",
+                         next_block=next_block)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.IS_ERROR)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (cpy_r_b == 2) goto CPyL9;""",
+                         next_block=next_block)
+
     def test_call(self) -> None:
         decl = FuncDecl('myfn', None, 'mod',
                         FuncSignature([RuntimeArg('m', int_rprimitive)], int_rprimitive))
