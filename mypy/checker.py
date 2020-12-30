@@ -3957,6 +3957,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               ) -> Tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
+        Also includes TypeGuard functions.
 
         Return value is a map of variables to their types if the condition
         is true and a map of variables to their types if the condition is false.
@@ -4001,6 +4002,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
+            else:
+                type_guard = node.callee.node.type.type_guard
+                if type_guard is not None:
+                    if len(node.args) < 1:  # TODO: Is this an error?
+                        return {}, {}
+                    if literal(expr) == LITERAL_TYPE:
+                        return {expr: type_guard}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
