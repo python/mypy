@@ -123,7 +123,12 @@ class Register(Value):
 
 
 class Integer(Value):
-    """Integer literal"""
+    """Integer literal.
+
+    Integer literals are treated as constant values and are generally
+    not included in data flow analyses and such, unlike Register and
+    Op subclasses.
+    """
 
     def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
         if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
