@@ -35,7 +35,7 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType)
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -4008,7 +4008,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if len(node.args) < 1:  # TODO: Is this an error?
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
-                        return {expr: type_guard}, {}
+                        return {expr: TypeGuardType(type_guard)}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the

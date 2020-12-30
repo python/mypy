@@ -14,7 +14,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, NoneType, TypeGuardType, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike,
@@ -4163,6 +4163,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
+            if isinstance(restriction, TypeGuardType):
+                # A type guard forces the new type even if it doesn't overlap the old
+                return restriction.type_guard
             # If the current node is deferred, some variables may get Any types that they
             # otherwise wouldn't have. We don't want to narrow down these since it may
             # produce invalid inferred Optional[Any] types, at least.

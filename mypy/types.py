@@ -261,13 +261,23 @@ class TypeAliasType(Type):
         alias = TypeAliasType(None, args)
         alias.type_ref = data['type_ref']
         return alias
-
+    
     def copy_modified(self, *,
                       args: Optional[List[Type]] = None) -> 'TypeAliasType':
         return TypeAliasType(
             self.alias,
             args if args is not None else self.args.copy(),
             self.line, self.column)
+
+
+class TypeGuardType(Type):
+    """Only used by find_instance_check() etc."""
+    def __init__(self, type_guard: Type):
+        super().__init__(line=type_guard.line, column=type_guard.column)
+        self.type_guard = type_guard
+
+    def __repr__(self) -> str:
+        return "TypeGuard({})".format(self.type_guard)
 
 
 class ProperType(Type):

@@ -81,7 +81,7 @@ from typing_extensions import TypeGuard
 def is_str_list(a: List[object]) -> TypeGuard[List[str]]: pass
 def main(a: List[object]):
     if is_str_list(a):
-        reveal_type(a)  # N: Revealed type is 'List[builtins.str]'
+        reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.str]'
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardUnionIn]
