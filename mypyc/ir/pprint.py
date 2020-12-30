@@ -1,7 +1,6 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
-import re
-from typing import Any, Dict, List, Optional, Match
+from typing import Any, Dict, List
 
 from typing_extensions import Final
 
@@ -271,7 +270,6 @@ def format_blocks(blocks: List[BasicBlock],
         if b.error_handler:
             handler_map.setdefault(b.error_handler, []).append(b)
 
-    names_rev = {value: key for key, value in names.items()}
     visitor = IRPrettyPrintVisitor(names)
 
     lines = []

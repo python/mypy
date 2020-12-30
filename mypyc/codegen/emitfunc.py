@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union, Dict
+from typing import Union
 from typing_extensions import Final
 
 from mypyc.common import (
