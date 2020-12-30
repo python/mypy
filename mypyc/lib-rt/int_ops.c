@@ -1,9 +1,19 @@
-// Int primitive operations
+// Int primitive operations (tagged arbitrary-precision integers)
 //
 // These are registered in mypyc.primitives.int_ops.
 
 #include <Python.h>
 #include "CPy.h"
+
+#ifndef _WIN32
+// On 64-bit Linux and macOS, ssize_t and long are both 64 bits, and
+// PyLong_FromLong is faster than PyLong_FromSsize_t, so use the faster one
+#define CPyLong_FromSsize_t PyLong_FromLong
+#else
+// On 64-bit Windows, ssize_t is 64 bits but long is 32 bits, so we
+// can't use the above trick
+#define CPyLong_FromSsize_t PyLong_FromSsize_t
+#endif
 
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     // We use a Python object if the value shifted left by 1 is too
@@ -57,7 +67,7 @@ PyObject *CPyTagged_AsObject(CPyTagged x) {
         value = CPyTagged_LongAsObject(x);
         Py_INCREF(value);
     } else {
-        value = PyLong_FromLong(CPyTagged_ShortAsSsize_t(x));
+        value = CPyLong_FromSsize_t(CPyTagged_ShortAsSsize_t(x));
         if (value == NULL) {
             CPyError_OutOfMemory();
         }
@@ -70,7 +80,7 @@ PyObject *CPyTagged_StealAsObject(CPyTagged x) {
     if (unlikely(CPyTagged_CheckLong(x))) {
         value = CPyTagged_LongAsObject(x);
     } else {
-        value = PyLong_FromLong(CPyTagged_ShortAsSsize_t(x));
+        value = CPyLong_FromSsize_t(CPyTagged_ShortAsSsize_t(x));
         if (value == NULL) {
             CPyError_OutOfMemory();
         }
