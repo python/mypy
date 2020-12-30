@@ -34,7 +34,9 @@ T = TypeVar('T')
 class BasicBlock:
     """Basic IR block.
 
-    Constains a sequence of ops and ends with a jump, branch, or return.
+    Contains a sequence of Ops and ends with a jump, branch, or return.
+    All generated Ops must live in a BasicBlock, as this is needed for
+    determining the order of evaluation.
 
     When building the IR, ops that raise exceptions can be included in
     the middle of a basic block, but the exceptions aren't checked.
@@ -86,7 +88,18 @@ NO_TRACEBACK_LINE_NO = -10000
 class Value:
     """Abstract base class for all IR values.
 
-    These include references to registers, literals, and various operations.
+    These include references to registers, literals, and all
+    operations (Ops), such as assignments, calls and branches.
+
+    Values are mostly used as inputs of Ops (Register can also be used
+    as an output).
+
+    A Value is part of the IR being compiled if it's included in a BasicBlock
+    that is reachable from a FuncIR (i.e., is part of a function).
+
+    See also: Op is a subclass of Value that is the base class of all
+    operations.
+
     """
 
     # Source line number (-1 for no/unknown line)
@@ -140,7 +153,16 @@ class Integer(Value):
 
 
 class Op(Value):
-    """Abstract base class for all operations (as opposed to values)."""
+    """Abstract base class for all IR operations.
+
+    Each operation must be stored in a BasicBlock (in 'ops') to be
+    active in the IR. This is different from non-Op values, including
+    Register and Integer, which only need a reference from an active
+    Op to be considered active.
+
+    For IR to be well-formed, an active Op must not have references to
+    inactive ops.
+    """
 
     def __init__(self, line: int) -> None:
         self.line = line
@@ -171,10 +193,33 @@ class Op(Value):
         pass
 
 
+class Assign(Op):
+    """Assign a value to a Register (dest = int)."""
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign(self)
+
+
 class ControlOp(Op):
-    # Basically just for hierarchy organization.
-    # We could plausibly have a targets() method if we wanted.
-    pass
+    """Control flow operation.
+
+    This is Basically just for class hierarchy organization.
+
+    We could plausibly have a targets() method if we wanted.
+    """
 
 
 class Goto(ControlOp):
@@ -288,8 +333,11 @@ class Unreachable(ControlOp):
 class RegisterOp(Op):
     """Abstract base class for operations that can be written as r1 = f(r2, ..., rn).
 
-    Takes some values, performs an operation and generates an output.
-    Doesn't do any control flow, but can raise an error.
+    Takes some values, performs an operation, and generates an output
+    (unless the 'type' attribute is void_rtype, which is the default).
+    Other ops can refer to the result of the Op by referring to the Op
+    instance. Doesn't do any explicit control flow, but can raise an
+    error.
     """
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
@@ -393,26 +441,6 @@ class MethodCall(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_method_call(self)
-
-
-class Assign(Op):
-    """Assign a value to a register (dest = int)."""
-
-    error_kind = ERR_NEVER
-
-    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
-        super().__init__(line)
-        self.src = src
-        self.dest = dest
-
-    def sources(self) -> List[Value]:
-        return [self.src]
-
-    def stolen(self) -> List[Value]:
-        return [self.src]
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_assign(self)
 
 
 class LoadErrorValue(RegisterOp):
