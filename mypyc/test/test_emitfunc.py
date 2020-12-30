@@ -1,13 +1,13 @@
 import unittest
 
-from typing import Dict, List
+from typing import List
 
 from mypy.ordered_dict import OrderedDict
 
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
-    BasicBlock, Goto, Return, LoadInt, Assign, IncRef, DecRef, Branch,
+    BasicBlock, Goto, Return, Integer, Assign, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
     GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
@@ -79,11 +79,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Return(self.m),
                          "return cpy_r_m;")
 
-    def test_load_int(self) -> None:
-        self.assert_emit(LoadInt(5),
-                         "cpy_r_i0 = 10;")
-        self.assert_emit(LoadInt(5, -1, c_int_rprimitive),
-                         "cpy_r_i0 = 5;")
+    def test_integer(self) -> None:
+        self.assert_emit(Assign(self.n, Integer(5)),
+                         "cpy_r_n = 10;")
+        self.assert_emit(Assign(self.i32, Integer(5, c_int_rprimitive)),
+                         "cpy_r_i32 = 5;")
 
     def test_tuple_get(self) -> None:
         self.assert_emit(TupleGet(self.t, 1, 0), 'cpy_r_r0 = cpy_r_t.f1;')
@@ -315,8 +315,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         emitter.fragments = []
         declarations.fragments = []
 
-        const_int_regs = {}  # type: Dict[LoadInt, int]
-        visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog', const_int_regs)
+        visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
@@ -363,7 +362,7 @@ class TestGenerateFunction(unittest.TestCase):
                     [self.block])
         value_names = generate_names_for_ir(fn.arg_regs, fn.blocks)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])), value_names)
-        generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
+        generate_native_function(fn, emitter, 'prog.py', 'prog')
         result = emitter.fragments
         assert_string_arrays_equal(
             [
@@ -375,21 +374,22 @@ class TestGenerateFunction(unittest.TestCase):
             result, msg='Generated code invalid')
 
     def test_register(self) -> None:
-        op = LoadInt(5)
+        reg = Register(int_rprimitive)
+        op = Assign(reg, Integer(5))
         self.block.ops.append(op)
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.reg],
                     [self.block])
         value_names = generate_names_for_ir(fn.arg_regs, fn.blocks)
         emitter = Emitter(EmitterContext(NameGenerator([['mod']])), value_names)
-        generate_native_function(fn, emitter, 'prog.py', 'prog', optimize_int=False)
+        generate_native_function(fn, emitter, 'prog.py', 'prog')
         result = emitter.fragments
         assert_string_arrays_equal(
             [
                 'PyObject *CPyDef_myfunc(CPyTagged cpy_r_arg) {\n',
-                '    CPyTagged cpy_r_i0;\n',
+                '    CPyTagged cpy_r_r0;\n',
                 'CPyL0: ;\n',
-                '    cpy_r_i0 = 10;\n',
+                '    cpy_r_r0 = 10;\n',
                 '}\n',
             ],
             result, msg='Generated code invalid')

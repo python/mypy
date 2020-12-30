@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union, Dict
+from typing import Union
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -8,7 +8,7 @@ from mypyc.common import (
 )
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
-    OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
+    OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
@@ -20,7 +20,6 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.const_int import find_constant_integer_registers
 from mypyc.ir.pprint import generate_names_for_ir
 
 # Whether to insert debug asserts for all error handling, to quickly
@@ -48,16 +47,11 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
 def generate_native_function(fn: FuncIR,
                              emitter: Emitter,
                              source_path: str,
-                             module_name: str,
-                             optimize_int: bool = True) -> None:
-    if optimize_int:
-        const_int_regs = find_constant_integer_registers(fn.blocks)
-    else:
-        const_int_regs = {}
+                             module_name: str) -> None:
     declarations = Emitter(emitter.context)
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, names)
-    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name, const_int_regs)
+    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
     body.indent()
@@ -71,11 +65,10 @@ def generate_native_function(fn: FuncIR,
 
         ctype = emitter.ctype_spaced(r.type)
         init = ''
-        if r not in const_int_regs:
-            declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
-                                                                         prefix=REG_PREFIX,
-                                                                         name=names[r],
-                                                                         init=init))
+        declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
+                                                                     prefix=REG_PREFIX,
+                                                                     name=names[r],
+                                                                     init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -97,14 +90,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                  emitter: Emitter,
                  declarations: Emitter,
                  source_path: str,
-                 module_name: str,
-                 const_int_regs: Dict[LoadInt, int]) -> None:
+                 module_name: str) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
-        self.const_int_regs = const_int_regs
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -171,12 +162,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # for some casts), so don't emit it.
         if dest != src:
             self.emit_line('%s = %s;' % (dest, src))
-
-    def visit_load_int(self, op: LoadInt) -> None:
-        if op in self.const_int_regs:
-            return
-        dest = self.reg(op)
-        self.emit_line('%s = %d;' % (dest, op.value))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):
@@ -495,8 +480,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         return self.emitter.label(label)
 
     def reg(self, reg: Value) -> str:
-        if isinstance(reg, LoadInt) and reg in self.const_int_regs:
-            val = self.const_int_regs[reg]
+        if isinstance(reg, Integer):
+            val = reg.value
             if val == 0 and is_pointer_rprimitive(reg.type):
                 return "NULL"
             return str(val)

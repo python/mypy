@@ -1,7 +1,7 @@
 import unittest
 from typing import List
 
-from mypyc.ir.ops import BasicBlock, Register, Op, LoadInt, IntOp, Unreachable, Assign
+from mypyc.ir.ops import BasicBlock, Register, Op, Integer, IntOp, Unreachable, Assign
 from mypyc.ir.rtypes import int_rprimitive
 from mypyc.ir.pprint import generate_names_for_ir
 
@@ -25,16 +25,17 @@ class TestGenerateNames(unittest.TestCase):
         assert generate_names_for_ir([reg], []) == {reg: 'foo'}
 
     def test_int_op(self) -> None:
-        op1 = LoadInt(2)
-        op2 = LoadInt(4)
-        op3 = IntOp(int_rprimitive, op1, op2, IntOp.ADD)
-        block = make_block([op1, op2, op3, Unreachable()])
-        assert generate_names_for_ir([], [block]) == {op1: 'i0', op2: 'i1', op3: 'r0'}
+        n1 = Integer(2)
+        n2 = Integer(4)
+        op1 = IntOp(int_rprimitive, n1, n2, IntOp.ADD)
+        op2 = IntOp(int_rprimitive, op1, n2, IntOp.ADD)
+        block = make_block([op1, op2, Unreachable()])
+        assert generate_names_for_ir([], [block]) == {op1: 'r0', op2: 'r1'}
 
     def test_assign(self) -> None:
         reg = register('foo')
-        op1 = LoadInt(2)
-        op2 = Assign(reg, op1)
-        op3 = Assign(reg, op1)
-        block = make_block([op1, op2, op3])
-        assert generate_names_for_ir([reg], [block]) == {op1: 'i0', reg: 'foo'}
+        n = Integer(2)
+        op1 = Assign(reg, n)
+        op2 = Assign(reg, n)
+        block = make_block([op1, op2])
+        assert generate_names_for_ir([reg], [block]) == {reg: 'foo'}

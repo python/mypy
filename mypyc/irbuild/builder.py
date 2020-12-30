@@ -31,7 +31,7 @@ from mypy.util import split_target
 from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
-    BasicBlock, LoadInt, Value, Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr,
+    BasicBlock, Integer, Value, Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr,
     SetAttr, LoadStatic, InitStatic, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
@@ -512,7 +512,7 @@ class IRBuilder:
                                     line: int) -> None:
         """Process assignment like 'x, y = s', where s is a variable-length list or tuple."""
         # Check the length of sequence.
-        expected_len = self.add(LoadInt(len(target.items), rtype=c_pyssize_t_rprimitive))
+        expected_len = Integer(len(target.items), c_pyssize_t_rprimitive)
         self.builder.call_c(check_unpack_count_op, [rvalue, expected_len], line)
 
         # Read sequence items.
@@ -575,7 +575,7 @@ class IRBuilder:
             post_star_vals = target.items[split_idx + 1:]
             iter_list = self.call_c(to_list, [iterator], line)
             iter_list_len = self.builtin_len(iter_list, line)
-            post_star_len = self.add(LoadInt(len(post_star_vals)))
+            post_star_len = Integer(len(post_star_vals))
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 
             error_block, ok_block = BasicBlock(), BasicBlock()

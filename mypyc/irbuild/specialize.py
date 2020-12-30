@@ -18,7 +18,7 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, Register, BasicBlock, LoadInt, RaiseStandardError, Unreachable
+    Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
@@ -73,7 +73,7 @@ def translate_len(
             # len() of fixed-length tuple can be trivially determined statically,
             # though we still need to evaluate it.
             builder.accept(expr.args[0])
-            return builder.add(LoadInt(len(expr_rtype.types)))
+            return Integer(len(expr_rtype.types))
         else:
             obj = builder.accept(expr.args[0])
             return builder.builtin_len(obj, -1)

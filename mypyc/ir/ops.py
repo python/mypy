@@ -122,6 +122,23 @@ class Register(Value):
         return '<Register %r at %s>' % (self.name, hex(id(self)))
 
 
+class Integer(Value):
+    """Integer literal.
+
+    Integer literals are treated as constant values and are generally
+    not included in data flow analyses and such, unlike Register and
+    Op subclasses.
+    """
+
+    def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
+        if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
+            self.value = value * 2
+        else:
+            self.value = value
+        self.type = rtype
+        self.line = line
+
+
 class Op(Value):
     """Abstract base class for all operations (as opposed to values)."""
 
@@ -396,26 +413,6 @@ class Assign(Op):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_assign(self)
-
-
-class LoadInt(RegisterOp):
-    """Load an integer literal."""
-
-    error_kind = ERR_NEVER
-
-    def __init__(self, value: int, line: int = -1, rtype: RType = short_int_rprimitive) -> None:
-        super().__init__(line)
-        if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
-            self.value = value * 2
-        else:
-            self.value = value
-        self.type = rtype
-
-    def sources(self) -> List[Value]:
-        return []
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_load_int(self)
 
 
 class LoadErrorValue(RegisterOp):
@@ -1066,10 +1063,6 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_assign(self, op: Assign) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_load_int(self, op: LoadInt) -> T:
         raise NotImplementedError
 
     @abstractmethod

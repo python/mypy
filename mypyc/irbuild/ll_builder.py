@@ -17,7 +17,7 @@ from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ir.ops import (
-    BasicBlock, Op, LoadInt, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
+    BasicBlock, Op, Integer, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
     GetAttr, LoadStatic, MethodCall, CallC, Truncate,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
@@ -434,15 +434,15 @@ class LowLevelIRBuilder:
 
     def none(self) -> Value:
         """Load unboxed None value (type: none_rprimitive)."""
-        return self.add(LoadInt(1, -1, none_rprimitive))
+        return Integer(1, none_rprimitive)
 
     def true(self) -> Value:
         """Load unboxed True value (type: bool_rprimitive)."""
-        return self.add(LoadInt(1, -1, bool_rprimitive))
+        return Integer(1,  bool_rprimitive)
 
     def false(self) -> Value:
         """Load unboxed False value (type: bool_rprimitive)."""
-        return self.add(LoadInt(0, -1, bool_rprimitive))
+        return Integer(0, bool_rprimitive)
 
     def none_object(self) -> Value:
         """Load Python None value (type: object_rprimitive)."""
@@ -457,7 +457,7 @@ class LowLevelIRBuilder:
             identifier = self.literal_static_name(value)
             return self.add(LoadGlobal(int_rprimitive, identifier, ann=value))
         else:
-            return self.add(LoadInt(value))
+            return Integer(value)
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
@@ -552,9 +552,9 @@ class LowLevelIRBuilder:
 
         Return the result of the check (value of type 'bit').
         """
-        int_tag = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+        int_tag = Integer(1, c_pyssize_t_rprimitive, line)
         bitwise_and = self.int_op(c_pyssize_t_rprimitive, val, int_tag, IntOp.AND, line)
-        zero = self.add(LoadInt(0, line, rtype=c_pyssize_t_rprimitive))
+        zero = Integer(0, c_pyssize_t_rprimitive, line)
         op = ComparisonOp.NEQ if negated else ComparisonOp.EQ
         check = self.comparison_op(bitwise_and, zero, op, line)
         return check
@@ -651,7 +651,7 @@ class LowLevelIRBuilder:
     def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Compare two strings"""
         compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
-        error_constant = self.add(LoadInt(-1, line, c_int_rprimitive))
+        error_constant = Integer(-1, c_int_rprimitive, line)
         compare_error_check = self.add(ComparisonOp(compare_result,
                                                     error_constant, ComparisonOp.EQ, line))
         exception_check, propagate, final_compare = BasicBlock(), BasicBlock(), BasicBlock()
@@ -660,7 +660,7 @@ class LowLevelIRBuilder:
         self.add(branch)
         self.activate_block(exception_check)
         check_error_result = self.call_c(err_occurred_op, [], line)
-        null = self.add(LoadInt(0, line, pointer_rprimitive))
+        null = Integer(0, pointer_rprimitive, line)
         compare_error_check = self.add(ComparisonOp(check_error_result,
                                                     null, ComparisonOp.NEQ, line))
         branch = Branch(compare_error_check, propagate, final_compare, Branch.BOOL)
@@ -672,7 +672,7 @@ class LowLevelIRBuilder:
         self.activate_block(final_compare)
         op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
         return self.add(ComparisonOp(compare_result,
-                                     self.add(LoadInt(0, line, c_int_rprimitive)), op_type, line))
+                                     Integer(0, c_int_rprimitive), op_type, line))
 
     def compare_tuples(self,
                        lhs: Value,
@@ -738,7 +738,7 @@ class LowLevelIRBuilder:
     def unary_not(self,
                   value: Value,
                   line: int) -> Value:
-        mask = self.add(LoadInt(1, line, rtype=value.type))
+        mask = Integer(1, value.type, line)
         return self.int_op(value.type, value, mask, IntOp.XOR, line)
 
     def unary_op(self,
@@ -787,7 +787,7 @@ class LowLevelIRBuilder:
         return result
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
-        length = self.add(LoadInt(len(values), line, rtype=c_pyssize_t_rprimitive))
+        length = Integer(len(values), c_pyssize_t_rprimitive, line)
         result_list = self.call_c(new_list_op, [length], line)
         if len(values) == 0:
             return result_list
@@ -798,7 +798,7 @@ class LowLevelIRBuilder:
             if i == 0:
                 item_address = ob_item_base
             else:
-                offset = self.add(LoadInt(PLATFORM_SIZE * i, line, rtype=c_pyssize_t_rprimitive))
+                offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
                 item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
                                               IntOp.ADD, line))
             self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
@@ -849,12 +849,12 @@ class LowLevelIRBuilder:
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_runtime_subtype(value.type, int_rprimitive):
-            zero = self.add(LoadInt(0, rtype=short_int_rprimitive))
+            zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
         elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
-            zero = self.add(LoadInt(0))
+            zero = Integer(0)
             value = self.binary_op(length, zero, '!=', value.line)
         elif (isinstance(value.type, RInstance) and value.type.class_ir.is_ext_class
                 and value.type.class_ir.has_method('__bool__')):
@@ -915,7 +915,7 @@ class LowLevelIRBuilder:
         # Add extra integer constant if any
         for item in desc.extra_int_constants:
             val, typ = item
-            extra_int_constant = self.add(LoadInt(val, line, rtype=typ))
+            extra_int_constant = Integer(val, typ, line)
             coerced.append(extra_int_constant)
         error_kind = desc.error_kind
         if error_kind == ERR_NEG_INT:
@@ -925,7 +925,7 @@ class LowLevelIRBuilder:
                                 desc.is_borrowed, error_kind, line, var_arg_idx))
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target,
-                                self.add(LoadInt(0, line, desc.return_type)),
+                                Integer(0, desc.return_type, line),
                                 ComparisonOp.SGE,
                                 line)
             comp.error_kind = ERR_FALSE
@@ -981,18 +981,18 @@ class LowLevelIRBuilder:
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
-            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_size_op, [val], line)
-            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
-            offset = self.add(LoadInt(1, line, rtype=c_pyssize_t_rprimitive))
+            offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         # generic case
@@ -1000,8 +1000,8 @@ class LowLevelIRBuilder:
             return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
-        load_size_op = self.add(LoadInt(len(items), -1, c_pyssize_t_rprimitive))
-        return self.call_c(new_tuple_op, [load_size_op] + items, line)
+        size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
+        return self.call_c(new_tuple_op, [size] + items, line)
 
     # Internal helpers
 
@@ -1152,9 +1152,9 @@ class LowLevelIRBuilder:
         # keys and values should have the same number of items
         size = len(keys)
         if size > 0:
-            load_size_op = self.add(LoadInt(size, -1, c_pyssize_t_rprimitive))
+            size_value = Integer(size, c_pyssize_t_rprimitive)  # type: Value
             # merge keys and values
             items = [i for t in list(zip(keys, values)) for i in t]
-            return self.call_c(dict_build_op, [load_size_op] + items, line)
+            return self.call_c(dict_build_op, [size_value] + items, line)
         else:
             return self.call_c(dict_new_op, [], line)
