@@ -271,7 +271,7 @@ class Branch(ControlOp):
     IS_ERROR = 101  # type: Final
 
     def __init__(self,
-                 left: Value,
+                 value: Value,
                  true_label: BasicBlock,
                  false_label: BasicBlock,
                  op: int,
@@ -280,7 +280,7 @@ class Branch(ControlOp):
                  rare: bool = False) -> None:
         super().__init__(line)
         # Target value being checked
-        self.left = left
+        self.value = value
         self.true = true_label
         self.false = false_label
         # BOOL (boolean check) or IS_ERROR (error value check)
@@ -292,7 +292,7 @@ class Branch(ControlOp):
         self.rare = rare
 
     def sources(self) -> List[Value]:
-        return [self.left]
+        return [self.value]
 
     def invert(self) -> None:
         self.negated = not self.negated
