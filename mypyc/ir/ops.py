@@ -95,8 +95,8 @@ class Value:
     These include references to registers, literals, and all
     operations (Ops), such as assignments, calls and branches.
 
-    Values are mostly used as inputs of Ops. Register can also be used
-    as an assignment target.
+    Values are often used as inputs of Ops. Register can be used as an
+    assignment target.
 
     A Value is part of the IR being compiled if it's included in a BasicBlock
     that is reachable from a FuncIR (i.e., is part of a function).

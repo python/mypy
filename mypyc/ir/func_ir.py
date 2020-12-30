@@ -14,7 +14,7 @@ from mypyc.namegen import NameGenerator
 
 
 class RuntimeArg:
-    """Representation of a function argument in IR.
+    """Description of a function argument in IR.
 
     Argument kind is one of ARG_* constants defined in mypy.nodes.
     """
@@ -156,8 +156,11 @@ class FuncIR:
                  blocks: List[BasicBlock],
                  line: int = -1,
                  traceback_name: Optional[str] = None) -> None:
+        # Declaration of the function, including the signature
         self.decl = decl
+        # Registers for all the arguments to the function
         self.arg_regs = arg_regs
+        # Body of the function
         self.blocks = blocks
         self.line = line
         # The name that should be displayed for tracebacks that
