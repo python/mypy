@@ -1,7 +1,7 @@
 """Low-level opcodes for compiler intermediate representation (IR).
 
 Opcodes operate on abstract values (Value) in a register machine. Each
-value has a type (RType). A value can hold various things:
+value has a type (RType). A value can hold various things, such as:
 
 - local variables (Register)
 - intermediate values of expressions (RegisterOp subclasses)
@@ -55,8 +55,8 @@ class BasicBlock:
     propagate up out of the function. This is compiled away by the
     `exceptions` module.
 
-    Block labels are used for pretty printing and emitting C code, and get
-    filled in by those passes.
+    Block labels are used for pretty printing and emitting C code, and
+    get filled in by those passes.
 
     Ops that may terminate the program aren't treated as exits.
     """
@@ -919,17 +919,15 @@ class IntOp(RegisterOp):
 
 
 class ComparisonOp(RegisterOp):
-    """Low-level comparison op.
+    """Low-level comparison op for integers and pointers.
 
-    Both unsigned and signed comparisons are supported.
+    Both unsigned and signed comparisons are supported. Supports
+    comparisons between fixed-width integer types and pointer types.
+    The operands should have matching sizes.
 
-    The operands are assumed to be fixed-width integers/pointers. Python
-    semantics, such as calling __eq__, are not supported.
+    The result is always a bit (representing a boolean).
 
-    The result is always a bit.
-
-    Supports comparisons between fixed-width integer types and pointer
-    types.
+    Python semantics, such as calling __eq__, are not supported.
     """
 
     # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
@@ -976,9 +974,7 @@ class ComparisonOp(RegisterOp):
 
 
 class LoadMem(RegisterOp):
-    """Read a memory location.
-
-    type ret = *(type *)src
+    """Read a memory location: result = *(type *)src.
 
     Attributes:
       type: Type of the read value
@@ -1013,15 +1009,13 @@ class LoadMem(RegisterOp):
 
 
 class SetMem(Op):
-    """Write a memory location.
-
-    *(type *)dest = src
+    """Write to a memory location: *(type *)dest = src
 
     Attributes:
-      type: Type of the read value
+      type: Type of the written value
       dest: Pointer to memory to write
       src: Source value
-      base: If not None, the object from which we are reading memory.
+      base: If not None, the object which we are modifying.
             It's used to avoid the target object from being freed via
             reference counting. If the target is not in reference counted
             memory, or we know that the target won't be freed, it can be
@@ -1057,7 +1051,7 @@ class SetMem(Op):
 
 
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element"""
+    """Get the address of a struct element."""
 
     error_kind = ERR_NEVER
 
@@ -1076,14 +1070,12 @@ class GetElementPtr(RegisterOp):
 
 
 class LoadAddress(RegisterOp):
-    """Get the address of a value
-
-    ret = (type)&src
+    """Get the address of a value: result = (type)&src
 
     Attributes:
       type: Type of the loaded address(e.g. ptr/object_ptr)
-      src: Source value, str for named constants like 'PyList_Type',
-           Register for temporary values
+      src: Source value (str for globals like 'PyList_Type',
+           Register for temporary values or locals)
     """
 
     error_kind = ERR_NEVER
