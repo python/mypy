@@ -31,6 +31,7 @@ from mypyc.codegen.emitfunc import generate_native_function, native_function_hea
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
 from mypyc.codegen.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
+    generate_wrapper_function_2, wrapper_function_header_2,
 )
 from mypyc.ir.ops import LiteralsMap, DeserMaps
 from mypyc.ir.rtypes import RType, RTuple
@@ -419,8 +420,12 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         '{};'.format(native_function_header(fn.decl, emitter)),
         needs_export=True)
     if fn.name != TOP_LEVEL_NAME:
-        emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-            '{};'.format(wrapper_function_header(fn, emitter.names)))
+        if fn.cname(emitter.names).endswith('__init__'):
+            emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+                '{};'.format(wrapper_function_header(fn, emitter.names)))
+        else:
+            emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+                '{};'.format(wrapper_function_header_2(fn, emitter.names)))
 
 
 def pointerize(decl: str, name: str) -> str:
@@ -529,8 +534,12 @@ class GroupGenerator:
                 generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
-                    generate_wrapper_function(
-                        fn, emitter, self.source_paths[module_name], module_name)
+                    if fn.cname(emitter.names).endswith('__init__'):
+                        generate_wrapper_function(
+                            fn, emitter, self.source_paths[module_name], module_name)
+                    else:
+                        generate_wrapper_function_2(
+                            fn, emitter, self.source_paths[module_name], module_name)
 
             if multi_file:
                 name = ('__native_{}.c'.format(emitter.names.private_name(module_name)))
@@ -837,12 +846,21 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
-            emitter.emit_line(
-                ('{{"{name}", (PyCFunction){prefix}{cname}, METH_VARARGS | METH_KEYWORDS, '
-                 'NULL /* docstring */}},').format(
-                    name=fn.name,
-                    cname=fn.cname(emitter.names),
-                    prefix=PREFIX))
+            cname = fn.cname(emitter.names)
+            if cname.endswith('__init__'):
+                emitter.emit_line(
+                    ('{{"{name}", (PyCFunction){prefix}{cname}, METH_VARARGS | METH_KEYWORDS, '
+                     'NULL /* docstring */}},').format(
+                         name=fn.name,
+                         cname=cname,
+                         prefix=PREFIX))
+            else:
+                emitter.emit_line(
+                    ('{{"{name}", (PyCFunction){prefix}{cname}, METH_FASTCALL | METH_KEYWORDS, '
+                     'NULL /* docstring */}},').format(
+                         name=fn.name,
+                         cname=cname,
+                         prefix=PREFIX))
         emitter.emit_line('{NULL, NULL, 0, NULL}')
         emitter.emit_line('};')
         emitter.emit_line()

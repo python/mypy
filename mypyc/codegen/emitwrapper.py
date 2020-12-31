@@ -292,3 +292,94 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter,
                               name, name, error_code))
         else:
             emitter.emit_line('if (arg_{} == NULL) {}'.format(name, error_code))
+
+
+# Vectorcall wrappers (Python 3.8+)
+
+
+def wrapper_function_header_2(fn: FuncIR, names: NameGenerator) -> str:
+    return (
+        'PyObject *{prefix}{name}('
+        'PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)').format(
+            prefix=PREFIX,
+            name=fn.cname(names))
+
+
+def make_format_string_2(func_name: str, groups: List[List[RuntimeArg]]) -> str:
+    # Construct the format string. Each group requires the previous
+    # groups delimiters to be present first.
+    main_format = ''
+    if groups[ARG_STAR] or groups[ARG_STAR2]:
+        main_format += '%'
+    main_format += 'O' * len(groups[ARG_POS])
+    if groups[ARG_OPT] or groups[ARG_NAMED_OPT] or groups[ARG_NAMED]:
+        main_format += '|' + 'O' * len(groups[ARG_OPT])
+    if groups[ARG_NAMED_OPT] or groups[ARG_NAMED]:
+        main_format += '$' + 'O' * len(groups[ARG_NAMED_OPT])
+    if groups[ARG_NAMED]:
+        main_format += '@' + 'O' * len(groups[ARG_NAMED])
+    return '{}:{}'.format(main_format, func_name)
+
+
+def generate_wrapper_function_2(fn: FuncIR,
+                                emitter: Emitter,
+                                source_path: str,
+                                module_name: str) -> None:
+    """Generates a CPython-compatible wrapper function for a native function.
+
+    In particular, this handles unboxing the arguments, calling the native function, and
+    then boxing the return value.
+    """
+    emitter.emit_line('{} {{'.format(wrapper_function_header_2(fn, emitter.names)))
+
+    # If we hit an error while processing arguments, then we emit a
+    # traceback frame to make it possible to debug where it happened.
+    # Unlike traceback frames added for exceptions seen in IR, we do this
+    # even if there is no `traceback_name`. This is because the error will
+    # have originated here and so we need it in the traceback.
+    globals_static = emitter.static_name('globals', module_name)
+    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
+        source_path.replace("\\", "\\\\"),
+        fn.traceback_name or fn.name,
+        fn.line,
+        globals_static)
+
+    # If fn is a method, then the first argument is a self param
+    real_args = list(fn.args)
+    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+        arg = real_args.pop(0)
+        emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
+
+    # Need to order args as: required, optional, kwonly optional, kwonly required
+    # This is because CPyArg_ParseTupleAndKeywords format string requires
+    # them grouped in that way.
+    groups = [[arg for arg in real_args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
+    reordered_args = groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
+
+    arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
+    emitter.emit_line('static const char * const kwlist[] = {{{}0}};'.format(arg_names))
+    fmt = make_format_string(fn.name, groups)
+    emitter.emit_line('static _PyArg_Parser parser = {{"{}", kwlist, 0}};'.format(fmt))
+    for arg in real_args:
+        emitter.emit_line('PyObject *obj_{}{};'.format(
+                          arg.name, ' = NULL' if arg.optional else ''))
+
+    cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
+                for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
+
+    arg_ptrs = []  # type: List[str]
+    if groups[ARG_STAR] or groups[ARG_STAR2]:
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
+    arg_ptrs += ['&obj_{}'.format(arg.name) for arg in reordered_args]
+
+    emitter.emit_lines(
+        'if (!CPyArg_ParseStackAndKeywords(args, nargs, kwnames, &parser{})) {{'.format(
+            ''.join(', ' + n for n in arg_ptrs)),
+        'return NULL;',
+        '}')
+    generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
+                          cleanups=cleanups,
+                          traceback_code=traceback_code)
+
+    emitter.emit_line('}')

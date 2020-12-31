@@ -7,8 +7,8 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           va_list *p_va, int flags);
 
 int
-_PyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
-                  struct _PyArg_Parser *parser, ...)
+CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                             struct _PyArg_Parser *parser, ...)
 {
     int retval;
     va_list va;
