@@ -132,7 +132,11 @@ class Mapper:
         else:
             # Handle unannotated functions
             arg_types = [object_rprimitive for arg in fdef.arguments]
-            ret = object_rprimitive
+            # We at least know the return type for __init__ will be None.
+            if fdef.name == '__init__':
+                ret = none_rprimitive
+            else:
+                ret = object_rprimitive
 
         args = [RuntimeArg(arg_name, arg_type, arg_kind)
                 for arg_name, arg_kind, arg_type in zip(fdef.arg_names, fdef.arg_kinds, arg_types)]

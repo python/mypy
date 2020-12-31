@@ -374,6 +374,11 @@ o = object()
 c1.d = o
 assert c1.d is o
 
+[case testInitWithMissingNoneReturnAnnotation]
+class C:
+    def __init__(self):
+        pass
+
 [case testConstructClassWithDefaultConstructor]
 class C:
     a: int
