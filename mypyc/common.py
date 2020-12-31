@@ -54,6 +54,7 @@ MAX_LITERAL_SHORT_INT = (sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD
 RUNTIME_C_FILES = [
     'init.c',
     'getargs.c',
+    'getargsfast.c',
     'int_ops.c',
     'list_ops.c',
     'dict_ops.c',
