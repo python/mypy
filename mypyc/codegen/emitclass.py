@@ -644,7 +644,7 @@ def generate_methods_table(cl: ClassIR,
             continue
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
-        flags = ['METH_VARARGS', 'METH_KEYWORDS']
+        flags = ['METH_FASTCALL', 'METH_KEYWORDS']
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append('METH_STATIC')
         elif fn.decl.kind == FUNC_CLASSMETHOD:
