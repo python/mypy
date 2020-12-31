@@ -1,10 +1,38 @@
 #include <Python.h>
 
+#define FLAG_SIZE_T 2
+
+typedef int (*destr_t)(PyObject *, void *);
+
+/* Keep track of "objects" that have been allocated or initialized and
+   which will need to be deallocated or cleaned up somehow if overall
+   parsing fails.
+*/
+typedef struct {
+  void *item;
+  destr_t destructor;
+} freelistentry_fast_t;
+
+typedef struct {
+  freelistentry_fast_t *entries;
+  int first_available;
+  int entries_malloced;
+} freelist_fast_t;
+
+#define STATIC_FREELIST_ENTRIES 8
+
+/* Forward */
 static int
 vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           PyObject *kwargs, PyObject *kwnames,
                           struct _PyArg_Parser *parser,
                           va_list *p_va, int flags);
+static const char *skipitem_fast(const char **, va_list *, int);
+static void seterror_fast(Py_ssize_t, const char *, int *, const char *, const char *);
+static const char *convertitem_fast(PyObject *, const char **, va_list *, int, int *,
+                                    char *, size_t, freelist_fast_t *);
+static const char *convertsimple_fast(PyObject *, const char **, va_list *, int,
+                                      char *, size_t, freelist_fast_t *);
 
 int
 CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
@@ -18,6 +46,27 @@ CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *
     va_end(va);
     return retval;
 }
+
+static int
+cleanreturn_fast(int retval, freelist_fast_t *freelist)
+{
+    int index;
+
+    if (retval == 0) {
+      /* A failure occurred, therefore execute all of the cleanup
+         functions.
+      */
+      for (index = 0; index < freelist->first_available; ++index) {
+          freelist->entries[index].destructor(NULL,
+                                              freelist->entries[index].item);
+      }
+    }
+    if (freelist->entries_malloced)
+        PyMem_FREE(freelist->entries);
+    return retval;
+}
+
+#define IS_END_OF_FORMAT(c) (c == '\0' || c == ';' || c == ':')
 
 
 /* List of static parsers. */
@@ -102,7 +151,7 @@ parser_init(struct _PyArg_Parser *parser)
                 return 0;
             }
 
-            msg = skipitem(&format, NULL, 0);
+            msg = skipitem_fast(&format, NULL, 0);
             if (msg) {
                 PyErr_Format(PyExc_SystemError, "%s: '%s'", msg,
                             format);
@@ -184,8 +233,8 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     int i, pos, len;
     Py_ssize_t nkwargs;
     PyObject *current_arg;
-    freelistentry_t static_entries[STATIC_FREELIST_ENTRIES];
-    freelist_t freelist;
+    freelistentry_fast_t static_entries[STATIC_FREELIST_ENTRIES];
+    freelist_fast_t freelist;
     PyObject *const *kwstack = NULL;
 
     freelist.entries = static_entries;
@@ -215,7 +264,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     len = pos + (int)PyTuple_GET_SIZE(kwtuple);
 
     if (len > STATIC_FREELIST_ENTRIES) {
-        freelist.entries = PyMem_NEW(freelistentry_t, len);
+        freelist.entries = PyMem_NEW(freelistentry_fast_t, len);
         if (freelist.entries == NULL) {
             PyErr_NoMemory();
             return 0;
@@ -244,7 +293,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                      (nargs == 0) ? "keyword " : "",
                      (len == 1) ? "" : "s",
                      nargs + nkwargs);
-        return cleanreturn(0, &freelist);
+        return cleanreturn_fast(0, &freelist);
     }
     if (parser->max < nargs) {
         if (parser->max == 0) {
@@ -263,7 +312,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                          parser->max == 1 ? "" : "s",
                          nargs);
         }
-        return cleanreturn(0, &freelist);
+        return cleanreturn_fast(0, &freelist);
     }
 
     format = parser->format;
@@ -285,7 +334,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
             if (kwargs != NULL) {
                 current_arg = PyDict_GetItemWithError(kwargs, keyword);
                 if (!current_arg && PyErr_Occurred()) {
-                    return cleanreturn(0, &freelist);
+                    return cleanreturn_fast(0, &freelist);
                 }
             }
             else {
@@ -300,11 +349,11 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
         }
 
         if (current_arg) {
-            msg = convertitem(current_arg, &format, p_va, flags,
+            msg = convertitem_fast(current_arg, &format, p_va, flags,
                 levels, msgbuf, sizeof(msgbuf), &freelist);
             if (msg) {
-                seterror(i+1, msg, levels, parser->fname, parser->custom_msg);
-                return cleanreturn(0, &freelist);
+                seterror_fast(i+1, msg, levels, parser->fname, parser->custom_msg);
+                return cleanreturn_fast(0, &freelist);
             }
             continue;
         }
@@ -331,19 +380,19 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                              (parser->fname == NULL) ? "" : "()",
                              keyword, i+1);
             }
-            return cleanreturn(0, &freelist);
+            return cleanreturn_fast(0, &freelist);
         }
         /* current code reports success when all required args
          * fulfilled and no keyword args left, with no further
          * validation. XXX Maybe skip this in debug build ?
          */
         if (!nkwargs) {
-            return cleanreturn(1, &freelist);
+            return cleanreturn_fast(1, &freelist);
         }
 
         /* We are into optional args, skip through to any remaining
          * keyword args */
-        msg = skipitem(&format, p_va, flags);
+        msg = skipitem_fast(&format, p_va, flags);
         assert(msg == NULL);
     }
 
@@ -357,7 +406,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
             if (kwargs != NULL) {
                 current_arg = PyDict_GetItemWithError(kwargs, keyword);
                 if (!current_arg && PyErr_Occurred()) {
-                    return cleanreturn(0, &freelist);
+                    return cleanreturn_fast(0, &freelist);
                 }
             }
             else {
@@ -371,7 +420,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                              (parser->fname == NULL) ? "function" : parser->fname,
                              (parser->fname == NULL) ? "" : "()",
                              keyword, i+1);
-                return cleanreturn(0, &freelist);
+                return cleanreturn_fast(0, &freelist);
             }
         }
         /* make sure there are no extraneous keyword arguments */
@@ -399,10 +448,146 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                                  (parser->fname == NULL) ? "this function" : parser->fname,
                                  (parser->fname == NULL) ? "" : "()");
                 }
-                return cleanreturn(0, &freelist);
+                return cleanreturn_fast(0, &freelist);
             }
         }
     }
 
-    return cleanreturn(1, &freelist);
+    return cleanreturn_fast(1, &freelist);
+}
+
+static const char *
+skipitem_fast(const char **p_format, va_list *p_va, int flags)
+{
+    const char *format = *p_format;
+    char c = *format++;
+
+    switch (c) {
+    case 'O': /* object */
+        {
+            if (p_va != NULL) {
+                (void) va_arg(*p_va, PyObject **);
+            }
+            break;
+        }
+
+    default:
+err:
+        return "impossible<bad format char>";
+    }
+
+    *p_format = format;
+    return NULL;
+}
+
+static void
+seterror_fast(Py_ssize_t iarg, const char *msg, int *levels, const char *fname,
+              const char *message)
+{
+    char buf[512];
+    int i;
+    char *p = buf;
+
+    if (PyErr_Occurred())
+        return;
+    else if (message == NULL) {
+        if (fname != NULL) {
+            PyOS_snprintf(p, sizeof(buf), "%.200s() ", fname);
+            p += strlen(p);
+        }
+        if (iarg != 0) {
+            PyOS_snprintf(p, sizeof(buf) - (p - buf),
+                          "argument %" PY_FORMAT_SIZE_T "d", iarg);
+            i = 0;
+            p += strlen(p);
+            while (i < 32 && levels[i] > 0 && (int)(p-buf) < 220) {
+                PyOS_snprintf(p, sizeof(buf) - (p - buf),
+                              ", item %d", levels[i]-1);
+                p += strlen(p);
+                i++;
+            }
+        }
+        else {
+            PyOS_snprintf(p, sizeof(buf) - (p - buf), "argument");
+            p += strlen(p);
+        }
+        PyOS_snprintf(p, sizeof(buf) - (p - buf), " %.256s", msg);
+        message = buf;
+    }
+    if (msg[0] == '(') {
+        PyErr_SetString(PyExc_SystemError, message);
+    }
+    else {
+        PyErr_SetString(PyExc_TypeError, message);
+    }
+}
+
+
+/* Convert a single item. */
+
+static const char *
+convertitem_fast(PyObject *arg, const char **p_format, va_list *p_va, int flags,
+                 int *levels, char *msgbuf, size_t bufsize, freelist_fast_t *freelist)
+{
+    const char *msg;
+    const char *format = *p_format;
+
+    msg = convertsimple_fast(arg, &format, p_va, flags,
+                        msgbuf, bufsize, freelist);
+    if (msg != NULL)
+        levels[0] = 0;
+    if (msg == NULL)
+        *p_format = format;
+    return msg;
+}
+
+static const char *
+converterr_fast(const char *expected, PyObject *arg, char *msgbuf, size_t bufsize)
+{
+    assert(expected != NULL);
+    assert(arg != NULL);
+    if (expected[0] == '(') {
+        PyOS_snprintf(msgbuf, bufsize,
+                      "%.100s", expected);
+    }
+    else {
+        PyOS_snprintf(msgbuf, bufsize,
+                      "must be %.50s, not %.50s", expected,
+                      arg == Py_None ? "None" : Py_TYPE(arg)->tp_name);
+    }
+    return msgbuf;
+}
+
+/* Convert a non-tuple argument.  Return NULL if conversion went OK,
+   or a string with a message describing the failure.  The message is
+   formatted as "must be <desired type>, not <actual type>".
+   When failing, an exception may or may not have been raised.
+   Don't call if a tuple is expected.
+
+   When you add new format codes, please don't forget poor skipitem_fast().
+*/
+
+static const char *
+convertsimple_fast(PyObject *arg, const char **p_format, va_list *p_va, int flags,
+                   char *msgbuf, size_t bufsize, freelist_fast_t *freelist)
+{
+    const char *format = *p_format;
+    char c = *format++;
+    const char *sarg;
+
+    switch (c) {
+    case 'O': { /* object */
+        PyTypeObject *type;
+        PyObject **p;
+        p = va_arg(*p_va, PyObject **);
+        *p = arg;
+        break;
+    }
+
+    default:
+        return converterr_fast("(impossible<bad format char>)", arg, msgbuf, bufsize);
+    }
+
+    *p_format = format;
+    return NULL;
 }
