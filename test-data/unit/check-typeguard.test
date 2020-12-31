@@ -103,10 +103,30 @@ def main(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardNonzeroFloat]
-from typing import Union
 from typing_extensions import TypeGuard
 def is_nonzero(a: object) -> TypeGuard[float]: pass
 def main(a: int):
     if is_nonzero(a):
         reveal_type(a)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardHigherOrder]
+from typing import Callable, TypeVar, Iterable, List
+from typing_extensions import TypeGuard
+T = TypeVar('T')
+R = TypeVar('R')
+def filter(f: Callable[[T], TypeGuard[R]], it: Iterable[T]) -> Iterable[R]: pass
+def is_float(a: object) -> TypeGuard[float]: pass
+a: List[object] = ["a", 0, 0.0]
+# TODO: Make this pass
+##reveal_type(filter(is_float, a))  ## N: Revealed type is 'typing.Iterable[float]'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWalrus]
+from typing_extensions import TypeGuard
+def is_float(a: object) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    if is_float(x := a):
+        reveal_type(x)  # N: Revealed type is 'builtins.float'
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
 [builtins fixtures/tuple.pyi]
