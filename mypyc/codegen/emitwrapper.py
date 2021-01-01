@@ -359,7 +359,7 @@ def generate_wrapper_function_2(fn: FuncIR,
     arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
     emitter.emit_line('static const char * const kwlist[] = {{{}0}};'.format(arg_names))
     fmt = make_format_string(fn.name, groups)
-    emitter.emit_line('static _PyArg_Parser parser = {{"{}", kwlist, 0}};'.format(fmt))
+    emitter.emit_line('static CPyArg_Parser parser = {{"{}", kwlist, 0}};'.format(fmt))
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))

@@ -461,6 +461,18 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
 #define CPy_TRASHCAN_END(op) Py_TRASHCAN_SAFE_END(op)
 #endif
 
+// Tweaked version of _PyArg_Parser in CPython
+typedef struct CPyArg_Parser {
+    const char *format;
+    const char * const *keywords;
+    const char *fname;
+    const char *custom_msg;
+    int pos;            /* number of positional-only arguments */
+    int min;            /* minimal number of arguments */
+    int max;            /* maximal number of positional arguments */
+    PyObject *kwtuple;  /* tuple of keyword parameter names */
+    struct CPyArg_Parser *next;
+} CPyArg_Parser;
 
 // mypy lets ints silently coerce to floats, so a mypyc runtime float
 // might be an int also
@@ -498,7 +510,7 @@ void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, char **, ...);
 int CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
-                                 struct _PyArg_Parser *parser, ...);
+                                 CPyArg_Parser *parser, ...);
 
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected);
 

@@ -1,4 +1,5 @@
 #include <Python.h>
+#include "CPy.h"
 
 #define FLAG_SIZE_T 2
 
@@ -25,7 +26,7 @@ typedef struct {
 static int
 vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           PyObject *kwargs, PyObject *kwnames,
-                          struct _PyArg_Parser *parser,
+                          CPyArg_Parser *parser,
                           va_list *p_va, int flags);
 static const char *skipitem_fast(const char **, va_list *, int);
 static void seterror_fast(Py_ssize_t, const char *, int *, const char *, const char *);
@@ -36,7 +37,7 @@ static const char *convertsimple_fast(PyObject *, const char **, va_list *, int,
 
 int
 CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
-                             struct _PyArg_Parser *parser, ...)
+                             CPyArg_Parser *parser, ...)
 {
     int retval;
     va_list va;
@@ -70,10 +71,10 @@ cleanreturn_fast(int retval, freelist_fast_t *freelist)
 
 
 /* List of static parsers. */
-static struct _PyArg_Parser *static_arg_parsers = NULL;
+static struct CPyArg_Parser *static_arg_parsers = NULL;
 
 static int
-parser_init(struct _PyArg_Parser *parser)
+parser_init(CPyArg_Parser *parser)
 {
     const char * const *keywords;
     const char *format, *msg;
@@ -230,7 +231,7 @@ find_keyword(PyObject *kwnames, PyObject *const *kwstack, PyObject *key)
 static int
 vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           PyObject *kwargs, PyObject *kwnames,
-                          struct _PyArg_Parser *parser,
+                          CPyArg_Parser *parser,
                           va_list *p_va, int flags)
 {
     PyObject *kwtuple;
