@@ -100,6 +100,7 @@ parser_init(CPyArg_Parser *parser)
         }
     }
     len = i;
+    parser->required_kwonly_start = INT_MAX;
 
     format = parser->format;
     if (format) {
@@ -146,6 +147,11 @@ parser_init(CPyArg_Parser *parser)
                 format++;
             }
             if (*format == '@') {
+                if (parser->required_kwonly_start != INT_MAX) {
+                    PyErr_SetString(PyExc_SystemError,
+                                    "Invalid format string (@ specified twice)");
+                    return 0;
+                }
                 if (min == INT_MAX && max == INT_MAX) {
                     PyErr_SetString(PyExc_SystemError,
                                     "Invalid format string "
@@ -153,6 +159,8 @@ parser_init(CPyArg_Parser *parser)
                     return 0;
                 }
                 format++;
+                parser->has_required_kws = 1;
+                parser->required_kwonly_start = i;
             }
             if (IS_END_OF_FORMAT(*format)) {
                 PyErr_Format(PyExc_SystemError,
@@ -240,8 +248,6 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     const char *format;
     const char *msg;
     PyObject *keyword;
-    int required_kwonly_start = INT_MAX;
-    int has_required_kws = 0;
     int i, pos, len;
     Py_ssize_t nkwargs;
     PyObject *current_arg;
@@ -332,23 +338,11 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     for (i = 0; i < len; i++) {
         if (*format == '|') {
             format++;
-
-            /* If there are optional args, figure out whether we have
-             * required keyword arguments so that we don't bail without
-             * enforcing them. */
-            has_required_kws = strchr(format, '@') != NULL;
         }
         if (*format == '$') {
             format++;
         }
         if (*format == '@') {
-            if (required_kwonly_start != INT_MAX) {
-                PyErr_SetString(PyExc_SystemError,
-                                "Invalid format string (@ specified twice)");
-                return cleanreturn_fast(0, &freelist);
-            }
-
-            required_kwonly_start = i;
             format++;
         }
         assert(!IS_END_OF_FORMAT(*format));
@@ -385,7 +379,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
             continue;
         }
 
-        if (i < parser->min || i >= required_kwonly_start) {
+        if (i < parser->min || i >= parser->required_kwonly_start) {
             /* Less arguments than required */
             if (i < pos) {
                 Py_ssize_t min = Py_MIN(pos, parser->min);
@@ -422,7 +416,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
          * fulfilled and no keyword args left, with no further
          * validation. XXX Maybe skip this in debug build ?
          */
-        if (!nkwargs && !has_required_kws) {
+        if (!nkwargs && !parser->has_required_kws) {
             return cleanreturn_fast(1, &freelist);
         }
 

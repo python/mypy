@@ -467,10 +467,12 @@ typedef struct CPyArg_Parser {
     const char * const *keywords;
     const char *fname;
     const char *custom_msg;
-    int pos;            /* number of positional-only arguments */
-    int min;            /* minimal number of arguments */
-    int max;            /* maximal number of positional arguments */
-    PyObject *kwtuple;  /* tuple of keyword parameter names */
+    int pos;               /* number of positional-only arguments */
+    int min;               /* minimal number of arguments */
+    int max;               /* maximal number of positional arguments */
+    int has_required_kws;  /* are there any keyword-only arguments? */
+    int required_kwonly_start;
+    PyObject *kwtuple;     /* tuple of keyword parameter names */
     struct CPyArg_Parser *next;
 } CPyArg_Parser;
 
