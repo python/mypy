@@ -118,8 +118,8 @@ R = TypeVar('R')
 def filter(f: Callable[[T], TypeGuard[R]], it: Iterable[T]) -> Iterable[R]: pass
 def is_float(a: object) -> TypeGuard[float]: pass
 a: List[object] = ["a", 0, 0.0]
-# TODO: Make this pass
-##reveal_type(filter(is_float, a))  ## N: Revealed type is 'typing.Iterable[float]'
+b = filter(is_float, a)
+reveal_type(b)  # N: Revealed type is 'typing.Iterable[builtins.float*]'
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardWalrus]
