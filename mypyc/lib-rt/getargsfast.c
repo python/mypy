@@ -18,6 +18,8 @@
 #include <Python.h>
 #include "CPy.h"
 
+#if PY_VERSION_HEX >= 0x03070000
+
 #define FLAG_SIZE_T 2
 
 typedef int (*destr_t)(PyObject *, void *);
@@ -702,3 +704,5 @@ convertsimple_fast(PyObject *arg, const char **p_format, va_list *p_va, int flag
     *p_format = format;
     return NULL;
 }
+
+#endif
