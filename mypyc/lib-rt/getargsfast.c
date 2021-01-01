@@ -1,3 +1,20 @@
+/* getargskeywordsfast implementation copied from Python 3.9 and stripped down to
+ * only include the functionality we need.
+ *
+ * We also add support for required kwonly args and accepting *args / **kwargs.
+ *
+ * DOCUMENTATION OF THE EXTENSIONS:
+ *  - Arguments given after a @ format specify are required keyword-only arguments.
+ *    The | and $ specifiers must both appear before @.
+ *  - If the first character of a format string is %, then the function can support
+ *    *args and **kwargs. In this case the parser will consume two arguments,
+ *    which should be pointers to variables to store the *args and **kwargs, respectively.
+ *    Either pointer can be NULL, in which case the function doesn't take that
+ *    variety of vararg.
+ *    Unlike most format specifiers, the caller takes ownership of these objects
+ *    and is responsible for decrefing them.
+ */
+
 #include <Python.h>
 #include "CPy.h"
 
