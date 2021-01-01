@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, List, TypeVar, Mapping, cast
+from typing import Any, Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
@@ -96,7 +96,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return repl
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        extra = {}
+        extra = {}  # type: Dict[str, Any]
         if t.type_guard is not None:
             extra['type_guard'] = t.type_guard.accept(self)
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
