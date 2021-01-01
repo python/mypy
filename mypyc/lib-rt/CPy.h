@@ -472,6 +472,7 @@ typedef struct CPyArg_Parser {
     int max;               /* maximal number of positional arguments */
     int has_required_kws;  /* are there any keyword-only arguments? */
     int required_kwonly_start;
+    int varargs;           /* does the function accept *args or **kwargs? */
     PyObject *kwtuple;     /* tuple of keyword parameter names */
     struct CPyArg_Parser *next;
 } CPyArg_Parser;
