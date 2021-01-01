@@ -144,6 +144,15 @@ parser_init(struct _PyArg_Parser *parser)
                 max = i;
                 format++;
             }
+            if (*format == '@') {
+                if (min == INT_MAX && max == INT_MAX) {
+                    PyErr_SetString(PyExc_SystemError,
+                                    "Invalid format string "
+                                    "(@ without preceding | and $)");
+                    return 0;
+                }
+                format++;
+            }
             if (IS_END_OF_FORMAT(*format)) {
                 PyErr_Format(PyExc_SystemError,
                             "More keyword list entries (%d) than "
@@ -230,6 +239,8 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     const char *format;
     const char *msg;
     PyObject *keyword;
+    int required_kwonly_start = INT_MAX;
+    int has_required_kws = 0;
     int i, pos, len;
     Py_ssize_t nkwargs;
     PyObject *current_arg;
@@ -320,8 +331,23 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     for (i = 0; i < len; i++) {
         if (*format == '|') {
             format++;
+
+            /* If there are optional args, figure out whether we have
+             * required keyword arguments so that we don't bail without
+             * enforcing them. */
+            has_required_kws = strchr(format, '@') != NULL;
         }
         if (*format == '$') {
+            format++;
+        }
+        if (*format == '@') {
+            if (required_kwonly_start != INT_MAX) {
+                PyErr_SetString(PyExc_SystemError,
+                                "Invalid format string (@ specified twice)");
+                return cleanreturn_fast(0, &freelist);
+            }
+
+            required_kwonly_start = i;
             format++;
         }
         assert(!IS_END_OF_FORMAT(*format));
@@ -358,7 +384,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
             continue;
         }
 
-        if (i < parser->min) {
+        if (i < parser->min || i >= required_kwonly_start) {
             /* Less arguments than required */
             if (i < pos) {
                 Py_ssize_t min = Py_MIN(pos, parser->min);
@@ -374,11 +400,20 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
             }
             else {
                 keyword = PyTuple_GET_ITEM(kwtuple, i - pos);
-                PyErr_Format(PyExc_TypeError,  "%.200s%s missing required "
-                             "argument '%U' (pos %d)",
-                             (parser->fname == NULL) ? "function" : parser->fname,
-                             (parser->fname == NULL) ? "" : "()",
-                             keyword, i+1);
+                if (i >= parser->max) {
+                    PyErr_Format(PyExc_TypeError,  "%.200s%s missing required "
+                                 "keyword-only argument '%U'",
+                                 (parser->fname == NULL) ? "function" : parser->fname,
+                                 (parser->fname == NULL) ? "" : "()",
+                                 keyword);
+                }
+                else {
+                    PyErr_Format(PyExc_TypeError,  "%.200s%s missing required "
+                                 "argument '%U' (pos %d)",
+                                 (parser->fname == NULL) ? "function" : parser->fname,
+                                 (parser->fname == NULL) ? "" : "()",
+                                 keyword, i+1);
+                }
             }
             return cleanreturn_fast(0, &freelist);
         }
@@ -386,7 +421,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
          * fulfilled and no keyword args left, with no further
          * validation. XXX Maybe skip this in debug build ?
          */
-        if (!nkwargs) {
+        if (!nkwargs && !has_required_kws) {
             return cleanreturn_fast(1, &freelist);
         }
 
