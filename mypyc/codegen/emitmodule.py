@@ -846,21 +846,12 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
-            cname = fn.cname(emitter.names)
-            if cname.endswith(('__init__', '__call__')):
-                emitter.emit_line(
-                    ('{{"{name}", (PyCFunction){prefix}{cname}, METH_VARARGS | METH_KEYWORDS, '
-                     'NULL /* docstring */}},').format(
-                         name=fn.name,
-                         cname=cname,
-                         prefix=PREFIX))
-            else:
-                emitter.emit_line(
-                    ('{{"{name}", (PyCFunction){prefix}{cname}, METH_FASTCALL | METH_KEYWORDS, '
-                     'NULL /* docstring */}},').format(
-                         name=fn.name,
-                         cname=cname,
-                         prefix=PREFIX))
+            emitter.emit_line(
+                ('{{"{name}", (PyCFunction){prefix}{cname}, METH_FASTCALL | METH_KEYWORDS, '
+                 'NULL /* docstring */}},').format(
+                     name=fn.name,
+                     cname=fn.cname(emitter.names),
+                     prefix=PREFIX))
         emitter.emit_line('{NULL, NULL, 0, NULL}')
         emitter.emit_line('};')
         emitter.emit_line()
