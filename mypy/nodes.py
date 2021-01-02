@@ -1448,7 +1448,8 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue')
+    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue',
+                 'type_guard')
 
     def __init__(self) -> None:
         super().__init__()
@@ -1467,6 +1468,8 @@ class RefExpr(Expression):
         self.is_inferred_def = False
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
+        # Cache type guard from callable_type.type_guard
+        self.type_guard = None  # type: Optional[mypy.types.Type]
 
 
 class NameExpr(RefExpr):

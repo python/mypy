@@ -317,6 +317,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         ret_type=self.object_type(),
                                         fallback=self.named_type('builtins.function'))
         callee_type = get_proper_type(self.accept(e.callee, type_context, always_allow_any=True))
+        if (isinstance(e.callee, RefExpr)
+                and isinstance(callee_type, CallableType)
+                and callee_type.type_guard is not None):
+            # Cache it for find_isinstance_check()
+            e.callee.type_guard = callee_type.type_guard
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)

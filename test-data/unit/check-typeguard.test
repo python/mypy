@@ -130,3 +130,17 @@ def main(a: object) -> None:
         reveal_type(x)  # N: Revealed type is 'builtins.float'
         reveal_type(a)  # N: Revealed type is 'builtins.object'
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardMethod]
+from typing_extensions import TypeGuard
+class C:
+    def main(self, a: object) -> None:
+        if self.is_float(a):
+            reveal_type(self)  # N: Revealed type is '__main__.C'
+            reveal_type(a)  # N: Revealed type is 'builtins.float'
+    def is_float(self, a: object) -> TypeGuard[float]: pass
+[builtins fixtures/tuple.pyi]
+
+# TODO:
+# - can a type guard be a generator? or async?
+# - all sorts of shenanigans with type variables
