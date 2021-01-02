@@ -35,7 +35,7 @@ SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
 SLOT_DEFS = {
     '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
-    '__call__': ('tp_call', wrapper_slot),
+    '__call__': ('tp_call', lambda c, t, e : generate_call_wrapper(c, t, e)),
     '__str__': ('tp_str', native_slot),
     '__repr__': ('tp_repr', native_slot),
     '__next__': ('tp_iternext', native_slot),
@@ -69,6 +69,11 @@ SIDE_TABLES = [
 ALWAYS_FILL = {
     '__hash__',
 }
+
+
+def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    # TODO: on older Python use wrapper_slot
+    return 'PyVectorcall_Call'
 
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
@@ -241,6 +246,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
     if generate_full:
         flags.append('Py_TPFLAGS_HAVE_GC')
+    if cl.has_method('__call__'):
+        fields['tp_vectorcall_offset'] = 'offsetof({}, vectorcall)'.format(
+            cl.struct_name(emitter.names))
+        flags.append('_Py_TPFLAGS_HAVE_VECTORCALL')
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))
@@ -277,6 +286,8 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ['typedef struct {',
               'PyObject_HEAD',
               'CPyVTableItem *vtable;']
+    if cl.has_method('__call__'):
+        lines.append('vectorcallfunc vectorcall;')
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
@@ -450,6 +461,10 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
+
+    if cl.has_method('__call__'):
+        name = cl.method_decl('__call__').cname(emitter.names)
+        emitter.emit_line('self->vectorcall = {}{};'.format(PREFIX, name))
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():

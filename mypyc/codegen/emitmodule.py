@@ -1072,4 +1072,4 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
 
 def is_fastcall_supported(fn: FuncIR) -> bool:
     # TODO: Support METH_FASTCALL for all methods.
-    return USE_FASTCALL and (fn.class_name is None or fn.name not in ('__init__', '__call__'))
+    return USE_FASTCALL and (fn.class_name is None or fn.name !=  '__init__')
