@@ -122,15 +122,6 @@ b = filter(is_float, a)
 reveal_type(b)  # N: Revealed type is 'typing.Iterable[builtins.float*]'
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardWalrus]
-from typing_extensions import TypeGuard
-def is_float(a: object) -> TypeGuard[float]: pass
-def main(a: object) -> None:
-    if is_float(x := a):
-        reveal_type(x)  # N: Revealed type is 'builtins.float'
-        reveal_type(a)  # N: Revealed type is 'builtins.object'
-[builtins fixtures/tuple.pyi]
-
 [case testTypeGuardMethod]
 from typing_extensions import TypeGuard
 class C:
