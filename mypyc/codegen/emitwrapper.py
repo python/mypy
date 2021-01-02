@@ -55,6 +55,16 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
             name=fn.cname(names))
 
 
+def make_arg_groups(args: List[RuntimeArg]) -> List[List[RuntimeArg]]:
+    """Group arguments by kind."""
+    return [[arg for arg in args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
+
+
+def reorder_arg_groups(groups: List[List[RuntimeArg]]) -> List[RuntimeArg]:
+    """Reorder argument groups to match their order in a format string."""
+    return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
+
+
 def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
@@ -113,10 +123,10 @@ def generate_wrapper_function(fn: FuncIR,
         emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
 
     # Need to order args as: required, optional, kwonly optional, kwonly required
-    # This is because CPyArg_ParseTupleAndKeywords format string requires
+    # This is because CPyArg_ParseStackAndKeywords format string requires
     # them grouped in that way.
-    groups = [[arg for arg in real_args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
-    reordered_args = groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
+    groups = make_arg_groups(real_args)
+    reordered_args = reorder_arg_groups(groups)
 
     arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
     emitter.emit_line('static const char * const kwlist[] = {{{}0}};'.format(arg_names))
@@ -193,8 +203,8 @@ def generate_legacy_wrapper_function(fn: FuncIR,
     # Need to order args as: required, optional, kwonly optional, kwonly required
     # This is because CPyArg_ParseTupleAndKeywords format string requires
     # them grouped in that way.
-    groups = [[arg for arg in real_args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
-    reordered_args = groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
+    groups = make_arg_groups(real_args)
+    reordered_args = reorder_arg_groups(groups)
 
     arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
     emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
