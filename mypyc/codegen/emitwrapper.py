@@ -50,7 +50,7 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
     """
     return (
         'PyObject *{prefix}{name}('
-        'PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)').format(
+        'PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)').format(
             prefix=PREFIX,
             name=fn.cname(names))
 
