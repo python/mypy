@@ -17,7 +17,7 @@ from mypyc.namegen import NameGenerator
 # Vectorcall wrappers (Python 3.7+)
 
 
-def wrapper_function_header_2(fn: FuncIR, names: NameGenerator) -> str:
+def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
     return (
         'PyObject *{prefix}{name}('
         'PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)').format(
@@ -41,16 +41,16 @@ def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
     return '{}:{}'.format(main_format, func_name)
 
 
-def generate_wrapper_function_2(fn: FuncIR,
-                                emitter: Emitter,
-                                source_path: str,
-                                module_name: str) -> None:
+def generate_wrapper_function(fn: FuncIR,
+                              emitter: Emitter,
+                              source_path: str,
+                              module_name: str) -> None:
     """Generates a CPython-compatible wrapper function for a native function.
 
     In particular, this handles unboxing the arguments, calling the native function, and
     then boxing the return value.
     """
-    emitter.emit_line('{} {{'.format(wrapper_function_header_2(fn, emitter.names)))
+    emitter.emit_line('{} {{'.format(wrapper_function_header(fn, emitter.names)))
 
     # If we hit an error while processing arguments, then we emit a
     # traceback frame to make it possible to debug where it happened.

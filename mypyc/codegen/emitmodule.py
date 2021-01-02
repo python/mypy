@@ -31,8 +31,8 @@ from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
 from mypyc.codegen.emitwrapper import (
+    generate_wrapper_function, wrapper_function_header,
     generate_legacy_wrapper_function, legacy_wrapper_function_header,
-    generate_wrapper_function_2, wrapper_function_header_2,
 )
 from mypyc.ir.ops import LiteralsMap, DeserMaps
 from mypyc.ir.rtypes import RType, RTuple
@@ -423,7 +423,7 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     if fn.name != TOP_LEVEL_NAME:
         if is_fastcall_supported(fn):
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-                '{};'.format(wrapper_function_header_2(fn, emitter.names)))
+                '{};'.format(wrapper_function_header(fn, emitter.names)))
         else:
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
                 '{};'.format(legacy_wrapper_function_header(fn, emitter.names)))
@@ -536,7 +536,7 @@ class GroupGenerator:
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
                     if is_fastcall_supported(fn):
-                        generate_wrapper_function_2(
+                        generate_wrapper_function(
                             fn, emitter, self.source_paths[module_name], module_name)
                     else:
                         generate_legacy_wrapper_function(
