@@ -31,7 +31,7 @@ from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
 from mypyc.codegen.emitwrapper import (
-    generate_wrapper_function, wrapper_function_header,
+    generate_legacy_wrapper_function, legacy_wrapper_function_header,
     generate_wrapper_function_2, wrapper_function_header_2,
 )
 from mypyc.ir.ops import LiteralsMap, DeserMaps
@@ -426,7 +426,7 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
                 '{};'.format(wrapper_function_header_2(fn, emitter.names)))
         else:
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-                '{};'.format(wrapper_function_header(fn, emitter.names)))
+                '{};'.format(legacy_wrapper_function_header(fn, emitter.names)))
 
 
 def pointerize(decl: str, name: str) -> str:
@@ -539,7 +539,7 @@ class GroupGenerator:
                         generate_wrapper_function_2(
                             fn, emitter, self.source_paths[module_name], module_name)
                     else:
-                        generate_wrapper_function(
+                        generate_legacy_wrapper_function(
                             fn, emitter, self.source_paths[module_name], module_name)
             if multi_file:
                 name = ('__native_{}.c'.format(emitter.names.private_name(module_name)))
