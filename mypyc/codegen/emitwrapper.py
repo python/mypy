@@ -1,4 +1,14 @@
-"""Generate CPython API wrapper function for a native function."""
+"""Generate CPython API wrapper functions for native functions.
+
+The wrapper functions are used by the CPython runtime when calling
+native functions from interpreted code, and when the called function
+can't be determined statically in compiled code. They validate, match,
+unbox and type check function arguments, and box return values as
+needed.
+
+The wrappers aren't used for most calls between two native functions
+or methods in a single compilation unit.
+"""
 
 from typing import List, Optional
 
@@ -14,10 +24,30 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 
 
-# Vectorcall wrappers (Python 3.7+)
+# Generic vectorcall wrapper functions (Python 3.7+)
+#
+# A wrapper function has a signature like this:
+#
+# PyObject *fn(PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+#
+# The function takes a self object, pointer to an array of arguments,
+# the number of positional arguments, and a tuple of keyword argument
+# names (that are stored starting in args[nargs]).
+#
+# It returns the returned object, or NULL on an exception.
+#
+# These are more efficient than legacy wrapper functions, since often
+# no tuple or dict objects need to be created for the arguments.
+# Vectorcalls also use pre-constructed str objects for keyword
+# argument names and other pre-computed information, instead of
+# processing the format string on each call.
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
+    """Return header of a vectorcall wrapper function.
+
+    See comment above for a summary of the arguments.
+    """
     return (
         'PyObject *{prefix}{name}('
         'PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)').format(
@@ -26,8 +56,20 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
 
 
 def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
-    # Construct the format string. Each group requires the previous
-    # groups delimiters to be present first.
+    """Return a format string that specifies the accepted arguments.
+
+    The format string is an extended subset of what is supported by
+    PyArg_ParseTupleAndKeywords(). Only the type 'O' is used, and we
+    also support some extensions:
+
+    - Keyword-only arguments are introduced after '@'
+    - If function receives *args or **kwargs, we add a '%' prefix
+
+    Each group requires the previous groups' delimiters to be present
+    first.
+
+    These are used by vectorcall and legacy wrapper functions.
+    """
     main_format = ''
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         main_format += '%'
@@ -45,7 +87,7 @@ def generate_wrapper_function(fn: FuncIR,
                               emitter: Emitter,
                               source_path: str,
                               module_name: str) -> None:
-    """Generates a CPython-compatible wrapper function for a native function.
+    """Generate a CPython-compatible vectorcall wrapper for a native function.
 
     In particular, this handles unboxing the arguments, calling the native function, and
     then boxing the return value.
@@ -106,6 +148,11 @@ def generate_wrapper_function(fn: FuncIR,
 
 
 # Legacy generic wrapper functions
+#
+# These take a self object, a Python tuple of positional arguments,
+# and a dict of keyword arguments. These are a lot slower than
+# vectorcall wrappers, especially in calls involving keyword
+# arguments.
 
 
 def legacy_wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
@@ -118,7 +165,7 @@ def generate_legacy_wrapper_function(fn: FuncIR,
                                      emitter: Emitter,
                                      source_path: str,
                                      module_name: str) -> None:
-    """Generates a CPython-compatible wrapper function for a native function.
+    """Generates a CPython-compatible legacy wrapper for a native function.
 
     In particular, this handles unboxing the arguments, calling the native function, and
     then boxing the return value.
