@@ -511,7 +511,7 @@ CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
-                                 const char *, char **, ...);
+                                 const char *, const char * const *, ...);
 int CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                                  CPyArg_Parser *parser, ...);
 

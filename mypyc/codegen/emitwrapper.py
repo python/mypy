@@ -65,6 +65,11 @@ def reorder_arg_groups(groups: List[List[RuntimeArg]]) -> List[RuntimeArg]:
     return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
 
 
+def make_static_kwlist(args: List[RuntimeArg]) -> str:
+    arg_names = ''.join('"{}", '.format(arg.name) for arg in args)
+    return 'static const char * const kwlist[] = {{{}0}};'.format(arg_names)
+
+
 def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
@@ -128,8 +133,7 @@ def generate_wrapper_function(fn: FuncIR,
     groups = make_arg_groups(real_args)
     reordered_args = reorder_arg_groups(groups)
 
-    arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
-    emitter.emit_line('static const char * const kwlist[] = {{{}0}};'.format(arg_names))
+    emitter.emit_line(make_static_kwlist(reordered_args))
     fmt = make_format_string(fn.name, groups)
     emitter.emit_line('static CPyArg_Parser parser = {{"{}", kwlist, 0}};'.format(fmt))
     for arg in real_args:
@@ -206,8 +210,7 @@ def generate_legacy_wrapper_function(fn: FuncIR,
     groups = make_arg_groups(real_args)
     reordered_args = reorder_arg_groups(groups)
 
-    arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
-    emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
+    emitter.emit_line(make_static_kwlist(reordered_args))
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))
