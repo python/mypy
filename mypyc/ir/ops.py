@@ -149,11 +149,13 @@ class Integer(Value):
     not included in data flow analyses and such, unlike Register and
     Op subclasses.
 
-    These can represent both short tagged integers
-    (short_int_primitive type; the tag bit is clear), ordinary
-    fixed-width integers (e.g., int32_rprimitive), and values of some
-    other unboxed primitive types that are represented as integers
-    (none_rprimitive, bool_rprimitive).
+    Integer can represent multiple types:
+
+     * Short tagged integers (short_int_primitive type; the tag bit is clear)
+     * Ordinary fixed-width integers (e.g., int32_rprimitive)
+     * Values of other unboxed primitive types that are represented as integers
+       (none_rprimitive, bool_rprimitive)
+     * Null pointers (value 0) of various types, including object_rprimitive
     """
 
     def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
