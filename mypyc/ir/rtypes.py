@@ -124,6 +124,10 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_rarray(self, typ: 'RArray') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_rvoid(self, typ: 'RVoid') -> T:
         raise NotImplementedError
 
@@ -402,8 +406,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return 'T{}{}'.format(len(parts), ''.join(parts))
 
     def visit_rstruct(self, t: 'RStruct') -> str:
-        assert False
-        return ""
+        assert False, 'RStruct not supported in tuple'
+
+    def visit_rarray(self, t: 'RArray') -> str:
+        assert False, 'RArray not supported in tuple'
 
     def visit_rvoid(self, t: 'RVoid') -> str:
         assert False, "rvoid in tuple?"
@@ -486,6 +492,8 @@ def compute_rtype_alignment(typ: RType) -> int:
         return platform_alignment
     elif isinstance(typ, RUnion):
         return platform_alignment
+    elif isinstance(typ, RArray):
+        return compute_rtype_alignment(typ.item_type)
     else:
         if isinstance(typ, RTuple):
             items = list(typ.types)
@@ -509,6 +517,10 @@ def compute_rtype_size(typ: RType) -> int:
         return compute_aligned_offsets_and_size(typ.types)[1]
     elif isinstance(typ, RInstance):
         return PLATFORM_SIZE
+    elif isinstance(typ, RArray):
+        alignment = compute_rtype_alignment(typ)
+        aligned_size = (compute_rtype_size(typ.item_type) + (alignment - 1)) & ~(alignment - 1)
+        return aligned_size * typ.length
     else:
         assert False, "invalid rtype for computing size"
 
@@ -542,7 +554,8 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
 
 
 class RStruct(RType):
-    """Represent CPython structs"""
+    """C struct type"""
+
     def __init__(self,
                  name: str,
                  names: List[str],
@@ -687,6 +700,41 @@ def optional_value_type(rtype: RType) -> Optional[RType]:
 def is_optional_type(rtype: RType) -> bool:
     """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None
+
+
+class RArray(RType):
+    """Fixed-length C array type (for example, int[5])"""
+
+    def __init__(self,
+                 item_type: RType,
+                 length: int) -> None:
+        self.item_type = item_type
+        # Number of items
+        self.length = length
+        self._ctype = 'xxx'
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_rarray(self)
+
+    def __str__(self) -> str:
+        return '%s[%s]' % (self.item_type, self.length)
+
+    def __repr__(self) -> str:
+        return '<RArray %r[%s]>' % (self.item_type, self.length)
+
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, RArray) and self.item_type == other.item_type
+                and self.length == other.length)
+
+    def __hash__(self) -> int:
+        return hash((self.item_type, self.length))
+
+    def serialize(self) -> JsonDict:
+        assert False
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RArray':
+        assert False
 
 
 PyObject = RStruct(
