@@ -10,7 +10,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
     GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
-    AssignMulti
+    AssignMulti, KeepAlive
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
@@ -198,6 +198,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %r", op, op.src)
         else:
             return self.format("%r = load_address %s", op, op.src)
+
+    def visit_keep_alive(self, op: KeepAlive) -> str:
+        return self.format('keep_alive %s' % ', '.join(self.format('%r', v)
+                                                       for v in op.src))
 
     # Helpers
 

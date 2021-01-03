@@ -1169,6 +1169,26 @@ class LoadAddress(RegisterOp):
         return visitor.visit_load_address(self)
 
 
+class KeepAlive(RegisterOp):
+    """A no-op operation that ensures source values aren't freed.
+
+    This is sometimes useful to avoid decref when a reference is still
+    being held but not seen by the compiler.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: List[Value]) -> None:
+        assert src
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_keep_alive(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1293,6 +1313,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_address(self, op: LoadAddress) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_keep_alive(self, op: KeepAlive) -> T:
         raise NotImplementedError
 
 

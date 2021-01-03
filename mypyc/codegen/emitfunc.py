@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -497,6 +497,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src) if isinstance(op.src, Register) else op.src
         self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, src))
+
+    def visit_keep_alive(self, op: KeepAlive) -> None:
+        # This is a no-op.
+        pass
 
     # Helpers
 

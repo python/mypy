@@ -28,7 +28,7 @@ from mypyc.analysis.dataflow import (
 )
 from mypyc.ir.ops import (
     BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto,  Op, ControlOp, Value, Register,
-    LoadAddress, Integer
+    LoadAddress, Integer, KeepAlive
 )
 from mypyc.ir.func_ir import FuncIR, all_values
 
@@ -111,7 +111,9 @@ def transform_block(block: BasicBlock,
                     assert isinstance(op, Assign)
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
-        ops.append(op)
+        # Strip KeepAlive. Its only purpose is to help with this transform.
+        if not isinstance(op, KeepAlive):
+            ops.append(op)
 
         # Control ops don't have any space to insert ops after them, so
         # their inc/decrefs get inserted by insert_branch_inc_and_decrefs.
