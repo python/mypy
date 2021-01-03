@@ -712,6 +712,7 @@ class RArray(RType):
         # Number of items
         self.length = length
         self._ctype = 'xxx'
+        self.is_refcounted = False
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rarray(self)
