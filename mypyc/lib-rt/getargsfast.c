@@ -68,6 +68,26 @@ CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *
     return retval;
 }
 
+int
+CPyArg_ParseStackAndKeywords_1(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                               CPyArg_Parser *parser, ...)
+{
+    int retval;
+    va_list va;
+
+    va_start(va, parser);
+    if (kwnames == NULL && nargs == 1) {
+        PyObject **p;
+        p = va_arg(va, PyObject **);
+        *p = args[0];
+        retval = 1;
+    } else {
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    }
+    va_end(va);
+    return retval;
+}
+
 static int
 cleanreturn_fast(int retval, freelist_fast_t *freelist)
 {

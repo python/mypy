@@ -161,9 +161,12 @@ def generate_wrapper_function(fn: FuncIR,
         nargs = 'PyVectorcall_NARGS(nargs)'
     else:
         nargs = 'nargs'
+    parse_fn = 'CPyArg_ParseStackAndKeywords'
+    if len(real_args) == 1 and len(groups[ARG_POS]) == 1:
+        parse_fn = 'CPyArg_ParseStackAndKeywords_1'
     emitter.emit_lines(
-        'if (!CPyArg_ParseStackAndKeywords(args, {}, kwnames, &parser{})) {{'.format(
-            nargs, ''.join(', ' + n for n in arg_ptrs)),
+        'if (!{}(args, {}, kwnames, &parser{})) {{'.format(
+            parse_fn, nargs, ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
