@@ -18,13 +18,13 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ir.ops import (
     BasicBlock, Op, Integer, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
-    GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral,
+    GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
-    RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
+    RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
@@ -48,7 +48,8 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op,
+    py_vectorcall_op
 )
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
@@ -248,7 +249,15 @@ class LowLevelIRBuilder:
         """
         # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
-            return self.call_c(py_call_op, [function] + arg_values, line)
+            array = Register(RArray(object_rprimitive, len(arg_values)))
+            self.add(AssignMulti(array, [self.coerce(arg, object_rprimitive, line)
+                                         for arg in arg_values]))
+            arg_ptr = self.add(LoadAddress(pointer_rprimitive, array))
+            return self.call_c(py_vectorcall_op, [function,
+                                                  arg_ptr,
+                                                  Integer(len(arg_values), pointer_rprimitive),
+                                                  Integer(0, object_rprimitive)],
+                               line)
 
         # Otherwise fallback to py_call_with_kwargs_op.
         assert arg_names is not None

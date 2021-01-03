@@ -58,9 +58,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r = %r', op.dest, op.src)
 
     def visit_assign_multi(self, op: AssignMulti) -> str:
-        if len(op.src) == 1:
-            return self.format('%r = %r,', op.dest, op.src[0])
-        return self.format('%r = %s',
+        return self.format('%r = [%s]',
                            op.dest,
                            ', '.join(self.format('%r', v) for v in op.src))
 
@@ -356,7 +354,7 @@ def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dic
                 if source not in names:
                     values.append(source)
 
-            if isinstance(op, Assign):
+            if isinstance(op, (Assign, AssignMulti)):
                 values.append(op.dest)
             elif isinstance(op, ControlOp) or op.is_void:
                 continue
