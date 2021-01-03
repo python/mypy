@@ -188,7 +188,7 @@ class RPrimitive(RType):
         #       we need to figure out some way to represent here.
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
-        elif ctype in ('int32_t', 'int64_t', 'CPyPtr'):
+        elif ctype in ('int32_t', 'int64_t', 'CPyPtr', 'uint32_t', 'uint64_t'):
             self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
@@ -254,19 +254,28 @@ int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
 short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
                                   ctype='CPyTagged')  # type: Final
 
-# low level integer (corresponds to C's 'int's).
+# Low level integer types (correspond to C integer types)
+
 int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
                               ctype='int32_t', size=4)  # type: Final
 int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
                               ctype='int64_t', size=8)  # type: Final
-# integer alias
+uint32_rprimitive = RPrimitive('uint32', is_unboxed=True, is_refcounted=False,
+                               ctype='uint32_t', size=4)  # type: Final
+uint64_rprimitive = RPrimitive('uint64', is_unboxed=True, is_refcounted=False,
+                               ctype='uint64_t', size=8)  # type: Final
+
+# The C 'int' type
 c_int_rprimitive = int32_rprimitive
+
 if IS_32_BIT_PLATFORM:
+    c_size_t_rprimitive = uint32_rprimitive
     c_pyssize_t_rprimitive = int32_rprimitive
 else:
+    c_size_t_rprimitive = uint64_rprimitive
     c_pyssize_t_rprimitive = int64_rprimitive
 
-# low level pointer, represented as integer in C backends
+# Low level pointer, represented as integer in C backends
 pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
                               ctype='CPyPtr')  # type: Final
 
@@ -328,6 +337,14 @@ def is_int32_rprimitive(rtype: RType) -> bool:
 
 def is_int64_rprimitive(rtype: RType) -> bool:
     return rtype is int64_rprimitive
+
+
+def is_uint32_rprimitive(rtype: RType) -> bool:
+    return rtype is uint32_rprimitive
+
+
+def is_uint64_rprimitive(rtype: RType) -> bool:
+    return rtype is uint64_rprimitive
 
 
 def is_c_py_ssize_t_rprimitive(rtype: RType) -> bool:
