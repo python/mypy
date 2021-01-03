@@ -12,10 +12,10 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
+    RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
     is_pointer_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
@@ -163,6 +163,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # for some casts), so don't emit it.
         if dest != src:
             self.emit_line('%s = %s;' % (dest, src))
+
+    def visit_assign_multi(self, op: AssignMulti) -> None:
+        typ = op.dest.type
+        assert isinstance(typ, RArray)
+        dest = self.reg(op.dest)
+        self.emit_line('%s%s[%d] = {%s};' % (
+            self.emitter.ctype_spaced(typ.item_type),
+            dest,
+            len(op.src),
+            ', '.join(self.reg(s) for s in op.src)))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):

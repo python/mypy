@@ -18,7 +18,7 @@ from typing_extensions import Final, TYPE_CHECKING
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (
-    RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
+    RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
     bit_rprimitive, is_bit_rprimitive
@@ -224,6 +224,38 @@ class Assign(Op):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_assign(self)
+
+
+class AssignMulti(Op):
+    """Assign multiple values to a Register (dest = src1, src2, ...).
+
+    This is used to initialize RArray values. It's provided to avoid
+    very verbose IR for common vectorcall operations.
+
+    Note that this interacts atypically with reference counting. We
+    assume that each RArray register is initialized exactly once
+    with this op.
+    """
+    # TODO: Relax the special rules above
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
+        super().__init__(line)
+        assert src
+        assert isinstance(dest.type, RArray)
+        assert dest.type.length == len(src)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign_multi(self)
 
 
 class ControlOp(Op):
@@ -1157,6 +1189,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_assign(self, op: Assign) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_assign_multi(self, op: AssignMulti) -> T:
         raise NotImplementedError
 
     @abstractmethod
