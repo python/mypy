@@ -367,14 +367,20 @@ def method_name_sort_key(name: str) -> Tuple[int, str]:
     return 1, name
 
 
+def is_pybind_skipped_attribute(attr: str) -> bool:
+    return attr.startswith("__pybind11_module_local_")
+
+
 def is_skipped_attribute(attr: str) -> bool:
-    return attr in ('__getattribute__',
-                    '__str__',
-                    '__repr__',
-                    '__doc__',
-                    '__dict__',
-                    '__module__',
-                    '__weakref__')  # For pickling
+    return (attr in ('__getattribute__',
+                     '__str__',
+                     '__repr__',
+                     '__doc__',
+                     '__dict__',
+                     '__module__',
+                     '__weakref__')  # For pickling
+            or is_pybind_skipped_attribute(attr)
+            )
 
 
 def infer_method_sig(name: str) -> List[ArgSig]:
