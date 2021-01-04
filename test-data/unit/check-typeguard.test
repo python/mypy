@@ -132,6 +132,16 @@ class C:
     def is_float(self, a: object) -> TypeGuard[float]: pass
 [builtins fixtures/tuple.pyi]
 
-# TODO:
-# - can a type guard be a generator? or async?
-# - all sorts of shenanigans with type variables
+[case testTypeGuardCrossModule]
+import guard
+from points import Point
+def main(a: object) -> None:
+    if guard.is_point(a):
+        reveal_type(a)  # N: Revealed type is 'points.Point'
+[file guard.py]
+from typing_extensions import TypeGuard
+import points
+def is_point(a: object) -> TypeGuard[points.Point]: pass
+[file points.py]
+class Point: pass
+[builtins fixtures/tuple.pyi]
