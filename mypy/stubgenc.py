@@ -17,10 +17,10 @@ from mypy.stubdoc import (
     infer_arg_sig_from_anon_docstring, infer_ret_type_sig_from_anon_docstring, FunctionSig
 )
 
-
 # Members of the typing module to consider for importing by default.
 _DEFAULT_TYPING_IMPORTS = (
     'Any',
+    'Callable',
     'Dict',
     'Iterable',
     'Iterator',
