@@ -69,9 +69,7 @@ def generate_stub_for_c_module(module_name: str,
         if name.startswith('__') and name.endswith('__'):
             continue
         if name not in done and not inspect.ismodule(obj):
-            type_str = type(obj).__name__
-            if type_str not in ('int', 'str', 'bytes', 'float', 'bool'):
-                type_str = 'Any'
+            type_str = strip_or_import(type(obj).__name__, module, imports)
             variables.append('%s: %s' % (name, type_str))
     output = []
     for line in sorted(set(imports)):
