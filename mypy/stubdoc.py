@@ -140,7 +140,8 @@ class DocStringParser:
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
                 self.arg_name = self.accumulator
-                if not _ARG_NAME_RE.match(self.arg_name):
+                if not (token.string == ')' and self.accumulator.strip() == '') \
+                        and not _ARG_NAME_RE.match(self.arg_name):
                     # Invalid argument name.
                     self.reset()
                     return
