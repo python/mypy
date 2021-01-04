@@ -311,7 +311,8 @@ def generate_c_type_stub(module: ModuleType,
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            variables.append('%s: Any = ...' % attr)
+            variables.append('%s: %s = ...' % (
+                attr, strip_or_import(type(value).__name__, module, imports)))
     all_bases = obj.mro()
     if all_bases[-1] is object:
         # TODO: Is this always object?
