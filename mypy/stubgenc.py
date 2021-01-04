@@ -231,6 +231,8 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
             stripped_type = typ[len('builtins') + 1:]
         else:
             imports.append('import %s' % (arg_module,))
+    if stripped_type == 'NoneType':
+        stripped_type = 'None'
     return stripped_type
 
 
