@@ -3106,6 +3106,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         In the future, ParamSpec may accept bounds and variance arguments, in which
         case more aggressive sharing of code with process_typevar_declaration should be pursued.
         """
+        if not self.options.wip_pep_612:
+            return False
         call = self.get_typevarlike_declaration(
             s, ("typing_extensions.ParamSpec", "typing.ParamSpec")
         )
