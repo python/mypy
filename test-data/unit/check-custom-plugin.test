@@ -803,3 +803,15 @@ reveal_type(f())  # N: Revealed type is "builtins.str"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py
+
+[case testClassAttrPluginFile]
+# flags: --config-file tmp/mypy.ini
+
+class Cls:
+    attr = 'test'
+
+reveal_type(Cls.attr)  # N: Revealed type is 'builtins.int'
+reveal_type(Cls().attr)  # N: Revealed type is 'builtins.str'
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py

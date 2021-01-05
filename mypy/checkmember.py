@@ -794,6 +794,13 @@ def analyze_class_attribute_access(itype: Instance,
         if not mx.is_lvalue:
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                                mx.msg, mx.context, chk=mx.chk)
+
+        # Call the class attribute hook before returning.
+        fullname = '{}.{}'.format(info.fullname, name)
+        hook = mx.chk.plugin.get_class_attribute_hook(fullname)
+        if hook:
+            result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                           result, mx.context, mx.chk))
         return result
     elif isinstance(node.node, Var):
         mx.not_ready_callback(name, mx.context)
