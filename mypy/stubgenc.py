@@ -78,13 +78,13 @@ def generate_stub_for_c_module(module_name: str,
         output.append(line)
     for line in variables:
         output.append(line)
-    if output and functions:
-        output.append('')
-    for line in functions:
-        output.append(line)
     for line in types:
         if line.startswith('class') and output and output[-1]:
             output.append('')
+        output.append(line)
+    if output and functions:
+        output.append('')
+    for line in functions:
         output.append(line)
     output = add_typing_import(output)
     with open(target, 'w') as file:
