@@ -14,7 +14,8 @@ from types import ModuleType
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
     infer_sig_from_docstring, infer_prop_type_from_docstring, ArgSig,
-    infer_arg_sig_from_anon_docstring, infer_ret_type_sig_from_anon_docstring, FunctionSig
+    infer_arg_sig_from_anon_docstring, infer_ret_type_sig_from_anon_docstring,
+    infer_ret_type_sig_from_docstring, FunctionSig
 )
 
 # Members of the typing module to consider for importing by default.
@@ -254,6 +255,8 @@ def generate_c_property_stub(name: str, obj: object, output: List[str], readonly
         """Infer property type from docstring or docstring signature."""
         if docstr is not None:
             inferred = infer_ret_type_sig_from_anon_docstring(docstr)
+            if not inferred:
+                inferred = infer_ret_type_sig_from_docstring(docstr, name)
             if not inferred:
                 inferred = infer_prop_type_from_docstring(docstr)
             return inferred
