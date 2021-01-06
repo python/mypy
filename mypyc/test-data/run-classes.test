@@ -374,7 +374,7 @@ o = object()
 c1.d = o
 assert c1.d is o
 
-[case testInitWithMissingNoneReturnAnnotation]
+[case testInitMethodWithMissingNoneReturnAnnotation]
 class C:
     def __init__(self):
         pass

@@ -437,7 +437,7 @@ class SuggestionEngine:
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
 
-        is_method = bool(node.info) and not node.is_static
+        is_method = not node.is_module_level_func and not node.is_static
 
         with strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(

@@ -928,6 +928,15 @@ def f(x):
 from native import f
 assert f(3) == 6
 
+[case testUnannotatedModuleLevelInitFunction]
+# Ensure that adding an implicit `-> None` annotation only applies to `__init__`
+# _methods_ specifically (not module-level `__init__` functions).
+def __init__():
+    return 42
+[file driver.py]
+from native import __init__
+assert __init__() == 42
+
 [case testComplicatedArgs]
 from typing import Tuple, Dict
 
