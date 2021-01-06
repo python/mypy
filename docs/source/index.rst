@@ -35,6 +35,7 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    type_inference_and_annotations
    kinds_of_types
    class_basics
+   runtime_troubles
    protocols
    python2
    dynamic_typing

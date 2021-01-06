@@ -243,93 +243,24 @@ more specific type:
 
 .. _alternative_union_syntax:
 
-Alternative union syntax
-------------------------
+X | Y syntax for Unions
+-----------------------
 
-`PEP 604 <https://www.python.org/dev/peps/pep-0604/>`_ introduced an alternative way
-for writing union types. Starting with **Python 3.10** it is possible to write
-``Union[int, str]`` as ``int | str``. Any of the following options is possible
+:pep:`604` introduced an alternative way for spelling union types. In Python
+3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
+possible to use this syntax in versions of Python where it isn't supported by
+the runtime with some limitations, see :ref:`runtime_troubles`.
 
 .. code-block:: python
 
     from typing import List
 
-    # Use as Union
     t1: int | str  # equivalent to Union[int, str]
 
-    # Use as Optional
     t2: int | None  # equivalent to Optional[int]
 
-    # Use in generics
-    t3: List[int | str]  # equivalent to List[Union[int, str]]
-
-    # Use in type aliases
-    T4 = int | None
-    x: T4
-
-    # Quoted variable annotations
-    t5: "int | str"
-
-    # Quoted function annotations
-    def f(t6: "int | str") -> None: ...
-
-    # Type comments
-    t6 = 42  # type: int | str
-
-It is possible to use most of these even for earlier versions. However there are some
-limitations to be aware of.
-
-.. _alternative_union_syntax_stub_files:
-
-Stub files
-""""""""""
-
-All options are supported, regardless of the Python version the project uses.
-
-.. _alternative_union_syntax_37:
-
-Python 3.7 - 3.9
-""""""""""""""""
-
-It is necessary to add ``from __future__ import annotations`` to delay the evaluation
-of type annotations. Not using it would result in a ``TypeError``.
-This does not apply for **type comments**, **quoted function** and **quoted variable** annotations,
-as those also work for earlier versions, see :ref:`below <alternative_union_syntax_older_version>`.
-
-.. warning::
-
-    Type aliases are **NOT** supported! Those result in a ``TypeError`` regardless
-    if the evaluation of type annotations is delayed.
-
-    Dynamic evaluation of annotations is **NOT** possible (e.g. ``typing.get_type_hints`` and ``eval``).
-    See `note PEP 604 <https://www.python.org/dev/peps/pep-0604/#change-only-pep-484-type-hints-to-accept-the-syntax-type1-type2>`_.
-    Use ``typing.Union`` or **Python 3.10** instead if you need those!
-
-.. code-block:: python
-
-    from __future__ import annotations
-
-    t1: int | None
-
-    # Type aliases
-    T2 = int | None  # TypeError!
-
-.. _alternative_union_syntax_older_version:
-
-Older versions
-""""""""""""""
-
-+------------------------------------------+-----------+-----------+-----------+
-| Python Version                           | 3.6       | 3.0 - 3.5 | 2.7       |
-+==========================================+===========+===========+===========+
-| Type comments                            | yes       | yes       | yes       |
-+------------------------------------------+-----------+-----------+-----------+
-| Quoted function annotations              | yes       | yes       |           |
-+------------------------------------------+-----------+-----------+-----------+
-| Quoted variable annotations              | yes       |           |           |
-+------------------------------------------+-----------+-----------+-----------+
-| Everything else                          |           |           |           |
-+------------------------------------------+-----------+-----------+-----------+
+    # Usable in type comments
+    t3 = 42  # type: int | str
 
 .. _strict_optional:
 
@@ -564,82 +495,6 @@ if strict optional checking is disabled, since ``None`` is implicitly
 valid for any type, but it's much more
 useful for a programmer who is reading the code. This also makes
 it easier to migrate to strict ``None`` checking in the future.
-
-Class name forward references
-*****************************
-
-Python does not allow references to a class object before the class is
-defined. Thus this code does not work as expected:
-
-.. code-block:: python
-
-   def f(x: A) -> None:  # Error: Name A not defined
-       ...
-
-   class A:
-       ...
-
-In cases like these you can enter the type as a string literal — this
-is a *forward reference*:
-
-.. code-block:: python
-
-   def f(x: 'A') -> None:  # OK
-       ...
-
-   class A:
-       ...
-
-Starting from Python 3.7 (:pep:`563`), you can add the special import ``from __future__ import annotations``,
-which makes the use of string literals in annotations unnecessary:
-
-.. code-block:: python
-
-   from __future__ import annotations
-
-   def f(x: A) -> None:  # OK
-       ...
-
-   class A:
-       ...
-
-.. note::
-
-    Even with the ``__future__`` import, there are some scenarios that could still
-    require string literals, typically involving use of forward references or generics in:
-
-    * :ref:`type aliases <type-aliases>`;
-    * :ref:`casts <casts>`;
-    * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
-    * base classes.
-
-    .. code-block:: python
-
-        # base class example
-        class A(Tuple['B', 'C']): ... # OK
-        class B: ...
-        class C: ...
-
-Of course, instead of using a string literal type or special import, you could move the
-function definition after the class definition. This is not always
-desirable or even possible, though.
-
-Any type can be entered as a string literal, and you can combine
-string-literal types with non-string-literal types freely:
-
-.. code-block:: python
-
-   def f(a: List['A']) -> None: ...  # OK
-   def g(n: 'int') -> None: ...      # OK, though not useful
-
-   class A: pass
-
-String literal types are never needed in ``# type:`` comments and :ref:`stub files <stub-files>`.
-
-String literal types must be defined (or imported) later *in the same
-module*.  They cannot be used to leave cross-module references
-unresolved.  (For dealing with import cycles, see
-:ref:`import-cycles`.)
 
 .. _type-aliases:
 

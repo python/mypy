@@ -38,3 +38,8 @@ though they are similar to abstract base classes defined in
 :py:mod:`collections.abc` (formerly ``collections``), they are not identical. In
 particular, prior to Python 3.9, the built-in collection type objects do not
 support indexing.
+
+In Python 3.9 and later, built-in collection type objects support indexing. This
+means that you can use built-in classes or those from :py:mod:`collections.abc`
+instead of importing from :py:mod:`typing`. See :ref:`generic-builtins` for more
+details.
