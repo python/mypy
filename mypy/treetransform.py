@@ -37,6 +37,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     Notes:
 
+     * This can only be used to transform functions or classes, not top-level
+       statements, and/or modules as a whole.
      * Do not duplicate TypeInfo nodes. This would generally not be desirable.
      * Only update some name binding cross-references, but only those that
        refer to Var, Decorator or FuncDef nodes, not those targeting ClassDef or
@@ -48,6 +50,9 @@ class TransformVisitor(NodeVisitor[Node]):
     """
 
     def __init__(self) -> None:
+        # To simplify testing, set this flag to True if you want to transform
+        # all statements in a file (this is prohibited in normal mode).
+        self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
         self.var_map = {}  # type: Dict[Var, Var]
@@ -58,6 +63,7 @@ class TransformVisitor(NodeVisitor[Node]):
         self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
+        assert self.test_only, "This visitor should not be used for whole files."
         # NOTE: The 'names' and 'imports' instance variables will be empty!
         ignored_lines = {line: codes[:]
                          for line, codes in node.ignored_lines.items()}
@@ -358,9 +364,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.fullname = original.fullname
         target = original.node
         if isinstance(target, Var):
-            # Do not transform references to global variables.
-            # TODO: is it really the best solution? Should we instead make
-            # a trivial copy, or do something completely different? See
+            # Do not transform references to global variables. See
             # testGenericFunctionAliasExpand for an example where this is important.
             if original.kind != GDEF:
                 target = self.visit_var(target)
