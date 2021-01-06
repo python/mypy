@@ -1,0 +1,57 @@
+name: Run mypy_primer
+
+on:
+  # Only run on PR, since we diff against master
+  pull_request:
+    paths-ignore:
+    - 'docs/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - 'mypyc/**'
+
+jobs:
+  mypy_primer:
+    name: Run
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard-index: [0, 1, 2]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: mypy_to_test
+          fetch-depth: 0
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          pip install git+https://github.com/hauntsaninja/mypy_primer.git
+      - name: Run mypy_primer
+        shell: bash
+        run: |
+          cd mypy_to_test
+          echo "new commit"
+          git rev-list --format=%s --max-count=1 $GITHUB_SHA
+          git checkout -b upstream_master origin/master
+          echo "base commit"
+          git rev-list --format=%s --max-count=1 upstream_master
+          echo ''
+          cd ..
+          # fail action if exit code isn't zero or one
+          (
+            mypy_primer \
+            --repo mypy_to_test \
+            --new $GITHUB_SHA --old upstream_master \
+            --num-shards 3 --shard-index ${{ matrix.shard-index }} \
+            --debug \
+            --output concise \
+            | tee diff.txt
+          ) || [ $? -eq 1 ]
+      - name: Upload mypy_primer diff
+        uses: actions/upload-artifact@v2
+        with:
+          name: mypy_primer_diff_${{ matrix.shard-index }}
+          path: diff.txt
