@@ -2402,3 +2402,31 @@ def func(tp: Type[C[S]]) -> S:
     else:
         return reg[tp.test].test[0]
 [builtins fixtures/dict.pyi]
+
+[case testGenericFunctionAliasExpand]
+from typing import Optional, TypeVar
+
+T = TypeVar("T")
+def gen(x: T) -> T: ...
+gen_a = gen
+
+S = TypeVar("S", int, str)
+class C: ...
+def test() -> Optional[S]:
+    reveal_type(gen_a(C()))  # N: Revealed type is '__main__.C*'
+    return None
+
+[case testGenericFunctionMemberExpand]
+from typing import Optional, TypeVar, Callable
+
+T = TypeVar("T")
+
+class A:
+    def __init__(self) -> None:
+        self.gen: Callable[[T], T]
+
+S = TypeVar("S", int, str)
+class C: ...
+def test() -> Optional[S]:
+    reveal_type(A().gen(C()))  # N: Revealed type is '__main__.C*'
+    return None

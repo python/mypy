@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
-    OverloadPart, EnumCallExpr, REVEAL_TYPE
+    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF
 )
 from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
@@ -358,7 +358,12 @@ class TransformVisitor(NodeVisitor[Node]):
         new.fullname = original.fullname
         target = original.node
         if isinstance(target, Var):
-            target = self.visit_var(target)
+            # Do not transform references to global variables.
+            # TODO: is it really the best solution? Should we instead make
+            # a trivial copy, or do something completely different? See
+            # testGenericFunctionAliasExpand for an example where this is important.
+            if original.kind != GDEF:
+                target = self.visit_var(target)
         elif isinstance(target, Decorator):
             target = self.visit_var(target.var)
         elif isinstance(target, FuncDef):
