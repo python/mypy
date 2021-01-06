@@ -853,9 +853,9 @@ def process_options(args: List[str],
     if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
-    # Paths listed in the config file will be ignored if any paths are passed on
-    # the command line.
-    if options.files and not special_opts.files:
+    # Paths listed in the config file will be ignored if any paths, modules or packages
+    # are passed on the command line.
+    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
         special_opts.files = options.files
 
     # Check for invalid argument combinations.
