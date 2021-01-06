@@ -84,6 +84,8 @@ config_types = {
     'custom_typeshed_dir': expand_path,
     'mypy_path': lambda s: [expand_path(p.strip()) for p in re.split('[,:]', s)],
     'files': split_and_match_files,
+    'packages': lambda s: [p.strip() for p in s.split(',')],
+    'modules': lambda s: [p.strip() for p in s.split(',')],
     'quickstart_file': expand_path,
     'junit_xml': expand_path,
     # These two are for backwards compatibility
@@ -278,6 +280,13 @@ def parse_section(prefix: str, template: Options,
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'
         results[options_key] = v
+        if key in ('files', 'packages', 'modules'):
+            if all(('packages' in results.keys() or 'modules' in results.keys(),
+                    results.get('files'))):
+                print("May only specify one of: module/package, files, or command. Ignoring key.",
+                      file=stderr)
+                del results[options_key]
+                continue
     return results, report_dirs
 
 
