@@ -1,11 +1,7 @@
-from typing import Callable, Optional, TYPE_CHECKING
+from typing import Callable, Optional
 
 from mypy.plugin import AttributeContext, Plugin
 from mypy.types import Type as MypyType
-
-if TYPE_CHECKING:
-    # For some reason this fails under the mypyc tests
-    from typing import Type as TypingType
 
 
 class ClassAttrPlugin(Plugin):
@@ -20,5 +16,5 @@ def my_hook(ctx: AttributeContext) -> MypyType:
     return ctx.api.named_generic_type('builtins.int', [])
 
 
-def plugin(_version: str) -> 'TypingType[Plugin]':
+def plugin(_version: str):
     return ClassAttrPlugin
