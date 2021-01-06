@@ -707,10 +707,13 @@ def analyze_class_attribute_access(itype: Instance,
     if override_info:
         info = override_info
 
+    fullname = '{}.{}'.format(info.fullname, name)
+    hook = mx.chk.plugin.get_class_attribute_hook(fullname)
+
     node = info.get(name)
     if not node:
         if info.fallback_to_any:
-            return AnyType(TypeOfAny.special_form)
+            return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None
 
     is_decorated = isinstance(node.node, Decorator)
@@ -735,14 +738,16 @@ def analyze_class_attribute_access(itype: Instance,
     if info.is_enum and not (mx.is_lvalue or is_decorated or is_method):
         enum_class_attribute_type = analyze_enum_class_attribute_access(itype, name, mx)
         if enum_class_attribute_type:
-            return enum_class_attribute_type
+            return apply_class_attr_hook(mx, hook, enum_class_attribute_type)
 
     t = node.type
     if t:
         if isinstance(t, PartialType):
             symnode = node.node
             assert isinstance(symnode, Var)
-            return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
+            return apply_class_attr_hook(mx, hook,
+                                         mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode,
+                                                                        mx.context))
 
         # Find the class where method/variable was defined.
         if isinstance(node.node, Decorator):
@@ -795,38 +800,38 @@ def analyze_class_attribute_access(itype: Instance,
             result = analyze_descriptor_access(mx.original_type, result, mx.builtin_type,
                                                mx.msg, mx.context, chk=mx.chk)
 
-        # Call the class attribute hook before returning.
-        fullname = '{}.{}'.format(info.fullname, name)
-        hook = mx.chk.plugin.get_class_attribute_hook(fullname)
-        if hook:
-            result = hook(AttributeContext(get_proper_type(mx.original_type),
-                                           result, mx.context, mx.chk))
-        return result
+        return apply_class_attr_hook(mx, hook, result)
     elif isinstance(node.node, Var):
+        # TODO RIGHT NOW NOMERGE - is it okay to not modify this?
         mx.not_ready_callback(name, mx.context)
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
+        # TODO RIGHT NOW NOMERGE - is it okay to not modify this?
         mx.msg.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
                     info.name, name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
-        return type_object_type(node.node, mx.builtin_type)
+        assert False, "TODO RIGHT NOW NOMERGE - No tests hit this, how to trigger?"
+        return apply_class_attr_hook(mx, hook, type_object_type(node.node, mx.builtin_type))
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
-        return mx.builtin_type('types.ModuleType')
+        assert False, "TODO RIGHT NOW NOMERGE - No tests hit this, how to trigger?"
+        return apply_class_attr_hook(mx, hook, mx.builtin_type('types.ModuleType'))
 
     if (isinstance(node.node, TypeAlias) and
             isinstance(get_proper_type(node.node.target), Instance)):
-        return instance_alias_type(node.node, mx.builtin_type)
+        return apply_class_attr_hook(mx, hook, instance_alias_type(node.node, mx.builtin_type))
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
         if node.node.type:
-            return node.node.type
+            assert False, "TODO RIGHT NOW NOMERGE - No tests hit this, how to trigger?"
+            return apply_class_attr_hook(mx, hook, node.node.type)
         else:
+            # TODO RIGHT NOW NOMERGE - is it okay to not modify this?
             mx.not_ready_callback(name, mx.context)
             return AnyType(TypeOfAny.from_error)
     else:
@@ -837,7 +842,17 @@ def analyze_class_attribute_access(itype: Instance,
         # unannotated implicit class methods we do this here.
         if node.node.is_class:
             typ = bind_self(typ, is_classmethod=True)
-        return typ
+        return apply_class_attr_hook(mx, hook, typ)
+
+
+def apply_class_attr_hook(mx: MemberContext,
+                          hook: Optional[Callable[[AttributeContext], Type]],
+                          result: Type,
+                          ) -> Optional[Type]:
+    if hook:
+        result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                       result, mx.context, mx.chk))
+    return result
 
 
 def analyze_enum_class_attribute_access(itype: Instance,
