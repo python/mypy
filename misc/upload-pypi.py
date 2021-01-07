@@ -59,7 +59,15 @@ def check_sdist(dist: Path, version: str) -> None:
     with tarfile.open(sdist) as f:
         version_py = f.extractfile(f"{sdist.name[:-len('.tar.gz')]}/mypy/version.py")
         assert version_py is not None
-        assert f"'{version}'" in version_py.read().decode("utf-8")
+        version_py_contents = version_py.read().decode("utf-8")
+
+        # strip a git hash from our version, if necessary, since that's not present in version.py
+        match = re.match(r"(.*\+dev).*$", version)
+        hashless_version = match.group(1) if match else version
+
+        assert (
+            f"'{hashless_version}'" in version_py_contents
+        ), "Version does not match version.py in sdist"
 
 
 def spot_check_dist(dist: Path, version: str) -> None:
@@ -92,7 +100,11 @@ def upload_dist(dist: Path, dry_run: bool = True) -> None:
 
 
 def upload_to_pypi(version: str, dry_run: bool = True) -> None:
-    assert re.match(r"0\.[0-9]{3}$", version)
+    assert re.match(r"v?0\.[0-9]{3}(\+\S+)?$", version)
+    if "dev" in version:
+        assert dry_run, "Must use --dry-run with dev versions of mypy"
+    if version.startswith("v"):
+        version = version[1:]
 
     target_dir = tempfile.mkdtemp()
     dist = Path(target_dir) / "dist"
