@@ -133,7 +133,7 @@ class Mapper:
             # Handle unannotated functions
             arg_types = [object_rprimitive for arg in fdef.arguments]
             # We at least know the return type for __init__ methods will be None.
-            is_init_method = fdef.name == '__init__' and not fdef.is_module_level_func
+            is_init_method = fdef.name == '__init__' and bool(fdef.info)
             if is_init_method:
                 ret = none_rprimitive
             else:

@@ -683,10 +683,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     def name(self) -> str:
         return self._name
 
-    @property
-    def is_module_level_func(self) -> bool:
-        return self.info == FUNC_NO_INFO
-
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
 
