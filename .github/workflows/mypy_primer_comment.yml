@@ -1,0 +1,108 @@
+name: Comment with mypy_primer diff
+
+on:
+  # pull_request_target gives us access to a write token which we need to post a comment
+  # The presence of a write token means that we can't run any untrusted code (i.e. malicious PRs),
+  # which is why this its own workflow. Github Actions doesn't make it easy for workflows to talk to
+  # each other, so the approach here is to poll for workflow runs, find the mypy_primer run for our
+  # commit, wait till it's completed, and download and post the diff.
+  pull_request_target:
+    paths-ignore:
+    - 'docs/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - 'mypyc/**'
+
+jobs:
+  mypy_primer:
+    name: Comment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: npm install adm-zip
+      - name: Post comment
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const AdmZip = require(`${process.env.GITHUB_WORKSPACE}/node_modules/adm-zip`)
+
+            // Because of pull_request_target, context.sha is the PR base branch
+            // So we need to ask Github for the SHA of the PR's head commit
+            const pull_request = await github.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+            })
+            const pr_commit_sha = pull_request.data.head.sha
+            console.log("Looking for mypy_primer run for commit:", pr_commit_sha)
+
+            // Find the mypy_primer run for our commit and wait till it's completed
+            // We wait up to an hour before timing out
+            async function check_mypy_primer() {
+              // We're only looking at the first page, so in theory if we open enough PRs around
+              // the same time, this will fail to find the run.
+              const response = await github.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "mypy_primer.yml",
+              })
+              if (response) {
+                return response.data.workflow_runs.find(run => run.head_sha == pr_commit_sha)
+              }
+              return undefined
+            }
+
+            const end_time = Number(new Date()) + 60 * 60 * 1000
+            let primer_run = await check_mypy_primer()
+            while (!primer_run || primer_run.status != "completed") {
+              if (Number(new Date()) > end_time) {
+                throw Error("Timed out waiting for mypy_primer")
+              }
+              console.log("Waiting for mypy_primer to complete...")
+              await new Promise(r => setTimeout(r, 10000))
+              primer_run = await check_mypy_primer()
+            }
+            console.log("Found mypy_primer run!")
+            console.log(primer_run)
+
+            // Download artifact(s) from the run
+            const artifacts = await github.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: primer_run.id,
+            })
+            const filtered_artifacts = artifacts.data.artifacts.filter(
+              a => a.name.startsWith("mypy_primer_diff")
+            )
+            console.log("Artifacts from mypy_primer:")
+            console.log(filtered_artifacts)
+
+            async function get_artifact_data(artifact) {
+              const zip = await github.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                  archive_format: "zip",
+              })
+              const adm = new AdmZip(Buffer.from(zip.data))
+              return adm.readAsText(adm.getEntry("diff.txt"))
+            }
+
+            const all_data = await Promise.all(filtered_artifacts.map(get_artifact_data))
+            const data = all_data.join("\n")
+
+            console.log("Diff from mypy_primer:")
+            console.log(data)
+            try {
+              if (data.trim()) {
+                await github.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
+                })
+              }
+            } catch (error) {
+              console.log(error)
+            }

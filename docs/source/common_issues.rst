@@ -210,6 +210,21 @@ checking would require a large number of ``assert foo is not None``
 checks to be inserted, and you want to minimize the number
 of code changes required to get a clean mypy run.
 
+Issues with code at runtime
+---------------------------
+
+Idiomatic use of type annotations can sometimes run up against what a given
+version of Python considers legal code. These can result in some of the
+following errors when trying to run your code:
+
+* ``ImportError`` from circular imports
+* ``NameError: name 'X' is not defined`` from forward references
+* ``TypeError: 'type' object is not subscriptable`` from types that are not generic at runtime
+* ``ImportError`` or ``ModuleNotFoundError`` from use of stub definitions not available at runtime
+* ``TypeError: unsupported operand type(s) for |: 'type' and 'type'`` from use of new syntax
+
+For dealing with these, see :ref:`runtime_troubles`.
+
 Mypy runs are slow
 ------------------
 
@@ -498,112 +513,6 @@ to see the types of all local variables at once. Example:
    remove any ``reveal_type`` and ``reveal_locals`` calls before you can
    run your code. Both are always available and you don't need to import
    them.
-
-
-.. _import-cycles:
-
-Import cycles
--------------
-
-An import cycle occurs where module A imports module B and module B
-imports module A (perhaps indirectly, e.g. ``A -> B -> C -> A``).
-Sometimes in order to add type annotations you have to add extra
-imports to a module and those imports cause cycles that didn't exist
-before.  If those cycles become a problem when running your program,
-there's a trick: if the import is only needed for type annotations in
-forward references (string literals) or comments, you can write the
-imports inside ``if TYPE_CHECKING:`` so that they are not executed at runtime.
-Example:
-
-File ``foo.py``:
-
-.. code-block:: python
-
-   from typing import List, TYPE_CHECKING
-
-   if TYPE_CHECKING:
-       import bar
-
-   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
-       return [arg]
-
-File ``bar.py``:
-
-.. code-block:: python
-
-   from typing import List
-   from foo import listify
-
-   class BarClass:
-       def listifyme(self) -> 'List[BarClass]':
-           return listify(self)
-
-.. note::
-
-   The :py:data:`~typing.TYPE_CHECKING` constant defined by the :py:mod:`typing` module
-   is ``False`` at runtime but ``True`` while type checking.
-
-Python 3.5.1 doesn't have :py:data:`~typing.TYPE_CHECKING`. An alternative is
-to define a constant named ``MYPY`` that has the value ``False``
-at runtime. Mypy considers it to be ``True`` when type checking.
-Here's the above example modified to use ``MYPY``:
-
-.. code-block:: python
-
-   from typing import List
-
-   MYPY = False
-   if MYPY:
-       import bar
-
-   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
-       return [arg]
-
-.. _not-generic-runtime:
-
-Using classes that are generic in stubs but not at runtime
-----------------------------------------------------------
-
-Some classes are declared as generic in stubs, but not at runtime. Examples
-in the standard library include :py:class:`os.PathLike` and :py:class:`queue.Queue`.
-Subscripting such a class will result in a runtime error:
-
-.. code-block:: python
-
-   from queue import Queue
-
-   class Tasks(Queue[str]):  # TypeError: 'type' object is not subscriptable
-       ...
-
-   results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
-
-To avoid these errors while still having precise types you can either use
-string literal types or :py:data:`~typing.TYPE_CHECKING`:
-
-.. code-block:: python
-
-   from queue import Queue
-   from typing import TYPE_CHECKING
-
-   if TYPE_CHECKING:
-       BaseQueue = Queue[str]  # this is only processed by mypy
-   else:
-       BaseQueue = Queue  # this is not seen by mypy but will be executed at runtime.
-
-   class Tasks(BaseQueue):  # OK
-       ...
-
-   results: 'Queue[int]' = Queue()  # OK
-
-If you are running Python 3.7+ you can use ``from __future__ import annotations``
-as a (nicer) alternative to string quotes, read more in :pep:`563`.  For example:
-
-.. code-block:: python
-
-   from __future__ import annotations
-   from queue import Queue
-
-   results: Queue[int] = Queue()  # This works at runtime
 
 .. _silencing-linters:
 

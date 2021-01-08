@@ -1248,3 +1248,37 @@ x: str = 0
 pkg/x.py:1: error: invalid syntax
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
+
+[case testCmdlinePackageAndFile]
+# cmd: mypy -p pkg file
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: May only specify one of: module/package, files, or command.
+== Return code: 2
+
+[case testCmdlinePackageAndIniFiles]
+# cmd: mypy -p pkg
+[file mypy.ini]
+\[mypy]
+files=file
+[file pkg.py]
+x = 0  # type: str
+[file file.py]
+y = 0  # type: str
+[out]
+pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+[case testCmdlineModuleAndIniFiles]
+# cmd: mypy -m pkg
+[file mypy.ini]
+\[mypy]
+files=file
+[file pkg.py]
+x = 0  # type: str
+[file file.py]
+y = 0  # type: str
+[out]
+pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
