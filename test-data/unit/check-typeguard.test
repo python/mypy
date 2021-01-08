@@ -145,3 +145,169 @@ def is_point(a: object) -> TypeGuard[points.Point]: pass
 [file points.py]
 class Point: pass
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardBodyRequiresBool]
+from typing_extensions import TypeGuard
+def is_float(a: object) -> TypeGuard[float]:
+    return "not a bool"  # E: Incompatible return value type (got "str", expected "bool")
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNarrowToTypedDict]
+from typing import Dict, TypedDict
+from typing_extensions import TypeGuard
+class User(TypedDict):
+    name: str
+    id: int
+def is_user(a: Dict[str, object]) -> TypeGuard[User]:
+    return isinstance(a.get("name"), str) and isinstance(a.get("id"), int)
+def main(a: Dict[str, object]) -> None:
+    if is_user(a):
+        reveal_type(a)  # N: Revealed type is 'TypedDict('__main__.User', {'name': builtins.str, 'id': builtins.int})'
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypeGuardInAssert]
+from typing_extensions import TypeGuard
+def is_float(a: object) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    assert is_float(a)
+    reveal_type(a)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardFromAny]
+from typing import Any
+from typing_extensions import TypeGuard
+def is_objfloat(a: object) -> TypeGuard[float]: pass
+def is_anyfloat(a: Any) -> TypeGuard[float]: pass
+def objmain(a: object) -> None:
+    if is_objfloat(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+    if is_anyfloat(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+def anymain(a: Any) -> None:
+    if is_objfloat(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+    if is_anyfloat(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNegatedAndElse]
+from typing import Union
+from typing_extensions import TypeGuard
+def is_int(a: object) -> TypeGuard[int]: pass
+def is_str(a: object) -> TypeGuard[str]: pass
+def intmain(a: Union[int, str]) -> None:
+    if not is_int(a):
+        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    else:
+        reveal_type(a)  # N: Revealed type is 'builtins.int'
+def strmain(a: Union[int, str]) -> None:
+    if is_str(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.str'
+    else:
+        reveal_type(a)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardClassMethod]
+from typing_extensions import TypeGuard
+class C:
+    @classmethod
+    def is_float(cls, a: object) -> TypeGuard[float]: pass
+    def method(self, a: object) -> None:
+        if self.is_float(a):
+            reveal_type(a)  # N: Revealed type is 'builtins.float'
+def main(a: object) -> None:
+    if C.is_float(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeGuardWithKeywordArgsEasy]
+from typing_extensions import TypeGuard
+def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    if is_float(a=a, b=1):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+# TODO: Make these work
+
+[case testTypeGuardWithKeywordArgsSwapped-skip]
+from typing_extensions import TypeGuard
+def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
+def main1(a: object) -> None:
+    if is_float(b=1, a=a):
+        reveal_type(a)  # 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithStarArgsTuple-skip]
+from typing_extensions import TypeGuard
+def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    aa = (a,)
+    if is_float(*aa):
+        reveal_type(aa)  # 'Tuple[float]'
+        reveal_type(a)  # 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithStarArgsList-skip]
+from typing_extensions import TypeGuard
+def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    aa = [a]
+    if is_float(*aa):
+        reveal_type(aa)  # 'List[float]'
+        reveal_type(a)  # 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardOverload-skip]
+from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
+from typing_extensions import TypeGuard
+
+T = TypeVar("T")
+R = TypeVar("R")
+
+@overload
+def filter(f: None, it: Iterable[Optional[T]]) -> Iterator[T]: ...
+@overload
+def filter(f: Callable[[T], Any], it: Iterable[T]) -> Iterator[T]: ...
+@overload
+def filter(f: Callable[[T], TypeGuard[R]], it: Iterable[T]) -> Iterator[R]: ...
+def filter(*args): pass
+
+def is_int(a: object) -> TypeGuard[int]: pass
+def non_tg(a: object) -> bool: pass
+
+def main(a: List[Optional[int]]) -> None:
+    aa = filter(None, a)
+    reveal_type(aa)  # N: Revealed type is 'typing.Iterator[builtins.int*]'
+    bb = filter(lambda x: x is not None, a)
+    reveal_type(bb)  # N: Revealed type is 'typing.Iterator[Any]'
+    cc = filter(is_int, a)
+    reveal_type(cc)  # N: Revealed type is 'typing.Iterator[builtins.int]'
+    # TODO: Make this work -- this matches the third overload instead of the second
+    dd = filter(non_tg, a)
+    reveal_type(dd)  # N: Revealed type is 'typing.Iterator[Union[builtins.int, None]]'
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypeGuardDecorated]
+from typing import TypeVar
+from typing_extensions import TypeGuard
+T = TypeVar("T")
+def decorator(f: T) -> T: pass
+@decorator
+def is_float(a: object) -> TypeGuard[float]:
+    pass
+def main(a: object) -> None:
+    if is_float(a):
+        reveal_type(a)  # N: Revealed type is 'builtins.float'
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardMethodOverride-skip]
+from typing_extensions import TypeGuard
+class C:
+    def is_float(self, a: object) -> TypeGuard[float]: pass
+class D(C):
+    def is_float(self, a: object) -> bool: pass  # E: Some error
+[builtins fixtures/tuple.pyi]
