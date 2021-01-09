@@ -177,18 +177,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                            op.rhs, sign_format)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("%r = load_mem %r%s :: %t*", op, op.src, base, op.type)
+        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
 
     def visit_set_mem(self, op: SetMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("set_mem %r, %r%s :: %t*", op.dest, op.src, base, op.dest_type)
+        return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)

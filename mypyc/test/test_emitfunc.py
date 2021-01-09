@@ -283,13 +283,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
-                         """cpy_r_r0 = *(char *)cpy_r_ptr;""")
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
 
     def test_set_mem(self) -> None:
-        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
+        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b),
                          """*(char *)cpy_r_ptr = cpy_r_b;""")
 
     def test_get_element_ptr(self) -> None:

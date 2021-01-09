@@ -1052,30 +1052,21 @@ class LoadMem(RegisterOp):
     Attributes:
       type: Type of the read value
       src: Pointer to memory to read
-      base: If not None, the object from which we are reading memory.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
 
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.base = base
         self.is_borrowed = True
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base]
-        else:
-            return [self.src]
+        return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
@@ -1088,11 +1079,6 @@ class SetMem(Op):
       type: Type of the written value
       dest: Pointer to memory to write
       src: Source value
-      base: If not None, the object which we are modifying.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
 
     error_kind = ERR_NEVER
@@ -1101,20 +1087,15 @@ class SetMem(Op):
                  type: RType,
                  dest: Value,
                  src: Value,
-                 base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
         self.type = void_rtype
         self.dest_type = type
         self.src = src
         self.dest = dest
-        self.base = base
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base, self.dest]
-        else:
-            return [self.src, self.dest]
+        return [self.src, self.dest]
 
     def stolen(self) -> List[Value]:
         return [self.src]
@@ -1124,7 +1105,11 @@ class SetMem(Op):
 
 
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element."""
+    """Get the address of a struct element.
+
+    Note that you may need to use KeepAlive to avoid the struct
+    being freed, if it's reference counted, such as PyObject *.
+    """
 
     error_kind = ERR_NEVER
 

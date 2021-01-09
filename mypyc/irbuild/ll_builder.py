@@ -209,7 +209,8 @@ class LowLevelIRBuilder:
 
     def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
         ob_type_address = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
-        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address, obj))
+        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address))
+        self.add(KeepAlive([obj]))
         return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
 
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
@@ -793,7 +794,7 @@ class LowLevelIRBuilder:
             return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
         ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
-        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, result_list, line))
+        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
         for i in range(len(values)):
             if i == 0:
                 item_address = ob_item_base
@@ -801,7 +802,8 @@ class LowLevelIRBuilder:
                 offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
                 item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
                                               IntOp.ADD, line))
-            self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
+            self.add(SetMem(object_rprimitive, item_address, args[i], line))
+        self.add(KeepAlive([result_list]))
         return result_list
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
@@ -980,7 +982,8 @@ class LowLevelIRBuilder:
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            self.add(KeepAlive([val]))
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
@@ -991,7 +994,8 @@ class LowLevelIRBuilder:
                                IntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            self.add(KeepAlive([val]))
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
