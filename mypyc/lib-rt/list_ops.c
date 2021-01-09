@@ -114,6 +114,9 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
         return PyList_Insert(list, n, value);
     }
+    // The max range doesn't exactly coincide with ssize_t, but we still
+    // want to keep the error message compatible with CPython.
+    PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
     return -1;
 }
 
