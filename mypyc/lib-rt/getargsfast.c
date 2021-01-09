@@ -395,7 +395,9 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
         }
 
         if (current_arg) {
-            convertitem_fast(current_arg, &format, p_va, flags);
+            PyObject **p = va_arg(*p_va, PyObject **);
+            *p = current_arg;
+            format++;
             continue;
         }
 
@@ -565,21 +567,6 @@ skipitem_fast(const char **p_format, va_list *p_va, int flags)
     if (p_va != NULL) {
         (void) va_arg(*p_va, PyObject **);
     }
-
-    *p_format = format;
-}
-
-/* Convert a single item. */
-
-static void
-convertitem_fast(PyObject *arg, const char **p_format, va_list *p_va, int flags)
-{
-    const char *format = *p_format;
-    char c = *format++;
-
-    PyObject **p;
-    p = va_arg(*p_va, PyObject **);
-    *p = arg;
 
     *p_format = format;
 }
