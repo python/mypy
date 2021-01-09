@@ -154,6 +154,18 @@ int CPyList_Remove(PyObject *list, PyObject *obj) {
     return PyList_SetSlice(list, index, index + 1, NULL);
 }
 
+CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
+    Py_ssize_t index = _CPyList_Find(list, obj);
+    if (index == -2) {
+        return CPY_INT_TAG;
+    }
+    if (index == -1) {
+        PyErr_SetString(PyExc_ValueError, "value is not in list");
+        return CPY_INT_TAG;
+    }
+    return index << 1;
+}
+
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
     Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
     if (size == -1 && PyErr_Occurred()) {
