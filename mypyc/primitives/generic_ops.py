@@ -11,7 +11,8 @@ check that the priorities are configured properly.
 
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
 from mypyc.ir.rtypes import (
-    object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive
+    object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive,
+    object_pointer_rprimitive, c_size_t_rprimitive
 )
 from mypyc.primitives.registry import (
     binary_op, c_unary_op, method_op, function_op, custom_op, ERR_NEG_INT
@@ -196,9 +197,12 @@ py_call_op = custom_op(
     extra_int_constants=[(0, pointer_rprimitive)])
 
 py_vectorcall_op = custom_op(
-    arg_types=[object_rprimitive, pointer_rprimitive, pointer_rprimitive, object_rprimitive],
+    arg_types=[object_rprimitive,  # Callable
+               object_pointer_rprimitive,  # Args (PyObject **)
+               c_size_t_rprimitive,  # Number of args
+               object_rprimitive],  # Keyword args tuple (or NULL)
     return_type=object_rprimitive,
-    c_function_name='PyObject_Vectorcall',
+    c_function_name='_PyObject_Vectorcall',
     error_kind=ERR_MAGIC)
 
 # Call callable object with positional + keyword args: func(*args, **kwargs)

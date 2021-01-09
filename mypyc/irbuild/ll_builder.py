@@ -21,7 +21,7 @@ from mypyc.ir.ops import (
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, KeepAlive, ERR_NEVER, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -29,7 +29,8 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive
+    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
+    object_pointer_rprimitive, c_size_t_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -250,15 +251,24 @@ class LowLevelIRBuilder:
         """
         # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
-            array = Register(RArray(object_rprimitive, len(arg_values)))
-            self.add(AssignMulti(array, [self.coerce(arg, object_rprimitive, line)
-                                         for arg in arg_values]))
-            arg_ptr = self.add(LoadAddress(pointer_rprimitive, array))
-            return self.call_c(py_vectorcall_op, [function,
-                                                  arg_ptr,
-                                                  Integer(len(arg_values), pointer_rprimitive),
-                                                  Integer(0, object_rprimitive)],
-                               line)
+            if arg_values:
+                array = Register(RArray(object_rprimitive, len(arg_values)))
+                coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
+                self.add(AssignMulti(array, coerced_args))
+                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            else:
+                arg_ptr = Integer(0, object_pointer_rprimitive)
+            value = self.call_c(py_vectorcall_op, [function,
+                                                   arg_ptr,
+                                                   Integer(len(arg_values), c_size_t_rprimitive),
+                                                   Integer(0, object_rprimitive)],
+                                line)
+            if arg_values:
+                # Make sure arguments won't be freed until after the call.
+                # We need this because RArray doesn't support automatic
+                # memory management.
+                self.add(KeepAlive(coerced_args))
+            return value
 
         # Otherwise fallback to py_call_with_kwargs_op.
         assert arg_names is not None

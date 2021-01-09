@@ -864,3 +864,28 @@ L10:
 L11:
     xdec_ref y :: int
     goto L6
+
+[case testVectorcall]
+from typing import Any
+
+def call(f: Any, x: int) -> int:
+    return f(x)
+[out]
+def call(f, x):
+    f :: object
+    x :: int
+    r0 :: object
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+    r4 :: int
+L0:
+    inc_ref x :: int
+    r0 = box(int, x)
+    r1 = [r0]
+    r2 = load_address r1
+    r3 = _PyObject_Vectorcall(f, r2, 1, 0)
+    dec_ref r0
+    r4 = unbox(int, r3)
+    dec_ref r3
+    return r4
