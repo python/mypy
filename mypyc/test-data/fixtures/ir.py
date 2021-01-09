@@ -144,6 +144,7 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def extend(self, l: Iterable[T]) -> None: pass
     def insert(self, i: int, x: T) -> None: pass
     def sort(self) -> None: pass
+    def reverse(self) -> None: pass
 
 class dict(Mapping[K, V]):
     @overload
