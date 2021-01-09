@@ -4,10 +4,10 @@
  * We also add support for required kwonly args and accepting *args / **kwargs.
  *
  * DOCUMENTATION OF THE EXTENSIONS:
- *  - Arguments given after a @ format specify are required keyword-only arguments.
+ *  - Arguments given after a @ format specify required keyword-only arguments.
  *    The | and $ specifiers must both appear before @.
  *  - If the first character of a format string is %, then the function can support
- *    *args and **kwargs. In this case the parser will consume two arguments,
+ *    *args and/or **kwargs. In this case the parser will consume two arguments,
  *    which should be pointers to variables to store the *args and **kwargs, respectively.
  *    Either pointer can be NULL, in which case the function doesn't take that
  *    variety of vararg.
@@ -18,6 +18,7 @@
 #include <Python.h>
 #include "CPy.h"
 
+/* None of this is supported on Python 3.6 or earlier */
 #if PY_VERSION_HEX >= 0x03070000
 
 #define FLAG_SIZE_T 2

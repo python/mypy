@@ -4,7 +4,7 @@ The wrapper functions are used by the CPython runtime when calling
 native functions from interpreted code, and when the called function
 can't be determined statically in compiled code. They validate, match,
 unbox and type check function arguments, and box return values as
-needed.
+needed. All wrappers accept and return 'PyObject *' (boxed) values.
 
 The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
@@ -36,11 +36,11 @@ from mypyc.namegen import NameGenerator
 #
 # It returns the returned object, or NULL on an exception.
 #
-# These are more efficient than legacy wrapper functions, since often
-# no tuple or dict objects need to be created for the arguments.
-# Vectorcalls also use pre-constructed str objects for keyword
-# argument names and other pre-computed information, instead of
-# processing the format string on each call.
+# These are more efficient than legacy wrapper functions, since
+# usually no tuple or dict objects need to be created for the
+# arguments. Vectorcalls also use pre-constructed str objects for
+# keyword argument names and other pre-computed information, instead
+# of processing the argument format string on each call.
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
@@ -77,13 +77,13 @@ def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
     PyArg_ParseTupleAndKeywords(). Only the type 'O' is used, and we
     also support some extensions:
 
-    - Keyword-only arguments are introduced after '@'
-    - If function receives *args or **kwargs, we add a '%' prefix
+    - Required keyword-only arguments are introduced after '@'
+    - If the function receives *args or **kwargs, we add a '%' prefix
 
     Each group requires the previous groups' delimiters to be present
     first.
 
-    These are used by vectorcall and legacy wrapper functions.
+    These are used by both vectorcall and legacy wrapper functions.
     """
     main_format = ''
     if groups[ARG_STAR] or groups[ARG_STAR2]:
@@ -135,7 +135,9 @@ def generate_wrapper_function(fn: FuncIR,
 
     emitter.emit_line(make_static_kwlist(reordered_args))
     fmt = make_format_string(fn.name, groups)
+    # Define the arguments the function accepts (but no types yet)
     emitter.emit_line('static CPyArg_Parser parser = {{"{}", kwlist, 0}};'.format(fmt))
+
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))
