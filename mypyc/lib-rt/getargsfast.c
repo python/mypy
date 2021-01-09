@@ -29,8 +29,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           PyObject *kwargs, PyObject *kwnames,
                           CPyArg_Parser *parser,
                           va_list *p_va, int flags);
-static const char *skipitem_fast(const char **, va_list *, int);
-static void seterror_fast(Py_ssize_t, const char *, const char *, const char *);
+static void skipitem_fast(const char **, va_list *, int);
 static void convertitem_fast(PyObject *, const char **, va_list *, int);
 
 /* Parse args for an arbitrary signature */
@@ -219,12 +218,7 @@ parser_init(CPyArg_Parser *parser)
                 return 0;
             }
 
-            msg = skipitem_fast(&format, NULL, 0);
-            if (msg) {
-                PyErr_Format(PyExc_SystemError, "%s: '%s'", msg,
-                            format);
-                return 0;
-            }
+            skipitem_fast(&format, NULL, 0);
         }
         parser->min = Py_MIN(min, len);
         parser->max = Py_MIN(max, len);
@@ -306,16 +300,6 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
     assert(kwargs == NULL || PyDict_Check(kwargs));
     assert(kwargs == NULL || kwnames == NULL);
     assert(p_va != NULL);
-
-    if (parser == NULL) {
-        PyErr_BadInternalCall();
-        return 0;
-    }
-
-    if (kwnames != NULL && !PyTuple_Check(kwnames)) {
-        PyErr_BadInternalCall();
-        return 0;
-    }
 
     if (!parser_init(parser)) {
         return 0;
@@ -458,8 +442,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
 
         /* We are into optional args, skip through to any remaining
          * keyword args */
-        msg = skipitem_fast(&format, p_va, flags);
-        assert(msg == NULL);
+        skipitem_fast(&format, p_va, flags);
     }
 
     assert(IS_END_OF_FORMAT(*format) || (*format == '|') || (*format == '$'));
@@ -573,66 +556,18 @@ latefail:
     return 0;
 }
 
-static const char *
+static void
 skipitem_fast(const char **p_format, va_list *p_va, int flags)
 {
     const char *format = *p_format;
     char c = *format++;
 
-    switch (c) {
-    case 'O': /* object */
-        {
-            if (p_va != NULL) {
-                (void) va_arg(*p_va, PyObject **);
-            }
-            break;
-        }
-
-    default:
-err:
-        return "impossible<bad format char>";
+    if (p_va != NULL) {
+        (void) va_arg(*p_va, PyObject **);
     }
 
     *p_format = format;
-    return NULL;
 }
-
-static void
-seterror_fast(Py_ssize_t iarg, const char *msg, const char *fname,
-              const char *message)
-{
-    char buf[512];
-    int i;
-    char *p = buf;
-
-    if (PyErr_Occurred())
-        return;
-    else if (message == NULL) {
-        if (fname != NULL) {
-            PyOS_snprintf(p, sizeof(buf), "%.200s() ", fname);
-            p += strlen(p);
-        }
-        if (iarg != 0) {
-            PyOS_snprintf(p, sizeof(buf) - (p - buf),
-                          "argument %" PY_FORMAT_SIZE_T "d", iarg);
-            i = 0;
-            p += strlen(p);
-        }
-        else {
-            PyOS_snprintf(p, sizeof(buf) - (p - buf), "argument");
-            p += strlen(p);
-        }
-        PyOS_snprintf(p, sizeof(buf) - (p - buf), " %.256s", msg);
-        message = buf;
-    }
-    if (msg[0] == '(') {
-        PyErr_SetString(PyExc_SystemError, message);
-    }
-    else {
-        PyErr_SetString(PyExc_TypeError, message);
-    }
-}
-
 
 /* Convert a single item. */
 
