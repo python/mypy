@@ -69,6 +69,23 @@ CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *
 }
 
 int
+CPyArg_ParseStackAndKeywords_0(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                               CPyArg_Parser *parser, ...)
+{
+    int retval;
+    va_list va;
+
+    va_start(va, parser);
+    if (nargs == 0 && kwnames == NULL) {
+        retval = 1;
+    } else {
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    }
+    va_end(va);
+    return retval;
+}
+
+int
 CPyArg_ParseStackAndKeywords_1(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                                CPyArg_Parser *parser, ...)
 {
@@ -80,6 +97,28 @@ CPyArg_ParseStackAndKeywords_1(PyObject *const *args, Py_ssize_t nargs, PyObject
         PyObject **p;
         p = va_arg(va, PyObject **);
         *p = args[0];
+        retval = 1;
+    } else {
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    }
+    va_end(va);
+    return retval;
+}
+
+int
+CPyArg_ParseStackAndKeywords_N(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                               CPyArg_Parser *parser, ...)
+{
+    int retval;
+    va_list va;
+
+    va_start(va, parser);
+    if (kwnames == NULL && nargs >= parser->min && nargs <= parser->max) {
+        PyObject **p;
+        for (Py_ssize_t i = 0; i < nargs; i++) {
+            p = va_arg(va, PyObject **);
+            *p = args[i];
+        }
         retval = 1;
     } else {
         retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);

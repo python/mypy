@@ -514,7 +514,11 @@ int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
                                  const char *, const char * const *, ...);
 int CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                                  CPyArg_Parser *parser, ...);
+int CPyArg_ParseStackAndKeywords_0(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                   CPyArg_Parser *parser, ...);
 int CPyArg_ParseStackAndKeywords_1(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                   CPyArg_Parser *parser, ...);
+int CPyArg_ParseStackAndKeywords_N(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                                    CPyArg_Parser *parser, ...);
 
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected);
