@@ -35,7 +35,7 @@ SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
 SLOT_DEFS = {
     '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
-    '__call__': ('tp_call', lambda c, t, e : generate_call_wrapper(c, t, e)),
+    '__call__': ('tp_call', lambda c, t, e: generate_call_wrapper(c, t, e)),
     '__str__': ('tp_str', native_slot),
     '__repr__': ('tp_repr', native_slot),
     '__next__': ('tp_iternext', native_slot),
