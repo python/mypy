@@ -21,16 +21,13 @@
 /* None of this is supported on Python 3.6 or earlier */
 #if PY_VERSION_HEX >= 0x03070000
 
-#define FLAG_SIZE_T 2
-
 /* Forward */
 static int
 vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           PyObject *kwargs, PyObject *kwnames,
                           CPyArg_Parser *parser,
-                          va_list *p_va, int flags);
-static void skipitem_fast(const char **, va_list *, int);
-static void convertitem_fast(PyObject *, const char **, va_list *, int);
+                          va_list *p_va);
+static void skipitem_fast(const char **, va_list *);
 
 /* Parse args for an arbitrary signature */
 int
@@ -41,7 +38,7 @@ CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *
     va_list va;
 
     va_start(va, parser);
-    retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va);
     va_end(va);
     return retval;
 }
@@ -59,7 +56,7 @@ CPyArg_ParseStackAndKeywordsNoArgs(PyObject *const *args, Py_ssize_t nargs, PyOb
         // Fast path: no arguments
         retval = 1;
     } else {
-        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va);
     }
     va_end(va);
     return retval;
@@ -81,7 +78,7 @@ CPyArg_ParseStackAndKeywordsOneArg(PyObject *const *args, Py_ssize_t nargs, PyOb
         *p = args[0];
         retval = 1;
     } else {
-        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va);
     }
     va_end(va);
     return retval;
@@ -105,7 +102,7 @@ CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, PyOb
         }
         retval = 1;
     } else {
-        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va);
     }
     va_end(va);
     return retval;
@@ -218,7 +215,7 @@ parser_init(CPyArg_Parser *parser)
                 return 0;
             }
 
-            skipitem_fast(&format, NULL, 0);
+            skipitem_fast(&format, NULL);
         }
         parser->min = Py_MIN(min, len);
         parser->max = Py_MIN(max, len);
@@ -284,11 +281,10 @@ static int
 vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           PyObject *kwargs, PyObject *kwnames,
                           CPyArg_Parser *parser,
-                          va_list *p_va, int flags)
+                          va_list *p_va)
 {
     PyObject *kwtuple;
     const char *format;
-    const char *msg;
     PyObject *keyword;
     int i, pos, len;
     Py_ssize_t nkwargs;
@@ -444,7 +440,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
 
         /* We are into optional args, skip through to any remaining
          * keyword args */
-        skipitem_fast(&format, p_va, flags);
+        skipitem_fast(&format, p_va);
     }
 
     assert(IS_END_OF_FORMAT(*format) || (*format == '|') || (*format == '$'));
@@ -559,7 +555,7 @@ latefail:
 }
 
 static void
-skipitem_fast(const char **p_format, va_list *p_va, int flags)
+skipitem_fast(const char **p_format, va_list *p_va)
 {
     const char *format = *p_format;
     char c = *format++;
