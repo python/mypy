@@ -59,6 +59,8 @@ def generate_native_function(fn: FuncIR,
     for r in all_values(fn.arg_regs, fn.blocks):
         if isinstance(r.type, RTuple):
             emitter.declare_tuple_struct(r.type)
+        if isinstance(r.type, RArray):
+            continue  # Special: declared on first assignment
 
         if r in fn.arg_regs:
             continue  # Skip the arguments
