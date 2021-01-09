@@ -31,10 +31,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           va_list *p_va, int flags);
 static const char *skipitem_fast(const char **, va_list *, int);
 static void seterror_fast(Py_ssize_t, const char *, const char *, const char *);
-static const char *convertitem_fast(PyObject *, const char **, va_list *, int,
-                                    char *, size_t);
-static const char *convertsimple_fast(PyObject *, const char **, va_list *, int,
-                                      char *, size_t);
+static void convertitem_fast(PyObject *, const char **, va_list *, int);
 
 /* Parse args for an arbitrary signature */
 int
@@ -296,7 +293,6 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
                           va_list *p_va, int flags)
 {
     PyObject *kwtuple;
-    char msgbuf[512];
     const char *format;
     const char *msg;
     PyObject *keyword;
@@ -415,12 +411,7 @@ vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
         }
 
         if (current_arg) {
-            msg = convertitem_fast(current_arg, &format, p_va, flags,
-                msgbuf, sizeof(msgbuf));
-            if (msg) {
-                seterror_fast(i+1, msg, parser->fname, parser->custom_msg);
-                return 0;
-            }
+            convertitem_fast(current_arg, &format, p_va, flags);
             continue;
         }
 
@@ -645,69 +636,17 @@ seterror_fast(Py_ssize_t iarg, const char *msg, const char *fname,
 
 /* Convert a single item. */
 
-static const char *
-convertitem_fast(PyObject *arg, const char **p_format, va_list *p_va, int flags,
-                 char *msgbuf, size_t bufsize)
-{
-    const char *msg;
-    const char *format = *p_format;
-
-    msg = convertsimple_fast(arg, &format, p_va, flags,
-                        msgbuf, bufsize);
-    if (msg == NULL)
-        *p_format = format;
-    return msg;
-}
-
-static const char *
-converterr_fast(const char *expected, PyObject *arg, char *msgbuf, size_t bufsize)
-{
-    assert(expected != NULL);
-    assert(arg != NULL);
-    if (expected[0] == '(') {
-        PyOS_snprintf(msgbuf, bufsize,
-                      "%.100s", expected);
-    }
-    else {
-        PyOS_snprintf(msgbuf, bufsize,
-                      "must be %.50s, not %.50s", expected,
-                      arg == Py_None ? "None" : Py_TYPE(arg)->tp_name);
-    }
-    return msgbuf;
-}
-
-/* Convert a non-tuple argument.  Return NULL if conversion went OK,
-   or a string with a message describing the failure.  The message is
-   formatted as "must be <desired type>, not <actual type>".
-   When failing, an exception may or may not have been raised.
-   Don't call if a tuple is expected.
-
-   When you add new format codes, please don't forget poor skipitem_fast().
-*/
-
-static const char *
-convertsimple_fast(PyObject *arg, const char **p_format, va_list *p_va, int flags,
-                   char *msgbuf, size_t bufsize)
+static void
+convertitem_fast(PyObject *arg, const char **p_format, va_list *p_va, int flags)
 {
     const char *format = *p_format;
     char c = *format++;
-    const char *sarg;
 
-    switch (c) {
-    case 'O': { /* object */
-        PyTypeObject *type;
-        PyObject **p;
-        p = va_arg(*p_va, PyObject **);
-        *p = arg;
-        break;
-    }
-
-    default:
-        return converterr_fast("(impossible<bad format char>)", arg, msgbuf, bufsize);
-    }
+    PyObject **p;
+    p = va_arg(*p_va, PyObject **);
+    *p = arg;
 
     *p_format = format;
-    return NULL;
 }
 
 #endif
