@@ -29,7 +29,7 @@ DEALINGS IN THE SOFTWARE.
 Portions of mypy and mypyc are licensed under different licenses.  The
 files under stdlib-samples as well as the files
 mypyc/lib-rt/pythonsupport.h, mypyc/lib-rt/getargs.c and
-mypyc/librt-getargsfast.c are licensed under the PSF 2 License, reproduced
+mypyc/lib-rt/getargsfast.c are licensed under the PSF 2 License, reproduced
 below.
 
 = = = = =
