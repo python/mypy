@@ -9,7 +9,7 @@ from typing import Union, List, Optional, Tuple, Callable
 from typing_extensions import Type, ClassVar
 
 from mypy.nodes import (
-    Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr
+    Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr, TypeAlias
 )
 from mypyc.ir.ops import (
     Value, BasicBlock, Integer, Branch, Register, TupleGet, TupleSet, IntOp
@@ -156,6 +156,11 @@ def comprehension_helper(builder: IRBuilder,
     handle_loop(loop_params)
 
 
+def is_range_ref(expr: RefExpr) -> bool:
+    return (expr.fullname == 'builtins.range'
+            or isinstance(expr.node, TypeAlias) and expr.fullname == 'six.moves.xrange')
+
+
 def make_for_loop_generator(builder: IRBuilder,
                             index: Lvalue,
                             expr: Expression,
@@ -189,7 +194,7 @@ def make_for_loop_generator(builder: IRBuilder,
 
     if (isinstance(expr, CallExpr)
             and isinstance(expr.callee, RefExpr)):
-        if (expr.callee.fullname == 'builtins.range'
+        if (is_range_ref(expr.callee)
                 and (len(expr.args) <= 2
                      or (len(expr.args) == 3
                          and builder.extract_int(expr.args[2]) is not None))
