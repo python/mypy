@@ -53,8 +53,11 @@ Methods
 
 * ``lst.append(item)``
 * ``lst.extend(x: Iterable)``
-* ``lst.pop()``
+* ``lst.insert(index, item)``
+* ``lst.pop(index=-1)``
 * ``lst.count(item)``
+* ``lst.reverse()``
+* ``lst.sort()``
 
 Functions
 ---------
