@@ -25,17 +25,10 @@ List comprehensions:
 Operators
 ---------
 
-Get item by integer index:
-
-* ``lst[n]``
-
-Slicing:
-
-* ``lst[n:m]``, ``lst[n:]``, ``lst[:m]``, ``lst[:]``
-
-Repeat list ``n`` times:
-
+* ``lst[n]`` (get item by integer index)
+* ``lst[n:m]``, ``lst[n:]``, ``lst[:m]``, ``lst[:]`` (slicing)
 * ``lst * n``, ``n * lst``
+* ``obj in lst``
 
 Statements
 ----------
@@ -51,7 +44,7 @@ For loop over a list:
 Methods
 -------
 
-* ``lst.append(item)``
+* ``lst.append(obj)``
 * ``lst.extend(x: Iterable)``
 * ``lst.insert(index, obj)``
 * ``lst.pop(index=-1)``
