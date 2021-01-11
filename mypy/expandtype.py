@@ -96,12 +96,10 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return repl
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        extra = {}  # type: Dict[str, Any]
-        if t.type_guard is not None:
-            extra['type_guard'] = t.type_guard.accept(self)
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
                                ret_type=t.ret_type.accept(self),
-                               **extra)
+                               type_guard=(t.type_guard.accept(self)
+                                           if t.type_guard is not None else None))
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]
