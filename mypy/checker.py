@@ -4006,7 +4006,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
-                        self.fail("type guard requires positional argument", node)
+                        self.fail("Type guard requires positional argument", node)
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         return {expr: TypeGuardType(node.callee.type_guard)}, {}
