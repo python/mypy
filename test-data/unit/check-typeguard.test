@@ -221,42 +221,28 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is 'builtins.float'
 [builtins fixtures/classmethod.pyi]
 
-[case testTypeGuardWithKeywordArgsEasy]
-from typing_extensions import TypeGuard
-def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
-def main(a: object) -> None:
-    if is_float(a=a, b=1):
-        reveal_type(a)  # N: Revealed type is 'builtins.float'
-[builtins fixtures/tuple.pyi]
-
-# TODO: Make these work
-
-[case testTypeGuardWithKeywordArgsSwapped-skip]
+[case testTypeGuardRequiresPositionalArgs]
 from typing_extensions import TypeGuard
 def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
 def main1(a: object) -> None:
-    if is_float(b=1, a=a):
-        reveal_type(a)  # 'builtins.float'
-[builtins fixtures/tuple.pyi]
+    # This is debatable -- should we support these cases?
 
-[case testTypeGuardWithStarArgsTuple-skip]
-from typing_extensions import TypeGuard
-def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
-def main(a: object) -> None:
-    aa = (a,)
-    if is_float(*aa):
-        reveal_type(aa)  # 'Tuple[float]'
-        reveal_type(a)  # 'builtins.float'
-[builtins fixtures/tuple.pyi]
+    if is_float(a=a, b=1):  # E: type guard requires positional argument
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
 
-[case testTypeGuardWithStarArgsList-skip]
-from typing_extensions import TypeGuard
-def is_float(a: object, b: object = 0) -> TypeGuard[float]: pass
-def main(a: object) -> None:
-    aa = [a]
-    if is_float(*aa):
-        reveal_type(aa)  # 'List[float]'
-        reveal_type(a)  # 'builtins.float'
+    if is_float(b=1, a=a):  # E: type guard requires positional argument
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
+
+    ta = (a,)
+    if is_float(*ta):  # E: type guard requires positional argument
+        reveal_type(ta)  # N: Revealed type is 'Tuple[builtins.object]'
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
+
+    la = [a]
+    if is_float(*la):  # E: type guard requires positional argument
+        reveal_type(la)  # N: Revealed type is 'builtins.list[builtins.object*]'
+        reveal_type(a)  # N: Revealed type is 'builtins.object*'
+
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardOverload-skip]
