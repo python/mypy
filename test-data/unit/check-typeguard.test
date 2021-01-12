@@ -246,6 +246,7 @@ def main1(a: object) -> None:
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardOverload-skip]
+# flags: --strict-optional
 from typing import overload, Any, Callable, Iterable, Iterator, List, Optional, TypeVar
 from typing_extensions import TypeGuard
 
@@ -253,25 +254,21 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 @overload
-def filter(f: None, it: Iterable[Optional[T]]) -> Iterator[T]: ...
-@overload
-def filter(f: Callable[[T], Any], it: Iterable[T]) -> Iterator[T]: ...
-@overload
 def filter(f: Callable[[T], TypeGuard[R]], it: Iterable[T]) -> Iterator[R]: ...
+@overload
+def filter(f: Callable[[T], bool], it: Iterable[T]) -> Iterator[T]: ...
 def filter(*args): pass
 
-def is_int(a: object) -> TypeGuard[int]: pass
-def non_tg(a: object) -> bool: pass
+def is_int_typeguard(a: object) -> TypeGuard[int]: pass
+def is_int_bool(a: object) -> bool: pass
 
 def main(a: List[Optional[int]]) -> None:
-    aa = filter(None, a)
-    reveal_type(aa)  # N: Revealed type is 'typing.Iterator[builtins.int*]'
     bb = filter(lambda x: x is not None, a)
-    reveal_type(bb)  # N: Revealed type is 'typing.Iterator[Any]'
-    cc = filter(is_int, a)
-    reveal_type(cc)  # N: Revealed type is 'typing.Iterator[builtins.int]'
-    # TODO: Make this work -- this matches the third overload instead of the second
-    dd = filter(non_tg, a)
+    reveal_type(bb)  # N: Revealed type is 'typing.Iterator[Union[builtins.int, None]]'
+    # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
+    cc = filter(is_int_typeguard, a)
+    reveal_type(cc)  # N: Revealed type is 'typing.Iterator[builtins.int*]'
+    dd = filter(is_int_bool, a)
     reveal_type(dd)  # N: Revealed type is 'typing.Iterator[Union[builtins.int, None]]'
 
 [builtins fixtures/tuple.pyi]
