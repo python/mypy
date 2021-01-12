@@ -237,8 +237,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType(TypeOfAny.from_error)
+                return ctx.default_return_type
 
             if len(ctx.arg_types) == 1:
                 output_types.append(value_type)
