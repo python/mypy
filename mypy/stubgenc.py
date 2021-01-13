@@ -22,6 +22,7 @@ from mypy.stubdoc import (
 _DEFAULT_TYPING_IMPORTS = (
     'Any',
     'Callable',
+    'ClassVar',
     'Dict',
     'Iterable',
     'Iterator',
@@ -243,7 +244,13 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
     return stripped_type
 
 
-def generate_c_property_stub(name: str, obj: object, output: List[str], readonly: bool,
+def is_static_property(obj: object) -> bool:
+    return type(obj).__name__ == 'pybind11_static_property'
+
+
+def generate_c_property_stub(name: str, obj: object,
+                             static_properties: List[str],
+                             properties: List[str], readonly: bool,
                              module: Optional[ModuleType] = None,
                              imports: Optional[List[str]] = None) -> None:
     """Generate property stub using introspection of 'obj'.
@@ -273,11 +280,17 @@ def generate_c_property_stub(name: str, obj: object, output: List[str], readonly
     if module is not None and imports is not None:
         inferred = strip_or_import(inferred, module, imports)
 
-    output.append('@property')
-    output.append('def {}(self) -> {}: ...'.format(name, inferred))
-    if not readonly:
-        output.append('@{}.setter'.format(name))
-        output.append('def {}(self, val: {}) -> None: ...'.format(name, inferred))
+    if is_static_property(obj):
+        trailing_comment = "  # read-only" if readonly else ""
+        static_properties.append(
+            '{}: ClassVar[{}] = ...{}'.format(name, inferred, trailing_comment)
+        )
+    else:  # regular property
+        properties.append('@property')
+        properties.append('def {}(self) -> {}: ...'.format(name, inferred))
+        if not readonly:
+            properties.append('@{}.setter'.format(name))
+            properties.append('def {}(self, val: {}) -> None: ...'.format(name, inferred))
 
 
 def generate_c_type_stub(module: ModuleType,
@@ -298,6 +311,7 @@ def generate_c_type_stub(module: ModuleType,
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods = []  # type: List[str]
     types = []  # type: List[str]
+    static_properties = []  # type: List[str]
     properties = []  # type: List[str]
     done = set()  # type: Set[str]
     for attr, value in items:
@@ -322,19 +336,19 @@ def generate_c_type_stub(module: ModuleType,
                                          class_sigs=class_sigs)
         elif is_c_property(value):
             done.add(attr)
-            generate_c_property_stub(attr, value, properties, is_c_property_readonly(value),
+            generate_c_property_stub(attr, value, static_properties, properties,
+                                     is_c_property_readonly(value),
                                      module=module, imports=imports)
         elif is_c_type(value):
             generate_c_type_stub(module, attr, value, types, imports=imports, sigs=sigs,
                                  class_sigs=class_sigs)
             done.add(attr)
 
-    variables = []
     for attr, value in items:
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            variables.append('%s: %s = ...' % (
+            static_properties.append('%s: ClassVar[%s] = ...' % (
                 attr, strip_or_import(get_type_fullname(type(value)), module, imports)))
     all_bases = obj.mro()
     if all_bases[-1] is object:
@@ -361,21 +375,21 @@ def generate_c_type_stub(module: ModuleType,
         )
     else:
         bases_str = ''
-    if not methods and not variables and not properties and not types:
-        output.append('class %s%s: ...' % (class_name, bases_str))
-    else:
+    if types or static_properties or methods or properties:
         output.append('class %s%s:' % (class_name, bases_str))
         for line in types:
             if output and output[-1] and \
                     not output[-1].startswith('class') and line.startswith('class'):
                 output.append('')
             output.append('    ' + line)
-        for variable in variables:
-            output.append('    %s' % variable)
-        for method in methods:
-            output.append('    %s' % method)
-        for prop in properties:
-            output.append('    %s' % prop)
+        for line in static_properties:
+            output.append('    %s' % line)
+        for line in methods:
+            output.append('    %s' % line)
+        for line in properties:
+            output.append('    %s' % line)
+    else:
+        output.append('class %s%s: ...' % (class_name, bases_str))
 
 
 def get_type_fullname(typ: type) -> str:
