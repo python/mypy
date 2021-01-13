@@ -129,6 +129,11 @@ def is_c_type(obj: object) -> bool:
     return inspect.isclass(obj) or type(obj) is type(int)
 
 
+def is_pybind11_overloaded_function_docstring(docstr: str, name: str) -> bool:
+    return docstr.startswith("{}(*args, **kwargs)\n".format(name) +
+                             "Overloaded function.\n\n")
+
+
 def generate_c_function_stub(module: ModuleType,
                              name: str,
                              obj: object,
@@ -160,6 +165,9 @@ def generate_c_function_stub(module: ModuleType,
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
+        if inferred and is_pybind11_overloaded_function_docstring(docstr, name):
+            # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
+            del inferred[-1]
         if not inferred:
             if class_name and name not in sigs:
                 inferred = [FunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
