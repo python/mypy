@@ -1074,14 +1074,14 @@ D = TypedDict('D', {'x': int, 'y': str})
 d: D
 reveal_type(d.get('x'))
 reveal_type(d.get('y'))
-d.get('z')
+reveal_type(d.get('z'))
 d.get()
 s = ''
 reveal_type(d.get(s))
 [out]
 _testTypedDictGet.py:7: note: Revealed type is 'builtins.int'
 _testTypedDictGet.py:8: note: Revealed type is 'builtins.str'
-_testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
+_testTypedDictGet.py:9: note: Revealed type is 'builtins.object*'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
 _testTypedDictGet.py:10: note:     def get(self, key: str) -> object
