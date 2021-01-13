@@ -250,7 +250,8 @@ def is_static_property(obj: object) -> bool:
 
 def generate_c_property_stub(name: str, obj: object,
                              static_properties: List[str],
-                             properties: List[str], readonly: bool,
+                             rw_properties: List[str],
+                             ro_properties: List[str], readonly: bool,
                              module: Optional[ModuleType] = None,
                              imports: Optional[List[str]] = None) -> None:
     """Generate property stub using introspection of 'obj'.
@@ -286,11 +287,11 @@ def generate_c_property_stub(name: str, obj: object,
             '{}: ClassVar[{}] = ...{}'.format(name, inferred, trailing_comment)
         )
     else:  # regular property
-        properties.append('@property')
-        properties.append('def {}(self) -> {}: ...'.format(name, inferred))
-        if not readonly:
-            properties.append('@{}.setter'.format(name))
-            properties.append('def {}(self, val: {}) -> None: ...'.format(name, inferred))
+        if readonly:
+            ro_properties.append('@property')
+            ro_properties.append('def {}(self) -> {}: ...'.format(name, inferred))
+        else:
+            rw_properties.append('{}: {}'.format(name, inferred))
 
 
 def generate_c_type_stub(module: ModuleType,
@@ -312,7 +313,8 @@ def generate_c_type_stub(module: ModuleType,
     methods = []  # type: List[str]
     types = []  # type: List[str]
     static_properties = []  # type: List[str]
-    properties = []  # type: List[str]
+    rw_properties = []  # type: List[str]
+    ro_properties = []  # type: List[str]
     done = set()  # type: Set[str]
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
@@ -336,7 +338,7 @@ def generate_c_type_stub(module: ModuleType,
                                          class_sigs=class_sigs)
         elif is_c_property(value):
             done.add(attr)
-            generate_c_property_stub(attr, value, static_properties, properties,
+            generate_c_property_stub(attr, value, static_properties, rw_properties, ro_properties,
                                      is_c_property_readonly(value),
                                      module=module, imports=imports)
         elif is_c_type(value):
@@ -375,7 +377,7 @@ def generate_c_type_stub(module: ModuleType,
         )
     else:
         bases_str = ''
-    if types or static_properties or methods or properties:
+    if types or static_properties or rw_properties or methods or ro_properties:
         output.append('class %s%s:' % (class_name, bases_str))
         for line in types:
             if output and output[-1] and \
@@ -384,9 +386,11 @@ def generate_c_type_stub(module: ModuleType,
             output.append('    ' + line)
         for line in static_properties:
             output.append('    %s' % line)
+        for line in rw_properties:
+            output.append('    %s' % line)
         for line in methods:
             output.append('    %s' % line)
-        for line in properties:
+        for line in ro_properties:
             output.append('    %s' % line)
     else:
         output.append('class %s%s: ...' % (class_name, bases_str))
