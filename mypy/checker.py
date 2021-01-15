@@ -3057,7 +3057,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg.enable_errors()
 
         # And now we in fact type check the call, to show errors related to wrong arguments
-        # count, etc., replacing the type context von non-overloaded setters only.
+        # count, etc., replacing the type context for non-overloaded setters only.
         inferred_dunder_set_type = get_proper_type(inferred_dunder_set_type)
         if isinstance(inferred_dunder_set_type, CallableType):
             type_context = TempNode(AnyType(TypeOfAny.special_form), context=context)
