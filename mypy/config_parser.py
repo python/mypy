@@ -282,7 +282,7 @@ def parse_section(prefix: str, template: Options,
         results[options_key] = v
         if key in ('files', 'packages', 'modules'):
             if (('packages' in results or 'modules' in results) and results.get('files')):
-                print(f"May only specify one of: module/package or files. Ignoring key: {key}",
+                print("May only specify one of: module/package or files. Ignoring key:", key,
                       file=stderr)
                 del results[options_key]
                 continue
