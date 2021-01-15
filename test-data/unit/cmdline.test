@@ -831,8 +831,22 @@ modules=c
 packages=p.a,p.b
 files=meh.py
 [out]
-May only specify one of: module/package, files, or command. Ignoring key.
+May only specify one of: module/package or files. Ignoring key: files
 Can't find package 'p.a'
+== Return code: 2
+
+
+[case testModulesAndPackagesAndFilesInIniModLater]
+# cmd: mypy
+[file mypy.ini]
+\[mypy]
+files=meh.py
+modules=c
+packages=p.a,p.b
+[out]
+May only specify one of: module/package or files. Ignoring key: modules
+May only specify one of: module/package or files. Ignoring key: packages
+mypy: cannot read file 'meh.py': No such file or directory
 == Return code: 2
 
 
