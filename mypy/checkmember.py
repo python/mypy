@@ -802,36 +802,30 @@ def analyze_class_attribute_access(itype: Instance,
 
         return apply_class_attr_hook(mx, hook, result)
     elif isinstance(node.node, Var):
-        # TODO RIGHT NOW NOMERGE - is it okay to not modify this?
         mx.not_ready_callback(name, mx.context)
         return AnyType(TypeOfAny.special_form)
 
     if isinstance(node.node, TypeVarExpr):
-        # TODO RIGHT NOW NOMERGE - is it okay to not modify this?
         mx.msg.fail(message_registry.CANNOT_USE_TYPEVAR_AS_EXPRESSION.format(
                     info.name, name), mx.context)
         return AnyType(TypeOfAny.from_error)
 
     if isinstance(node.node, TypeInfo):
-        assert False, "TODO RIGHT NOW NOMERGE - No tests hit this, how to trigger?"
-        return apply_class_attr_hook(mx, hook, type_object_type(node.node, mx.builtin_type))
+        return type_object_type(node.node, mx.builtin_type)
 
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
-        assert False, "TODO RIGHT NOW NOMERGE - No tests hit this, how to trigger?"
-        return apply_class_attr_hook(mx, hook, mx.builtin_type('types.ModuleType'))
+        return mx.builtin_type('types.ModuleType')
 
     if (isinstance(node.node, TypeAlias) and
             isinstance(get_proper_type(node.node.target), Instance)):
-        return apply_class_attr_hook(mx, hook, instance_alias_type(node.node, mx.builtin_type))
+        return instance_alias_type(node.node, mx.builtin_type)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
         if node.node.type:
-            assert False, "TODO RIGHT NOW NOMERGE - No tests hit this, how to trigger?"
             return apply_class_attr_hook(mx, hook, node.node.type)
         else:
-            # TODO RIGHT NOW NOMERGE - is it okay to not modify this?
             mx.not_ready_callback(name, mx.context)
             return AnyType(TypeOfAny.from_error)
     else:

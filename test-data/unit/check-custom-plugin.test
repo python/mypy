@@ -874,21 +874,3 @@ class Cls:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
-
-[case testClassAttrPluginAliasRef]
-# flags: --config-file tmp/mypy.ini
-
-from typing import Generic, TypeVar, Type
-
-T = TypeVar('T')
-class G(Generic[T]):
-    pass
-
-class Cls:
-    attr = G[int]
-
-x: Type[Cls]
-reveal_type(x.attr)  # N: Revealed type is 'builtins.int'
-[file mypy.ini]
-\[mypy]
-plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
