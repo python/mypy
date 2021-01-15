@@ -1380,7 +1380,7 @@ class A:
 a = A()
 a.f = ''
 a.f = 1
-a.f = 1.5
+a.f = 1.5  # E
 [out]
 main:13: error: No overload variant of "__set__" of "D" matches argument types "A", "float"
 main:13: note: Possible overload variants:
@@ -1403,8 +1403,8 @@ a = A()
 b = B()
 a.f = ''
 b.f = 1
-a.f = 1
-b.f = ''
+a.f = 1   # E
+b.f = ''  # E
 [out]
 main:16: error: No overload variant of "__set__" of "D" matches argument types "A", "int"
 main:16: note: Possible overload variants:
