@@ -9,7 +9,7 @@ from mypyc.ir.ops import (
     Goto, Branch, Return, Unreachable, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
-    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp
+    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
@@ -58,6 +58,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_load_error_value(self, op: LoadErrorValue) -> str:
         return self.format('%r = <error> :: %s', op, op.type)
+
+    def visit_load_literal(self, op: LoadLiteral) -> str:
+        return self.format('%r = literal(%s)', op, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format('%r = %r.%s', op, op.obj, op.attr)

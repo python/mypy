@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -172,6 +172,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             self.emit_line('%s = %s;' % (self.reg(op),
                                          self.c_error_value(op.type)))
+
+    def visit_load_literal(self, op: LoadLiteral) -> None:
+        # TODO
+        assert False
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.

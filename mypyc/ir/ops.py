@@ -143,7 +143,7 @@ class Register(Value):
 
 
 class Integer(Value):
-    """Integer literal.
+    """Short integer literal.
 
     Integer literals are treated as constant values and are generally
     not included in data flow analyses and such, unlike Register and
@@ -494,6 +494,30 @@ class LoadErrorValue(RegisterOp):
         return visitor.visit_load_error_value(self)
 
 
+class LoadLiteral(RegisterOp):
+    """Load a Python literal object.
+
+    This is used to load static PyObject * values corresponding to
+    string literals, etc.
+
+    NOTE: You can use this to load boxed (Python) int objects. Use
+          Integer to load unboxed, tagged integers or fixed-width,
+          low-level integers.
+    """
+
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_literal(self)
+
+
 class GetAttr(RegisterOp):
     """obj.attr (for a native object)"""
 
@@ -840,7 +864,12 @@ class Truncate(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """Load a global variable/pointer."""
+    """Load a low-level global variable/pointer.
+
+    Note that can't be used to directly load Python module-level
+    global variable, since they are stored in a globals dictionary
+    and accessed using dictionary operations.
+    """
 
     error_kind = ERR_NEVER
     is_borrowed = True
@@ -1122,6 +1151,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_error_value(self, op: LoadErrorValue) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_literal(self, op: LoadLiteral) -> T:
         raise NotImplementedError
 
     @abstractmethod
