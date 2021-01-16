@@ -96,6 +96,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        self.literals = emitter.context.literals
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -174,8 +175,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                                          self.c_error_value(op.type)))
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
-        # TODO
-        assert False
+        index = self.literals.literal_index(op.value)
+        self.emit_line('%s = CPyStatics[%d]; /* %r */' % (self.reg(op), index, op.value))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.

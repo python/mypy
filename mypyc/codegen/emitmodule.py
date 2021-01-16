@@ -27,6 +27,7 @@ from mypyc.common import (
     USE_VECTORCALL, shared_lib_name,
 )
 from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
+from mypyc.codegen.literals import Literals
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
@@ -223,10 +224,6 @@ def compile_scc_to_ir(
     for module in modules.values():
         for fn in module.functions:
             insert_ref_count_opcodes(fn)
-    # Collect used literals for codegen.
-    for module in modules.values():
-        for fn in module.functions:
-            collect_literals(module.fullname, fn, mapper)
 
     return modules
 
@@ -498,6 +495,11 @@ class GroupGenerator:
     def generate_c_for_modules(self) -> List[Tuple[str, str]]:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
+
+        # Collect all literal refs in IR.
+        for _, module in self.modules:
+            for fn in module.functions:
+                collect_literals(fn, self.context.literals)
 
         base_emitter = Emitter(self.context)
         # Optionally just include the runtime library c files to
@@ -1086,7 +1088,7 @@ def is_fastcall_supported(fn: FuncIR) -> bool:
     return USE_FASTCALL
 
 
-def collect_literals(module: str, fn: FuncIR, mapper: Mapper) -> None:
+def collect_literals(fn: FuncIR, literals: Literals) -> None:
     """Make sure all Python literal object refs in fn are stored in mapper.
 
     Collecting literals must happen only after we have final IR, so
@@ -1096,4 +1098,4 @@ def collect_literals(module: str, fn: FuncIR, mapper: Mapper) -> None:
     for block in fn.blocks:
         for op in block.ops:
             if isinstance(op, LoadLiteral):
-                mapper.record_literal(module, op.value)
+                literals.record_literal(op.value)

@@ -21,7 +21,6 @@ from mypyc.ir.class_ir import ClassIR
 
 
 LiteralsMap = Dict[Tuple[typing.Type[object], Union[int, float, str, bytes, complex]], str]
-LiteralsMap2 = Dict[typing.Type[object], Dict[str, int]]
 
 
 class Mapper:
@@ -44,10 +43,6 @@ class Mapper:
         self.literals = {
             v: OrderedDict() for v in group_map.values()
         }  # type: Dict[Optional[str], LiteralsMap]
-        # Replacement for 'literals' eventually (WIP)
-        self.literals_2 = {
-            v: {} for v in group_map.values()
-        }  # type: Dict[Optional[str], LiteralsMap2]
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
@@ -172,14 +167,3 @@ class Mapper:
                 prefix = type(value).__name__ + '_'
             literals[key] = prefix + str(len(literals))
         return literals[key]
-
-    def record_literal(self, module: str, value: str) -> None:
-        # Literals are shared between modules in a compilation group
-        # but not outside the group.
-        literals = self.literals_2[self.group_map.get(module)]
-        t = type(value)
-        if t not in literals:
-            literals[t] = {}
-        d = literals[t]
-        if value not in d:
-            d[value] = len(d)
