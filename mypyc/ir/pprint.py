@@ -60,7 +60,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r = <error> :: %s', op, op.type)
 
     def visit_load_literal(self, op: LoadLiteral) -> str:
-        return self.format('%r = literal(%s)', op, repr(op.value))
+        return self.format('%r = %s', op, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format('%r = %r.%s', op, op.obj, op.attr)

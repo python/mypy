@@ -18,7 +18,7 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ir.ops import (
     BasicBlock, Op, Integer, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
-    GetAttr, LoadStatic, MethodCall, CallC, Truncate,
+    GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral,
     RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
@@ -480,8 +480,7 @@ class LowLevelIRBuilder:
         This is useful for more than just unicode literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(str_rprimitive, identifier, ann=value))
+        return self.add(LoadLiteral(value, str_rprimitive))
 
     def load_static_checked(self, typ: RType, identifier: str, module_name: Optional[str] = None,
                             namespace: str = NAMESPACE_STATIC,

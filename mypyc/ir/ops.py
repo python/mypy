@@ -508,8 +508,9 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: str) -> None:
+    def __init__(self, value: str, rtype: RType) -> None:
         self.value = value
+        self.type = rtype
 
     def sources(self) -> List[Value]:
         return []
