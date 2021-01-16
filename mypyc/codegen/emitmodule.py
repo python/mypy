@@ -21,7 +21,7 @@ from mypy.util import hash_digest
 
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
-from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.mapper import Mapper, LiteralsMap
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
     USE_VECTORCALL, shared_lib_name,
@@ -34,7 +34,7 @@ from mypyc.codegen.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
     generate_legacy_wrapper_function, legacy_wrapper_function_header,
 )
-from mypyc.ir.ops import LiteralsMap, DeserMaps
+from mypyc.ir.ops import DeserMaps, LoadLiteral
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.class_ir import ClassIR
@@ -223,6 +223,10 @@ def compile_scc_to_ir(
     for module in modules.values():
         for fn in module.functions:
             insert_ref_count_opcodes(fn)
+    # Collect used literals for codegen.
+    for module in modules.values():
+        for fn in module.functions:
+            collect_literals(module.fullname, fn, mapper)
 
     return modules
 
@@ -1080,3 +1084,16 @@ def is_fastcall_supported(fn: FuncIR) -> bool:
         # TODO: Support fastcall for __init__.
         return USE_FASTCALL and fn.name != '__init__'
     return USE_FASTCALL
+
+
+def collect_literals(module: str, fn: FuncIR, mapper: Mapper) -> None:
+    """Make sure all Python literal object refs in fn are stored in mapper.
+
+    Collecting literals must happen only after we have final IR, so
+    that no code is generated for literals that have been optimized
+    away, and that all literals are included.
+    """
+    for block in fn.blocks:
+        for op in block.ops:
+            if isinstance(op, LoadLiteral):
+                mapper.record_literal(module, op.value)

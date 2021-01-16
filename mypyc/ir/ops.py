@@ -1249,7 +1249,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
 
-# TODO: Should the following definitions live somewhere else?
+# TODO: Should the following definition live somewhere else?
 
 # We do a three-pass deserialization scheme in order to resolve name
 # references.
@@ -1275,5 +1275,3 @@ class OpVisitor(Generic[T]):
 # compilation but so far it is not hooked up to anything.)
 DeserMaps = NamedTuple('DeserMaps',
                        [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
-
-LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]

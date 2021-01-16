@@ -1,7 +1,8 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Tuple, Any
 from mypy.ordered_dict import OrderedDict
+import typing
 
 from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -10,7 +11,6 @@ from mypy.types import (
     get_proper_type
 )
 
-from mypyc.ir.ops import LiteralsMap
 from mypyc.ir.rtypes import (
     RType, RUnion, RTuple, RInstance, object_rprimitive, dict_rprimitive, tuple_rprimitive,
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
@@ -18,6 +18,10 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
+
+
+LiteralsMap = Dict[Tuple[typing.Type[object], Union[int, float, str, bytes, complex]], str]
+LiteralsMap2 = Dict[typing.Type[object], Dict[str, int]]
 
 
 class Mapper:
@@ -40,6 +44,10 @@ class Mapper:
         self.literals = {
             v: OrderedDict() for v in group_map.values()
         }  # type: Dict[Optional[str], LiteralsMap]
+        # Replacement for 'literals' eventually (WIP)
+        self.literals_2 = {
+            v: {} for v in group_map.values()
+        }  # type: Dict[Optional[str], LiteralsMap2]
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
@@ -164,3 +172,14 @@ class Mapper:
                 prefix = type(value).__name__ + '_'
             literals[key] = prefix + str(len(literals))
         return literals[key]
+
+    def record_literal(self, module: str, value: str) -> None:
+        # Literals are shared between modules in a compilation group
+        # but not outside the group.
+        literals = self.literals_2[self.group_map.get(module)]
+        t = type(value)
+        if t not in literals:
+            literals[t] = {}
+        d = literals[t]
+        if value not in d:
+            d[value] = len(d)
