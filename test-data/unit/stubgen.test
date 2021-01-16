@@ -1471,6 +1471,20 @@ class A(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def meth(self): ...
 
+[case testAbstractMethodMemberExpr2]
+import abc as _abc
+
+class A(metaclass=abc.ABCMeta):
+    @_abc.abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc as _abc
+
+class A(metaclass=abc.ABCMeta):
+    @_abc.abstractmethod
+    def meth(self): ...
+
 [case testABCMeta_semanal]
 from base import Base
 from abc import abstractmethod
@@ -2288,3 +2302,170 @@ import p.a
 
 x: a.X
 y: p.a.Y
+
+[case testOverload_fromTypingImport]
+from typing import Tuple, Union, overload
+
+class A:
+    @overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @overload
+    def f(self, x: Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: Union[int, Tuple[int, int]]) -> int:
+        pass
+
+@overload
+def f(x: int, y: int) -> int:
+    ...
+
+@overload
+def f(x: Tuple[int, int]) -> int:
+    ...
+
+def f(*args: Union[int, Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+from typing import Tuple, overload
+
+class A:
+    @overload
+    def f(self, x: int, y: int) -> int: ...
+    @overload
+    def f(self, x: Tuple[int, int]) -> int: ...
+
+
+@overload
+def f(x: int, y: int) -> int: ...
+@overload
+def f(x: Tuple[int, int]) -> int: ...
+
+[case testOverload_importTyping]
+import typing
+
+class A:
+    @typing.overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @typing.overload
+    def f(self, x: typing.Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+        pass
+
+    @typing.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int:
+        ...
+
+    @typing.overload
+    @classmethod
+    def g(cls, x: typing.Tuple[int, int]) -> int:
+        ...
+
+    @classmethod
+    def g(self, *args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+        pass
+
+@typing.overload
+def f(x: int, y: int) -> int:
+    ...
+
+@typing.overload
+def f(x: typing.Tuple[int, int]) -> int:
+    ...
+
+def f(*args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+import typing
+
+class A:
+    @typing.overload
+    def f(self, x: int, y: int) -> int: ...
+    @typing.overload
+    def f(self, x: typing.Tuple[int, int]) -> int: ...
+    @typing.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int: ...
+    @typing.overload
+    @classmethod
+    def g(cls, x: typing.Tuple[int, int]) -> int: ...
+
+
+@typing.overload
+def f(x: int, y: int) -> int: ...
+@typing.overload
+def f(x: typing.Tuple[int, int]) -> int: ...
+
+
+[case testOverload_importTypingAs]
+import typing as t
+
+class A:
+    @t.overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @t.overload
+    def f(self, x: t.Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: typing.Union[int, t.Tuple[int, int]]) -> int:
+        pass
+
+    @t.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int:
+        ...
+
+    @t.overload
+    @classmethod
+    def g(cls, x: t.Tuple[int, int]) -> int:
+        ...
+
+    @classmethod
+    def g(self, *args: t.Union[int, t.Tuple[int, int]]) -> int:
+        pass
+
+@t.overload
+def f(x: int, y: int) -> int:
+    ...
+
+@t.overload
+def f(x: t.Tuple[int, int]) -> int:
+    ...
+
+def f(*args: t.Union[int, t.Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+import typing as t
+
+class A:
+    @t.overload
+    def f(self, x: int, y: int) -> int: ...
+    @t.overload
+    def f(self, x: t.Tuple[int, int]) -> int: ...
+    @t.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int: ...
+    @t.overload
+    @classmethod
+    def g(cls, x: t.Tuple[int, int]) -> int: ...
+
+
+@t.overload
+def f(x: int, y: int) -> int: ...
+@t.overload
+def f(x: t.Tuple[int, int]) -> int: ...

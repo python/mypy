@@ -49,7 +49,7 @@ class B(A):
     def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                               # N: This violates the Liskov substitution principle \
                                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides \
-                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str" 
+                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
 
 class C(A):
     def f(self, foo: int, bar: str) -> None: pass
@@ -247,6 +247,16 @@ if int():
     o = f
 
 class A: pass
+[builtins fixtures/tuple.pyi]
+
+[case testReturnEmptyTuple]
+from typing import Tuple
+def f(x): # type: (int) -> () # E: Syntax error in type annotation \
+                              # N: Suggestion: Use Tuple[()] instead of () for an empty tuple, or None for a function without a return value
+   pass
+
+def g(x: int) -> Tuple[()]:
+   pass
 [builtins fixtures/tuple.pyi]
 
 [case testFunctionSubtypingWithVoid]
@@ -727,7 +737,7 @@ import typing
 def f(x: object) -> None:
     def g(y):
         pass
-    g() # E: Too few arguments for "g"
+    g() # E: Missing positional argument "y" in call to "g"
     g(x)
 [out]
 
@@ -1070,7 +1080,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: Missing positional argument "x" in call to "x"
 
 class A:
     @staticmethod
@@ -1092,7 +1102,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: Missing positional argument "a" in call to "x"
 
 class A:
     @classmethod
@@ -1494,7 +1504,7 @@ def g() -> None:
     f = None
     if object():
         def f(x: int) -> None: pass
-    f() # E: Too few arguments for "f"
+    f() # E: Missing positional argument "x" in call to "f"
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
@@ -2191,7 +2201,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"
+        self.g() # E: Too few arguments for "g" of "A"   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2339,8 +2349,8 @@ bad = make_list()  # E: Need type annotation for 'bad' (hint: "bad: List[<type>]
 
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
-foo(x=2, y=2)  # E: Missing positional argument
-foo(y=2)  # E: Missing positional arguments
+foo(x=2, y=2)  # E: Too few arguments for "foo"
+foo(y=2)  # E: Too few arguments for "foo"
 
 [case testMissingArgumentError]
 def f(a, b, c, d=None) -> None: pass

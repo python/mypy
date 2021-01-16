@@ -11,8 +11,9 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
-from mypyc.ir.func_ir import format_func
+from mypyc.ir.pprint import format_func
 from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.uninit import insert_uninit_checks
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
     assert_test_output, remove_comment_lines, replace_native_int, replace_word_size
@@ -44,6 +45,7 @@ class TestRefCountTransform(MypycDataSuite):
                     if (fn.name == TOP_LEVEL_NAME
                             and not testcase.name.endswith('_toplevel')):
                         continue
+                    insert_uninit_checks(fn)
                     insert_ref_count_opcodes(fn)
                     actual.extend(format_func(fn))
 

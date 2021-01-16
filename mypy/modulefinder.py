@@ -85,7 +85,7 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return '<BuildSource path=%r module=%r has_text=%s base_dir=%s>' % (
+        return 'BuildSource(path=%r, module=%r, has_text=%s, base_dir=%r)' % (
             self.path,
             self.module,
             self.text is not None,
@@ -105,9 +105,8 @@ class FindModuleCache:
 
     def __init__(self,
                  search_paths: SearchPaths,
-                 fscache: Optional[FileSystemCache] = None,
-                 options: Optional[Options] = None,
-                 ns_packages: Optional[List[str]] = None) -> None:
+                 fscache: Optional[FileSystemCache],
+                 options: Optional[Options]) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
@@ -117,7 +116,6 @@ class FindModuleCache:
         self.results = {}  # type: Dict[str, ModuleSearchResult]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
-        self.ns_packages = ns_packages or []  # type: List[str]
 
     def clear(self) -> None:
         self.results.clear()
@@ -208,7 +206,7 @@ class FindModuleCache:
         of the current working directory.
         """
         working_dir = os.getcwd()
-        parent_search = FindModuleCache(SearchPaths((), (), (), ()))
+        parent_search = FindModuleCache(SearchPaths((), (), (), ()), self.fscache, self.options)
         while any(file.endswith(("__init__.py", "__init__.pyi"))
                   for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
@@ -363,38 +361,47 @@ class FindModuleCache:
         module_path = self.find_module(module)
         if isinstance(module_path, ModuleNotFoundReason):
             return []
-        result = [BuildSource(module_path, module, None)]
+        sources = [BuildSource(module_path, module, None)]
+
+        package_path = None
         if module_path.endswith(('__init__.py', '__init__.pyi')):
-            # Subtle: this code prefers the .pyi over the .py if both
-            # exists, and also prefers packages over modules if both x/
-            # and x.py* exist.  How?  We sort the directory items, so x
-            # comes before x.py and x.pyi.  But the preference for .pyi
-            # over .py is encoded in find_module(); even though we see
-            # x.py before x.pyi, find_module() will find x.pyi first.  We
-            # use hits to avoid adding it a second time when we see x.pyi.
-            # This also avoids both x.py and x.pyi when x/ was seen first.
-            hits = set()  # type: Set[str]
-            for item in sorted(self.fscache.listdir(os.path.dirname(module_path))):
-                abs_path = os.path.join(os.path.dirname(module_path), item)
-                if os.path.isdir(abs_path) and \
-                        (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
-                        os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
-                    hits.add(item)
-                    result += self.find_modules_recursive(module + '.' + item)
-                elif item != '__init__.py' and item != '__init__.pyi' and \
-                        item.endswith(('.py', '.pyi')):
-                    mod = item.split('.')[0]
-                    if mod not in hits:
-                        hits.add(mod)
-                        result += self.find_modules_recursive(module + '.' + mod)
-        elif os.path.isdir(module_path) and module in self.ns_packages:
-            # Even more subtler: handle recursive decent into PEP 420
-            # namespace packages that are explicitly listed on the command
-            # line with -p/--packages.
-            for item in sorted(self.fscache.listdir(module_path)):
-                if os.path.isdir(os.path.join(module_path, item)):
-                    result += self.find_modules_recursive(module + '.' + item)
-        return result
+            package_path = os.path.dirname(module_path)
+        elif self.fscache.isdir(module_path):
+            package_path = module_path
+        if package_path is None:
+            return sources
+
+        # This logic closely mirrors that in find_sources. One small but important difference is
+        # that we do not sort names with keyfunc. The recursive call to find_modules_recursive
+        # calls find_module, which will handle the preference between packages, pyi and py.
+        # Another difference is it doesn't handle nested search paths / package roots.
+
+        seen = set()  # type: Set[str]
+        names = sorted(self.fscache.listdir(package_path))
+        for name in names:
+            # Skip certain names altogether
+            if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
+                continue
+            subpath = os.path.join(package_path, name)
+
+            if self.fscache.isdir(subpath):
+                # Only recurse into packages
+                if (self.options and self.options.namespace_packages) or (
+                    self.fscache.isfile(os.path.join(subpath, "__init__.py"))
+                    or self.fscache.isfile(os.path.join(subpath, "__init__.pyi"))
+                ):
+                    seen.add(name)
+                    sources.extend(self.find_modules_recursive(module + '.' + name))
+            else:
+                stem, suffix = os.path.splitext(name)
+                if stem == '__init__':
+                    continue
+                if stem not in seen and '.' not in stem and suffix in PYTHON_EXTENSIONS:
+                    # (If we sorted names) we could probably just make the BuildSource ourselves,
+                    # but this ensures compatibility with find_module / the cache
+                    seen.add(stem)
+                    sources.extend(self.find_modules_recursive(module + '.' + stem))
+        return sources
 
 
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:

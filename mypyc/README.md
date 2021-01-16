@@ -73,7 +73,7 @@ Then install the dependencies:
 
 Now you can run the tests:
 
-    $ pytest mypyc
+    $ pytest -q mypyc
 
 Look at the [issue tracker](https://github.com/mypyc/mypyc/issues)
 for things to work on. Please express your interest in working on an

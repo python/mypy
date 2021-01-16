@@ -235,7 +235,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
-        all_ids = [x.id for x in func.variables]
+        all_ids = func.type_var_ids()
         typeargs = infer_type_arguments(all_ids, self_param_type, original_type,
                                         is_supertype=True)
         if (is_classmethod

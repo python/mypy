@@ -42,7 +42,7 @@ jobs:
   - name: "run test suite with python 3.8"
     python: 3.8
   - name: "run test suite with python 3.9"
-    python: 3.9-dev
+    python: 3.9
   - name: "run mypyc runtime tests with python 3.6 debug build"
     language: generic
     env:
@@ -84,7 +84,7 @@ jobs:
 install:
 - pip install -U pip setuptools
 - pip install -U 'virtualenv<20'
-- pip install -U tox==3.9.0
+- pip install -U tox==3.20.1
 - python2 -m pip install --user -U typing
 - tox --notest
 
@@ -95,7 +95,7 @@ install:
 - if [[ $TEST_MYPYC == 1 ]]; then pip install -r mypy-requirements.txt; CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace; fi
 
 script:
-- tox -- $EXTRA_ARGS
+- tox --skip-pkg-install -- $EXTRA_ARGS
 
 # Getting our hands on a debug build or the right OS X build is
 # annoying, unfortunately.

@@ -10,7 +10,7 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
-from mypyc.ir.func_ir import format_func
+from mypyc.ir.pprint import format_func
 from mypyc.transform.uninit import insert_uninit_checks
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.refcount import insert_ref_count_opcodes

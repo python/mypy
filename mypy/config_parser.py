@@ -131,6 +131,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         except configparser.Error as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
+            if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
+                continue
             file_read = config_file
             options.config_file = file_read
             break

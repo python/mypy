@@ -41,7 +41,7 @@ class B:
 class A(B):
   def __init__(self) -> None:
     super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"; expected "A"
-    super().__init__()       # E: Too few arguments for "__init__" of "B"
+    super().__init__()       # E: Missing positional argument "x" in call to "__init__" of "B"
     super().__init__(A())
 [out]
 
@@ -77,7 +77,7 @@ class C(A, B):
         super().f()
         super().g(1)
         super().f(1) # E: Too many arguments for "f" of "A"
-        super().g() # E: Too few arguments for "g" of "B"
+        super().g() # E: Missing positional argument "x" in call to "g" of "B"
         super().not_there() # E: "not_there" undefined in superclass
 [out]
 

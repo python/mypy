@@ -56,7 +56,11 @@ from mypy.expandtype import expand_type, expand_type_by_instance, freshen_functi
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
-from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
+from mypy.plugin import (
+    Plugin,
+    MethodContext, MethodSigContext,
+    FunctionContext, FunctionSigContext,
+)
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
     function_type, callable_type, try_getting_str_literals, custom_special_method,
@@ -730,12 +734,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               callee.arg_names, formal_arg_names,
                               callee.ret_type, formal_arg_exprs, context, self.chk))
 
-    def apply_method_signature_hook(
+    def apply_signature_hook(
             self, callee: FunctionLike, args: List[Expression],
-            arg_kinds: List[int], context: Context,
-            arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
-            signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
-        """Apply a plugin hook that may infer a more precise signature for a method."""
+            arg_kinds: List[int],
+            arg_names: Optional[Sequence[Optional[str]]],
+            hook: Callable[
+                [List[List[Expression]], CallableType],
+                CallableType,
+            ]) -> FunctionLike:
+        """Helper to apply a signature hook for either a function or method"""
         if isinstance(callee, CallableType):
             num_formals = len(callee.arg_kinds)
             formal_to_actual = map_actuals_to_formals(
@@ -746,18 +753,39 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for formal, actuals in enumerate(formal_to_actual):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
-            object_type = get_proper_type(object_type)
-            return signature_hook(
-                MethodSigContext(object_type, formal_arg_exprs, callee, context, self.chk))
+            return hook(formal_arg_exprs, callee)
         else:
             assert isinstance(callee, Overloaded)
             items = []
             for item in callee.items():
-                adjusted = self.apply_method_signature_hook(
-                    item, args, arg_kinds, context, arg_names, object_type, signature_hook)
+                adjusted = self.apply_signature_hook(
+                    item, args, arg_kinds, arg_names, hook)
                 assert isinstance(adjusted, CallableType)
                 items.append(adjusted)
             return Overloaded(items)
+
+    def apply_function_signature_hook(
+            self, callee: FunctionLike, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]],
+            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
+        """Apply a plugin hook that may infer a more precise signature for a function."""
+        return self.apply_signature_hook(
+            callee, args, arg_kinds, arg_names,
+            (lambda args, sig:
+             signature_hook(FunctionSigContext(args, sig, context, self.chk))))
+
+    def apply_method_signature_hook(
+            self, callee: FunctionLike, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
+            signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
+        """Apply a plugin hook that may infer a more precise signature for a method."""
+        pobject_type = get_proper_type(object_type)
+        return self.apply_signature_hook(
+            callee, args, arg_kinds, arg_names,
+            (lambda args, sig:
+             signature_hook(MethodSigContext(pobject_type, args, sig, context, self.chk))))
 
     def transform_callee_type(
             self, callable_name: Optional[str], callee: Type, args: List[Expression],
@@ -779,13 +807,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         (if appropriate) before the signature is passed to check_call.
         """
         callee = get_proper_type(callee)
-        if (callable_name is not None
-                and object_type is not None
-                and isinstance(callee, FunctionLike)):
-            signature_hook = self.plugin.get_method_signature_hook(callable_name)
-            if signature_hook:
-                return self.apply_method_signature_hook(
-                    callee, args, arg_kinds, context, arg_names, object_type, signature_hook)
+        if callable_name is not None and isinstance(callee, FunctionLike):
+            if object_type is not None:
+                method_sig_hook = self.plugin.get_method_signature_hook(callable_name)
+                if method_sig_hook:
+                    return self.apply_method_signature_hook(
+                        callee, args, arg_kinds, context, arg_names, object_type, method_sig_hook)
+            else:
+                function_sig_hook = self.plugin.get_function_signature_hook(callable_name)
+                if function_sig_hook:
+                    return self.apply_function_signature_hook(
+                        callee, args, arg_kinds, context, arg_names, function_sig_hook)
 
         return callee
 
@@ -1336,7 +1368,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ok = False
             elif kind in [nodes.ARG_POS, nodes.ARG_OPT,
                           nodes.ARG_NAMED, nodes.ARG_NAMED_OPT] and is_duplicate_mapping(
-                    formal_to_actual[i], actual_kinds):
+                    formal_to_actual[i], actual_types, actual_kinds):
                 if (self.chk.in_checked_function() or
                         isinstance(get_proper_type(actual_types[formal_to_actual[i][0]]),
                                    TupleType)):
@@ -2762,7 +2794,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # the analysis from the semanal phase below. We assume that nodes
         # marked as unreachable during semantic analysis were done so intentionally.
         # So, we shouldn't report an error.
-        if self.chk.options.warn_unreachable:
+        if self.chk.should_report_unreachable_issues():
             if right_map is None:
                 self.msg.unreachable_right_operand(e.op, e.right)
 
@@ -2817,6 +2849,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         value = self.accept(e.value)
         self.chk.check_assignment(e.target, e.value)
         self.chk.check_final(e)
+        self.chk.store_type(e.target, value)
         self.find_partial_type_ref_fast_path(e.target)
         return value
 
@@ -3186,8 +3219,42 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_set_expr(self, e: SetExpr) -> Type:
         return self.check_lst_expr(e.items, 'builtins.set', '<set>', e)
 
+    def fast_container_type(
+            self, items: List[Expression], container_fullname: str
+    ) -> Optional[Type]:
+        """
+        Fast path to determine the type of a list or set literal,
+        based on the list of entries. This mostly impacts large
+        module-level constant definitions.
+
+        Limitations:
+         - no active type context
+         - no star expressions
+         - the joined type of all entries must be an Instance type
+        """
+        ctx = self.type_context[-1]
+        if ctx:
+            return None
+        values = []  # type: List[Type]
+        for item in items:
+            if isinstance(item, StarExpr):
+                # fallback to slow path
+                return None
+            values.append(self.accept(item))
+        vt = join.join_type_list(values)
+        if not isinstance(vt, Instance):
+            return None
+        # TODO: update tests instead?
+        vt.erased = True
+        return self.chk.named_generic_type(container_fullname, [vt])
+
     def check_lst_expr(self, items: List[Expression], fullname: str,
                        tag: str, context: Context) -> Type:
+        # fast path
+        t = self.fast_container_type(items, fullname)
+        if t:
+            return t
+
         # Translate into type checking a generic function call.
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
@@ -3269,6 +3336,48 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         fallback_item = AnyType(TypeOfAny.special_form)
         return TupleType(items, self.chk.named_generic_type('builtins.tuple', [fallback_item]))
 
+    def fast_dict_type(self, e: DictExpr) -> Optional[Type]:
+        """
+        Fast path to determine the type of a dict literal,
+        based on the list of entries. This mostly impacts large
+        module-level constant definitions.
+
+        Limitations:
+         - no active type context
+         - only supported star expressions are other dict instances
+         - the joined types of all keys and values must be Instance types
+        """
+        ctx = self.type_context[-1]
+        if ctx:
+            return None
+        keys = []  # type: List[Type]
+        values = []  # type: List[Type]
+        stargs = None  # type: Optional[Tuple[Type, Type]]
+        for key, value in e.items:
+            if key is None:
+                st = get_proper_type(self.accept(value))
+                if (
+                        isinstance(st, Instance)
+                        and st.type.fullname == 'builtins.dict'
+                        and len(st.args) == 2
+                ):
+                    stargs = (st.args[0], st.args[1])
+                else:
+                    return None
+            else:
+                keys.append(self.accept(key))
+                values.append(self.accept(value))
+        kt = join.join_type_list(keys)
+        vt = join.join_type_list(values)
+        if not (isinstance(kt, Instance) and isinstance(vt, Instance)):
+            return None
+        if stargs and (stargs[0] != kt or stargs[1] != vt):
+            return None
+        # TODO: update tests instead?
+        kt.erased = True
+        vt.erased = True
+        return self.chk.named_generic_type('builtins.dict', [kt, vt])
+
     def visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
 
@@ -3286,6 +3395,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 context=e
             )
             return typeddict_context.copy_modified()
+
+        # fast path attempt
+        dt = self.fast_dict_type(e)
+        if dt:
+            return dt
 
         # Collect function arguments, watching out for **expr.
         args = []  # type: List[Expression]  # Regular "key: value"
@@ -3790,9 +3904,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert typ is not None
         self.chk.store_type(node, typ)
 
-        if isinstance(node, AssignmentExpr) and not has_uninhabited_component(typ):
-            self.chk.store_type(node.target, typ)
-
         if (self.chk.options.disallow_any_expr and
                 not always_allow_any and
                 not self.chk.is_stub and
@@ -4112,15 +4223,25 @@ def is_non_empty_tuple(t: Type) -> bool:
     return isinstance(t, TupleType) and bool(t.items)
 
 
-def is_duplicate_mapping(mapping: List[int], actual_kinds: List[int]) -> bool:
-    # Multiple actuals can map to the same formal only if they both come from
-    # varargs (*args and **kwargs); in this case at runtime it is possible that
-    # there are no duplicates. We need to allow this, as the convention
-    # f(..., *args, **kwargs) is common enough.
-    return len(mapping) > 1 and not (
-        len(mapping) == 2 and
-        actual_kinds[mapping[0]] == nodes.ARG_STAR and
-        actual_kinds[mapping[1]] == nodes.ARG_STAR2)
+def is_duplicate_mapping(mapping: List[int],
+                         actual_types: List[Type],
+                         actual_kinds: List[int]) -> bool:
+    return (
+        len(mapping) > 1
+        # Multiple actuals can map to the same formal if they both come from
+        # varargs (*args and **kwargs); in this case at runtime it is possible
+        # that here are no duplicates. We need to allow this, as the convention
+        # f(..., *args, **kwargs) is common enough.
+        and not (len(mapping) == 2
+                 and actual_kinds[mapping[0]] == nodes.ARG_STAR
+                 and actual_kinds[mapping[1]] == nodes.ARG_STAR2)
+        # Multiple actuals can map to the same formal if there are multiple
+        # **kwargs which cannot be mapped with certainty (non-TypedDict
+        # **kwargs).
+        and not all(actual_kinds[m] == nodes.ARG_STAR2 and
+                    not isinstance(get_proper_type(actual_types[m]), TypedDictType)
+                    for m in mapping)
+    )
 
 
 def replace_callable_return_type(c: CallableType, new_ret_type: Type) -> CallableType:

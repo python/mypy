@@ -1,22 +1,20 @@
 """Intermediate representation of functions."""
-import re
 
-from typing import List, Optional, Sequence, Dict
+from typing import List, Optional, Sequence
 from typing_extensions import Final
 
 from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
 from mypyc.ir.ops import (
-    DeserMaps, Goto, Branch, Return, Unreachable, BasicBlock, Environment
+    DeserMaps, BasicBlock, Value, Register, Assign, ControlOp, LoadAddress
 )
 from mypyc.ir.rtypes import RType, deserialize_type
-from mypyc.ir.const_int import find_constant_integer_registers
 from mypyc.namegen import NameGenerator
 
 
 class RuntimeArg:
-    """Representation of a function argument in IR.
+    """Description of a function argument in IR.
 
     Argument kind is one of ARG_* constants defined in mypy.nodes.
     """
@@ -149,19 +147,21 @@ class FuncDecl:
 class FuncIR:
     """Intermediate representation of a function with contextual information.
 
-    Unlike FuncDecl, this includes the IR of the body (basic blocks) and an
-    environment.
+    Unlike FuncDecl, this includes the IR of the body (basic blocks).
     """
 
     def __init__(self,
                  decl: FuncDecl,
+                 arg_regs: List[Register],
                  blocks: List[BasicBlock],
-                 env: Environment,
                  line: int = -1,
                  traceback_name: Optional[str] = None) -> None:
+        # Declaration of the function, including the signature
         self.decl = decl
+        # Registers for all the arguments to the function
+        self.arg_regs = arg_regs
+        # Body of the function
         self.blocks = blocks
-        self.env = env
         self.line = line
         # The name that should be displayed for tracebacks that
         # include this function. Function will be omitted from
@@ -195,11 +195,14 @@ class FuncIR:
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)
 
-    def __str__(self) -> str:
-        return '\n'.join(format_func(self))
+    def __repr__(self) -> str:
+        if self.class_name:
+            return '<FuncIR {}.{}>'.format(self.class_name, self.name)
+        else:
+            return '<FuncIR {}>'.format(self.name)
 
     def serialize(self) -> JsonDict:
-        # We don't include blocks or env in the serialized version
+        # We don't include blocks in the serialized version
         return {
             'decl': self.decl.serialize(),
             'line': self.line,
@@ -211,7 +214,7 @@ class FuncIR:
         return FuncIR(
             FuncDecl.deserialize(data['decl'], ctx),
             [],
-            Environment(),
+            [],
             data['line'],
             data['traceback_name'],
         )
@@ -220,58 +223,56 @@ class FuncIR:
 INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
 
 
-def format_blocks(blocks: List[BasicBlock],
-                  env: Environment,
-                  const_regs: Dict[str, int]) -> List[str]:
-    """Format a list of IR basic blocks into a human-readable form."""
-    # First label all of the blocks
-    for i, block in enumerate(blocks):
-        block.label = i
+def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+    """Return the set of all values that may be initialized in the blocks.
 
-    handler_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
-    for b in blocks:
-        if b.error_handler:
-            handler_map.setdefault(b.error_handler, []).append(b)
+    This omits registers that are only read.
+    """
+    values = list(args)  # type: List[Value]
+    seen_registers = set(args)
 
-    lines = []
-    for i, block in enumerate(blocks):
-        i == len(blocks) - 1
+    for block in blocks:
+        for op in block.ops:
+            if not isinstance(op, ControlOp):
+                if isinstance(op, Assign):
+                    if op.dest not in seen_registers:
+                        values.append(op.dest)
+                        seen_registers.add(op.dest)
+                elif op.is_void:
+                    continue
+                else:
+                    # If we take the address of a register, it might get initialized.
+                    if (isinstance(op, LoadAddress)
+                            and isinstance(op.src, Register)
+                            and op.src not in seen_registers):
+                        values.append(op.src)
+                        seen_registers.add(op.src)
+                    values.append(op)
 
-        handler_msg = ''
-        if block in handler_map:
-            labels = sorted(env.format('%l', b.label) for b in handler_map[block])
-            handler_msg = ' (handler for {})'.format(', '.join(labels))
-
-        lines.append(env.format('%l:%s', block.label, handler_msg))
-        ops = block.ops
-        if (isinstance(ops[-1], Goto) and i + 1 < len(blocks)
-                and ops[-1].label == blocks[i + 1]):
-            # Hide the last goto if it just goes to the next basic block.
-            ops = ops[:-1]
-        # load int registers start with 'i'
-        regex = re.compile(r'\bi[0-9]+\b')
-        for op in ops:
-            if op.name not in const_regs:
-                line = '    ' + op.to_str(env)
-                line = regex.sub(lambda i: str(const_regs[i.group()]) if i.group() in const_regs
-                                 else i.group(), line)
-                lines.append(line)
-
-        if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
-            # Each basic block needs to exit somewhere.
-            lines.append('    [MISSING BLOCK EXIT OPCODE]')
-    return lines
+    return values
 
 
-def format_func(fn: FuncIR) -> List[str]:
-    lines = []
-    cls_prefix = fn.class_name + '.' if fn.class_name else ''
-    lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
-                                        ', '.join(arg.name for arg in fn.args)))
-    # compute constants
-    const_regs = find_constant_integer_registers(fn.blocks)
-    for line in fn.env.to_lines(const_regs):
-        lines.append('    ' + line)
-    code = format_blocks(fn.blocks, fn.env, const_regs)
-    lines.extend(code)
-    return lines
+def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+    """Return set of all values that are initialized or accessed."""
+    values = list(args)  # type: List[Value]
+    seen_registers = set(args)
+
+    for block in blocks:
+        for op in block.ops:
+            for source in op.sources():
+                # Look for unitialized registers that are accessed. Ignore
+                # non-registers since we don't allow ops outside basic blocks.
+                if isinstance(source, Register) and source not in seen_registers:
+                    values.append(source)
+                    seen_registers.add(source)
+            if not isinstance(op, ControlOp):
+                if isinstance(op, Assign):
+                    if op.dest not in seen_registers:
+                        values.append(op.dest)
+                        seen_registers.add(op.dest)
+                elif op.is_void:
+                    continue
+                else:
+                    values.append(op)
+
+    return values

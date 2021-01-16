@@ -8,10 +8,11 @@ from typing import Optional, Union
 from typing_extensions import TYPE_CHECKING
 
 from mypyc.ir.ops import (
-    Branch, BasicBlock, Unreachable, Value, Goto, LoadInt, Assign, Register, Return,
-    AssignmentTarget, NO_TRACEBACK_LINE_NO
+    Branch, BasicBlock, Unreachable, Value, Goto, Integer, Assign, Register, Return,
+    NO_TRACEBACK_LINE_NO
 )
 from mypyc.primitives.exc_ops import set_stop_iteration_value, restore_exc_info_op
+from mypyc.irbuild.targets import AssignmentTarget
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
@@ -81,7 +82,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # __next__ is called, we jump to the case in which
         # StopIteration is raised.
         builder.assign(builder.fn_info.generator_class.next_label_target,
-                       builder.add(LoadInt(-1)),
+                       Integer(-1),
                        line)
 
         # Raise a StopIteration containing a field for the value that
@@ -141,7 +142,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: 'IRBuilder', value: Value, line: int) -> None:
         if self.ret_reg is None:
-            self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
+            self.ret_reg = Register(builder.ret_types[-1])
 
         builder.add(Assign(self.ret_reg, value))
         builder.add(Goto(self.target))

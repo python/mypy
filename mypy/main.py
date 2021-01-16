@@ -111,11 +111,13 @@ def main(script_path: Optional[str],
         if messages:
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
-                stdout.write(formatter.format_error(n_errors, n_files, len(sources),
-                                                    options.color_output) + '\n')
+                summary = formatter.format_error(
+                    n_errors, n_files, len(sources), blockers=blockers,
+                    use_color=options.color_output
+                )
+                stdout.write(summary + '\n')
         else:
-            stdout.write(formatter.format_success(len(sources),
-                                                  options.color_output) + '\n')
+            stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
@@ -778,12 +780,17 @@ def process_options(args: List[str],
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
+    # PEP 612 support is a work in progress, hide it from users
+    parser.add_argument('--wip-pep-612', action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
                     "mypy.readthedocs.io/en/latest/running_mypy.html#running-mypy")
+    code_group.add_argument(
+        '--explicit-package-bases', action='store_true',
+        help="Use current directory and MYPYPATH to determine module names of files passed")
     code_group.add_argument(
         '-m', '--module', action='append', metavar='MODULE',
         default=[],
@@ -846,9 +853,9 @@ def process_options(args: List[str],
     if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
-    # Paths listed in the config file will be ignored if any paths are passed on
-    # the command line.
-    if options.files and not special_opts.files:
+    # Paths listed in the config file will be ignored if any paths, modules or packages
+    # are passed on the command line.
+    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
         special_opts.files = options.files
 
     # Check for invalid argument combinations.
@@ -860,6 +867,11 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
+    if options.explicit_package_bases and not options.namespace_packages:
+        parser.error(
+            "Can only use --explicit-base-dirs with --namespace-packages, since otherwise "
+            "examining __init__.py's is sufficient to determine module names for files"
+        )
 
     # Check for overlapping `--always-true` and `--always-false` flags.
     overlap = set(options.always_true) & set(options.always_false)
@@ -928,7 +940,7 @@ def process_options(args: List[str],
                                    ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)
+        cache = FindModuleCache(search_paths, fscache, options)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),
@@ -978,12 +990,12 @@ def process_package_roots(fscache: Optional[FileSystemCache],
         # Empty package root is always okay.
         if root:
             root = os.path.relpath(root)  # Normalize the heck out of it.
+            if not root.endswith(os.sep):
+                root = root + os.sep
             if root.startswith(dotdotslash):
                 parser.error("Package root cannot be above current directory: %r" % root)
             if root in trivial_paths:
                 root = ''
-            elif not root.endswith(os.sep):
-                root = root + os.sep
         package_root.append(root)
     options.package_root = package_root
     # Pass the package root on the the filesystem cache.

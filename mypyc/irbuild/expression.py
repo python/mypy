@@ -11,13 +11,14 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
+    AssignmentExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 from mypy.types import TupleType, get_proper_type, Instance
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
-    Value, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
+    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
@@ -25,10 +26,10 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
-from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op
+from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
-from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
+from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_item_op
 from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
@@ -84,8 +85,21 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
                     expr.node.name),
                 expr.node.line)
 
-        # TODO: Behavior currently only defined for Var and FuncDef node types.
-        return builder.read(builder.get_assignment_target(expr), expr.line)
+        # TODO: Behavior currently only defined for Var, FuncDef and MypyFile node types.
+        if isinstance(expr.node, MypyFile):
+            # Load reference to a module imported inside function from
+            # the modules dictionary. It would be closer to Python
+            # semantics to access modules imported inside functions
+            # via local variables, but this is tricky since the mypy
+            # AST doesn't include a Var node for the module. We
+            # instead load the module separately on each access.
+            mod_dict = builder.call_c(get_module_dict_op, [], expr.line)
+            obj = builder.call_c(dict_get_item_op,
+                                 [mod_dict, builder.load_static_unicode(expr.node.fullname)],
+                                 expr.line)
+            return obj
+        else:
+            return builder.read(builder.get_assignment_target(expr), expr.line)
 
     return builder.load_global(expr)
 
@@ -124,11 +138,12 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         assert o.info is not None
         typ = builder.load_native_type_object(o.info.fullname)
         ir = builder.mapper.type_to_ir[o.info]
-        iter_env = iter(builder.environment.indexes)
-        vself = next(iter_env)  # grab first argument
+        iter_env = iter(builder.builder.args)
+        # Grab first argument
+        vself = next(iter_env)  # type: Value
         if builder.fn_info.is_generator:
             # grab sixth argument (see comment in translate_super_method_call)
-            self_targ = list(builder.environment.symtable.values())[6]
+            self_targ = list(builder.symtables[-1].values())[6]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         elif not ir.is_ext_class:
             vself = next(iter_env)  # second argument is self if non_extension class
@@ -286,7 +301,8 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
 
     if decl.kind != FUNC_STATICMETHOD:
-        vself = next(iter(builder.environment.indexes))  # grab first argument
+        # Grab first argument
+        vself = builder.self()  # type: Value
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.call_c(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
@@ -295,7 +311,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             # of ugly, but we can't search by name since the 'self' parameter
             # could be named anything, and it doesn't get added to the
             # environment indexes.
-            self_targ = list(builder.environment.symtable.values())[6]
+            self_targ = list(builder.symtables[-1].values())[6]
             vself = builder.read(self_targ, builder.fn_info.fitem.line)
         arg_values.insert(0, vself)
         arg_kinds.insert(0, ARG_POS)
@@ -386,7 +402,7 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     builder.process_conditional(expr.cond, if_body, else_body)
     expr_type = builder.node_type(expr)
     # Having actual Phi nodes would be really nice here!
-    target = builder.alloc_temp(expr_type)
+    target = Register(expr_type)
 
     builder.activate_block(if_body)
     true_value = builder.accept(expr.if_expr)
@@ -682,3 +698,10 @@ def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line
     )
+
+
+def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
+    value = builder.accept(o.value)
+    target = builder.get_assignment_target(o.target)
+    builder.assign(target, value, o.line)
+    return value

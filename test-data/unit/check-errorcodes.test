@@ -214,7 +214,7 @@ main:5: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
-f()  # E: Too few arguments for "f"  [call-arg]
+f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
 f(1, 2)  # E: Too many arguments for "f"  [call-arg]
 f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
 
@@ -786,3 +786,15 @@ i = [x for x in lst if True]             # E: If condition in comprehension is a
 j = [x for x in lst if False]            # E: If condition in comprehension is always false  [redundant-expr]
 k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
 [builtins fixtures/isinstancelist.pyi]
+
+[case testNamedTupleNameMismatch]
+from typing import NamedTuple
+
+Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be 'Foo', not 'Bar'  [name-match]
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictNameMismatch]
+from typing_extensions import TypedDict
+
+Foo = TypedDict("Bar", {})  # E: First argument 'Bar' to TypedDict() does not match variable name 'Foo'  [name-match]
+[builtins fixtures/dict.pyi]

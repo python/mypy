@@ -377,7 +377,7 @@ def f(x: int) -> None: pass
 a.py:1: error: Cannot find implementation or library stub for module named 'b'
 a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
-a.py:4: error: Too few arguments for "f"
+a.py:4: error: Missing positional argument "x" in call to "f"
 
 [case testDeletionTriggersImport]
 import a
@@ -438,7 +438,7 @@ def f(x: int) -> None: pass
 main:1: error: Cannot find implementation or library stub for module named 'p.q'
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testDeletionOfSubmoduleTriggersImport]
 import p.q
@@ -570,7 +570,7 @@ def f(x: int) -> None: pass
 def g() -> None: pass
 [out]
 ==
-main:3: error: Too few arguments for "f"
+main:3: error: Missing positional argument "x" in call to "f"
 main:4: error: Too many arguments for "g"
 
 [case testModifyTwoFilesErrorsInBoth]
@@ -593,7 +593,7 @@ def g() -> None: pass
 a.f()
 [out]
 ==
-b.py:3: error: Too few arguments for "f"
+b.py:3: error: Missing positional argument "x" in call to "f"
 a.py:3: error: Too many arguments for "g"
 
 [case testModifyTwoFilesFixErrorsInBoth]
@@ -615,7 +615,7 @@ import a
 def g(x: int) -> None: pass
 a.f()
 [out]
-b.py:3: error: Too few arguments for "f"
+b.py:3: error: Missing positional argument "x" in call to "f"
 a.py:3: error: Too many arguments for "g"
 ==
 
@@ -1217,7 +1217,7 @@ x = Foo()
 [out]
 ==
 ==
-main:2: error: Too few arguments for "foo" of "Foo"
+main:2: error: Missing positional argument "x" in call to "foo" of "Foo"
 
 -- This series of tests is designed to test adding a new module that
 -- does not appear in the cache, for cache mode. They are run in
@@ -1452,7 +1452,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportStarPropagateChange2]
 from b import *
@@ -1463,7 +1463,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportStarAddMissingDependency1]
 from b import f
@@ -1476,7 +1476,7 @@ def f(x: int) -> None: pass
 [out]
 main:1: error: Module 'b' has no attribute 'f'
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportStarAddMissingDependency2]
 from b import *
@@ -1487,7 +1487,7 @@ def f(x: int) -> None: pass
 [out]
 main:2: error: Name 'f' is not defined
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportStarAddMissingDependencyWithinClass]
 class A:
@@ -1507,10 +1507,10 @@ class C: pass
 main:3: error: Name 'f' is not defined
 main:4: error: Name 'C' is not defined
 ==
-main:3: error: Too few arguments for "f"
+main:3: error: Missing positional argument "x" in call to "f"
 main:4: error: Name 'C' is not defined
 ==
-main:3: error: Too few arguments for "f"
+main:3: error: Missing positional argument "x" in call to "f"
 ==
 
 [case testImportStarAddMissingDependencyInsidePackage1]
@@ -1525,7 +1525,7 @@ def f(x: int) -> None: pass
 [out]
 main:1: error: Module 'p.b' has no attribute 'f'
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportStarAddMissingDependencyInsidePackage2]
 import p.a
@@ -1539,7 +1539,7 @@ def f(x: int) -> None: pass
 [out]
 p/a.py:2: error: Name 'f' is not defined
 ==
-p/a.py:2: error: Too few arguments for "f"
+p/a.py:2: error: Missing positional argument "x" in call to "f"
 
 [case testImportStarRemoveDependency1]
 from b import f
@@ -1574,7 +1574,7 @@ def f(x: int) -> None: pass
 def f() -> None: pass
 [out]
 ==
-main:3: error: Too few arguments for "f"
+main:3: error: Missing positional argument "x" in call to "f"
 ==
 
 [case testImportStarMutuallyRecursive-skip]

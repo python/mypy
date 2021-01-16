@@ -374,6 +374,16 @@ o = object()
 c1.d = o
 assert c1.d is o
 
+[case testInitMethodWithMissingNoneReturnAnnotation]
+class C:
+    def __init__(self):
+        self.x = 42
+[file driver.py]
+from native import C
+c = C()
+assert c is not None
+assert c.x == 42
+
 [case testConstructClassWithDefaultConstructor]
 class C:
     a: int

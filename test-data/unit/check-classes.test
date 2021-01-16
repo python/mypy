@@ -58,7 +58,7 @@ a.foo(object(), A())  # Fail
 class A:
     def foo(self, x: 'A') -> None: pass
 [out]
-main:3: error: Too few arguments for "foo" of "A"
+main:3: error: Missing positional argument "x" in call to "foo" of "A"
 main:4: error: Too many arguments for "foo" of "A"
 main:4: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
 
@@ -385,7 +385,7 @@ class B(A):
 [case testOverride__init_subclass__WithDifferentSignature]
 class A:
     def __init_subclass__(cls, x: int) -> None: pass
-class B(A):  # E: Too few arguments for "__init_subclass__" of "A"
+class B(A):  # E: Missing positional argument "x" in call to "__init_subclass__" of "A"
     def __init_subclass__(cls) -> None: pass
 
 [case testOverrideWithDecorator]
@@ -610,7 +610,7 @@ class B(A):
     def __init__(self) -> None: pass
 class C: pass
 [out]
-main:2: error: Too few arguments for "A"
+main:2: error: Missing positional argument "x" in call to "A"
 main:3: error: Too many arguments for "B"
 
 [case testConstructorWithReturnValueType]
@@ -857,7 +857,7 @@ class A:
     def f(self) -> None: pass
 A.f(A())
 A.f(object())     # E: Argument 1 to "f" of "A" has incompatible type "object"; expected "A"
-A.f()             # E: Too few arguments for "f" of "A"
+A.f()             # E: Missing positional argument "self" in call to "f" of "A"
 A.f(None, None)   # E: Too many arguments for "f" of "A"
 
 [case testAccessAttributeViaClass]
@@ -895,7 +895,7 @@ class A:
     def __init__(self, x: Any) -> None: pass
     def f(self) -> None: pass
 A.f(A())
-A.f()    # E: Too few arguments for "f" of "A"
+A.f()    # E: Missing positional argument "self" in call to "f" of "A"
 
 [case testAssignmentToClassDataAttribute]
 import typing
@@ -1005,7 +1005,7 @@ class A:
         b = B(A())
         if int():
             b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-            b = B() # E: Too few arguments for "B"
+            b = B() # E: Missing positional argument "a" in call to "B"
 [out]
 
 [case testDeclareVariableWithNestedClassType]
@@ -2706,7 +2706,7 @@ import typing
 a = A()
 b = B()
 
-a()  # E: Too few arguments for "__call__" of "A"
+a()  # E: Missing positional argument "x" in call to "__call__" of "A"
 a(a, a)  # E: Too many arguments for "__call__" of "A"
 if int():
     a = a(a)
@@ -2971,7 +2971,7 @@ class B:
     def __init__(self, a: int) -> None: pass
 def f(A: Type[B]) -> None:
     A(0)
-    A()  # E: Too few arguments for "B"
+    A()  # E: Missing positional argument "a" in call to "B"
 [out]
 
 [case testTypeUsingTypeCTypeVar]
@@ -3005,7 +3005,7 @@ class B:
     def __init__(self, a: int) -> None: pass
 T = TypeVar('T', bound=B)
 def f(A: Type[T]) -> None:
-    A()  # E: Too few arguments for "B"
+    A()  # E: Missing positional argument "a" in call to "B"
     A(0)
 [out]
 
@@ -3253,7 +3253,7 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main:4: error: Too few arguments for "N"
+main:4: error: Missing positional arguments "x", "y" in call to "N"
 
 [case testTypeUsingTypeCJoin]
 from typing import Type
@@ -3671,7 +3671,7 @@ u = User()
 reveal_type(type(u))  # N: Revealed type is 'Type[__main__.User]'
 reveal_type(type(u).test_class_method())  # N: Revealed type is 'builtins.int'
 reveal_type(type(u).test_static_method())  # N: Revealed type is 'builtins.str'
-type(u).test_instance_method()  # E: Too few arguments for "test_instance_method" of "User"
+type(u).test_instance_method()  # E: Missing positional argument "self" in call to "test_instance_method" of "User"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -3751,7 +3751,7 @@ int.__eq__(int)
 int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
-main:33: error: Too few arguments for "__eq__" of "int"
+main:33: error: Too few arguments for "__eq__" of "int" 
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
 [case testMroSetAfterError]
@@ -5166,7 +5166,7 @@ def decorate(x: int) -> Callable[[type], type]:  # N: "decorate" defined here
 def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
     ...
 @decorate(y=17)    # E: Unexpected keyword argument "y" for "decorate"
-@decorate()        # E: Too few arguments for "decorate"
+@decorate()        # E: Missing positional argument "x" in call to "decorate"
 @decorate(22, 25)  # E: Too many arguments for "decorate"
 @decorate_forward_ref()
 @decorate(11)
@@ -6389,7 +6389,7 @@ class Base:
         cls.default_name = default_name
         return
 
-class Child(Base):  # E: Too few arguments for "__init_subclass__" of "Base"
+class Child(Base):  # E: Missing positional argument "default_name" in call to "__init_subclass__" of "Base"
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
 
@@ -6403,7 +6403,7 @@ class Base:
         return
 # TODO implement this, so that no error is raised?
 d = {"default_name": "abc", "thing": 0}
-class Child(Base, **d):  # E: Too few arguments for "__init_subclass__" of "Base"
+class Child(Base, **d):  # E: Missing positional arguments "default_name", "thing" in call to "__init_subclass__" of "Base"
     pass
 [builtins fixtures/object_with_init_subclass.pyi]
 

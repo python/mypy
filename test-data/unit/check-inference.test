@@ -1975,7 +1975,7 @@ T = TypeVar('T')
 
 class A:
     def f(self) -> None:
-        self.g() # E: Too few arguments for "g" of "A"
+        self.g() # E: Too few arguments for "g" of "A"   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass

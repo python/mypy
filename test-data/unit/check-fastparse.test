@@ -259,7 +259,7 @@ def f(x, y):  # E: Type signature has too few arguments
     y()
 
 f(1, 2)
-f(1) # E: Too few arguments for "f"
+f(1) # E: Missing positional argument "y" in call to "f"
 
 [case testFasterParseTooManyArgumentsAnnotation_python2]
 def f():  # E: Type signature has too many arguments
@@ -276,7 +276,7 @@ def f(x, y):  # E: Type signature has too few arguments
     y()
 
 f(1, 2)
-f(1) # E: Too few arguments for "f"
+f(1) # E: Missing positional argument "y" in call to "f"
 
 [case testFasterParseTypeCommentError_python2]
 from typing import Tuple
