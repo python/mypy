@@ -498,6 +498,7 @@ sub = Sub(attr=1)
 reveal_type(sub)  # N: Revealed type is '__main__.Sub'
 reveal_type(sub.attr)  # N: Revealed type is 'Any'
 
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassGenericSubtype]
 from dataclasses import dataclass
@@ -523,6 +524,7 @@ sub_str = Sub[str](attr='ok')
 reveal_type(sub_str)  # N: Revealed type is '__main__.Sub[builtins.str*]'
 reveal_type(sub_str.attr)  # N: Revealed type is 'builtins.str*'
 
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassGenericInheritance]
 from dataclasses import dataclass
@@ -548,6 +550,7 @@ reveal_type(sub.one)  # N: Revealed type is 'builtins.int*'
 reveal_type(sub.two)  # N: Revealed type is 'builtins.str*'
 reveal_type(sub.three)  # N: Revealed type is 'builtins.float*'
 
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassMultiGenericInheritance]
 from dataclasses import dataclass
@@ -574,6 +577,7 @@ reveal_type(sub)  # N: Revealed type is '__main__.Sub'
 reveal_type(sub.base_attr)  # N: Revealed type is 'builtins.int*'
 reveal_type(sub.middle_attr)  # N: Revealed type is 'builtins.str*'
 
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassGenericsClassmethod]
 # flags: --python-version 3.6
