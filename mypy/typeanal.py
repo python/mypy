@@ -345,6 +345,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                           " and at least one annotation", t)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
+        elif self.anal_type_guard_arg(t, fullname) is not None:
+            # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
+            return self.named_type('builtins.bool')
         return None
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
@@ -524,14 +527,33 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = t.variables
             else:
                 variables = self.bind_function_type_variables(t, t)
+            special = self.anal_type_guard(t.ret_type)
             ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
                                   # If the fallback isn't filled in yet,
                                   # its type will be the falsey FakeInfo
                                   fallback=(t.fallback if t.fallback.type
                                             else self.named_type('builtins.function')),
-                                  variables=self.anal_var_defs(variables))
+                                  variables=self.anal_var_defs(variables),
+                                  type_guard=special,
+                                  )
         return ret
+
+    def anal_type_guard(self, t: Type) -> Optional[Type]:
+        if isinstance(t, UnboundType):
+            sym = self.lookup_qualified(t.name, t)
+            if sym is not None and sym.node is not None:
+                return self.anal_type_guard_arg(t, sym.node.fullname)
+        # TODO: What if it's an Instance? Then use t.type.fullname?
+        return None
+
+    def anal_type_guard_arg(self, t: UnboundType, fullname: str) -> Optional[Type]:
+        if fullname in ('typing_extensions.TypeGuard', 'typing.TypeGuard'):
+            if len(t.args) != 1:
+                self.fail("TypeGuard must have exactly one type argument", t)
+                return AnyType(TypeOfAny.from_error)
+            return self.anal_type(t.args[0])
+        return None
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # Overloaded types are manually constructed in semanal.py by analyzing the

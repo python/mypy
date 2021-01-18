@@ -392,3 +392,12 @@ def func() -> None:
 class Foo:
     def __init__(self) -> None:
         self.x = 123
+
+[case testWalrusTypeGuard]
+from typing_extensions import TypeGuard
+def is_float(a: object) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    if is_float(x := a):
+        reveal_type(x)  # N: Revealed type is 'builtins.float'
+        reveal_type(a)  # N: Revealed type is 'builtins.object'
+[builtins fixtures/tuple.pyi]

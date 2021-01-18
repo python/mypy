@@ -14,7 +14,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarDef,
+    Type, AnyType, CallableType, Overloaded, NoneType, TypeGuardType, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike,
@@ -317,6 +317,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         ret_type=self.object_type(),
                                         fallback=self.named_type('builtins.function'))
         callee_type = get_proper_type(self.accept(e.callee, type_context, always_allow_any=True))
+        if (isinstance(e.callee, RefExpr)
+                and isinstance(callee_type, CallableType)
+                and callee_type.type_guard is not None):
+            # Cache it for find_isinstance_check()
+            e.callee.type_guard = callee_type.type_guard
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
@@ -4163,6 +4168,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
+            # Ignore the error about using get_proper_type().
+            if isinstance(restriction, TypeGuardType):  # type: ignore[misc]
+                # A type guard forces the new type even if it doesn't overlap the old.
+                return restriction.type_guard
             # If the current node is deferred, some variables may get Any types that they
             # otherwise wouldn't have. We don't want to narrow down these since it may
             # produce invalid inferred Optional[Any] types, at least.
