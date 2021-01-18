@@ -49,13 +49,15 @@ def encode_str_values(values: Dict[str, int]) -> List[bytes]:
 
 def format_int(n: int) -> bytes:
     if n < 128:
-        return bytes([n])
-    result = b''
-    while n >= 128:
-        result += bytes([(n & 0x7f) | 128])
-        n >>= 7
-    result += bytes([n])
-    return result
+        a = [n]
+    else:
+        a = []
+        while n > 0:
+            a.insert(0, n & 0x7f)
+            n >>= 7
+        for i in range(len(a) - 1):
+            a[i] |= 0x80
+    return bytes(a)
 
 
 def format_str_literal(s: str) -> bytes:
