@@ -117,11 +117,11 @@ imports.
 
 .. option:: --explicit-package-bases
 
-    This flag tells mypy to that the current directory, the ``MYPYPATH``
-    environment variable, and the :confval:`mypy_path` config option as the
-    directories in which top-level packages are located. This option is only
-    useful in conjunction with :option:`--namespace-packages`. See :ref:`Mapping
-    file paths to modules <mapping-paths-to-modules>` for details.
+    This flag tells mypy that top-level packages will be based in either the
+    current directory, or a member of the ``MYPYPATH`` environment variable or
+    :confval:`mypy_path` config option. This option is only useful in
+    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
 
