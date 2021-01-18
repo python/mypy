@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, TypeVar, Mapping, cast
+from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
