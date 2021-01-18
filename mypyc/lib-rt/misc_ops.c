@@ -509,3 +509,33 @@ int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
     }
     return 0;
 }
+
+// Parse an integer (size_t) encoded as a variable-length binary sequence.
+static const char *parse_int(const char *s, size_t *len) {
+    ssize_t n = 0;
+    while ((unsigned char)*s >= 0x80) {
+        n = (n << 7) + (*s & 0x7f);
+        s++;
+    }
+    n = (n << 7) | *s++;
+    *len = n;
+    return s;
+}
+
+int CPyStatics_Initialize(PyObject **statics, const char *strings) {
+    if (strings) {
+        size_t num;
+        strings = parse_int(strings, &num);
+        while (num-- > 0) {
+            size_t len;
+            strings = parse_int(strings, &len);
+            PyObject *obj = PyUnicode_FromStringAndSize(strings, len);
+            if (obj == NULL) {
+                return -1;
+            }
+            *statics++ = obj;
+            strings += len;
+        }
+    }
+    return 0;
+}

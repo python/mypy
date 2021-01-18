@@ -23,6 +23,12 @@ class Literals:
         """Return the index to the literals array for given value."""
         return self.literals[str][value]
 
+    def num_literals(self) -> int:
+        n = 0
+        for _, values in self.literals.items():
+            n += len(values)
+        return n
+
     def encoded_str_values(self) -> List[bytes]:
         return encode_str_values(self.literals[str])
 
@@ -32,7 +38,9 @@ def encode_str_values(values: Dict[str, int]) -> List[bytes]:
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    for i in range(len(values)):
+    num = len(values)
+    result.append(format_int(num))
+    for i in range(num):
         value = value_by_index[i]
         c_literal = format_str_literal(value)
         result.append(c_literal)

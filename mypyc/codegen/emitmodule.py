@@ -518,6 +518,8 @@ class GroupGenerator:
             else:
                 self.declare_static_pyobject(identifier, emitter)
 
+        self.generate_literal_tables()
+
         for module_name, module in self.modules:
             if multi_file:
                 emitter = Emitter(self.context)
@@ -626,6 +628,12 @@ class GroupGenerator:
             (os.path.join(output_dir, '__native{}.h'.format(self.short_group_suffix)),
              ''.join(ext_declarations.fragments)),
         ]
+
+    def generate_literal_tables(self) -> None:
+        literals = self.context.literals
+        self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
+        init = encode_bytes_as_c_string(b''.join(literals.encoded_str_values()))[0]
+        self.declare_global('const char []', 'StrLiterals', initializer=init)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -798,6 +806,10 @@ class GroupGenerator:
         emitter.emit_line('CPy_Init();')
         for symbol, fixup in self.simple_inits:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
+
+        emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, StrLiterals) < 0) {',
+                           'return -1;'
+                           '}')
 
         for (_, literal), identifier in self.literals.items():
             symbol = emitter.static_name(identifier, None)
@@ -980,13 +992,19 @@ class GroupGenerator:
     def declare_global(self, type_spaced: str, name: str,
                        *,
                        initializer: Optional[str] = None) -> None:
+        if '[' not in type_spaced:
+            base = '{}{}'.format(type_spaced, name)
+        else:
+            a, b = type_spaced.split('[', 1)
+            base = '{}{}[{}'.format(a, name, b)
+
         if not initializer:
             defn = None
         else:
-            defn = ['{}{} = {};'.format(type_spaced, name, initializer)]
+            defn = ['{} = {};'.format(base, initializer)]
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
-                '{}{};'.format(type_spaced, name),
+                '{};'.format(base),
                 defn=defn,
             )
 
