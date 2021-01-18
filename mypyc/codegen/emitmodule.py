@@ -26,7 +26,7 @@ from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
     USE_VECTORCALL, shared_lib_name,
 )
-from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
+from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string, encode_bytes_as_c_string_2
 from mypyc.codegen.literals import Literals
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
@@ -632,8 +632,24 @@ class GroupGenerator:
     def generate_literal_tables(self) -> None:
         literals = self.context.literals
         self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
-        init = encode_bytes_as_c_string(b''.join(literals.encoded_str_values()))[0]
+        init = self.cstring_initializer(literals.encoded_str_values())
         self.declare_global('const char []', 'StrLiterals', initializer=init)
+
+    def cstring_initializer(self, components: List[bytes]) -> str:
+        res = []
+        current = ''
+        for c in components:
+            cc = encode_bytes_as_c_string_2(c)[0]
+            if not current or len(current) + len(cc) < 70:
+                current += cc
+            else:
+                res.append('"%s"' % current)
+                current = cc
+        if current:
+            res.append('"%s"' % current)
+        if len(res) > 1:
+            res.insert(0, '')
+        return '\n    '.join(res)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -808,7 +824,7 @@ class GroupGenerator:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
 
         emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, StrLiterals) < 0) {',
-                           'return -1;'
+                           'return -1;',
                            '}')
 
         for (_, literal), identifier in self.literals.items():

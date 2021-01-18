@@ -47,3 +47,9 @@ def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
     """Produce a quoted C string literal and its size, for a byte string."""
     escaped = ''.join([CHAR_MAP[i] for i in b])
     return '"{}"'.format(escaped), len(b)
+
+
+def encode_bytes_as_c_string_2(b: bytes) -> Tuple[str, int]:
+    """Produce a quoted C string literal and its size, for a byte string."""
+    escaped = ''.join([CHAR_MAP[i] for i in b])
+    return escaped, len(b)
