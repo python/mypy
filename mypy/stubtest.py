@@ -377,6 +377,15 @@ def _verify_arg_default_value(
             )
 
 
+def maybe_strip_cls(name: str, args: List[nodes.Argument]) -> List[nodes.Argument]:
+    if name in ("__init_subclass__", "__class_getitem__"):
+        # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
+        # should remove the cls argument
+        if args[0].variable.name == "cls":
+            return args[1:]
+    return args
+
+
 class Signature(Generic[T]):
     def __init__(self) -> None:
         self.pos = []  # type: List[T]
@@ -428,7 +437,8 @@ class Signature(Generic[T]):
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
         stub_sig = Signature()  # type: Signature[nodes.Argument]
-        for stub_arg in stub.arguments:
+        stub_args = maybe_strip_cls(stub.name, stub.arguments)
+        for stub_arg in stub_args:
             if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
                 stub_sig.pos.append(stub_arg)
             elif stub_arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
@@ -476,7 +486,8 @@ class Signature(Generic[T]):
         all_args = {}  # type: Dict[str, List[Tuple[nodes.Argument, int]]]
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None
-            for index, arg in enumerate(func.arguments):
+            args = maybe_strip_cls(stub.name, func.arguments)
+            for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
                 name = (
@@ -657,13 +668,6 @@ def verify_funcitem(
         # inspect.signature throws sometimes
         # catch RuntimeError because of https://bugs.python.org/issue39504
         return
-
-    if stub.name in ("__init_subclass__", "__class_getitem__"):
-        # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
-        # should remove the cls argument
-        if stub.arguments[0].variable.name == "cls":
-            stub = copy.copy(stub)
-            stub.arguments = stub.arguments[1:]
 
     stub_sig = Signature.from_funcitem(stub)
     runtime_sig = Signature.from_inspect_signature(signature)

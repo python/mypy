@@ -20,7 +20,7 @@ from mypy.stubdoc import (
 
 # Members of the typing module to consider for importing by default.
 _DEFAULT_TYPING_IMPORTS = (
-    'Any'
+    'Any',
     'Dict',
     'Iterable',
     'Iterator',

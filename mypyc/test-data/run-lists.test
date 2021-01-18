@@ -77,38 +77,77 @@ print(primes(13))
 
 [case testListPrims]
 from typing import List
-def append(x: List[int], n: int) -> None:
-    x.append(n)
-def pop_last(x: List[int]) -> int:
-    return x.pop()
-def pop(x: List[int], i: int) -> int:
-    return x.pop(i)
-def count(x: List[int], i: int) -> int:
-    return x.count(i)
-[file driver.py]
-from native import append, pop_last, pop, count
-l = [1, 2]
-append(l, 10)
-assert l == [1, 2, 10]
-append(l, 3)
-append(l, 4)
-append(l, 5)
-assert l == [1, 2, 10, 3, 4, 5]
-pop_last(l)
-pop_last(l)
-assert l == [1, 2, 10, 3]
-pop(l, 2)
-assert l == [1, 2, 3]
-pop(l, -2)
-assert l == [1, 3]
-assert count(l, 1) == 1
-assert count(l, 2) == 0
-l.insert(0, 0)
-assert l == [0, 1, 3]
-l.insert(2, 2)
-assert l == [0, 1, 2, 3]
-l.insert(4, 4)
-assert l == [0, 1, 2, 3, 4]
+
+def test_append() -> None:
+    l = [1, 2]
+    l.append(10)
+    assert l == [1, 2, 10]
+    l.append(3)
+    l.append(4)
+    l.append(5)
+    assert l == [1, 2, 10, 3, 4, 5]
+
+def test_pop_last() -> None:
+    l = [1, 2, 10, 3, 4, 5]
+    l.pop()
+    l.pop()
+    assert l == [1, 2, 10, 3]
+
+def test_pop_index() -> None:
+    l = [1, 2, 10, 3]
+    l.pop(2)
+    assert l == [1, 2, 3]
+    l.pop(-2)
+    assert l == [1, 3]
+
+def test_count() -> None:
+    l = [1, 3]
+    assert l.count(1) == 1
+    assert l.count(2) == 0
+
+def test_insert() -> None:
+    l = [1, 3]
+    l.insert(0, 0)
+    assert l == [0, 1, 3]
+    l.insert(2, 2)
+    assert l == [0, 1, 2, 3]
+    l.insert(4, 4)
+    assert l == [0, 1, 2, 3, 4]
+    l.insert(-1, 5)
+    assert l == [0, 1, 2, 3, 5, 4]
+    l = [1, 3]
+    l.insert(100, 5)
+    assert l == [1, 3, 5]
+    l.insert(-100, 6)
+    assert l == [6, 1, 3, 5]
+    for long_int in 1 << 100, -(1 << 100):
+        try:
+            l.insert(long_int, 5)
+        except Exception as e:
+            assert type(e).__name__ == 'OverflowError'
+            assert str(e) == 'Python int too large to convert to C ssize_t'
+        else:
+            assert False
+
+def test_sort() -> None:
+    l = [1, 4, 3, 6, -1]
+    l.sort()
+    assert l == [-1, 1, 3, 4, 6]
+    l.sort()
+    assert l == [-1, 1, 3, 4, 6]
+    l = []
+    l.sort()
+    assert l == []
+
+def test_reverse() -> None:
+    l = [1, 4, 3, 6, -1]
+    l.reverse()
+    assert l == [-1, 6, 3, 4, 1]
+    l.reverse()
+    assert l == [1, 4, 3, 6, -1]
+    l = []
+    l.reverse()
+    assert l == []
 
 [case testListOfUserDefinedClass]
 class C:
