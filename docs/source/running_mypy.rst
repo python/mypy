@@ -366,40 +366,45 @@ How mypy determines fully qualified module names depends on if the options
 :option:`--namespace-packages <mypy --namespace-packages>` and
 :option:`--explicit-package-bases <mypy --explicit-package-bases>` are set.
 
-First, if :option:`--namespace-packages <mypy --namespace-packages>` is off,
-mypy will rely solely upon the presence of ``__init__.py[i]`` files to determine
-the fully qualified module name. That is, mypy will crawl up the directory tree
-for as long as it continues to find ``__init__.py`` (or ``__init__.pyi``) files.
+1. If :option:`--namespace-packages <mypy --namespace-packages>` is off,
+   mypy will rely solely upon the presence of ``__init__.py[i]`` files to
+   determine the fully qualified module name. That is, mypy will crawl up the
+   directory tree for as long as it continues to find ``__init__.py`` (or
+   ``__init__.pyi``) files.
 
-Second, if :option:`--namespace-packages <mypy --namespace-packages>` is on, but
-:option:`--explicit-package-bases <mypy --explicit-package-bases>` is off, mypy
-will allow for the possibility that directories without ``__init__.py[i]`` are
-packages. Specifically, mypy will look at all parent directories of the file and
-use the location of the highest ``__init__.py[i]`` in the directory tree to
-determine the top-level package.
+   For example, if your directory tree consists of ``pkg/subpkg/mod.py``, mypy
+   would require ``pkg/__init__.py`` and ``pkg/subpkg/__init__.py`` to exist in
+   order correctly associate ``mod.py`` with ``pkg.subpkg.mod``
 
-For example, say your directory tree consists solely of ``pkg/__init__.py`` and
-``pkg/a/b/c/d/mod.py``. When determining ``mod.py``'s fully qualified module
-name, mypy will look at ``pkg/__init__.py`` and conclude that the associated
-module name is ``pkg.a.b.c.d.mod``.
+2. If :option:`--namespace-packages <mypy --namespace-packages>` is on, but
+   :option:`--explicit-package-bases <mypy --explicit-package-bases>` is off,
+   mypy will allow for the possibility that directories without
+   ``__init__.py[i]`` are packages. Specifically, mypy will look at all parent
+   directories of the file and use the location of the highest
+   ``__init__.py[i]`` in the directory tree to determine the top-level package.
 
-You'll notice that that method still relies on ``__init__.py``. If you can't put
-an ``__init__.py`` in your top-level package, but still wish to pass paths (as
-opposed to packages or modules using the ``-p`` or ``-m`` flags),
-:option:`--explicit-package-bases <mypy --explicit-package-bases>` provides a
-solution.
+   For example, say your directory tree consists solely of ``pkg/__init__.py``
+   and ``pkg/a/b/c/d/mod.py``. When determining ``mod.py``'s fully qualified
+   module name, mypy will look at ``pkg/__init__.py`` and conclude that the
+   associated module name is ``pkg.a.b.c.d.mod``.
 
-Third, with :option:`--explicit-package-bases <mypy --explicit-package-bases>`,
-mypy will locate the nearest parent directory that is a member of the
-``MYPYPATH`` environment variable, the :confval:`mypy_path` config or is the
-current working directory. mypy will then use the relative path to determine the
-fully qualified module name.
+3. You'll notice that the above case still relies on ``__init__.py``. If
+   you can't put an ``__init__.py`` in your top-level package, but still wish to
+   pass paths (as opposed to packages or modules using the ``-p`` or ``-m``
+   flags), :option:`--explicit-package-bases <mypy --explicit-package-bases>`
+   provides a solution.
 
-For example, say your directory tree consists solely of
-``src/namespace_pkg/mod.py``. If you run the command following command, mypy
-will correctly associate ``mod.py`` with ``namespace_pkg.mod``::
+   With :option:`--explicit-package-bases <mypy --explicit-package-bases>`, mypy
+   will locate the nearest parent directory that is a member of the ``MYPYPATH``
+   environment variable, the :confval:`mypy_path` config or is the current
+   working directory. mypy will then use the relative path to determine the
+   fully qualified module name.
 
-    $ MYPYPATH=src mypy --namespace-packages --explicit-package-bases .
+   For example, say your directory tree consists solely of
+   ``src/namespace_pkg/mod.py``. If you run the command following command, mypy
+   will correctly associate ``mod.py`` with ``namespace_pkg.mod``::
+
+       $ MYPYPATH=src mypy --namespace-packages --explicit-package-bases .
 
 If you pass a file not ending in ``.py[i]``, the module name assumed is
 ``__main__`` (matching the behavior of the Python interpreter), unless
