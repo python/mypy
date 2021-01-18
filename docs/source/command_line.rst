@@ -110,10 +110,17 @@ imports.
     passed on the command line, the ``MYPYPATH`` environment variable,
     and the :confval:`mypy_path` config option.
 
-    Note that this only affects import discovery -- for modules and
-    packages explicitly passed on the command line, mypy still
-    searches for ``__init__.py[i]`` files in order to determine the
-    fully-qualified module/package name.
+    This flag also affects how mypy determines fully qualified module names for
+    files, modules and packages explicitly passed on the command line. See
+    :ref:`Mapping file paths to modules <mapping-paths-to-modules>` for details.
+
+.. option:: --explicit-package-bases
+
+    This flag tells mypy to that the current directory, the ``MYPYPATH``
+    environment variable, and the :confval:`mypy_path` config option as the
+    directories in which top-level packages are located. This option is only
+    useful in conjunction with :option:`--namespace-packages`. See :ref:`Mapping
+    file paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
 
