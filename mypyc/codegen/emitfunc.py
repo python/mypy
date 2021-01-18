@@ -176,7 +176,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
         index = self.literals.literal_index(op.value)
-        self.emit_line('%s = CPyStatics[%d]; /* %r */' % (self.reg(op), index, op.value))
+        s = repr(op.value)
+        if not any(x in s for x in ('/*', '*/', '\0')):
+            ann = ' /* %s */' % s
+        else:
+            ann = ''
+        self.emit_line('%s = CPyStatics[%d];%s' % (self.reg(op), index, ann))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
