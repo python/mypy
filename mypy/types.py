@@ -338,7 +338,7 @@ class TypeVarId:
         return self.meta_level > 0
 
 
-class TypeVarLikeDef(mypy.nodes.Context):
+class TypeVarLikeDef(ProperType):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
     id = None  # type: TypeVarId
@@ -352,9 +352,6 @@ class TypeVarLikeDef(mypy.nodes.Context):
         if isinstance(id, int):
             id = TypeVarId(id)
         self.id = id
-
-    def __repr__(self) -> str:
-        return self.name
 
     def serialize(self) -> JsonDict:
         raise NotImplementedError
@@ -385,13 +382,16 @@ class TypeVarDef(TypeVarLikeDef):
         return TypeVarDef(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
-    def __repr__(self) -> str:
-        if self.values:
-            return '{} in {}'.format(self.name, tuple(self.values))
-        elif not is_named_instance(self.upper_bound, 'builtins.object'):
-            return '{} <: {}'.format(self.name, self.upper_bound)
-        else:
-            return self.name
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_var(self)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeVarType):
+            return NotImplemented
+        return self.id == other.id
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -418,6 +418,9 @@ class TypeVarDef(TypeVarLikeDef):
 
 class ParamSpecDef(TypeVarLikeDef):
     """Definition of a single ParamSpec variable."""
+
+    def __repr__(self) -> str:
+        return self.name
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -898,61 +901,6 @@ class Instance(ProperType):
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
-
-
-class TypeVarType(ProperType):
-    """A type variable type.
-
-    This refers to either a class type variable (id > 0) or a function
-    type variable (id < 0).
-    """
-
-    __slots__ = ('name', 'fullname', 'id', 'values', 'upper_bound', 'variance')
-
-    def __init__(self, binder: TypeVarDef, line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
-        self.name = binder.name  # Name of the type variable (for messages and debugging)
-        self.fullname = binder.fullname  # type: str
-        self.id = binder.id  # type: TypeVarId
-        # Value restriction, empty list if no restriction
-        self.values = binder.values  # type: List[Type]
-        # Upper bound for values
-        self.upper_bound = binder.upper_bound  # type: Type
-        # See comments in TypeVarDef for more about variance.
-        self.variance = binder.variance  # type: int
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_type_var(self)
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, TypeVarType):
-            return NotImplemented
-        return self.id == other.id
-
-    def serialize(self) -> JsonDict:
-        assert not self.id.is_meta_var()
-        return {'.class': 'TypeVarType',
-                'name': self.name,
-                'fullname': self.fullname,
-                'id': self.id.raw_id,
-                'values': [v.serialize() for v in self.values],
-                'upper_bound': self.upper_bound.serialize(),
-                'variance': self.variance,
-                }
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeVarType':
-        assert data['.class'] == 'TypeVarType'
-        tvdef = TypeVarDef(data['name'],
-                           data['fullname'],
-                           data['id'],
-                           [deserialize_type(v) for v in data['values']],
-                           deserialize_type(data['upper_bound']),
-                           data['variance'])
-        return TypeVarType(tvdef)
 
 
 class FunctionLike(ProperType):
