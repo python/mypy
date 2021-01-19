@@ -352,15 +352,15 @@ is by providing mypy a list of paths. For example::
 This section describes how exactly mypy maps the provided paths
 to modules to type check.
 
-- mypy will check all paths provided that correspond to files.
+- Mypy will check all paths provided that correspond to files.
 
-- mypy will recursively discover and check all files ending in ``.py`` or
+- Mypy will recursively discover and check all files ending in ``.py`` or
   ``.pyi`` in directory paths provided.
 
 - For each file to be checked, mypy will attempt to associate the file (e.g.
   ``project/foo/bar/baz.py``) with a fully qualified module name (e.g.
   ``foo.bar.baz``). The directory the package is in (``project``) is then
-  add to mypy's module search paths.
+  added to mypy's module search paths.
 
 How mypy determines fully qualified module names depends on if the options
 :option:`--namespace-packages <mypy --namespace-packages>` and
