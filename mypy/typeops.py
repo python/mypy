@@ -11,7 +11,7 @@ import itertools
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, TypeVarLikeDef, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarType, TypeVarLikeDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery
@@ -483,7 +483,7 @@ def true_or_false(t: Type) -> ProperType:
 
 def erase_def_to_union_or_bound(tdef: TypeVarLikeDef) -> Type:
     # TODO(shantanu): fix for ParamSpecDef
-    assert isinstance(tdef, TypeVarDef)
+    assert isinstance(tdef, TypeVarType)
     if tdef.values:
         return make_simplified_union(tdef.values)
     else:

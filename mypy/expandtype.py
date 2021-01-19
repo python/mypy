@@ -4,7 +4,7 @@ from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType,
+    FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
     TypeAliasType)
 
 
@@ -41,10 +41,10 @@ def freshen_function_type_vars(callee: F) -> F:
         tvmap = {}  # type: Dict[TypeVarId, Type]
         for v in callee.variables:
             # TODO(shantanu): fix for ParamSpecDef
-            assert isinstance(v, TypeVarDef)
-            tvdef = TypeVarDef.new_unification_variable(v)
+            assert isinstance(v, TypeVarType)
+            tvdef = TypeVarType.new_unification_variable(v)
             tvdefs.append(tvdef)
-            tvmap[v.id] = TypeVarType(tvdef)
+            tvmap[v.id] = tvdef
         fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
         return cast(F, fresh)
     else:

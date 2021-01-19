@@ -361,7 +361,7 @@ class TypeVarLikeDef(ProperType):
         raise NotImplementedError
 
 
-class TypeVarDef(TypeVarLikeDef):
+class TypeVarType(TypeVarLikeDef):
     """Definition of a single type variable."""
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
@@ -377,9 +377,9 @@ class TypeVarDef(TypeVarLikeDef):
         self.variance = variance
 
     @staticmethod
-    def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
+    def new_unification_variable(old: 'TypeVarType') -> 'TypeVarType':
         new_id = TypeVarId.new(meta_level=1)
-        return TypeVarDef(old.name, old.fullname, new_id, old.values,
+        return TypeVarType(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -395,7 +395,7 @@ class TypeVarDef(TypeVarLikeDef):
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
-        return {'.class': 'TypeVarDef',
+        return {'.class': 'TypeVarType',
                 'name': self.name,
                 'fullname': self.fullname,
                 'id': self.id.raw_id,
@@ -405,9 +405,9 @@ class TypeVarDef(TypeVarLikeDef):
                 }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeVarDef':
-        assert data['.class'] == 'TypeVarDef'
-        return TypeVarDef(data['name'],
+    def deserialize(cls, data: JsonDict) -> 'TypeVarType':
+        assert data['.class'] == 'TypeVarType'
+        return TypeVarType(data['name'],
                           data['fullname'],
                           data['id'],
                           [deserialize_type(v) for v in data['values']],
@@ -1248,7 +1248,7 @@ class CallableType(FunctionLike):
                             deserialize_type(data['ret_type']),
                             Instance.deserialize(data['fallback']),
                             name=data['name'],
-                            variables=[TypeVarDef.deserialize(v) for v in data['variables']],
+                            variables=[TypeVarType.deserialize(v) for v in data['variables']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
                             bound_args=[(None if t is None else deserialize_type(t))
@@ -2074,8 +2074,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.variables:
             vs = []
             for var in t.variables:
-                if isinstance(var, TypeVarDef):
-                    # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+                if isinstance(var, TypeVarType):
+                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
                         vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
                         vs.append('{} in {}'.format(var.name, vals))

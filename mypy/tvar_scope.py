@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Union
-from mypy.types import TypeVarLikeDef, TypeVarDef, ParamSpecDef
+from mypy.types import TypeVarLikeDef, TypeVarType, ParamSpecDef
 from mypy.nodes import ParamSpecExpr, TypeVarExpr, TypeVarLikeExpr, SymbolTableNode
 
 
@@ -63,7 +63,7 @@ class TypeVarLikeScope:
             self.func_id -= 1
             i = self.func_id
         if isinstance(tvar_expr, TypeVarExpr):
-            tvar_def = TypeVarDef(
+            tvar_def = TypeVarType(
                 name,
                 tvar_expr.fullname,
                 i,

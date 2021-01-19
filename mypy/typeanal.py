@@ -13,7 +13,7 @@ from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
-    CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
+    CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef, ParamSpecDef
@@ -220,7 +220,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                           ' to define generic alias'.format(t.name), t)
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
-                assert isinstance(tvar_def, TypeVarDef)
+                assert isinstance(tvar_def, TypeVarType)
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(t.name), t)
                 return TypeVarType(tvar_def, t.line)
@@ -961,8 +961,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.nesting_level -= 1
 
     def anal_var_def(self, var_def: TypeVarLikeDef) -> TypeVarLikeDef:
-        if isinstance(var_def, TypeVarDef):
-            return TypeVarDef(
+        if isinstance(var_def, TypeVarType):
+            return TypeVarType(
                 var_def.name,
                 var_def.fullname,
                 var_def.id.raw_id,
