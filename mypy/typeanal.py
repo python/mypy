@@ -223,7 +223,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert isinstance(tvar_def, TypeVarType)
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(t.name), t)
-                return TypeVarType(tvar_def, t.line)
+                return TypeVarType(
+                    tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.values,
+                    tvar_def.upper_bound, tvar_def.variance, line=t.line, column=t.column,
+                )
             special = self.try_analyze_special_unbound_type(t, fullname)
             if special is not None:
                 return special
