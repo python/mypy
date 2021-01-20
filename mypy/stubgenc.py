@@ -17,10 +17,10 @@ from mypy.stubdoc import (
     infer_arg_sig_from_anon_docstring, infer_ret_type_sig_from_anon_docstring, FunctionSig
 )
 
-
 # Members of the typing module to consider for importing by default.
 _DEFAULT_TYPING_IMPORTS = (
     'Any',
+    'Callable',
     'Dict',
     'Iterable',
     'Iterator',
@@ -231,6 +231,8 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
             stripped_type = typ[len('builtins') + 1:]
         else:
             imports.append('import %s' % (arg_module,))
+    if stripped_type == 'NoneType':
+        stripped_type = 'None'
     return stripped_type
 
 
@@ -365,14 +367,20 @@ def method_name_sort_key(name: str) -> Tuple[int, str]:
     return 1, name
 
 
+def is_pybind_skipped_attribute(attr: str) -> bool:
+    return attr.startswith("__pybind11_module_local_")
+
+
 def is_skipped_attribute(attr: str) -> bool:
-    return attr in ('__getattribute__',
-                    '__str__',
-                    '__repr__',
-                    '__doc__',
-                    '__dict__',
-                    '__module__',
-                    '__weakref__')  # For pickling
+    return (attr in ('__getattribute__',
+                     '__str__',
+                     '__repr__',
+                     '__doc__',
+                     '__dict__',
+                     '__module__',
+                     '__weakref__')  # For pickling
+            or is_pybind_skipped_attribute(attr)
+            )
 
 
 def infer_method_sig(name: str) -> List[ArgSig]:

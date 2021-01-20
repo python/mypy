@@ -1,0 +1,32 @@
+name: Test stubgenc on pybind11-mypy-demo
+
+on:
+  push:
+    branches: [master]
+    tags: ['*']
+  pull_request:
+    paths:
+    - 'misc/test-stubgenc.sh'
+    - 'mypy/stubgenc.py'
+    - 'mypy/stubdoc.py'
+    - 'test-data/stubgen/**'
+
+jobs:
+  stubgenc:
+    # Check stub file generation for a small pybind11 project
+    # (full text match is required to pass)
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: initialize submodules
+      run: git submodule update --init
+
+    - name: Setup 🐍 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Test stubgenc
+      run: misc/test-stubgenc.sh
