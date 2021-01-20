@@ -1289,20 +1289,6 @@ x = 1
 y = 1
 [out]
 
-[case testMissingStubForStdLibModule]
-import __dummy_stdlib1
-[out]
-main:1: error: No library stub file for standard library module '__dummy_stdlib1'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-
-[case testMissingStubForTwoModules]
-import __dummy_stdlib1
-import __dummy_stdlib2
-[out]
-main:1: error: No library stub file for standard library module '__dummy_stdlib1'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-main:2: error: No library stub file for standard library module '__dummy_stdlib2'
-
 [case testListComprehensionSpecialScoping]
 class A:
     x = 1

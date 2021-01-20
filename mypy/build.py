@@ -40,7 +40,6 @@ from mypy.util import (
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
-from mypy import moduleinfo
 from mypy.fixup import fixup_module
 from mypy.modulefinder import (
     BuildSource, compute_search_paths, FindModuleCache, SearchPaths, ModuleSearchResult,
@@ -2498,11 +2497,6 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
                       blocker=True)
         errors.raise_error()
-    elif moduleinfo.is_std_lib_module(manager.options.python_version, target):
-        msg = "No library stub file for standard library module '{}'".format(target)
-        note = "(Stub files are from https://github.com/python/typeshed)"
-        errors.report(line, 0, msg, code=codes.IMPORT)
-        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     else:
         msg, note = reason.error_message_templates()
         errors.report(line, 0, msg.format(target), code=codes.IMPORT)

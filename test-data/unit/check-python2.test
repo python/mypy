@@ -163,15 +163,6 @@ main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[in
 [case testBackquoteExpr]
 `1`.x # E: "str" has no attribute "x"
 
-[case testPython2OnlyStdLibModuleWithoutStub]
-import asyncio
-import Bastion
-[out]
-main:1: error: Cannot find implementation or library stub for module named 'asyncio'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: No library stub file for standard library module 'Bastion'
-main:2: note: (Stub files are from https://github.com/python/typeshed)
-
 [case testImportFromPython2Builtin]
 from __builtin__ import int as i
 x = 1 # type: i
