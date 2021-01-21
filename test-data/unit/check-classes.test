@@ -1367,6 +1367,54 @@ a = A()
 a.f = ''
 a.f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testSettingDescriptorWithOverloadedDunderSet1]
+from typing import Any, overload, Union
+class D:
+    @overload
+    def __set__(self, inst: Any, value: str) -> None: pass
+    @overload
+    def __set__(self, inst: Any, value: int) -> None: pass
+    def __set__(self, inst: Any, value: Union[str, int]) -> None: pass
+class A:
+    f = D()
+a = A()
+a.f = ''
+a.f = 1
+a.f = 1.5  # E
+[out]
+main:13: error: No overload variant of "__set__" of "D" matches argument types "A", "float"
+main:13: note: Possible overload variants:
+main:13: note:     def __set__(self, inst: Any, value: str) -> None
+main:13: note:     def __set__(self, inst: Any, value: int) -> None
+
+[case testSettingDescriptorWithOverloadedDunderSet2]
+from typing import overload, Union
+class D:
+    @overload
+    def __set__(self, inst: A, value: str) -> None: pass
+    @overload
+    def __set__(self, inst: B, value: int) -> None: pass
+    def __set__(self, inst: Union[A, B], value: Union[str, int]) -> None: pass
+class A:
+    f = D()
+class B:
+    f = D()
+a = A()
+b = B()
+a.f = ''
+b.f = 1
+a.f = 1   # E
+b.f = ''  # E
+[out]
+main:16: error: No overload variant of "__set__" of "D" matches argument types "A", "int"
+main:16: note: Possible overload variants:
+main:16: note:     def __set__(self, inst: A, value: str) -> None
+main:16: note:     def __set__(self, inst: B, value: int) -> None
+main:17: error: No overload variant of "__set__" of "D" matches argument types "B", "str"
+main:17: note: Possible overload variants:
+main:17: note:     def __set__(self, inst: A, value: str) -> None
+main:17: note:     def __set__(self, inst: B, value: int) -> None
+
 [case testReadingDescriptorWithoutDunderGet]
 from typing import Union, Any
 class D:

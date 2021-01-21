@@ -3044,32 +3044,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             context, object_type=attribute_type,
         )
 
-        # Here we just infer the type, the result should be type-checked like a normal assignment.
-        # For this we use the rvalue as type context.
+        # For non-overloaded setters, the result should be type-checked like a regular assignment.
+        # Hence, we first only try to infer the type by using the rvalue as type context.
+        type_context = rvalue
         self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
             dunder_set_type,
-            [TempNode(instance_type, context=context), rvalue],
+            [TempNode(instance_type, context=context), type_context],
             [nodes.ARG_POS, nodes.ARG_POS],
             context, object_type=attribute_type,
             callable_name=callable_name)
         self.msg.enable_errors()
 
-        # And now we type check the call second time, to show errors related
-        # to wrong arguments count, etc.
+        # And now we in fact type check the call, to show errors related to wrong arguments
+        # count, etc., replacing the type context for non-overloaded setters only.
+        inferred_dunder_set_type = get_proper_type(inferred_dunder_set_type)
+        if isinstance(inferred_dunder_set_type, CallableType):
+            type_context = TempNode(AnyType(TypeOfAny.special_form), context=context)
         self.expr_checker.check_call(
             dunder_set_type,
-            [TempNode(instance_type, context=context),
-             TempNode(AnyType(TypeOfAny.special_form), context=context)],
+            [TempNode(instance_type, context=context), type_context],
             [nodes.ARG_POS, nodes.ARG_POS],
             context, object_type=attribute_type,
             callable_name=callable_name)
 
-        # should be handled by get_method above
-        assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
-
-        if len(inferred_dunder_set_type.arg_types) < 2:
-            # A message already will have been recorded in check_call
+        # In the following cases, a message already will have been recorded in check_call.
+        if ((not isinstance(inferred_dunder_set_type, CallableType)) or
+                (len(inferred_dunder_set_type.arg_types) < 2)):
             return AnyType(TypeOfAny.from_error), get_type, False
 
         set_type = inferred_dunder_set_type.arg_types[1]
