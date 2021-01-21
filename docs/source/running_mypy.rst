@@ -397,7 +397,7 @@ How mypy determines fully qualified module names depends on if the options
    With :option:`--explicit-package-bases <mypy --explicit-package-bases>`, mypy
    will locate the nearest parent directory that is a member of the ``MYPYPATH``
    environment variable, the :confval:`mypy_path` config or is the current
-   working directory. mypy will then use the relative path to determine the
+   working directory. Mypy will then use the relative path to determine the
    fully qualified module name.
 
    For example, say your directory tree consists solely of

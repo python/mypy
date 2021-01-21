@@ -241,27 +241,6 @@ more specific type:
     since the caller may have to use :py:func:`isinstance` before doing anything
     interesting with the value.
 
-.. _alternative_union_syntax:
-
-X | Y syntax for Unions
------------------------
-
-:pep:`604` introduced an alternative way for spelling union types. In Python
-3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
-possible to use this syntax in versions of Python where it isn't supported by
-the runtime with some limitations, see :ref:`runtime_troubles`.
-
-.. code-block:: python
-
-    from typing import List
-
-    t1: int | str  # equivalent to Union[int, str]
-
-    t2: int | None  # equivalent to Optional[int]
-
-    # Usable in type comments
-    t3 = 42  # type: int | str
-
 .. _strict_optional:
 
 Optional types and the None type
@@ -427,6 +406,27 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
     treating arguments with a ``None`` default value as having an implicit
     ``Optional[...]`` type. It's possible that this will become the default
     behavior in the future.
+
+.. _alternative_union_syntax:
+
+X | Y syntax for Unions
+-----------------------
+
+:pep:`604` introduced an alternative way for spelling union types. In Python
+3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
+possible to use this syntax in versions of Python where it isn't supported by
+the runtime with some limitations (see :ref:`runtime_troubles`).
+
+.. code-block:: python
+
+    from typing import List
+
+    t1: int | str  # equivalent to Union[int, str]
+
+    t2: int | None  # equivalent to Optional[int]
+
+    # Usable in type comments
+    t3 = 42  # type: int | str
 
 .. _no_strict_optional:
 
