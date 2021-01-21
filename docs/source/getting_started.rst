@@ -160,22 +160,19 @@ Arguments with default values can be annotated like so:
        for key, value in kwargs:
            print(key, value)
 
-The typing module
-*****************
+Additional types, and the typing module
+***************************************
 
 So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
 such as "a list of strings" or "an iterable of ints"?
 
-You can find many of these more complex static types inside of the :py:mod:`typing`
-module. For example, to indicate that some function can accept a list of
-strings, use the :py:class:`~typing.List` type:
+For example, to indicate that some function can accept a list of
+strings, use the ``list[str]`` type (Python 3.9 and later):
 
 .. code-block:: python
 
-   from typing import List
-
-   def greet_all(names: List[str]) -> None:
+   def greet_all(names: list[str]) -> None:
        for name in names:
            print('Hello ' + name)
 
@@ -185,20 +182,38 @@ strings, use the :py:class:`~typing.List` type:
    greet_all(names)   # Ok!
    greet_all(ages)    # Error due to incompatible types
 
-The :py:class:`~typing.List` type is an example of something called a *generic type*: it can
-accept one or more *type parameters*. In this case, we *parameterized* :py:class:`~typing.List`
-by writing ``List[str]``. This lets mypy know that ``greet_all`` accepts specifically
+The ``list`` type is an example of something called a *generic type*: it can
+accept one or more *type parameters*. In this case, we *parameterized* ``list``
+by writing ``list[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
-In this particular case, the type signature is perhaps a little too rigid.
-After all, there's no reason why this function must accept *specifically* a list --
-it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
-
-You can express this idea using the :py:class:`~typing.Iterable` type instead of :py:class:`~typing.List`:
+In Python 3.8 and earlier, you can instead import the
+:py:class:`~typing.List` type from the :py:mod:`typing` module:
 
 .. code-block:: python
 
-   from typing import Iterable
+   from typing import List  # Python 3.8 and earlier
+
+   def greet_all(names: List[str]) -> None:
+       for name in names:
+           print('Hello ' + name)
+
+   ...
+
+You can find many of these more complex static types in the :py:mod:`typing` module.
+
+In the above examples, the type signature is perhaps a little too rigid.
+After all, there's no reason why this function must accept *specifically* a list --
+it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
+
+You can express this idea using the
+:py:class:`collections.abc.Iterable` type instead of
+:py:class:`~typing.List` (or :py:class:`typing.Iterable` in Python
+3.8 and earlier):
+
+.. code-block:: python
+
+   from collections.abc import Iterable  # or "from typing import Iterable"
 
    def greet_all(names: Iterable[str]) -> None:
        for name in names:
@@ -239,13 +254,21 @@ and a more detailed overview (including information on how to make your own
 generic types or your own type aliases) by looking through the
 :ref:`type system reference <overview-type-system-reference>`.
 
-One final note: when adding types, the convention is to import types
-using the form ``from typing import Iterable`` (as opposed to doing
-just ``import typing`` or ``import typing as t`` or ``from typing import *``).
+.. note::
 
-For brevity, we often omit these :py:mod:`typing` imports in code examples, but
-mypy will give an error if you use types such as :py:class:`~typing.Iterable`
-without first importing them.
+   When adding types, the convention is to import types
+   using the form ``from typing import Union`` (as opposed to doing
+   just ``import typing`` or ``import typing as t`` or ``from typing import *``).
+
+   For brevity, we often omit imports from :py:mod:`typing` or :py:mod:`collections.abc`
+   in code examples, but mypy will give an error if you use types such as
+   :py:class:`~typing.Iterable` without first importing them.
+
+.. note::
+
+   In some examples we use capitalized variants of types, such as
+   ``List``, and sometimes we use plain ``list``. They are equivalent,
+   but the prior variant is needed if you are not using a recent Python.
 
 Local type inference
 ********************
@@ -267,7 +290,7 @@ of type ``List[float]`` and that ``num`` must be of type ``float``:
 
 .. code-block:: python
 
-   def nums_below(numbers: Iterable[float], limit: float) -> List[float]:
+   def nums_below(numbers: Iterable[float], limit: float) -> list[float]:
        output = []
        for num in numbers:
            if num < limit:
@@ -289,10 +312,13 @@ syntax like so:
 
 .. code-block:: python
 
+   # If you're using Python 3.9+
+   my_global_dict: dict[int, float] = {}
+
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-   # If you want compatibility with older versions of Python
+   # If you want compatibility with even older versions of Python
    my_global_dict = {}  # type: Dict[int, float]
 
 .. _stubs-intro:
