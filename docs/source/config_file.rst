@@ -538,6 +538,7 @@ section of the command line docs.
     :default: False
 
     Disallows inferring variable type for ``None`` from two assignments in different scopes.
+    This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
 
 .. confval:: disable_error_code
 
