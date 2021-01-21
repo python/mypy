@@ -969,8 +969,8 @@ d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument
                  # N: Possible overload variants: \
                  # N:     def get(self, k: str) -> object \
                  # N:     def [V] get(self, k: str, default: Union[int, V]) -> object
-x = d.get('z') # E: TypedDict "D" has no key 'z'
-reveal_type(x) # N: Revealed type is 'Any'
+x = d.get('z')
+reveal_type(x) # N: Revealed type is 'builtins.object*'
 s = ''
 y = d.get(s)
 reveal_type(y) # N: Revealed type is 'builtins.object*'
@@ -1689,8 +1689,7 @@ td: Union[TDA, TDB]
 
 reveal_type(td.get('a'))  # N: Revealed type is 'builtins.int'
 reveal_type(td.get('b'))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(td.get('c'))  # E: TypedDict "TDA" has no key 'c' \
-                          # N: Revealed type is 'Union[Any, builtins.int]'
+reveal_type(td.get('c'))  # N: Revealed type is 'builtins.object*'
 
 reveal_type(td['a'])  # N: Revealed type is 'builtins.int'
 reveal_type(td['b'])  # N: Revealed type is 'Union[builtins.str, builtins.int]'
