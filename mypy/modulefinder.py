@@ -34,7 +34,7 @@ PackageDirs = List[OnePackageDir]
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
 
-PYTHON2_STUB_DIR: Final = '@python2'
+PYTHON2_STUB_DIR = '@python2'  # type: Final
 
 
 # TODO: Consider adding more reasons here?
