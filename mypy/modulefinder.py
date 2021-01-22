@@ -188,7 +188,7 @@ class FindModuleCache:
             if top_level in self.stdlib_py_versions:
                 min_version = self.stdlib_py_versions[top_level]
                 use_typeshed = self.options is None or self.options.python_version >= min_version
-            self.results[id] = self._find_module(id)
+            self.results[id] = self._find_module(id, use_typeshed)
             if (self.results[id] is ModuleNotFoundReason.NOT_FOUND
                     and self._can_find_module_in_parent_dir(id)):
                 self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
@@ -230,7 +230,7 @@ class FindModuleCache:
                   for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
             parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
-            if not isinstance(parent_search._find_module(id), ModuleNotFoundReason):
+            if not isinstance(parent_search._find_module(id, False), ModuleNotFoundReason):
                 return True
         return False
 
