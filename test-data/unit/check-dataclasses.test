@@ -484,6 +484,7 @@ s: str = a.bar()  # E: Incompatible types in assignment (expression has type "in
 
 
 [case testDataclassUntypedGenericInheritance]
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
@@ -503,6 +504,7 @@ reveal_type(sub.attr)  # N: Revealed type is 'Any'
 
 
 [case testDataclassGenericSubtype]
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
@@ -528,6 +530,7 @@ reveal_type(sub_str.attr)  # N: Revealed type is 'builtins.str*'
 
 
 [case testDataclassGenericInheritance]
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
@@ -553,6 +556,7 @@ reveal_type(sub.three)  # N: Revealed type is 'builtins.float*'
 
 
 [case testDataclassMultiGenericInheritance]
+# flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 

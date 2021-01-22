@@ -2823,5 +2823,5 @@ from stub import d  # E: Module 'stub' has no attribute 'd'
 from mystery import a, b as b, c as d
 
 [out]
-tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named 'mystery'
+tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named "mystery"
 tmp/stub.pyi:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
