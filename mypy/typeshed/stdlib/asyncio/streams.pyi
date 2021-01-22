@@ -1,9 +1,7 @@
 import sys
-from typing import Any, Awaitable, Callable, Iterable, Optional, Tuple, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Tuple, Union
 
-from . import events
-from . import protocols
-from . import transports
+from . import events, protocols, transports
 
 _ClientConnectedCallback = Callable[[StreamReader, StreamWriter], Optional[Awaitable[None]]]
 
@@ -12,7 +10,6 @@ if sys.version_info < (3, 8):
         expected: Optional[int]
         partial: bytes
         def __init__(self, partial: bytes, expected: Optional[int]) -> None: ...
-
     class LimitOverrunError(Exception):
         consumed: int
         def __init__(self, message: str, consumed: int) -> None: ...
@@ -24,9 +21,8 @@ async def open_connection(
     loop: Optional[events.AbstractEventLoop] = ...,
     limit: int = ...,
     ssl_handshake_timeout: Optional[float] = ...,
-    **kwds: Any
+    **kwds: Any,
 ) -> Tuple[StreamReader, StreamWriter]: ...
-
 async def start_server(
     client_connected_cb: _ClientConnectedCallback,
     host: Optional[str] = ...,
@@ -35,50 +31,50 @@ async def start_server(
     loop: Optional[events.AbstractEventLoop] = ...,
     limit: int = ...,
     ssl_handshake_timeout: Optional[float] = ...,
-    **kwds: Any
+    **kwds: Any,
 ) -> events.AbstractServer: ...
 
-if sys.platform != 'win32':
+if sys.platform != "win32":
     if sys.version_info >= (3, 7):
         from os import PathLike
+
         _PathType = Union[str, PathLike[str]]
     else:
         _PathType = str
-
     async def open_unix_connection(
-        path: Optional[_PathType] = ...,
-        *,
-        loop: Optional[events.AbstractEventLoop] = ...,
-        limit: int = ...,
-        **kwds: Any
+        path: Optional[_PathType] = ..., *, loop: Optional[events.AbstractEventLoop] = ..., limit: int = ..., **kwds: Any
     ) -> Tuple[StreamReader, StreamWriter]: ...
-
     async def start_unix_server(
         client_connected_cb: _ClientConnectedCallback,
         path: Optional[_PathType] = ...,
         *,
         loop: Optional[events.AbstractEventLoop] = ...,
         limit: int = ...,
-        **kwds: Any) -> events.AbstractServer: ...
+        **kwds: Any,
+    ) -> events.AbstractServer: ...
 
 class FlowControlMixin(protocols.Protocol): ...
 
 class StreamReaderProtocol(FlowControlMixin, protocols.Protocol):
-    def __init__(self,
-                 stream_reader: StreamReader,
-                 client_connected_cb: Optional[_ClientConnectedCallback] = ...,
-                 loop: Optional[events.AbstractEventLoop] = ...) -> None: ...
+    def __init__(
+        self,
+        stream_reader: StreamReader,
+        client_connected_cb: Optional[_ClientConnectedCallback] = ...,
+        loop: Optional[events.AbstractEventLoop] = ...,
+    ) -> None: ...
     def connection_made(self, transport: transports.BaseTransport) -> None: ...
     def connection_lost(self, exc: Optional[Exception]) -> None: ...
     def data_received(self, data: bytes) -> None: ...
     def eof_received(self) -> bool: ...
 
 class StreamWriter:
-    def __init__(self,
-                 transport: transports.BaseTransport,
-                 protocol: protocols.BaseProtocol,
-                 reader: Optional[StreamReader],
-                 loop: events.AbstractEventLoop) -> None: ...
+    def __init__(
+        self,
+        transport: transports.BaseTransport,
+        protocol: protocols.BaseProtocol,
+        reader: Optional[StreamReader],
+        loop: events.AbstractEventLoop,
+    ) -> None: ...
     @property
     def transport(self) -> transports.BaseTransport: ...
     def write(self, data: bytes) -> None: ...
@@ -93,9 +89,7 @@ class StreamWriter:
     async def drain(self) -> None: ...
 
 class StreamReader:
-    def __init__(self,
-                 limit: int = ...,
-                 loop: Optional[events.AbstractEventLoop] = ...) -> None: ...
+    def __init__(self, limit: int = ..., loop: Optional[events.AbstractEventLoop] = ...) -> None: ...
     def exception(self) -> Exception: ...
     def set_exception(self, exc: Exception) -> None: ...
     def set_transport(self, transport: transports.BaseTransport) -> None: ...
@@ -106,3 +100,5 @@ class StreamReader:
     async def readuntil(self, separator: bytes = ...) -> bytes: ...
     async def read(self, n: int = ...) -> bytes: ...
     async def readexactly(self, n: int) -> bytes: ...
+    def __aiter__(self) -> AsyncIterator[bytes]: ...
+    async def __anext__(self) -> bytes: ...

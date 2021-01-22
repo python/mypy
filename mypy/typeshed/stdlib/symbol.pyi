@@ -1,6 +1,3 @@
-# Stubs for symbol (Python 3)
-
-import sys
 from typing import Dict
 
 single_input: int
@@ -20,8 +17,7 @@ stmt: int
 simple_stmt: int
 small_stmt: int
 expr_stmt: int
-if sys.version_info >= (3, 6):
-    annassign: int
+annassign: int
 testlist_star_expr: int
 augassign: int
 del_stmt: int

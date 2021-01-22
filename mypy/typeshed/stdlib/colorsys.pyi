@@ -1,5 +1,3 @@
-# Stubs for colorsys
-
 from typing import Tuple
 
 def rgb_to_yiq(r: float, g: float, b: float) -> Tuple[float, float, float]: ...

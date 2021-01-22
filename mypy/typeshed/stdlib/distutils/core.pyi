@@ -1,9 +1,7 @@
-# Stubs for distutils.core
-
-from typing import Any, List, Mapping, Optional, Tuple, Type, Union
 from distutils.cmd import Command as Command
 from distutils.dist import Distribution as Distribution
 from distutils.extension import Extension as Extension
+from typing import Any, List, Mapping, Optional, Tuple, Type, Union
 
 def setup(
     *,

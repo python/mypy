@@ -18,7 +18,7 @@ from _csv import (
     writer as writer,
 )
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Type
 
 _DictRow = Mapping[str, Any]
 

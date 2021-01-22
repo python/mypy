@@ -1,3 +1,1 @@
-# Stubs for distutils.filelist
-
 class FileList: ...

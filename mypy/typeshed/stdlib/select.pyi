@@ -1,8 +1,7 @@
 import sys
-from typing import Any, Iterable, List, Optional, Tuple, Type
-from types import TracebackType
 from _typeshed import FileDescriptorLike
-
+from types import TracebackType
+from typing import Any, Iterable, List, Optional, Tuple, Type
 
 if sys.platform != "win32":
     PIPE_BUF: int
@@ -25,8 +24,9 @@ class poll:
     def unregister(self, fd: FileDescriptorLike) -> None: ...
     def poll(self, timeout: Optional[float] = ...) -> List[Tuple[int, int]]: ...
 
-def select(__rlist: Iterable[Any], __wlist: Iterable[Any], __xlist: Iterable[Any],
-           __timeout: Optional[float] = ...) -> Tuple[List[Any], List[Any], List[Any]]: ...
+def select(
+    __rlist: Iterable[Any], __wlist: Iterable[Any], __xlist: Iterable[Any], __timeout: Optional[float] = ...
+) -> Tuple[List[Any], List[Any], List[Any]]: ...
 
 if sys.version_info >= (3, 3):
     error = OSError
@@ -42,18 +42,26 @@ if sys.platform != "linux" and sys.platform != "win32":
         flags: int
         ident: int
         udata: Any
-        def __init__(self, ident: FileDescriptorLike, filter: int = ..., flags: int = ..., fflags: int = ..., data: Any = ..., udata: Any = ...) -> None: ...
-
+        def __init__(
+            self,
+            ident: FileDescriptorLike,
+            filter: int = ...,
+            flags: int = ...,
+            fflags: int = ...,
+            data: Any = ...,
+            udata: Any = ...,
+        ) -> None: ...
     # BSD only
     class kqueue(object):
         closed: bool
         def __init__(self) -> None: ...
         def close(self) -> None: ...
-        def control(self, __changelist: Optional[Iterable[kevent]], __maxevents: int, __timeout: Optional[float] = ...) -> List[kevent]: ...
+        def control(
+            self, __changelist: Optional[Iterable[kevent]], __maxevents: int, __timeout: Optional[float] = ...
+        ) -> List[kevent]: ...
         def fileno(self) -> int: ...
         @classmethod
         def fromfd(cls, __fd: FileDescriptorLike) -> kqueue: ...
-
     KQ_EV_ADD: int
     KQ_EV_CLEAR: int
     KQ_EV_DELETE: int
@@ -101,7 +109,12 @@ if sys.platform == "linux":
             def __init__(self, sizehint: int = ...) -> None: ...
         if sys.version_info >= (3, 4):
             def __enter__(self) -> epoll: ...
-            def __exit__(self, exc_type: Optional[Type[BaseException]] = ..., exc_val: Optional[BaseException] = ..., exc_tb: Optional[TracebackType] = ...) -> None: ...
+            def __exit__(
+                self,
+                exc_type: Optional[Type[BaseException]] = ...,
+                exc_val: Optional[BaseException] = ...,
+                exc_tb: Optional[TracebackType] = ...,
+            ) -> None: ...
         def close(self) -> None: ...
         closed: bool
         def fileno(self) -> int: ...
@@ -111,7 +124,6 @@ if sys.platform == "linux":
         def poll(self, timeout: Optional[float] = ..., maxevents: int = ...) -> List[Tuple[int, int]]: ...
         @classmethod
         def fromfd(cls, __fd: FileDescriptorLike) -> epoll: ...
-
     EPOLLERR: int
     EPOLLET: int
     EPOLLHUP: int

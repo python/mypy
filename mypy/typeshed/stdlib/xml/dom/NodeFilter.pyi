@@ -16,5 +16,4 @@ class NodeFilter:
     SHOW_DOCUMENT_TYPE: int
     SHOW_DOCUMENT_FRAGMENT: int
     SHOW_NOTATION: int
-
     def acceptNode(self, node) -> int: ...

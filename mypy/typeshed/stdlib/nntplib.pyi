@@ -1,17 +1,15 @@
-# Stubs for nntplib (Python 3)
-
 import datetime
 import socket
 import ssl
 import sys
-from typing import Any, Dict, IO, Iterable, List, NamedTuple, Optional, Tuple, TypeVar, Union
+from typing import IO, Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar, Union
 
-_SelfT = TypeVar('_SelfT', bound=_NNTPBase)
+_SelfT = TypeVar("_SelfT", bound=_NNTPBase)
 _File = Union[IO[bytes], bytes, str, None]
-
 
 class NNTPError(Exception):
     response: str
+
 class NNTPReplyError(NNTPError): ...
 class NNTPTemporaryError(NNTPError): ...
 class NNTPPermanentError(NNTPError): ...
@@ -26,6 +24,7 @@ class GroupInfo(NamedTuple):
     last: str
     first: str
     flag: str
+
 class ArticleInfo(NamedTuple):
     number: int
     message_id: str
@@ -46,9 +45,7 @@ class _NNTPBase:
     authenticated: bool
     nntp_implementation: str
     nntp_version: int
-
-    def __init__(self, file: IO[bytes], host: str,
-                 readermode: Optional[bool] = ..., timeout: float = ...) -> None: ...
+    def __init__(self, file: IO[bytes], host: str, readermode: Optional[bool] = ..., timeout: float = ...) -> None: ...
     def __enter__(self: _SelfT) -> _SelfT: ...
     def __exit__(self, *args: Any) -> None: ...
     def getwelcome(self) -> str: ...
@@ -57,7 +54,9 @@ class _NNTPBase:
     def debug(self, level: int) -> None: ...
     def capabilities(self) -> Tuple[str, Dict[str, List[str]]]: ...
     def newgroups(self, date: Union[datetime.date, datetime.datetime], *, file: _File = ...) -> Tuple[str, List[str]]: ...
-    def newnews(self, group: str, date: Union[datetime.date, datetime.datetime], *, file: _File = ...) -> Tuple[str, List[str]]: ...
+    def newnews(
+        self, group: str, date: Union[datetime.date, datetime.datetime], *, file: _File = ...
+    ) -> Tuple[str, List[str]]: ...
     def list(self, group_pattern: Optional[str] = ..., *, file: _File = ...) -> Tuple[str, List[str]]: ...
     def description(self, group: str) -> str: ...
     def descriptions(self, group_pattern: str) -> Tuple[str, Dict[str, str]]: ...
@@ -72,7 +71,9 @@ class _NNTPBase:
     def slave(self) -> str: ...
     def xhdr(self, hdr: str, str: Any, *, file: _File = ...) -> Tuple[str, List[str]]: ...
     def xover(self, start: int, end: int, *, file: _File = ...) -> Tuple[str, List[Tuple[int, Dict[str, str]]]]: ...
-    def over(self, message_spec: Union[None, str, List[Any], Tuple[Any, ...]], *, file: _File = ...) -> Tuple[str, List[Tuple[int, Dict[str, str]]]]: ...
+    def over(
+        self, message_spec: Union[None, str, List[Any], Tuple[Any, ...]], *, file: _File = ...
+    ) -> Tuple[str, List[Tuple[int, Dict[str, str]]]]: ...
     if sys.version_info < (3, 9):
         def xgtitle(self, group: str, *, file: _File = ...) -> Tuple[str, List[Tuple[str, str]]]: ...
         def xpath(self, id: Any) -> Tuple[str, str]: ...
@@ -83,20 +84,30 @@ class _NNTPBase:
     def login(self, user: Optional[str] = ..., password: Optional[str] = ..., usenetrc: bool = ...) -> None: ...
     def starttls(self, ssl_context: Optional[ssl.SSLContext] = ...) -> None: ...
 
-
 class NNTP(_NNTPBase):
     port: int
     sock: socket.socket
-
-    def __init__(self, host: str, port: int = ..., user: Optional[str] = ..., password: Optional[str] = ...,
-                 readermode: Optional[bool] = ..., usenetrc: bool = ...,
-                 timeout: float = ...) -> None: ...
-
+    def __init__(
+        self,
+        host: str,
+        port: int = ...,
+        user: Optional[str] = ...,
+        password: Optional[str] = ...,
+        readermode: Optional[bool] = ...,
+        usenetrc: bool = ...,
+        timeout: float = ...,
+    ) -> None: ...
 
 class NNTP_SSL(_NNTPBase):
     sock: socket.socket
-
-    def __init__(self, host: str, port: int = ..., user: Optional[str] = ..., password: Optional[str] = ...,
-                 ssl_context: Optional[ssl.SSLContext] = ...,
-                 readermode: Optional[bool] = ..., usenetrc: bool = ...,
-                 timeout: float = ...) -> None: ...
+    def __init__(
+        self,
+        host: str,
+        port: int = ...,
+        user: Optional[str] = ...,
+        password: Optional[str] = ...,
+        ssl_context: Optional[ssl.SSLContext] = ...,
+        readermode: Optional[bool] = ...,
+        usenetrc: bool = ...,
+        timeout: float = ...,
+    ) -> None: ...

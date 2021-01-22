@@ -1,7 +1,6 @@
-# Structs for xdrlib (Python 2 and 3)
 from typing import Callable, List, Sequence, TypeVar
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 class Error(Exception):
     msg: str

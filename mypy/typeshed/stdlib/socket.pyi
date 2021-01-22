@@ -1,23 +1,6 @@
-"""Stub for the socket module
-
-This file is organized to mirror the module's documentation, with a very small
-number of exceptions.
-
-To avoid requiring tests on all platforms, platform checks are included only
-where the documentation notes platform availability (as opposed to following
-actual availability), with one or two exceptions.
-
-Module documentation: https://docs.python.org/3/library/socket.html
-CPython module source: https://github.com/python/cpython/blob/master/Lib/socket.py
-CPython C source: https://github.com/python/cpython/blob/master/Modules/socketmodule.c
-"""
-# Authorship from original mypy stubs (not in typeshed git history):
-#   Ron Murawski <ron@horizonchess.com>
-#   adapted for Python 2.7 by Michal Pokorny
 import sys
 from typing import Any, BinaryIO, Iterable, List, Optional, Text, TextIO, Tuple, TypeVar, Union, overload
 from typing_extensions import Literal
-
 
 # ----- Constants -----
 # Some socket families are listed in the "Socket families" section of the docs,
@@ -52,7 +35,7 @@ SOCK_RAW: SocketKind
 SOCK_RDM: SocketKind
 SOCK_SEQPACKET: SocketKind
 
-if sys.platform == 'linux' and sys.version_info >= (3,):
+if sys.platform == "linux" and sys.version_info >= (3,):
     SOCK_CLOEXEC: SocketKind
     SOCK_NONBLOCK: SocketKind
 
@@ -94,7 +77,7 @@ AI_NUMERICSERV: AddressInfo
 AI_PASSIVE: AddressInfo
 AI_V4MAPPED: AddressInfo
 AI_V4MAPPED_CFG: AddressInfo
-EAIEAI_ADDRFAMILY: int
+EAI_ADDRFAMILY: int
 EAI_AGAIN: int
 EAI_BADFLAGS: int
 EAI_BADHINTS: int
@@ -285,7 +268,7 @@ if sys.version_info >= (3, 7):
 
 # Specifically-documented constants
 
-if sys.platform == 'linux' and sys.version_info >= (3,):
+if sys.platform == "linux" and sys.version_info >= (3,):
     AF_CAN: AddressFamily
     PF_CAN: int
     SOL_CAN_BASE: int
@@ -318,7 +301,7 @@ if sys.platform == 'linux' and sys.version_info >= (3,):
 
     CAN_RAW_FD_FRAMES: int
 
-if sys.platform == 'linux' and sys.version_info >= (3, 8):
+if sys.platform == "linux" and sys.version_info >= (3, 8):
     CAN_BCM_SETTIMER: int
     CAN_BCM_STARTTIMER: int
     CAN_BCM_TX_COUNTEVT: int
@@ -332,10 +315,10 @@ if sys.platform == 'linux' and sys.version_info >= (3, 8):
     CAN_BCM_RX_RTR_FRAME: int
     CAN_BCM_CAN_FD_FRAME: int
 
-if sys.platform == 'linux' and sys.version_info >= (3, 7):
+if sys.platform == "linux" and sys.version_info >= (3, 7):
     CAN_ISOTP: int
 
-if sys.platform == 'linux' and sys.version_info >= (3, 9):
+if sys.platform == "linux" and sys.version_info >= (3, 9):
     CAN_J1939: int
 
     J1939_MAX_UNICAST_ADDR: int
@@ -367,7 +350,7 @@ if sys.platform == 'linux' and sys.version_info >= (3, 9):
 
     J1939_FILTER_MAX: int
 
-if sys.platform == 'linux':
+if sys.platform == "linux":
     AF_PACKET: AddressFamily
     PF_PACKET: int
     PACKET_BROADCAST: int
@@ -378,7 +361,7 @@ if sys.platform == 'linux':
     PACKET_OTHERHOST: int
     PACKET_OUTGOING: int
 
-if sys.platform == 'linux' and sys.version_info >= (3,):
+if sys.platform == "linux" and sys.version_info >= (3,):
     AF_RDS: AddressFamily
     PF_RDS: int
     SOL_RDS: int
@@ -401,7 +384,7 @@ if sys.platform == 'linux' and sys.version_info >= (3,):
     RDS_RDMA_USE_ONCE: int
     RDS_RECVERR: int
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     SIO_RCVALL: int
     SIO_KEEPALIVE_VALS: int
     if sys.version_info >= (3, 6):
@@ -412,7 +395,7 @@ if sys.platform == 'win32':
     RCVALL_ON: int
     RCVALL_SOCKETLEVELONLY: int
 
-if sys.platform == 'linux':
+if sys.platform == "linux":
     AF_TIPC: AddressFamily
     SOL_TIPC: int
     TIPC_ADDR_ID: int
@@ -439,7 +422,7 @@ if sys.platform == 'linux':
     TIPC_WITHDRAWN: int
     TIPC_ZONE_SCOPE: int
 
-if sys.platform == 'linux' and sys.version_info >= (3, 6):
+if sys.platform == "linux" and sys.version_info >= (3, 6):
     AF_ALG: AddressFamily
     SOL_ALG: int
     ALG_OP_DECRYPT: int
@@ -453,7 +436,7 @@ if sys.platform == 'linux' and sys.version_info >= (3, 6):
     ALG_SET_OP: int
     ALG_SET_PUBKEY: int
 
-if sys.platform == 'linux' and sys.version_info >= (3, 7):
+if sys.platform == "linux" and sys.version_info >= (3, 7):
     AF_VSOCK: AddressFamily
     IOCTL_VM_SOCKETS_GET_LOCAL_CID: int
     VMADDR_CID_ANY: int
@@ -476,14 +459,13 @@ if sys.version_info >= (3, 6):
     TCP_CONGESTION: int
     TCP_USER_TIMEOUT: int
 
-if sys.platform == 'linux' and sys.version_info >= (3, 8):
+if sys.platform == "linux" and sys.version_info >= (3, 8):
     AF_QIPCRTR: AddressFamily
-
 
 # Semi-documented constants
 # (Listed under "Socket families" in the docs, but not "Constants")
 
-if sys.platform == 'linux':
+if sys.platform == "linux":
     # Netlink is defined by Linux
     AF_NETLINK: AddressFamily
     NETLINK_ARPD: int
@@ -501,7 +483,7 @@ if sys.platform == 'linux':
     NETLINK_W1: int
     NETLINK_XFRM: int
 
-if sys.platform != 'win32' and sys.platform != 'darwin':
+if sys.platform != "win32" and sys.platform != "darwin":
     # Linux and some BSD support is explicit in the docs
     # Windows and macOS do not support in practice
     AF_BLUETOOTH: AddressFamily
@@ -518,16 +500,14 @@ if sys.platform != 'win32' and sys.platform != 'darwin':
     HCI_TIME_STAMP: int
     HCI_DATA_DIR: int
 
-if sys.platform == 'darwin':
+if sys.platform == "darwin":
     # PF_SYSTEM is defined by macOS
     PF_SYSTEM: int
     SYSPROTO_CONTROL: int
 
-
 # enum versions of above flags
 if sys.version_info >= (3, 4):
     from enum import IntEnum
-
     class AddressFamily(IntEnum):
         AF_UNIX: int
         AF_INET: int
@@ -566,7 +546,6 @@ if sys.version_info >= (3, 4):
         AF_VSOCK: int
         AF_WANPIPE: int
         AF_X25: int
-
     class SocketKind(IntEnum):
         SOCK_STREAM: int
         SOCK_DGRAM: int
@@ -575,13 +554,13 @@ if sys.version_info >= (3, 4):
         SOCK_SEQPACKET: int
         SOCK_CLOEXEC: int
         SOCK_NONBLOCK: int
+
 else:
     AddressFamily = int
     SocketKind = int
 
 if sys.version_info >= (3, 6):
     from enum import IntFlag
-
     class AddressInfo(IntFlag):
         AI_ADDRCONFIG: int
         AI_ALL: int
@@ -590,7 +569,6 @@ if sys.version_info >= (3, 6):
         AI_NUMERICSERV: int
         AI_PASSIVE: int
         AI_V4MAPPED: int
-
     class MsgFlag(IntFlag):
         MSG_CTRUNC: int
         MSG_DONTROUTE: int
@@ -600,15 +578,16 @@ if sys.version_info >= (3, 6):
         MSG_PEEK: int
         MSG_TRUNC: int
         MSG_WAITALL: int
+
 else:
     AddressInfo = int
     MsgFlag = int
-
 
 # ----- Exceptions -----
 
 if sys.version_info < (3,):
     class error(IOError): ...
+
 else:
     error = OSError
 
@@ -621,7 +600,6 @@ class gaierror(error):
 class timeout(error):
     def __init__(self, error: int = ..., string: str = ...) -> None: ...
 
-
 # ----- Classes -----
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
@@ -633,7 +611,7 @@ _RetAddress = Any
 _WriteBuffer = Union[bytearray, memoryview]
 
 _CMSG = Tuple[int, int, bytes]
-_SelfT = TypeVar('_SelfT', bound=socket)
+_SelfT = TypeVar("_SelfT", bound=socket)
 
 class socket:
     family: int
@@ -646,7 +624,6 @@ class socket:
         def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: Optional[int] = ...) -> None: ...
         def __enter__(self: _SelfT) -> _SelfT: ...
         def __exit__(self, *args: Any) -> None: ...
-
     # --- methods ---
     def accept(self) -> Tuple[socket, _RetAddress]: ...
     def bind(self, address: Union[_Address, bytes]) -> None: ...
@@ -660,21 +637,17 @@ class socket:
         def get_inheritable(self) -> bool: ...
     def getpeername(self) -> _RetAddress: ...
     def getsockname(self) -> _RetAddress: ...
-
     @overload
     def getsockopt(self, level: int, optname: int) -> int: ...
     @overload
     def getsockopt(self, level: int, optname: int, buflen: int) -> bytes: ...
-
     if sys.version_info >= (3, 7):
         def getblocking(self) -> bool: ...
     def gettimeout(self) -> Optional[float]: ...
-
-    if sys.platform == 'win32' and sys.version_info >= (3, 6):
+    if sys.platform == "win32" and sys.version_info >= (3, 6):
         def ioctl(self, control: int, option: Union[int, Tuple[int, int, int], bool]) -> None: ...
-    elif sys.platform == 'win32':
+    elif sys.platform == "win32":
         def ioctl(self, control: int, option: Union[int, Tuple[int, int, int]]) -> None: ...
-
     if sys.version_info >= (3, 5):
         def listen(self, __backlog: int = ...) -> None: ...
     else:
@@ -683,32 +656,34 @@ class socket:
     if sys.version_info >= (3,):
         # mode strings with duplicates are intentionally excluded
         @overload
-        def makefile(self,
-                     mode: Literal['r', 'w', 'rw', 'wr', ''] = ...,
-                     buffering: Optional[int] = ...,
-                     *,
-                     encoding: Optional[str] = ...,
-                     errors: Optional[str] = ...,
-                     newline: Optional[str] = ...) -> TextIO: ...
+        def makefile(
+            self,
+            mode: Literal["r", "w", "rw", "wr", ""] = ...,
+            buffering: Optional[int] = ...,
+            *,
+            encoding: Optional[str] = ...,
+            errors: Optional[str] = ...,
+            newline: Optional[str] = ...,
+        ) -> TextIO: ...
         @overload
-        def makefile(self,
-                     mode: Literal['b', 'rb', 'br', 'wb', 'bw', 'rwb', 'rbw', 'wrb', 'wbr', 'brw', 'bwr'],
-                     buffering: Optional[int] = ...,
-                     *,
-                     encoding: Optional[str] = ...,
-                     errors: Optional[str] = ...,
-                     newline: Optional[str] = ...) -> BinaryIO: ...
+        def makefile(
+            self,
+            mode: Literal["b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
+            buffering: Optional[int] = ...,
+            *,
+            encoding: Optional[str] = ...,
+            errors: Optional[str] = ...,
+            newline: Optional[str] = ...,
+        ) -> BinaryIO: ...
     else:
         def makefile(self, mode: unicode = ..., buffering: int = ...) -> BinaryIO: ...
     def recv(self, bufsize: int, flags: int = ...) -> bytes: ...
     def recvfrom(self, bufsize: int, flags: int = ...) -> Tuple[bytes, _RetAddress]: ...
-
     if sys.version_info >= (3, 3) and sys.platform != "win32":
         def recvmsg(self, __bufsize: int, __ancbufsize: int = ..., __flags: int = ...) -> Tuple[bytes, List[_CMSG], int, Any]: ...
-        def recvmsg_into(self,
-                         __buffers: Iterable[_WriteBuffer],
-                         __ancbufsize: int = ...,
-                         __flags: int = ...) -> Tuple[int, List[_CMSG], int, Any]: ...
+        def recvmsg_into(
+            self, __buffers: Iterable[_WriteBuffer], __ancbufsize: int = ..., __flags: int = ...
+        ) -> Tuple[int, List[_CMSG], int, Any]: ...
     def recvfrom_into(self, buffer: _WriteBuffer, nbytes: int = ..., flags: int = ...) -> Tuple[int, _RetAddress]: ...
     def recv_into(self, buffer: _WriteBuffer, nbytes: int = ..., flags: int = ...) -> int: ...
     def send(self, data: bytes, flags: int = ...) -> int: ...
@@ -718,22 +693,18 @@ class socket:
     @overload
     def sendto(self, data: bytes, flags: int, address: _Address) -> int: ...
     if sys.version_info >= (3, 3) and sys.platform != "win32":
-        def sendmsg(self,
-                    __buffers: Iterable[bytes],
-                    __ancdata: Iterable[_CMSG] = ...,
-                    __flags: int = ...,
-                    __address: _Address = ...) -> int: ...
-    if sys.platform == 'linux' and sys.version_info >= (3, 6):
-        # TODO add the parameter types for sendmsg_afalg
-        def sendmsg_afalg(self, msg=..., *, op, iv=..., assoclen=..., flags=...) -> int: ...
-
+        def sendmsg(
+            self, __buffers: Iterable[bytes], __ancdata: Iterable[_CMSG] = ..., __flags: int = ..., __address: _Address = ...
+        ) -> int: ...
+    if sys.platform == "linux" and sys.version_info >= (3, 6):
+        def sendmsg_afalg(
+            self, msg: Iterable[bytes] = ..., *, op: int, iv: Any = ..., assoclen: int = ..., flags: int = ...
+        ) -> int: ...
     if sys.version_info >= (3,):
-        # TODO determine legal types for file parameter
-        def sendfile(self, file, offset: int = ..., count: Optional[int] = ...) -> int: ...
+        def sendfile(self, file: BinaryIO, offset: int = ..., count: Optional[int] = ...) -> int: ...
         def set_inheritable(self, inheritable: bool) -> None: ...
     def setblocking(self, flag: bool) -> None: ...
     def settimeout(self, value: Optional[float]) -> None: ...
-
     if sys.version_info < (3, 6):
         def setsockopt(self, level: int, optname: int, value: Union[int, bytes]) -> None: ...
     else:
@@ -741,60 +712,59 @@ class socket:
         def setsockopt(self, level: int, optname: int, value: Union[int, bytes]) -> None: ...
         @overload
         def setsockopt(self, level: int, optname: int, value: None, optlen: int) -> None: ...
-
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         def share(self, process_id: int) -> bytes: ...
-
     def shutdown(self, how: int) -> None: ...
-
 
 # ----- Functions -----
 
 if sys.version_info >= (3, 7):
     def close(fd: int) -> None: ...
 
-def create_connection(address: Tuple[Optional[str], int],
-                      timeout: Optional[float] = ...,
-                      source_address: Optional[Tuple[Union[bytearray, bytes, Text], int]] = ...) -> socket: ...
+def create_connection(
+    address: Tuple[Optional[str], int],
+    timeout: Optional[float] = ...,
+    source_address: Optional[Tuple[Union[bytearray, bytes, Text], int]] = ...,
+) -> socket: ...
 
 if sys.version_info >= (3, 8):
-    def create_server(address: _Address,
-                      *,
-                      family: int = ...,
-                      backlog: Optional[int] = ...,
-                      reuse_port: bool = ...,
-                      dualstack_ipv6: bool = ...) -> socket: ...
+    def create_server(
+        address: _Address, *, family: int = ..., backlog: Optional[int] = ..., reuse_port: bool = ..., dualstack_ipv6: bool = ...
+    ) -> socket: ...
     def has_dualstack_ipv6() -> bool: ...
 
 def fromfd(fd: int, family: int, type: int, proto: int = ...) -> socket: ...
 
-if sys.platform == 'win32' and sys.version_info >= (3, 3):
+if sys.platform == "win32" and sys.version_info >= (3, 3):
     def fromshare(info: bytes) -> socket: ...
 
 # the 5th tuple item is an address
-# TODO the "Tuple[Any, ...]" should be "Union[Tuple[str, int], Tuple[str, int, int, int]]" but that triggers
-# https://github.com/python/mypy/issues/2509
 if sys.version_info >= (3,):
-    def getaddrinfo(host: Optional[Union[bytearray, bytes, Text]],
-                    port: Union[str, int, None],
-                    family: int = ...,
-                    type: int = ...,
-                    proto: int = ...,
-                    flags: int = ...) -> List[Tuple[AddressFamily, SocketKind, int, str, Tuple[Any, ...]]]: ...
+    def getaddrinfo(
+        host: Optional[Union[bytearray, bytes, Text]],
+        port: Union[str, int, None],
+        family: int = ...,
+        type: int = ...,
+        proto: int = ...,
+        flags: int = ...,
+    ) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
+
 else:
-    def getaddrinfo(host: Optional[Union[bytearray, bytes, Text]],
-                    port: Union[str, int, None],
-                    family: int = ...,
-                    socktype: int = ...,
-                    proto: int = ...,
-                    flags: int = ...) -> List[Tuple[AddressFamily, SocketKind, int, str, Tuple[Any, ...]]]: ...
+    def getaddrinfo(
+        host: Optional[Union[bytearray, bytes, Text]],
+        port: Union[str, int, None],
+        family: int = ...,
+        socktype: int = ...,
+        proto: int = ...,
+        flags: int = ...,
+    ) -> List[Tuple[AddressFamily, SocketKind, int, str, Tuple[Any, ...]]]: ...
 
 def getfqdn(name: str = ...) -> str: ...
 def gethostbyname(hostname: str) -> str: ...
 def gethostbyname_ex(hostname: str) -> Tuple[str, List[str], List[str]]: ...
 def gethostname() -> str: ...
 def gethostbyaddr(ip_address: str) -> Tuple[str, List[str], List[str]]: ...
-def getnameinfo(sockaddr: Union[Tuple[str, int], Tuple[str, int, int, int]], flags: int) -> Tuple[str, int]: ...
+def getnameinfo(sockaddr: Union[Tuple[str, int], Tuple[str, int, int, int]], flags: int) -> Tuple[str, str]: ...
 def getprotobyname(protocolname: str) -> int: ...
 def getservbyname(servicename: str, protocolname: str = ...) -> int: ...
 def getservbyport(port: int, protocolname: str = ...) -> str: ...
@@ -807,11 +777,22 @@ def inet_aton(ip_string: str) -> bytes: ...  # ret val 4 bytes in length
 def inet_ntoa(packed_ip: bytes) -> str: ...
 def inet_pton(address_family: int, ip_string: str) -> bytes: ...
 def inet_ntop(address_family: int, packed_ip: bytes) -> str: ...
+
+if sys.version_info >= (3, 9):
+    if sys.platform != "win32":
+        # flags and address appear to be unused in send_fds and recv_fds
+        def send_fds(
+            sock: socket, buffers: Iterable[bytes], fds: Union[bytes, Iterable[int]], flags: int = ..., address: None = ...
+        ) -> int: ...
+        def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = ...) -> Tuple[bytes, List[int], int, Any]: ...
+
 if sys.version_info >= (3, 3):
     def CMSG_LEN(length: int) -> int: ...
     def CMSG_SPACE(length: int) -> int: ...
+
 def getdefaulttimeout() -> Optional[float]: ...
 def setdefaulttimeout(timeout: Optional[float]) -> None: ...
+
 if sys.version_info >= (3, 3):
     if sys.platform != "win32":
         def sethostname(name: str) -> None: ...

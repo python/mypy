@@ -1,5 +1,3 @@
-# Stubs for _random
-
 import sys
 from typing import Tuple
 

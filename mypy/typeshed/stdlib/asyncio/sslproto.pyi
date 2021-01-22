@@ -1,15 +1,9 @@
-
-import sys
 import ssl
-
-from typing import ClassVar, Optional, List, Tuple, Callable, Dict, Any, Deque
+import sys
+from typing import Any, Callable, ClassVar, Deque, Dict, List, Optional, Tuple
 from typing_extensions import Literal
 
-from . import transports
-from . import constants
-from . import events
-from . import protocols
-from . import futures
+from . import constants, events, futures, protocols, transports
 
 def _create_transport_context(server_side: bool, server_hostname: Optional[str]) -> ssl.SSLContext: ...
 
@@ -32,9 +26,7 @@ class _SSLPipe:
     _need_ssldata: bool
     _handshake_cb: Optional[Callable[[Optional[BaseException]], None]]
     _shutdown_cb: Optional[Callable[[], None]]
-
     def __init__(self, context: ssl.SSLContext, server_side: bool, server_hostname: Optional[str] = ...) -> None: ...
-
     @property
     def context(self) -> ssl.SSLContext: ...
     @property
@@ -43,7 +35,6 @@ class _SSLPipe:
     def need_ssldata(self) -> bool: ...
     @property
     def wrapped(self) -> bool: ...
-
     def do_handshake(self, callback: Optional[Callable[[Optional[BaseException]], None]] = ...) -> List[bytes]: ...
     def shutdown(self, callback: Optional[Callable[[], None]] = ...) -> List[bytes]: ...
     def feed_eof(self) -> None: ...
@@ -57,12 +48,7 @@ class _SSLProtocolTransport(transports._FlowControlMixin, transports.Transport):
     _loop: events.AbstractEventLoop
     _ssl_protocol: SSLProtocol
     _closed: bool
-
-    if sys.version_info >= (3, 6):
-        def __init__(self, loop: events.AbstractEventLoop, ssl_protocol: SSLProtocol) -> None: ...
-    else:
-        def __init__(self, loop: events.AbstractEventLoop, ssl_protocol: SSLProtocol, app_protocol: protocols.BaseProtocol) -> None: ...
-
+    def __init__(self, loop: events.AbstractEventLoop, ssl_protocol: SSLProtocol) -> None: ...
     def get_extra_info(self, name: str, default: Optional[Any] = ...) -> Dict[str, Any]: ...
     def set_protocol(self, protocol: protocols.BaseProtocol) -> None: ...
     def get_protocol(self) -> protocols.BaseProtocol: ...
@@ -89,7 +75,7 @@ class SSLProtocol(protocols.Protocol):
     _extra: Dict[str, Any]
     _write_backlog: Deque[Tuple[bytes, int]]
     _write_buffer_size: int
-    _waiter: futures.Future
+    _waiter: futures.Future[Any]
     _loop: events.AbstractEventLoop
     _app_transport: _SSLProtocolTransport
     _sslpipe: Optional[_SSLPipe]
@@ -103,12 +89,28 @@ class SSLProtocol(protocols.Protocol):
     _app_protocol_is_buffer: bool
 
     if sys.version_info >= (3, 7):
-        def __init__(self, loop: events.AbstractEventLoop, app_protocol: protocols.BaseProtocol, sslcontext: ssl.SSLContext, waiter: futures.Future,
-                     server_side: bool = ..., server_hostname: Optional[str] = ..., call_connection_made: bool = ..., ssl_handshake_timeout: Optional[int] = ...) -> None: ...
+        def __init__(
+            self,
+            loop: events.AbstractEventLoop,
+            app_protocol: protocols.BaseProtocol,
+            sslcontext: ssl.SSLContext,
+            waiter: futures.Future[Any],
+            server_side: bool = ...,
+            server_hostname: Optional[str] = ...,
+            call_connection_made: bool = ...,
+            ssl_handshake_timeout: Optional[int] = ...,
+        ) -> None: ...
     else:
-        def __init__(self, loop: events.AbstractEventLoop, app_protocol: protocols.BaseProtocol, sslcontext: ssl.SSLContext, waiter: futures.Future,
-                     server_side: bool = ..., server_hostname: Optional[str] = ..., call_connection_made: bool = ...) -> None: ...
-
+        def __init__(
+            self,
+            loop: events.AbstractEventLoop,
+            app_protocol: protocols.BaseProtocol,
+            sslcontext: ssl.SSLContext,
+            waiter: futures.Future,
+            server_side: bool = ...,
+            server_hostname: Optional[str] = ...,
+            call_connection_made: bool = ...,
+        ) -> None: ...
     if sys.version_info >= (3, 7):
         def _set_app_protocol(self, app_protocol: protocols.BaseProtocol) -> None: ...
     def _wakeup_waiter(self, exc: Optional[BaseException] = ...) -> None: ...

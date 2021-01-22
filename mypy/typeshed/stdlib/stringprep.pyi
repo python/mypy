@@ -1,5 +1,3 @@
-# Stubs for stringprep (Python 2 and 3)
-
 from typing import Text
 
 def in_table_a1(code: Text) -> bool: ...

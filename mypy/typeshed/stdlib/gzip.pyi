@@ -1,13 +1,12 @@
+import _compression
 import sys
 import zlib
-from typing import IO, Optional, TextIO, Union, overload
-import _compression
 from _typeshed import AnyPath, ReadableBuffer
+from typing import IO, Optional, TextIO, Union, overload
 from typing_extensions import Literal
 
 _OpenBinaryMode = Literal["r", "rb", "a", "ab", "w", "wb", "x", "xb"]
 _OpenTextMode = Literal["rt", "at", "wt", "xt"]
-
 @overload
 def open(
     filename: Union[AnyPath, IO[bytes]],
@@ -43,6 +42,9 @@ class _PaddedFile:
     def prepend(self, prepend: bytes = ...) -> None: ...
     def seek(self, off: int) -> int: ...
     def seekable(self) -> bool: ...
+
+if sys.version_info >= (3, 8):
+    class BadGzipFile(OSError): ...
 
 class GzipFile(_compression.BaseStream):
     myfileobj: Optional[IO[bytes]]
@@ -84,9 +86,9 @@ class _GzipReader(_compression.DecompressReader):
     def read(self, size: int = ...) -> bytes: ...
 
 if sys.version_info >= (3, 8):
-    def compress(data, compresslevel: int = ..., *, mtime: Optional[float] = ...) -> bytes: ...
+    def compress(data: bytes, compresslevel: int = ..., *, mtime: Optional[float] = ...) -> bytes: ...
 
 else:
-    def compress(data, compresslevel: int = ...) -> bytes: ...
+    def compress(data: bytes, compresslevel: int = ...) -> bytes: ...
 
 def decompress(data: bytes) -> bytes: ...

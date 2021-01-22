@@ -1,11 +1,8 @@
-# Stubs for lib2to3.pytree (Python 3.6)
-
 import sys
+from lib2to3.pgen2.grammar import Grammar
 from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, TypeVar, Union
 
-from lib2to3.pgen2.grammar import Grammar
-
-_P = TypeVar('_P')
+_P = TypeVar("_P")
 _NL = Union[Node, Leaf]
 _Context = Tuple[Text, int, int]
 _Results = Dict[Text, _NL]
@@ -45,7 +42,14 @@ class Base:
 
 class Node(Base):
     fixers_applied: List[Any]
-    def __init__(self, type: int, children: List[_NL], context: Optional[Any] = ..., prefix: Optional[Text] = ..., fixers_applied: Optional[List[Any]] = ...) -> None: ...
+    def __init__(
+        self,
+        type: int,
+        children: List[_NL],
+        context: Optional[Any] = ...,
+        prefix: Optional[Text] = ...,
+        fixers_applied: Optional[List[Any]] = ...,
+    ) -> None: ...
     def set_child(self, i: int, child: _NL) -> None: ...
     def insert_child(self, i: int, child: _NL) -> None: ...
     def append_child(self, child: _NL) -> None: ...
@@ -55,7 +59,14 @@ class Leaf(Base):
     column: int
     value: Text
     fixers_applied: List[Any]
-    def __init__(self, type: int, value: Text, context: Optional[_Context] = ..., prefix: Optional[Text] = ..., fixers_applied: List[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        type: int,
+        value: Text,
+        context: Optional[_Context] = ...,
+        prefix: Optional[Text] = ...,
+        fixers_applied: List[Any] = ...,
+    ) -> None: ...
 
 def convert(gr: Grammar, raw_node: _RawNode) -> _NL: ...
 

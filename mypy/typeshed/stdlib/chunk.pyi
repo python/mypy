@@ -1,6 +1,3 @@
-# Source(py2): https://hg.python.org/cpython/file/2.7/Lib/chunk.py
-# Source(py3): https://github.com/python/cpython/blob/master/Lib/chunk.py
-
 from typing import IO
 
 class Chunk:

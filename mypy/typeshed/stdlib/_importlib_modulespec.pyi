@@ -14,9 +14,15 @@ class _Loader(Protocol):
     def load_module(self, fullname: str) -> ModuleType: ...
 
 class ModuleSpec:
-    def __init__(self, name: str, loader: Optional[Loader], *,
-                 origin: Optional[str] = ..., loader_state: Any = ...,
-                 is_package: Optional[bool] = ...) -> None: ...
+    def __init__(
+        self,
+        name: str,
+        loader: Optional[Loader],
+        *,
+        origin: Optional[str] = ...,
+        loader_state: Any = ...,
+        is_package: Optional[bool] = ...,
+    ) -> None: ...
     name: str
     loader: Optional[_Loader]
     origin: Optional[str]

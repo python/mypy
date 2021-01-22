@@ -2,7 +2,7 @@ from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, Pattern, Type, Protocol, overload
+from typing import Any, Dict, List, Optional, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
 
 _Reply = Tuple[int, bytes]
 _SendErrs = Dict[str, _Reply]
@@ -67,16 +67,20 @@ class SMTP:
     command_encoding: str
     source_address: Optional[_SourceAddress]
     local_hostname: str
-    def __init__(self, host: str = ..., port: int = ...,
-                 local_hostname: Optional[str] = ..., timeout: float = ...,
-                 source_address: Optional[_SourceAddress] = ...) -> None: ...
+    def __init__(
+        self,
+        host: str = ...,
+        port: int = ...,
+        local_hostname: Optional[str] = ...,
+        timeout: float = ...,
+        source_address: Optional[_SourceAddress] = ...,
+    ) -> None: ...
     def __enter__(self) -> SMTP: ...
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 tb: Optional[TracebackType]) -> None: ...
+    def __exit__(
+        self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], tb: Optional[TracebackType]
+    ) -> None: ...
     def set_debuglevel(self, debuglevel: int) -> None: ...
-    def connect(self, host: str = ..., port: int = ...,
-                source_address: Optional[_SourceAddress] = ...) -> _Reply: ...
+    def connect(self, host: str = ..., port: int = ..., source_address: Optional[_SourceAddress] = ...) -> _Reply: ...
     def send(self, s: Union[bytes, str]) -> None: ...
     def putcmd(self, cmd: str, args: str = ...) -> None: ...
     def getreply(self) -> _Reply: ...
@@ -104,15 +108,25 @@ class SMTP:
     def auth_plain(self, challenge: Optional[bytes] = ...) -> str: ...
     def auth_login(self, challenge: Optional[bytes] = ...) -> str: ...
     def login(self, user: str, password: str, *, initial_response_ok: bool = ...) -> _Reply: ...
-    def starttls(self, keyfile: Optional[str] = ..., certfile: Optional[str] = ...,
-                 context: Optional[SSLContext] = ...) -> _Reply: ...
-    def sendmail(self, from_addr: str, to_addrs: Union[str, Sequence[str]],
-                 msg: Union[bytes, str], mail_options: Sequence[str] = ...,
-                 rcpt_options: List[str] = ...) -> _SendErrs: ...
-    def send_message(self, msg: _Message, from_addr: Optional[str] = ...,
-                     to_addrs: Optional[Union[str, Sequence[str]]] = ...,
-                     mail_options: List[str] = ...,
-                     rcpt_options: Sequence[str] = ...) -> _SendErrs: ...
+    def starttls(
+        self, keyfile: Optional[str] = ..., certfile: Optional[str] = ..., context: Optional[SSLContext] = ...
+    ) -> _Reply: ...
+    def sendmail(
+        self,
+        from_addr: str,
+        to_addrs: Union[str, Sequence[str]],
+        msg: Union[bytes, str],
+        mail_options: Sequence[str] = ...,
+        rcpt_options: List[str] = ...,
+    ) -> _SendErrs: ...
+    def send_message(
+        self,
+        msg: _Message,
+        from_addr: Optional[str] = ...,
+        to_addrs: Optional[Union[str, Sequence[str]]] = ...,
+        mail_options: List[str] = ...,
+        rcpt_options: Sequence[str] = ...,
+    ) -> _SendErrs: ...
     def close(self) -> None: ...
     def quit(self) -> _Reply: ...
 
@@ -121,16 +135,25 @@ class SMTP_SSL(SMTP):
     keyfile: Optional[str]
     certfile: Optional[str]
     context: SSLContext
-    def __init__(self, host: str = ..., port: int = ...,
-                 local_hostname: Optional[str] = ...,
-                 keyfile: Optional[str] = ..., certfile: Optional[str] = ...,
-                 timeout: float = ...,
-                 source_address: Optional[_SourceAddress] = ...,
-                 context: Optional[SSLContext] = ...) -> None: ...
+    def __init__(
+        self,
+        host: str = ...,
+        port: int = ...,
+        local_hostname: Optional[str] = ...,
+        keyfile: Optional[str] = ...,
+        certfile: Optional[str] = ...,
+        timeout: float = ...,
+        source_address: Optional[_SourceAddress] = ...,
+        context: Optional[SSLContext] = ...,
+    ) -> None: ...
 
 LMTP_PORT: int
 
 class LMTP(SMTP):
-    def __init__(self, host: str = ..., port: int = ...,
-                 local_hostname: Optional[str] = ...,
-                 source_address: Optional[_SourceAddress] = ...) -> None: ...
+    def __init__(
+        self,
+        host: str = ...,
+        port: int = ...,
+        local_hostname: Optional[str] = ...,
+        source_address: Optional[_SourceAddress] = ...,
+    ) -> None: ...

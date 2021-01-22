@@ -1,7 +1,8 @@
+import sys
+from _typeshed import FileDescriptorLike
 from array import array
 from typing import Any, Union, overload
 from typing_extensions import Literal
-from _typeshed import FileDescriptorLike
 
 FASYNC: int
 FD_CLOEXEC: int
@@ -33,6 +34,10 @@ F_SETLK: int
 F_SETLK64: int
 F_SETLKW: int
 F_SETLKW64: int
+if sys.version_info >= (3, 9) and sys.platform == "linux":
+    F_OFD_GETLK: int
+    F_OFD_SETLK: int
+    F_OFD_SETLKW: int
 F_SETOWN: int
 F_SETSIG: int
 F_SHLCK: int
@@ -75,40 +80,20 @@ LOCK_RW: int
 LOCK_SH: int
 LOCK_UN: int
 LOCK_WRITE: int
+@overload
+def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: int = ...) -> int: ...
+@overload
+def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: bytes) -> bytes: ...
 
-@overload
-def fcntl(__fd: FileDescriptorLike,
-          __cmd: int,
-          __arg: int = ...) -> int: ...
-@overload
-def fcntl(__fd: FileDescriptorLike,
-          __cmd: int,
-          __arg: bytes) -> bytes: ...
 _ReadOnlyBuffer = bytes
 _WritableBuffer = Union[bytearray, memoryview, array]
 @overload
-def ioctl(__fd: FileDescriptorLike,
-          __request: int,
-          __arg: int = ...,
-          __mutate_flag: bool = ...) -> int: ...
+def ioctl(__fd: FileDescriptorLike, __request: int, __arg: int = ..., __mutate_flag: bool = ...) -> int: ...
 @overload
-def ioctl(__fd: FileDescriptorLike,
-          __request: int,
-          __arg: _WritableBuffer,
-          __mutate_flag: Literal[True] = ...) -> int: ...
+def ioctl(__fd: FileDescriptorLike, __request: int, __arg: _WritableBuffer, __mutate_flag: Literal[True] = ...) -> int: ...
 @overload
-def ioctl(__fd: FileDescriptorLike,
-          __request: int,
-          __arg: _WritableBuffer,
-          __mutate_flag: Literal[False]) -> bytes: ...
+def ioctl(__fd: FileDescriptorLike, __request: int, __arg: _WritableBuffer, __mutate_flag: Literal[False]) -> bytes: ...
 @overload
-def ioctl(__fd: FileDescriptorLike,
-          __request: int,
-          __arg: _ReadOnlyBuffer,
-          __mutate_flag: bool = ...) -> bytes: ...
+def ioctl(__fd: FileDescriptorLike, __request: int, __arg: _ReadOnlyBuffer, __mutate_flag: bool = ...) -> bytes: ...
 def flock(__fd: FileDescriptorLike, __operation: int) -> None: ...
-def lockf(__fd: FileDescriptorLike,
-          __cmd: int,
-          __len: int = ...,
-          __start: int = ...,
-          __whence: int = ...) -> Any: ...
+def lockf(__fd: FileDescriptorLike, __cmd: int, __len: int = ..., __start: int = ..., __whence: int = ...) -> Any: ...

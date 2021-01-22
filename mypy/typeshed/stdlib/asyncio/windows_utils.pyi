@@ -1,12 +1,9 @@
-
 import sys
-from typing import Tuple, Callable, Optional, Type, Protocol
 from types import TracebackType
-
+from typing import Callable, Optional, Protocol, Tuple, Type
 
 class _WarnFunction(Protocol):
-    def __call__(self, message: str, category: Type[Warning], source: PipeHandle): ...
-
+    def __call__(self, message: str, category: Type[Warning] = ..., stacklevel: int = ..., source: PipeHandle = ...) -> None: ...
 
 BUFSIZE: int
 PIPE: int
@@ -15,7 +12,6 @@ STDOUT: int
 def pipe(*, duplex: bool = ..., overlapped: Tuple[bool, bool] = ..., bufsize: int = ...) -> Tuple[int, int]: ...
 
 class PipeHandle:
-
     def __init__(self, handle: int) -> None: ...
     def __repr__(self) -> str: ...
     if sys.version_info >= (3, 8):

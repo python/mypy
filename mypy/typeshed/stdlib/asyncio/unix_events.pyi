@@ -5,9 +5,9 @@ from typing import Any, Callable, Optional, Type, TypeVar
 from .events import AbstractEventLoop, BaseDefaultEventLoopPolicy
 from .selector_events import BaseSelectorEventLoop
 
-_T1 = TypeVar('_T1', bound=AbstractChildWatcher)
-_T2 = TypeVar('_T2', bound=SafeChildWatcher)
-_T3 = TypeVar('_T3', bound=FastChildWatcher)
+_T1 = TypeVar("_T1", bound=AbstractChildWatcher)
+_T2 = TypeVar("_T2", bound=SafeChildWatcher)
+_T3 = TypeVar("_T3", bound=FastChildWatcher)
 
 class AbstractChildWatcher:
     def add_child_handler(self, pid: int, callback: Callable[..., Any], *args: Any) -> None: ...
@@ -44,8 +44,8 @@ if sys.version_info >= (3, 8):
 
     from typing import Protocol
 
-    _T4 = TypeVar('_T4', bound=MultiLoopChildWatcher)
-    _T5 = TypeVar('_T5', bound=ThreadedChildWatcher)
+    _T4 = TypeVar("_T4", bound=MultiLoopChildWatcher)
+    _T5 = TypeVar("_T5", bound=ThreadedChildWatcher)
     class _Warn(Protocol):
         def __call__(
             self, message: str, category: Optional[Type[Warning]] = ..., stacklevel: int = ..., source: Optional[Any] = ...

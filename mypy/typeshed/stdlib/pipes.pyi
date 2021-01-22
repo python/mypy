@@ -1,7 +1,3 @@
-# Stubs for pipes
-
-# Based on http://docs.python.org/3.5/library/pipes.html
-
 import os
 
 class Template:

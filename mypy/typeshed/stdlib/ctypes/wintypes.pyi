@@ -1,6 +1,23 @@
 from ctypes import (
-    _SimpleCData, Array, Structure, c_byte, c_char, c_char_p, c_double, c_float, c_int, c_long,
-    c_longlong, c_short, c_uint, c_ulong, c_ulonglong, c_ushort, c_void_p, c_wchar, c_wchar_p,
+    Array,
+    Structure,
+    _SimpleCData,
+    c_byte,
+    c_char,
+    c_char_p,
+    c_double,
+    c_float,
+    c_int,
+    c_long,
+    c_longlong,
+    c_short,
+    c_uint,
+    c_ulong,
+    c_ulonglong,
+    c_ushort,
+    c_void_p,
+    c_wchar,
+    c_wchar_p,
     pointer,
 )
 
@@ -15,7 +32,9 @@ DOUBLE = c_double
 FLOAT = c_float
 BOOLEAN = BYTE
 BOOL = c_long
+
 class VARIANT_BOOL(_SimpleCData[bool]): ...
+
 ULONG = c_ulong
 LONG = c_long
 USHORT = c_ushort
@@ -86,6 +105,7 @@ class RECT(Structure):
     top: LONG
     right: LONG
     bottom: LONG
+
 RECTL = RECT
 _RECTL = RECT
 tagRECT = RECT
@@ -95,6 +115,7 @@ class _SMALL_RECT(Structure):
     Top: SHORT
     Right: SHORT
     Bottom: SHORT
+
 SMALL_RECT = _SMALL_RECT
 
 class _COORD(Structure):
@@ -104,6 +125,7 @@ class _COORD(Structure):
 class POINT(Structure):
     x: LONG
     y: LONG
+
 POINTL = POINT
 _POINTL = POINT
 tagPOINT = POINT
@@ -111,6 +133,7 @@ tagPOINT = POINT
 class SIZE(Structure):
     cx: LONG
     cy: LONG
+
 SIZEL = SIZE
 tagSIZE = SIZE
 
@@ -119,6 +142,7 @@ def RGB(red: int, green: int, blue: int) -> int: ...
 class FILETIME(Structure):
     dwLowDateTime: DWORD
     dwHighDateTime: DWORD
+
 _FILETIME = FILETIME
 
 class MSG(Structure):
@@ -128,6 +152,7 @@ class MSG(Structure):
     lParam: LPARAM
     time: DWORD
     pt: POINT
+
 tagMSG = MSG
 MAX_PATH: int
 

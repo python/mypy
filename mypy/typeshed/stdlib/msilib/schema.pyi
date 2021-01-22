@@ -1,8 +1,7 @@
-
 import sys
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     from . import Table
 
     _Validation: Table
@@ -93,4 +92,6 @@ if sys.platform == 'win32':
 
     tables: List[Table]
 
-    _Validation_records: List[Tuple[str, str, str, Optional[int], Optional[int], Optional[str], Optional[int], Optional[str], Optional[str], str]]
+    _Validation_records: List[
+        Tuple[str, str, str, Optional[int], Optional[int], Optional[str], Optional[int], Optional[str], Optional[str], str]
+    ]

@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 AdpcmState = Tuple[int, int]
 RatecvState = Tuple[int, Tuple[Tuple[int, int], ...]]

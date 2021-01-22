@@ -1,6 +1,6 @@
 import sys
 from asyncio import transports
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 class BaseProtocol:
     def connection_made(self, transport: transports.BaseTransport) -> None: ...

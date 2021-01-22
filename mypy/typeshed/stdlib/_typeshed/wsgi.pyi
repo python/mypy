@@ -4,10 +4,12 @@
 # file. They are provided for type checking purposes.
 
 from sys import _OptExcInfo
-from typing import Callable, Dict, Iterable, List, Any, Text, Protocol, Tuple, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Text, Tuple
 
 class StartResponse(Protocol):
-    def __call__(self, status: str, headers: List[Tuple[str, str]], exc_info: Optional[_OptExcInfo] = ...) -> Callable[[bytes], Any]: ...
+    def __call__(
+        self, status: str, headers: List[Tuple[str, str]], exc_info: Optional[_OptExcInfo] = ...
+    ) -> Callable[[bytes], Any]: ...
 
 WSGIEnvironment = Dict[Text, Any]
 WSGIApplication = Callable[[WSGIEnvironment, StartResponse], Iterable[bytes]]
@@ -27,6 +29,7 @@ class ErrorStream(Protocol):
 
 class _Readable(Protocol):
     def read(self, size: int = ...) -> bytes: ...
+
 # Optional file wrapper in wsgi.file_wrapper
 class FileWrapper(Protocol):
     def __call__(self, file: _Readable, block_size: int = ...) -> Iterable[bytes]: ...

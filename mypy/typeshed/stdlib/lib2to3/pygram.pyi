@@ -1,6 +1,3 @@
-# Stubs for lib2to3.pygram (Python 3.6)
-
-from typing import Any
 from lib2to3.pgen2.grammar import Grammar
 
 class Symbols:

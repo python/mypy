@@ -1,5 +1,5 @@
 import sys
-from typing import List, Sequence, Tuple, Text
+from typing import List, Sequence, Text, Tuple
 
 def symtable(code: Text, filename: Text, compile_type: Text) -> SymbolTable: ...
 

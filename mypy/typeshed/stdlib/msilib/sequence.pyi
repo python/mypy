@@ -1,8 +1,7 @@
-
 import sys
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
 
     _SequenceType = List[Tuple[str, Optional[str], int]]
 

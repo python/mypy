@@ -1,13 +1,10 @@
-# Stubs for smtpd (Python 2 and 3)
-import sys
-import socket
-import asyncore
 import asynchat
-
+import asyncore
+import socket
+import sys
 from typing import Any, DefaultDict, List, Optional, Text, Tuple, Type
 
 _Address = Tuple[str, int]  # (host, port)
-
 
 class SMTPChannel(asynchat.async_chat):
     COMMAND: int
@@ -31,13 +28,19 @@ class SMTPChannel(asynchat.async_chat):
         data_size_limit: int
 
         enable_SMTPUTF8: bool
-
         @property
         def max_command_size_limit(self) -> int: ...
-
     if sys.version_info >= (3,):
-        def __init__(self, server: SMTPServer, conn: socket.socket, addr: Any, data_size_limit: int = ...,
-                     map: Optional[asyncore._maptype] = ..., enable_SMTPUTF8: bool = ..., decode_data: bool = ...) -> None: ...
+        def __init__(
+            self,
+            server: SMTPServer,
+            conn: socket.socket,
+            addr: Any,
+            data_size_limit: int = ...,
+            map: Optional[asyncore._maptype] = ...,
+            enable_SMTPUTF8: bool = ...,
+            decode_data: bool = ...,
+        ) -> None: ...
     else:
         def __init__(self, server: SMTPServer, conn: socket.socket, addr: Any, data_size_limit: int = ...) -> None: ...
     # base asynchat.async_chat.push() accepts bytes
@@ -64,12 +67,17 @@ class SMTPServer(asyncore.dispatcher):
     enable_SMTPUTF8: bool
 
     if sys.version_info >= (3,):
-        def __init__(self, localaddr: _Address, remoteaddr: _Address,
-                     data_size_limit: int = ..., map: Optional[asyncore._maptype] = ...,
-                     enable_SMTPUTF8: bool = ..., decode_data: bool = ...) -> None: ...
+        def __init__(
+            self,
+            localaddr: _Address,
+            remoteaddr: _Address,
+            data_size_limit: int = ...,
+            map: Optional[asyncore._maptype] = ...,
+            enable_SMTPUTF8: bool = ...,
+            decode_data: bool = ...,
+        ) -> None: ...
     else:
-        def __init__(self, localaddr: _Address, remoteaddr: _Address,
-                     data_size_limit: int = ...) -> None: ...
+        def __init__(self, localaddr: _Address, remoteaddr: _Address, data_size_limit: int = ...) -> None: ...
     def handle_accepted(self, conn: socket.socket, addr: Any) -> None: ...
     def process_message(self, peer: _Address, mailfrom: str, rcpttos: List[Text], data: str, **kwargs: Any) -> Optional[str]: ...
 

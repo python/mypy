@@ -1,9 +1,8 @@
-"""Stub file for the 'zipimport' module."""
-
 import os
 import sys
-from typing import Any, List, Optional, Tuple, Union
 from types import CodeType, ModuleType
+from typing import Any, List, Optional, Tuple, Union
+
 if sys.version_info >= (3, 7):
     from importlib.abc import ResourceReader
 
@@ -17,7 +16,9 @@ class zipimporter(object):
     else:
         def __init__(self, path: Union[str, bytes]) -> None: ...
     if sys.version_info >= (3,):
-        def find_loader(self, fullname: str, path: Optional[str] = ...) -> Tuple[Optional[zipimporter], List[str]]: ...  # undocumented
+        def find_loader(
+            self, fullname: str, path: Optional[str] = ...
+        ) -> Tuple[Optional[zipimporter], List[str]]: ...  # undocumented
     def find_module(self, fullname: str, path: Optional[str] = ...) -> Optional[zipimporter]: ...
     def get_code(self, fullname: str) -> CodeType: ...
     def get_data(self, pathname: str) -> str: ...

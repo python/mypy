@@ -1,6 +1,4 @@
-# Source: https://hg.python.org/cpython/file/2.7/Lib/formatter.py
-# and https://github.com/python/cpython/blob/master/Lib/formatter.py
-from typing import Any, IO, List, Optional, Tuple, Iterable
+from typing import IO, Any, Iterable, List, Optional, Tuple
 
 AS_IS: None
 _FontType = Tuple[str, bool, bool, bool]

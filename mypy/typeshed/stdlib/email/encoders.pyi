@@ -1,5 +1,3 @@
-# Stubs for email.encoders (Python 3.4)
-
 from email.message import Message
 
 def encode_base64(msg: Message) -> None: ...

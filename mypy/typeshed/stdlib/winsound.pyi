@@ -18,7 +18,6 @@ if sys.platform == "win32":
     MB_ICONHAND: int
     MB_ICONQUESTION: int
     MB_OK: int
-
     def Beep(frequency: int, duration: int) -> None: ...
     # Can actually accept anything ORed with 4, and if not it's definitely str, but that's inexpressible
     @overload

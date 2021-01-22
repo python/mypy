@@ -1,4 +1,3 @@
-# Source: https://github.com/python/cpython/blob/master/Lib/_threading_local.py
 from typing import Any, Dict, Tuple
 from weakref import ReferenceType
 

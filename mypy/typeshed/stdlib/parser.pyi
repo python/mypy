@@ -1,6 +1,6 @@
-from typing import Any, List, Sequence, Text, Tuple
-from types import CodeType
 from _typeshed import AnyPath
+from types import CodeType
+from typing import Any, List, Sequence, Text, Tuple
 
 def expr(source: Text) -> STType: ...
 def suite(source: Text) -> STType: ...

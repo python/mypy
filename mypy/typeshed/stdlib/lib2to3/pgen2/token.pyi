@@ -1,5 +1,3 @@
-# Stubs for lib2to3.pgen2.token (Python 3.6)
-
 import sys
 from typing import Dict, Text
 

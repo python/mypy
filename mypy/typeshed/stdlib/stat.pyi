@@ -1,7 +1,3 @@
-# Stubs for stat
-
-# Based on http://docs.python.org/3.2/library/stat.html
-
 import sys
 
 def S_ISDIR(mode: int) -> bool: ...
@@ -11,10 +7,8 @@ def S_ISREG(mode: int) -> bool: ...
 def S_ISFIFO(mode: int) -> bool: ...
 def S_ISLNK(mode: int) -> bool: ...
 def S_ISSOCK(mode: int) -> bool: ...
-
 def S_IMODE(mode: int) -> int: ...
 def S_IFMT(mode: int) -> int: ...
-
 def filemode(mode: int) -> str: ...
 
 ST_MODE: int
@@ -64,9 +58,9 @@ UF_IMMUTABLE: int
 UF_APPEND: int
 UF_OPAQUE: int
 UF_NOUNLINK: int
-if sys.platform == 'darwin':
+if sys.platform == "darwin":
     UF_COMPRESSED: int  # OS X 10.6+ only
-    UF_HIDDEN: int     # OX X 10.5+ only
+    UF_HIDDEN: int  # OX X 10.5+ only
 SF_ARCHIVED: int
 SF_IMMUTABLE: int
 SF_APPEND: int

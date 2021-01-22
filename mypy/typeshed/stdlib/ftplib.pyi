@@ -1,25 +1,10 @@
 import sys
-from typing import (
-    Any,
-    BinaryIO,
-    Callable,
-    Dict,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Text,
-    TextIO,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
-from types import TracebackType
+from _typeshed import SupportsRead, SupportsReadline
 from socket import socket
 from ssl import SSLContext
-from _typeshed import SupportsRead, SupportsReadline
+from types import TracebackType
+from typing import Any, BinaryIO, Callable, Dict, Iterable, Iterator, List, Optional, Text, TextIO, Tuple, Type, TypeVar, Union
+from typing_extensions import Literal
 
 _T = TypeVar("_T")
 _IntOrStr = Union[int, Text]
@@ -166,3 +151,15 @@ if sys.version_info < (3,):
         def get_account(self, host: Text) -> Tuple[Optional[str], Optional[str], Optional[str]]: ...
         def get_macros(self) -> List[str]: ...
         def get_macro(self, macro: Text) -> Tuple[str, ...]: ...
+
+def parse150(resp: str) -> Optional[int]: ...  # undocumented
+def parse227(resp: str) -> Tuple[str, int]: ...  # undocumented
+def parse229(resp: str, peer: Any) -> Tuple[str, int]: ...  # undocumented
+def parse257(resp: str) -> str: ...  # undocumented
+def ftpcp(
+    source: FTP,
+    sourcename: str,
+    target: FTP,
+    targetname: str = ...,
+    type: Literal["A", "I"] = ...,
+) -> None: ...  # undocumented

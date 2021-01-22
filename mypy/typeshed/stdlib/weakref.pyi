@@ -1,27 +1,41 @@
 import sys
 import types
+from _weakrefset import WeakSet as WeakSet
 from typing import (
-    TypeVar, Generic, Any, Callable, overload, Mapping, Iterator, Tuple,
-    Iterable, Optional, Type, MutableMapping, Union, List, Dict
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    overload,
 )
 
 from _weakref import (
-    getweakrefcount as getweakrefcount,
-    getweakrefs as getweakrefs,
-    ref as ref,
-    proxy as proxy,
     CallableProxyType as CallableProxyType,
     ProxyType as ProxyType,
-    ReferenceType as ReferenceType)
-from _weakrefset import WeakSet as WeakSet
+    ReferenceType as ReferenceType,
+    getweakrefcount as getweakrefcount,
+    getweakrefs as getweakrefs,
+    proxy as proxy,
+    ref as ref,
+)
 
 if sys.version_info < (3, 0):
     from exceptions import ReferenceError as ReferenceError
 
-_S = TypeVar('_S')
-_T = TypeVar('_T')
-_KT = TypeVar('_KT')
-_VT = TypeVar('_VT')
+_S = TypeVar("_S")
+_T = TypeVar("_T")
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
 
 ProxyTypes: Tuple[Type[Any], ...]
 
@@ -34,8 +48,7 @@ class WeakValueDictionary(MutableMapping[_KT, _VT]):
     @overload
     def __init__(self) -> None: ...
     @overload
-    def __init__(self, __map: Union[Mapping[_KT, _VT], Iterable[Tuple[_KT, _VT]]], **kwargs: _VT) -> None: ...
-
+    def __init__(self, __other: Union[Mapping[_KT, _VT], Iterable[Tuple[_KT, _VT]]], **kwargs: _VT) -> None: ...
     def __len__(self) -> int: ...
     def __getitem__(self, k: _KT) -> _VT: ...
     def __setitem__(self, k: _KT, v: _VT) -> None: ...
@@ -45,9 +58,7 @@ class WeakValueDictionary(MutableMapping[_KT, _VT]):
     def __contains__(self, o: object) -> bool: ...
     def __iter__(self) -> Iterator[_KT]: ...
     def __str__(self) -> str: ...
-
     def copy(self) -> WeakValueDictionary[_KT, _VT]: ...
-
     if sys.version_info < (3, 0):
         def keys(self) -> List[_KT]: ...
         def values(self) -> List[_VT]: ...
@@ -65,14 +76,14 @@ class WeakValueDictionary(MutableMapping[_KT, _VT]):
 
 class KeyedRef(ref[_T], Generic[_KT, _T]):
     key: _KT
+    def __new__(type, ob: _T, callback: Callable[[_T], Any], key: _KT) -> KeyedRef: ...
     def __init__(self, ob: _T, callback: Callable[[_T], Any], key: _KT) -> None: ...
 
 class WeakKeyDictionary(MutableMapping[_KT, _VT]):
     @overload
-    def __init__(self) -> None: ...
+    def __init__(self, dict: None = ...) -> None: ...
     @overload
-    def __init__(self, __map: Union[Mapping[_KT, _VT], Iterable[Tuple[_KT, _VT]]], **kwargs: _VT) -> None: ...
-
+    def __init__(self, dict: Union[Mapping[_KT, _VT], Iterable[Tuple[_KT, _VT]]]) -> None: ...
     def __len__(self) -> int: ...
     def __getitem__(self, k: _KT) -> _VT: ...
     def __setitem__(self, k: _KT, v: _VT) -> None: ...
@@ -82,9 +93,7 @@ class WeakKeyDictionary(MutableMapping[_KT, _VT]):
     def __contains__(self, o: object) -> bool: ...
     def __iter__(self) -> Iterator[_KT]: ...
     def __str__(self) -> str: ...
-
     def copy(self) -> WeakKeyDictionary[_KT, _VT]: ...
-
     if sys.version_info < (3, 0):
         def keys(self) -> List[_KT]: ...
         def values(self) -> List[_VT]: ...
@@ -102,7 +111,7 @@ class WeakKeyDictionary(MutableMapping[_KT, _VT]):
 
 if sys.version_info >= (3, 4):
     class finalize:
-        def __init__(self, obj: _S, func: Callable[..., _T], *args: Any, **kwargs: Any) -> None: ...
+        def __init__(self, __obj: _S, __func: Callable[..., _T], *args: Any, **kwargs: Any) -> None: ...
         def __call__(self, _: Any = ...) -> Optional[_T]: ...
         def detach(self) -> Optional[Tuple[_S, _T, Tuple[Any, ...], Dict[str, Any]]]: ...
         def peek(self) -> Optional[Tuple[_S, _T, Tuple[Any, ...], Dict[str, Any]]]: ...

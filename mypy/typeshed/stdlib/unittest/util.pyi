@@ -1,7 +1,6 @@
-# undocumented
 from typing import Any, List, Sequence, Tuple, TypeVar
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 _Mismatch = Tuple[_T, _T, int]
 
 _MAX_LENGTH: int

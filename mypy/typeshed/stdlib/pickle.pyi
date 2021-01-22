@@ -1,49 +1,49 @@
 import sys
-from typing import Any, IO, Mapping, Union, Tuple, Callable, Optional, Iterable, Iterator
+from typing import IO, Any, Callable, Iterable, Iterator, Mapping, Optional, Tuple, Type, Union
 
 HIGHEST_PROTOCOL: int
 if sys.version_info >= (3, 0):
     DEFAULT_PROTOCOL: int
 
+bytes_types: Tuple[Type[Any], ...]  # undocumented
 
 if sys.version_info >= (3, 8):
     # TODO: holistic design for buffer interface (typing.Buffer?)
-
     class PickleBuffer:
         # buffer must be a buffer-providing object
         def __init__(self, buffer: Any) -> None: ...
         def raw(self) -> memoryview: ...
         def release(self) -> None: ...
-
     _BufferCallback = Optional[Callable[[PickleBuffer], Any]]
-
     def dump(
-        obj: Any, file: IO[bytes], protocol: Optional[int] = ..., *,
+        obj: Any,
+        file: IO[bytes],
+        protocol: Optional[int] = ...,
+        *,
         fix_imports: bool = ...,
-        buffer_callback: _BufferCallback = ...
+        buffer_callback: _BufferCallback = ...,
     ) -> None: ...
     def dumps(
-        obj: Any, protocol: Optional[int] = ..., *,
-        fix_imports: bool = ...,
-        buffer_callback: _BufferCallback = ...
+        obj: Any, protocol: Optional[int] = ..., *, fix_imports: bool = ..., buffer_callback: _BufferCallback = ...
     ) -> bytes: ...
     def load(
-        file: IO[bytes], *, fix_imports: bool = ..., encoding: str = ...,
-        errors: str = ..., buffers: Optional[Iterable[Any]] = ...
+        file: IO[bytes],
+        *,
+        fix_imports: bool = ...,
+        encoding: str = ...,
+        errors: str = ...,
+        buffers: Optional[Iterable[Any]] = ...,
     ) -> Any: ...
     def loads(
-        data: bytes, *, fix_imports: bool = ..., encoding: str = ...,
-        errors: str = ..., buffers: Optional[Iterable[Any]] = ...
+        __data: bytes, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ..., buffers: Optional[Iterable[Any]] = ...
     ) -> Any: ...
+
 elif sys.version_info >= (3, 0):
-    def dump(obj: Any, file: IO[bytes], protocol: Optional[int] = ..., *,
-             fix_imports: bool = ...) -> None: ...
-    def dumps(obj: Any, protocol: Optional[int] = ..., *,
-              fix_imports: bool = ...) -> bytes: ...
-    def load(file: IO[bytes], *, fix_imports: bool = ..., encoding: str = ...,
-             errors: str = ...) -> Any: ...
-    def loads(data: bytes, *, fix_imports: bool = ...,
-              encoding: str = ..., errors: str = ...) -> Any: ...
+    def dump(obj: Any, file: IO[bytes], protocol: Optional[int] = ..., *, fix_imports: bool = ...) -> None: ...
+    def dumps(obj: Any, protocol: Optional[int] = ..., *, fix_imports: bool = ...) -> bytes: ...
+    def load(file: IO[bytes], *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
+    def loads(data: bytes, *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> Any: ...
+
 else:
     def dump(obj: Any, file: IO[bytes], protocol: Optional[int] = ...) -> None: ...
     def dumps(obj: Any, protocol: Optional[int] = ...) -> bytes: ...
@@ -54,14 +54,13 @@ class PickleError(Exception): ...
 class PicklingError(PickleError): ...
 class UnpicklingError(PickleError): ...
 
-_reducedtype = Union[str,
-                     Tuple[Callable[..., Any], Tuple[Any, ...]],
-                     Tuple[Callable[..., Any], Tuple[Any, ...], Any],
-                     Tuple[Callable[..., Any], Tuple[Any, ...], Any,
-                           Optional[Iterator]],
-                     Tuple[Callable[..., Any], Tuple[Any, ...], Any,
-                           Optional[Iterator], Optional[Iterator]]]
-
+_reducedtype = Union[
+    str,
+    Tuple[Callable[..., Any], Tuple[Any, ...]],
+    Tuple[Callable[..., Any], Tuple[Any, ...], Any],
+    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]]],
+    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
+]
 
 class Pickler:
     fast: bool
@@ -69,33 +68,40 @@ class Pickler:
         dispatch_table: Mapping[type, Callable[[Any], _reducedtype]]
 
     if sys.version_info >= (3, 8):
-        def __init__(self, file: IO[bytes], protocol: Optional[int] = ..., *,
-                     fix_imports: bool = ..., buffer_callback: _BufferCallback = ...
-                     ) -> None: ...
+        def __init__(
+            self,
+            file: IO[bytes],
+            protocol: Optional[int] = ...,
+            *,
+            fix_imports: bool = ...,
+            buffer_callback: _BufferCallback = ...,
+        ) -> None: ...
         def reducer_override(self, obj: Any) -> Any: ...
     elif sys.version_info >= (3, 0):
-        def __init__(self, file: IO[bytes], protocol: Optional[int] = ..., *,
-                     fix_imports: bool = ...) -> None: ...
+        def __init__(self, file: IO[bytes], protocol: Optional[int] = ..., *, fix_imports: bool = ...) -> None: ...
     else:
         def __init__(self, file: IO[bytes], protocol: Optional[int] = ...) -> None: ...
-
-    def dump(self, obj: Any) -> None: ...
+    def dump(self, __obj: Any) -> None: ...
     def clear_memo(self) -> None: ...
     def persistent_id(self, obj: Any) -> Any: ...
 
 class Unpickler:
     if sys.version_info >= (3, 8):
-        def __init__(self, file: IO[bytes], *, fix_imports: bool = ...,
-                     encoding: str = ..., errors: str = ...,
-                     buffers: Optional[Iterable[Any]] = ...) -> None: ...
+        def __init__(
+            self,
+            file: IO[bytes],
+            *,
+            fix_imports: bool = ...,
+            encoding: str = ...,
+            errors: str = ...,
+            buffers: Optional[Iterable[Any]] = ...,
+        ) -> None: ...
     elif sys.version_info >= (3, 0):
-        def __init__(self, file: IO[bytes], *, fix_imports: bool = ...,
-                     encoding: str = ..., errors: str = ...) -> None: ...
+        def __init__(self, file: IO[bytes], *, fix_imports: bool = ..., encoding: str = ..., errors: str = ...) -> None: ...
     else:
         def __init__(self, file: IO[bytes]) -> None: ...
-
     def load(self) -> Any: ...
-    def find_class(self, module: str, name: str) -> Any: ...
+    def find_class(self, __module_name: str, __global_name: str) -> Any: ...
     if sys.version_info >= (3, 0):
         def persistent_load(self, pid: Any) -> Any: ...
 
@@ -175,3 +181,6 @@ if sys.version_info >= (3, 4):
     STACK_GLOBAL: bytes
     MEMOIZE: bytes
     FRAME: bytes
+
+def encode_long(x: int) -> bytes: ...  # undocumented
+def decode_long(data: bytes) -> int: ...  # undocumented

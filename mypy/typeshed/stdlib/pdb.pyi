@@ -1,26 +1,25 @@
+import signal
+import sys
 from bdb import Bdb
 from cmd import Cmd
 from inspect import _SourceObjectType
-import signal
-import sys
 from types import CodeType, FrameType, TracebackType
-from typing import Any, Callable, ClassVar, Dict, IO, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import IO, Any, Callable, ClassVar, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 line_prefix: str  # undocumented
 
 class Restart(Exception): ...
 
-def run(statement: str, globals: Optional[Dict[str, Any]] = ...,
-        locals: Optional[Mapping[str, Any]] = ...) -> None: ...
-def runeval(expression: str, globals: Optional[Dict[str, Any]] = ...,
-            locals: Optional[Mapping[str, Any]] = ...) -> Any: ...
+def run(statement: str, globals: Optional[Dict[str, Any]] = ..., locals: Optional[Mapping[str, Any]] = ...) -> None: ...
+def runeval(expression: str, globals: Optional[Dict[str, Any]] = ..., locals: Optional[Mapping[str, Any]] = ...) -> Any: ...
 def runctx(statement: str, globals: Dict[str, Any], locals: Mapping[str, Any]) -> None: ...
 def runcall(func: Callable[..., _T], *args: Any, **kwds: Any) -> Optional[_T]: ...
 
 if sys.version_info >= (3, 7):
     def set_trace(*, header: Optional[str] = ...) -> None: ...
+
 else:
     def set_trace() -> None: ...
 
@@ -234,7 +233,6 @@ class Pdb(Bdb, Cmd):
 
     if sys.version_info >= (3, 7):
         def _runmodule(self, module_name: str) -> None: ...
-
     if sys.version_info >= (3,) and sys.version_info < (3, 4):
         do_print = do_p
 

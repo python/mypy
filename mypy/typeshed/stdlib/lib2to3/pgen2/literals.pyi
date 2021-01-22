@@ -1,5 +1,3 @@
-# Stubs for lib2to3.pgen2.literals (Python 3.6)
-
 from typing import Dict, Match, Text
 
 simple_escapes: Dict[Text, Text]

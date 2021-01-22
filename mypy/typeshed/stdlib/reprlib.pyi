@@ -1,5 +1,3 @@
-# Stubs for reprlib (Python 3)
-
 from array import array
 from typing import Any, Callable, Deque, Dict, FrozenSet, List, Set, Tuple
 
@@ -34,4 +32,5 @@ class Repr:
     def repr_instance(self, x: Any, level: int) -> str: ...
 
 aRepr: Repr
+
 def repr(x: object) -> str: ...

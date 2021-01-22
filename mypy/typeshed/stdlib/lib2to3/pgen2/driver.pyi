@@ -1,10 +1,8 @@
 from _typeshed import StrPath
-from typing import Any, IO, Iterable, Optional, Text
-
-from logging import Logger
-from lib2to3.pytree import _Convert, _NL
 from lib2to3.pgen2.grammar import Grammar
-
+from lib2to3.pytree import _NL, _Convert
+from logging import Logger
+from typing import IO, Any, Iterable, Optional, Text
 
 class Driver:
     grammar: Grammar
@@ -17,4 +15,6 @@ class Driver:
     def parse_file(self, filename: StrPath, encoding: Optional[Text] = ..., debug: bool = ...) -> _NL: ...
     def parse_string(self, text: Text, debug: bool = ...) -> _NL: ...
 
-def load_grammar(gt: Text = ..., gp: Optional[Text] = ..., save: bool = ..., force: bool = ..., logger: Optional[Logger] = ...) -> Grammar: ...
+def load_grammar(
+    gt: Text = ..., gp: Optional[Text] = ..., save: bool = ..., force: bool = ..., logger: Optional[Logger] = ...
+) -> Grammar: ...

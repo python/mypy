@@ -1,7 +1,7 @@
 import io
 import sys
-from typing import IO, Any, Optional, TextIO, Union, overload, TypeVar
 from _typeshed import AnyPath
+from typing import IO, Any, Optional, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal
 
 _PathOrFile = Union[AnyPath, IO[bytes]]
@@ -44,17 +44,11 @@ if sys.version_info >= (3, 3):
 class BZ2File(io.BufferedIOBase, IO[bytes]):
     def __enter__(self: _T) -> _T: ...
     if sys.version_info >= (3, 9):
-        def __init__(self,
-                     filename: _PathOrFile,
-                     mode: str = ...,
-                     *,
-                     compresslevel: int = ...) -> None: ...
+        def __init__(self, filename: _PathOrFile, mode: str = ..., *, compresslevel: int = ...) -> None: ...
     else:
-        def __init__(self,
-                     filename: _PathOrFile,
-                     mode: str = ...,
-                     buffering: Optional[Any] = ...,
-                     compresslevel: int = ...) -> None: ...
+        def __init__(
+            self, filename: _PathOrFile, mode: str = ..., buffering: Optional[Any] = ..., compresslevel: int = ...
+        ) -> None: ...
 
 class BZ2Compressor(object):
     def __init__(self, compresslevel: int = ...) -> None: ...

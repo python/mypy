@@ -1,9 +1,7 @@
-# Stubs for _thread
-
 import sys
 from threading import Thread
 from types import TracebackType
-from typing import Any, Callable, Dict, NamedTuple, NoReturn, Optional, Tuple, Type
+from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Type
 
 error = RuntimeError
 
@@ -17,10 +15,7 @@ class LockType:
     def locked(self) -> bool: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self,
-        type: Optional[Type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        self, type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
     ) -> None: ...
 
 def start_new_thread(function: Callable[..., Any], args: Tuple[Any, ...], kwargs: Dict[str, Any] = ...) -> int: ...
@@ -34,11 +29,13 @@ TIMEOUT_MAX: float
 
 if sys.version_info >= (3, 8):
     def get_native_id() -> int: ...  # only available on some platforms
-
-    class ExceptHookArgs(NamedTuple):
-        exc_type: Type[BaseException]
-        exc_value: Optional[BaseException]
-        exc_traceback: Optional[TracebackType]
-        thread: Optional[Thread]
-    def _ExceptHookArgs(args) -> ExceptHookArgs: ...
-    _excepthook: Callable[[ExceptHookArgs], Any]
+    class _ExceptHookArgs(Tuple[Type[BaseException], Optional[BaseException], Optional[TracebackType], Optional[Thread]]):
+        @property
+        def exc_type(self) -> Type[BaseException]: ...
+        @property
+        def exc_value(self) -> Optional[BaseException]: ...
+        @property
+        def exc_traceback(self) -> Optional[TracebackType]: ...
+        @property
+        def thread(self) -> Optional[Thread]: ...
+    _excepthook: Callable[[_ExceptHookArgs], Any]

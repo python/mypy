@@ -1,13 +1,10 @@
-"""Stub file for the 'signal' module."""
-
 import sys
 from enum import IntEnum
-from typing import Any, Callable, Tuple, Union, Optional, Iterable, Set
 from types import FrameType
+from typing import Any, Callable, Iterable, Optional, Set, Tuple, Union
 
 if sys.platform != "win32":
     class ItimerError(IOError): ...
-
     ITIMER_PROF: int
     ITIMER_REAL: int
     ITIMER_VIRTUAL: int
@@ -78,13 +75,12 @@ if sys.platform != "win32":
         SIG_BLOCK: int
         SIG_UNBLOCK: int
         SIG_SETMASK: int
-
     SIG_BLOCK = Sigmasks.SIG_BLOCK
     SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK
     SIG_SETMASK = Sigmasks.SIG_SETMASK
 
 _SIGNUM = Union[int, Signals]
-_HANDLER = Union[Callable[[Signals, FrameType], None], int, Handlers, None]
+_HANDLER = Union[Callable[[Signals, FrameType], Any], int, Handlers, None]
 
 SIGABRT: Signals
 if sys.platform != "win32":
@@ -161,23 +157,36 @@ if sys.platform != "win32":
 
 if sys.platform != "win32":
     def alarm(__seconds: int) -> int: ...
+
 def default_int_handler(signum: int, frame: FrameType) -> None: ...
+
 if sys.platform != "win32":
     def getitimer(__which: int) -> Tuple[float, float]: ...
+
 def getsignal(__signalnum: _SIGNUM) -> _HANDLER: ...
+
 if sys.version_info >= (3, 8):
     def strsignal(__signalnum: _SIGNUM) -> Optional[str]: ...
     def valid_signals() -> Set[Signals]: ...
     def raise_signal(__signalnum: _SIGNUM) -> None: ...
+
 if sys.platform != "win32":
     def pause() -> None: ...
     def pthread_kill(__thread_id: int, __signalnum: int) -> None: ...
     def pthread_sigmask(__how: int, __mask: Iterable[int]) -> Set[_SIGNUM]: ...
-def set_wakeup_fd(fd: int) -> int: ...
+
+if sys.version_info >= (3, 7):
+    def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
+
+else:
+    def set_wakeup_fd(fd: int) -> int: ...
+
 if sys.platform != "win32":
     def setitimer(__which: int, __seconds: float, __interval: float = ...) -> Tuple[float, float]: ...
     def siginterrupt(__signalnum: int, __flag: bool) -> None: ...
+
 def signal(__signalnum: _SIGNUM, __handler: _HANDLER) -> _HANDLER: ...
+
 if sys.platform != "win32":
     def sigpending() -> Any: ...
     def sigtimedwait(sigset: Iterable[int], timeout: float) -> Optional[struct_siginfo]: ...

@@ -1,6 +1,10 @@
-# Stubs for keyword
+import sys
+from typing import Sequence, Text
 
-from typing import Sequence, Text, Union
+def iskeyword(s: Text) -> bool: ...
 
-def iskeyword(s: Union[Text, bytes]) -> bool: ...
 kwlist: Sequence[str]
+
+if sys.version_info >= (3, 9):
+    def issoftkeyword(s: str) -> bool: ...
+    softkwlist: Sequence[str]
