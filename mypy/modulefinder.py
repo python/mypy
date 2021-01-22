@@ -69,7 +69,9 @@ class ModuleNotFoundReason(Enum):
             msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
             notes = [doc_link]
         elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
-            msg = 'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
+            msg = (
+                'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
+            )
             notes = ['Hint: "python3 -m pip install {stub_dist}"',
                      '(or run "mypy --install-types" to install all missing stub packages)',
                      doc_link]
