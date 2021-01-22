@@ -34,6 +34,8 @@ PackageDirs = List[OnePackageDir]
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
 
+PYTHON2_STUB_DIR: Final = '@python2'
+
 
 # TODO: Consider adding more reasons here?
 # E.g. if we deduce a module would likely be found if the user were
@@ -509,8 +511,8 @@ def default_lib_path(data_dir: str,
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
     if pyversion[0] == 2:
-        # Python 2 variants of certain stdlib modules are under python2/.
-        python2_dir = os.path.join(typeshed_dir, "python2")
+        # Python 2 variants of certain stdlib modules are in a separate directory.
+        python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
         path.append(python2_dir)
     path.append(typeshed_dir)
 
@@ -697,7 +699,7 @@ def load_stdlib_py_versions() -> Dict[str, Tuple[int, int]]:
 
     # Modules that are Python 2 only or have separate Python 2 stubs
     # have stubs in python2/ and may need an override.
-    python2_dir = os.path.join(typeshed_dir, "python2")
+    python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
     for fnam in os.listdir(python2_dir):
         fnam = fnam.replace(".pyi", "")
         result[fnam] = (2, 7)
