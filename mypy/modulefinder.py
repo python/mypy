@@ -129,7 +129,10 @@ class FindModuleCache:
         self.results = {}  # type: Dict[str, ModuleSearchResult]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
-        self.stdlib_py_versions = load_stdlib_py_versions()
+        custom_typeshed_dir = None
+        if options:
+            custom_typeshed_dir = options.custom_typeshed_dir
+        self.stdlib_py_versions = load_stdlib_py_versions(custom_typeshed_dir)
         self.python2 = options and options.python_version[0] == 2
 
     def clear(self) -> None:
@@ -679,15 +682,16 @@ def compute_search_paths(sources: List[BuildSource],
                        typeshed_path=tuple(lib_path))
 
 
-def load_stdlib_py_versions() -> Dict[str, Tuple[int, int]]:
+def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> Dict[str, Tuple[int, int]]:
     """Return dict with minimum Python versions of stdlib modules.
 
     The contents look like {..., 'secrets': 3.6, 're': 2.7, ...}.
     """
-    typeshed_dir = os.path.join(os.path.dirname(__file__), "typeshed", "stdlib")
+    typeshed_dir = custom_typeshed_dir or os.path.join(os.path.dirname(__file__), "typeshed")
+    stdlib_dir = os.path.join(typeshed_dir, "stdlib")
     result = {}
 
-    versions_path = os.path.join(typeshed_dir, "VERSIONS")
+    versions_path = os.path.join(stdlib_dir, "VERSIONS")
     with open(versions_path) as f:
         for line in f:
             line = line.strip()
@@ -698,8 +702,8 @@ def load_stdlib_py_versions() -> Dict[str, Tuple[int, int]]:
             result[module] = int(major), int(minor)
 
     # Modules that are Python 2 only or have separate Python 2 stubs
-    # have stubs in python2/ and may need an override.
-    python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
+    # have stubs in @python2/ and may need an override.
+    python2_dir = os.path.join(stdlib_dir, PYTHON2_STUB_DIR)
     for fnam in os.listdir(python2_dir):
         fnam = fnam.replace(".pyi", "")
         result[fnam] = (2, 7)
