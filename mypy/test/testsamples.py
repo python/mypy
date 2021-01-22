@@ -48,9 +48,6 @@ class SamplesSuite(Suite):
     def test_samples(self) -> None:
         for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
             mypy_args = ['--no-strict-optional']
-            if f == os.path.join('test-data', 'samples', 'crawl2.py'):
-                # This test requires 3.5 for async functions
-                mypy_args.append('--python-version=3.5')
             run_mypy(mypy_args + [f])
 
     def test_stdlibsamples(self) -> None:
