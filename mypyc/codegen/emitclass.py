@@ -4,7 +4,7 @@
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 from mypy.ordered_dict import OrderedDict
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, USE_FASTCALL
 from mypyc.codegen.emit import Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -644,7 +644,11 @@ def generate_methods_table(cl: ClassIR,
             continue
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
-        flags = ['METH_VARARGS', 'METH_KEYWORDS']
+        if USE_FASTCALL:
+            flags = ['METH_FASTCALL']
+        else:
+            flags = ['METH_VARARGS']
+        flags.append('METH_KEYWORDS')
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append('METH_STATIC')
         elif fn.decl.kind == FUNC_CLASSMETHOD:

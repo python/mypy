@@ -23,7 +23,8 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
-    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, shared_lib_name,
+    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
+    shared_lib_name,
 )
 from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
@@ -31,6 +32,7 @@ from mypyc.codegen.emitfunc import generate_native_function, native_function_hea
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
 from mypyc.codegen.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
+    generate_legacy_wrapper_function, legacy_wrapper_function_header,
 )
 from mypyc.ir.ops import LiteralsMap, DeserMaps
 from mypyc.ir.rtypes import RType, RTuple
@@ -419,8 +421,12 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         '{};'.format(native_function_header(fn.decl, emitter)),
         needs_export=True)
     if fn.name != TOP_LEVEL_NAME:
-        emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-            '{};'.format(wrapper_function_header(fn, emitter.names)))
+        if is_fastcall_supported(fn):
+            emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+                '{};'.format(wrapper_function_header(fn, emitter.names)))
+        else:
+            emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+                '{};'.format(legacy_wrapper_function_header(fn, emitter.names)))
 
 
 def pointerize(decl: str, name: str) -> str:
@@ -529,9 +535,12 @@ class GroupGenerator:
                 generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
-                    generate_wrapper_function(
-                        fn, emitter, self.source_paths[module_name], module_name)
-
+                    if is_fastcall_supported(fn):
+                        generate_wrapper_function(
+                            fn, emitter, self.source_paths[module_name], module_name)
+                    else:
+                        generate_legacy_wrapper_function(
+                            fn, emitter, self.source_paths[module_name], module_name)
             if multi_file:
                 name = ('__native_{}.c'.format(emitter.names.private_name(module_name)))
                 file_contents.append((name, ''.join(emitter.fragments)))
@@ -837,12 +846,17 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
+            if is_fastcall_supported(fn):
+                flag = 'METH_FASTCALL'
+            else:
+                flag = 'METH_VARARGS'
             emitter.emit_line(
-                ('{{"{name}", (PyCFunction){prefix}{cname}, METH_VARARGS | METH_KEYWORDS, '
+                ('{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
                  'NULL /* docstring */}},').format(
-                    name=fn.name,
-                    cname=fn.cname(emitter.names),
-                    prefix=PREFIX))
+                     name=fn.name,
+                     cname=fn.cname(emitter.names),
+                     prefix=PREFIX,
+                     flag=flag))
         emitter.emit_line('{NULL, NULL, 0, NULL}')
         emitter.emit_line('};')
         emitter.emit_line()
@@ -1054,3 +1068,8 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
         visit(item)
 
     return result
+
+
+def is_fastcall_supported(fn: FuncIR) -> bool:
+    # TODO: Support METH_FASTCALL for all methods.
+    return USE_FASTCALL and (fn.class_name is None or fn.name not in ('__init__', '__call__'))
