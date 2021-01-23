@@ -55,6 +55,7 @@ static const char *convertitem_fast(PyObject *, const char **, va_list *, int, i
 static const char *convertsimple_fast(PyObject *, const char **, va_list *, int,
                                       char *, size_t, freelist_fast_t *);
 
+/* Parse args for an arbitrary signature */
 int
 CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                              CPyArg_Parser *parser, ...)
@@ -64,6 +65,71 @@ CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *
 
     va_start(va, parser);
     retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    va_end(va);
+    return retval;
+}
+
+/* Parse args for a function that takes no args */
+int
+CPyArg_ParseStackAndKeywordsNoArgs(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                   CPyArg_Parser *parser, ...)
+{
+    int retval;
+    va_list va;
+
+    va_start(va, parser);
+    if (nargs == 0 && kwnames == NULL) {
+        // Fast path: no arguments
+        retval = 1;
+    } else {
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    }
+    va_end(va);
+    return retval;
+}
+
+/* Parse args for a function that takes one arg */
+int
+CPyArg_ParseStackAndKeywordsOneArg(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                   CPyArg_Parser *parser, ...)
+{
+    int retval;
+    va_list va;
+
+    va_start(va, parser);
+    if (kwnames == NULL && nargs == 1) {
+        // Fast path: one positional argument
+        PyObject **p;
+        p = va_arg(va, PyObject **);
+        *p = args[0];
+        retval = 1;
+    } else {
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    }
+    va_end(va);
+    return retval;
+}
+
+/* Parse args for a function that takes no keyword-only args, *args or **kwargs */
+int
+CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                   CPyArg_Parser *parser, ...)
+{
+    int retval;
+    va_list va;
+
+    va_start(va, parser);
+    if (kwnames == NULL && nargs >= parser->min && nargs <= parser->max) {
+        // Fast path: correct number of positional arguments only
+        PyObject **p;
+        for (Py_ssize_t i = 0; i < nargs; i++) {
+            p = va_arg(va, PyObject **);
+            *p = args[i];
+        }
+        retval = 1;
+    } else {
+        retval = vgetargskeywordsfast_impl(args, nargs, NULL, kwnames, parser, &va, 0);
+    }
     va_end(va);
     return retval;
 }

@@ -937,6 +937,86 @@ def __init__():
 from native import __init__
 assert __init__() == 42
 
+[case testDifferentArgCountsFromInterpreted]
+# Test various signatures from interpreted code.
+def noargs() -> int:
+    return 5
+
+def onearg(x: int) -> int:
+    return x + 1
+
+def twoargs(x: int, y: str) -> int:
+    return x + len(y)
+
+def one_or_two(x: int, y: str = 'a') -> int:
+    return x + len(y)
+
+[file driver.py]
+from native import noargs, onearg, twoargs, one_or_two
+from testutil import assertRaises
+
+assert noargs() == 5
+t = ()
+assert noargs(*t) == 5
+d = {}
+assert noargs(**d) == 5
+assert noargs(*t, **d) == 5
+
+assert onearg(12) == 13
+assert onearg(x=8) == 9
+t = (1,)
+assert onearg(*t) == 2
+d = {'x': 5}
+assert onearg(**d) == 6
+
+assert twoargs(5, 'foo') == 8
+assert twoargs(4, y='foo') == 7
+assert twoargs(y='foo', x=7) == 10
+t = (1, 'xy')
+assert twoargs(*t) == 3
+d = {'y': 'xy'}
+assert twoargs(2, **d) == 4
+
+assert one_or_two(5) == 6
+assert one_or_two(x=3) == 4
+assert one_or_two(6, 'xy') == 8
+assert one_or_two(7, y='xy') == 9
+assert one_or_two(y='xy', x=2) == 4
+assert one_or_two(*t) == 3
+d = {'x': 5}
+assert one_or_two(**d) == 6
+assert one_or_two(y='xx', **d) == 7
+d = {'y': 'abc'}
+assert one_or_two(1, **d) == 4
+
+with assertRaises(TypeError, 'noargs() takes at most 0 arguments (1 given)'):
+    noargs(1)
+with assertRaises(TypeError, 'noargs() takes at most 0 keyword arguments (1 given)'):
+    noargs(x=1)
+
+with assertRaises(TypeError, "onearg() missing required argument 'x' (pos 1)"):
+    onearg()
+with assertRaises(TypeError, 'onearg() takes at most 1 argument (2 given)'):
+    onearg(1, 2)
+with assertRaises(TypeError, "onearg() missing required argument 'x' (pos 1)"):
+    onearg(y=1)
+with assertRaises(TypeError, "onearg() takes at most 1 argument (2 given)"):
+    onearg(1, y=1)
+
+with assertRaises(TypeError, "twoargs() missing required argument 'y' (pos 2)"):
+    twoargs(1)
+with assertRaises(TypeError, 'twoargs() takes at most 2 arguments (3 given)'):
+    twoargs(1, 'x', 2)
+with assertRaises(TypeError, 'twoargs() takes at most 2 arguments (3 given)'):
+    twoargs(1, 'x', y=2)
+
+with assertRaises(TypeError, "one_or_two() missing required argument 'x' (pos 1)"):
+    one_or_two()
+with assertRaises(TypeError, 'one_or_two() takes at most 2 arguments (3 given)'):
+    one_or_two(1, 'x', 2)
+with assertRaises(TypeError, 'one_or_two() takes at most 2 arguments (3 given)'):
+    one_or_two(1, 'x', y=2)
+
 [case testComplicatedArgs]
 from typing import Tuple, Dict
 
