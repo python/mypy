@@ -82,6 +82,7 @@ jobs:
   #   - EXTRA_ARGS=
 
 install:
+# pip 21.0 no longer works on Python 3.5
 - pip install -U pip==20.3.4 setuptools
 - pip install -U 'virtualenv<20'
 - pip install -U tox==3.20.1
