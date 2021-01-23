@@ -55,6 +55,24 @@ def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
             name=fn.cname(names))
 
 
+def generate_traceback_code(fn: FuncIR,
+                            emitter: Emitter,
+                            source_path: str,
+                            module_name: str) -> str:
+    # If we hit an error while processing arguments, then we emit a
+    # traceback frame to make it possible to debug where it happened.
+    # Unlike traceback frames added for exceptions seen in IR, we do this
+    # even if there is no `traceback_name`. This is because the error will
+    # have originated here and so we need it in the traceback.
+    globals_static = emitter.static_name('globals', module_name)
+    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
+        source_path.replace("\\", "\\\\"),
+        fn.traceback_name or fn.name,
+        fn.line,
+        globals_static)
+    return traceback_code
+
+
 def make_arg_groups(args: List[RuntimeArg]) -> List[List[RuntimeArg]]:
     """Group arguments by kind."""
     return [[arg for arg in args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
@@ -109,18 +127,6 @@ def generate_wrapper_function(fn: FuncIR,
     """
     emitter.emit_line('{} {{'.format(wrapper_function_header(fn, emitter.names)))
 
-    # If we hit an error while processing arguments, then we emit a
-    # traceback frame to make it possible to debug where it happened.
-    # Unlike traceback frames added for exceptions seen in IR, we do this
-    # even if there is no `traceback_name`. This is because the error will
-    # have originated here and so we need it in the traceback.
-    globals_static = emitter.static_name('globals', module_name)
-    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
-        source_path.replace("\\", "\\\\"),
-        fn.traceback_name or fn.name,
-        fn.line,
-        globals_static)
-
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
@@ -156,6 +162,7 @@ def generate_wrapper_function(fn: FuncIR,
             ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
+    traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
                           cleanups=cleanups,
                           traceback_code=traceback_code)
@@ -188,18 +195,6 @@ def generate_legacy_wrapper_function(fn: FuncIR,
     """
     emitter.emit_line('{} {{'.format(legacy_wrapper_function_header(fn, emitter.names)))
 
-    # If we hit an error while processing arguments, then we emit a
-    # traceback frame to make it possible to debug where it happened.
-    # Unlike traceback frames added for exceptions seen in IR, we do this
-    # even if there is no `traceback_name`. This is because the error will
-    # have originated here and so we need it in the traceback.
-    globals_static = emitter.static_name('globals', module_name)
-    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
-        source_path.replace("\\", "\\\\"),
-        fn.traceback_name or fn.name,
-        fn.line,
-        globals_static)
-
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
     if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
@@ -231,6 +226,7 @@ def generate_legacy_wrapper_function(fn: FuncIR,
             make_format_string(fn.name, groups), ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
+    traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
                           cleanups=cleanups,
                           traceback_code=traceback_code)
