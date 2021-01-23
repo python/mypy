@@ -214,12 +214,16 @@ def verify_mypyfile(
     to_check = set(
         m
         for m, o in stub.names.items()
+        # TODO: change `o.module_public` to `not o.module_hidden`
         if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
     )
     runtime_public_contents = [
         m
         for m in dir(runtime)
         if not m.startswith("_")
+        # Ensure that the object's module is `runtime`, since in the absence of __all__ we don't
+        # have a good way to detect re-exports at runtime.
+        and getattr(getattr(runtime, m), "__module__", None) == runtime.__name__
     ]
     # Check all things declared in module's __all__, falling back to runtime_public_contents
     to_check.update(getattr(runtime, "__all__", runtime_public_contents))
