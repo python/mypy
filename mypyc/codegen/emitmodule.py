@@ -24,7 +24,7 @@ from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
-    shared_lib_name,
+    USE_VECTORCALL, shared_lib_name,
 )
 from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
@@ -1071,5 +1071,10 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
 
 
 def is_fastcall_supported(fn: FuncIR) -> bool:
-    # TODO: Support METH_FASTCALL for all methods.
-    return USE_FASTCALL and (fn.class_name is None or fn.name not in ('__init__', '__call__'))
+    if fn.class_name is not None:
+        if fn.name == '__call__':
+            # We can use vectorcalls (PEP 590) when supported
+            return USE_VECTORCALL
+        # TODO: Support fastcall for __init__.
+        return USE_FASTCALL and fn.name != '__init__'
+    return USE_FASTCALL

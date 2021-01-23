@@ -50,8 +50,11 @@ MAX_SHORT_INT = sys.maxsize >> 1  # type: Final
 MAX_LITERAL_SHORT_INT = (sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD
                          else 2**30 - 1)  # type: Final
 
-# We can use faster wrapper functions on Python 3.7+ (fastcall/vectorcall).
-USE_FASTCALL = sys.version_info >= (3, 7)
+# We can use METH_FASTCALL faster wrapper functions on Python 3.7+.
+USE_FASTCALL = sys.version_info >= (3, 7)  # type: Final
+
+# We can use vectorcalls on Python 3.8+ (PEP 590).
+USE_VECTORCALL = sys.version_info >= (3, 8)  # type: Final
 
 # Runtime C library files
 RUNTIME_C_FILES = [
