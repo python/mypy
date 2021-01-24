@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Union
-from mypy.types import TypeVarLikeType, TypeVarType, ParamSpecDef
+from mypy.types import TypeVarLikeType, TypeVarType, ParamSpecType
 from mypy.nodes import ParamSpecExpr, TypeVarExpr, TypeVarLikeExpr, SymbolTableNode
 
 
@@ -74,7 +74,7 @@ class TypeVarLikeScope:
                 column=tvar_expr.column
             )  # type: TypeVarLikeType
         elif isinstance(tvar_expr, ParamSpecExpr):
-            tvar_def = ParamSpecDef(
+            tvar_def = ParamSpecType(
                 name,
                 tvar_expr.fullname,
                 i,

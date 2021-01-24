@@ -417,7 +417,7 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
-class ParamSpecDef(TypeVarLikeType):
+class ParamSpecType(TypeVarLikeType):
     """Definition of a single ParamSpec variable."""
 
     def __repr__(self) -> str:
@@ -426,16 +426,16 @@ class ParamSpecDef(TypeVarLikeType):
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
         return {
-            '.class': 'ParamSpecDef',
+            '.class': 'ParamSpecType',
             'name': self.name,
             'fullname': self.fullname,
             'id': self.id.raw_id,
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'ParamSpecDef':
-        assert data['.class'] == 'ParamSpecDef'
-        return ParamSpecDef(
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecType':
+        assert data['.class'] == 'ParamSpecType'
+        return ParamSpecType(
             data['name'],
             data['fullname'],
             data['id'],

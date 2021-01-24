@@ -4449,7 +4449,7 @@ def merge_typevars_in_callables_by_name(
             for tvdef in target.variables:
                 name = tvdef.fullname
                 if name not in unique_typevars:
-                    # TODO(shantanu): fix for ParamSpecDef
+                    # TODO(shantanu): fix for ParamSpecType
                     assert isinstance(tvdef, TypeVarType)
                     unique_typevars[name] = tvdef
                     variables.append(tvdef)

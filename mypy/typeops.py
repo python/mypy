@@ -482,7 +482,7 @@ def true_or_false(t: Type) -> ProperType:
 
 
 def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
-    # TODO(shantanu): fix for ParamSpecDef
+    # TODO(shantanu): fix for ParamSpecType
     assert isinstance(tdef, TypeVarType)
     if tdef.values:
         return make_simplified_union(tdef.values)

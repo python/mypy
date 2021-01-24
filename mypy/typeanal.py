@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
-    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecDef
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecType
 )
 
 from mypy.nodes import (
@@ -683,7 +683,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if sym is None:
             return None
         tvar_def = self.tvar_scope.get_binding(sym)
-        if not isinstance(tvar_def, ParamSpecDef):
+        if not isinstance(tvar_def, ParamSpecType):
             return None
 
         # TODO(shantanu): construct correct type for paramspec
