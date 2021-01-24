@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
-    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef, ParamSpecDef
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecDef
 )
 
 from mypy.nodes import (
@@ -917,7 +917,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def bind_function_type_variables(
         self, fun_type: CallableType, defn: Context
-    ) -> Sequence[TypeVarLikeDef]:
+    ) -> Sequence[TypeVarLikeType]:
         """Find the type variables of the function type and bind them in our tvar_scope"""
         if fun_type.variables:
             for var in fun_type.variables:
@@ -931,7 +931,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Do not define a new type variable if already defined in scope.
         typevars = [(name, tvar) for name, tvar in typevars
                     if not self.is_defined_type_var(name, defn)]
-        defs = []  # type: List[TypeVarLikeDef]
+        defs = []  # type: List[TypeVarLikeType]
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
@@ -963,7 +963,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if nested:
                 self.nesting_level -= 1
 
-    def anal_var_def(self, var_def: TypeVarLikeDef) -> TypeVarLikeDef:
+    def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
         if isinstance(var_def, TypeVarType):
             return TypeVarType(
                 var_def.name,
@@ -977,7 +977,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         else:
             return var_def
 
-    def anal_var_defs(self, var_defs: Sequence[TypeVarLikeDef]) -> List[TypeVarLikeDef]:
+    def anal_var_defs(self, var_defs: Sequence[TypeVarLikeType]) -> List[TypeVarLikeType]:
         return [self.anal_var_def(vd) for vd in var_defs]
 
     def named_type_with_normalized_str(self, fully_qualified_name: str) -> Instance:

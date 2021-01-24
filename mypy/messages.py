@@ -1885,7 +1885,7 @@ def pretty_callable(tp: CallableType) -> str:
                 else:
                     tvars.append(tvar.name)
             else:
-                # For other TypeVarLikeDefs, just use the repr
+                # For other TypeVarLikeTypes, just use the repr
                 tvars.append(repr(tvar))
         s = '[{}] {}'.format(', '.join(tvars), s)
     return 'def {}'.format(s)

@@ -5,13 +5,13 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarLikeDef, ProperType
+    TypeVarLikeType, ProperType
 )
 from mypy.nodes import Context
 
 
 def get_target_type(
-    tvar: TypeVarLikeDef,
+    tvar: TypeVarLikeType,
     type: ProperType,
     callable: CallableType,
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],

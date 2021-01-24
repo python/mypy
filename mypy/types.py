@@ -338,7 +338,7 @@ class TypeVarId:
         return self.meta_level > 0
 
 
-class TypeVarLikeDef(ProperType):
+class TypeVarLikeType(ProperType):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
     id = None  # type: TypeVarId
@@ -357,11 +357,11 @@ class TypeVarLikeDef(ProperType):
         raise NotImplementedError
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeVarLikeDef':
+    def deserialize(cls, data: JsonDict) -> 'TypeVarLikeType':
         raise NotImplementedError
 
 
-class TypeVarType(TypeVarLikeDef):
+class TypeVarType(TypeVarLikeType):
     """Definition of a single type variable."""
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
@@ -417,7 +417,7 @@ class TypeVarType(TypeVarLikeDef):
         )
 
 
-class ParamSpecDef(TypeVarLikeDef):
+class ParamSpecDef(TypeVarLikeType):
     """Definition of a single ParamSpec variable."""
 
     def __repr__(self) -> str:
@@ -975,7 +975,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
-                 variables: Optional[Sequence[TypeVarLikeDef]] = None,
+                 variables: Optional[Sequence[TypeVarLikeType]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
@@ -1029,7 +1029,7 @@ class CallableType(FunctionLike):
                       fallback: Bogus[Instance] = _dummy,
                       name: Bogus[Optional[str]] = _dummy,
                       definition: Bogus[SymbolNode] = _dummy,
-                      variables: Bogus[Sequence[TypeVarLikeDef]] = _dummy,
+                      variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
                       line: Bogus[int] = _dummy,
                       column: Bogus[int] = _dummy,
                       is_ellipsis_args: Bogus[bool] = _dummy,
@@ -2085,7 +2085,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                     else:
                         vs.append(var.name)
                 else:
-                    # For other TypeVarLikeDefs, just use the repr
+                    # For other TypeVarLikeTypes, just use the repr
                     vs.append(repr(var))
             s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
