@@ -23,7 +23,10 @@ def match(x: str, y: str) -> Tuple[bool, bool]:
 
 [file driver.py]
 from native import f, g, tostr, booltostr, concat, eq, match
+import sys
+
 assert f() == 'some string'
+assert f() is sys.intern('some string')
 assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
 assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
