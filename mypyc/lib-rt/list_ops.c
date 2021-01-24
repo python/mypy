@@ -126,7 +126,8 @@ PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
 
 // Return -2 or error, -1 if not found, or index of first match otherwise.
 static Py_ssize_t _CPyList_Find(PyObject *list, PyObject *obj) {
-    for (Py_ssize_t i = 0; i < Py_SIZE(list); i++) {
+    Py_ssize_t i;
+    for (i = 0; i < Py_SIZE(list); i++) {
         PyObject *item = PyList_GET_ITEM(list, i);
         Py_INCREF(item);
         int cmp = PyObject_RichCompareBool(item, obj, Py_EQ);
