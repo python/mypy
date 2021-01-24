@@ -5,7 +5,7 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarType, TypeVarLikeDef, ProperType
+    TypeVarLikeDef, ProperType
 )
 from mypy.nodes import Context
 

@@ -6,7 +6,7 @@ It contains class TypeInfos and Type objects.
 from typing import List, Optional, Tuple
 
 from mypy.types import (
-    Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
+    Type, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
     UninhabitedType, TypeOfAny, TypeAliasType, UnionType
 )
 from mypy.nodes import (

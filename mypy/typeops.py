@@ -11,7 +11,7 @@ import itertools
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarType, TypeVarLikeDef, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery

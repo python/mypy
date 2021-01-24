@@ -21,7 +21,7 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type
 )
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType, TypeVarType,
+    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
     Overloaded, UnionType, FunctionLike, get_proper_type
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype

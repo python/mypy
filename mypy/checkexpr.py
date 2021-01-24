@@ -15,7 +15,7 @@ from mypy.typeanal import (
 )
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType, TypeGuardType,
-    TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
+    TupleType, TypedDictType, Instance, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,

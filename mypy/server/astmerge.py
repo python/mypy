@@ -57,7 +57,7 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
-    TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
+    TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
     RawExpressionType, PartialType, PlaceholderType, TypeAliasType
 )

@@ -8,7 +8,7 @@ from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, TupleType, AnyType, TypeOfAny, TypeVarType, CallableType, TypeType, TypeVarType,
+    Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
     UnboundType,
 )
 from mypy.semanal_shared import (

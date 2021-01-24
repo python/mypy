@@ -11,7 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
-    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny, TypeVarType
+    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny
 )
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
