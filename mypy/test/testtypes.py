@@ -78,9 +78,9 @@ class TypesSuite(Suite):
                                    self.fx.std_tuple)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self) -> None:
-        assert_equal(str(TypeVarType('X', 'X', 1, [], self.fx.o)), 'X')
+        assert_equal(str(TypeVarType('X', 'X', 1, [], self.fx.o)), 'X`1')
         assert_equal(str(TypeVarType('X', 'X', 1, [self.x, self.y], self.fx.o)),
-                     'X in (X?, Y?)')
+                     'X`1')
 
     def test_generic_function_type(self) -> None:
         c = CallableType([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
