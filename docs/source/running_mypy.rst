@@ -294,11 +294,12 @@ the former has type hints and the latter does not. We run
 :option:`mypy -m mycode.foo <mypy -m>` and mypy discovers that ``mycode.foo`` imports
 ``mycode.bar``.
 
-How do we want mypy to type check ``mycode.bar``? We can configure the
-desired behavior by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
+How do we want mypy to type check ``mycode.bar``? Mypy's behaviour here is
+configurable -- although we **strongly recommend** using the default --
+by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
 accepts one of four string values:
 
--   ``normal`` (the default) follows all imports normally and
+-   ``normal`` (the default, recommended) follows all imports normally and
     type checks all top level code (as well as the bodies of all
     functions and methods with at least one type annotation in
     the signature).
@@ -328,7 +329,7 @@ files that do not use type hints) pass under :option:`--follow-imports=normal <m
 This is usually not too difficult to do: mypy is designed to report as
 few error messages as possible when it is looking at unannotated code.
 
-If doing this is intractable, we recommend passing mypy just the files
+Only if doing this is intractable, we recommend passing mypy just the files
 you want to type check and use :option:`--follow-imports=silent <mypy --follow-imports>`. Even if
 mypy is unable to perfectly type check a file, it can still glean some
 useful information by parsing it (for example, understanding what methods
