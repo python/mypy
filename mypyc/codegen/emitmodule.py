@@ -831,6 +831,8 @@ class GroupGenerator:
                 emitter.emit_line(
                     '{} = CPyTagged_FromObject({});'.format(actual_symbol, symbol)
                 )
+            elif isinstance(literal, str):
+                emitter.emit_line('PyUnicode_InternInPlace(&{});'.format(symbol))
 
         emitter.emit_lines(
             'is_initialized = 1;',
