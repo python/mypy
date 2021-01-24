@@ -50,7 +50,7 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op,
-    py_vectorcall_op
+    py_vectorcall_op, py_vectorcall_method_op
 )
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
@@ -318,7 +318,25 @@ class LowLevelIRBuilder:
         """Call a Python method (non-native and slow)."""
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             method_name_reg = self.load_str(method_name)
-            return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
+            array = Register(RArray(object_rprimitive, len(arg_values) + 1))
+            self_arg = self.coerce(obj, object_rprimitive, line)
+            coerced_args = [self_arg] + [self.coerce(arg, object_rprimitive, line)
+                                         for arg in arg_values]
+            self.add(AssignMulti(array, coerced_args))
+            arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            value = self.call_c(py_vectorcall_method_op,
+                                [method_name_reg,
+                                 arg_ptr,
+                                 Integer(len(arg_values) + 1, c_size_t_rprimitive),
+                                 Integer(0, object_rprimitive)],
+                                line)
+            # Make sure arguments won't be freed until after the call.
+            # We need this because RArray doesn't support automatic
+            # memory management.
+            self.add(KeepAlive(coerced_args))
+            return value
+
+            #return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
         else:
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
