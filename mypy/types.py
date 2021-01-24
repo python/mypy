@@ -407,13 +407,14 @@ class TypeVarType(TypeVarLikeDef):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeVarType':
         assert data['.class'] == 'TypeVarType'
-        return TypeVarType(data['name'],
-                          data['fullname'],
-                          data['id'],
-                          [deserialize_type(v) for v in data['values']],
-                          deserialize_type(data['upper_bound']),
-                          data['variance'],
-                          )
+        return TypeVarType(
+            data['name'],
+            data['fullname'],
+            data['id'],
+            [deserialize_type(v) for v in data['values']],
+            deserialize_type(data['upper_bound']),
+            data['variance'],
+        )
 
 
 class ParamSpecDef(TypeVarLikeDef):
