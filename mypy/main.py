@@ -869,7 +869,7 @@ def process_options(args: List[str],
             parser.error("May only specify one of: module/package, files, or command.")
     if options.explicit_package_bases and not options.namespace_packages:
         parser.error(
-            "Can only use --explicit-base-dirs with --namespace-packages, since otherwise "
+            "Can only use --explicit-package-bases with --namespace-packages, since otherwise "
             "examining __init__.py's is sufficient to determine module names for files"
         )
 
