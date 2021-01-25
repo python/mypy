@@ -177,6 +177,11 @@ section of the command line docs.
     Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
     User home directory and environment variables will be expanded.
 
+    Relative paths are treated relative to the working directory of the mypy command,
+    not the config file.
+    Use the ``MYPY_CONFIG_FILE_DIR`` environment variable to refer to paths relative to
+    the config file (e.g. ``mypy_path = $MYPY_CONFIG_FILE_DIR/src``).
+
     This option may only be set in the global section (``[mypy]``).
 
     **Note:** On Windows, use UNC paths to avoid using ``:`` (e.g. ``\\127.0.0.1\X$\MyDir`` where ``X`` is the drive letter).
